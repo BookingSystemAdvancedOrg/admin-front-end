@@ -1,0 +1,141 @@
+name: Reusable CI/CD
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: Deploy target - must match a suffix in project.env (dev|prod)
+        required: true
+        type: string
+      node-version:
+        description: Node version used for install/build
+        required: false
+        type: string
+        default: "20"
+
+permissions:
+  contents: read
+
+jobs:
+  # Resolve the env-specific values (role ARN, bucket, distribution ID) out
+  # of the committed project.env so the build job doesn't need to know how
+  # to parse it. Fails fast if a value is missing or still a placeholder.
+  config:
+    runs-on: ubuntu-latest
+    outputs:
+      role_arn: ${{ steps.vars.outputs.role_arn }}
+      bucket: ${{ steps.vars.outputs.bucket }}
+      distribution_id: ${{ steps.vars.outputs.distribution_id }}
+      aws_region: ${{ steps.vars.outputs.aws_region }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: vars
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ENV_FILE=".github/config/project.env"
+          if [ ! -f "$ENV_FILE" ]; then
+            echo "::error::$ENV_FILE not found"
+            exit 1
+          fi
+          # shellcheck disable=SC1090
+          source "$ENV_FILE"
+
+          SUFFIX=$(echo "${{ inputs.environment }}" | tr '[:lower:]' '[:upper:]')
+
+          ROLE_ARN_VAR="OIDC_ROLE_ARN_${SUFFIX}"
+          BUCKET_VAR="S3_BUCKET_${SUFFIX}"
+          DIST_VAR="CLOUDFRONT_DISTRIBUTION_ID_${SUFFIX}"
+
+          ROLE_ARN="${!ROLE_ARN_VAR:-}"
+          BUCKET="${!BUCKET_VAR:-}"
+          DIST_ID="${!DIST_VAR:-}"
+
+          fail=0
+          for pair in "OIDC role ARN:$ROLE_ARN" "S3 bucket:$BUCKET" "CloudFront distribution ID:$DIST_ID" "AWS region:${AWS_REGION:-}"; do
+            label="${pair%%:*}"
+            value="${pair#*:}"
+            if [ -z "$value" ] || [[ "$value" == *REPLACE_ME* ]]; then
+              echo "::error::$label for environment '${{ inputs.environment }}' is missing or still a placeholder in $ENV_FILE"
+              fail=1
+            fi
+          done
+          if [ "$fail" -eq 1 ]; then
+            exit 1
+          fi
+
+          echo "role_arn=$ROLE_ARN" >> "$GITHUB_OUTPUT"
+          echo "bucket=$BUCKET" >> "$GITHUB_OUTPUT"
+          echo "distribution_id=$DIST_ID" >> "$GITHUB_OUTPUT"
+          echo "aws_region=$AWS_REGION" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: config
+    runs-on: ubuntu-latest
+    # id-token: write is required to mint the GitHub OIDC token used by
+    # aws-actions/configure-aws-credentials. Only exercised on push (deploy).
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Test
+        run: npm test --if-present -- --ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify dist/ output
+        run: |
+          if [ ! -f dist/index.html ]; then
+            echo "::error::dist/index.html not found - build did not produce the expected Vite-style dist/ output"
+            exit 1
+          fi
+
+      # Everything below only runs on an actual push (merge) to dev/main,
+      # never on a pull_request - PRs are build/lint/test only, no AWS access.
+      - name: Configure AWS credentials (OIDC)
+        if: github.event_name == 'push'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ needs.config.outputs.role_arn }}
+          aws-region: ${{ needs.config.outputs.aws_region }}
+
+      - name: Deploy dist/ to S3
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          BUCKET="${{ needs.config.outputs.bucket }}"
+
+          # Hashed, content-addressed files (everything except index.html):
+          # cache forever, safe because the filename changes when content does.
+          aws s3 sync dist/ "s3://$BUCKET" \
+            --delete \
+            --cache-control "public,max-age=31536000,immutable" \
+            --exclude "index.html"
+
+          # index.html is the one mutable entry point - never cache it, or
+          # clients can get stuck on a stale build referencing gone assets.
+          aws s3 cp dist/index.html "s3://$BUCKET/index.html" \
+            --cache-control "no-cache,no-store,must-revalidate"
+
+      - name: Invalidate CloudFront
+        if: github.event_name == 'push'
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ needs.config.outputs.distribution_id }}" \
+            --paths "/*"

@@ -1,0 +1,20 @@
+name: Prod CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: prod-cicd-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cicd:
+    uses: ./.github/workflows/reusable_cicd.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      environment: prod

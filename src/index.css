@@ -1,18 +1,25 @@
+/* Globala CSS-variabler och nollställningar. Sid-specifik styling bor i
+   src/shared/admin.css (admin-panelen) och src/features/auth/auth.css
+   (inloggningssidorna). */
 :root {
-  --bg: #0f1419;
-  --sidebar: #151b22;
-  --panel: #1b232c;
-  --border: #2a3440;
-  --text: #d7dee6;
-  --muted: #8b97a5;
-  --heading: #f4f7fa;
-  --accent: #3d9cf0;
-  --accent-soft: rgba(61, 156, 240, 0.14);
-  --sans: "Segoe UI", system-ui, sans-serif;
+  /* KÄLLA admin — light theme (Figma: Admin-sidorna) */
+  --bg: #faf8f5;
+  --surface: #ffffff;
+  --border: #eae6df;
+  --ink: #111311;
+  --muted: #636863;
+  --green: #1a2b23;
+  --green-soft: #294436;
+  --accent: #d98353;
+  --danger: #b2472a;
+  --shadow: 0 8px 24px rgba(26, 43, 35, 0.05);
+  --serif: 'Fraunces', Georgia, serif;
+  --sans: 'Manrope', 'Segoe UI', system-ui, sans-serif;
+
   font: 16px/1.45 var(--sans);
-  color: var(--text);
+  color: var(--ink);
   background: var(--bg);
-  color-scheme: dark;
+  color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -35,7 +42,9 @@ body {
 
 h1,
 h2,
-p {
+h3,
+p,
+ul {
   margin: 0;
 }
 

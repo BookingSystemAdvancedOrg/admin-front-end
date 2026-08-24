@@ -7,7 +7,7 @@ import type { CognitoUserSession } from 'amazon-cognito-identity-js'
 
 /**
  * All configuration comes from environment variables (see .env.example and
- * docs/COGNITO-SETUP.md). Vite inlines these at build time, so the dev server
+ * docs/API-OCH-NYCKLAR.md). Vite inlines these at build time, so the dev server
  * must be restarted after editing .env.
  */
 const USER_POOL_ID = import.meta.env.VITE_COGNITO_USER_POOL_ID as
@@ -24,7 +24,7 @@ let pool: CognitoUserPool | null = null
 function getPool(): CognitoUserPool {
   if (!USER_POOL_ID || !CLIENT_ID) {
     throw new Error(
-      'Cognito är inte konfigurerat. Skapa en .env-fil med VITE_COGNITO_USER_POOL_ID och VITE_COGNITO_CLIENT_ID — se docs/COGNITO-SETUP.md.',
+      'Cognito är inte konfigurerat. Skapa en .env-fil med VITE_COGNITO_USER_POOL_ID och VITE_COGNITO_CLIENT_ID — se docs/API-OCH-NYCKLAR.md.',
     )
   }
   if (!pool) {

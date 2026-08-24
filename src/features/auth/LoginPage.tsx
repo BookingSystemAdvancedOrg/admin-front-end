@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth/useAuth'
+import { isMockAuthEnabled, MOCK_EMAIL, MOCK_PASSWORD } from './mockAuth'
+import { useAuth } from './useAuth'
 import { AuthLayout } from './AuthLayout'
 
 /** Figma: personal-inloggning-page (41:2). */
@@ -89,10 +90,16 @@ export default function LoginPage() {
         </button>
       </form>
 
-      <p className="auth-hint">
-        Första gången? Du hittar ett tillfälligt lösenord i din inbjudningsmejl
-        från Cognito.
-      </p>
+      {isMockAuthEnabled() ? (
+        <p className="auth-hint">
+          Utveckling: {MOCK_EMAIL} / {MOCK_PASSWORD}
+        </p>
+      ) : (
+        <p className="auth-hint">
+          Första gången? Du hittar ett tillfälligt lösenord i din
+          inbjudningsmejl från Cognito.
+        </p>
+      )}
     </AuthLayout>
   )
 }

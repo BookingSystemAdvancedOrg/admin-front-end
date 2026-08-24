@@ -7,19 +7,34 @@ import {
   completeNewPassword,
   getCurrentSession,
   getIdToken,
+  isCognitoConfigured,
   signIn,
   signOut,
 } from './cognito'
+import {
+  clearMockSession,
+  getMockSessionEmail,
+  tryMockSignIn,
+} from './mockAuth'
 
+/**
+ * Håller hela inloggningsläget för appen: vem som är inloggad, om ett
+ * nytt lösenord krävs (Cognitos NEW_PASSWORD_REQUIRED-utmaning), och
+ * funktionerna sidorna anropar för att logga in/ut. Wrappas runt hela
+ * appen i main.tsx så att useAuth() fungerar överallt.
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [status, setStatus] = useState<AuthStatus>('loading')
-  const [email, setEmail] = useState<string | null>(null)
+  const [status, setStatus] = useState<AuthStatus>(() =>
+    getMockSessionEmail() ? 'signed-in' : 'loading',
+  )
+  const [email, setEmail] = useState<string | null>(() => getMockSessionEmail())
   const [hasPendingNewPassword, setHasPendingNewPassword] = useState(false)
   // The CognitoUser holding the NEW_PASSWORD_REQUIRED challenge state must be
   // kept in memory between the login page and the new-password page.
   const pendingUser = useRef<CognitoUser | null>(null)
 
   useEffect(() => {
+    if (getMockSessionEmail()) return
     let cancelled = false
     getCurrentSession().then((session) => {
       if (cancelled) return
@@ -38,6 +53,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (loginEmail: string, password: string) => {
+      if (tryMockSignIn(loginEmail, password)) {
+        pendingUser.current = null
+        setHasPendingNewPassword(false)
+        setEmail(loginEmail.trim())
+        setStatus('signed-in')
+        return 'ok' as const
+      }
+      if (!isCognitoConfigured()) {
+        throw new Error('Fel e-post eller lösenord.')
+      }
       const result = await signIn(loginEmail, password)
       if (result.kind === 'new-password-required') {
         pendingUser.current = result.user
@@ -69,11 +94,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(() => {
+    clearMockSession()
     signOut()
     pendingUser.current = null
     setHasPendingNewPassword(false)
     setEmail(null)
     setStatus('signed-out')
+  }, [])
+
+  const getToken = useCallback(async () => {
+    if (getMockSessionEmail()) return 'mock-dev-token'
+    return getIdToken()
   }, [])
 
   return (
@@ -85,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         finishNewPassword,
         logout,
-        getToken: getIdToken,
+        getToken,
       }}
     >
       {children}

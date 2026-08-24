@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth/useAuth'
+import { useAuth } from './useAuth'
 import { AuthLayout } from './AuthLayout'
 
 /**
  * Lösenordskraven som visas i checklistan. Håll dem i synk med
- * User Poolens password policy i AWS (se docs/COGNITO-SETUP.md).
+ * User Poolens password policy i AWS (se docs/API-OCH-NYCKLAR.md).
  */
 const RULES: { id: string; label: string; test: (pw: string) => boolean }[] = [
   { id: 'length', label: 'Minst 8 tecken', test: (pw) => pw.length >= 8 },

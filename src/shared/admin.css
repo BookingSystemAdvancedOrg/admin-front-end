@@ -1,0 +1,485 @@
+/* KÄLLA admin-skal (Figma: admin-oversikt-page m.fl.) */
+
+.admin-shell {
+  display: flex;
+  align-items: stretch;
+  min-height: 100svh;
+  background: var(--bg);
+}
+
+/* --- Sidebar ----------------------------------------------------------- */
+
+.admin-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 240px;
+  flex-shrink: 0;
+  padding: 24px 0 20px;
+  background: var(--green);
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  min-height: 100svh;
+}
+
+.admin-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px 28px;
+}
+
+.admin-logo-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 17px;
+  background: var(--green-soft);
+  color: #fff;
+  font: 700 16px/1 var(--serif);
+}
+
+.admin-logo-name {
+  font: 600 18px/1 var(--serif);
+  color: #fff;
+}
+
+.admin-logo-tag {
+  font: 700 10px/1 var(--sans);
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.admin-nav {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.admin-nav-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  border-left: 3px solid transparent;
+  font: 500 14px/1.3 var(--sans);
+  color: rgba(255, 255, 255, 0.6);
+  text-decoration: none;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.admin-nav-item:hover {
+  color: #fff;
+}
+
+.admin-nav-item.active {
+  background: rgba(255, 255, 255, 0.08);
+  border-left-color: var(--accent);
+  color: #fff;
+}
+
+.admin-sidebar-spacer {
+  flex: 1 0 0;
+  min-height: 1px;
+}
+
+.admin-user {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 20px;
+}
+
+.admin-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  background: var(--accent);
+  color: #fff;
+  font: 700 13px/1 var(--sans);
+}
+
+.admin-user-name {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  overflow-wrap: anywhere;
+}
+
+.admin-logout {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 500 12px/1.3 var(--sans);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.admin-logout:hover {
+  color: #fff;
+}
+
+/* --- Högerkolumn ------------------------------------------------------- */
+
+.admin-right {
+  flex: 1 0 0;
+  min-width: 1px;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+}
+
+.admin-topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 28px 40px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.admin-topbar-titles {
+  flex: 1 0 0;
+  min-width: 1px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-topbar-titles h1 {
+  font: 600 26px/1.25 var(--serif);
+  color: var(--ink);
+}
+
+.admin-topbar-titles p {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.admin-topbar-date {
+  font-size: 14px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.admin-main {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 32px 40px;
+}
+
+/* --- Kort och rader ---------------------------------------------------- */
+
+.admin-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px;
+}
+
+.stat-tile-label {
+  font: 600 13px/1.3 var(--sans);
+  color: var(--muted);
+}
+
+.stat-tile-value {
+  font: 700 32px/1.1 var(--serif);
+  color: var(--ink);
+}
+
+.stat-tile-value.danger {
+  color: var(--danger);
+}
+
+.stat-tile-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.oversikt-row {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.bookings-card {
+  flex: 2 1 0;
+  min-width: 1px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-card {
+  flex: 1 1 0;
+  min-width: 1px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+}
+
+.card-title {
+  font: 600 20px/1.3 var(--serif);
+  color: var(--ink);
+}
+
+.card-link {
+  font: 600 13px/1.3 var(--sans);
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.card-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.booking-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.booking-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 1px;
+}
+
+.booking-time {
+  width: 44px;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.booking-name {
+  font: 600 14px/1.3 var(--sans);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.booking-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.booking-meta {
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font: 600 12px/1.3 var(--sans);
+  white-space: nowrap;
+}
+
+.status-badge.arrived {
+  background: #dcebf0;
+  color: #2b6a8a;
+}
+
+.status-badge.reserved {
+  background: #dbe8e2;
+  color: var(--green);
+}
+
+.status-badge.waiting {
+  background: #f1e6da;
+  color: #8a5a2b;
+}
+
+.status-badge.cancelled {
+  background: #f3dcd6;
+  color: var(--danger);
+}
+
+.activity-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.activity-text {
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.activity-time {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.quick-links-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.quick-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px;
+  text-decoration: none;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.quick-link:hover {
+  border-color: var(--accent);
+}
+
+.quick-link-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 600 14px/1.3 var(--sans);
+  color: var(--ink);
+}
+
+.quick-link-icon {
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.quick-link-arrow {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* --- Platshållarsidor --------------------------------------------------- */
+
+.admin-empty {
+  padding: 24px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* --- Responsivt -------------------------------------------------------- */
+
+@media (max-width: 1280px) {
+  .stats-row,
+  .quick-links-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .oversikt-row {
+    flex-direction: column;
+  }
+
+  .bookings-card,
+  .activity-card {
+    width: 100%;
+    flex: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .admin-shell {
+    flex-direction: column;
+  }
+
+  .admin-sidebar {
+    width: 100%;
+    min-height: 0;
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+  }
+
+  .admin-logo {
+    padding: 0 8px 0 0;
+  }
+
+  .admin-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: auto;
+  }
+
+  .admin-nav-item {
+    border-left: 0;
+    border-bottom: 3px solid transparent;
+    padding: 8px 12px;
+  }
+
+  .admin-nav-item.active {
+    border-bottom-color: var(--accent);
+  }
+
+  .admin-sidebar-spacer {
+    display: none;
+  }
+
+  .admin-user {
+    margin-left: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 0;
+  }
+
+  .admin-topbar,
+  .admin-main {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .stats-row,
+  .quick-links-row {
+    grid-template-columns: 1fr;
+  }
+}

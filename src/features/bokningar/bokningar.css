@@ -1,0 +1,36 @@
+/* Bokningssidans statuskolumn (Figma: admin-bokningar-page) */
+
+.status-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Knappen som markerar att kunden anlänt — låser statusen permanent. */
+.arrive-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font: 600 12px/1.3 var(--sans);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+
+.arrive-btn:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+/* Bekräfta-steget: ett klick till låser raden. */
+.arrive-btn.confirm {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.status-badge.locked {
+  cursor: default;
+}

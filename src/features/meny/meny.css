@@ -1,0 +1,53 @@
+/* Meny-sidans bilder och uppladdning (Figma: admin-meny-page) */
+
+.dish-photo {
+  display: block;
+  width: 56px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+
+.dish-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  font-size: 18px;
+  color: var(--muted);
+}
+
+.dish-placeholder.large {
+  width: 96px;
+  height: 72px;
+  font-size: 26px;
+  flex-shrink: 0;
+}
+
+.dish-upload {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dish-upload-preview {
+  display: block;
+  width: 96px;
+  height: 72px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.dish-upload-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}

@@ -6,17 +6,11 @@ Admin frontend for the reservation platform.
 
 ```bash
 npm install
-cp .env.example .env   # fill in the Cognito values, see docs/API-OCH-NYCKLAR.md
+cp .env.example .env   # fill in the Cognito values, see docs/COGNITO-SETUP.md
 npm run dev
 ```
 
 The Vite dev server starts at `http://localhost:5173`.
-
-## Documentation
-
-- [docs/ADMIN.md](docs/ADMIN.md) — the admin app: pages, code structure, auth flow overview.
-- [docs/ANVANDARE.md](docs/ANVANDARE.md) — the future guest/customer-facing app (not started yet).
-- [docs/API-OCH-NYCKLAR.md](docs/API-OCH-NYCKLAR.md) — every environment variable, key, and API integration (Cognito today, backend API later), plus CI/CD config and troubleshooting.
 
 ## Project structure
 
@@ -28,20 +22,26 @@ src/
   features/
     auth/           # login, new-password, Cognito + mock auth
     oversikt/       # dashboard (Figma: admin-oversikt-page)
-    bokningar/      # placeholder — next up
-    meny/           # placeholder
-    layout-editor/  # placeholder
-    installningar/  # placeholder
-  shared/           # AdminLayout (sidebar), AdminTopbar, admin.css
+    bokningar/      # bookings table (Figma: admin-bokningar-page)
+    meny/           # menu management (Figma: admin-meny-page)
+    layout-editor/  # 3D live layout editor (Figma: admin-live-layout-editor-page)
+    installningar/  # settings (Figma: admin-installningar-page)
+  shared/           # AdminLayout (sidebar), AdminTopbar, admin.css, api.ts
   App.tsx           # protected admin routes
   main.tsx          # router + auth provider
 ```
+
+## Data
+
+All admin pages currently run on mock data (`src/features/*/data.ts`).
+How to connect the real backend, and where every real key belongs, is
+documented in [docs/BACKEND-KOPPLING.md](docs/BACKEND-KOPPLING.md).
 
 ## Authentication
 
 Staff sign-in is handled by AWS Cognito (`/logga-in` and `/nytt-losenord`).
 Setup, required keys, and the invite flow are documented in
-[docs/API-OCH-NYCKLAR.md](docs/API-OCH-NYCKLAR.md).
+[docs/COGNITO-SETUP.md](docs/COGNITO-SETUP.md).
 
 ```bash
 npm run lint

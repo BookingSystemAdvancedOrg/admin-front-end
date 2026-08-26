@@ -234,8 +234,14 @@
   color: var(--ink);
 }
 
-/* --- Segment: väggar, fönster, entré, kökets ingång --------------------- */
+/* --- Väggar och öppningar ----------------------------------------------- */
 
+/*
+ * Väggar är alltid hela. Höjden styrs av --wh: full höjd normalt, låg
+ * sockel när väggen skymmer rummet (dockskåpsvy) — övergången animeras
+ * så att rotation känns smooth. Öppningar (fönster/entré/kök) sitter PÅ
+ * väggen och ärver samma höjd, så de följer sänkningen automatiskt.
+ */
 .seg {
   position: absolute;
   transform-style: preserve-3d;
@@ -245,13 +251,17 @@
 .seg-face {
   position: absolute;
   backface-visibility: visible;
+  transition: height 320ms cubic-bezier(0.4, 0, 0.2, 1),
+    width 320ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 320ms ease;
 }
 
-/* stående ytor: --lift = starthöjd över golvet, höjd sätts i markup */
+/* Stående ytor. Höjden = --wh (animeras), --lift = starthöjd över golvet. */
 .seg-face.h-n {
   left: 0;
   top: 0;
   width: 100%;
+  height: var(--wh, 90px);
   transform-origin: top center;
   transform: translateZ(var(--lift, 0px)) rotateX(90deg);
 }
@@ -260,6 +270,7 @@
   left: 0;
   bottom: 0;
   width: 100%;
+  height: var(--wh, 90px);
   transform-origin: bottom center;
   transform: translateZ(var(--lift, 0px)) rotateX(-90deg);
 }
@@ -268,6 +279,7 @@
   left: 0;
   top: 0;
   height: 100%;
+  width: var(--wh, 90px);
   transform-origin: center left;
   transform: translateZ(var(--lift, 0px)) rotateY(-90deg);
 }
@@ -276,14 +288,17 @@
   right: 0;
   top: 0;
   height: 100%;
+  width: var(--wh, 90px);
   transform-origin: center right;
   transform: translateZ(var(--lift, 0px)) rotateY(90deg);
 }
 
+/* Krönet ligger på väggens topp och följer med när den sänks. */
 .seg-cap {
   position: absolute;
   inset: 0;
-  transform: translateZ(var(--cap, 90px));
+  transform: translateZ(var(--wh, 90px));
+  transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .seg-shadow {
@@ -291,7 +306,7 @@
   inset: 0;
 }
 
-/* Färger per segmenttyp */
+/* Vägg */
 .seg.wall .seg-face {
   background: linear-gradient(#24382e, #1a2b23);
 }
@@ -300,19 +315,30 @@
   background: #2c473a;
 }
 
-.seg.window .seg-face.base {
-  background: linear-gradient(#24382e, #1a2b23);
+/* Sänkt vägg: sockeln blir ljusare så rummet läses tydligt. */
+.seg.lowered.wall .seg-face {
+  background: linear-gradient(#35513f, #2a4234);
 }
 
+.seg.lowered .seg-cap {
+  background: #3d5c49;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+/* Fönster — glasband som sitter i väggen (väggen bakom är kvar) */
 .seg.window .seg-face.glass {
-  background: rgba(168, 203, 216, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: linear-gradient(
+    rgba(214, 235, 243, 0.9),
+    rgba(150, 196, 214, 0.75)
+  );
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6);
 }
 
-.seg.window .seg-cap {
-  background: #2c473a;
+.seg.window .seg-cap.glass-cap {
+  background: #9fc4d2;
 }
 
+/* Kökets ingång */
 .seg.kitchen .seg-face {
   background: linear-gradient(#e09263, #d98353);
 }
@@ -321,11 +347,30 @@
   background: #e8a377;
 }
 
+/* Entré — öppning i väggen: låg tröskel + matta på golvet */
+.seg.entrance .seg-face.entry-band {
+  background: linear-gradient(rgba(217, 131, 83, 0.95), rgba(196, 110, 63, 0.9));
+  height: 10px;
+  width: 10px;
+}
+
+.seg.entrance .seg-face.h-n,
+.seg.entrance .seg-face.h-s {
+  width: 100%;
+  height: 10px;
+}
+
+.seg.entrance .seg-face.v-w,
+.seg.entrance .seg-face.v-e {
+  height: 100%;
+  width: 10px;
+}
+
 .seg.entrance .seg-shadow {
   background: repeating-linear-gradient(
     45deg,
-    rgba(217, 131, 83, 0.35) 0 6px,
-    rgba(217, 131, 83, 0.12) 6px 12px
+    rgba(217, 131, 83, 0.4) 0 6px,
+    rgba(217, 131, 83, 0.14) 6px 12px
   );
   border-radius: 3px;
 }
@@ -346,7 +391,7 @@
   opacity: 0.75;
 }
 
-/* Ändhandtag för att göra en vald vägg längre eller kortare */
+/* Ändhandtag för att ändra längd på vald vägg eller öppning */
 .seg-handle {
   position: absolute;
   width: 18px;
@@ -355,7 +400,7 @@
   background: var(--accent);
   border: 2px solid #fff;
   box-shadow: 0 1px 4px rgba(26, 43, 35, 0.35);
-  transform: translateZ(var(--cap, 90px));
+  transform: translateZ(calc(var(--wh, 90px) + 4px));
   cursor: ew-resize;
   z-index: 2;
 }
@@ -386,13 +431,14 @@
   cursor: ns-resize;
 }
 
-/* Etikett som alltid vänder sig mot kameran */
+/* Etiketter (KÖK/ENTRÉ) — vänder sig alltid mot kameran */
 .seg-tag {
   position: absolute;
   left: 50%;
   top: 50%;
   transform-style: preserve-3d;
-  transform: translateZ(var(--tagz, 96px));
+  transform: translateZ(calc(var(--tagz, var(--wh, 90px)) + 6px));
+  transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
 }
 
@@ -400,11 +446,11 @@
   display: inline-block;
   transform: translate(-50%, -50%)
     rotateZ(calc(-1 * var(--spin, 0deg))) rotateX(calc(-1 * var(--tilt, 0deg)));
-  transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
   font: 700 10px/1 var(--sans);
   letter-spacing: 0.08em;
   color: var(--muted);
-  background: rgba(250, 248, 245, 0.85);
+  background: rgba(250, 248, 245, 0.9);
   padding: 3px 7px;
   border-radius: 6px;
   white-space: nowrap;
@@ -412,7 +458,12 @@
 
 .seg.kitchen .seg-tag span {
   color: #8a4a24;
-  background: rgba(250, 240, 232, 0.9);
+  background: rgba(250, 240, 232, 0.92);
+}
+
+.seg.entrance .seg-tag span {
+  color: #8a4a24;
+  background: rgba(250, 240, 232, 0.92);
 }
 
 /* --- Bord --------------------------------------------------------------- */

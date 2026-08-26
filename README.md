@@ -10,7 +10,9 @@ cp .env.example .env   # fill in the Cognito values, see docs/COGNITO-SETUP.md
 npm run dev
 ```
 
-The Vite dev server starts at `http://localhost:5173`.
+The Vite dev server starts at `http://localhost:8081` — this port is fixed
+(`strictPort`) because the backend API's CORS policy only allows
+`http://localhost:8081` as a local origin.
 
 ## Project structure
 

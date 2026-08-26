@@ -1,191 +1,236 @@
-import {
-  AuthenticationDetails,
-  CognitoUser,
-  CognitoUserPool,
-} from 'amazon-cognito-identity-js'
-import type { CognitoUserSession } from 'amazon-cognito-identity-js'
+import { API_BASE_URL } from '../../shared/api'
 
 /**
- * All configuration comes from environment variables (see .env.example and
- * docs/API-OCH-NYCKLAR.md). Vite inlines these at build time, so the dev server
- * must be restarted after editing .env.
- *
- * The dev and prod pools live side by side in the same file with _DEV/_PROD
- * suffixes. VITE_COGNITO_ENV picks which pair is used (dev when unset), and
- * the unsuffixed names override both so a build can be pointed at a single
- * pool without changing the .env format.
+ * Inloggningen går genom backendens /auth/*-endpoints (manage-auth-Lambdan),
+ * som håller Cognito-app-klientens secret och anropar InitiateAuth /
+ * RespondToAuthChallenge server-side. Webbläsaren pratar aldrig direkt med
+ * Cognito — se docs/API-OCH-NYCKLAR.md och backend-repots openapi.yaml för
+ * det fullständiga kontraktet.
  */
 
-/** Reads an env var, treating blanks and unfilled placeholders as missing. */
-function envValue(raw: unknown): string | undefined {
-  const value = typeof raw === 'string' ? raw.trim() : ''
-  if (!value || value.startsWith('...') || value.includes('REPLACE_ME')) {
-    return undefined
-  }
-  return value
+type AuthenticationResult = {
+  AccessToken: string
+  IdToken?: string
+  RefreshToken?: string
+  ExpiresIn: number
+  TokenType: string
 }
 
-const TARGET_ENV =
-  envValue(import.meta.env.VITE_COGNITO_ENV)?.toLowerCase() === 'prod'
-    ? 'prod'
-    : 'dev'
-const SUFFIX = TARGET_ENV === 'prod' ? '_PROD' : '_DEV'
+type AuthResponse =
+  | { status: 'authenticated'; authenticationResult: AuthenticationResult }
+  | {
+      status: 'challenge'
+      challengeName: string
+      challengeParameters: Record<string, string>
+      session: string | null
+      challengeUsername?: string
+    }
 
-const USER_POOL_ID =
-  envValue(import.meta.env.VITE_COGNITO_USER_POOL_ID) ??
-  (TARGET_ENV === 'prod'
-    ? envValue(import.meta.env.VITE_COGNITO_USER_POOL_ID_PROD)
-    : envValue(import.meta.env.VITE_COGNITO_USER_POOL_ID_DEV))
-
-const CLIENT_ID =
-  envValue(import.meta.env.VITE_COGNITO_CLIENT_ID) ??
-  (TARGET_ENV === 'prod'
-    ? envValue(import.meta.env.VITE_COGNITO_CLIENT_ID_PROD)
-    : envValue(import.meta.env.VITE_COGNITO_CLIENT_ID_DEV))
-
-export function isCognitoConfigured(): boolean {
-  return Boolean(USER_POOL_ID && CLIENT_ID)
+export type PendingChallenge = {
+  challengeName: string
+  session: string
+  username: string
 }
 
-let pool: CognitoUserPool | null = null
-
-function getPool(): CognitoUserPool {
-  if (!USER_POOL_ID || !CLIENT_ID) {
-    throw new Error(
-      `Cognito är inte konfigurerat. Fyll i VITE_COGNITO_USER_POOL_ID${SUFFIX} och VITE_COGNITO_CLIENT_ID${SUFFIX} i .env — se docs/API-OCH-NYCKLAR.md.`,
-    )
-  }
-  if (!pool) {
-    pool = new CognitoUserPool({ UserPoolId: USER_POOL_ID, ClientId: CLIENT_ID })
-  }
-  return pool
+export type StoredSession = {
+  accessToken: string
+  idToken: string
+  refreshToken: string | null
+  sub: string
+  email: string | null
+  expiresAt: number
 }
 
 export type SignInResult =
-  | { kind: 'success'; session: CognitoUserSession }
-  | { kind: 'new-password-required'; user: CognitoUser }
+  | { kind: 'success'; session: StoredSession }
+  | { kind: 'new-password-required'; pending: PendingChallenge }
 
-/**
- * Signs in with email + password using SRP (the password never leaves the
- * browser in clear text). If the account still has its temporary password
- * from the Cognito invitation email, Cognito answers with the
- * NEW_PASSWORD_REQUIRED challenge and we return the pending user so the
- * "nytt lösenord" page can finish the flow.
- */
-export function signIn(email: string, password: string): Promise<SignInResult> {
-  const user = new CognitoUser({ Username: email.trim(), Pool: getPool() })
-  const details = new AuthenticationDetails({
-    Username: email.trim(),
-    Password: password,
-  })
-  return new Promise((resolve, reject) => {
-    user.authenticateUser(details, {
-      onSuccess: (session) => resolve({ kind: 'success', session }),
-      onFailure: (err) => reject(toFriendlyError(err)),
-      newPasswordRequired: () =>
-        resolve({ kind: 'new-password-required', user }),
-    })
-  })
+const STORAGE_KEY = 'admin-auth-session'
+
+/** JWT-payloaden är bara base64url-kodad JSON — inget bibliotek behövs för att läsa ut claims. */
+function decodeJwtPayload(token: string): Record<string, unknown> {
+  const payload = token.split('.')[1] ?? ''
+  const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
+  return JSON.parse(json) as Record<string, unknown>
 }
 
-/**
- * Completes the NEW_PASSWORD_REQUIRED challenge for a user that just signed
- * in with a temporary password. On success the account is activated and a
- * full session is returned.
- */
-export function completeNewPassword(
-  user: CognitoUser,
+function toStoredSession(result: AuthenticationResult): StoredSession {
+  const idToken = result.IdToken ?? ''
+  const claims = idToken ? decodeJwtPayload(idToken) : {}
+  return {
+    accessToken: result.AccessToken,
+    idToken,
+    refreshToken: result.RefreshToken ?? null,
+    sub: typeof claims.sub === 'string' ? claims.sub : '',
+    email: typeof claims.email === 'string' ? claims.email : null,
+    expiresAt: Date.now() + result.ExpiresIn * 1000,
+  }
+}
+
+function saveSession(session: StoredSession): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
+}
+
+function loadSession(): StoredSession | null {
+  const raw = localStorage.getItem(STORAGE_KEY)
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as StoredSession
+  } catch {
+    return null
+  }
+}
+
+export function isApiAuthConfigured(): boolean {
+  return Boolean(API_BASE_URL)
+}
+
+async function authRequest(path: string, body: unknown): Promise<AuthResponse> {
+  if (!API_BASE_URL) {
+    throw new Error(
+      'VITE_API_BASE_URL är inte satt. Se docs/API-OCH-NYCKLAR.md.',
+    )
+  }
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } catch (err) {
+    console.error('[Auth] Nätverksfel mot', path, err)
+    throw new Error(
+      'Kunde inte nå inloggningstjänsten. Kontrollera anslutningen, eller att din dev-origin är tillåten i API:ts CORS-inställningar.',
+    )
+  }
+  if (!res.ok) {
+    throw await toFriendlyError(res)
+  }
+  return (await res.json()) as AuthResponse
+}
+
+/** Mappar API:ts { error: string } + statuskod till svenska meddelanden. */
+async function toFriendlyError(res: Response): Promise<Error> {
+  let message = `HTTP ${res.status}`
+  try {
+    const body = (await res.json()) as { error?: string }
+    if (body.error) message = body.error
+  } catch {
+    // Inget JSON-svar att läsa ut.
+  }
+  console.error(`[Auth] ${res.status}: ${message}`)
+
+  switch (res.status) {
+    case 401:
+      return new Error('Fel e-post eller lösenord.')
+    case 403:
+      if (message.includes('not confirmed')) {
+        return new Error(
+          'Kontot är inte bekräftat ännu. Kontakta en administratör.',
+        )
+      }
+      if (message.includes('reset')) {
+        return new Error('Lösenordet måste återställas. Kontakta en administratör.')
+      }
+      return new Error(message)
+    case 429:
+      return new Error('För många försök. Vänta en stund och försök igen.')
+    case 502:
+      return new Error(
+        'Ingen kontakt med autentiseringstjänsten just nu. Försök igen om en stund.',
+      )
+    case 400:
+      return new Error(
+        message === 'invalid challenge response'
+          ? 'Lösenordet uppfyller inte kraven, eller sessionen har gått ut. Logga in igen.'
+          : message,
+      )
+    default:
+      return new Error(message)
+  }
+}
+
+function toSignInResult(response: AuthResponse, fallbackUsername: string): SignInResult {
+  if (response.status === 'authenticated') {
+    const session = toStoredSession(response.authenticationResult)
+    saveSession(session)
+    return { kind: 'success', session }
+  }
+  return {
+    kind: 'new-password-required',
+    pending: {
+      challengeName: response.challengeName,
+      session: response.session ?? '',
+      // Kontraktet: använd challengeUsername när den finns, annars originalanvändaren.
+      username: response.challengeUsername ?? fallbackUsername,
+    },
+  }
+}
+
+export async function signIn(email: string, password: string): Promise<SignInResult> {
+  const username = email.trim()
+  const response = await authRequest('/auth/login', { username, password })
+  return toSignInResult(response, username)
+}
+
+/** Slutför NEW_PASSWORD_REQUIRED (eller annan) utmaning från /auth/login. */
+export async function completeNewPassword(
+  pending: PendingChallenge,
   newPassword: string,
-): Promise<CognitoUserSession> {
-  return new Promise((resolve, reject) => {
-    user.completeNewPasswordChallenge(newPassword, {}, {
-      onSuccess: (session) => resolve(session),
-      onFailure: (err) => reject(toFriendlyError(err)),
-    })
+): Promise<StoredSession> {
+  const response = await authRequest('/auth/challenge', {
+    challengeName: pending.challengeName,
+    session: pending.session,
+    username: pending.username,
+    responses: { NEW_PASSWORD: newPassword },
   })
+  const result = toSignInResult(response, pending.username)
+  if (result.kind === 'new-password-required') {
+    throw new Error('Ytterligare en utmaning krävs, men stöds inte av gränssnittet ännu.')
+  }
+  return result.session
 }
 
-/** Restores the session from local storage (valid tokens are auto-refreshed). */
-export function getCurrentSession(): Promise<CognitoUserSession | null> {
-  if (!isCognitoConfigured()) return Promise.resolve(null)
-  const user = getPool().getCurrentUser()
-  if (!user) return Promise.resolve(null)
-  return new Promise((resolve) => {
-    user.getSession((err: Error | null, session: CognitoUserSession | null) => {
-      if (err || !session || !session.isValid()) resolve(null)
-      else resolve(session)
+async function refreshSession(session: StoredSession): Promise<StoredSession | null> {
+  if (!session.refreshToken || !session.sub) return null
+  try {
+    const response = await authRequest('/auth/refresh', {
+      refreshToken: session.refreshToken,
+      sub: session.sub,
     })
-  })
+    if (response.status !== 'authenticated') return null
+    // Cognito returnerar normalt ingen ny RefreshToken vid refresh - behåll den gamla.
+    const refreshed = toStoredSession({
+      ...response.authenticationResult,
+      RefreshToken: response.authenticationResult.RefreshToken ?? session.refreshToken,
+    })
+    saveSession(refreshed)
+    return refreshed
+  } catch {
+    return null
+  }
 }
 
-/**
- * Returns a fresh ID token (JWT) to send to the backend as
- * `Authorization: Bearer <token>`, or null when signed out.
- */
+/** Återställer sessionen från localStorage och förnyar den om den gått ut. */
+export async function getCurrentSession(): Promise<StoredSession | null> {
+  const session = loadSession()
+  if (!session) return null
+  if (Date.now() < session.expiresAt - 30_000) return session
+  const refreshed = await refreshSession(session)
+  if (!refreshed) clearSession()
+  return refreshed
+}
+
 export async function getIdToken(): Promise<string | null> {
   const session = await getCurrentSession()
-  return session ? session.getIdToken().getJwtToken() : null
+  return session?.idToken ?? null
+}
+
+export function clearSession(): void {
+  localStorage.removeItem(STORAGE_KEY)
 }
 
 export function signOut(): void {
-  if (!isCognitoConfigured()) return
-  getPool().getCurrentUser()?.signOut()
-}
-
-/** Maps Cognito error codes to Swedish messages users can act on. */
-function toFriendlyError(err: unknown): Error {
-  const raw = err as { code?: unknown; name?: unknown; message?: unknown }
-  const code = String(raw?.code ?? raw?.name ?? '')
-  const message =
-    err instanceof Error ? err.message : 'Ett okänt fel inträffade.'
-
-  // Cognito svarar alltid HTTP 400 på inloggningsfel, så webbläsarkonsolen
-  // visar bara "400 (Bad Request)". Logga koden och AWS egna text så att
-  // orsaken går att se direkt vid felsökning.
-  console.error(`[Cognito] ${code || 'okänt fel'}: ${message}`)
-
-  switch (code) {
-    case 'InvalidParameterException':
-      if (message.includes('USER_SRP_AUTH')) {
-        return new Error(
-          'App-klienten tillåter inte SRP-inloggning. Aktivera ALLOW_USER_SRP_AUTH på app-klienten i Cognito.',
-        )
-      }
-      return new Error(`Cognito nekade anropet: ${message}`)
-    case 'ResourceNotFoundException':
-      return new Error(
-        'Cognito hittar inte poolen eller app-klienten. Kontrollera VITE_COGNITO_*-värdena i .env.',
-      )
-    case 'NotAuthorizedException':
-      if (message.includes('secret hash')) {
-        return new Error(
-          'App-klienten har en client secret. Frontend måste använda en publik klient utan secret — skapa en ny app-klient i Cognito.',
-        )
-      }
-      if (message.includes('expired')) {
-        return new Error(
-          'Ditt tillfälliga lösenord har gått ut. Be en administratör skicka en ny inbjudan.',
-        )
-      }
-      return new Error('Fel e-post eller lösenord.')
-    case 'UserNotFoundException':
-      return new Error('Fel e-post eller lösenord.')
-    case 'UserNotConfirmedException':
-      return new Error('Kontot är inte bekräftat ännu. Kontakta en administratör.')
-    case 'PasswordResetRequiredException':
-      return new Error(
-        'Lösenordet måste återställas. Kontakta en administratör.',
-      )
-    case 'InvalidPasswordException':
-      return new Error(
-        'Lösenordet uppfyller inte kraven. Kontrollera listan nedan.',
-      )
-    case 'LimitExceededException':
-    case 'TooManyRequestsException':
-      return new Error('För många försök. Vänta en stund och försök igen.')
-    case 'NetworkError':
-      return new Error('Ingen kontakt med servern. Kontrollera din uppkoppling.')
-    default:
-      return new Error(code ? `${code}: ${message}` : message)
-  }
+  clearSession()
 }

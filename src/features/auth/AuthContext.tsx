@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { CognitoUser } from 'amazon-cognito-identity-js'
 import { AuthContext } from './context'
 import type { AuthStatus } from './context'
+import type { PendingChallenge } from './cognito'
 import {
   completeNewPassword,
   getCurrentSession,
@@ -28,9 +28,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
   const [email, setEmail] = useState<string | null>(() => getMockSessionEmail())
   const [hasPendingNewPassword, setHasPendingNewPassword] = useState(false)
-  // The CognitoUser holding the NEW_PASSWORD_REQUIRED challenge state must be
-  // kept in memory between the login page and the new-password page.
-  const pendingUser = useRef<CognitoUser | null>(null)
+  // Utmaningens session + username måste hållas i minnet mellan login-sidan
+  // och nytt-lösenord-sidan tills /auth/challenge slutförs.
+  const pendingChallenge = useRef<PendingChallenge | null>(null)
 
   useEffect(() => {
     if (getMockSessionEmail()) return
@@ -38,8 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getCurrentSession().then((session) => {
       if (cancelled) return
       if (session) {
-        const payload = session.getIdToken().payload as { email?: string }
-        setEmail(payload.email ?? null)
+        setEmail(session.email)
         setStatus('signed-in')
       } else {
         setStatus('signed-out')
@@ -53,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (loginEmail: string, password: string) => {
       if (tryMockSignIn(loginEmail, password)) {
-        pendingUser.current = null
+        pendingChallenge.current = null
         setHasPendingNewPassword(false)
         setEmail(loginEmail.trim())
         setStatus('signed-in')
@@ -61,15 +60,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const result = await signIn(loginEmail, password)
       if (result.kind === 'new-password-required') {
-        pendingUser.current = result.user
+        pendingChallenge.current = result.pending
         setEmail(loginEmail.trim())
         setHasPendingNewPassword(true)
         return 'new-password' as const
       }
-      pendingUser.current = null
+      pendingChallenge.current = null
       setHasPendingNewPassword(false)
-      const payload = result.session.getIdToken().payload as { email?: string }
-      setEmail(payload.email ?? loginEmail.trim())
+      setEmail(result.session.email ?? loginEmail.trim())
       setStatus('signed-in')
       return 'ok' as const
     },
@@ -77,22 +75,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const finishNewPassword = useCallback(async (newPassword: string) => {
-    const user = pendingUser.current
-    if (!user) {
+    const pending = pendingChallenge.current
+    if (!pending) {
       throw new Error('Ingen pågående inloggning. Logga in igen.')
     }
-    const session = await completeNewPassword(user, newPassword)
-    pendingUser.current = null
+    const session = await completeNewPassword(pending, newPassword)
+    pendingChallenge.current = null
     setHasPendingNewPassword(false)
-    const payload = session.getIdToken().payload as { email?: string }
-    setEmail((prev) => payload.email ?? prev)
+    setEmail((prev) => session.email ?? prev)
     setStatus('signed-in')
   }, [])
 
   const logout = useCallback(() => {
     clearMockSession()
     signOut()
-    pendingUser.current = null
+    pendingChallenge.current = null
     setHasPendingNewPassword(false)
     setEmail(null)
     setStatus('signed-out')

@@ -27,6 +27,7 @@ jobs:
       bucket: ${{ steps.vars.outputs.bucket }}
       distribution_id: ${{ steps.vars.outputs.distribution_id }}
       aws_region: ${{ steps.vars.outputs.aws_region }}
+      api_base_url: ${{ steps.vars.outputs.api_base_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -71,6 +72,18 @@ jobs:
           echo "distribution_id=$DIST_ID" >> "$GITHUB_OUTPUT"
           echo "aws_region=$AWS_REGION" >> "$GITHUB_OUTPUT"
 
+          # VITE_API_BASE_URL is not secret (it ends up in the public JS bundle
+          # either way) and, unlike the AWS values above, is allowed to be
+          # missing: a build without it still ships, just with the API calls
+          # disabled client-side (apiFetch's "not configured" guard).
+          API_BASE_URL_VAR="VITE_API_BASE_URL_${SUFFIX}"
+          API_BASE_URL="${!API_BASE_URL_VAR:-}"
+          if [ -z "$API_BASE_URL" ] || [[ "$API_BASE_URL" == *REPLACE_ME* ]]; then
+            echo "::warning::VITE_API_BASE_URL for environment '${{ inputs.environment }}' is missing or a placeholder in $ENV_FILE - building without a configured API."
+            API_BASE_URL=""
+          fi
+          echo "api_base_url=$API_BASE_URL" >> "$GITHUB_OUTPUT"
+
   build:
     needs: config
     runs-on: ubuntu-latest
@@ -98,6 +111,8 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ needs.config.outputs.api_base_url }}
 
       - name: Verify dist/ output
         run: |

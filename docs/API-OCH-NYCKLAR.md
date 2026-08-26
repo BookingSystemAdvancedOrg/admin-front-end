@@ -17,15 +17,25 @@ Skapa en fil `.env` i projektets rot (samma mapp som `package.json`). Kopiera
 gärna från `.env.example`:
 
 ```bash
-VITE_COGNITO_USER_POOL_ID=eu-north-1_Ab12Cd34E
-VITE_COGNITO_CLIENT_ID=1a2b3c4d5e6f7g8h9i0jklmnop
+VITE_COGNITO_USER_POOL_ID_DEV=eu-north-1_Ab12Cd34E
+VITE_COGNITO_CLIENT_ID_DEV=1a2b3c4d5e6f7g8h9i0jklmnop
+VITE_COGNITO_USER_POOL_ID_PROD=eu-north-1_Zy98Xw76V
+VITE_COGNITO_CLIENT_ID_PROD=9z8y7x6w5v4u3t2s1r0qponml
 ```
 
 | Nyckel | Vad det är | Var du hittar den |
 | --- | --- | --- |
-| `VITE_COGNITO_USER_POOL_ID` | ID:t för er User Pool (användardatabasen för personalen). Format: `<region>_XXXXXXXXX`. | AWS Console → **Amazon Cognito** → **User pools** → klicka på er pool → ID:t visas högst upp under poolens namn ("User pool ID"). |
-| `VITE_COGNITO_CLIENT_ID` | ID:t för app-klienten som frontend loggar in genom. | Samma pool → **App integration** (eller **App clients** i nya konsolen) → **App clients and analytics** → "Client ID". |
+| `VITE_COGNITO_USER_POOL_ID_DEV` / `_PROD` | ID:t för er User Pool (användardatabasen för personalen). Format: `<region>_XXXXXXXXX`. | AWS Console → **Amazon Cognito** → **User pools** → klicka på er pool → ID:t visas högst upp under poolens namn ("User pool ID"). |
+| `VITE_COGNITO_CLIENT_ID_DEV` / `_PROD` | ID:t för app-klienten som frontend loggar in genom. Klient-ID:t hör till en specifik pool, så dev och prod har olika. | Samma pool → **App clients** i vänstermenyn (äldre konsol: fliken **App integration** → **App clients and analytics**) → klicka på klienten → "Client ID". |
+| `VITE_COGNITO_ENV` *(valfritt)* | Väljer vilket par av värden ovan som används: `prod` tar `_PROD`-raderna. Utan den körs `_DEV`. | Sätts av dig, inte i AWS. |
 | `VITE_API_BASE_URL` *(valfritt, ännu inte i bruk)* | Bas-URL till ert backend-API. | Fylls i när API:t finns, se [avsnitt 4](#4-framtida-api-nycklar). |
+
+Båda miljöernas värden får alltså ligga i samma `.env`. Vilket par som används
+avgörs av `VITE_COGNITO_ENV`, som `src/features/auth/cognito.ts` läser vid
+start. De osuffixade namnen (`VITE_COGNITO_USER_POOL_ID`,
+`VITE_COGNITO_CLIENT_ID`) fungerar fortfarande och tar då över båda paren —
+praktiskt för ett bygge som bara ska peka mot en enda pool. Rader som är tomma
+eller innehåller platshållare (`...`, `REPLACE_ME`) räknas som ej ifyllda.
 
 Viktigt om `.env`:
 

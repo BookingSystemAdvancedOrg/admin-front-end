@@ -4,7 +4,7 @@ import { AdminTopbar } from '../../shared/AdminTopbar'
 import {
   GRID,
   MOCK_LAYOUT,
-  SEGMENT_LABEL,
+  OPENING_LABEL,
   WORKSPACE,
   ZONES,
   emptyFloor,
@@ -14,7 +14,8 @@ import type {
   Fixture,
   Floor,
   GroundRect,
-  SegmentKind,
+  Opening,
+  OpeningKind,
   TableElement,
   TableShape,
   WallSegment,
@@ -25,11 +26,12 @@ const TILT_DEG = 55
 const PERSPECTIVE = 1600
 const TABLE_HEIGHT = 22
 const WALL_HEIGHT = 90
+/** Sockelhöjd för väggar som vetter mot kameran — borden ska alltid synas. */
+const WALL_LOW = 16
 const WALL_THICKNESS = 10
+const OPENING_THICKNESS = 14
 const COUNTER_HEIGHT = 34
-/** Hur nära en vägg man måste klicka för att fönster/entré/kök ska fästa. */
 const WALL_SNAP_DIST = 28
-/** Origo ligger i canvasens mitt — koordinaterna går från -HALF till +HALF. */
 const HALF_W = WORKSPACE.w / 2
 const HALF_H = WORKSPACE.h / 2
 
@@ -47,7 +49,8 @@ type Tool =
 
 type Selection =
   | { kind: 'table'; id: string }
-  | { kind: 'segment'; id: string }
+  | { kind: 'wall'; id: string }
+  | { kind: 'opening'; id: string }
   | { kind: 'fixture'; id: string }
   | { kind: 'ground'; id: string }
   | null
@@ -61,19 +64,26 @@ type DragState =
       origX: number
       origY: number
     }
-  | { kind: 'seg-move'; id: string; offX: number; offY: number }
-  | { kind: 'seg-end'; id: string; end: 'a' | 'b' }
+  | { kind: 'wall-move'; id: string; offX: number; offY: number }
+  | { kind: 'wall-end'; id: string; end: 'a' | 'b' }
+  | { kind: 'op-move'; id: string; grab: number }
+  | { kind: 'op-end'; id: string; end: 'a' | 'b' }
 
-interface SegDraft {
-  kind: SegmentKind
+interface WallDraft {
   x0: number
   y0: number
   dir: 'h' | 'v'
   x: number
   y: number
   length: number
-  /** Vägg som öppningen fästs på (fönster/entré/kök). */
-  hostWallId?: string
+}
+
+interface OpeningDraft {
+  kind: OpeningKind
+  wallId: string
+  offset0: number
+  offset: number
+  length: number
 }
 
 interface GroundDraft {
@@ -85,8 +95,7 @@ interface GroundDraft {
   h: number
 }
 
-/** Verktyg som ritar öppningar och därför kräver en vägg att fästa på. */
-const OPENING_TOOLS: { tool: Tool; kind: SegmentKind; warn: string }[] = [
+const OPENING_TOOLS: { tool: Tool; kind: OpeningKind; warn: string }[] = [
   { tool: 'window', kind: 'window', warn: 'Fönster kan bara placeras på en vägg — rita väggen först.' },
   { tool: 'entrance', kind: 'entrance', warn: 'Entrén kan bara placeras på en vägg — rita väggen först.' },
   { tool: 'kitchen', kind: 'kitchen', warn: 'Kökets ingång kan bara placeras på en vägg — rita väggen först.' },
@@ -94,10 +103,12 @@ const OPENING_TOOLS: { tool: Tool; kind: SegmentKind; warn: string }[] = [
 
 /**
  * Figma: admin-live-layout-editor-page (26:2), byggd som riktig 3D-scen i
- * CSS. Origo ligger i canvasens mitt och allt byggande utgår därifrån.
- * Marken ritas fritt, väggar ovanpå; öppningar (fönster, entré, kökets
- * ingång) kan bara placeras på väggar och delar dem automatiskt. Valda
- * väggar kan flyttas och storleksändras med handtagen i ändarna.
+ * CSS. Origo ligger i canvasens mitt. Marken ritas fritt och får
+ * automatiskt väggar runt om. Väggar som vetter mot kameran sänks till en
+ * låg sockel så att borden alltid syns (och reser sig igen när vyn
+ * roteras). Öppningar — fönster, entré, kökets ingång — sitter PÅ
+ * väggarna: väggen förblir hel, öppningen glider längs den när den
+ * flyttas eller förlängs, och följer med om väggen flyttas.
  * Kör på mockdata i lokal state tills API:t kopplas.
  */
 export default function LayoutEditorPage() {
@@ -112,7 +123,8 @@ export default function LayoutEditorPage() {
   const [spin, setSpin] = useState(45)
   const [manualZoom, setManualZoom] = useState(1)
   const [sceneSize, setSceneSize] = useState({ w: 1000, h: 600 })
-  const [segDraft, setSegDraft] = useState<SegDraft | null>(null)
+  const [wallDraft, setWallDraft] = useState<WallDraft | null>(null)
+  const [openingDraft, setOpeningDraft] = useState<OpeningDraft | null>(null)
   const [groundDraft, setGroundDraft] = useState<GroundDraft | null>(null)
   const [drawWarning, setDrawWarning] = useState<string | null>(null)
   const [statusText, setStatusText] = useState(
@@ -129,7 +141,6 @@ export default function LayoutEditorPage() {
 
   const floor = floors.find((f) => f.id === currentFloorId) ?? floors[0]
 
-  // Mät canvasen (för auto-zoom) och zooma med scrollhjulet.
   useEffect(() => {
     const scene = sceneRef.current
     if (!scene) return
@@ -158,9 +169,13 @@ export default function LayoutEditorPage() {
     selection?.kind === 'table'
       ? floor.tables.find((t) => t.id === selection.id) ?? null
       : null
-  const selectedSegment =
-    selection?.kind === 'segment'
-      ? floor.segments.find((s) => s.id === selection.id) ?? null
+  const selectedWall =
+    selection?.kind === 'wall'
+      ? floor.walls.find((w) => w.id === selection.id) ?? null
+      : null
+  const selectedOpening =
+    selection?.kind === 'opening'
+      ? floor.openings.find((o) => o.id === selection.id) ?? null
       : null
   const selectedFixture =
     selection?.kind === 'fixture'
@@ -181,7 +196,7 @@ export default function LayoutEditorPage() {
     warnTimer.current = setTimeout(() => setDrawWarning(null), 3000)
   }
 
-  /* --- Auto-zoom: allt ritat ska alltid få plats i canvasen ------------- */
+  /* --- Auto-zoom -------------------------------------------------------- */
 
   const bounds = contentBounds(floor)
   const pad = 90
@@ -191,10 +206,7 @@ export default function LayoutEditorPage() {
   if (is3d) {
     const T = (TILT_DEG * Math.PI) / 180
     const diag = (bw + bh) * 0.707
-    fit = Math.min(
-      sceneSize.w / diag,
-      sceneSize.h / (diag * Math.cos(T) + 150),
-    )
+    fit = Math.min(sceneSize.w / diag, sceneSize.h / (diag * Math.cos(T) + 150))
   } else {
     const straight = spin % 180 === 0
     const quarter = spin % 90 === 0 && !straight
@@ -203,15 +215,46 @@ export default function LayoutEditorPage() {
     fit = Math.min(sceneSize.w / pw, sceneSize.h / ph)
   }
   const zoom = clamp(fit, 0.2, 1.15) * manualZoom
-  // Vyn centreras på innehållet genom att planet förskjuts.
   const tx = -(bounds.x + bounds.w / 2)
   const ty = -(bounds.y + bounds.h / 2)
 
+  /* --- Smart väggsänkning (dockskåpsvy) --------------------------------- */
+
+  const spinRad = (spin * Math.PI) / 180
+  // Riktning i golvkoordinater som pekar mot kameran (skärmens nederkant).
+  const viewDir = { x: Math.sin(spinRad), y: Math.cos(spinRad) }
+
+  function groundContains(x: number, y: number): boolean {
+    return floor.grounds.some(
+      (g) => x >= g.x && x <= g.x + g.w && y >= g.y && y <= g.y + g.h,
+    )
+  }
+
   /**
-   * Översätter en musposition till origo-koordinater (0,0 = canvasens
-   * mitt) — inverterar rotation, lutning, zoom, perspektiv och
-   * innehålls-förskjutningen.
+   * En vägg sänks till sockel när den står mellan kameran och rummet —
+   * så att borden alltid syns. Vald vägg (eller vägg med vald öppning)
+   * hålls alltid uppe så att den går att redigera.
    */
+  function isLowered(w: WallSegment): boolean {
+    if (!is3d) return false
+    if (selection?.kind === 'wall' && selection.id === w.id) return false
+    if (selection?.kind === 'opening') {
+      const o = floor.openings.find((op) => op.id === selection.id)
+      if (o?.wallId === w.id) return false
+    }
+    const midX = w.dir === 'h' ? w.x + w.length / 2 : w.x
+    const midY = w.dir === 'h' ? w.y : w.y + w.length / 2
+    const n = w.dir === 'h' ? { x: 0, y: 1 } : { x: 1, y: 0 }
+    const off = 14
+    const aIn = groundContains(midX + n.x * off, midY + n.y * off)
+    const bIn = groundContains(midX - n.x * off, midY - n.y * off)
+    if (aIn === bIn) return false // fristående vägg — sänks inte
+    const nInt = aIn ? n : { x: -n.x, y: -n.y }
+    return nInt.x * viewDir.x + nInt.y * viewDir.y < 0
+  }
+
+  /* --- Koordinater ------------------------------------------------------ */
+
   function unproject(clientX: number, clientY: number): { x: number; y: number } {
     const scene = sceneRef.current
     if (!scene) return { x: 0, y: 0 }
@@ -219,14 +262,13 @@ export default function LayoutEditorPage() {
     const mx = clientX - (rect.left + rect.width / 2)
     const my = clientY - (rect.top + rect.height / 2)
     const T = is3d ? (TILT_DEG * Math.PI) / 180 : 0
-    const S = (spin * Math.PI) / 180
     const d = PERSPECTIVE
     const k = zoom
     const yr = (my * d) / (k * (d * Math.cos(T) + my * Math.sin(T)))
     const f = d / (d - k * yr * Math.sin(T))
     const xr = mx / (k * f)
-    const x = xr * Math.cos(S) + yr * Math.sin(S)
-    const y = -xr * Math.sin(S) + yr * Math.cos(S)
+    const x = xr * Math.cos(spinRad) + yr * Math.sin(spinRad)
+    const y = -xr * Math.sin(spinRad) + yr * Math.cos(spinRad)
     return { x: x - tx, y: y - ty }
   }
 
@@ -234,31 +276,47 @@ export default function LayoutEditorPage() {
     return Math.round(v / GRID) * GRID
   }
 
-  /** Närmaste vägg (inte öppning) inom snäpp-avstånd från en punkt. */
   function nearestWall(p: { x: number; y: number }): WallSegment | null {
     let best: WallSegment | null = null
     let bestDist = WALL_SNAP_DIST
-    for (const s of floor.segments) {
-      if (s.kind !== 'wall') continue
+    for (const w of floor.walls) {
       const dist =
-        s.dir === 'h'
-          ? p.x >= s.x - WALL_SNAP_DIST && p.x <= s.x + s.length + WALL_SNAP_DIST
-            ? Math.abs(p.y - s.y)
+        w.dir === 'h'
+          ? p.x >= w.x - WALL_SNAP_DIST && p.x <= w.x + w.length + WALL_SNAP_DIST
+            ? Math.abs(p.y - w.y)
             : Infinity
-          : p.y >= s.y - WALL_SNAP_DIST && p.y <= s.y + s.length + WALL_SNAP_DIST
-            ? Math.abs(p.x - s.x)
+          : p.y >= w.y - WALL_SNAP_DIST && p.y <= w.y + w.length + WALL_SNAP_DIST
+            ? Math.abs(p.x - w.x)
             : Infinity
       if (dist <= bestDist) {
         bestDist = dist
-        best = s
+        best = w
       }
     }
     return best
   }
 
+  /** Koordinat längs väggens riktning. */
+  function along(w: WallSegment, p: { x: number; y: number }): number {
+    return w.dir === 'h' ? p.x : p.y
+  }
+
+  function wallStart(w: WallSegment): number {
+    return w.dir === 'h' ? w.x : w.y
+  }
+
+  /** Håller en öppning inom sin vägg (efter att väggen ändrats). */
+  function clampOpening(o: Opening, wall: WallSegment): Opening {
+    const length = clamp(o.length, Math.min(GRID, wall.length), wall.length)
+    const offset = clamp(o.offset, 0, wall.length - length)
+    return { ...o, offset, length }
+  }
+
   const openingTool = OPENING_TOOLS.find((o) => o.tool === tool) ?? null
   const isDrawTool =
     tool === 'wall' || tool === 'ground' || tool === 'counter' || Boolean(openingTool)
+
+  /* --- Rita ------------------------------------------------------------- */
 
   function onScenePointerDown(e: ReactPointerEvent) {
     const p = unproject(e.clientX, e.clientY)
@@ -270,7 +328,7 @@ export default function LayoutEditorPage() {
       return
     }
     if (tool === 'wall') {
-      setSegDraft({ kind: 'wall', x0: px, y0: py, dir: 'h', x: px, y: py, length: 0 })
+      setWallDraft({ x0: px, y0: py, dir: 'h', x: px, y: py, length: 0 })
       ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
       return
     }
@@ -280,20 +338,13 @@ export default function LayoutEditorPage() {
         warn(openingTool.warn)
         return
       }
-      // Fäst mot väggen: samma linje, startpunkt inom väggens utsträckning.
-      const start =
-        host.dir === 'h'
-          ? clamp(snap(p.x), host.x, host.x + host.length)
-          : clamp(snap(p.y), host.y, host.y + host.length)
-      setSegDraft({
+      const o0 = clamp(snap(along(host, p)) - wallStart(host), 0, host.length)
+      setOpeningDraft({
         kind: openingTool.kind,
-        x0: host.dir === 'h' ? start : host.x,
-        y0: host.dir === 'h' ? host.y : start,
-        dir: host.dir,
-        x: host.dir === 'h' ? start : host.x,
-        y: host.dir === 'h' ? host.y : start,
+        wallId: host.id,
+        offset0: o0,
+        offset: o0,
         length: 0,
-        hostWallId: host.id,
       })
       ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
       return
@@ -331,45 +382,38 @@ export default function LayoutEditorPage() {
       })
       return
     }
-    if (segDraft) {
+    if (openingDraft) {
+      const host = floor.walls.find((w) => w.id === openingDraft.wallId)
+      if (!host) return
       const p = unproject(e.clientX, e.clientY)
-      if (segDraft.hostWallId) {
-        // Öppning: får bara växa längs värd-väggen.
-        const host = floor.segments.find((s) => s.id === segDraft.hostWallId)
-        if (!host) return
-        const start = segDraft.dir === 'h' ? segDraft.x0 : segDraft.y0
-        const cur =
-          host.dir === 'h'
-            ? clamp(snap(p.x), host.x, host.x + host.length)
-            : clamp(snap(p.y), host.y, host.y + host.length)
-        const lo = Math.min(start, cur)
-        const len = Math.abs(cur - start)
-        setSegDraft({
-          ...segDraft,
-          x: host.dir === 'h' ? lo : host.x,
-          y: host.dir === 'h' ? host.y : lo,
-          length: len,
-        })
-        return
-      }
-      const dx = clamp(snap(p.x), -HALF_W, HALF_W) - segDraft.x0
-      const dy = clamp(snap(p.y), -HALF_H, HALF_H) - segDraft.y0
+      const cur = clamp(snap(along(host, p)) - wallStart(host), 0, host.length)
+      setOpeningDraft({
+        ...openingDraft,
+        offset: Math.min(openingDraft.offset0, cur),
+        length: Math.abs(cur - openingDraft.offset0),
+      })
+      return
+    }
+    if (wallDraft) {
+      const p = unproject(e.clientX, e.clientY)
+      const dx = clamp(snap(p.x), -HALF_W, HALF_W) - wallDraft.x0
+      const dy = clamp(snap(p.y), -HALF_H, HALF_H) - wallDraft.y0
       if (Math.abs(dx) >= Math.abs(dy)) {
         const len = Math.abs(dx)
-        setSegDraft({
-          ...segDraft,
+        setWallDraft({
+          ...wallDraft,
           dir: 'h',
-          x: dx < 0 ? segDraft.x0 - len : segDraft.x0,
-          y: segDraft.y0,
+          x: dx < 0 ? wallDraft.x0 - len : wallDraft.x0,
+          y: wallDraft.y0,
           length: len,
         })
       } else {
         const len = Math.abs(dy)
-        setSegDraft({
-          ...segDraft,
+        setWallDraft({
+          ...wallDraft,
           dir: 'v',
-          x: segDraft.x0,
-          y: dy < 0 ? segDraft.y0 - len : segDraft.y0,
+          x: wallDraft.x0,
+          y: dy < 0 ? wallDraft.y0 - len : wallDraft.y0,
           length: len,
         })
       }
@@ -378,33 +422,62 @@ export default function LayoutEditorPage() {
     const d = drag.current
     if (!d) return
 
-    if (d.kind === 'seg-move' || d.kind === 'seg-end') {
+    if (d.kind === 'wall-move' || d.kind === 'wall-end') {
       const p = unproject(e.clientX, e.clientY)
-      patchFloor((fl) => ({
-        segments: fl.segments.map((s) => {
-          if (s.id !== d.id) return s
-          if (d.kind === 'seg-move') {
-            // Väggar flyttas fritt; öppningar glider längs sin egen linje.
-            const nx = clamp(snap(p.x - d.offX), -HALF_W, HALF_W - (s.dir === 'h' ? s.length : 0))
-            const ny = clamp(snap(p.y - d.offY), -HALF_H, HALF_H - (s.dir === 'v' ? s.length : 0))
-            if (s.kind === 'wall') return { ...s, x: nx, y: ny }
-            return s.dir === 'h' ? { ...s, x: nx } : { ...s, y: ny }
+      patchFloor((fl) => {
+        const walls = fl.walls.map((w) => {
+          if (w.id !== d.id) return w
+          if (d.kind === 'wall-move') {
+            const nx = clamp(snap(p.x - d.offX), -HALF_W, HALF_W - (w.dir === 'h' ? w.length : 0))
+            const ny = clamp(snap(p.y - d.offY), -HALF_H, HALF_H - (w.dir === 'v' ? w.length : 0))
+            return { ...w, x: nx, y: ny }
           }
-          // seg-end: dra i ett ändhandtag för att göra väggen längre/kortare
-          if (s.dir === 'h') {
+          if (w.dir === 'h') {
             const pos = clamp(snap(p.x), -HALF_W, HALF_W)
             if (d.end === 'a') {
-              const nx = Math.min(pos, s.x + s.length - GRID)
-              return { ...s, x: nx, length: s.x + s.length - nx }
+              const nx = Math.min(pos, w.x + w.length - GRID)
+              return { ...w, x: nx, length: w.x + w.length - nx }
             }
-            return { ...s, length: Math.max(GRID, pos - s.x) }
+            return { ...w, length: Math.max(GRID, pos - w.x) }
           }
           const pos = clamp(snap(p.y), -HALF_H, HALF_H)
           if (d.end === 'a') {
-            const ny = Math.min(pos, s.y + s.length - GRID)
-            return { ...s, y: ny, length: s.y + s.length - ny }
+            const ny = Math.min(pos, w.y + w.length - GRID)
+            return { ...w, y: ny, length: w.y + w.length - ny }
           }
-          return { ...s, length: Math.max(GRID, pos - s.y) }
+          return { ...w, length: Math.max(GRID, pos - w.y) }
+        })
+        const wall = walls.find((w) => w.id === d.id)!
+        // Öppningarna följer väggen men får aldrig sticka utanför den.
+        const openings = fl.openings.map((o) =>
+          o.wallId === wall.id ? clampOpening(o, wall) : o,
+        )
+        return { walls, openings }
+      })
+      return
+    }
+
+    if (d.kind === 'op-move' || d.kind === 'op-end') {
+      const p = unproject(e.clientX, e.clientY)
+      patchFloor((fl) => ({
+        openings: fl.openings.map((o) => {
+          if (o.id !== d.id) return o
+          const host = fl.walls.find((w) => w.id === o.wallId)
+          if (!host) return o
+          const cur = clamp(snap(along(host, p)) - wallStart(host), 0, host.length)
+          if (d.kind === 'op-move') {
+            // Öppningen glider längs väggen — aldrig utanför.
+            const offset = clamp(cur - d.grab, 0, host.length - o.length)
+            return { ...o, offset: snap(offset) }
+          }
+          if (d.end === 'a') {
+            const no = Math.min(cur, o.offset + o.length - GRID)
+            return { ...o, offset: no, length: o.offset + o.length - no }
+          }
+          return {
+            ...o,
+            length: clamp(cur - o.offset, GRID, host.length - o.offset),
+          }
         }),
       }))
       return
@@ -412,7 +485,7 @@ export default function LayoutEditorPage() {
 
     const dx = (e.clientX - d.startX) / zoom
     const dy = (e.clientY - d.startY) / zoom
-    const S = (-spin * Math.PI) / 180
+    const S = -spinRad
     const unTiltY = is3d ? dy / Math.cos((TILT_DEG * Math.PI) / 180) : dy
     const fx = dx * Math.cos(S) - unTiltY * Math.sin(S)
     const fy = dx * Math.sin(S) + unTiltY * Math.cos(S)
@@ -452,55 +525,60 @@ export default function LayoutEditorPage() {
           w: groundDraft.w,
           h: groundDraft.h,
         }
-        patchFloor((fl) => ({ grounds: [...fl.grounds, g] }))
+        // Marken får automatiskt väggar runt om — de ingår.
+        const mk = (dir: 'h' | 'v', x: number, y: number, length: number): WallSegment => ({
+          id: `w${nextId.current++}`,
+          dir,
+          x,
+          y,
+          length,
+        })
+        patchFloor((fl) => ({
+          grounds: [...fl.grounds, g],
+          walls: [
+            ...fl.walls,
+            mk('h', g.x, g.y, g.w),
+            mk('h', g.x, g.y + g.h, g.w),
+            mk('v', g.x, g.y, g.h),
+            mk('v', g.x + g.w, g.y, g.h),
+          ],
+        }))
         setSelection({ kind: 'ground', id: g.id })
         markDirty()
       }
       setGroundDraft(null)
       return
     }
-    if (segDraft) {
-      if (segDraft.length >= GRID) {
-        const seg: WallSegment = {
-          id: `s${nextId.current++}`,
-          kind: segDraft.kind,
-          dir: segDraft.dir,
-          x: segDraft.x,
-          y: segDraft.y,
-          length: segDraft.length,
+    if (openingDraft) {
+      if (openingDraft.length >= GRID) {
+        const o: Opening = {
+          id: `o${nextId.current++}`,
+          kind: openingDraft.kind,
+          wallId: openingDraft.wallId,
+          offset: openingDraft.offset,
+          length: openingDraft.length,
         }
-        if (segDraft.hostWallId) {
-          // Dela värd-väggen: väggbitar kvar på båda sidor om öppningen.
-          patchFloor((fl) => {
-            const host = fl.segments.find((s) => s.id === segDraft.hostWallId)
-            if (!host) return { segments: [...fl.segments, seg] }
-            const rest = fl.segments.filter((s) => s.id !== host.id)
-            const start = host.dir === 'h' ? seg.x : seg.y
-            const hostStart = host.dir === 'h' ? host.x : host.y
-            const before = start - hostStart
-            const after = hostStart + host.length - (start + seg.length)
-            const pieces: WallSegment[] = []
-            if (before >= GRID) {
-              pieces.push({ ...host, id: `s${nextId.current++}`, length: before })
-            }
-            if (after >= GRID) {
-              pieces.push({
-                ...host,
-                id: `s${nextId.current++}`,
-                x: host.dir === 'h' ? start + seg.length : host.x,
-                y: host.dir === 'h' ? host.y : start + seg.length,
-                length: after,
-              })
-            }
-            return { segments: [...rest, ...pieces, seg] }
-          })
-        } else {
-          patchFloor((fl) => ({ segments: [...fl.segments, seg] }))
-        }
-        setSelection({ kind: 'segment', id: seg.id })
+        patchFloor((fl) => ({ openings: [...fl.openings, o] }))
+        setSelection({ kind: 'opening', id: o.id })
         markDirty()
       }
-      setSegDraft(null)
+      setOpeningDraft(null)
+      return
+    }
+    if (wallDraft) {
+      if (wallDraft.length >= GRID) {
+        const w: WallSegment = {
+          id: `w${nextId.current++}`,
+          dir: wallDraft.dir,
+          x: wallDraft.x,
+          y: wallDraft.y,
+          length: wallDraft.length,
+        }
+        patchFloor((fl) => ({ walls: [...fl.walls, w] }))
+        setSelection({ kind: 'wall', id: w.id })
+        markDirty()
+      }
+      setWallDraft(null)
       return
     }
     if (drag.current) {
@@ -509,14 +587,16 @@ export default function LayoutEditorPage() {
     }
   }
 
+  /* --- Välj/flytta ------------------------------------------------------ */
+
   function onElementPointerDown(
     e: ReactPointerEvent,
-    kind: 'table' | 'fixture' | 'segment' | 'ground',
+    kind: 'table' | 'fixture' | 'wall' | 'opening' | 'ground',
     id: string,
     origX = 0,
     origY = 0,
   ) {
-    if (isDrawTool) return // ritverktyg aktivt — låt scenen ta över
+    if (isDrawTool) return
     e.stopPropagation()
     if (tool === 'erase') {
       removeByKind(kind, id)
@@ -524,48 +604,54 @@ export default function LayoutEditorPage() {
     }
     setSelection({ kind, id } as Selection)
     if (kind === 'ground') return
-    if (kind === 'segment') {
-      const seg = floor.segments.find((s) => s.id === id)
-      if (!seg) return
-      const p = unproject(e.clientX, e.clientY)
-      drag.current = {
-        kind: 'seg-move',
-        id,
-        offX: p.x - seg.x,
-        offY: p.y - seg.y,
-      }
+    const p = unproject(e.clientX, e.clientY)
+    if (kind === 'wall') {
+      const w = floor.walls.find((s) => s.id === id)
+      if (!w) return
+      drag.current = { kind: 'wall-move', id, offX: p.x - w.x, offY: p.y - w.y }
       ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
       return
     }
-    drag.current = {
-      kind,
-      id,
-      startX: e.clientX,
-      startY: e.clientY,
-      origX,
-      origY,
+    if (kind === 'opening') {
+      const o = floor.openings.find((op) => op.id === id)
+      const host = o && floor.walls.find((w) => w.id === o.wallId)
+      if (!o || !host) return
+      const cur = along(host, p) - wallStart(host)
+      drag.current = { kind: 'op-move', id, grab: cur - o.offset }
+      ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
+      return
     }
+    drag.current = { kind, id, startX: e.clientX, startY: e.clientY, origX, origY }
     ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
   }
 
   function onHandlePointerDown(
     e: ReactPointerEvent,
-    segId: string,
+    kind: 'wall' | 'opening',
+    id: string,
     end: 'a' | 'b',
   ) {
     e.stopPropagation()
-    drag.current = { kind: 'seg-end', id: segId, end }
+    drag.current =
+      kind === 'wall' ? { kind: 'wall-end', id, end } : { kind: 'op-end', id, end }
     ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
   }
 
   function removeByKind(
-    kind: 'table' | 'fixture' | 'segment' | 'ground',
+    kind: 'table' | 'fixture' | 'wall' | 'opening' | 'ground',
     id: string,
   ) {
     patchFloor((fl) => {
       if (kind === 'table') return { tables: fl.tables.filter((t) => t.id !== id) }
-      if (kind === 'segment') return { segments: fl.segments.filter((s) => s.id !== id) }
-      if (kind === 'fixture') return { fixtures: fl.fixtures.filter((f) => f.id !== id) }
+      if (kind === 'wall')
+        return {
+          walls: fl.walls.filter((w) => w.id !== id),
+          openings: fl.openings.filter((o) => o.wallId !== id),
+        }
+      if (kind === 'opening')
+        return { openings: fl.openings.filter((o) => o.id !== id) }
+      if (kind === 'fixture')
+        return { fixtures: fl.fixtures.filter((f) => f.id !== id) }
       return { grounds: fl.grounds.filter((g) => g.id !== id) }
     })
     setSelection((cur) => (cur && cur.id === id ? null : cur))
@@ -582,13 +668,34 @@ export default function LayoutEditorPage() {
     markDirty()
   }
 
-  function updateSegmentLength(delta: number) {
-    if (selection?.kind !== 'segment') return
+  function updateWallLength(delta: number) {
+    if (selection?.kind !== 'wall') return
+    patchFloor((fl) => {
+      const walls = fl.walls.map((w) => {
+        if (w.id !== selection.id) return w
+        const max = w.dir === 'h' ? HALF_W - w.x : HALF_H - w.y
+        return { ...w, length: clamp(w.length + delta, GRID, max) }
+      })
+      const wall = walls.find((w) => w.id === selection.id)!
+      return {
+        walls,
+        openings: fl.openings.map((o) =>
+          o.wallId === wall.id ? clampOpening(o, wall) : o,
+        ),
+      }
+    })
+    markDirty()
+  }
+
+  function updateOpeningLength(delta: number) {
+    if (selection?.kind !== 'opening') return
     patchFloor((fl) => ({
-      segments: fl.segments.map((s) => {
-        if (s.id !== selection.id) return s
-        const max = s.dir === 'h' ? HALF_W - s.x : HALF_H - s.y
-        return { ...s, length: clamp(s.length + delta, GRID, max) }
+      openings: fl.openings.map((o) => {
+        if (o.id !== selection.id) return o
+        const host = fl.walls.find((w) => w.id === o.wallId)
+        if (!host) return o
+        const length = clamp(o.length + delta, GRID, host.length - o.offset)
+        return { ...o, length }
       }),
     }))
     markDirty()
@@ -602,7 +709,6 @@ export default function LayoutEditorPage() {
       shape,
       seats: shape === 'round' ? 2 : 4,
       zone: 'Mitten',
-      // Nya element börjar vid origo — canvasens mitt.
       x: bounds.x + bounds.w / 2,
       y: bounds.y + bounds.h / 2,
       rotation: 0,
@@ -625,7 +731,8 @@ export default function LayoutEditorPage() {
   function switchFloor(id: string) {
     setCurrentFloorId(id)
     setSelection(null)
-    setSegDraft(null)
+    setWallDraft(null)
+    setOpeningDraft(null)
     setGroundDraft(null)
   }
 
@@ -643,18 +750,28 @@ export default function LayoutEditorPage() {
     setStatusText('Publicerad — alla ändringar sparade (mock)')
   }
 
-  const drawnSegments: (WallSegment & { draft?: boolean })[] = segDraft
-    ? [...floor.segments, { id: '__draft', ...segDraft, draft: true }]
-    : floor.segments
+  /* --- Render ----------------------------------------------------------- */
+
   const drawnGrounds: (GroundRect & { draft?: boolean })[] = groundDraft
     ? [...floor.grounds, { id: '__gdraft', ...groundDraft, draft: true }]
     : floor.grounds
+  const drawnWalls: (WallSegment & { draft?: boolean })[] = wallDraft
+    ? [...floor.walls, { id: '__wdraft', ...wallDraft, draft: true }]
+    : floor.walls
+  const drawnOpenings: (Opening & { draft?: boolean })[] = openingDraft
+    ? [
+        ...floor.openings,
+        { id: '__odraft', ...openingDraft, draft: true },
+      ]
+    : floor.openings
 
   const floorIsEmpty =
     floor.grounds.length === 0 &&
-    floor.segments.length === 0 &&
+    floor.walls.length === 0 &&
     floor.tables.length === 0 &&
     floor.fixtures.length === 0
+
+  const loweredById = new Map(drawnWalls.map((w) => [w.id, isLowered(w)]))
 
   return (
     <>
@@ -676,7 +793,7 @@ export default function LayoutEditorPage() {
         <div className="editor-row">
           <div className="admin-card editor-toolbar">
             <ToolButton glyph="↖" caption="Välj" title="Välj, flytta och ändra storlek" active={tool === 'select'} onClick={() => setTool('select')} />
-            <ToolButton glyph="▦" caption="Mark" title="Rita mark — klicka och dra en yta" active={tool === 'ground'} onClick={() => setTool('ground')} />
+            <ToolButton glyph="▦" caption="Mark" title="Rita mark — väggar skapas runt om automatiskt" active={tool === 'ground'} onClick={() => setTool('ground')} />
             <ToolButton glyph="▬" caption="Vägg" title="Rita vägg — klicka och dra" active={tool === 'wall'} onClick={() => setTool('wall')} />
             <ToolButton glyph="▭" caption="Fönster" title="Fönster — placeras på en vägg" active={tool === 'window'} onClick={() => setTool('window')} />
             <ToolButton glyph="◐" caption="Entré" title="Entré — placeras på en vägg" active={tool === 'entrance'} onClick={() => setTool('entrance')} />
@@ -716,12 +833,7 @@ export default function LayoutEditorPage() {
                 <button type="button" title="Zooma ut" onClick={() => setManualZoom((z) => clamp(z / 1.2, 0.35, 2.5))}>
                   −
                 </button>
-                <button
-                  type="button"
-                  className="zoom-value"
-                  title="Återställ zoom"
-                  onClick={() => setManualZoom(1)}
-                >
+                <button type="button" className="zoom-value" title="Återställ zoom" onClick={() => setManualZoom(1)}>
                   {Math.round(zoom * 100)}%
                 </button>
                 <button type="button" title="Zooma in" onClick={() => setManualZoom((z) => clamp(z * 1.2, 0.35, 2.5))}>
@@ -767,35 +879,56 @@ export default function LayoutEditorPage() {
                     key={g.id}
                     className={[
                       'ground',
-                      selection?.kind === 'ground' && selection.id === g.id
-                        ? 'selected'
-                        : '',
+                      selection?.kind === 'ground' && selection.id === g.id ? 'selected' : '',
                       g.draft ? 'draft' : '',
                     ].join(' ')}
-                    style={{
-                      left: g.x + HALF_W,
-                      top: g.y + HALF_H,
-                      width: g.w,
-                      height: g.h,
-                    }}
+                    style={{ left: g.x + HALF_W, top: g.y + HALF_H, width: g.w, height: g.h }}
                     onPointerDown={(e) => onElementPointerDown(e, 'ground', g.id)}
                   />
                 ))}
 
-                {drawnSegments.map((s) => (
-                  <Segment
-                    key={s.id}
-                    seg={s}
-                    selected={selection?.kind === 'segment' && selection.id === s.id}
+                {drawnWalls.map((w) => (
+                  <WallEl
+                    key={w.id}
+                    wall={w}
+                    lowered={loweredById.get(w.id) ?? false}
+                    selected={selection?.kind === 'wall' && selection.id === w.id}
                     showHandles={
                       tool === 'select' &&
-                      selection?.kind === 'segment' &&
-                      selection.id === s.id
+                      selection?.kind === 'wall' &&
+                      selection.id === w.id
                     }
-                    onPointerDown={(e) => onElementPointerDown(e, 'segment', s.id)}
-                    onHandlePointerDown={onHandlePointerDown}
+                    onPointerDown={(e) => onElementPointerDown(e, 'wall', w.id)}
+                    onHandlePointerDown={(e, end) =>
+                      onHandlePointerDown(e, 'wall', w.id, end)
+                    }
                   />
                 ))}
+
+                {drawnOpenings.map((o) => {
+                  const host = drawnWalls.find((w) => w.id === o.wallId)
+                  if (!host) return null
+                  return (
+                    <OpeningEl
+                      key={o.id}
+                      opening={o}
+                      wall={host}
+                      lowered={loweredById.get(host.id) ?? false}
+                      selected={
+                        selection?.kind === 'opening' && selection.id === o.id
+                      }
+                      showHandles={
+                        tool === 'select' &&
+                        selection?.kind === 'opening' &&
+                        selection.id === o.id
+                      }
+                      onPointerDown={(e) => onElementPointerDown(e, 'opening', o.id)}
+                      onHandlePointerDown={(e, end) =>
+                        onHandlePointerDown(e, 'opening', o.id, end)
+                      }
+                    />
+                  )
+                })}
 
                 {floor.fixtures.map((f) => (
                   <div
@@ -812,16 +945,13 @@ export default function LayoutEditorPage() {
                       height: f.h,
                       ['--fh' as string]: `${COUNTER_HEIGHT}px`,
                     }}
-                    onPointerDown={(e) =>
-                      onElementPointerDown(e, 'fixture', f.id, f.x, f.y)
-                    }
+                    onPointerDown={(e) => onElementPointerDown(e, 'fixture', f.id, f.x, f.y)}
                   >
                     <div className="fx-face back" />
                     <div className="fx-face left" />
                     <div className="fx-face right" />
                     <div className="fx-face front" />
                     <div className="fx-top" />
-                    {/* Kassaapparaten på disken gör kassan tydlig i 3D */}
                     <div className="fx-register">
                       <div className="fxr-face back" />
                       <div className="fxr-face left" />
@@ -843,9 +973,7 @@ export default function LayoutEditorPage() {
                       className={[
                         'table-el',
                         t.shape,
-                        selection?.kind === 'table' && selection.id === t.id
-                          ? 'selected'
-                          : '',
+                        selection?.kind === 'table' && selection.id === t.id ? 'selected' : '',
                       ].join(' ')}
                       style={{
                         left: t.x - size.w / 2 + HALF_W,
@@ -854,9 +982,7 @@ export default function LayoutEditorPage() {
                         height: size.h,
                         ['--th' as string]: `${TABLE_HEIGHT}px`,
                       }}
-                      onPointerDown={(e) =>
-                        onElementPointerDown(e, 'table', t.id, t.x, t.y)
-                      }
+                      onPointerDown={(e) => onElementPointerDown(e, 'table', t.id, t.x, t.y)}
                     >
                       <div className="table-base" />
                       <div className="table-body">
@@ -889,7 +1015,7 @@ export default function LayoutEditorPage() {
                   <strong>{floor.name} är tom.</strong>
                   <br />
                   Börja i mitten — origo (0,0) — med <b>Mark</b>-verktyget och
-                  rita golvet. Bygg sedan väggar, fönster, entré och möblera.
+                  rita golvet. Väggar skapas runt marken automatiskt.
                 </p>
               </div>
             )}
@@ -898,14 +1024,14 @@ export default function LayoutEditorPage() {
               {drawWarning
                 ? drawWarning
                 : tool === 'ground'
-                  ? 'Klicka och dra för att rita en markyta — flera ytor kan kombineras'
+                  ? 'Klicka och dra för att rita mark — väggar skapas runt om automatiskt'
                   : openingTool
-                    ? 'Klicka på en vägg och dra längs den för att placera öppningen'
+                    ? 'Klicka på en vägg och dra längs den — öppningen sitter kvar på väggen'
                     : tool === 'wall'
                       ? 'Klicka och dra för att bygga — snappar till rutnätet'
                       : tool === 'counter'
                         ? 'Klicka för att placera kassan'
-                        : 'Klicka för att välja · dra för att flytta · dra i handtagen för att ändra längd'}
+                        : 'Väggar mot kameran sänks så borden syns · rotera med ⟲ ⟳'}
             </p>
           </div>
 
@@ -915,13 +1041,15 @@ export default function LayoutEditorPage() {
               <p className="props-title">
                 {selectedTable
                   ? `Bord ${selectedTable.label.replace('T', '')}`
-                  : selectedSegment
-                    ? SEGMENT_LABEL[selectedSegment.kind]
-                    : selectedFixture
-                      ? 'Kassan'
-                      : selectedGround
-                        ? 'Markyta'
-                        : floor.name}
+                  : selectedWall
+                    ? 'Vägg'
+                    : selectedOpening
+                      ? OPENING_LABEL[selectedOpening.kind]
+                      : selectedFixture
+                        ? 'Kassan'
+                        : selectedGround
+                          ? 'Markyta'
+                          : floor.name}
               </p>
             </div>
 
@@ -938,7 +1066,6 @@ export default function LayoutEditorPage() {
                     </button>
                   </div>
                 </div>
-
                 <div className="props-field">
                   <p className="props-label">PLATSER</p>
                   <div className="seats-stepper">
@@ -951,7 +1078,6 @@ export default function LayoutEditorPage() {
                     </button>
                   </div>
                 </div>
-
                 <div className="props-field">
                   <p className="props-label">ZON</p>
                   <button
@@ -966,12 +1092,10 @@ export default function LayoutEditorPage() {
                     {selectedTable.zone}
                   </button>
                 </div>
-
                 <div className="props-field">
                   <p className="props-label">POSITION &amp; ROTATION</p>
                   <p className="props-pos">{`x: ${Math.round(selectedTable.x)}   y: ${Math.round(selectedTable.y)}   rotation: ${selectedTable.rotation}°`}</p>
                 </div>
-
                 <div className="props-divider" />
                 <button type="button" className="btn danger-outline" onClick={() => removeByKind('table', selectedTable.id)}>
                   Ta bort element
@@ -979,34 +1103,64 @@ export default function LayoutEditorPage() {
               </>
             )}
 
-            {selectedSegment && (
+            {selectedWall && (
               <>
-                <div className="props-field">
-                  <p className="props-label">TYP</p>
-                  <p className="props-pos">{SEGMENT_LABEL[selectedSegment.kind]}</p>
-                </div>
                 <div className="props-field">
                   <p className="props-label">LÄNGD</p>
                   <div className="seats-stepper">
-                    <button type="button" className="step-btn" disabled={selectedSegment.length <= GRID} onClick={() => updateSegmentLength(-GRID)}>
+                    <button type="button" className="step-btn" disabled={selectedWall.length <= GRID} onClick={() => updateWallLength(-GRID)}>
                       –
                     </button>
-                    <span>{selectedSegment.length}</span>
-                    <button type="button" className="step-btn" onClick={() => updateSegmentLength(GRID)}>
+                    <span>{selectedWall.length}</span>
+                    <button type="button" className="step-btn" onClick={() => updateWallLength(GRID)}>
                       +
                     </button>
                   </div>
                   <p className="props-empty">
-                    {selectedSegment.dir === 'h' ? 'Vågrät' : 'Lodrät'} — dra i
-                    handtagen i ändarna eller flytta hela genom att dra.
+                    {selectedWall.dir === 'h' ? 'Vågrät' : 'Lodrät'} — dra i
+                    handtagen eller flytta hela väggen. Öppningar på väggen
+                    följer med.
                   </p>
                 </div>
                 <div className="props-field">
                   <p className="props-label">POSITION</p>
-                  <p className="props-pos">{`x: ${selectedSegment.x}   y: ${selectedSegment.y}`}</p>
+                  <p className="props-pos">{`x: ${selectedWall.x}   y: ${selectedWall.y}`}</p>
                 </div>
                 <div className="props-divider" />
-                <button type="button" className="btn danger-outline" onClick={() => removeByKind('segment', selectedSegment.id)}>
+                <button type="button" className="btn danger-outline" onClick={() => removeByKind('wall', selectedWall.id)}>
+                  Ta bort vägg (och dess öppningar)
+                </button>
+              </>
+            )}
+
+            {selectedOpening && (
+              <>
+                <div className="props-field">
+                  <p className="props-label">TYP</p>
+                  <p className="props-pos">{OPENING_LABEL[selectedOpening.kind]}</p>
+                </div>
+                <div className="props-field">
+                  <p className="props-label">LÄNGD</p>
+                  <div className="seats-stepper">
+                    <button type="button" className="step-btn" disabled={selectedOpening.length <= GRID} onClick={() => updateOpeningLength(-GRID)}>
+                      –
+                    </button>
+                    <span>{selectedOpening.length}</span>
+                    <button type="button" className="step-btn" onClick={() => updateOpeningLength(GRID)}>
+                      +
+                    </button>
+                  </div>
+                  <p className="props-empty">
+                    Sitter på väggen — dra för att glida längs den, dra i
+                    handtagen för att ändra längd. Kan aldrig lämna väggen.
+                  </p>
+                </div>
+                <div className="props-field">
+                  <p className="props-label">PLACERING PÅ VÄGGEN</p>
+                  <p className="props-pos">{`${selectedOpening.offset} enheter från väggens start`}</p>
+                </div>
+                <div className="props-divider" />
+                <button type="button" className="btn danger-outline" onClick={() => removeByKind('opening', selectedOpening.id)}>
                   Ta bort element
                 </button>
               </>
@@ -1046,7 +1200,7 @@ export default function LayoutEditorPage() {
               </>
             )}
 
-            {!selectedTable && !selectedSegment && !selectedFixture && !selectedGround && (
+            {!selectedTable && !selectedWall && !selectedOpening && !selectedFixture && !selectedGround && (
               <>
                 <div className="props-field">
                   <p className="props-label">VÅNINGAR</p>
@@ -1067,11 +1221,10 @@ export default function LayoutEditorPage() {
                   + Lägg till våning
                 </button>
                 <p className="props-empty">
-                  Origo (0,0) ligger i canvasens mitt och allt byggande utgår
-                  därifrån. Nya våningar börjar tomma — rita marken först.
-                  Fönster, entré och kökets ingång placeras på väggar och
-                  delar dem automatiskt. Välj en vägg för att flytta den eller
-                  dra i handtagen för att ändra längd.
+                  Rita mark så skapas väggar runt om automatiskt. Väggar som
+                  vetter mot kameran sänks så att borden alltid syns — rotera
+                  vyn med ⟲ ⟳. Fönster, entré och kök sitter på väggarna och
+                  följer med när väggen flyttas eller förlängs.
                 </p>
                 {floors.length > 1 && (
                   <>
@@ -1088,9 +1241,7 @@ export default function LayoutEditorPage() {
 
         <div className="editor-statusbar">
           <span className="grow">{statusText}</span>
-          <span>
-            {floor.name} · Redigeras av Anna (personal)
-          </span>
+          <span>{floor.name} · Redigeras av Anna (personal)</span>
         </div>
       </div>
     </>
@@ -1115,9 +1266,9 @@ function contentBounds(floor: Floor): {
     maxY = Math.max(maxY, y1)
   }
   for (const g of floor.grounds) add(g.x, g.y, g.x + g.w, g.y + g.h)
-  for (const s of floor.segments) {
-    if (s.dir === 'h') add(s.x, s.y, s.x + s.length, s.y)
-    else add(s.x, s.y, s.x, s.y + s.length)
+  for (const w of floor.walls) {
+    if (w.dir === 'h') add(w.x, w.y, w.x + w.length, w.y)
+    else add(w.x, w.y, w.x, w.y + w.length)
   }
   for (const f of floor.fixtures)
     add(f.x - f.w / 2, f.y - f.h / 2, f.x + f.w / 2, f.y + f.h / 2)
@@ -1126,10 +1277,8 @@ function contentBounds(floor: Floor): {
     add(t.x - s.w / 2, t.y - s.h / 2, t.x + s.w / 2, t.y + s.h / 2)
   }
   if (!Number.isFinite(minX)) {
-    // Tom våning: visa en lagom yta kring origo (canvasens mitt).
     return { x: -400, y: -260, w: 800, h: 520 }
   }
-  // Minsta vy så att en liten början inte blir enormt inzoomad.
   const w = Math.max(maxX - minX, 400)
   const h = Math.max(maxY - minY, 300)
   const cx = (minX + maxX) / 2
@@ -1137,90 +1286,138 @@ function contentBounds(floor: Floor): {
   return { x: cx - w / 2, y: cy - h / 2, w, h }
 }
 
-/** Ett byggt segment: vägg, fönsterparti, entré eller kökets ingång. */
-function Segment({
-  seg,
+/** En hel vägg. Sänks mjukt till sockel när den skymmer rummet. */
+function WallEl({
+  wall,
+  lowered,
   selected,
   showHandles,
   onPointerDown,
   onHandlePointerDown,
 }: {
-  seg: WallSegment & { draft?: boolean }
+  wall: WallSegment & { draft?: boolean }
+  lowered: boolean
   selected: boolean
   showHandles: boolean
   onPointerDown: (e: ReactPointerEvent) => void
-  onHandlePointerDown: (e: ReactPointerEvent, segId: string, end: 'a' | 'b') => void
+  onHandlePointerDown: (e: ReactPointerEvent, end: 'a' | 'b') => void
 }) {
   const t = WALL_THICKNESS
-  const horizontal = seg.dir === 'h'
+  const horizontal = wall.dir === 'h'
   const style = {
-    left: (horizontal ? seg.x : seg.x - t / 2) + HALF_W,
-    top: (horizontal ? seg.y - t / 2 : seg.y) + HALF_H,
-    width: horizontal ? Math.max(seg.length, 2) : t,
-    height: horizontal ? t : Math.max(seg.length, 2),
-    ['--cap' as string]: `${seg.kind === 'entrance' ? 6 : WALL_HEIGHT}px`,
+    left: (horizontal ? wall.x : wall.x - t / 2) + HALF_W,
+    top: (horizontal ? wall.y - t / 2 : wall.y) + HALF_H,
+    width: horizontal ? Math.max(wall.length, 2) : t,
+    height: horizontal ? t : Math.max(wall.length, 2),
+    ['--wh' as string]: `${lowered ? WALL_LOW : WALL_HEIGHT}px`,
   }
   const faceA = horizontal ? 'h-n' : 'v-w'
   const faceB = horizontal ? 'h-s' : 'v-e'
-  const faceSize = (h: number) =>
-    horizontal ? { height: h } : { width: h }
 
   return (
     <div
       className={[
         'seg',
-        seg.kind,
+        'wall',
+        lowered ? 'lowered' : '',
         selected ? 'selected' : '',
-        seg.draft ? 'draft' : '',
+        wall.draft ? 'draft' : '',
       ].join(' ')}
       style={style}
       onPointerDown={onPointerDown}
     >
-      {seg.kind === 'wall' && (
+      <div className={`seg-face full ${faceA}`} />
+      <div className={`seg-face full ${faceB}`} />
+      <div className="seg-cap" />
+      {showHandles && (
         <>
-          <div className={`seg-face ${faceA}`} style={faceSize(WALL_HEIGHT)} />
-          <div className={`seg-face ${faceB}`} style={faceSize(WALL_HEIGHT)} />
-          <div className="seg-cap" style={{ ['--cap' as string]: `${WALL_HEIGHT}px` }} />
+          <div
+            className={`seg-handle ${horizontal ? 'h-a' : 'v-a'}`}
+            title="Dra för att ändra längd"
+            onPointerDown={(e) => onHandlePointerDown(e, 'a')}
+          />
+          <div
+            className={`seg-handle ${horizontal ? 'h-b' : 'v-b'}`}
+            title="Dra för att ändra längd"
+            onPointerDown={(e) => onHandlePointerDown(e, 'b')}
+          />
+        </>
+      )}
+    </div>
+  )
+}
+
+/** En öppning som sitter PÅ en vägg: fönster, entré eller kökets ingång. */
+function OpeningEl({
+  opening,
+  wall,
+  lowered,
+  selected,
+  showHandles,
+  onPointerDown,
+  onHandlePointerDown,
+}: {
+  opening: Opening & { draft?: boolean }
+  wall: WallSegment
+  lowered: boolean
+  selected: boolean
+  showHandles: boolean
+  onPointerDown: (e: ReactPointerEvent) => void
+  onHandlePointerDown: (e: ReactPointerEvent, end: 'a' | 'b') => void
+}) {
+  const t = OPENING_THICKNESS
+  const horizontal = wall.dir === 'h'
+  const x = horizontal ? wall.x + opening.offset : wall.x
+  const y = horizontal ? wall.y : wall.y + opening.offset
+  const style = {
+    left: (horizontal ? x : x - t / 2) + HALF_W,
+    top: (horizontal ? y - t / 2 : y) + HALF_H,
+    width: horizontal ? Math.max(opening.length, 2) : t,
+    height: horizontal ? t : Math.max(opening.length, 2),
+    ['--wh' as string]: `${lowered ? WALL_LOW : WALL_HEIGHT}px`,
+  }
+  const faceA = horizontal ? 'h-n' : 'v-w'
+  const faceB = horizontal ? 'h-s' : 'v-e'
+
+  return (
+    <div
+      className={[
+        'seg',
+        opening.kind,
+        lowered ? 'lowered' : '',
+        selected ? 'selected' : '',
+        opening.draft ? 'draft' : '',
+      ].join(' ')}
+      style={style}
+      onPointerDown={onPointerDown}
+    >
+      {opening.kind === 'window' && (
+        <>
+          {/* glasband som sitter i väggen — väggen bakom är kvar */}
+          <div className={`seg-face glass ${faceA}`} />
+          <div className={`seg-face glass ${faceB}`} />
+          <div className="seg-cap glass-cap" />
         </>
       )}
 
-      {seg.kind === 'window' && (
+      {opening.kind === 'kitchen' && (
         <>
-          {/* murad bas + glas + överstycke */}
-          <div className={`seg-face base ${faceA}`} style={faceSize(28)} />
-          <div className={`seg-face base ${faceB}`} style={faceSize(28)} />
-          <div
-            className={`seg-face glass ${faceA}`}
-            style={{ ...faceSize(48), ['--lift' as string]: '28px' }}
-          />
-          <div
-            className={`seg-face base ${faceA}`}
-            style={{ ...faceSize(14), ['--lift' as string]: '76px' }}
-          />
-          <div
-            className={`seg-face base ${faceB}`}
-            style={{ ...faceSize(14), ['--lift' as string]: '76px' }}
-          />
-          <div className="seg-cap" style={{ ['--cap' as string]: `${WALL_HEIGHT}px` }} />
-        </>
-      )}
-
-      {seg.kind === 'entrance' && (
-        <>
-          <div className="seg-shadow" />
-          <div className="seg-tag" style={{ ['--tagz' as string]: '4px' }}>
-            <span>ENTRÉ</span>
+          <div className={`seg-face full ${faceA}`} />
+          <div className={`seg-face full ${faceB}`} />
+          <div className="seg-cap" />
+          <div className="seg-tag">
+            <span>KÖK</span>
           </div>
         </>
       )}
 
-      {seg.kind === 'kitchen' && (
+      {opening.kind === 'entrance' && (
         <>
-          <div className={`seg-face ${faceA}`} style={faceSize(WALL_HEIGHT)} />
-          <div className={`seg-face ${faceB}`} style={faceSize(WALL_HEIGHT)} />
-          <div className="seg-cap" style={{ ['--cap' as string]: `${WALL_HEIGHT}px` }} />
-          <div className="seg-tag">
-            <span>KÖK</span>
+          <div className="seg-shadow" />
+          <div className={`seg-face entry-band ${faceA}`} />
+          <div className={`seg-face entry-band ${faceB}`} />
+          <div className="seg-tag" style={{ ['--tagz' as string]: '10px' }}>
+            <span>ENTRÉ</span>
           </div>
         </>
       )}
@@ -1230,12 +1427,12 @@ function Segment({
           <div
             className={`seg-handle ${horizontal ? 'h-a' : 'v-a'}`}
             title="Dra för att ändra längd"
-            onPointerDown={(e) => onHandlePointerDown(e, seg.id, 'a')}
+            onPointerDown={(e) => onHandlePointerDown(e, 'a')}
           />
           <div
             className={`seg-handle ${horizontal ? 'h-b' : 'v-b'}`}
             title="Dra för att ändra längd"
-            onPointerDown={(e) => onHandlePointerDown(e, seg.id, 'b')}
+            onPointerDown={(e) => onHandlePointerDown(e, 'b')}
           />
         </>
       )}

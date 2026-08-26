@@ -7,7 +7,6 @@ import {
   completeNewPassword,
   getCurrentSession,
   getIdToken,
-  isCognitoConfigured,
   signIn,
   signOut,
 } from './cognito'
@@ -59,9 +58,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setEmail(loginEmail.trim())
         setStatus('signed-in')
         return 'ok' as const
-      }
-      if (!isCognitoConfigured()) {
-        throw new Error('Fel e-post eller lösenord.')
       }
       const result = await signIn(loginEmail, password)
       if (result.kind === 'new-password-required') {

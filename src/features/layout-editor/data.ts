@@ -13,26 +13,41 @@ export interface TableElement {
   shape: TableShape
   seats: number
   zone: string
-  /** Position i arbetsytans koordinater (0,0 = övre vänstra hörnet). */
+  /** Position i origo-koordinater (0,0 = canvasens mitt). */
   x: number
   y: number
   rotation: number
 }
 
 /**
- * Segment som byggs längs rutnätet: hela väggar, fönster (glas i väggen),
- * entrén och kökets ingång. Ritas med respektive verktyg.
+ * En vägg längs rutnätet. Väggar är alltid hela — öppningar (fönster,
+ * entré, kökets ingång) ligger SOM PÅBYGGNAD på väggen (se Opening) och
+ * klipper aldrig hål i den. När en markyta ritas skapas väggar runt om
+ * den automatiskt.
  */
-export type SegmentKind = 'wall' | 'window' | 'entrance' | 'kitchen'
-
 export interface WallSegment {
   id: string
-  kind: SegmentKind
   /** 'h' = vågrätt, 'v' = lodrätt. */
   dir: 'h' | 'v'
   /** Startpunkt (vänster/övre änden). */
   x: number
   y: number
+  length: number
+}
+
+/**
+ * En öppning fastsatt på en vägg: fönster, entré eller kökets ingång.
+ * `offset` är avståndet från väggens start längs väggen. Flyttas eller
+ * förlängs väggen följer öppningen med; öppningen kan själv glida längs
+ * väggen och storleksändras, men aldrig lämna den.
+ */
+export type OpeningKind = 'window' | 'entrance' | 'kitchen'
+
+export interface Opening {
+  id: string
+  kind: OpeningKind
+  wallId: string
+  offset: number
   length: number
 }
 
@@ -61,7 +76,8 @@ export interface Floor {
   id: string
   name: string
   grounds: GroundRect[]
-  segments: WallSegment[]
+  walls: WallSegment[]
+  openings: Opening[]
   fixtures: Fixture[]
   tables: TableElement[]
 }
@@ -74,8 +90,7 @@ export interface FloorLayout {
 
 export const ZONES = ['Fönsterbord', 'Mitten', 'Bar', 'Entré'] as const
 
-export const SEGMENT_LABEL: Record<SegmentKind, string> = {
-  wall: 'Vägg',
+export const OPENING_LABEL: Record<OpeningKind, string> = {
   window: 'Fönster',
   entrance: 'Entré',
   kitchen: 'Kökets ingång',
@@ -84,10 +99,7 @@ export const SEGMENT_LABEL: Record<SegmentKind, string> = {
 /** Rutnätssteg som allt byggande snappar till. */
 export const GRID = 20
 
-/** Arbetsytans storlek — marken ritas fritt inom den här ytan. Vyn zoomar
- * automatiskt så att allt ritat får plats i canvasen.
- * Koordinatsystemet har origo (0,0) i canvasens MITT: x och y går från
- * -w/2..w/2 respektive -h/2..h/2, och allt byggande utgår från mitten. */
+/** Arbetsytans storlek. Origo (0,0) ligger i canvasens mitt. */
 export const WORKSPACE = { w: 1200, h: 900 }
 
 /** Basmarkens läge på våning 1 — centrerad kring origo. */
@@ -102,21 +114,17 @@ export const MOCK_LAYOUT: FloorLayout = {
       id: 'floor-1',
       name: 'Våning 1',
       grounds: [{ id: 'g1', x: GX, y: GY, w: 560, h: 360 }],
-      segments: [
-        // Norra väggen med fönsterparti
-        { id: 'w-n1', kind: 'wall', dir: 'h', x: GX, y: GY, length: 120 },
-        { id: 'w-n2', kind: 'window', dir: 'h', x: GX + 120, y: GY, length: 140 },
-        { id: 'w-n3', kind: 'wall', dir: 'h', x: GX + 260, y: GY, length: 300 },
-        // Västra väggen
-        { id: 'w-w1', kind: 'wall', dir: 'v', x: GX, y: GY, length: 360 },
-        // Östra väggen med kökets ingång
-        { id: 'w-e1', kind: 'wall', dir: 'v', x: GX + 560, y: GY, length: 60 },
-        { id: 'w-e2', kind: 'kitchen', dir: 'v', x: GX + 560, y: GY + 60, length: 80 },
-        { id: 'w-e3', kind: 'wall', dir: 'v', x: GX + 560, y: GY + 140, length: 220 },
-        // Södra väggen med entré-öppning
-        { id: 'w-s1', kind: 'wall', dir: 'h', x: GX, y: GY + 360, length: 220 },
-        { id: 'w-s2', kind: 'entrance', dir: 'h', x: GX + 220, y: GY + 360, length: 120 },
-        { id: 'w-s3', kind: 'wall', dir: 'h', x: GX + 340, y: GY + 360, length: 220 },
+      // Hela väggar runt marken — öppningarna sitter PÅ väggarna nedan.
+      walls: [
+        { id: 'w-n', dir: 'h', x: GX, y: GY, length: 560 },
+        { id: 'w-s', dir: 'h', x: GX, y: GY + 360, length: 560 },
+        { id: 'w-w', dir: 'v', x: GX, y: GY, length: 360 },
+        { id: 'w-e', dir: 'v', x: GX + 560, y: GY, length: 360 },
+      ],
+      openings: [
+        { id: 'o-window', kind: 'window', wallId: 'w-n', offset: 120, length: 140 },
+        { id: 'o-kitchen', kind: 'kitchen', wallId: 'w-e', offset: 60, length: 80 },
+        { id: 'o-entrance', kind: 'entrance', wallId: 'w-s', offset: 220, length: 120 },
       ],
       fixtures: [
         { id: 'f-kassa', type: 'counter', label: 'KASSA', x: GX + 478, y: GY + 290, w: 100, h: 36 },
@@ -146,7 +154,8 @@ export function emptyFloor(n: number): Floor {
     id: `floor-${n}-${Math.random().toString(36).slice(2, 7)}`,
     name: `Våning ${n}`,
     grounds: [],
-    segments: [],
+    walls: [],
+    openings: [],
     fixtures: [],
     tables: [],
   }

@@ -9,11 +9,39 @@ import type { CognitoUserSession } from 'amazon-cognito-identity-js'
  * All configuration comes from environment variables (see .env.example and
  * docs/API-OCH-NYCKLAR.md). Vite inlines these at build time, so the dev server
  * must be restarted after editing .env.
+ *
+ * The dev and prod pools live side by side in the same file with _DEV/_PROD
+ * suffixes. VITE_COGNITO_ENV picks which pair is used (dev when unset), and
+ * the unsuffixed names override both so a build can be pointed at a single
+ * pool without changing the .env format.
  */
-const USER_POOL_ID = import.meta.env.VITE_COGNITO_USER_POOL_ID as
-  | string
-  | undefined
-const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID as string | undefined
+
+/** Reads an env var, treating blanks and unfilled placeholders as missing. */
+function envValue(raw: unknown): string | undefined {
+  const value = typeof raw === 'string' ? raw.trim() : ''
+  if (!value || value.startsWith('...') || value.includes('REPLACE_ME')) {
+    return undefined
+  }
+  return value
+}
+
+const TARGET_ENV =
+  envValue(import.meta.env.VITE_COGNITO_ENV)?.toLowerCase() === 'prod'
+    ? 'prod'
+    : 'dev'
+const SUFFIX = TARGET_ENV === 'prod' ? '_PROD' : '_DEV'
+
+const USER_POOL_ID =
+  envValue(import.meta.env.VITE_COGNITO_USER_POOL_ID) ??
+  (TARGET_ENV === 'prod'
+    ? envValue(import.meta.env.VITE_COGNITO_USER_POOL_ID_PROD)
+    : envValue(import.meta.env.VITE_COGNITO_USER_POOL_ID_DEV))
+
+const CLIENT_ID =
+  envValue(import.meta.env.VITE_COGNITO_CLIENT_ID) ??
+  (TARGET_ENV === 'prod'
+    ? envValue(import.meta.env.VITE_COGNITO_CLIENT_ID_PROD)
+    : envValue(import.meta.env.VITE_COGNITO_CLIENT_ID_DEV))
 
 export function isCognitoConfigured(): boolean {
   return Boolean(USER_POOL_ID && CLIENT_ID)
@@ -24,7 +52,7 @@ let pool: CognitoUserPool | null = null
 function getPool(): CognitoUserPool {
   if (!USER_POOL_ID || !CLIENT_ID) {
     throw new Error(
-      'Cognito är inte konfigurerat. Skapa en .env-fil med VITE_COGNITO_USER_POOL_ID och VITE_COGNITO_CLIENT_ID — se docs/API-OCH-NYCKLAR.md.',
+      `Cognito är inte konfigurerat. Fyll i VITE_COGNITO_USER_POOL_ID${SUFFIX} och VITE_COGNITO_CLIENT_ID${SUFFIX} i .env — se docs/API-OCH-NYCKLAR.md.`,
     )
   }
   if (!pool) {
@@ -106,20 +134,40 @@ export function signOut(): void {
 
 /** Maps Cognito error codes to Swedish messages users can act on. */
 function toFriendlyError(err: unknown): Error {
-  const code =
-    typeof err === 'object' && err !== null && 'code' in err
-      ? String((err as { code?: unknown }).code)
-      : ''
+  const raw = err as { code?: unknown; name?: unknown; message?: unknown }
+  const code = String(raw?.code ?? raw?.name ?? '')
   const message =
     err instanceof Error ? err.message : 'Ett okänt fel inträffade.'
 
+  // Cognito svarar alltid HTTP 400 på inloggningsfel, så webbläsarkonsolen
+  // visar bara "400 (Bad Request)". Logga koden och AWS egna text så att
+  // orsaken går att se direkt vid felsökning.
+  console.error(`[Cognito] ${code || 'okänt fel'}: ${message}`)
+
   switch (code) {
-    case 'NotAuthorizedException':
+    case 'InvalidParameterException':
+      if (message.includes('USER_SRP_AUTH')) {
+        return new Error(
+          'App-klienten tillåter inte SRP-inloggning. Aktivera ALLOW_USER_SRP_AUTH på app-klienten i Cognito.',
+        )
+      }
+      return new Error(`Cognito nekade anropet: ${message}`)
+    case 'ResourceNotFoundException':
       return new Error(
-        message.includes('expired')
-          ? 'Ditt tillfälliga lösenord har gått ut. Be en administratör skicka en ny inbjudan.'
-          : 'Fel e-post eller lösenord.',
+        'Cognito hittar inte poolen eller app-klienten. Kontrollera VITE_COGNITO_*-värdena i .env.',
       )
+    case 'NotAuthorizedException':
+      if (message.includes('secret hash')) {
+        return new Error(
+          'App-klienten har en client secret. Frontend måste använda en publik klient utan secret — skapa en ny app-klient i Cognito.',
+        )
+      }
+      if (message.includes('expired')) {
+        return new Error(
+          'Ditt tillfälliga lösenord har gått ut. Be en administratör skicka en ny inbjudan.',
+        )
+      }
+      return new Error('Fel e-post eller lösenord.')
     case 'UserNotFoundException':
       return new Error('Fel e-post eller lösenord.')
     case 'UserNotConfirmedException':
@@ -138,6 +186,6 @@ function toFriendlyError(err: unknown): Error {
     case 'NetworkError':
       return new Error('Ingen kontakt med servern. Kontrollera din uppkoppling.')
     default:
-      return err instanceof Error ? err : new Error(message)
+      return new Error(code ? `${code}: ${message}` : message)
   }
 }

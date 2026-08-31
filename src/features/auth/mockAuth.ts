@@ -1,7 +1,17 @@
 const STORAGE_KEY = 'admin-mock-session'
 
-export const MOCK_EMAIL = 'test@test.se'
-export const MOCK_PASSWORD = 'test1234'
+/**
+ * Dev-inloggningens uppgifter. Vite ersätter `import.meta.env.DEV` med
+ * `false` i produktionsbygget, så båda blir tomma strängar och själva
+ * texterna försvinner ur den publika JS-bundeln.
+ *
+ * Det spelar roll: mock-inloggningen är visserligen avstängd i produktion
+ * ändå, men en bundel som skyltar med "test@test.se / test1234" ger vem som
+ * helst ett färdigt par att prova mot det RIKTIGA /auth/login — skulle
+ * kontot någon gång ha skapats på riktigt i Cognito vore det en direkt väg in.
+ */
+export const MOCK_EMAIL = import.meta.env.DEV ? 'test@test.se' : ''
+export const MOCK_PASSWORD = import.meta.env.DEV ? 'test1234' : ''
 
 /** Mock-inloggning finns bara i Vite-dev, aldrig i `npm run build`. */
 export function isMockAuthEnabled(): boolean {
@@ -9,7 +19,8 @@ export function isMockAuthEnabled(): boolean {
 }
 
 export function tryMockSignIn(email: string, password: string): boolean {
-  if (!isMockAuthEnabled()) return false
+  // Tomma konstanter (produktionsbygget) får aldrig matcha tomma fält.
+  if (!isMockAuthEnabled() || !MOCK_EMAIL || !MOCK_PASSWORD) return false
   const match =
     email.trim().toLowerCase() === MOCK_EMAIL && password === MOCK_PASSWORD
   if (match) sessionStorage.setItem(STORAGE_KEY, MOCK_EMAIL)

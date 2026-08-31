@@ -38,6 +38,8 @@ export type StoredSession = {
   refreshToken: string | null
   sub: string
   email: string | null
+  /** Cognito-grupperna (staff_user/owner_user/super_user) från cognito:groups-claimet. */
+  groups: string[]
   expiresAt: number
 }
 
@@ -54,6 +56,22 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
   return JSON.parse(json) as Record<string, unknown>
 }
 
+function groupsFromClaims(claims: Record<string, unknown>): string[] {
+  const rawGroups = claims['cognito:groups']
+  return Array.isArray(rawGroups)
+    ? rawGroups.filter((g): g is string => typeof g === 'string')
+    : []
+}
+
+/** Läser cognito:groups direkt ur en ID-token, utan att gå via ett API-svar. */
+function groupsFromIdToken(idToken: string): string[] {
+  try {
+    return groupsFromClaims(decodeJwtPayload(idToken))
+  } catch {
+    return []
+  }
+}
+
 function toStoredSession(result: AuthenticationResult): StoredSession {
   const idToken = result.IdToken ?? ''
   const claims = idToken ? decodeJwtPayload(idToken) : {}
@@ -63,6 +81,7 @@ function toStoredSession(result: AuthenticationResult): StoredSession {
     refreshToken: result.RefreshToken ?? null,
     sub: typeof claims.sub === 'string' ? claims.sub : '',
     email: typeof claims.email === 'string' ? claims.email : null,
+    groups: groupsFromClaims(claims),
     expiresAt: Date.now() + result.ExpiresIn * 1000,
   }
 }
@@ -71,11 +90,37 @@ function saveSession(session: StoredSession): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
 }
 
+/**
+ * Normaliserar en sparad session till en giltig StoredSession. Krävs eftersom
+ * en session sparad av en äldre version av den här filen kan sakna fält som
+ * lagts till sen dess (t.ex. `groups`) — utan detta kraschar allt som läser
+ * `session.groups` med "Cannot read properties of undefined". Saknas
+ * `groups` läses den istället ur den redan sparade ID-tokenen (den bar redan
+ * cognito:groups-claimet, vi bara läste inte ut det innan) — annars skulle
+ * en gammal session ge tom behörighet tills nästa inloggning.
+ */
+function toValidSession(parsed: unknown): StoredSession | null {
+  if (!parsed || typeof parsed !== 'object') return null
+  const p = parsed as Partial<StoredSession>
+  if (typeof p.idToken !== 'string' || typeof p.sub !== 'string') return null
+  return {
+    accessToken: typeof p.accessToken === 'string' ? p.accessToken : '',
+    idToken: p.idToken,
+    refreshToken: typeof p.refreshToken === 'string' ? p.refreshToken : null,
+    sub: p.sub,
+    email: typeof p.email === 'string' ? p.email : null,
+    groups: Array.isArray(p.groups)
+      ? p.groups.filter((g): g is string => typeof g === 'string')
+      : groupsFromIdToken(p.idToken),
+    expiresAt: typeof p.expiresAt === 'number' ? p.expiresAt : 0,
+  }
+}
+
 function loadSession(): StoredSession | null {
   const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) return null
   try {
-    return JSON.parse(raw) as StoredSession
+    return toValidSession(JSON.parse(raw))
   } catch {
     return null
   }
@@ -225,6 +270,16 @@ export async function getCurrentSession(): Promise<StoredSession | null> {
 export async function getIdToken(): Promise<string | null> {
   const session = await getCurrentSession()
   return session?.idToken ?? null
+}
+
+/**
+ * Access-tokenen är den som API:ts JWT-authorizer förväntar sig (se
+ * openapi-spec:en: "invalid Cognito access token") — ID-tokenen är till för
+ * klienten själv (e-post m.m.), inte för Authorization-headern.
+ */
+export async function getAccessToken(): Promise<string | null> {
+  const session = await getCurrentSession()
+  return session?.accessToken || null
 }
 
 export function clearSession(): void {

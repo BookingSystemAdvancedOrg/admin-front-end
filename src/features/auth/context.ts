@@ -6,6 +6,10 @@ export interface AuthContextValue {
   status: AuthStatus
   /** E-postadressen för den inloggade (eller pågående) användaren. */
   email: string | null
+  /** Cognito-subet (unikt användar-ID) för den inloggade användaren. */
+  sub: string | null
+  /** Cognito-grupperna (staff_user/owner_user/super_user) för behörighetskoll i UI:t. */
+  groups: string[]
   /** True när inloggningen väntar på att ett nytt lösenord ska väljas. */
   hasPendingNewPassword: boolean
   /** Returnerar 'ok' vid inloggning, 'new-password' när nytt lösenord krävs. */
@@ -13,7 +17,7 @@ export interface AuthContextValue {
   /** Slutför "nytt lösenord"-steget för konton med tillfälligt lösenord. */
   finishNewPassword: (newPassword: string) => Promise<void>
   logout: () => void
-  /** Färskt ID-token (JWT) för Authorization-headern mot API:t. */
+  /** Färsk access-token (JWT) för Authorization-headern — den API:ts authorizer validerar. */
   getToken: () => Promise<string | null>
 }
 

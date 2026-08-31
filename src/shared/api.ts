@@ -1,4 +1,4 @@
-import { getIdToken } from '../features/auth/cognito'
+import { getAccessToken } from '../features/auth/cognito'
 
 /**
  * Bas-URL till backend-API:t (API Gateway). Sätts i .env lokalt och i
@@ -15,7 +15,34 @@ export function isApiConfigured(): boolean {
 }
 
 /**
- * Anropar backend med inloggningens ID-token i Authorization-headern.
+ * Ett API-fel med statuskoden bevarad, så anropare kan skilja t.ex. 404
+ * (finns inte) från 409 (redan finns) istället för att bara läsa text.
+ * `message` är API:ts { error: string }-fält när det finns, annars råtext.
+ */
+export class ApiError extends Error {
+  status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
+async function toApiError(res: Response): Promise<ApiError> {
+  const text = await res.text().catch(() => '')
+  try {
+    const body = JSON.parse(text) as { error?: string; message?: string }
+    return new ApiError(res.status, body.error ?? body.message ?? text)
+  } catch {
+    return new ApiError(res.status, text || res.statusText)
+  }
+}
+
+/**
+ * Anropar backend med inloggningens access-token i Authorization-headern
+ * (API:ts JWT-authorizer validerar access-tokens, inte ID-tokens — se
+ * backend-spec:ens 401-beskrivning).
  * Används när sidorna kopplas från mockdata till riktigt API, t.ex.:
  *
  *   const bokningar = await apiFetch<Reservation[]>('/reservations')
@@ -30,7 +57,7 @@ export async function apiFetch<T>(
       'VITE_API_BASE_URL är inte satt — appen kör på mockdata. Se docs/BACKEND-KOPPLING.md.',
     )
   }
-  const token = await getIdToken()
+  const token = await getAccessToken()
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
@@ -40,7 +67,10 @@ export async function apiFetch<T>(
     },
   })
   if (!res.ok) {
-    throw new Error(`API-fel ${res.status}: ${await res.text()}`)
+    throw await toApiError(res)
+  }
+  if (res.status === 204) {
+    return undefined as T
   }
   return (await res.json()) as T
 }

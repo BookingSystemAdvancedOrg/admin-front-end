@@ -9,8 +9,17 @@ Alla admin-sidor är byggda och fungerar, men kör på **mockdata**. Det här do
 | Översikt | `src/features/oversikt/OversiktPage.tsx` (inline) | `GET /dashboard` |
 | Bokningar | `src/features/bokningar/data.ts` | `GET /reservations` |
 | Meny | `src/features/meny/data.ts` | `GET/POST/PUT/DELETE /menu` |
-| Layout-editorn | `src/features/layout-editor/data.ts` | `GET /layout`, `PUT /layout` (publicera) |
+| Layout-editorn | **Kopplad** via `layout-editor/layoutApi.ts` | `GET/POST/PUT/DELETE /locations/{id}/layout-elements/items` |
 | Inställningar | `src/features/installningar/data.ts` | `GET/PUT /settings`, `GET /staff` |
+
+**Layout-editorn** läser in sin layout vid sidladdning och skriver den vid
+"Publicera layout". API:ts datamodell är plattare än editorns, så fyra saker
+kan inte sparas och lever bara lokalt: **markytor**, **inventarier** (kassan),
+**extra våningar** (API:t har en elementlista per plats, inte per våning) och
+**bordens etiketter**. Dessutom lagras entré och kökets ingång båda som
+`door`, så de läses tillbaka som entré. Se kommentaren överst i
+`src/features/layout-editor/layoutApi.ts`. Vill man kunna spara dem behöver
+backend utöka layout-schemat.
 
 Mönstret: varje feature har sin `data.ts` med typer + mockkonstanter. Typerna behålls när API:t kopplas — det är bara datakällan som byts. Ändringar man gör i gränssnittet (toggla rätter, flytta bord, spara inställningar) lever i webbläsarens minne och försvinner vid omladdning — det är väntat tills backend finns.
 
@@ -33,7 +42,7 @@ useEffect(() => {
 }, [])
 ```
 
-Backend (API Gateway) validerar tokenen med en **Cognito authorizer** — se avsnitt 6 i `docs/COGNITO-SETUP.md`.
+Backend (API Gateway) validerar tokenen med en **Cognito authorizer** — se avsnitt 3 i `docs/API-OCH-NYCKLAR.md`.
 
 ## 3. Var de riktiga nycklarna ska ligga
 

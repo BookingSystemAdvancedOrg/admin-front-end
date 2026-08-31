@@ -3,11 +3,12 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import {
   GRID,
-  MOCK_LAYOUT,
   OPENING_LABEL,
+  SEAT_SIZE,
   WORKSPACE,
   ZONES,
   emptyFloor,
+  seatPositions,
   tableSize,
 } from './data'
 import type {
@@ -20,6 +21,14 @@ import type {
   TableShape,
   WallSegment,
 } from './data'
+import {
+  listLayoutElements,
+  loadLayoutExtras,
+  saveFloor,
+  saveLayoutExtras,
+  toDoorKinds,
+  toFloorElements,
+} from './layoutApi'
 import './layout-editor.css'
 
 const TILT_DEG = 55
@@ -31,7 +40,19 @@ const WALL_LOW = 16
 const WALL_THICKNESS = 10
 const OPENING_THICKNESS = 14
 const COUNTER_HEIGHT = 34
-const WALL_SNAP_DIST = 28
+/**
+ * Hur långt från en vägg man får klicka och ändå träffa den. Måttet gäller
+ * i golvplanet, och i 3D-vyn blir den zonen visuellt smal — därför generöst
+ * tilltaget, annars är fönster och dörrar svåra att sätta dit.
+ */
+const WALL_SNAP_DIST = 60
+
+/** Standardbredd på en öppning som placeras med ett enkelt klick. */
+const OPENING_DEFAULT_LENGTH: Record<OpeningKind, number> = {
+  window: 140,
+  entrance: 120,
+  kitchen: 80,
+}
 const HALF_W = WORKSPACE.w / 2
 const HALF_H = WORKSPACE.h / 2
 
@@ -95,6 +116,9 @@ interface GroundDraft {
   h: number
 }
 
+/** Samma nyckel som Inställningar sparar platsen under. */
+const LOCATION_ID_STORAGE_KEY = 'admin-location-id'
+
 const OPENING_TOOLS: { tool: Tool; kind: OpeningKind; warn: string }[] = [
   { tool: 'window', kind: 'window', warn: 'Fönster kan bara placeras på en vägg — rita väggen först.' },
   { tool: 'entrance', kind: 'entrance', warn: 'Entrén kan bara placeras på en vägg — rita väggen först.' },
@@ -109,15 +133,18 @@ const OPENING_TOOLS: { tool: Tool; kind: OpeningKind; warn: string }[] = [
  * roteras). Öppningar — fönster, entré, kökets ingång — sitter PÅ
  * väggarna: väggen förblir hel, öppningen glider längs den när den
  * flyttas eller förlängs, och följer med om väggen flyttas.
- * Kör på mockdata i lokal state tills API:t kopplas.
+ *
+ * Väggar, öppningar och bord synkas mot det riktiga layout-API:t
+ * (layoutApi.ts): de läses in vid sidladdning och skrivs vid "Publicera
+ * layout". Markytor, kassan och extra våningar finns inte i API:ts
+ * datamodell och lever bara lokalt — se kommentaren i layoutApi.ts.
  */
 export default function LayoutEditorPage() {
-  const [floors, setFloors] = useState<Floor[]>(MOCK_LAYOUT.floors)
-  const [currentFloorId, setCurrentFloorId] = useState(MOCK_LAYOUT.floors[0].id)
-  const [selection, setSelection] = useState<Selection>({
-    kind: 'table',
-    id: 't3',
-  })
+  // Editorn startar tom och fylls av serverns layout. Ingen mockdata visas
+  // först — den hann annars blinka förbi innan inläsningen var klar.
+  const [floors, setFloors] = useState<Floor[]>(() => [emptyFloor(1)])
+  const [currentFloorId, setCurrentFloorId] = useState(() => floors[0].id)
+  const [selection, setSelection] = useState<Selection>(null)
   const [tool, setTool] = useState<Tool>('select')
   const [is3d, setIs3d] = useState(true)
   const [spin, setSpin] = useState(45)
@@ -127,12 +154,15 @@ export default function LayoutEditorPage() {
   const [openingDraft, setOpeningDraft] = useState<OpeningDraft | null>(null)
   const [groundDraft, setGroundDraft] = useState<GroundDraft | null>(null)
   const [drawWarning, setDrawWarning] = useState<string | null>(null)
-  const [statusText, setStatusText] = useState(
-    'Senast sparat: för 2 minuter sedan (utkast, ej publicerat)',
+  const [statusText, setStatusText] = useState('Hämtar layout…')
+  const [versionLabel, setVersionLabel] = useState('')
+  // Utan en sparad plats finns inget layout-API att prata med — då kör
+  // editorn vidare på mockdatan som förut.
+  const [locationId] = useState<string | null>(() =>
+    localStorage.getItem(LOCATION_ID_STORAGE_KEY),
   )
-  const [versionLabel, setVersionLabel] = useState(
-    `Version ${MOCK_LAYOUT.version} · ${MOCK_LAYOUT.publishedLabel}`,
-  )
+  const [publishing, setPublishing] = useState(false)
+  const [layoutError, setLayoutError] = useState<string | null>(null)
   const sceneRef = useRef<HTMLDivElement>(null)
   const warnTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const nextTable = useRef(14)
@@ -158,6 +188,52 @@ export default function LayoutEditorPage() {
       scene.removeEventListener('wheel', onWheel)
     }
   }, [])
+
+  // Läs in den sparade layouten. Markytor och kassan finns inte i API:t, så
+  // en inläst våning börjar utan dem — bara väggar, öppningar och bord.
+  useEffect(() => {
+    if (!locationId) return
+    let cancelled = false
+    listLayoutElements(locationId)
+      .then((elements) => {
+        if (cancelled) return
+        // Markytor, kassan och dörrtyperna kommer från webbläsaren — API:t
+        // kan inte lagra dem.
+        const extras = loadLayoutExtras(locationId)
+        const loaded = toFloorElements(elements, extras.doorKinds)
+        setFloors([
+          {
+            id: 'floor-1',
+            name: 'Våning 1',
+            grounds: extras.grounds,
+            fixtures: extras.fixtures,
+            ...loaded,
+          },
+        ])
+        setCurrentFloorId('floor-1')
+        setSelection(null)
+        setVersionLabel(
+          elements.length === 0
+            ? 'Ingen sparad layout än'
+            : `${elements.length} sparade element`,
+        )
+        setStatusText(
+          elements.length === 0
+            ? 'Tom layout — rita och publicera för att spara.'
+            : 'Inläst från servern.',
+        )
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setLayoutError(
+            err instanceof Error ? err.message : 'Kunde inte hämta layouten.',
+          )
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [locationId])
 
   function patchFloor(patch: (f: Floor) => Partial<Floor>) {
     setFloors((prev) =>
@@ -231,6 +307,29 @@ export default function LayoutEditorPage() {
   }
 
   /**
+   * Lokalens mittpunkt utifrån väggarnas utsträckning. Behövs för att veta
+   * vilket håll som är "inomhus" när det inte finns någon ritad markyta —
+   * vilket alltid är fallet för en layout som lästs in från API:t, eftersom
+   * markytor bara sparas lokalt.
+   */
+  function wallsCentre(): { x: number; y: number } | null {
+    if (floor.walls.length === 0) return null
+    let minX = Infinity
+    let maxX = -Infinity
+    let minY = Infinity
+    let maxY = -Infinity
+    for (const w of floor.walls) {
+      const x2 = w.dir === 'h' ? w.x + w.length : w.x
+      const y2 = w.dir === 'v' ? w.y + w.length : w.y
+      minX = Math.min(minX, w.x, x2)
+      maxX = Math.max(maxX, w.x, x2)
+      minY = Math.min(minY, w.y, y2)
+      maxY = Math.max(maxY, w.y, y2)
+    }
+    return { x: (minX + maxX) / 2, y: (minY + maxY) / 2 }
+  }
+
+  /**
    * En vägg sänks till sockel när den står mellan kameran och rummet —
    * så att borden alltid syns. Vald vägg (eller vägg med vald öppning)
    * hålls alltid uppe så att den går att redigera.
@@ -248,8 +347,23 @@ export default function LayoutEditorPage() {
     const off = 14
     const aIn = groundContains(midX + n.x * off, midY + n.y * off)
     const bIn = groundContains(midX - n.x * off, midY - n.y * off)
-    if (aIn === bIn) return false // fristående vägg — sänks inte
-    const nInt = aIn ? n : { x: -n.x, y: -n.y }
+
+    let nInt: { x: number; y: number }
+    if (aIn !== bIn) {
+      nInt = aIn ? n : { x: -n.x, y: -n.y }
+    } else {
+      // Ingen markyta att gå på (t.ex. en layout inläst från API:t, där
+      // markytor inte lagras). Använd lokalens mitt som "inomhus" istället,
+      // annars skulle ingen vägg någonsin sänkas och de närmaste väggarna
+      // skymma hela rummet.
+      const centre = wallsCentre()
+      if (!centre) return false
+      const toCentre = { x: centre.x - midX, y: centre.y - midY }
+      const dot = n.x * toCentre.x + n.y * toCentre.y
+      // Väggen går genom mitten — den skymmer inget, låt den stå.
+      if (Math.abs(dot) < 1) return false
+      nInt = dot > 0 ? n : { x: -n.x, y: -n.y }
+    }
     return nInt.x * viewDir.x + nInt.y * viewDir.y < 0
   }
 
@@ -280,14 +394,14 @@ export default function LayoutEditorPage() {
     let best: WallSegment | null = null
     let bestDist = WALL_SNAP_DIST
     for (const w of floor.walls) {
-      const dist =
+      // Vinkelrätt avstånd får vara generöst, men längs väggen räcker en
+      // rutnätsruta utanför ändarna — annars fångas grannväggen i hörnen.
+      const withinExtent =
         w.dir === 'h'
-          ? p.x >= w.x - WALL_SNAP_DIST && p.x <= w.x + w.length + WALL_SNAP_DIST
-            ? Math.abs(p.y - w.y)
-            : Infinity
-          : p.y >= w.y - WALL_SNAP_DIST && p.y <= w.y + w.length + WALL_SNAP_DIST
-            ? Math.abs(p.x - w.x)
-            : Infinity
+          ? p.x >= w.x - GRID && p.x <= w.x + w.length + GRID
+          : p.y >= w.y - GRID && p.y <= w.y + w.length + GRID
+      if (!withinExtent) continue
+      const dist = w.dir === 'h' ? Math.abs(p.y - w.y) : Math.abs(p.x - w.x)
       if (dist <= bestDist) {
         bestDist = dist
         best = w
@@ -550,16 +664,33 @@ export default function LayoutEditorPage() {
       return
     }
     if (openingDraft) {
-      if (openingDraft.length >= GRID) {
+      const host = floor.walls.find((w) => w.id === openingDraft.wallId)
+      if (host) {
+        // Ett enkelt klick (utan att dra) ger en öppning i standardstorlek,
+        // centrerad kring klickpunkten. Tidigare kastades den tyst bort om
+        // man inte råkade dra minst en rutnätsruta, vilket fick fönster och
+        // kök att kännas trasiga.
+        const isClick = openingDraft.length < GRID
+        const wanted = isClick
+          ? Math.min(OPENING_DEFAULT_LENGTH[openingDraft.kind], host.length)
+          : openingDraft.length
+        const offset = isClick
+          ? clamp(
+              snap(openingDraft.offset0 - wanted / 2),
+              0,
+              Math.max(0, host.length - wanted),
+            )
+          : openingDraft.offset
         const o: Opening = {
           id: `o${nextId.current++}`,
           kind: openingDraft.kind,
           wallId: openingDraft.wallId,
-          offset: openingDraft.offset,
-          length: openingDraft.length,
+          offset,
+          length: wanted,
         }
         patchFloor((fl) => ({ openings: [...fl.openings, o] }))
         setSelection({ kind: 'opening', id: o.id })
+        setTool('select')
         markDirty()
       }
       setOpeningDraft(null)
@@ -745,9 +876,50 @@ export default function LayoutEditorPage() {
     markDirty()
   }
 
-  function publish() {
-    setVersionLabel('Version 5 · Publicerad nyss')
-    setStatusText('Publicerad — alla ändringar sparade (mock)')
+  async function publish() {
+    if (!locationId) {
+      setLayoutError(
+        'Ingen plats är sparad än — skapa restaurangens plats under ' +
+          'Inställningar innan layouten kan publiceras.',
+      )
+      return
+    }
+    setLayoutError(null)
+    setPublishing(true)
+    try {
+      // API:t har en enda elementlista per plats, inte en per våning, så
+      // bara den första våningen kan sparas.
+      const result = await saveFloor(locationId, floors[0])
+      // Markytor, kassan och skillnaden entré/kök kan API:t inte lagra — de
+      // sparas lokalt så att de åtminstone finns kvar efter en omladdning.
+      // Dörrtyperna nycklas om till serverns id:n för det som just skapats.
+      const doorKinds = toDoorKinds(floors[0].openings, result.idMap)
+      saveLayoutExtras(locationId, {
+        grounds: floors[0].grounds,
+        fixtures: floors[0].fixtures,
+        doorKinds,
+      })
+      const loaded = toFloorElements(result.elements, doorKinds)
+      // Läs in serverns svar igen: nyskapade element får sina riktiga
+      // elementId, vilket nästa publicering behöver för att se dem som
+      // befintliga istället för att skapa dubbletter.
+      setFloors((prev) => [{ ...prev[0], ...loaded }, ...prev.slice(1)])
+      setSelection(null)
+      setVersionLabel(`${result.elements.length} sparade element`)
+      setStatusText(
+        `Publicerad — ${result.created} nya, ${result.updated} ändrade, ` +
+          `${result.deleted} borttagna.` +
+          (floors.length > 1
+            ? ` Endast ${floors[0].name} sparas — API:t har ingen våningsmodell.`
+            : ''),
+      )
+    } catch (err) {
+      setLayoutError(
+        err instanceof Error ? err.message : 'Kunde inte publicera layouten.',
+      )
+    } finally {
+      setPublishing(false)
+    }
   }
 
   /* --- Render ----------------------------------------------------------- */
@@ -783,13 +955,31 @@ export default function LayoutEditorPage() {
             <button type="button" className="btn outline">
               Förhandsgranska
             </button>
-            <button type="button" className="btn primary" onClick={publish}>
-              Publicera layout
+            <button
+              type="button"
+              className="btn primary"
+              disabled={publishing}
+              onClick={publish}
+            >
+              {publishing ? 'Publicerar…' : 'Publicera layout'}
             </button>
           </span>
         }
       />
       <div className="admin-main">
+        {!locationId && (
+          <p className="form-error" role="alert">
+            Layouten sparas inte: ingen restaurangplats är skapad än. Gå till
+            Inställningar och spara restaurangprofilen först — layouten lagras
+            per plats i API:t. Det du ritar här försvinner vid omladdning tills
+            dess.
+          </p>
+        )}
+        {layoutError && (
+          <p className="form-error" role="alert">
+            {layoutError}
+          </p>
+        )}
         <div className="editor-row">
           <div className="admin-card editor-toolbar">
             <ToolButton glyph="↖" caption="Välj" title="Välj, flytta och ändra storlek" active={tool === 'select'} onClick={() => setTool('select')} />
@@ -984,6 +1174,19 @@ export default function LayoutEditorPage() {
                       }}
                       onPointerDown={(e) => onElementPointerDown(e, 'table', t.id, t.x, t.y)}
                     >
+                      {/* En stol per plats — antalet syns direkt i planen. */}
+                      {seatPositions(t).map((s, i) => (
+                        <div
+                          key={i}
+                          className="table-seat"
+                          style={{
+                            left: size.w / 2 + s.x - SEAT_SIZE / 2,
+                            top: size.h / 2 + s.y - SEAT_SIZE / 2,
+                            width: SEAT_SIZE,
+                            height: SEAT_SIZE,
+                          }}
+                        />
+                      ))}
                       <div className="table-base" />
                       <div className="table-body">
                         {t.shape === 'square' ? (
@@ -999,7 +1202,8 @@ export default function LayoutEditorPage() {
                         <div className="table-top">
                           <span className="table-labels">
                             <span className="table-label">{t.label}</span>
-                            <span className="table-seats">{t.seats} pl</span>
+                            {/* Platsantalet i samma stil som bordsnumret: T3 / P4. */}
+                            <span className="table-seats">P{t.seats}</span>
                           </span>
                         </div>
                       </div>
@@ -1240,7 +1444,9 @@ export default function LayoutEditorPage() {
         </div>
 
         <div className="editor-statusbar">
-          <span className="grow">{statusText}</span>
+          <span className="grow" role={layoutError ? 'alert' : undefined}>
+            {layoutError ?? statusText}
+          </span>
           <span>{floor.name} · Redigeras av Anna (personal)</span>
         </div>
       </div>
@@ -1400,24 +1606,14 @@ function OpeningEl({
         </>
       )}
 
-      {opening.kind === 'kitchen' && (
+      {/* Entré och kök ritas likadant — bara skylten skiljer dem åt. */}
+      {(opening.kind === 'kitchen' || opening.kind === 'entrance') && (
         <>
           <div className={`seg-face full ${faceA}`} />
           <div className={`seg-face full ${faceB}`} />
           <div className="seg-cap" />
           <div className="seg-tag">
-            <span>KÖK</span>
-          </div>
-        </>
-      )}
-
-      {opening.kind === 'entrance' && (
-        <>
-          <div className="seg-shadow" />
-          <div className={`seg-face entry-band ${faceA}`} />
-          <div className={`seg-face entry-band ${faceB}`} />
-          <div className="seg-tag" style={{ ['--tagz' as string]: '10px' }}>
-            <span>ENTRÉ</span>
+            <span>{opening.kind === 'kitchen' ? 'KÖK' : 'ENTRÉ'}</span>
           </div>
         </>
       )}

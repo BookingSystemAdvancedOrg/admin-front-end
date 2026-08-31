@@ -6,13 +6,17 @@ Admin frontend for the reservation platform.
 
 ```bash
 npm install
-cp .env.example .env   # fill in the Cognito values, see docs/COGNITO-SETUP.md
+cp .env.example .env   # fill in the values, see docs/API-OCH-NYCKLAR.md
 npm run dev
 ```
 
-The Vite dev server starts at `http://localhost:8081` — this port is fixed
-(`strictPort`) because the backend API's CORS policy only allows
-`http://localhost:8081` as a local origin.
+The Vite dev server starts at `http://localhost:7070` — this port is fixed
+(`strictPort`) to avoid clashing with other local services (8081 is taken
+by Docker Desktop on the main dev machine). In dev, all API calls are
+proxied through the dev server (`/api/*` → `VITE_API_BASE_URL`, see
+`vite.config.ts`), so login works locally regardless of which origins the
+backend API's CORS policy allows. Production builds call the API directly,
+so the deployed domains still need to be in the API's `allowOrigins`.
 
 ## Project structure
 
@@ -41,9 +45,10 @@ documented in [docs/BACKEND-KOPPLING.md](docs/BACKEND-KOPPLING.md).
 
 ## Authentication
 
-Staff sign-in is handled by AWS Cognito (`/logga-in` and `/nytt-losenord`).
-Setup, required keys, and the invite flow are documented in
-[docs/COGNITO-SETUP.md](docs/COGNITO-SETUP.md).
+Staff sign-in goes through the backend's `/auth/*` endpoints, which talk to
+AWS Cognito server-side (`/logga-in` and `/nytt-losenord`). Required keys
+and the invite flow are documented in
+[docs/API-OCH-NYCKLAR.md](docs/API-OCH-NYCKLAR.md).
 
 ```bash
 npm run lint

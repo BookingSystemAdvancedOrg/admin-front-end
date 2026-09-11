@@ -46,7 +46,7 @@ const TODAYS_BOOKINGS: {
 // Aktivitetsflödet (högerkortet).
 const ACTIVITY: { text: string; time: string }[] = [
   { text: 'Sofia Bergman bokade Bord 8 för 6 personer', time: 'för 12 min sedan' },
-  { text: 'Layout publicerad av Anna — version 4', time: 'för 2 timmar sedan' },
+  { text: 'Layout publicerad — version 4', time: 'för 2 timmar sedan' },
   { text: 'Betalningspåminnelse skickad till Maria Holm', time: 'igår, 14:20' },
   { text: 'Ny rätt tillagd: Smörstekt Torskrygg', time: 'igår, 11:05' },
   { text: 'Erik Lindqvist bekräftade bokning #KL-48213', time: 'igår, 09:40' },

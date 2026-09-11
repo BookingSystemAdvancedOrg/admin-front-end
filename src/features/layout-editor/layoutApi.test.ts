@@ -3,9 +3,12 @@ import { ApiError } from '../../shared/api'
 import * as api from '../../shared/api'
 import {
   UNITS_PER_METER,
+  activateLayoutVersion,
   diffLayout,
   listLayoutElements,
+  listLayoutVersions,
   loadLayoutExtras,
+  publishLayout,
   saveFloor,
   saveLayoutExtras,
   toApiElements,
@@ -328,6 +331,91 @@ describe('entrance vs kitchen (both stored as `door` by the API)', () => {
       new Map([['local-1', 'server-1']]),
     )
     expect(kinds).toEqual({ 'server-1': 'kitchen' })
+  })
+})
+
+describe('publishing', () => {
+  it('POSTs to layout/publish with no body — the API numbers the version', async () => {
+    mockedApiFetch.mockResolvedValue({ version: 1, label: 'Version 1', elements: [] })
+    const snapshot = await publishLayout('loc-1')
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/locations/loc-1/layout/publish',
+      { method: 'POST' },
+    )
+    expect(snapshot.version).toBe(1)
+  })
+
+  it('lists versions newest first, unwrapping the items envelope', async () => {
+    mockedApiFetch.mockResolvedValue({
+      items: [
+        { version: 2, label: 'Version 2', elements: [] },
+        { version: 1, label: 'Version 1', elements: [] },
+      ],
+    })
+    const versions = await listLayoutVersions('loc-1')
+    expect(versions.map((v) => v.version)).toEqual([2, 1])
+    expect(mockedApiFetch).toHaveBeenCalledWith('/locations/loc-1/layout/versions')
+  })
+
+  it('treats a location with no published versions as an empty list', async () => {
+    mockedApiFetch.mockResolvedValue({ items: [] })
+    expect(await listLayoutVersions('loc-1')).toEqual([])
+  })
+
+  it('activates a version with no body, on the numbered path', async () => {
+    mockedApiFetch.mockResolvedValue({
+      status: 'active',
+      version: 1,
+      effectiveFrom: '2026-09-10T10:00:00Z',
+    })
+    const res = await activateLayoutVersion('loc-1', 1)
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/locations/loc-1/layout/versions/1/activate',
+      { method: 'POST' },
+    )
+    expect(res.status).toBe('active')
+  })
+
+  it('reports a scheduled cutover rather than pretending the switch happened', async () => {
+    mockedApiFetch.mockResolvedValue({
+      status: 'pending',
+      version: 2,
+      currentVersion: 1,
+      cutoverAt: '2026-10-08T01:00:00Z',
+    })
+    const res = await activateLayoutVersion('loc-1', 2)
+    expect(res).toMatchObject({
+      status: 'pending',
+      currentVersion: 1,
+      cutoverAt: '2026-10-08T01:00:00Z',
+    })
+  })
+
+  it('explains a 409 as a pending cutover, not a concurrent edit', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError(409, 'cutover pending'))
+    await expect(activateLayoutVersion('loc-1', 3)).rejects.toThrow(
+      /versionsbyte är redan inbokat/,
+    )
+  })
+
+  it('maps 403 on activate to the permission message (staff may not activate)', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
+    await expect(activateLayoutVersion('loc-1', 1)).rejects.toThrow(
+      /inte behörighet/,
+    )
+  })
+
+  it('maps 403 on publish to the permission message (staff may not publish)', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
+    await expect(publishLayout('loc-1')).rejects.toThrow(/inte behörighet/)
+  })
+
+  it('URL-encodes the location id', async () => {
+    mockedApiFetch.mockResolvedValue({ items: [] })
+    await listLayoutVersions('loc 1')
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/locations/loc%201/layout/versions',
+    )
   })
 })
 

@@ -1,23 +1,21 @@
 /**
- * MOCKDATA — ersätts med backend-anrop när API:t är på plats:
- *   const settings = await apiFetch<RestaurantSettings>('/settings')
- * (se src/shared/api.ts och docs/BACKEND-KOPPLING.md)
+ * MOCKDATA för de delar av Inställningar som ännu saknar API: betalningar
+ * (Stripe-status) och avbokningspolicyn. Ersätts med backend-anrop när de
+ * endpointsen finns — se docs/BACKEND-KOPPLING.md.
  *
- * Personal & behörigheter är ett undantag: invite/redigera/ta bort/av-
- * aktivera/byt roll går redan mot det riktiga /users/*-API:t (se
- * usersApi.ts). Listan i InstallningarPage.tsx startar tom (inte mockad) —
- * det finns ingen GET/lista-endpoint än, så den fylls bara på med det som
- * bjuds in/ändras under den aktuella sidladdningen och återställs vid
- * omladdning tills en list-endpoint finns.
+ * Personal & behörigheter innehåller INGEN mockdata: listan hämtas från
+ * GET /list-users och alla åtgärder går mot /users/*-API:t (usersApi.ts).
+ * Restaurangprofilen nedan är startvärden för "skapa plats"-formuläret,
+ * som skrivs över av GET /locations/{id} så snart en plats finns.
  */
 
 import type { BusinessHours } from './locationApi'
 
 /**
- * Namn/adress/telefon/e-post/öppettider är förifyllda startvärden för
- * "skapa plats"-formuläret — se InstallningarPage.tsx. Telefon och e-post
- * finns inte i Location-schemat (bara namn/adress/tidszon/öppettider/
- * bokningspolicy gör), så de fälten stannar lokala oavsett.
+ * Restaurangens grunduppgifter. Namn och adress kommer från Location-API:t
+ * (GET /locations/{id}) och skickas tillbaka vid sparning. Telefon och
+ * e-post finns INTE i Location-schemat, så de fälten är lokala och sparas
+ * ingenstans — se kommentaren i InstallningarPage.tsx.
  */
 export interface RestaurantProfile {
   name: string
@@ -33,25 +31,41 @@ export interface CancellationPolicy {
   autoCharge: boolean
 }
 
-export const MOCK_PROFILE: RestaurantProfile = {
-  name: 'KÄLLA',
-  phone: '08-123 45 67',
-  address: 'Sveavägen 42, Stockholm',
-  email: 'info@kallarestaurang.se',
+/**
+ * Tomt formulär för en plats som ännu inte finns. Fälten fylls antingen av
+ * GET /locations/{id} eller av den som skapar platsen.
+ *
+ * De var tidigare förifyllda med en påhittad restaurang, vilket var direkt
+ * riskabelt: ett tryck på "Spara ändringar" utan att redigera hade skapat en
+ * RIKTIG plats med den påhittade datan i databasen.
+ */
+export const EMPTY_PROFILE: RestaurantProfile = {
+  name: '',
+  phone: '',
+  address: '',
+  email: '',
 }
 
-export const MOCK_TIMEZONE = 'Europe/Stockholm'
-export const MOCK_BOOKING_DURATION_HOURS = 2
-export const MOCK_GRACE_PERIOD_HOURS = 0.25
+/**
+ * Neutrala startvärden — inte mockdata, utan rimliga utgångspunkter som ändå
+ * måste bekräftas av användaren. Tidszonen är den enda svenska restauranger
+ * rimligen har, och API:t kräver ett giltigt IANA-namn. Bokningslängden och
+ * grace-perioden måste vara giltiga (> 0 respektive ≥ 0) för att formuläret
+ * ska gå att skicka — noll hade bara gett ett valideringsfel direkt.
+ */
+export const DEFAULT_TIMEZONE = 'Europe/Stockholm'
+export const DEFAULT_BOOKING_DURATION_HOURS = 2
+export const DEFAULT_GRACE_PERIOD_HOURS = 0.25
 
-export const MOCK_BUSINESS_HOURS: BusinessHours = {
-  monday: [{ opensAt: '11:30', closesAt: '22:00' }],
-  tuesday: [{ opensAt: '11:30', closesAt: '22:00' }],
-  wednesday: [{ opensAt: '11:30', closesAt: '22:00' }],
-  thursday: [{ opensAt: '11:30', closesAt: '22:00' }],
-  friday: [{ opensAt: '11:30', closesAt: '23:30' }],
-  saturday: [{ opensAt: '12:00', closesAt: '23:30' }],
-  sunday: [{ opensAt: '12:00', closesAt: '21:00' }],
+/** Inga öppettider förifyllda — de sätts per restaurang. */
+export const EMPTY_BUSINESS_HOURS: BusinessHours = {
+  monday: [],
+  tuesday: [],
+  wednesday: [],
+  thursday: [],
+  friday: [],
+  saturday: [],
+  sunday: [],
 }
 
 export const MOCK_POLICY: CancellationPolicy = {

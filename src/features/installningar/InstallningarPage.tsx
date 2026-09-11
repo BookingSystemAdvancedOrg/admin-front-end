@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import {
-  MOCK_BOOKING_DURATION_HOURS,
-  MOCK_BUSINESS_HOURS,
-  MOCK_GRACE_PERIOD_HOURS,
+  DEFAULT_BOOKING_DURATION_HOURS,
+  DEFAULT_GRACE_PERIOD_HOURS,
+  DEFAULT_TIMEZONE,
+  EMPTY_BUSINESS_HOURS,
+  EMPTY_PROFILE,
   MOCK_POLICY,
-  MOCK_PROFILE,
   MOCK_STRIPE,
-  MOCK_TIMEZONE,
 } from './data'
 import type { CancellationPolicy, RestaurantProfile } from './data'
 import { BusinessHoursEditor } from './BusinessHoursEditor'
@@ -39,6 +39,11 @@ import {
   updateUserProfile,
 } from './usersApi'
 import type { User } from './usersApi'
+import {
+  clearLocationSummaryCache,
+  resolveLocationId,
+  useLocationId,
+} from '../../shared/location'
 
 const ROLE_LABEL: Record<User['role'], string> = {
   staff: 'Personal',
@@ -46,10 +51,6 @@ const ROLE_LABEL: Record<User['role'], string> = {
   super_admin: 'Systemadmin',
 }
 
-// Det finns ingen "hämta min plats"-endpoint, bara GET /locations/{id} - så
-// vi minns vilken plats som hör till den här restaurangen lokalt, i väntan
-// på en riktigare koppling (t.ex. platsen på den inloggades User-post).
-const LOCATION_ID_STORAGE_KEY = 'admin-location-id'
 
 type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
 
@@ -63,22 +64,26 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * behöver för att kunna spara.
  *
  * Personal & behörigheter går mot det riktiga /users/*-API:t (usersApi.ts);
- * listan hämtas från GET /users vid sidladdning.
+ * listan hämtas från GET /list-users vid sidladdning. Ingen mockdata.
  *
  * Betalningar/Avbokningspolicy kör fortfarande på ren mockdata.
  */
 export default function InstallningarPage() {
   const { sub, groups } = useAuth()
-  const [profile, setProfile] = useState<RestaurantProfile>(MOCK_PROFILE)
-  const [timezone, setTimezone] = useState(MOCK_TIMEZONE)
-  const [businessHours, setBusinessHours] = useState<BusinessHours>(MOCK_BUSINESS_HOURS)
+  const [profile, setProfile] = useState<RestaurantProfile>(EMPTY_PROFILE)
+  const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE)
+  const [businessHours, setBusinessHours] =
+    useState<BusinessHours>(EMPTY_BUSINESS_HOURS)
   const [bookingDurationHours, setBookingDurationHours] = useState(
-    MOCK_BOOKING_DURATION_HOURS,
+    DEFAULT_BOOKING_DURATION_HOURS,
   )
-  const [gracePeriodHours, setGracePeriodHours] = useState(MOCK_GRACE_PERIOD_HOURS)
-  const [locationId, setLocationId] = useState<string | null>(() =>
-    localStorage.getItem(LOCATION_ID_STORAGE_KEY),
+  const [gracePeriodHours, setGracePeriodHours] = useState(
+    DEFAULT_GRACE_PERIOD_HOURS,
   )
+  // Plats-ID:t kan saknas i den här webbläsaren även när platsen finns i
+  // databasen — hooken letar då upp det via användarlistan.
+  const { locationId, setLocationId, resolving: resolvingLocation } =
+    useLocationId(sub)
   const [locationError, setLocationError] = useState<string | null>(null)
   const [savingLocation, setSavingLocation] = useState(false)
   // Senast sparade värden, för att kunna skicka bara det som ändrats i PUT:en.
@@ -172,6 +177,10 @@ export default function InstallningarPage() {
     setSaved(false)
     setLocationError(null)
 
+    // Spara-knappen är spärrad medan platsen letas upp, men gardera ändå —
+    // en sparning utan känt plats-id hade skapat en dubblettplats.
+    if (resolvingLocation) return
+
     const firstError =
       validateLocationName(profile.name) ??
       validateAddress(profile.address) ??
@@ -195,7 +204,15 @@ export default function InstallningarPage() {
 
     setSavingLocation(true)
     try {
-      if (locationId && savedLocation) {
+      if (locationId) {
+        if (!savedLocation) {
+          // Platsen finns men uppgifterna kunde inte hämtas — att ramla ner
+          // i skapa-grenen här var det som gav dubblettplatser förr.
+          setLocationError(
+            'Platsens sparade uppgifter kunde inte hämtas — ladda om sidan och försök igen.',
+          )
+          return
+        }
         // API:t kräver minst ett fält i uppdateringen, så en tom diff får
         // aldrig skickas iväg.
         const updates = locationChanges(savedLocation, values)
@@ -206,11 +223,25 @@ export default function InstallningarPage() {
         await updateLocation(locationId, updates)
         setSavedLocation(values)
       } else {
+        // Sista koll mot servern innan något skapas: har restaurangen redan
+        // en plats (t.ex. sparad från en annan enhet) ska den återanvändas,
+        // aldrig dubbleras.
+        const existing = await resolveLocationId(sub)
+        if (existing) {
+          setLocationId(existing)
+          setLocationError(
+            'Restaurangen har redan en sparad plats — uppgifterna hämtas nu. ' +
+              'Kontrollera dem och spara igen.',
+          )
+          return
+        }
         const created = await createLocation(values)
         setLocationId(created.locationId)
-        localStorage.setItem(LOCATION_ID_STORAGE_KEY, created.locationId)
         setSavedLocation(values)
       }
+      // Skalets namn/adress är cachade — töm så sidebar och topbar visar
+      // de nya uppgifterna direkt i stället för de gamla.
+      clearLocationSummaryCache()
       setSaved(true)
     } catch (err) {
       setLocationError(err instanceof Error ? err.message : 'Kunde inte spara platsen.')
@@ -299,7 +330,7 @@ export default function InstallningarPage() {
             <button
               type="button"
               className="btn primary square"
-              disabled={savingLocation}
+              disabled={savingLocation || resolvingLocation}
               onClick={handleSaveAll}
             >
               {savingLocation ? 'Sparar…' : 'Spara ändringar'}
@@ -313,9 +344,11 @@ export default function InstallningarPage() {
             <div>
               <h2 className="card-title">Restaurangprofil</h2>
               <p className="cell-muted">
-                {locationId
-                  ? `Plats-ID: ${locationId} — ändringar sparas med "Spara ändringar".`
-                  : 'Grundläggande information om din restaurang. Sparas som en ny plats i backend, och krävs innan layouten kan sparas.'}
+                {resolvingLocation
+                  ? 'Letar efter restaurangens plats…'
+                  : locationId
+                    ? `Plats-ID: ${locationId} — ändringar sparas med "Spara ändringar".`
+                    : 'Grundläggande information om din restaurang. Sparas som en ny plats i backend, och krävs innan layouten kan sparas.'}
               </p>
             </div>
           </div>
@@ -340,6 +373,7 @@ export default function InstallningarPage() {
                 value={profile.phone}
                 onChange={(e) => updateProfile('phone', e.target.value)}
               />
+              <p className="cell-muted">Sparas inte — saknas i API:t.</p>
             </div>
             <div className="form-field">
               <label htmlFor="rp-address">Adress</label>
@@ -357,6 +391,7 @@ export default function InstallningarPage() {
                 value={profile.email}
                 onChange={(e) => updateProfile('email', e.target.value)}
               />
+              <p className="cell-muted">Sparas inte — saknas i API:t.</p>
             </div>
             <div className="form-field">
               <label htmlFor="rp-timezone">Tidszon</label>

@@ -26,7 +26,7 @@ async function fillValidInvite(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('StaffModal — invite mode', () => {
-  it('only offers the "Personal" role when the caller is just owner_user', () => {
+  it('offers Personal and Ägare, but not Systemadmin, when the caller is owner_user', () => {
     render(
       <StaffModal
         title="Bjud in personal"
@@ -39,8 +39,32 @@ describe('StaffModal — invite mode', () => {
     )
     const roleSelect = screen.getByLabelText('Roll') as HTMLSelectElement
     const options = Array.from(roleSelect.options).map((o) => o.textContent)
-    expect(options).toEqual(['Personal'])
-    expect(roleSelect).toBeDisabled()
+    expect(options).toEqual(['Personal', 'Ägare'])
+    expect(roleSelect).toBeEnabled()
+  })
+
+  it('lets an owner submit an owner invite without a Plats-ID', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    render(
+      <StaffModal
+        title="Bjud in personal"
+        initial={null}
+        callerGroups={['owner_user']}
+        lockRole={false}
+        onSave={onSave}
+        onCancel={vi.fn()}
+      />,
+    )
+    await fillValidInvite(user)
+    await user.selectOptions(screen.getByLabelText('Roll'), 'Ägare')
+    await user.click(screen.getByRole('button', { name: 'Skicka inbjudan' }))
+
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ group: 'owner_user', locationId: '' }),
+      ),
+    )
   })
 
   it('offers all three roles when the caller is super_user', () => {
@@ -167,6 +191,33 @@ describe('StaffModal — invite mode', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'E-postadressen finns redan.',
+    )
+  })
+
+  it('locks Plats-ID to the restaurants location when a default is provided', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    render(
+      <StaffModal
+        title="Bjud in personal"
+        initial={null}
+        callerGroups={['owner_user']}
+        lockRole={false}
+        defaultLocationId="loc-restaurant"
+        onSave={onSave}
+        onCancel={vi.fn()}
+      />,
+    )
+    const locationInput = screen.getByLabelText('Plats-ID') as HTMLInputElement
+    expect(locationInput).toHaveValue('loc-restaurant')
+    expect(locationInput).toHaveAttribute('readonly')
+
+    await fillValidInvite(user)
+    await user.click(screen.getByRole('button', { name: 'Skicka inbjudan' }))
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ locationId: 'loc-restaurant' }),
+      ),
     )
   })
 

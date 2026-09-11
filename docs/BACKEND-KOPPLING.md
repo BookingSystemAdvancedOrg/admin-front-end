@@ -9,11 +9,27 @@ Alla admin-sidor är byggda och fungerar, men kör på **mockdata**. Det här do
 | Översikt | `src/features/oversikt/OversiktPage.tsx` (inline) | `GET /dashboard` |
 | Bokningar | `src/features/bokningar/data.ts` | `GET /reservations` |
 | Meny | `src/features/meny/data.ts` | `GET/POST/PUT/DELETE /menu` |
-| Layout-editorn | **Kopplad** via `layout-editor/layoutApi.ts` | `GET/POST/PUT/DELETE /locations/{id}/layout-elements/items` |
-| Inställningar | `src/features/installningar/data.ts` | `GET/PUT /settings`, `GET /staff` |
+| Layout-editorn | **Kopplad** via `layout-editor/layoutApi.ts` | `…/layout-elements/items` (CRUD) + `…/layout/publish`, `…/layout/versions` |
+| Inställningar — personal | **Kopplad**: `GET /list-users` + `/users/*` (`usersApi.ts`) | — |
+| Inställningar — restaurangprofil | **Kopplad**: `/locations` (`locationApi.ts`) | — |
+| Inställningar — betalning/policy | `src/features/installningar/data.ts` | `GET/PUT /settings` |
 
-**Layout-editorn** läser in sin layout vid sidladdning och skriver den vid
-"Publicera layout". API:ts datamodell är plattare än editorns, så fyra saker
+**Layout-editorn** läser in sitt utkast vid sidladdning. "Spara utkast"
+skriver elementen, och "Publicera layout" sparar först utkastet och fryser
+det sedan till en numrerad version (`POST …/layout/publish`).
+
+Under **Versioner** listas de publicerade ögonblicksbilderna, och en av dem
+kan aktiveras (`POST …/layout/versions/{n}/activate`). Aktiveringen sker
+omedelbart bara när ingen version gäller ännu — finns redan en gällande
+version schemalägger API:t bytet till 01:00 UTC fyra veckor fram, och svaret
+blir `pending` med en `cutoverAt`. Modalen visar den skillnaden, eftersom ett
+schemalagt byte annars ser ut som ett genomfört. Att begära en annan version
+medan ett byte väntar ger `409`.
+
+Den aktiva layouten är också det `GET …/availability` läser bord ur, så
+kedjan spara → publicera → aktivera → bokningsbara tider hänger ihop.
+
+API:ts datamodell är plattare än editorns, så fyra saker
 kan inte sparas och lever bara lokalt: **markytor**, **inventarier** (kassan),
 **extra våningar** (API:t har en elementlista per plats, inte per våning) och
 **bordens etiketter**. Dessutom lagras entré och kökets ingång båda som

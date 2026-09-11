@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
+import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
+import { getStoredLocationId, useLocationId } from '../../shared/location'
+import { LayoutVersionsModal } from './LayoutVersionsModal'
 import {
   GRID,
   OPENING_LABEL,
@@ -23,7 +26,9 @@ import type {
 } from './data'
 import {
   listLayoutElements,
+  listLayoutVersions,
   loadLayoutExtras,
+  publishLayout,
   saveFloor,
   saveLayoutExtras,
   toDoorKinds,
@@ -116,9 +121,6 @@ interface GroundDraft {
   h: number
 }
 
-/** Samma nyckel som Inställningar sparar platsen under. */
-const LOCATION_ID_STORAGE_KEY = 'admin-location-id'
-
 const OPENING_TOOLS: { tool: Tool; kind: OpeningKind; warn: string }[] = [
   { tool: 'window', kind: 'window', warn: 'Fönster kan bara placeras på en vägg — rita väggen först.' },
   { tool: 'entrance', kind: 'entrance', warn: 'Entrén kan bara placeras på en vägg — rita väggen först.' },
@@ -140,6 +142,12 @@ const OPENING_TOOLS: { tool: Tool; kind: OpeningKind; warn: string }[] = [
  * datamodell och lever bara lokalt — se kommentaren i layoutApi.ts.
  */
 export default function LayoutEditorPage() {
+  // Den faktiskt inloggade användaren — statusraden visade tidigare ett
+  // påhittat namn ("Anna") oavsett vem som satt vid tangentbordet.
+  const { email: editorEmail, sub: editorSub, groups } = useAuth()
+  const canActivate =
+    groups.includes('owner_user') || groups.includes('super_user')
+  const editorName = editorEmail ? editorEmail.split('@')[0] : ''
   // Editorn startar tom och fylls av serverns layout. Ingen mockdata visas
   // först — den hann annars blinka förbi innan inläsningen var klar.
   const [floors, setFloors] = useState<Floor[]>(() => [emptyFloor(1)])
@@ -158,10 +166,12 @@ export default function LayoutEditorPage() {
   const [versionLabel, setVersionLabel] = useState('')
   // Utan en sparad plats finns inget layout-API att prata med — då kör
   // editorn vidare på mockdatan som förut.
-  const [locationId] = useState<string | null>(() =>
-    localStorage.getItem(LOCATION_ID_STORAGE_KEY),
-  )
+  // Samma återhämtning som i Inställningar: en ny webbläsare känner inte
+  // till plats-ID:t även om layouten finns sparad i databasen.
+  const { locationId, resolving: resolvingLocation } = useLocationId(editorSub)
   const [publishing, setPublishing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [showVersions, setShowVersions] = useState(false)
   const [layoutError, setLayoutError] = useState<string | null>(null)
   const sceneRef = useRef<HTMLDivElement>(null)
   const warnTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -212,16 +222,14 @@ export default function LayoutEditorPage() {
         ])
         setCurrentFloorId('floor-1')
         setSelection(null)
-        setVersionLabel(
-          elements.length === 0
-            ? 'Ingen sparad layout än'
-            : `${elements.length} sparade element`,
-        )
         setStatusText(
           elements.length === 0
-            ? 'Tom layout — rita och publicera för att spara.'
-            : 'Inläst från servern.',
+            ? 'Tom layout — rita och spara för att komma igång.'
+            : `Utkast inläst från servern — ${elements.length} element.`,
         )
+        void versionLabelFor(locationId).then((label) => {
+          if (!cancelled) setVersionLabel(label)
+        })
       })
       .catch((err) => {
         if (!cancelled) {
@@ -876,46 +884,87 @@ export default function LayoutEditorPage() {
     markDirty()
   }
 
-  async function publish() {
-    if (!locationId) {
-      setLayoutError(
-        'Ingen plats är sparad än — skapa restaurangens plats under ' +
-          'Inställningar innan layouten kan publiceras.',
-      )
-      return
-    }
+  async function refreshVersionLabel() {
+    const loc = getStoredLocationId()
+    if (loc) setVersionLabel(await versionLabelFor(loc))
+  }
+
+  function requireLocation(): string | null {
+    if (locationId) return locationId
+    setLayoutError(
+      'Ingen plats är sparad än — skapa restaurangens plats under ' +
+        'Inställningar innan layouten kan sparas.',
+    )
+    return null
+  }
+
+  /** Skriver utkastet till API:t. Returnerar false om något gick fel. */
+  async function saveDraft(): Promise<boolean> {
+    const loc = requireLocation()
+    if (!loc) return false
     setLayoutError(null)
-    setPublishing(true)
+    setSaving(true)
     try {
       // API:t har en enda elementlista per plats, inte en per våning, så
       // bara den första våningen kan sparas.
-      const result = await saveFloor(locationId, floors[0])
+      const result = await saveFloor(loc, floors[0])
       // Markytor, kassan och skillnaden entré/kök kan API:t inte lagra — de
       // sparas lokalt så att de åtminstone finns kvar efter en omladdning.
       // Dörrtyperna nycklas om till serverns id:n för det som just skapats.
       const doorKinds = toDoorKinds(floors[0].openings, result.idMap)
-      saveLayoutExtras(locationId, {
+      saveLayoutExtras(loc, {
         grounds: floors[0].grounds,
         fixtures: floors[0].fixtures,
         doorKinds,
       })
       const loaded = toFloorElements(result.elements, doorKinds)
       // Läs in serverns svar igen: nyskapade element får sina riktiga
-      // elementId, vilket nästa publicering behöver för att se dem som
+      // elementId, vilket nästa sparning behöver för att se dem som
       // befintliga istället för att skapa dubbletter.
       setFloors((prev) => [{ ...prev[0], ...loaded }, ...prev.slice(1)])
       setSelection(null)
-      setVersionLabel(`${result.elements.length} sparade element`)
       setStatusText(
-        `Publicerad — ${result.created} nya, ${result.updated} ändrade, ` +
+        `Utkast sparat — ${result.created} nya, ${result.updated} ändrade, ` +
           `${result.deleted} borttagna.` +
           (floors.length > 1
             ? ` Endast ${floors[0].name} sparas — API:t har ingen våningsmodell.`
             : ''),
       )
+      return true
     } catch (err) {
       setLayoutError(
-        err instanceof Error ? err.message : 'Kunde inte publicera layouten.',
+        err instanceof Error ? err.message : 'Kunde inte spara utkastet.',
+      )
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /**
+   * Sparar utkastet och fryser det till en numrerad version. Ordningen är
+   * viktig: publish kopierar det som ligger i utkastet på servern, så
+   * osparade ändringar skulle annars inte komma med i versionen.
+   */
+  async function publish() {
+    const loc = requireLocation()
+    if (!loc) return
+    if (!(await saveDraft())) return
+    setPublishing(true)
+    try {
+      const snapshot = await publishLayout(loc)
+      await refreshVersionLabel()
+      setStatusText(
+        `Publicerad som version ${snapshot.version}. ` +
+          // En ny version är alltid inaktiv — den börjar gälla först när
+          // någon aktiverar den under "Versioner".
+          'Den gäller inte förrän du aktiverar den under Versioner.',
+      )
+    } catch (err) {
+      setLayoutError(
+        err instanceof Error
+          ? `Utkastet sparades, men publiceringen misslyckades: ${err.message}`
+          : 'Kunde inte publicera layouten.',
       )
     } finally {
       setPublishing(false)
@@ -952,13 +1001,26 @@ export default function LayoutEditorPage() {
         actions={
           <span className="row-actions">
             <span className="cell-muted">{versionLabel}</span>
-            <button type="button" className="btn outline">
-              Förhandsgranska
+            <button
+              type="button"
+              className="btn outline"
+              disabled={!locationId}
+              onClick={() => setShowVersions(true)}
+            >
+              Versioner
+            </button>
+            <button
+              type="button"
+              className="btn outline"
+              disabled={saving || publishing}
+              onClick={saveDraft}
+            >
+              {saving && !publishing ? 'Sparar…' : 'Spara utkast'}
             </button>
             <button
               type="button"
               className="btn primary"
-              disabled={publishing}
+              disabled={saving || publishing}
               onClick={publish}
             >
               {publishing ? 'Publicerar…' : 'Publicera layout'}
@@ -967,7 +1029,7 @@ export default function LayoutEditorPage() {
         }
       />
       <div className="admin-main">
-        {!locationId && (
+        {!locationId && !resolvingLocation && (
           <p className="form-error" role="alert">
             Layouten sparas inte: ingen restaurangplats är skapad än. Gå till
             Inställningar och spara restaurangprofilen först — layouten lagras
@@ -1447,11 +1509,45 @@ export default function LayoutEditorPage() {
           <span className="grow" role={layoutError ? 'alert' : undefined}>
             {layoutError ?? statusText}
           </span>
-          <span>{floor.name} · Redigeras av Anna (personal)</span>
+          <span>
+            {floor.name}
+            {editorName ? ` · Redigeras av ${editorName}` : ''}
+          </span>
         </div>
       </div>
+
+      {showVersions && locationId && (
+        <LayoutVersionsModal
+          locationId={locationId}
+          canActivate={canActivate}
+          onClose={() => setShowVersions(false)}
+          onActivated={refreshVersionLabel}
+        />
+      )}
     </>
   )
+}
+
+/**
+ * Etiketten i topbaren visar vilken version som GÄLLER, inte bara den senast
+ * publicerade — en publicerad version är inaktiv tills någon aktiverat den,
+ * och den skillnaden är hela poängen med versionshanteringen.
+ *
+ * Ligger utanför komponenten för att vara stabil: den anropas både från en
+ * effekt och från modalen, utan att bli ett beroende som triggar omkörning.
+ */
+async function versionLabelFor(locationId: string): Promise<string> {
+  try {
+    const versions = await listLayoutVersions(locationId)
+    if (versions.length === 0) return 'Aldrig publicerad'
+    const current = versions.find((v) => v.isCurrent)
+    return current
+      ? `Gäller: ${current.label}`
+      : `${versions[0].label} · ej aktiverad`
+  } catch {
+    // Utan versionslista är utkastet ändå inläst — visa inget hellre än fel.
+    return ''
+  }
 }
 
 /** Innehållets omslutande rektangel — styr auto-zoom och centrering. */

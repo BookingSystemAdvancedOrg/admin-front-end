@@ -83,10 +83,14 @@ describe('canInvite', () => {
     expect(canInvite(['owner_user'], 'staff_user')).toBe(true)
   })
 
-  it('requires super_user to invite owner_user or super_user', () => {
-    expect(canInvite(['owner_user'], 'owner_user')).toBe(false)
-    expect(canInvite(['owner_user'], 'super_user')).toBe(false)
+  it('lets owners invite other owners, but not staff', () => {
+    expect(canInvite(['owner_user'], 'owner_user')).toBe(true)
+    expect(canInvite(['staff_user'], 'owner_user')).toBe(false)
     expect(canInvite(['super_user'], 'owner_user')).toBe(true)
+  })
+
+  it('requires super_user to invite super_user', () => {
+    expect(canInvite(['owner_user'], 'super_user')).toBe(false)
     expect(canInvite(['super_user'], 'super_user')).toBe(true)
   })
 })
@@ -177,10 +181,11 @@ describe('request shaping', () => {
     })
   })
 
-  it('listUsers GETs /users and unwraps the { items: [...] } envelope', async () => {
+  it('listUsers GETs /list-users and unwraps the { items: [...] } envelope', async () => {
     mockedApiFetch.mockResolvedValue({ items: [baseUser] })
     expect(await listUsers()).toEqual([baseUser])
-    expect(mockedApiFetch).toHaveBeenCalledWith('/users')
+    // Inte /users: den sökvägen fångas av /users/{cognitoSub}.
+    expect(mockedApiFetch).toHaveBeenCalledWith('/list-users')
   })
 
   it('listUsers returns an empty list when items is missing', async () => {

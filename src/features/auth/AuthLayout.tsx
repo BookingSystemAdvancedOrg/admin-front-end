@@ -10,12 +10,15 @@ export function AuthLayout({ children }: { children: ReactNode }) {
     <div className="auth-screen">
       <div className="auth-inner">
         <div className="auth-logo">
+          {/* Ingen restaurang namnges: inloggningsskärmen visas utloggad, så
+              platsens riktiga namn går inte att hämta. Byt gärna till
+              produktens eget varumärke när det är bestämt. */}
           <span className="auth-logo-badge" aria-hidden="true">
-            K
+            A
           </span>
           <span className="auth-logo-text">
-            <strong>KÄLLA</strong>
-            <span>Admin</span>
+            <strong>Admin</strong>
+            <span>Bokningssystem</span>
           </span>
         </div>
         <section className="auth-card">{children}</section>

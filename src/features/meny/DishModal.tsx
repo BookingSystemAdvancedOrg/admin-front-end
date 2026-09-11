@@ -2,18 +2,30 @@ import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { CATEGORY_LABEL } from './data'
 import type { Dish, DishCategory } from './data'
+import { validateDishName, validateDishPrice } from './menuApi'
 
 export interface DishFormValues {
   name: string
+  description: string
   category: DishCategory
   price: number
   active: boolean
-  image: string | null
+  /**
+   * Nyvald bildfil att ladda upp till S3, eller null när bilden inte bytts.
+   * Förhandsvisningen i dialogen är en lokal data-URL; den riktiga nyckeln
+   * skapas av sidan via uploadMenuImage när rätten sparas.
+   */
+  imageFile: File | null
 }
 
 /**
- * Popup för att lägga till eller redigera en rätt: valfri bild, namn,
+ * Popup för att lägga till eller redigera en rätt: bild, namn, beskrivning,
  * kategori, pris och aktiv-status. Samma dialog för båda flödena.
+ *
+ * API:t kräver en bild när en rätt skapas (imageKey är obligatoriskt och
+ * kan inte vara tomt), så "Lägg till rätt" är spärrad tills en bild valts.
+ * Vid redigering kan bilden bara bytas, inte tas bort — kontraktet tillåter
+ * inte en tom imageKey.
  */
 export function DishModal({
   title,
@@ -23,18 +35,21 @@ export function DishModal({
 }: {
   title: string
   initial: Dish | null
-  onSave: (values: DishFormValues) => void
+  onSave: (values: DishFormValues) => Promise<void>
   onCancel: () => void
 }) {
   const [name, setName] = useState(initial?.name ?? '')
+  const [description, setDescription] = useState(initial?.description ?? '')
   const [category, setCategory] = useState<DishCategory>(
     initial?.category ?? 'varmratter',
   )
-  const [price, setPrice] = useState(
-    initial ? String(initial.price) : '',
-  )
+  const [price, setPrice] = useState(initial ? String(initial.price) : '')
   const [active, setActive] = useState(initial?.active ?? true)
-  const [image, setImage] = useState<string | null>(initial?.image ?? null)
+  // Förhandsvisning: befintlig CDN-bild eller data-URL för nyvald fil.
+  const [preview, setPreview] = useState<string | null>(initial?.image ?? null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Stäng med Escape.
@@ -49,37 +64,62 @@ export function DishModal({
   function onPickImage(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    setImageFile(file)
     const reader = new FileReader()
-    reader.onload = () => setImage(String(reader.result))
+    reader.onload = () => setPreview(String(reader.result))
     reader.readAsDataURL(file)
-    // så att samma fil kan väljas igen efter "Ta bort bild"
+    // så att samma fil kan väljas igen efter ett byte
     e.target.value = ''
   }
 
-  const parsedPrice = Number(price.replace(/[^\d]/g, ''))
-  const valid = name.trim().length > 0 && price.trim() !== '' && parsedPrice >= 0
+  // Tillåt både "195" och "129,50"/"129.50" — API:t tar högst två decimaler.
+  const parsedPrice = Number(price.replace(/[^\d.,]/g, '').replace(',', '.'))
+  const priceError =
+    price.trim() === '' ? 'Pris krävs.' : validateDishPrice(parsedPrice)
+  const nameError = validateDishName(name)
+  // En helt ny rätt kan inte skapas utan bild (API-kravet); en befintlig
+  // rätt har redan sin imageKey och behöver ingen ny fil.
+  const imageError =
+    !initial && !imageFile ? 'En bild krävs för att skapa rätten.' : null
+  const valid = !nameError && !priceError && !imageError
 
-  function save() {
-    if (!valid) return
-    onSave({
-      name: name.trim(),
-      category,
-      price: parsedPrice,
-      active,
-      image,
-    })
+  async function save() {
+    if (busy || !valid) return
+    setError(null)
+    setBusy(true)
+    try {
+      await onSave({
+        name: name.trim(),
+        description: description.trim(),
+        category,
+        price: parsedPrice,
+        active,
+        imageFile,
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Kunde inte spara.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
-    <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && onCancel()}>
+    <div
+      className="modal-overlay"
+      onPointerDown={(e) => e.target === e.currentTarget && onCancel()}
+    >
       <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
         <h2>{title}</h2>
 
         <div className="form-field">
-          <label>Bild (frivilligt)</label>
+          <label>{initial ? 'Bild' : 'Bild (krävs)'}</label>
           <div className="dish-upload">
-            {image ? (
-              <img className="dish-upload-preview" src={image} alt="Förhandsvisning" />
+            {preview ? (
+              <img
+                className="dish-upload-preview"
+                src={preview}
+                alt="Förhandsvisning"
+              />
             ) : (
               <span className="dish-placeholder large" aria-hidden="true">
                 🍽
@@ -91,21 +131,12 @@ export function DishModal({
                 className="btn outline square"
                 onClick={() => fileRef.current?.click()}
               >
-                {image ? 'Byt bild' : 'Ladda upp bild'}
+                {preview ? 'Byt bild' : 'Ladda upp bild'}
               </button>
-              {image && (
-                <button
-                  type="button"
-                  className="link-action danger"
-                  onClick={() => setImage(null)}
-                >
-                  Ta bort bild
-                </button>
-              )}
               <input
                 ref={fileRef}
                 type="file"
-                accept="image/*"
+                accept="image/avif,image/jpeg,image/png,image/webp"
                 hidden
                 onChange={onPickImage}
               />
@@ -120,6 +151,16 @@ export function DishModal({
             value={name}
             placeholder="t.ex. Smörstekt Torskrygg"
             onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="dish-description">Beskrivning (frivilligt)</label>
+          <input
+            id="dish-description"
+            value={description}
+            placeholder="t.ex. Serveras med brynt smör och pepparrot"
+            onChange={(e) => setDescription(e.target.value)}
           />
         </div>
 
@@ -142,7 +183,7 @@ export function DishModal({
             <label htmlFor="dish-price">Pris (kr)</label>
             <input
               id="dish-price"
-              inputMode="numeric"
+              inputMode="decimal"
               placeholder="t.ex. 195"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
@@ -164,6 +205,12 @@ export function DishModal({
           />
         </div>
 
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+
         <div className="modal-actions">
           <button type="button" className="btn outline square" onClick={onCancel}>
             Avbryt
@@ -171,10 +218,10 @@ export function DishModal({
           <button
             type="button"
             className="btn primary square"
-            disabled={!valid}
+            disabled={!valid || busy}
             onClick={save}
           >
-            {initial ? 'Spara ändringar' : 'Lägg till rätt'}
+            {busy ? 'Sparar…' : initial ? 'Spara ändringar' : 'Lägg till rätt'}
           </button>
         </div>
       </div>

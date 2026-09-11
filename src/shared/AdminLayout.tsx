@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../features/auth/useAuth'
+import { useLocationSummary } from './location'
 import './admin.css'
 
 // Sidebar-länkarna. `end: true` gör att '/' bara markeras aktiv på exakt
@@ -19,6 +20,10 @@ const NAV: { to: string; label: string; end?: boolean }[] = [
  */
 export function AdminLayout() {
   const { email, logout } = useAuth()
+  // Restaurangens riktiga namn i stället för ett hårdkodat. Panelen kan
+  // hantera flera platser, så en fast logotyptext hade varit fel för alla
+  // utom en av dem.
+  const location = useLocationSummary()
   // Visningsnamn = det som står innan '@' i e-posten, t.ex. "anna@..." -> "anna".
   const displayName = email ? email.split('@')[0] : 'Personal'
   const initial = (displayName[0] ?? 'K').toUpperCase()
@@ -28,9 +33,9 @@ export function AdminLayout() {
       <aside className="admin-sidebar">
         <div className="admin-logo">
           <span className="admin-logo-badge" aria-hidden="true">
-            K
+            {(location?.name[0] ?? 'R').toUpperCase()}
           </span>
-          <span className="admin-logo-name">KÄLLA</span>
+          <span className="admin-logo-name">{location?.name ?? 'Restaurang'}</span>
           <span className="admin-logo-tag">ADMIN</span>
         </div>
 

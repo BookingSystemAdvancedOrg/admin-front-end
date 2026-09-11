@@ -19,8 +19,12 @@ import {
 // Mock-inloggningen (bara i npm run dev) har ingen riktig Cognito-session, så
 // den ges den mest tillåtande gruppen för att kunna testa hela gränssnittet
 // lokalt, inklusive personal-CRUD:et som kräver owner_user/super_user.
-const MOCK_SUB = 'mock-dev-sub'
-const MOCK_GROUPS = ['super_user']
+// Tomma i produktionsbygget, precis som uppgifterna i mockAuth.ts: identiteten
+// kan ändå aldrig aktiveras där (getMockSessionEmail() är DEV-bunden), och då
+// ska varken det påhittade subet eller super_user-gruppen ligga i den publika
+// bundeln och se ut som en bakdörr.
+const MOCK_SUB = import.meta.env.DEV ? 'mock-dev-sub' : ''
+const MOCK_GROUPS = import.meta.env.DEV ? ['super_user'] : []
 
 /**
  * Håller hela inloggningsläget för appen: vem som är inloggad, om ett

@@ -45,8 +45,11 @@ async function toApiError(res: Response): Promise<ApiError> {
  * backend-spec:ens 401-beskrivning).
  * Används när sidorna kopplas från mockdata till riktigt API, t.ex.:
  *
- *   const bokningar = await apiFetch<Reservation[]>('/reservations')
- *   await apiFetch('/menu', { method: 'POST', body: JSON.stringify(dish) })
+ *   const users = await apiFetch<{ items: User[] }>('/list-users')
+ *   await apiFetch(`/locations/${id}/menu/items`, {
+ *     method: 'POST',
+ *     body: JSON.stringify(dish),
+ *   })
  */
 export async function apiFetch<T>(
   path: string,

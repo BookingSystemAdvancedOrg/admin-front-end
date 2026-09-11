@@ -43,6 +43,9 @@ export interface Location extends LocationCreateRequest {
   locationId: string
   createdBy: string
   createdAt: string
+  /** Sätts av API:t vid en faktisk ändring; en no-op PUT lämnar dem orörda. */
+  updatedBy?: string
+  updatedAt?: string
 }
 
 const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/
@@ -117,7 +120,12 @@ export function validateBusinessHours(hours: BusinessHours): string | null {
   return null
 }
 
-/** Mappar API:ts { error: string } + statuskod till svenska meddelanden. */
+/**
+ * Mappar API:ts { error: string } + statuskod till svenska meddelanden.
+ * Statuskoden bevaras (felet förblir en ApiError) så att anropare kan
+ * reagera på t.ex. 404 — "platsen finns inte" är ett tillstånd att hantera,
+ * inte bara en text att visa (se location.ts som rensar döda id:n).
+ */
 function toFriendlyLocationError(err: unknown): Error {
   if (!(err instanceof ApiError)) {
     return err instanceof Error ? err : new Error('Ett okänt fel inträffade.')
@@ -127,21 +135,24 @@ function toFriendlyLocationError(err: unknown): Error {
 
   switch (err.status) {
     case 400:
-      return new Error(err.message)
+      return new ApiError(400, err.message)
     case 401:
-      return new Error('Du är inte inloggad längre. Logga in igen.')
+      return new ApiError(401, 'Du är inte inloggad längre. Logga in igen.')
     case 403:
-      return new Error('Du har inte behörighet att göra detta.')
+      return new ApiError(403, 'Du har inte behörighet att göra detta.')
     case 404:
-      return new Error('Platsen hittades inte.')
+      return new ApiError(404, 'Platsen hittades inte.')
     case 409:
-      return new Error('En plats med det ID:t finns redan — testa igen.')
+      return new ApiError(409, 'En plats med det ID:t finns redan — testa igen.')
     case 501:
-      return new Error('Den här funktionen är inte klar på serversidan än.')
+      return new ApiError(501, 'Den här funktionen är inte klar på serversidan än.')
     case 503:
-      return new Error('Tjänsten är tillfälligt otillgänglig. Försök igen om en stund.')
+      return new ApiError(
+        503,
+        'Tjänsten är tillfälligt otillgänglig. Försök igen om en stund.',
+      )
     default:
-      return new Error(err.message || `Serverfel (${err.status}).`)
+      return new ApiError(err.status, err.message || `Serverfel (${err.status}).`)
   }
 }
 
@@ -151,6 +162,20 @@ async function call<T>(fn: () => Promise<T>): Promise<T> {
   } catch (err) {
     throw toFriendlyLocationError(err)
   }
+}
+
+/**
+ * GET /locations — hela platskatalogen. Kräver owner_user/super_user, så
+ * personal får 403 här och måste hitta sin plats på annat sätt.
+ *
+ * Systemet driftsätts med en instans per kund, så listan innehåller i
+ * praktiken exakt en plats: restaurangen det här systemet tillhör.
+ */
+export function listLocations(): Promise<Location[]> {
+  return call(async () => {
+    const res = await apiFetch<{ items?: Location[] }>('/locations')
+    return res.items ?? []
+  })
 }
 
 export function createLocation(input: LocationCreateRequest): Promise<Location> {

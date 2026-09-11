@@ -394,6 +394,98 @@ export function deleteLayoutElement(
   )
 }
 
+/* --- Publicerade versioner ----------------------------------------------- */
+
+/**
+ * En publicerad ögonblicksbild av layouten. Innehållet är oföränderligt:
+ * publish kopierar utkastet till en ny numrerad version och rör inga äldre.
+ */
+export interface PublishedLayoutSnapshot {
+  version: number
+  label: string
+  /** Om versionen är den som gäller. Publish sätter alltid `false` — API:t
+   *  har ingen aktiveringsrutt än, så en publicerad version blir aldrig
+   *  gällande av sig själv. */
+  isCurrent: boolean
+  effectiveFrom: string | null
+  effectiveTo: string | null
+  expiresAt: string | null
+  elements: LayoutElement[]
+  createdBy: string
+  createdAt: string
+  updatedBy: string
+  updatedAt: string
+}
+
+/** POST .../layout/publish — utan body; API:t numrerar och etiketterar själv. */
+export function publishLayout(
+  locationId: string,
+): Promise<PublishedLayoutSnapshot> {
+  return call(() =>
+    apiFetch<PublishedLayoutSnapshot>(
+      `/locations/${encodeURIComponent(locationId)}/layout/publish`,
+      { method: 'POST' },
+    ),
+  )
+}
+
+/**
+ * Svaret från en aktivering. Diskrimineras på `status`, eftersom API:t
+ * svarar 200 för "gäller nu" och 202 för "schemalagt byte" — och `apiFetch`
+ * skiljer inte på statuskoderna.
+ */
+export type LayoutActivation =
+  | { status: 'active'; version: number; effectiveFrom: string }
+  | {
+      status: 'pending'
+      version: number
+      currentVersion: number
+      cutoverAt: string
+    }
+
+/**
+ * POST .../layout/versions/{n}/activate — utan body.
+ *
+ * Aktiveringen är omedelbar bara när platsen saknar gällande version. Finns
+ * redan en, schemaläggs bytet till 01:00 UTC fyra veckor fram och svaret blir
+ * `pending`. Att upprepa samma begäran är ofarligt, men att begära en ANNAN
+ * version medan ett byte väntar ger 409.
+ */
+export async function activateLayoutVersion(
+  locationId: string,
+  version: number,
+): Promise<LayoutActivation> {
+  try {
+    return await apiFetch<LayoutActivation>(
+      `/locations/${encodeURIComponent(locationId)}/layout/versions/${version}/activate`,
+      { method: 'POST' },
+    )
+  } catch (err) {
+    // 409 betyder här något annat än i resten av layout-API:t: ett byte till
+    // en annan version är redan inbokat. Den generiska "ändrades samtidigt"
+    // hade pekat användaren helt fel.
+    if (err instanceof ApiError && err.status === 409) {
+      throw new Error(
+        'Ett versionsbyte är redan inbokat. Vänta tills det genomförts, ' +
+          'eller aktivera om den version som redan väntar.',
+      )
+    }
+    throw toFriendlyLayoutError(err)
+  }
+}
+
+/** GET .../layout/versions — nyast först enligt kontraktet. */
+export function listLayoutVersions(
+  locationId: string,
+): Promise<PublishedLayoutSnapshot[]> {
+  return call(async () => {
+    const res = await apiFetch<{ items?: PublishedLayoutSnapshot[] }>(
+      `/locations/${encodeURIComponent(locationId)}/layout/versions`,
+    )
+    return res.items ?? []
+  })
+}
+
 /* --- Synkronisering ------------------------------------------------------ */
 
 export interface LayoutDiff {

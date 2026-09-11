@@ -94,9 +94,22 @@ export function validateLocationId(
   return null
 }
 
-/** Kan caller bjuda in någon till den här gruppen? Speglar _authorize_invite. */
+/**
+ * Kan caller bjuda in någon till den här gruppen? Personal får vem som helst
+ * bjuda in; ägare får även bjuda in andra ägare (en restaurang kan ha flera
+ * delägare); bara super_user får sätta super_user.
+ *
+ * OBS: backendens _authorize_invite (functions/manage-user/app.py) måste
+ * tillåta owner_user -> owner_user också, annars svarar servern 403 trots
+ * att valet visas här.
+ */
 export function canInvite(callerGroups: string[], group: CognitoGroup): boolean {
   if (group === 'staff_user') return true
+  if (group === 'owner_user') {
+    return (
+      callerGroups.includes('owner_user') || callerGroups.includes('super_user')
+    )
+  }
   return callerGroups.includes('super_user')
 }
 
@@ -180,26 +193,34 @@ async function call<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /**
- * GET /users — "List visible internal users". Kontraktet: { items: [...] },
+ * GET /list-users — "List visible internal users". Kontraktet: { items: [...] },
  * redan sorterad av backend (namn skiftlägesokänsligt, sen cognitoSub).
  * Vilka som syns avgörs av callerns roll: super_user ser alla, owner ser
  * sin personal + sig själv.
+ *
+ * Sökvägen är medvetet inte /users: den hade krockat med /users/{cognitoSub},
+ * som fångar allt under /users/ som ett cognitoSub.
  */
 export async function listUsers(): Promise<User[]> {
   try {
-    const res = await apiFetch<{ items?: User[] }>('/users')
+    const res = await apiFetch<{ items?: User[] }>('/list-users')
     return res.items ?? []
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
       // 404 här betyder att rutten saknas (inte att en användare saknas).
       throw new Error(
-        'Listan kan inte hämtas — GET /users är inte deployad på API:t än.',
+        'Listan kan inte hämtas — GET /list-users är inte deployad på API:t än.',
       )
     }
     throw toFriendlyUserError(err)
   }
 }
 
+/**
+ * GET /users/{cognitoSub}. Används inte av någon sida än — listan täcker
+ * behovet — men hör till kontraktet och finns här för den som behöver läsa
+ * om en enskild användare efter en samtidig ändring (409).
+ */
 export function getUser(cognitoSub: string): Promise<User> {
   return call(() => apiFetch<User>(`/users/${encodeURIComponent(cognitoSub)}`))
 }

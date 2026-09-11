@@ -57,8 +57,13 @@ export function StaffModal({
   const [group, setGroup] = useState<CognitoGroup>(
     initial ? roleToGroup(initial.role) : 'staff_user',
   )
+  // Finns restaurangens plats-id förifylls det och låses: all personal ska
+  // kopplas till samma plats automatiskt, även en post som av misstag pekar
+  // på ett gammalt id rättas när den sparas. Fältet är bara skrivbart när
+  // inget id kunnat hämtas (t.ex. innan platsen är skapad).
+  const lockLocation = Boolean(defaultLocationId)
   const [locationId, setLocationId] = useState(
-    initial?.locationId ?? defaultLocationId ?? '',
+    defaultLocationId ?? initial?.locationId ?? '',
   )
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -117,7 +122,7 @@ export function StaffModal({
             <input
               id="staff-name"
               value={name}
-              placeholder="t.ex. Anna Svensson"
+              placeholder="Förnamn Efternamn"
               onChange={(e) => setName(e.target.value)}
             />
           </div>
@@ -128,7 +133,7 @@ export function StaffModal({
               id="staff-email"
               type="email"
               value={email}
-              placeholder="anna@kallarestaurang.se"
+              placeholder="namn@domän.se"
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
@@ -169,9 +174,15 @@ export function StaffModal({
                 <input
                   id="staff-location"
                   value={locationId}
-                  placeholder="t.ex. 154b5c59-..."
+                  placeholder="Plats-ID (UUID)"
+                  readOnly={lockLocation}
                   onChange={(e) => setLocationId(e.target.value)}
                 />
+                {lockLocation && (
+                  <p className="cell-muted">
+                    Kopplas automatiskt till restaurangens plats.
+                  </p>
+                )}
               </div>
             )}
           </div>

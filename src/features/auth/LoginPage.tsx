@@ -48,7 +48,9 @@ export default function LoginPage() {
     <AuthLayout>
       <div className="auth-heading">
         <h1>Logga in</h1>
-        <p>Personal &amp; ägare — KÄLLA Sveavägen 42</p>
+        {/* Ingen restaurang namnges här: sidan visas utloggad, så platsens
+            riktiga uppgifter går inte att hämta ännu. */}
+        <p>Personal &amp; ägare</p>
       </div>
 
       <form className="auth-form" onSubmit={handleSubmit}>
@@ -59,7 +61,7 @@ export default function LoginPage() {
               id="login-email"
               type="email"
               autoComplete="email"
-              placeholder="anna@kallarestaurang.se"
+              placeholder="namn@domän.se"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required

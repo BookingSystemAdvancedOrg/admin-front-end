@@ -557,6 +557,11 @@
   color: #7a3d99;
 }
 
+.status-badge.cat-drycker {
+  background: #dde9f2;
+  color: #2b5f8a;
+}
+
 .dish-swatch {
   display: block;
   width: 56px;

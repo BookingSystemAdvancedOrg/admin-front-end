@@ -44,9 +44,9 @@ beforeEach(() => {
 describe('field validation (mirrors create-location Lambda rules)', () => {
   it('requires a non-blank name and address', () => {
     expect(validateName('')).not.toBeNull()
-    expect(validateName('KÄLLA')).toBeNull()
+    expect(validateName('Restaurangen')).toBeNull()
     expect(validateAddress('')).not.toBeNull()
-    expect(validateAddress('Sveavägen 42')).toBeNull()
+    expect(validateAddress('Gatan 1')).toBeNull()
   })
 
   it('requires a non-blank timezone', () => {
@@ -150,7 +150,7 @@ describe('request shaping', () => {
 
 describe('updateLocation', () => {
   const base = {
-    name: 'Källa',
+    name: 'Test AB',
     address: 'Storgatan 1',
     timezone: 'Europe/Stockholm',
     businessHours: emptyBusinessHours(),

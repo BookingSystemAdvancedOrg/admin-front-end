@@ -106,8 +106,10 @@ jobs:
       - name: Lint
         run: npm run lint --if-present
 
+      # Ingen extra flagga: `npm test` kör `vitest run`, som redan är
+      # engångsläget för CI. `--ci` är en Jest-flagga som vitest avvisar.
       - name: Test
-        run: npm test --if-present -- --ci
+        run: npm test --if-present
 
       - name: Build
         run: npm run build

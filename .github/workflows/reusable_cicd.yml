@@ -11,7 +11,10 @@ on:
         description: Node version used for install/build
         required: false
         type: string
-        default: "20"
+        # 20 kraschar i testerna: jsdoms undici träffar
+        # "webidl.util.markAsUncloneable is not a function" på Node 20.
+        # 24 är aktuell LTS och samma major som utvecklingsmiljön.
+        default: "24"
 
 permissions:
   contents: read

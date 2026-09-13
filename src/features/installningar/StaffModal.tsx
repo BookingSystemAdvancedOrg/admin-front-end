@@ -86,7 +86,11 @@ export function StaffModal({
   const nameError = validateName(name)
   const emailError = validateEmail(email)
   const phoneError = validatePhone(phone)
-  const locationError = validateLocationId(group, locationId)
+  // Validera det värde som faktiskt skickas: ägare/systemadmin skickas alltid
+  // med tomt Plats-ID (fältet är dolt då), så det förifyllda värdet som
+  // ligger kvar i state efter ett rollbyte får inte spärra knappen.
+  const effectiveLocationId = group === 'staff_user' ? locationId.trim() : ''
+  const locationError = validateLocationId(group, effectiveLocationId)
   const valid = !nameError && !emailError && !phoneError && !locationError
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -100,7 +104,7 @@ export function StaffModal({
         email: email.trim(),
         phone: phone.trim(),
         group,
-        locationId: group === 'staff_user' ? locationId.trim() : '',
+        locationId: effectiveLocationId,
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kunde inte spara.')

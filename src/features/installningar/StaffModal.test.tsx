@@ -221,6 +221,35 @@ describe('StaffModal — invite mode', () => {
     )
   })
 
+  it('lets a super_user invite an owner even when Plats-ID was prefilled', async () => {
+    // Regression: det förifyllda plats-id:t låg kvar i state när rollen
+    // byttes till Ägare (fältet döljs då) och spärrade skicka-knappen.
+    const user = userEvent.setup()
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    render(
+      <StaffModal
+        title="Bjud in personal"
+        initial={null}
+        callerGroups={['super_user']}
+        lockRole={false}
+        defaultLocationId="loc-restaurant"
+        onSave={onSave}
+        onCancel={vi.fn()}
+      />,
+    )
+    await fillValidInvite(user)
+    await user.selectOptions(screen.getByLabelText('Roll'), 'Ägare')
+
+    const submit = screen.getByRole('button', { name: 'Skicka inbjudan' })
+    expect(submit).toBeEnabled()
+    await user.click(submit)
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ group: 'owner_user', locationId: '' }),
+      ),
+    )
+  })
+
   it('calls onCancel on Escape', async () => {
     const user = userEvent.setup()
     const onCancel = vi.fn()

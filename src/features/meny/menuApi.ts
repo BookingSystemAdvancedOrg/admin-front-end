@@ -49,11 +49,17 @@ export interface MenuItem {
   updatedAt: string
 }
 
-/** Den publika menyns kundvända form — inga auditfält, bara aktiva rätter. */
+/**
+ * Den publika menyns kundvända form — inga auditfält, bara aktiva rätter.
+ * `active` är med som frivilligt fält: backend-teamet har beskrivit en
+ * variant där samma rutt ger fulla listan (inkl. inaktiva) till inloggade,
+ * och då ska flaggan respekteras i stället för att antas vara sann.
+ */
 export type PublicMenuItem = Pick<
   MenuItem,
   'menuItemId' | 'name' | 'description' | 'price' | 'category' | 'imageKey'
->
+> &
+  Partial<Pick<MenuItem, 'active'>>
 
 /** Alla sex fälten krävs vid skapande enligt kontraktet. */
 export interface MenuItemCreate {
@@ -99,9 +105,9 @@ export function toDish(item: MenuItem): Dish {
   }
 }
 
-/** Publika menyn saknar aktiv-flaggan — allt den returnerar ÄR aktivt. */
+/** Saknas aktiv-flaggan är allt som returneras aktivt; finns den gäller den. */
 export function publicToDish(item: PublicMenuItem): Dish {
-  return toDish({ ...item, active: true } as MenuItem)
+  return toDish({ ...item, active: item.active ?? true } as MenuItem)
 }
 
 /**

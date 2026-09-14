@@ -83,6 +83,19 @@ describe('toDish', () => {
     expect(dish.active).toBe(true)
     expect(dish.category).toBe('drycker')
   })
+
+  it('respects an explicit active flag when the menu route returns one', () => {
+    const dish = publicToDish({
+      menuItemId: 'm3',
+      name: 'Paj',
+      description: '',
+      price: 95,
+      category: 'mains',
+      imageKey: 'k',
+      active: false,
+    })
+    expect(dish.active).toBe(false)
+  })
 })
 
 describe('validateDishPrice', () => {

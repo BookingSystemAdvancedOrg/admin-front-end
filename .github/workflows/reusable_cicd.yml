@@ -31,6 +31,7 @@ jobs:
       distribution_id: ${{ steps.vars.outputs.distribution_id }}
       aws_region: ${{ steps.vars.outputs.aws_region }}
       api_base_url: ${{ steps.vars.outputs.api_base_url }}
+      menu_image_base_url: ${{ steps.vars.outputs.menu_image_base_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -87,6 +88,17 @@ jobs:
           fi
           echo "api_base_url=$API_BASE_URL" >> "$GITHUB_OUTPUT"
 
+          # Same rules for the menu-image CDN: public, optional. Without it
+          # uploaded images are stored but rendered as placeholders, since the
+          # API only returns S3 keys, never a viewable URL.
+          MENU_IMAGE_VAR="VITE_MENU_IMAGE_BASE_URL_${SUFFIX}"
+          MENU_IMAGE_BASE_URL="${!MENU_IMAGE_VAR:-}"
+          if [ -z "$MENU_IMAGE_BASE_URL" ] || [[ "$MENU_IMAGE_BASE_URL" == *REPLACE_ME* ]]; then
+            echo "::warning::VITE_MENU_IMAGE_BASE_URL for environment '${{ inputs.environment }}' is missing or a placeholder in $ENV_FILE - menu images will render as placeholders."
+            MENU_IMAGE_BASE_URL=""
+          fi
+          echo "menu_image_base_url=$MENU_IMAGE_BASE_URL" >> "$GITHUB_OUTPUT"
+
   build:
     needs: config
     runs-on: ubuntu-latest
@@ -118,6 +130,7 @@ jobs:
         run: npm run build
         env:
           VITE_API_BASE_URL: ${{ needs.config.outputs.api_base_url }}
+          VITE_MENU_IMAGE_BASE_URL: ${{ needs.config.outputs.menu_image_base_url }}
 
       - name: Verify dist/ output
         run: |

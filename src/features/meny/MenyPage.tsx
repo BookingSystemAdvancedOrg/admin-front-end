@@ -26,6 +26,31 @@ import './meny.css'
 type ModalState = { mode: 'add' } | { mode: 'edit'; id: string } | null
 
 /**
+ * Rättens bild med platshållare som reserv. Bild-URL:en byggs från
+ * VITE_MENU_IMAGE_BASE_URL + imageKey; pekar basen fel (eller saknas
+ * CDN-regeln) svarar CDN:et med HTML och webbläsaren hade visat en trasig
+ * ikon — då är platshållaren ärligare, och felet syns i nätverksfliken.
+ */
+function DishImage({ src, alt }: { src: string | null; alt: string }) {
+  const [failed, setFailed] = useState(false)
+  if (!src || failed) {
+    return (
+      <span className="dish-placeholder" aria-hidden="true">
+        🍽
+      </span>
+    )
+  }
+  return (
+    <img
+      className="dish-photo"
+      src={src}
+      alt={alt}
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
+/**
  * Figma: admin-meny-page (34:2). Kopplad mot det riktiga meny-API:t
  * (menuApi.ts) — rätterna hämtas från databasen per plats, och alla
  * ändringar (lägg till, redigera, aktiv-växel, radera) skrivs dit.
@@ -233,13 +258,7 @@ export default function MenyPage() {
                 {dishes.map((d) => (
                   <tr key={d.id}>
                     <td>
-                      {d.image ? (
-                        <img className="dish-photo" src={d.image} alt={d.name} />
-                      ) : (
-                        <span className="dish-placeholder" aria-hidden="true">
-                          🍽
-                        </span>
-                      )}
+                      <DishImage src={d.image} alt={d.name} />
                     </td>
                     <td className="cell-strong">
                       {d.name}

@@ -5,7 +5,9 @@ import type { Dish } from './data'
 import {
   CATEGORY_FROM_API,
   CATEGORY_TO_API,
+  MENU_IMAGE_BASE_URL,
   MENU_ROUTES_MISSING_MESSAGE,
+  menuImageUrl,
   dishChanges,
   getPublicMenu,
   isMenuRoutesMissing,
@@ -67,8 +69,25 @@ describe('toDish', () => {
       active: true,
       imageKey: 'locations/loc-1/menu/img-1.webp',
     })
-    // Utan VITE_MENU_IMAGE_BASE_URL kan nyckeln inte bli en visningsbar URL.
-    expect(dish.image).toBeNull()
+    // Bild-URL:en beror på VITE_MENU_IMAGE_BASE_URL (satt i .env lokalt,
+    // inte i CI): finns basen är den <bas>/<imageKey>, annars null.
+    expect(dish.image).toBe(
+      MENU_IMAGE_BASE_URL
+        ? `${MENU_IMAGE_BASE_URL}/locations/loc-1/menu/img-1.webp`
+        : null,
+    )
+  })
+
+  it('builds the CDN URL as base + "/" + imageKey, never doubling slashes', () => {
+    expect(menuImageUrl('')).toBeNull()
+    if (MENU_IMAGE_BASE_URL) {
+      expect(MENU_IMAGE_BASE_URL.endsWith('/')).toBe(false)
+      expect(menuImageUrl('menu-images/locations/x/menu/y.png')).toBe(
+        `${MENU_IMAGE_BASE_URL}/menu-images/locations/x/menu/y.png`,
+      )
+    } else {
+      expect(menuImageUrl('menu-images/locations/x/menu/y.png')).toBeNull()
+    }
   })
 
   it('treats every public-menu item as active', () => {

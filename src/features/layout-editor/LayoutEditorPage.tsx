@@ -29,11 +29,12 @@ import {
   listLayoutVersions,
   loadLayoutExtras,
   publishLayout,
-  saveFloor,
+  saveLayout,
   saveLayoutExtras,
   toDoorKinds,
-  toFloorElements,
+  toFloors,
 } from './layoutApi'
+import type { FloorExtras } from './layoutApi'
 import './layout-editor.css'
 
 const TILT_DEG = 55
@@ -136,9 +137,9 @@ const OPENING_TOOLS: { tool: Tool; kind: OpeningKind; warn: string }[] = [
  * väggarna: väggen förblir hel, öppningen glider längs den när den
  * flyttas eller förlängs, och följer med om väggen flyttas.
  *
- * Väggar, öppningar och bord synkas mot det riktiga layout-API:t
- * (layoutApi.ts): de läses in vid sidladdning och skrivs vid "Publicera
- * layout". Markytor, kassan och extra våningar finns inte i API:ts
+ * Våningar, väggar, öppningar och bord synkas mot det riktiga layout-API:t
+ * (layoutApi.ts): de läses in vid sidladdning och skrivs vid "Spara
+ * utkast"/"Publicera layout". Markytor och kassan finns inte i API:ts
  * datamodell och lever bara lokalt — se kommentaren i layoutApi.ts.
  */
 export default function LayoutEditorPage() {
@@ -199,33 +200,25 @@ export default function LayoutEditorPage() {
     }
   }, [])
 
-  // Läs in den sparade layouten. Markytor och kassan finns inte i API:t, så
-  // en inläst våning börjar utan dem — bara väggar, öppningar och bord.
+  // Läs in den sparade layouten: våningar med sitt innehåll. Markytor,
+  // kassan och dörrtyperna kommer från webbläsaren — API:t kan inte lagra
+  // dem.
   useEffect(() => {
     if (!locationId) return
     let cancelled = false
     listLayoutElements(locationId)
       .then((elements) => {
         if (cancelled) return
-        // Markytor, kassan och dörrtyperna kommer från webbläsaren — API:t
-        // kan inte lagra dem.
-        const extras = loadLayoutExtras(locationId)
-        const loaded = toFloorElements(elements, extras.doorKinds)
-        setFloors([
-          {
-            id: 'floor-1',
-            name: 'Våning 1',
-            grounds: extras.grounds,
-            fixtures: extras.fixtures,
-            ...loaded,
-          },
-        ])
-        setCurrentFloorId('floor-1')
+        const loaded = toFloors(elements, loadLayoutExtras(locationId))
+        setFloors(loaded)
+        setCurrentFloorId(loaded[0].id)
         setSelection(null)
+        const drawn = elements.filter((e) => e.type !== 'floor').length
         setStatusText(
-          elements.length === 0
+          drawn === 0
             ? 'Tom layout — rita och spara för att komma igång.'
-            : `Utkast inläst från servern — ${elements.length} element.`,
+            : `Utkast inläst från servern — ${drawn} element på ${loaded.length} ` +
+                (loaded.length === 1 ? 'våning.' : 'våningar.'),
         )
         void versionLabelFor(locationId).then((label) => {
           if (!cancelled) setVersionLabel(label)
@@ -905,29 +898,43 @@ export default function LayoutEditorPage() {
     setLayoutError(null)
     setSaving(true)
     try {
-      // API:t har en enda elementlista per plats, inte en per våning, så
-      // bara den första våningen kan sparas.
-      const result = await saveFloor(loc, floors[0])
+      const result = await saveLayout(loc, floors)
       // Markytor, kassan och skillnaden entré/kök kan API:t inte lagra — de
       // sparas lokalt så att de åtminstone finns kvar efter en omladdning.
-      // Dörrtyperna nycklas om till serverns id:n för det som just skapats.
-      const doorKinds = toDoorKinds(floors[0].openings, result.idMap)
-      saveLayoutExtras(loc, {
+      // Allt nycklas om till serverns id:n för det som just skapats, så att
+      // en ny vånings kassa hittas igen under våningens riktiga id.
+      const serverId = (localId: string) => result.idMap.get(localId) ?? localId
+      const doorKinds = toDoorKinds(
+        floors.flatMap((f) => f.openings),
+        result.idMap,
+      )
+      const byFloor: Record<string, FloorExtras> = {}
+      for (const f of floors) {
+        byFloor[serverId(f.id)] = { grounds: f.grounds, fixtures: f.fixtures }
+      }
+      const extras = {
         grounds: floors[0].grounds,
         fixtures: floors[0].fixtures,
         doorKinds,
-      })
-      const loaded = toFloorElements(result.elements, doorKinds)
-      // Läs in serverns svar igen: nyskapade element får sina riktiga
-      // elementId, vilket nästa sparning behöver för att se dem som
+        byFloor,
+      }
+      saveLayoutExtras(loc, extras)
+      // Läs in serverns svar igen: nyskapade element (och våningar) får sina
+      // riktiga elementId, vilket nästa sparning behöver för att se dem som
       // befintliga istället för att skapa dubbletter.
-      setFloors((prev) => [{ ...prev[0], ...loaded }, ...prev.slice(1)])
+      const reloaded = toFloors(result.elements, extras)
+      // I platt reservläge finns bara första våningen på servern — de andra
+      // behålls lokalt så att inget ritat försvinner.
+      const next = result.flat ? [reloaded[0], ...floors.slice(1)] : reloaded
+      setFloors(next)
+      const current = serverId(floor.id)
+      setCurrentFloorId(next.some((f) => f.id === current) ? current : next[0].id)
       setSelection(null)
       setStatusText(
         `Utkast sparat — ${result.created} nya, ${result.updated} ändrade, ` +
           `${result.deleted} borttagna.` +
-          (floors.length > 1
-            ? ` Endast ${floors[0].name} sparas — API:t har ingen våningsmodell.`
+          (result.flat && floors.length > 1
+            ? ` Servern saknar våningsstöd — bara ${floors[0].name} sparades.`
             : ''),
       )
       return true

@@ -1,7 +1,9 @@
 import { apiFetch, ApiError } from '../../shared/api'
-import { tableSize } from './data'
+import { WORKSPACE, tableSize } from './data'
 import type {
+  Fixture,
   Floor,
+  GroundRect,
   Opening,
   OpeningKind,
   TableElement,
@@ -11,22 +13,27 @@ import type {
 /**
  * Klient mot backendens /locations/{id}/layout-elements/*-endpoints.
  *
- * API:t lagrar en PLATT lista av 3D-element (wall/door/window/table) med
- * meter som enhet, medan editorn arbetar i 2D-rutnätsenheter med våningar,
- * markytor och inventarier. Den här filen är översättningen mellan de två
- * modellerna — se `toApiElements`/`toFloorElements`.
+ * API:t lagrar en PLATT lista av 3D-element (floor/wall/door/window/table)
+ * med meter som enhet, medan editorn arbetar i 2D-rutnätsenheter med
+ * våningar, markytor och inventarier. Den här filen är översättningen
+ * mellan de två modellerna — se `toApiLayout`/`toFloors`.
+ *
+ * Våningar: en våning är ett `floor`-element (`name`, `level`), och varje
+ * vägg/öppning/bord bär `floorId` till sin våning. Vid publicering kräver
+ * API:t att alla element hör till en våning i samma utkast. En äldre,
+ * platt layout (utan våningar) läses in som en enda våning och migreras
+ * automatiskt vid nästa sparning.
  *
  * Vad som INTE går att spara (API:ts datamodell saknar fälten helt, och
  * alla scheman är `additionalProperties: false` så det finns ingen plats
  * att gömma dem i):
  *   - markytor (grounds) och inventarier som kassan (fixtures) — spec:en
  *     säger uttryckligen "`decor` is not supported by the current data model"
- *   - flera våningar — listan är per plats, inte per våning
  *   - bordens etiketter (T1, T2 …) — återskapas vid inläsning
  *   - skillnaden entré/kökets ingång — båda lagras som `door`
  */
 
-export type ApiElementType = 'wall' | 'door' | 'window' | 'table'
+export type ApiElementType = 'floor' | 'wall' | 'door' | 'window' | 'table'
 
 export interface LayoutElement {
   elementId: string
@@ -42,6 +49,11 @@ export interface LayoutElement {
   seats?: number
   zone?: string
   wallId?: string
+  /** Bara våningar: namn och signerad ordning (0 = entréplan). */
+  name?: string
+  level?: number
+  /** Bara icke-våningar: elementId för våningen elementet står på. */
+  floorId?: string
   updatedBy: string
   updatedAt: string
 }
@@ -64,6 +76,8 @@ export const UNITS_PER_METER = 50
 
 /** Höjder i meter. Editorns 2D-vy har ingen höjd, så de är konstanta. */
 const TABLE_HEIGHT_M = 0.75
+/** Takhöjd — våningen som volym; editorn har ingen egen siffra för det. */
+const FLOOR_HEIGHT_M = 3
 const WALL_HEIGHT_M = 1.8
 const WALL_THICKNESS_M = 0.2
 const DOOR_HEIGHT_M = 2
@@ -81,6 +95,26 @@ function round(n: number): number {
 }
 
 /* --- Editor -> API ------------------------------------------------------- */
+
+/**
+ * Våningen som volym: hela arbetsytan, centrerad i origo. Editorn har ingen
+ * egen geometri för en våning, så måtten är arbetsytans — det som spelar
+ * roll för API:t är namnet, nivån och att barnen pekar hit.
+ */
+function floorToApi(floor: Floor, level: number): LayoutElementCreate {
+  return {
+    type: 'floor',
+    x: 0,
+    y: 0,
+    z: 0,
+    width: toM(WORKSPACE.w),
+    height: FLOOR_HEIGHT_M,
+    depth: toM(WORKSPACE.h),
+    rotationY: 0,
+    name: floor.name.trim() || `Våning ${level + 1}`,
+    level,
+  }
+}
 
 function wallToApi(w: WallSegment): LayoutElementCreate {
   const horizontal = w.dir === 'h'
@@ -141,26 +175,48 @@ function tableToApi(t: TableElement): LayoutElementCreate {
 }
 
 /**
- * Översätter en våning till API-element, nycklade på editorns lokala id så
- * att diffen mot serverns lista kan matcha ihop dem. Element utan giltig
- * geometri (nollängd) utelämnas — API:t kräver dimensioner > 0.
+ * Översätter en vånings innehåll till API-element, nycklade på editorns
+ * lokala id så att diffen mot serverns lista kan matcha ihop dem. Element
+ * utan giltig geometri (nollängd) utelämnas — API:t kräver dimensioner > 0.
+ * Med `floorId` stämplas varje element med sin våning (editorns lokala id;
+ * `saveLayout` byter det mot serverns när våningen skapats).
  */
-export function toApiElements(floor: Floor): Map<string, LayoutElementCreate> {
+export function toApiElements(
+  floor: Floor,
+  floorId?: string,
+): Map<string, LayoutElementCreate> {
   const out = new Map<string, LayoutElementCreate>()
   const wallById = new Map(floor.walls.map((w) => [w.id, w]))
+  const onFloor = (el: LayoutElementCreate): LayoutElementCreate =>
+    floorId ? { ...el, floorId } : el
 
   for (const w of floor.walls) {
-    if (w.length > 0) out.set(w.id, wallToApi(w))
+    if (w.length > 0) out.set(w.id, onFloor(wallToApi(w)))
   }
   for (const o of floor.openings) {
     const wall = wallById.get(o.wallId)
     if (!wall) continue
     const el = openingToApi(o, wall)
-    if (el) out.set(o.id, el)
+    if (el) out.set(o.id, onFloor(el))
   }
   for (const t of floor.tables) {
-    out.set(t.id, tableToApi(t))
+    out.set(t.id, onFloor(tableToApi(t)))
   }
+  return out
+}
+
+/**
+ * Hela layouten som API-element: ett `floor` per våning (nivå = ordningen i
+ * listan) följt av våningens innehåll med `floorId` satt. Våningens lokala
+ * id är nyckeln, så en ny våning och dess barn hänger ihop tills servern
+ * gett den ett riktigt elementId.
+ */
+export function toApiLayout(floors: Floor[]): Map<string, LayoutElementCreate> {
+  const out = new Map<string, LayoutElementCreate>()
+  floors.forEach((floor, level) => {
+    out.set(floor.id, floorToApi(floor, level))
+    for (const [id, el] of toApiElements(floor, floor.id)) out.set(id, el)
+  })
   return out
 }
 
@@ -226,7 +282,8 @@ function tableFromApi(el: LayoutElement, index: number): TableElement {
 }
 
 /**
- * Bygger våningens element ur API-listan. Markytor och inventarier blir
+ * Bygger en vånings innehåll ur en lista API-element. Våningselement
+ * ignoreras (de har ingen 2D-motsvarighet); markytor och inventarier blir
  * tomma — de finns inte i API:t.
  */
 export function toFloorElements(
@@ -252,21 +309,102 @@ export function toFloorElements(
   return { walls, openings, tables }
 }
 
+/** Editorns id för den enda våningen i en äldre, platt layout. */
+export const LEGACY_FLOOR_ID = 'floor-1'
+
+/**
+ * Bygger editorns våningar ur serverns lista. Finns `floor`-element blir
+ * varje sådant en våning (i nivåordning) och innehållet fördelas via
+ * `floorId`; element som saknar våning eller pekar på en okänd hamnar på
+ * den första, och rättas vid nästa sparning. Utan våningselement (äldre,
+ * platt layout) blir allt en enda våning. Markytor och inventarier hämtas
+ * ur det lokalt sparade, per våning.
+ */
+export function toFloors(
+  elements: LayoutElement[],
+  extras: LayoutExtras = EMPTY_EXTRAS,
+): Floor[] {
+  const floorElements = elements
+    .filter((e) => e.type === 'floor')
+    .sort(
+      (a, b) =>
+        (a.level ?? 0) - (b.level ?? 0) ||
+        a.elementId.localeCompare(b.elementId),
+    )
+
+  if (floorElements.length === 0) {
+    return [
+      {
+        id: LEGACY_FLOOR_ID,
+        name: 'Våning 1',
+        grounds: extras.grounds,
+        fixtures: extras.fixtures,
+        ...toFloorElements(elements, extras.doorKinds),
+      },
+    ]
+  }
+
+  const known = new Set(floorElements.map((f) => f.elementId))
+  return floorElements.map((f, i) => {
+    const own = elements.filter(
+      (e) =>
+        e.type !== 'floor' &&
+        (e.floorId === f.elementId ||
+          (i === 0 && (!e.floorId || !known.has(e.floorId)))),
+    )
+    // Första våningen ärver det gamla platta formatets markytor/inventarier
+    // så att en migrerad layout inte tappar kassan.
+    const local =
+      extras.byFloor[f.elementId] ??
+      (i === 0
+        ? { grounds: extras.grounds, fixtures: extras.fixtures }
+        : { grounds: [], fixtures: [] })
+    return {
+      id: f.elementId,
+      name: f.name?.trim() || `Våning ${i + 1}`,
+      grounds: local.grounds,
+      fixtures: local.fixtures,
+      ...toFloorElements(own, extras.doorKinds),
+    }
+  })
+}
+
 /* --- Lokalt sparat (det API:t inte kan lagra) ---------------------------- */
 
 const LOCAL_EXTRAS_KEY = 'admin-layout-extras'
+
+/** Markytor och inventarier — per våning. */
+export interface FloorExtras {
+  grounds: GroundRect[]
+  fixtures: Fixture[]
+}
 
 /**
  * Det API:t inte kan lagra — se filhuvudet. Utöver markytor och inventarier
  * ingår `doorKinds`: en karta elementId -> 'entrance' | 'kitchen', eftersom
  * API:t lagrar båda som `door` och annars läser tillbaka varje kök som en
- * entré.
+ * entré. `byFloor` nycklas på våningens elementId; `grounds`/`fixtures` på
+ * toppnivå är första våningens och finns kvar för äldre sparningar.
  */
-export interface LayoutExtras extends Pick<Floor, 'grounds' | 'fixtures'> {
+export interface LayoutExtras extends FloorExtras {
   doorKinds: Record<string, OpeningKind>
+  byFloor: Record<string, FloorExtras>
 }
 
-const EMPTY_EXTRAS: LayoutExtras = { grounds: [], fixtures: [], doorKinds: {} }
+const EMPTY_EXTRAS: LayoutExtras = {
+  grounds: [],
+  fixtures: [],
+  doorKinds: {},
+  byFloor: {},
+}
+
+function toFloorExtras(value: unknown): FloorExtras {
+  const p = (value ?? {}) as Partial<FloorExtras>
+  return {
+    grounds: Array.isArray(p.grounds) ? p.grounds : [],
+    fixtures: Array.isArray(p.fixtures) ? p.fixtures : [],
+  }
+}
 
 /**
  * Sparar det API:t inte kan lagra i webbläsaren, per plats. Det är en
@@ -279,13 +417,19 @@ export function loadLayoutExtras(locationId: string): LayoutExtras {
     const raw = localStorage.getItem(`${LOCAL_EXTRAS_KEY}:${locationId}`)
     if (!raw) return EMPTY_EXTRAS
     const parsed = JSON.parse(raw) as Partial<LayoutExtras>
+    const byFloor: Record<string, FloorExtras> = {}
+    if (parsed.byFloor && typeof parsed.byFloor === 'object') {
+      for (const [id, value] of Object.entries(parsed.byFloor)) {
+        byFloor[id] = toFloorExtras(value)
+      }
+    }
     return {
-      grounds: Array.isArray(parsed.grounds) ? parsed.grounds : [],
-      fixtures: Array.isArray(parsed.fixtures) ? parsed.fixtures : [],
+      ...toFloorExtras(parsed),
       doorKinds:
         parsed.doorKinds && typeof parsed.doorKinds === 'object'
           ? parsed.doorKinds
           : {},
+      byFloor,
     }
   } catch {
     return EMPTY_EXTRAS
@@ -303,6 +447,7 @@ export function saveLayoutExtras(
         grounds: extras.grounds,
         fixtures: extras.fixtures,
         doorKinds: extras.doorKinds,
+        byFloor: extras.byFloor,
       }),
     )
   } catch {
@@ -316,7 +461,11 @@ function basePath(locationId: string): string {
   return `/locations/${encodeURIComponent(locationId)}/layout-elements/items`
 }
 
-/** Mappar API:ts fel till svenska meddelanden, som usersApi/locationApi. */
+/**
+ * Mappar API:ts fel till svenska meddelanden, som usersApi/locationApi.
+ * Statuskoden bevaras (felet förblir en ApiError) så att sparningen kan
+ * skilja "servern kan inte våningar" (400) från andra fel.
+ */
 function toFriendlyLayoutError(err: unknown): Error {
   if (!(err instanceof ApiError)) {
     return err instanceof Error ? err : new Error('Ett okänt fel inträffade.')
@@ -325,21 +474,25 @@ function toFriendlyLayoutError(err: unknown): Error {
 
   switch (err.status) {
     case 400:
-      return new Error(`Layouten avvisades av servern: ${err.message}`)
+      return new ApiError(400, `Layouten avvisades av servern: ${err.message}`)
     case 401:
-      return new Error('Du är inte inloggad längre. Logga in igen.')
+      return new ApiError(401, 'Du är inte inloggad längre. Logga in igen.')
     case 403:
-      return new Error('Du har inte behörighet att ändra layouten.')
+      return new ApiError(403, 'Du har inte behörighet att ändra layouten.')
     case 404:
-      return new Error('Elementet finns inte längre — ladda om sidan.')
+      return new ApiError(404, 'Elementet finns inte längre — ladda om sidan.')
     case 409:
-      return new Error(
+      return new ApiError(
+        409,
         'Layouten ändrades samtidigt av någon annan. Ladda om och försök igen.',
       )
     case 503:
-      return new Error('Layouttjänsten är tillfälligt otillgänglig. Försök igen.')
+      return new ApiError(
+        503,
+        'Layouttjänsten är tillfälligt otillgänglig. Försök igen.',
+      )
     default:
-      return new Error(err.message || `Serverfel (${err.status}).`)
+      return new ApiError(err.status, err.message || `Serverfel (${err.status}).`)
   }
 }
 
@@ -507,6 +660,9 @@ const UPDATABLE_FIELDS = [
   'seats',
   'zone',
   'wallId',
+  'name',
+  'level',
+  'floorId',
 ] as const
 
 function changedFields(
@@ -565,29 +721,63 @@ export interface LayoutSaveResult {
   created: number
   updated: number
   deleted: number
-  /** Serverns lista efter sparandet — används för att läsa in våningen igen. */
+  /** Serverns lista efter sparandet — används för att läsa in layouten igen. */
   elements: LayoutElement[]
   /**
    * Lokalt id -> serverns elementId för allt som just skapades. Behövs för
    * att kunna föra över lokalt lagrade egenskaper (t.ex. om en dörr är
-   * entré eller kök) till det id servern nu använder.
+   * entré eller kök, eller vilken våning kassan står på) till det id
+   * servern nu använder.
    */
   idMap: Map<string, string>
+  /**
+   * Sant när servern avvisade våningselement och layouten i stället
+   * sparades platt (bara första våningen, utan `floorId`) — som förr.
+   */
+  flat: boolean
+}
+
+/** Servern avvisade ett `floor`-element — den saknar våningsstöd. */
+class FloorsUnsupportedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'FloorsUnsupportedError'
+  }
 }
 
 /**
- * Sparar våningen: hämtar serverns nuvarande lista, räknar ut skillnaden och
+ * Sparar hela layouten med våningar. Skulle servern avvisa `floor`-typen
+ * (äldre backend) görs om sparningen i det gamla platta läget, så att
+ * åtminstone första våningen alltid går att spara.
+ */
+export async function saveLayout(
+  locationId: string,
+  floors: Floor[],
+): Promise<LayoutSaveResult> {
+  try {
+    return await saveElements(locationId, toApiLayout(floors), false)
+  } catch (err) {
+    if (!(err instanceof FloorsUnsupportedError)) throw err
+    console.warn(`[Layout] Servern saknar våningsstöd — sparar platt: ${err.message}`)
+    return saveElements(locationId, toApiElements(floors[0]), true)
+  }
+}
+
+/**
+ * Hämtar serverns nuvarande lista, räknar ut skillnaden mot `desired` och
  * kör de anrop som behövs.
  *
- * Väggar skapas först och deras nya `elementId` samlas upp, eftersom en ny
- * dörr/fönster bär väggens LOKALA id i `wallId` — det måste bytas mot
- * serverns id innan öppningen skapas, annars pekar den ut i tomma intet.
+ * Skapandet sker i beroendeordning: våningar först, sedan väggar, sedan
+ * resten. En ny dörr/fönster bär väggens LOKALA id i `wallId`, och allt
+ * nytt bär våningens lokala id i `floorId` — de måste bytas mot serverns id
+ * innan elementet skapas, annars pekar det ut i tomma intet. Samma
+ * ommappning gäller uppdateringar (en gammal vägg som nu får en våning).
  */
-export async function saveFloor(
+async function saveElements(
   locationId: string,
-  floor: Floor,
+  desired: Map<string, LayoutElementCreate>,
+  flat: boolean,
 ): Promise<LayoutSaveResult> {
-  const desired = toApiElements(floor)
   const stored = await listLayoutElements(locationId)
   const diff = diffLayout(desired, stored)
 
@@ -597,17 +787,33 @@ export async function saveFloor(
 
   // Lokalt id -> serverns elementId för allt som just skapats.
   const idMap = new Map<string, string>()
-  const walls = diff.created.filter(([, el]) => el.type === 'wall')
-  const rest = diff.created.filter(([, el]) => el.type !== 'wall')
+  const ofType = (match: (t: ApiElementType) => boolean) =>
+    diff.created.filter(([, el]) => match(el.type))
 
-  for (const [localId, element] of walls) {
-    const saved = await createLayoutElement(locationId, element)
-    idMap.set(localId, saved.elementId)
+  for (const [localId, element] of ofType((t) => t === 'floor')) {
+    try {
+      const saved = await createLayoutElement(locationId, element)
+      idMap.set(localId, saved.elementId)
+    } catch (err) {
+      // Bara ett valideringsfel på själva våningen betyder "kan inte
+      // våningar"; allt annat (behörighet, nätverk) ska upp till användaren.
+      if (err instanceof ApiError && err.status === 400) {
+        throw new FloorsUnsupportedError(err.message)
+      }
+      throw err
+    }
   }
-  for (const [localId, element] of rest) {
+  for (const [localId, element] of ofType((t) => t === 'wall')) {
     const saved = await createLayoutElement(
       locationId,
-      withMappedWallId(element, idMap),
+      withMappedRefs(element, idMap),
+    )
+    idMap.set(localId, saved.elementId)
+  }
+  for (const [localId, element] of ofType((t) => t !== 'floor' && t !== 'wall')) {
+    const saved = await createLayoutElement(
+      locationId,
+      withMappedRefs(element, idMap),
     )
     idMap.set(localId, saved.elementId)
   }
@@ -615,7 +821,7 @@ export async function saveFloor(
     await updateLayoutElement(
       locationId,
       elementId,
-      withMappedWallId(updates, idMap),
+      withMappedRefs(updates, idMap),
     )
   }
 
@@ -625,6 +831,7 @@ export async function saveFloor(
     deleted: diff.deleted.length,
     elements: await listLayoutElements(locationId),
     idMap,
+    flat,
   }
 }
 
@@ -645,12 +852,18 @@ export function toDoorKinds(
   return out
 }
 
-/** Byter ett lokalt vägg-id mot serverns, när väggen skapades i samma sparning. */
-function withMappedWallId<T extends { wallId?: string }>(
+/**
+ * Byter lokala vägg- och våningsreferenser mot serverns id, när väggen
+ * eller våningen skapades i samma sparning.
+ */
+function withMappedRefs<T extends { wallId?: string; floorId?: string }>(
   element: T,
-  newWallIds: Map<string, string>,
+  newIds: Map<string, string>,
 ): T {
-  if (!element.wallId) return element
-  const mapped = newWallIds.get(element.wallId)
-  return mapped ? { ...element, wallId: mapped } : element
+  let out = element
+  const wallId = element.wallId && newIds.get(element.wallId)
+  if (wallId) out = { ...out, wallId }
+  const floorId = element.floorId && newIds.get(element.floorId)
+  if (floorId) out = { ...out, floorId }
+  return out
 }

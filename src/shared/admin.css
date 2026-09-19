@@ -149,6 +149,9 @@
   padding: 28px 40px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .admin-topbar-titles {

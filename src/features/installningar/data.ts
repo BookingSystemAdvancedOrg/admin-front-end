@@ -12,10 +12,10 @@
 import type { BusinessHours } from './locationApi'
 
 /**
- * Restaurangens grunduppgifter. Namn och adress kommer från Location-API:t
- * (GET /locations/{id}) och skickas tillbaka vid sparning. Telefon och
- * e-post finns INTE i Location-schemat, så de fälten är lokala och sparas
- * ingenstans — se kommentaren i InstallningarPage.tsx.
+ * Restaurangens grunduppgifter. Alla fyra fält kommer från Location-API:t
+ * (GET /locations/{id}, fälten email/phoneNumber) och skickas tillbaka vid
+ * sparning. Äldre platser som skapades innan kontaktfälten fanns kan sakna
+ * telefon/e-post tills de fylls i och sparas första gången.
  */
 export interface RestaurantProfile {
   name: string

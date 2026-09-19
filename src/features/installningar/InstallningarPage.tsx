@@ -20,8 +20,10 @@ import {
   validateAddress,
   validateBookingDuration,
   validateBusinessHours,
+  validateEmail,
   validateGracePeriod,
   validateName as validateLocationName,
+  validatePhoneNumber,
   validateTimezone,
 } from './locationApi'
 import type { BusinessHours, LocationCreateRequest } from './locationApi'
@@ -111,7 +113,13 @@ export default function InstallningarPage() {
     getLocation(locationId)
       .then((loc) => {
         if (cancelled) return
-        setProfile((prev) => ({ ...prev, name: loc.name, address: loc.address }))
+        setProfile((prev) => ({
+          ...prev,
+          name: loc.name,
+          address: loc.address,
+          phone: loc.phoneNumber ?? '',
+          email: loc.email ?? '',
+        }))
         setTimezone(loc.timezone)
         setBusinessHours(loc.businessHours)
         setBookingDurationHours(loc.bookingDurationHours)
@@ -119,6 +127,8 @@ export default function InstallningarPage() {
         setSavedLocation({
           name: loc.name,
           address: loc.address,
+          email: loc.email ?? '',
+          phoneNumber: loc.phoneNumber ?? '',
           timezone: loc.timezone,
           businessHours: loc.businessHours,
           bookingDurationHours: loc.bookingDurationHours,
@@ -184,6 +194,8 @@ export default function InstallningarPage() {
     const firstError =
       validateLocationName(profile.name) ??
       validateAddress(profile.address) ??
+      validateEmail(profile.email) ??
+      validatePhoneNumber(profile.phone) ??
       validateTimezone(timezone) ??
       validateBookingDuration(bookingDurationHours) ??
       validateGracePeriod(gracePeriodHours) ??
@@ -196,6 +208,8 @@ export default function InstallningarPage() {
     const values: LocationCreateRequest = {
       name: profile.name.trim(),
       address: profile.address.trim(),
+      email: profile.email.trim(),
+      phoneNumber: profile.phone.trim(),
       timezone: timezone.trim(),
       businessHours,
       bookingDurationHours,
@@ -370,10 +384,11 @@ export default function InstallningarPage() {
               <label htmlFor="rp-phone">Telefon</label>
               <input
                 id="rp-phone"
+                type="tel"
+                placeholder="+46701234567"
                 value={profile.phone}
                 onChange={(e) => updateProfile('phone', e.target.value)}
               />
-              <p className="cell-muted">Sparas inte — saknas i API:t.</p>
             </div>
             <div className="form-field">
               <label htmlFor="rp-address">Adress</label>
@@ -391,7 +406,6 @@ export default function InstallningarPage() {
                 value={profile.email}
                 onChange={(e) => updateProfile('email', e.target.value)}
               />
-              <p className="cell-muted">Sparas inte — saknas i API:t.</p>
             </div>
             <div className="form-field">
               <label htmlFor="rp-timezone">Tidszon</label>

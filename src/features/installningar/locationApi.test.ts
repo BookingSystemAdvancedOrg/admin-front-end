@@ -11,8 +11,10 @@ import {
   validateBookingDuration,
   validateBusinessHours,
   validateDayIntervals,
+  validateEmail,
   validateGracePeriod,
   validateName,
+  validatePhoneNumber,
   validateTimezone,
 } from './locationApi'
 import type { Location } from './locationApi'
@@ -29,6 +31,8 @@ const baseLocation: Location = {
   locationId: 'loc-1',
   name: 'Central Bistro',
   address: 'Main Street 1, Stockholm',
+  email: 'bookings@centralbistro.se',
+  phoneNumber: '+46812345678',
   timezone: 'Europe/Stockholm',
   businessHours: emptyBusinessHours(),
   bookingDurationHours: 2,
@@ -64,6 +68,18 @@ describe('field validation (mirrors create-location Lambda rules)', () => {
   it('allows gracePeriodHours to be zero but not negative', () => {
     expect(validateGracePeriod(0)).toBeNull()
     expect(validateGracePeriod(-0.5)).not.toBeNull()
+  })
+
+  it('requires a well-formed email address', () => {
+    expect(validateEmail('')).not.toBeNull()
+    expect(validateEmail('not-an-email')).not.toBeNull()
+    expect(validateEmail('bookings@centralbistro.se')).toBeNull()
+  })
+
+  it('requires an E.164 phone number', () => {
+    expect(validatePhoneNumber('')).not.toBeNull()
+    expect(validatePhoneNumber('0701234567')).not.toBeNull()
+    expect(validatePhoneNumber('+46701234567')).toBeNull()
   })
 })
 
@@ -128,6 +144,8 @@ describe('request shaping', () => {
     const input = {
       name: 'Central Bistro',
       address: 'Main Street 1, Stockholm',
+      email: 'bookings@centralbistro.se',
+      phoneNumber: '+46812345678',
       timezone: 'Europe/Stockholm',
       businessHours: emptyBusinessHours(),
       bookingDurationHours: 2,
@@ -152,6 +170,8 @@ describe('updateLocation', () => {
   const base = {
     name: 'Test AB',
     address: 'Storgatan 1',
+    email: 'bookings@testab.se',
+    phoneNumber: '+46701234567',
     timezone: 'Europe/Stockholm',
     businessHours: emptyBusinessHours(),
     bookingDurationHours: 2,
@@ -186,6 +206,14 @@ describe('updateLocation', () => {
     }
     expect(locationChanges(base, next)).toHaveProperty('businessHours')
   })
+
+  it('sends email and phoneNumber together even if only one changed', () => {
+    const changes = locationChanges(base, { ...base, email: 'new@testab.se' })
+    expect(changes).toEqual({
+      email: 'new@testab.se',
+      phoneNumber: base.phoneNumber,
+    })
+  })
 })
 
 describe('error mapping', () => {
@@ -207,6 +235,8 @@ describe('error mapping', () => {
       createLocation({
         name: 'x',
         address: 'x',
+        email: 'x@example.com',
+        phoneNumber: '+46701234567',
         timezone: 'Europe/Stockholm',
         businessHours: emptyBusinessHours(),
         bookingDurationHours: 0,

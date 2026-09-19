@@ -4,11 +4,15 @@ import { apiFetch, ApiError } from '../../shared/api'
  * Klient mot backendens /locations-endpoints (create-location/get-location).
  * Speglar valideringen i functions/create-location/app.py (dev-grenen):
  * alla sju veckodagar krävs, opensAt < closesAt, intervall får inte
- * överlappa, bookingDurationHours > 0, gracePeriodHours >= 0.
+ * överlappa, bookingDurationHours > 0, gracePeriodHours >= 0, email/
+ * phoneNumber krävs vid skapande (se openapi.yaml på localhost:8081).
  *
  * `PUT /locations/{id}` är trots verbet en PARTIELL uppdatering: minst ett
  * fält krävs, och skickas `businessHours` måste alla sju veckodagar vara med.
- * Den kräver owner_user/super_user, till skillnad från läsningen.
+ * Kontaktfälten är valfria vid uppdatering, men på en äldre plats som helt
+ * saknar dem måste den första kontaktuppdateringen skicka BÅDA — därför
+ * skickar locationChanges() alltid email och phoneNumber ihop. Den kräver
+ * owner_user/super_user, till skillnad från läsningen.
  */
 
 export const WEEKDAYS = [
@@ -33,22 +37,30 @@ export type BusinessHours = Record<Weekday, BusinessHoursInterval[]>
 export interface LocationCreateRequest {
   name: string
   address: string
+  email: string
+  phoneNumber: string
   timezone: string
   businessHours: BusinessHours
   bookingDurationHours: number
   gracePeriodHours: number
 }
 
-export interface Location extends LocationCreateRequest {
+export interface Location
+  extends Omit<LocationCreateRequest, 'email' | 'phoneNumber'> {
   locationId: string
   createdBy: string
   createdAt: string
+  /** Saknas bara på äldre platser som skapades innan kontaktfälten fanns. */
+  email?: string
+  phoneNumber?: string
   /** Sätts av API:t vid en faktisk ändring; en no-op PUT lämnar dem orörda. */
   updatedBy?: string
   updatedAt?: string
 }
 
 const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+const PHONE_PATTERN = /^\+[1-9]\d{7,14}$/
 
 export function emptyBusinessHours(): BusinessHours {
   return {
@@ -68,6 +80,16 @@ export function validateName(name: string): string | null {
 
 export function validateAddress(address: string): string | null {
   return address.trim() ? null : 'Adress krävs.'
+}
+
+export function validateEmail(email: string): string | null {
+  return EMAIL_PATTERN.test(email.trim()) ? null : 'Ange en giltig e-postadress.'
+}
+
+export function validatePhoneNumber(phone: string): string | null {
+  return PHONE_PATTERN.test(phone.trim())
+    ? null
+    : 'Ange telefonnummer i internationellt format, t.ex. +46701234567.'
 }
 
 export function validateTimezone(timezone: string): string | null {
@@ -220,6 +242,13 @@ export function locationChanges(
   const updates: LocationUpdate = {}
   if (original.name !== next.name) updates.name = next.name
   if (original.address !== next.address) updates.address = next.address
+  // Servern kräver båda kontaktfälten tillsammans så fort ett av dem skickas
+  // (annars kan en äldre plats utan kontaktuppgifter inte uppdateras) — så
+  // de diffas och skickas alltid ihop, aldrig var för sig.
+  if (original.email !== next.email || original.phoneNumber !== next.phoneNumber) {
+    updates.email = next.email
+    updates.phoneNumber = next.phoneNumber
+  }
   if (original.timezone !== next.timezone) updates.timezone = next.timezone
   if (original.bookingDurationHours !== next.bookingDurationHours) {
     updates.bookingDurationHours = next.bookingDurationHours

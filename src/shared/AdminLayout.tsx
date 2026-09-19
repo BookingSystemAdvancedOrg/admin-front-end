@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../features/auth/useAuth'
+import { primaryGroupLabel } from '../features/installningar/usersApi'
 import { useLocationSummary } from './location'
 import './admin.css'
 
@@ -19,7 +20,7 @@ const NAV: { to: string; label: string; end?: boolean }[] = [
  * inloggad-användare-panelen bara behöver skrivas en gång.
  */
 export function AdminLayout() {
-  const { email, logout } = useAuth()
+  const { email, groups, logout } = useAuth()
   // Restaurangens riktiga namn i stället för ett hårdkodat. Panelen kan
   // hantera flera platser, så en fast logotyptext hade varit fel för alla
   // utom en av dem.
@@ -61,7 +62,9 @@ export function AdminLayout() {
             <span className="admin-avatar" aria-hidden="true">
               {initial}
             </span>
-            <span className="admin-user-name">{displayName} · Personal</span>
+            <span className="admin-user-name">
+              {displayName} · {primaryGroupLabel(groups)}
+            </span>
           </div>
           <button type="button" className="admin-logout" onClick={logout}>
             Logga ut

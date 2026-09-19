@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { CognitoGroup, User } from './usersApi'
 import {
+  GROUP_LABEL,
   canInvite,
   validateEmail,
   validateLocationId,
@@ -17,11 +18,6 @@ export interface StaffFormValues {
   locationId: string
 }
 
-const ROLE_LABEL: Record<CognitoGroup, string> = {
-  staff_user: 'Personal',
-  owner_user: 'Ägare',
-  super_user: 'Systemadmin',
-}
 const ALL_GROUPS: CognitoGroup[] = ['staff_user', 'owner_user', 'super_user']
 
 /**
@@ -164,7 +160,7 @@ export function StaffModal({
               >
                 {selectableGroups.map((g) => (
                   <option key={g} value={g}>
-                    {ROLE_LABEL[g]}
+                    {GROUP_LABEL[g]}
                   </option>
                 ))}
               </select>

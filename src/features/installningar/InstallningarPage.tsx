@@ -36,6 +36,7 @@ import {
   deactivateUser,
   deleteUser,
   inviteUser,
+  isLastActiveSuperAdmin,
   listUsers,
   reactivateUser,
   updateUserProfile,
@@ -279,12 +280,24 @@ export default function InstallningarPage() {
     }
     if (modal?.mode === 'edit') {
       const original = modal.user
+      const roleChanged = values.group !== ROLE_TO_GROUP[original.role]
+      // Systemet kräver minst en aktiv systemadmin — blockera en nedgradering
+      // som skulle lämna restaurangen utan någon.
+      if (
+        roleChanged &&
+        values.group !== 'super_user' &&
+        isLastActiveSuperAdmin(staff, original)
+      ) {
+        throw new Error(
+          'Går inte att ändra — minst en systemadmin måste finnas kvar.',
+        )
+      }
+
       const profileUpdates: Record<string, string> = {}
       if (values.name !== original.name) profileUpdates.name = values.name
       if (values.email !== original.email) profileUpdates.email = values.email
       if (values.phone !== original.phone) profileUpdates.phone = values.phone
 
-      const roleChanged = values.group !== ROLE_TO_GROUP[original.role]
       if (!roleChanged && values.locationId !== original.locationId) {
         profileUpdates.locationId = values.locationId
       }
@@ -306,6 +319,12 @@ export default function InstallningarPage() {
 
   async function handleToggleStatus(user: User) {
     setRowError(null)
+    // Knappen är redan spärrad i detta läge, men gardera ändå — annars kan
+    // restaurangen bli utan någon systemadmin.
+    if (user.status === 'active' && isLastActiveSuperAdmin(staff, user)) {
+      setRowError('Går inte att inaktivera — minst en systemadmin måste finnas kvar.')
+      return
+    }
     setBusySub(user.cognitoSub)
     try {
       const updated =
@@ -321,6 +340,10 @@ export default function InstallningarPage() {
   }
 
   async function handleDelete(user: User) {
+    if (isLastActiveSuperAdmin(staff, user)) {
+      setRowError('Går inte att ta bort — minst en systemadmin måste finnas kvar.')
+      return
+    }
     if (!window.confirm(`Ta bort ${user.name} permanent?`)) return
     setRowError(null)
     setBusySub(user.cognitoSub)
@@ -509,6 +532,11 @@ export default function InstallningarPage() {
                   const canToggleStatus = canManageTarget(caller, s, statusAction)
                   const canDelete = canManageTarget(caller, s, 'delete')
                   const busy = busySub === s.cognitoSub
+                  // Minst en aktiv systemadmin måste alltid finnas kvar.
+                  const lastSuperAdminLock =
+                    statusAction === 'deactivate' && isLastActiveSuperAdmin(staff, s)
+                  const deleteLock = isLastActiveSuperAdmin(staff, s)
+                  const lastAdminHint = 'Minst en systemadmin måste finnas kvar.'
                   return (
                     <tr key={s.cognitoSub}>
                       <td className="cell-strong">{s.name}</td>
@@ -539,7 +567,8 @@ export default function InstallningarPage() {
                             <button
                               type="button"
                               className="link-action"
-                              disabled={busy}
+                              disabled={busy || lastSuperAdminLock}
+                              title={lastSuperAdminLock ? lastAdminHint : undefined}
                               onClick={() => handleToggleStatus(s)}
                             >
                               {s.status === 'active' ? 'Inaktivera' : 'Aktivera'}
@@ -549,7 +578,8 @@ export default function InstallningarPage() {
                             <button
                               type="button"
                               className="link-action danger"
-                              disabled={busy}
+                              disabled={busy || deleteLock}
+                              title={deleteLock ? lastAdminHint : undefined}
                               onClick={() => handleDelete(s)}
                             >
                               Ta bort

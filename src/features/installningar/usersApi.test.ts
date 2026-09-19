@@ -8,6 +8,7 @@ import {
   deactivateUser,
   deleteUser,
   getUser,
+  isLastActiveSuperAdmin,
   inviteUser,
   listUsers,
   reactivateUser,
@@ -78,19 +79,23 @@ describe('field validation (mirrors manage-user Lambda rules)', () => {
 })
 
 describe('canInvite', () => {
-  it('lets any caller invite staff_user', () => {
-    expect(canInvite([], 'staff_user')).toBe(true)
-    expect(canInvite(['owner_user'], 'staff_user')).toBe(true)
-  })
-
-  it('lets owners invite other owners, but not staff', () => {
-    expect(canInvite(['owner_user'], 'owner_user')).toBe(true)
+  it('blocks staff_user and no-group callers from inviting anyone', () => {
+    expect(canInvite([], 'staff_user')).toBe(false)
+    expect(canInvite([], 'owner_user')).toBe(false)
+    expect(canInvite([], 'super_user')).toBe(false)
+    expect(canInvite(['staff_user'], 'staff_user')).toBe(false)
     expect(canInvite(['staff_user'], 'owner_user')).toBe(false)
-    expect(canInvite(['super_user'], 'owner_user')).toBe(true)
   })
 
-  it('requires super_user to invite super_user', () => {
+  it('lets owners invite staff and other owners, but not super_user', () => {
+    expect(canInvite(['owner_user'], 'staff_user')).toBe(true)
+    expect(canInvite(['owner_user'], 'owner_user')).toBe(true)
     expect(canInvite(['owner_user'], 'super_user')).toBe(false)
+  })
+
+  it('lets super_user invite any role', () => {
+    expect(canInvite(['super_user'], 'staff_user')).toBe(true)
+    expect(canInvite(['super_user'], 'owner_user')).toBe(true)
     expect(canInvite(['super_user'], 'super_user')).toBe(true)
   })
 })
@@ -122,6 +127,36 @@ describe('canManageTarget', () => {
     const ownerTarget: User = { ...baseUser, cognitoSub: 'sub-2', role: 'owner_user' }
     expect(canManageTarget(owner, ownerTarget, 'delete')).toBe(false)
     expect(canManageTarget(owner, ownerTarget, 'profile')).toBe(false)
+  })
+
+  it('never lets a plain staff_user caller manage another user', () => {
+    const staffCaller = { sub: 'sub-staff', groups: ['staff_user'] }
+    const otherStaff: User = { ...baseUser, cognitoSub: 'sub-2' }
+    expect(canManageTarget(staffCaller, otherStaff, 'deactivate')).toBe(false)
+    expect(canManageTarget(staffCaller, otherStaff, 'delete')).toBe(false)
+    expect(canManageTarget(staffCaller, otherStaff, 'profile')).toBe(false)
+  })
+})
+
+describe('isLastActiveSuperAdmin', () => {
+  const superAdmin: User = { ...baseUser, cognitoSub: 'sub-admin', role: 'super_admin' }
+
+  it('is true for the sole active super_admin', () => {
+    expect(isLastActiveSuperAdmin([superAdmin, baseUser], superAdmin)).toBe(true)
+  })
+
+  it('is false when another active super_admin exists', () => {
+    const secondAdmin: User = { ...superAdmin, cognitoSub: 'sub-admin-2' }
+    expect(isLastActiveSuperAdmin([superAdmin, secondAdmin], superAdmin)).toBe(false)
+  })
+
+  it('is false for a disabled super_admin — it is not the one keeping the seat', () => {
+    const disabledAdmin: User = { ...superAdmin, status: 'disabled' }
+    expect(isLastActiveSuperAdmin([disabledAdmin], disabledAdmin)).toBe(false)
+  })
+
+  it('is false for a non-super_admin target', () => {
+    expect(isLastActiveSuperAdmin([superAdmin, baseUser], baseUser)).toBe(false)
   })
 })
 

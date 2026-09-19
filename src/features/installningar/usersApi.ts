@@ -57,6 +57,21 @@ export const ROLE_TO_GROUP: Record<UserRole, CognitoGroup> = {
   super_admin: 'super_user',
 }
 
+/** Svensk titel per Cognito-grupp — enda källan, återanvänd i stället för att duplicera. */
+export const GROUP_LABEL: Record<CognitoGroup, string> = {
+  staff_user: 'Personal',
+  owner_user: 'Ägare',
+  super_user: 'Systemadmin',
+}
+
+const GROUP_PRIORITY: CognitoGroup[] = ['super_user', 'owner_user', 'staff_user']
+
+/** Titeln för den inloggade användaren i sidebaren — den mest priviligierade av dess grupper. */
+export function primaryGroupLabel(groups: string[]): string {
+  const match = GROUP_PRIORITY.find((g) => groups.includes(g))
+  return match ? GROUP_LABEL[match] : 'Personal'
+}
+
 const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const PHONE_PATTERN = /^\+[1-9]\d{7,14}$/
 
@@ -95,22 +110,17 @@ export function validateLocationId(
 }
 
 /**
- * Kan caller bjuda in någon till den här gruppen? Personal får vem som helst
- * bjuda in; ägare får även bjuda in andra ägare (en restaurang kan ha flera
- * delägare); bara super_user får sätta super_user.
- *
- * OBS: backendens _authorize_invite (functions/manage-user/app.py) måste
- * tillåta owner_user -> owner_user också, annars svarar servern 403 trots
- * att valet visas här.
+ * Kan caller bjuda in någon till den här gruppen? Personal (staff_user) får
+ * inte bjuda in någon alls. Ägare får bjuda in personal och andra ägare (en
+ * restaurang kan ha flera delägare), men inte systemadmin. Bara super_user
+ * får sätta super_user.
  */
 export function canInvite(callerGroups: string[], group: CognitoGroup): boolean {
-  if (group === 'staff_user') return true
-  if (group === 'owner_user') {
-    return (
-      callerGroups.includes('owner_user') || callerGroups.includes('super_user')
-    )
+  if (callerGroups.includes('super_user')) return true
+  if (callerGroups.includes('owner_user')) {
+    return group === 'staff_user' || group === 'owner_user'
   }
-  return callerGroups.includes('super_user')
+  return false
 }
 
 export type UserAction = 'profile' | 'deactivate' | 'reactivate' | 'delete' | 'group'
@@ -118,7 +128,8 @@ export type UserAction = 'profile' | 'deactivate' | 'reactivate' | 'delete' | 'g
 /**
  * Kan caller utföra åtgärden mot den här användaren? Speglar _authorize_target:
  * ingen får agera på sig själv (utom att redigera sin egen profil), super_user
- * får hantera vem som helst, owner_user bara personal (role "staff").
+ * får hantera vem som helst, owner_user bara personal (role "staff"), och
+ * personal (staff_user) får inte hantera några andra användare alls.
  */
 export function canManageTarget(
   caller: { sub: string | null; groups: string[] },
@@ -129,7 +140,21 @@ export function canManageTarget(
   if (action !== 'profile' && isSelf) return false
   if (caller.groups.includes('super_user')) return true
   if (action === 'profile' && isSelf) return true
-  return target.role === 'staff'
+  return caller.groups.includes('owner_user') && target.role === 'staff'
+}
+
+/**
+ * Systemet kräver minst en aktiv systemadmin (super_admin/super_user) hela
+ * tiden. Backend-kontraktet (openapi.yaml) dokumenterar inte den här regeln
+ * uttryckligen, så det här är ett frontend-skyddsnät: blockera borttagning,
+ * inaktivering eller nedgradering av den sista aktiva systemadmin-kontot.
+ */
+export function isLastActiveSuperAdmin(users: User[], target: User): boolean {
+  if (target.role !== 'super_admin' || target.status !== 'active') return false
+  const activeSuperAdmins = users.filter(
+    (u) => u.role === 'super_admin' && u.status === 'active',
+  )
+  return activeSuperAdmins.length <= 1
 }
 
 /** Mappar API:ts { error: string } + statuskod till svenska meddelanden. */

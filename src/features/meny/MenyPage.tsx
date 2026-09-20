@@ -3,7 +3,7 @@ import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useLocationId } from '../../shared/location'
 import { CATEGORY_LABEL } from './data'
-import type { Dish } from './data'
+import type { Dish, DishCategory } from './data'
 import { DishModal } from './DishModal'
 import type { DishFormValues } from './DishModal'
 import {
@@ -24,6 +24,9 @@ import type { MenuItemCreate } from './menuApi'
 import './meny.css'
 
 type ModalState = { mode: 'add' } | { mode: 'edit'; id: string } | null
+type StatusFilter = 'alla' | 'active' | 'inactive'
+
+const ALL_CATEGORIES = Object.keys(CATEGORY_LABEL) as DishCategory[]
 
 /**
  * Rättens bild med platshållare som reserv. Bild-URL:en byggs från
@@ -71,6 +74,12 @@ export default function MenyPage() {
   const [readOnly, setReadOnly] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [modal, setModal] = useState<ModalState>(null)
+
+  const [filterName, setFilterName] = useState('')
+  const [filterCategory, setFilterCategory] = useState<DishCategory | 'alla'>('alla')
+  const [filterStatus, setFilterStatus] = useState<StatusFilter>('alla')
+  const [filterPriceMin, setFilterPriceMin] = useState('')
+  const [filterPriceMax, setFilterPriceMax] = useState('')
 
   useEffect(() => {
     if (!locationId) return
@@ -121,6 +130,41 @@ export default function MenyPage() {
   const editingDish =
     modal?.mode === 'edit' ? dishes.find((d) => d.id === modal.id) ?? null : null
   const canEdit = Boolean(locationId) && !readOnly
+
+  const priceMin = filterPriceMin.trim() ? Number(filterPriceMin) : null
+  const priceMax = filterPriceMax.trim() ? Number(filterPriceMax) : null
+  const hasActiveFilters =
+    filterName.trim() !== '' ||
+    filterCategory !== 'alla' ||
+    filterStatus !== 'alla' ||
+    priceMin !== null ||
+    priceMax !== null
+  const filteredDishes = dishes.filter((d) => {
+    if (
+      filterName.trim() &&
+      !d.name.toLowerCase().includes(filterName.trim().toLowerCase())
+    ) {
+      return false
+    }
+    if (filterCategory !== 'alla' && d.category !== filterCategory) return false
+    if (filterStatus === 'active' && !d.active) return false
+    if (filterStatus === 'inactive' && d.active) return false
+    if (priceMin !== null && Number.isFinite(priceMin) && d.price < priceMin) {
+      return false
+    }
+    if (priceMax !== null && Number.isFinite(priceMax) && d.price > priceMax) {
+      return false
+    }
+    return true
+  })
+
+  function clearFilters() {
+    setFilterName('')
+    setFilterCategory('alla')
+    setFilterStatus('alla')
+    setFilterPriceMin('')
+    setFilterPriceMax('')
+  }
 
   function replaceDish(updated: Dish) {
     setDishes((prev) => prev.map((d) => (d.id === updated.id ? updated : d)))
@@ -227,8 +271,78 @@ export default function MenyPage() {
             <span className="cell-muted">
               {fetching
                 ? 'Hämtar meny…'
-                : `${dishes.length} rätter · ${activeCount} aktiva`}
+                : hasActiveFilters
+                  ? `${filteredDishes.length} av ${dishes.length} rätter · ${activeCount} aktiva totalt`
+                  : `${dishes.length} rätter · ${activeCount} aktiva`}
             </span>
+          </div>
+          <div className="meny-filters">
+            <div className="form-field">
+              <label htmlFor="menu-filter-name">Namn</label>
+              <input
+                id="menu-filter-name"
+                placeholder="Sök på namn…"
+                value={filterName}
+                onChange={(e) => setFilterName(e.target.value)}
+              />
+            </div>
+            <div className="form-field">
+              <label htmlFor="menu-filter-category">Kategori</label>
+              <select
+                id="menu-filter-category"
+                value={filterCategory}
+                onChange={(e) =>
+                  setFilterCategory(e.target.value as DishCategory | 'alla')
+                }
+              >
+                <option value="alla">Alla kategorier</option>
+                {ALL_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {CATEGORY_LABEL[c]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-field">
+              <label htmlFor="menu-filter-status">Status</label>
+              <select
+                id="menu-filter-status"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}
+              >
+                <option value="alla">Alla</option>
+                <option value="active">Aktiva</option>
+                <option value="inactive">Inaktiva</option>
+              </select>
+            </div>
+            <div className="form-field">
+              <label htmlFor="menu-filter-price-min">Pris från</label>
+              <input
+                id="menu-filter-price-min"
+                inputMode="decimal"
+                placeholder="0"
+                value={filterPriceMin}
+                onChange={(e) => setFilterPriceMin(e.target.value)}
+              />
+            </div>
+            <div className="form-field">
+              <label htmlFor="menu-filter-price-max">Pris till</label>
+              <input
+                id="menu-filter-price-max"
+                inputMode="decimal"
+                placeholder="Valfritt"
+                value={filterPriceMax}
+                onChange={(e) => setFilterPriceMax(e.target.value)}
+              />
+            </div>
+            {hasActiveFilters && (
+              <div className="form-field meny-filters-clear">
+                <label aria-hidden="true">&nbsp;</label>
+                <button type="button" className="btn outline square" onClick={clearFilters}>
+                  Rensa filter
+                </button>
+              </div>
+            )}
           </div>
           {(loadError ?? rowError) && (
             <p className="form-error" role="alert">
@@ -255,7 +369,18 @@ export default function MenyPage() {
                     </td>
                   </tr>
                 )}
-                {dishes.map((d) => (
+                {Boolean(locationId) &&
+                  !fetching &&
+                  dishes.length > 0 &&
+                  filteredDishes.length === 0 &&
+                  !loadError && (
+                    <tr>
+                      <td colSpan={6} className="cell-muted">
+                        Inga rätter matchar filtret.
+                      </td>
+                    </tr>
+                  )}
+                {filteredDishes.map((d) => (
                   <tr key={d.id}>
                     <td>
                       <DishImage src={d.image} alt={d.name} />

@@ -1,5 +1,26 @@
 /* Meny-sidans bilder och uppladdning (Figma: admin-meny-page) */
 
+.meny-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  padding-bottom: 20px;
+}
+
+.meny-filters .form-field {
+  flex: 1 1 150px;
+  min-width: 130px;
+}
+
+.meny-filters .form-field:first-child {
+  flex: 2 1 200px;
+}
+
+.meny-filters-clear {
+  flex: 0 0 auto;
+}
+
 .dish-photo {
   display: block;
   width: 56px;

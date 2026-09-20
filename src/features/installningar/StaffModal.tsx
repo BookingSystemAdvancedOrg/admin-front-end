@@ -61,6 +61,9 @@ export function StaffModal({
   const [locationId, setLocationId] = useState(
     defaultLocationId ?? initial?.locationId ?? '',
   )
+  // Plats-ID (UUID) är en intern detalj — hela fältet (etikett, värde och
+  // hjälptext) visas bara för systemadmin, inte för ägare/personal.
+  const isSuperUser = callerGroups.includes('super_user')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -168,7 +171,7 @@ export function StaffModal({
                 <p className="cell-muted">Du kan inte ändra din egen roll.</p>
               )}
             </div>
-            {group === 'staff_user' && (
+            {group === 'staff_user' && isSuperUser && (
               <div className="form-field">
                 <label htmlFor="staff-location">Plats-ID</label>
                 <input

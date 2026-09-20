@@ -70,6 +70,10 @@ const floor: Floor = {
       x: 50,
       y: 20,
       rotation: 90,
+      // Fyrsitsigt fyrkantsbord: defaultTableSize('square', 4) -> 68x45
+      // enheter -> 1.36 x 0.90 m (se testet nedan).
+      w: 68,
+      h: 45,
     },
   ],
 }
@@ -160,6 +164,10 @@ describe('API -> editor mapping', () => {
       x: 50,
       y: 20,
       rotation: 90,
+      // Manuellt satt storlek (t.ex. via resize-handtagen) ska också
+      // rundtripa — inte bara härledas om ur seats vid varje inläsning.
+      w: 68,
+      h: 45,
     })
   })
 

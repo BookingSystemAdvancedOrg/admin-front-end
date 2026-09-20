@@ -194,14 +194,14 @@ describe('StaffModal — invite mode', () => {
     )
   })
 
-  it('locks Plats-ID to the restaurants location when a default is provided', async () => {
+  it('locks Plats-ID to the restaurants location when a default is provided (super_user sees the value)', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn().mockResolvedValue(undefined)
     render(
       <StaffModal
         title="Bjud in personal"
         initial={null}
-        callerGroups={['owner_user']}
+        callerGroups={['super_user']}
         lockRole={false}
         defaultLocationId="loc-restaurant"
         onSave={onSave}
@@ -219,6 +219,51 @@ describe('StaffModal — invite mode', () => {
         expect.objectContaining({ locationId: 'loc-restaurant' }),
       ),
     )
+  })
+
+  it('hides all Plats-ID UI from owner_user, but still submits the auto-filled value', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    render(
+      <StaffModal
+        title="Bjud in personal"
+        initial={null}
+        callerGroups={['owner_user']}
+        lockRole={false}
+        defaultLocationId="loc-restaurant"
+        onSave={onSave}
+        onCancel={vi.fn()}
+      />,
+    )
+    expect(screen.queryByLabelText('Plats-ID')).not.toBeInTheDocument()
+    expect(screen.queryByText('Plats-ID')).not.toBeInTheDocument()
+    expect(screen.queryByText('loc-restaurant')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Kopplas automatiskt till restaurangens plats.'),
+    ).not.toBeInTheDocument()
+
+    await fillValidInvite(user)
+    await user.click(screen.getByRole('button', { name: 'Skicka inbjudan' }))
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ locationId: 'loc-restaurant' }),
+      ),
+    )
+  })
+
+  it('hides Plats-ID from owner_user even when none is auto-filled yet', () => {
+    render(
+      <StaffModal
+        title="Bjud in personal"
+        initial={null}
+        callerGroups={['owner_user']}
+        lockRole={false}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+    expect(screen.queryByLabelText('Plats-ID')).not.toBeInTheDocument()
+    expect(screen.queryByText('Plats-ID')).not.toBeInTheDocument()
   })
 
   it('lets a super_user invite an owner even when Plats-ID was prefilled', async () => {

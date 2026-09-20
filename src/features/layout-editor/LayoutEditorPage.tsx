@@ -6,10 +6,12 @@ import { getStoredLocationId, useLocationId } from '../../shared/location'
 import { LayoutVersionsModal } from './LayoutVersionsModal'
 import {
   GRID,
+  MIN_TABLE_SIZE,
   OPENING_LABEL,
   SEAT_SIZE,
   WORKSPACE,
   ZONES,
+  defaultTableSize,
   emptyFloor,
   seatPositions,
   tableSize,
@@ -95,6 +97,8 @@ type DragState =
   | { kind: 'wall-end'; id: string; end: 'a' | 'b' }
   | { kind: 'op-move'; id: string; grab: number }
   | { kind: 'op-end'; id: string; end: 'a' | 'b' }
+  | { kind: 'rotate'; startX: number; startSpin: number }
+  | { kind: 'table-resize'; id: string; edge: 'n' | 's' | 'e' | 'w' }
 
 interface WallDraft {
   x0: number
@@ -156,6 +160,16 @@ export default function LayoutEditorPage() {
   const [selection, setSelection] = useState<Selection>(null)
   const [tool, setTool] = useState<Tool>('select')
   const [is3d, setIs3d] = useState(true)
+  // Visar våningen under som en genomskinlig skugga — så att man alltid ser
+  // att man befinner sig på en annan våning, och kan rikta in t.ex. en
+  // trappa mot samma plats som på våningen under.
+  const [showFloorBelow, setShowFloorBelow] = useState(true)
+  // Handverktyget (som i Figma): aktivt läge där klick+drag roterar vyn
+  // fritt i stället för att rita/välja. isRotating styr bara om vyns
+  // 320ms-övergång ska stängas av under själva draget, så rotationen känns
+  // direkt i stället för att släpa efter.
+  const [handMode, setHandMode] = useState(false)
+  const [isRotating, setIsRotating] = useState(false)
   const [spin, setSpin] = useState(45)
   const [manualZoom, setManualZoom] = useState(1)
   const [sceneSize, setSceneSize] = useState({ w: 1000, h: 600 })
@@ -181,6 +195,9 @@ export default function LayoutEditorPage() {
   const drag = useRef<DragState | null>(null)
 
   const floor = floors.find((f) => f.id === currentFloorId) ?? floors[0]
+  const floorIndex = floors.findIndex((f) => f.id === floor.id)
+  const belowFloor =
+    showFloorBelow && floorIndex > 0 ? floors[floorIndex - 1] : null
 
   useEffect(() => {
     const scene = sceneRef.current
@@ -434,6 +451,12 @@ export default function LayoutEditorPage() {
   /* --- Rita ------------------------------------------------------------- */
 
   function onScenePointerDown(e: ReactPointerEvent) {
+    if (handMode) {
+      setIsRotating(true)
+      drag.current = { kind: 'rotate', startX: e.clientX, startSpin: spin }
+      ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
+      return
+    }
     const p = unproject(e.clientX, e.clientY)
     const px = clamp(snap(p.x), -HALF_W, HALF_W)
     const py = clamp(snap(p.y), -HALF_H, HALF_H)
@@ -536,6 +559,56 @@ export default function LayoutEditorPage() {
     }
     const d = drag.current
     if (!d) return
+
+    if (d.kind === 'rotate') {
+      setSpin(d.startSpin + (e.clientX - d.startX) * 0.4)
+      return
+    }
+
+    if (d.kind === 'table-resize') {
+      const p = unproject(e.clientX, e.clientY)
+      patchFloor((fl) => ({
+        tables: fl.tables.map((t) => {
+          if (t.id !== d.id) return t
+
+          // Runda bord förblir runda — vilket handtag som helst ändrar bara
+          // diametern, symmetriskt kring bordets mitt (som förblir stilla).
+          // Fyrkantiga/rektangulära bord ändras bara på den sida man drar i;
+          // motstående kant hålls fast.
+          if (t.shape === 'round') {
+            const minR = MIN_TABLE_SIZE / 2
+            let r = t.w / 2
+            if (d.edge === 'e') r = clamp(p.x - t.x, minR, HALF_W)
+            else if (d.edge === 'w') r = clamp(t.x - p.x, minR, HALF_W)
+            else if (d.edge === 's') r = clamp(p.y - t.y, minR, HALF_H)
+            else r = clamp(t.y - p.y, minR, HALF_H)
+            return { ...t, w: r * 2, h: r * 2 }
+          }
+
+          const left = t.x - t.w / 2
+          const right = t.x + t.w / 2
+          const top = t.y - t.h / 2
+          const bottom = t.y + t.h / 2
+          // Motstående kant hålls fast — bordet växer/krymper bara från den
+          // sida eller ände man drar i.
+          if (d.edge === 'e') {
+            const nx = clamp(p.x, left + MIN_TABLE_SIZE, HALF_W)
+            return { ...t, w: nx - left, x: (left + nx) / 2 }
+          }
+          if (d.edge === 'w') {
+            const nx = clamp(p.x, -HALF_W, right - MIN_TABLE_SIZE)
+            return { ...t, w: right - nx, x: (right + nx) / 2 }
+          }
+          if (d.edge === 's') {
+            const ny = clamp(p.y, top + MIN_TABLE_SIZE, HALF_H)
+            return { ...t, h: ny - top, y: (top + ny) / 2 }
+          }
+          const ny = clamp(p.y, -HALF_H, bottom - MIN_TABLE_SIZE)
+          return { ...t, h: bottom - ny, y: (bottom + ny) / 2 }
+        }),
+      }))
+      return
+    }
 
     if (d.kind === 'wall-move' || d.kind === 'wall-end') {
       const p = unproject(e.clientX, e.clientY)
@@ -714,8 +787,12 @@ export default function LayoutEditorPage() {
       return
     }
     if (drag.current) {
+      const wasRotate = drag.current.kind === 'rotate'
       drag.current = null
-      markDirty()
+      setIsRotating(false)
+      // Att rotera vyn är ingen innehållsändring — bara riktiga redigeringar
+      // ska flagga osparat.
+      if (!wasRotate) markDirty()
     }
   }
 
@@ -728,6 +805,10 @@ export default function LayoutEditorPage() {
     origX = 0,
     origY = 0,
   ) {
+    // I handläget ska ett klick var som helst — även på ett element — rotera
+    // vyn, inte välja/flytta. Ingen stopPropagation: klicket får bubbla upp
+    // till scenens egen pointerdown-hanterare.
+    if (handMode) return
     if (isDrawTool) return
     e.stopPropagation()
     if (tool === 'erase') {
@@ -763,9 +844,22 @@ export default function LayoutEditorPage() {
     id: string,
     end: 'a' | 'b',
   ) {
+    if (handMode) return
     e.stopPropagation()
     drag.current =
       kind === 'wall' ? { kind: 'wall-end', id, end } : { kind: 'op-end', id, end }
+    ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
+  }
+
+  /** Drar i ett bords kant/ände för att ändra bredd eller djup manuellt. */
+  function onTableHandlePointerDown(
+    e: ReactPointerEvent,
+    id: string,
+    edge: 'n' | 's' | 'e' | 'w',
+  ) {
+    if (handMode) return
+    e.stopPropagation()
+    drag.current = { kind: 'table-resize', id, edge }
     ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
   }
 
@@ -833,20 +927,30 @@ export default function LayoutEditorPage() {
     markDirty()
   }
 
+  /** Byter ritverktyg och lämnar alltid handläget — man kan inte rita och
+   *  rotera samtidigt. */
+  function pickTool(t: Tool) {
+    setHandMode(false)
+    setTool(t)
+  }
+
   function addTable(shape: TableShape) {
     const n = nextTable.current++
+    const seats = shape === 'round' ? 2 : 4
     const t: TableElement = {
       id: `t${n}-${shape}`,
       label: `T${n}`,
       shape,
-      seats: shape === 'round' ? 2 : 4,
+      seats,
       zone: 'Mitten',
       x: bounds.x + bounds.w / 2,
       y: bounds.y + bounds.h / 2,
       rotation: 0,
+      ...defaultTableSize(shape, seats),
     }
     patchFloor((fl) => ({ tables: [...fl.tables, t] }))
     setSelection({ kind: 'table', id: t.id })
+    setHandMode(false)
     setTool('select')
     markDirty()
   }
@@ -856,6 +960,7 @@ export default function LayoutEditorPage() {
     setFloors((prev) => [...prev, f])
     setCurrentFloorId(f.id)
     setSelection(null)
+    setHandMode(false)
     setTool('ground')
     markDirty()
   }
@@ -1051,21 +1156,27 @@ export default function LayoutEditorPage() {
         )}
         <div className="editor-row">
           <div className="admin-card editor-toolbar">
-            <ToolButton glyph="↖" caption="Välj" title="Välj, flytta och ändra storlek" active={tool === 'select'} onClick={() => setTool('select')} />
-            <ToolButton glyph="▦" caption="Mark" title="Rita mark — väggar skapas runt om automatiskt" active={tool === 'ground'} onClick={() => setTool('ground')} />
-            <ToolButton glyph="▬" caption="Vägg" title="Rita vägg — klicka och dra" active={tool === 'wall'} onClick={() => setTool('wall')} />
-            <ToolButton glyph="▭" caption="Fönster" title="Fönster — placeras på en vägg" active={tool === 'window'} onClick={() => setTool('window')} />
-            <ToolButton glyph="◐" caption="Entré" title="Entré — placeras på en vägg" active={tool === 'entrance'} onClick={() => setTool('entrance')} />
-            <ToolButton glyph="◑" caption="Kök" title="Kökets ingång — placeras på en vägg" active={tool === 'kitchen'} onClick={() => setTool('kitchen')} />
-            <ToolButton glyph="▣" caption="Kassa" title="Placera kassan — klicka" active={tool === 'counter'} onClick={() => setTool('counter')} />
+            <ToolButton glyph="↖" caption="Välj" title="Välj, flytta och ändra storlek" active={tool === 'select'} onClick={() => pickTool('select')} />
+            <ToolButton glyph="▦" caption="Mark" title="Rita mark — väggar skapas runt om automatiskt" active={tool === 'ground'} onClick={() => pickTool('ground')} />
+            <ToolButton glyph="▬" caption="Vägg" title="Rita vägg — klicka och dra" active={tool === 'wall'} onClick={() => pickTool('wall')} />
+            <ToolButton glyph="▭" caption="Fönster" title="Fönster — placeras på en vägg" active={tool === 'window'} onClick={() => pickTool('window')} />
+            <ToolButton glyph="◐" caption="Entré" title="Entré — placeras på en vägg" active={tool === 'entrance'} onClick={() => pickTool('entrance')} />
+            <ToolButton glyph="◑" caption="Kök" title="Kökets ingång — placeras på en vägg" active={tool === 'kitchen'} onClick={() => pickTool('kitchen')} />
+            <ToolButton glyph="▣" caption="Kassa" title="Placera kassan — klicka" active={tool === 'counter'} onClick={() => pickTool('counter')} />
             <ToolButton glyph="■" caption="Bord" title="Lägg till fyrkantigt bord" active={tool === 'add-square'} onClick={() => addTable('square')} />
             <ToolButton glyph="●" caption="Bord" title="Lägg till runt bord" active={tool === 'add-round'} onClick={() => addTable('round')} />
-            <ToolButton glyph="✕" caption="Radera" title="Radera — klicka på ett element" active={tool === 'erase'} onClick={() => setTool((t) => (t === 'erase' ? 'select' : 'erase'))} />
+            <ToolButton glyph="✕" caption="Radera" title="Radera — klicka på ett element" active={tool === 'erase'} onClick={() => { setHandMode(false); setTool((t) => (t === 'erase' ? 'select' : 'erase')) }} />
           </div>
 
           <div
             ref={sceneRef}
-            className={isDrawTool ? 'floor-scene tool-draw' : 'floor-scene'}
+            className={[
+              'floor-scene',
+              isDrawTool && !handMode ? 'tool-draw' : '',
+              handMode ? (isRotating ? 'tool-hand-grabbing' : 'tool-hand') : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
             onPointerDown={onScenePointerDown}
             onPointerMove={onScenePointerMove}
             onPointerUp={onScenePointerUp}
@@ -1108,6 +1219,17 @@ export default function LayoutEditorPage() {
                 </button>
               </div>
               <div className="view-toggle">
+                <button
+                  type="button"
+                  className={handMode ? 'active' : ''}
+                  title="Handverktyg — klicka och dra var som helst för att rotera vyn fritt"
+                  aria-pressed={handMode}
+                  onClick={() => setHandMode((v) => !v)}
+                >
+                  ✋
+                </button>
+              </div>
+              <div className="view-toggle">
                 <button type="button" className={is3d ? '' : 'active'} onClick={() => setIs3d(false)}>
                   2D
                 </button>
@@ -1115,10 +1237,22 @@ export default function LayoutEditorPage() {
                   3D
                 </button>
               </div>
+              {floorIndex > 0 && (
+                <div className="view-toggle">
+                  <button
+                    type="button"
+                    className={showFloorBelow ? 'active' : ''}
+                    title="Visa våningen under som skugga, för att rikta in t.ex. trappor"
+                    onClick={() => setShowFloorBelow((v) => !v)}
+                  >
+                    Våning under
+                  </button>
+                </div>
+              )}
             </div>
 
             <div
-              className="floor-world"
+              className={isRotating ? 'floor-world no-anim' : 'floor-world'}
               style={{
                 ['--tilt' as string]: is3d ? `${TILT_DEG}deg` : '0deg',
                 ['--spin' as string]: `${spin}deg`,
@@ -1133,6 +1267,25 @@ export default function LayoutEditorPage() {
                   transform: `translate(${tx}px, ${ty}px)`,
                 }}
               >
+                {belowFloor && (
+                  <div className="floor-ghost" aria-hidden="true">
+                    {/* Bara väggarna — de byggs neråt i Z-led via CSS
+                        (.floor-ghost .seg { --lift }), som om man tittade
+                        rakt ner genom golvet på strukturen under. */}
+                    {belowFloor.walls.map((w) => (
+                      <WallEl
+                        key={w.id}
+                        wall={w}
+                        lowered={false}
+                        selected={false}
+                        showHandles={false}
+                        onPointerDown={() => {}}
+                        onHandlePointerDown={() => {}}
+                      />
+                    ))}
+                  </div>
+                )}
+
                 {drawnGrounds.map((g) => (
                   <div
                     key={g.id}
@@ -1276,6 +1429,32 @@ export default function LayoutEditorPage() {
                           </span>
                         </div>
                       </div>
+                      {tool === 'select' &&
+                        selection?.kind === 'table' &&
+                        selection.id === t.id && (
+                          <>
+                            <div
+                              className="table-handle n"
+                              title="Dra för att ändra djup"
+                              onPointerDown={(e) => onTableHandlePointerDown(e, t.id, 'n')}
+                            />
+                            <div
+                              className="table-handle s"
+                              title="Dra för att ändra djup"
+                              onPointerDown={(e) => onTableHandlePointerDown(e, t.id, 's')}
+                            />
+                            <div
+                              className="table-handle e"
+                              title="Dra för att ändra bredd"
+                              onPointerDown={(e) => onTableHandlePointerDown(e, t.id, 'e')}
+                            />
+                            <div
+                              className="table-handle w"
+                              title="Dra för att ändra bredd"
+                              onPointerDown={(e) => onTableHandlePointerDown(e, t.id, 'w')}
+                            />
+                          </>
+                        )}
                     </div>
                   )
                 })}
@@ -1331,13 +1510,31 @@ export default function LayoutEditorPage() {
                 <div className="props-field">
                   <p className="props-label">FORM</p>
                   <div className="shape-toggle">
-                    <button type="button" className={selectedTable.shape === 'round' ? 'active' : ''} onClick={() => updateTable({ shape: 'round' })}>
+                    <button
+                      type="button"
+                      className={selectedTable.shape === 'round' ? 'active' : ''}
+                      onClick={() => {
+                        // Runda bord ska alltid vara cirkulära — jämna ut en
+                        // ev. rektangulär storlek till en diameter istället
+                        // för att bli en oval.
+                        const d = (selectedTable.w + selectedTable.h) / 2
+                        updateTable({ shape: 'round', w: d, h: d })
+                      }}
+                    >
                       Rund
                     </button>
                     <button type="button" className={selectedTable.shape === 'square' ? 'active' : ''} onClick={() => updateTable({ shape: 'square' })}>
                       Fyrkantig
                     </button>
                   </div>
+                </div>
+                <div className="props-field">
+                  <p className="props-label">STORLEK</p>
+                  <p className="props-pos">{`${Math.round(selectedTable.w)} × ${Math.round(selectedTable.h)} enheter`}</p>
+                  <p className="props-empty">
+                    Dra i handtagen på en sida eller ände av bordet för att
+                    ändra bredd eller djup fritt — går att göra avlångt.
+                  </p>
                 </div>
                 <div className="props-field">
                   <p className="props-label">PLATSER</p>

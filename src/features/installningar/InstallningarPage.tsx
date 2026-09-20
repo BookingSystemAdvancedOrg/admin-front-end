@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 import {
   DEFAULT_BOOKING_DURATION_HOURS,
   DEFAULT_GRACE_PERIOD_HOURS,
@@ -105,6 +106,8 @@ export default function InstallningarPage() {
 
   const caller = { sub, groups }
   const canManageStaff = groups.includes('owner_user') || groups.includes('super_user')
+  // Plats-ID:t (UUID) är ett internt teknisk detalj — bara systemadmin ska se det.
+  const isSuperUser = groups.includes('super_user')
 
   // En plats är redan skapad - hämta den riktiga datan istället för att
   // visa kvarvarande mockvärden.
@@ -384,7 +387,9 @@ export default function InstallningarPage() {
                 {resolvingLocation
                   ? 'Letar efter restaurangens plats…'
                   : locationId
-                    ? `Plats-ID: ${locationId} — ändringar sparas med "Spara ändringar".`
+                    ? isSuperUser
+                      ? `Plats-ID: ${locationId} — ändringar sparas med "Spara ändringar".`
+                      : 'Ändringar sparas med "Spara ändringar".'
                     : 'Grundläggande information om din restaurang. Sparas som en ny plats i backend, och krävs innan layouten kan sparas.'}
               </p>
             </div>
@@ -444,7 +449,15 @@ export default function InstallningarPage() {
               />
             </div>
             <div className="form-field">
-              <label htmlFor="rp-duration">Bokningslängd (timmar)</label>
+              <span className="form-field-label-row">
+                <label htmlFor="rp-duration">Bokningslängd (timmar)</label>
+                <InfoTooltip label="Bokningslängd (timmar)">
+                  Hur länge ett bord är upptaget per bokning. Styr längden på
+                  varje ledig tid som visas för gästen — t.ex. ger 2 timmar
+                  bokningsbara pass som 18:00–20:00.
+                  Måste vara större än noll.
+                </InfoTooltip>
+              </span>
               <input
                 id="rp-duration"
                 inputMode="decimal"
@@ -456,7 +469,12 @@ export default function InstallningarPage() {
               />
             </div>
             <div className="form-field">
-              <label htmlFor="rp-grace">Grace period (timmar)</label>
+              <span className="form-field-label-row">
+                <label htmlFor="rp-grace">Grace period (timmar)</label>
+                <InfoTooltip label="Grace period (timmar)">
+                  Hur länge bordet ska hållas om gästen är sen. Ange mellan 0 och 1 timme. Exempel: 0,25 = 15 minuter. Därefter blir bordet ledigt igen. 
+                </InfoTooltip>
+              </span>
               <input
                 id="rp-grace"
                 inputMode="decimal"

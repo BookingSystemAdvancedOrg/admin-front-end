@@ -156,8 +156,8 @@ function openingToApi(
 }
 
 function tableToApi(t: TableElement): LayoutElementCreate {
-  // Måtten härleds ur form + antal platser, så de behöver aldrig läsas
-  // tillbaka — `tableSize` ger samma svar på båda sidor av rundturen.
+  // Måtten är satta manuellt (resize-handtagen) — API:t har egna width/
+  // depth-fält för dem, så de läses tillbaka i tableFromApi nedan.
   const size = tableSize(t)
   return {
     type: 'table',
@@ -278,6 +278,8 @@ function tableFromApi(el: LayoutElement, index: number): TableElement {
     x: toUnits(el.x),
     y: toUnits(el.z),
     rotation: el.rotationY,
+    w: toUnits(el.width),
+    h: toUnits(el.depth),
   }
 }
 

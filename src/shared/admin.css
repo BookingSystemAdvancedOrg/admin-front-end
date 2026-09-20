@@ -670,6 +670,83 @@
   box-shadow: 0 0 0 3px rgba(26, 43, 35, 0.12);
 }
 
+/* --- Infobubbla (fältförklaringar) --------------------------------------- */
+
+.form-field-label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.info-tooltip {
+  position: relative;
+  display: inline-flex;
+}
+
+.info-tooltip-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--muted);
+  background: none;
+  padding: 0;
+  font: 700 10px/1 var(--sans);
+  font-style: italic;
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.info-tooltip-trigger:hover,
+.info-tooltip-trigger[aria-expanded='true'] {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.info-tooltip-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  width: max(240px, min(300px, 80vw));
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgba(26, 43, 35, 0.18);
+}
+
+.info-tooltip-panel p {
+  padding-right: 16px;
+  font: 400 13px/1.5 var(--sans);
+  color: var(--ink);
+}
+
+.info-tooltip-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  font: 400 16px/1 var(--sans);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.info-tooltip-close:hover {
+  color: var(--ink);
+  background: var(--bg);
+}
+
 /* --- Modal / popup ------------------------------------------------------ */
 
 .modal-overlay {

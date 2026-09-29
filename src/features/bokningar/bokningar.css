@@ -2,13 +2,17 @@
 
 .status-cell {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 
-/* Knappen som markerar att kunden anlänt — låser statusen permanent. */
+/* Knappen som markerar att kunden anlänt — låser statusen permanent.
+   Padding + negativ margin ger en bekväm tryckyta på touch utan att
+   knappen ser större ut bredvid statusmärket. */
 .arrive-btn {
-  padding: 4px 10px;
+  padding: 10px 10px;
+  margin: -6px 0;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);

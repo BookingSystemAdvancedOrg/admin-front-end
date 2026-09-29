@@ -10,30 +10,39 @@ import type {
   WallSegment,
 } from './data'
 
+/** Faktisk räckvidd för fältet är samma som `OpeningKind` minus fönster. */
+type DoorKind = Exclude<OpeningKind, 'window'>
+
 /**
  * Klient mot backendens /locations/{id}/layout-elements/*-endpoints.
  *
- * API:t lagrar en PLATT lista av 3D-element (floor/wall/door/window/table)
- * med meter som enhet, medan editorn arbetar i 2D-rutnätsenheter med
- * våningar, markytor och inventarier. Den här filen är översättningen
- * mellan de två modellerna — se `toApiLayout`/`toFloors`.
+ * API:t lagrar en PLATT lista av 3D-element (floor/floorArea/wall/door/
+ * window/table/cashRegister) med meter som enhet, medan editorn arbetar i
+ * 2D-rutnätsenheter med våningar, markytor och inventarier. Den här filen
+ * är översättningen mellan de två modellerna — se `toApiLayout`/`toFloors`.
  *
  * Våningar: en våning är ett `floor`-element (`name`, `level`), och varje
- * vägg/öppning/bord bär `floorId` till sin våning. Vid publicering kräver
- * API:t att alla element hör till en våning i samma utkast. En äldre,
- * platt layout (utan våningar) läses in som en enda våning och migreras
- * automatiskt vid nästa sparning.
+ * vägg/öppning/bord/markyta/kassa bär `floorId` till sin våning. Vid
+ * publicering kräver API:t att alla element hör till en våning i samma
+ * utkast. En äldre, platt layout (utan våningar) läses in som en enda
+ * våning och migreras automatiskt vid nästa sparning.
  *
- * Vad som INTE går att spara (API:ts datamodell saknar fälten helt, och
- * alla scheman är `additionalProperties: false` så det finns ingen plats
- * att gömma dem i):
- *   - markytor (grounds) och inventarier som kassan (fixtures) — spec:en
- *     säger uttryckligen "`decor` is not supported by the current data model"
+ * Vad som fortfarande INTE går att spara (API:ts datamodell saknar
+ * fälten, och alla scheman är `additionalProperties: false`):
  *   - bordens etiketter (T1, T2 …) — återskapas vid inläsning
- *   - skillnaden entré/kökets ingång — båda lagras som `door`
+ * Markytor (`floorArea`), kassan (`cashRegister`) och skillnaden
+ * entré/kökets ingång (`kind` på en `door`) fick stöd i API:t 2026-09-29
+ * och sparas numera som riktiga element istället för i localStorage.
  */
 
-export type ApiElementType = 'floor' | 'wall' | 'door' | 'window' | 'table'
+export type ApiElementType =
+  | 'floor'
+  | 'floorArea'
+  | 'wall'
+  | 'door'
+  | 'window'
+  | 'table'
+  | 'cashRegister'
 
 export interface LayoutElement {
   elementId: string
@@ -49,6 +58,10 @@ export interface LayoutElement {
   seats?: number
   zone?: string
   wallId?: string
+  /** Bara dörrar; fönster har ingen klassificering. Äldre dörrar saknar den. */
+  kind?: DoorKind
+  /** Visningsetikett — bara bord och kassa. */
+  label?: string
   /** Bara våningar: namn och signerad ordning (0 = entréplan). */
   name?: string
   level?: number
@@ -82,6 +95,10 @@ const WALL_HEIGHT_M = 1.8
 const WALL_THICKNESS_M = 0.2
 const DOOR_HEIGHT_M = 2
 const WINDOW_HEIGHT_M = 1.2
+/** En markyta är bara ett tunt, renderbart golvskikt — ingen egen volym. */
+const FLOOR_AREA_THICKNESS_M = 0.02
+/** Diskhöjd, ungefär som en bardisk. */
+const CASH_REGISTER_HEIGHT_M = 1
 /** Fönstrets underkant över golvet. */
 const WINDOW_SILL_M = 1
 const OPENING_THICKNESS_M = 0.28
@@ -139,19 +156,48 @@ function openingToApi(
   const horizontal = wall.dir === 'h'
   // Öppningens mittpunkt räknad från väggens start längs väggen.
   const along = o.offset + o.length / 2
-  const isWindow = o.kind === 'window'
-  return {
-    // Entré och kökets ingång är båda dörrar i API:t — skillnaden finns inte
-    // i datamodellen och går därför inte att läsa tillbaka.
-    type: isWindow ? 'window' : 'door',
+  const common = {
     x: toM(horizontal ? wall.x + along : wall.x),
-    y: isWindow ? WINDOW_SILL_M : 0,
     z: toM(horizontal ? wall.y : wall.y + along),
     width: toM(o.length),
-    height: isWindow ? WINDOW_HEIGHT_M : DOOR_HEIGHT_M,
     depth: OPENING_THICKNESS_M,
     rotationY: horizontal ? 0 : 90,
     wallId: o.wallId,
+  }
+  if (o.kind === 'window') {
+    return { type: 'window', ...common, y: WINDOW_SILL_M, height: WINDOW_HEIGHT_M }
+  }
+  // Entré och kökets ingång är båda dörrar i API:t, skilda åt av `kind`.
+  return { type: 'door', ...common, y: 0, height: DOOR_HEIGHT_M, kind: o.kind }
+}
+
+/** Markytans mittpunkt räknat från dess hörn (`GroundRect` är hörn+mått). */
+function groundToApi(g: GroundRect): LayoutElementCreate | null {
+  if (g.w <= 0 || g.h <= 0) return null
+  return {
+    type: 'floorArea',
+    x: toM(g.x + g.w / 2),
+    y: 0,
+    z: toM(g.y + g.h / 2),
+    width: toM(g.w),
+    height: FLOOR_AREA_THICKNESS_M,
+    depth: toM(g.h),
+    rotationY: 0,
+  }
+}
+
+function fixtureToApi(f: Fixture): LayoutElementCreate | null {
+  if (f.w <= 0 || f.h <= 0) return null
+  return {
+    type: 'cashRegister',
+    x: toM(f.x),
+    y: 0,
+    z: toM(f.y),
+    width: toM(f.w),
+    height: CASH_REGISTER_HEIGHT_M,
+    depth: toM(f.h),
+    rotationY: 0,
+    label: f.label.trim() || 'Kassa',
   }
 }
 
@@ -190,6 +236,10 @@ export function toApiElements(
   const onFloor = (el: LayoutElementCreate): LayoutElementCreate =>
     floorId ? { ...el, floorId } : el
 
+  for (const g of floor.grounds) {
+    const el = groundToApi(g)
+    if (el) out.set(g.id, onFloor(el))
+  }
   for (const w of floor.walls) {
     if (w.length > 0) out.set(w.id, onFloor(wallToApi(w)))
   }
@@ -198,6 +248,10 @@ export function toApiElements(
     if (!wall) continue
     const el = openingToApi(o, wall)
     if (el) out.set(o.id, onFloor(el))
+  }
+  for (const f of floor.fixtures) {
+    const el = fixtureToApi(f)
+    if (el) out.set(f.id, onFloor(el))
   }
   for (const t of floor.tables) {
     out.set(t.id, onFloor(tableToApi(t)))
@@ -242,28 +296,43 @@ function wallFromApi(el: LayoutElement): WallSegment {
   }
 }
 
-function openingFromApi(
-  el: LayoutElement,
-  wall: WallSegment,
-  doorKinds: Record<string, OpeningKind>,
-): Opening {
+function openingFromApi(el: LayoutElement, wall: WallSegment): Opening {
   const length = toUnits(el.width)
   const along = wall.dir === 'h' ? toUnits(el.x) - wall.x : toUnits(el.z) - wall.y
-  // API:t lagrar entré och kök som samma `door`. Den lokalt sparade
-  // dörrtypen avgör vilken det var; utan den blir en dörr en entré.
-  const stored = doorKinds[el.elementId]
+  // Äldre dörrar (skapade innan API:t fick `kind`) saknar fältet — de blir
+  // en entré, precis som innan.
   const kind: OpeningKind =
-    el.type === 'window'
-      ? 'window'
-      : stored === 'kitchen' || stored === 'entrance'
-        ? stored
-        : 'entrance'
+    el.type === 'window' ? 'window' : el.kind === 'kitchen' ? 'kitchen' : 'entrance'
   return {
     id: el.elementId,
     kind,
     wallId: wall.id,
     offset: Math.max(0, along - length / 2),
     length,
+  }
+}
+
+function groundFromApi(el: LayoutElement): GroundRect {
+  const w = toUnits(el.width)
+  const h = toUnits(el.depth)
+  return {
+    id: el.elementId,
+    x: toUnits(el.x) - w / 2,
+    y: toUnits(el.z) - h / 2,
+    w,
+    h,
+  }
+}
+
+function fixtureFromApi(el: LayoutElement): Fixture {
+  return {
+    id: el.elementId,
+    type: 'counter',
+    label: el.label ?? 'Kassa',
+    x: toUnits(el.x),
+    y: toUnits(el.z),
+    w: toUnits(el.width),
+    h: toUnits(el.depth),
   }
 }
 
@@ -285,13 +354,11 @@ function tableFromApi(el: LayoutElement, index: number): TableElement {
 
 /**
  * Bygger en vånings innehåll ur en lista API-element. Våningselement
- * ignoreras (de har ingen 2D-motsvarighet); markytor och inventarier blir
- * tomma — de finns inte i API:t.
+ * ignoreras (de har ingen 2D-motsvarighet).
  */
 export function toFloorElements(
   elements: LayoutElement[],
-  doorKinds: Record<string, OpeningKind> = {},
-): Pick<Floor, 'walls' | 'openings' | 'tables'> {
+): Pick<Floor, 'walls' | 'openings' | 'tables' | 'grounds' | 'fixtures'> {
   const walls = elements.filter((e) => e.type === 'wall').map(wallFromApi)
   const wallById = new Map(walls.map((w) => [w.id, w]))
 
@@ -301,14 +368,18 @@ export function toFloorElements(
     // En öppning utan sin vägg går inte att placera - API:t garanterar
     // ingen relation, så den hoppas över istället för att hamna fel.
     const wall = el.wallId ? wallById.get(el.wallId) : undefined
-    if (wall) openings.push(openingFromApi(el, wall, doorKinds))
+    if (wall) openings.push(openingFromApi(el, wall))
   }
 
   const tables = elements
     .filter((e) => e.type === 'table')
     .map((el, i) => tableFromApi(el, i))
+  const grounds = elements.filter((e) => e.type === 'floorArea').map(groundFromApi)
+  const fixtures = elements
+    .filter((e) => e.type === 'cashRegister')
+    .map(fixtureFromApi)
 
-  return { walls, openings, tables }
+  return { walls, openings, tables, grounds, fixtures }
 }
 
 /** Editorns id för den enda våningen i en äldre, platt layout. */
@@ -319,13 +390,9 @@ export const LEGACY_FLOOR_ID = 'floor-1'
  * varje sådant en våning (i nivåordning) och innehållet fördelas via
  * `floorId`; element som saknar våning eller pekar på en okänd hamnar på
  * den första, och rättas vid nästa sparning. Utan våningselement (äldre,
- * platt layout) blir allt en enda våning. Markytor och inventarier hämtas
- * ur det lokalt sparade, per våning.
+ * platt layout) blir allt en enda våning.
  */
-export function toFloors(
-  elements: LayoutElement[],
-  extras: LayoutExtras = EMPTY_EXTRAS,
-): Floor[] {
+export function toFloors(elements: LayoutElement[]): Floor[] {
   const floorElements = elements
     .filter((e) => e.type === 'floor')
     .sort(
@@ -339,9 +406,7 @@ export function toFloors(
       {
         id: LEGACY_FLOOR_ID,
         name: 'Våning 1',
-        grounds: extras.grounds,
-        fixtures: extras.fixtures,
-        ...toFloorElements(elements, extras.doorKinds),
+        ...toFloorElements(elements),
       },
     ]
   }
@@ -354,107 +419,12 @@ export function toFloors(
         (e.floorId === f.elementId ||
           (i === 0 && (!e.floorId || !known.has(e.floorId)))),
     )
-    // Första våningen ärver det gamla platta formatets markytor/inventarier
-    // så att en migrerad layout inte tappar kassan.
-    const local =
-      extras.byFloor[f.elementId] ??
-      (i === 0
-        ? { grounds: extras.grounds, fixtures: extras.fixtures }
-        : { grounds: [], fixtures: [] })
     return {
       id: f.elementId,
       name: f.name?.trim() || `Våning ${i + 1}`,
-      grounds: local.grounds,
-      fixtures: local.fixtures,
-      ...toFloorElements(own, extras.doorKinds),
+      ...toFloorElements(own),
     }
   })
-}
-
-/* --- Lokalt sparat (det API:t inte kan lagra) ---------------------------- */
-
-const LOCAL_EXTRAS_KEY = 'admin-layout-extras'
-
-/** Markytor och inventarier — per våning. */
-export interface FloorExtras {
-  grounds: GroundRect[]
-  fixtures: Fixture[]
-}
-
-/**
- * Det API:t inte kan lagra — se filhuvudet. Utöver markytor och inventarier
- * ingår `doorKinds`: en karta elementId -> 'entrance' | 'kitchen', eftersom
- * API:t lagrar båda som `door` och annars läser tillbaka varje kök som en
- * entré. `byFloor` nycklas på våningens elementId; `grounds`/`fixtures` på
- * toppnivå är första våningens och finns kvar för äldre sparningar.
- */
-export interface LayoutExtras extends FloorExtras {
-  doorKinds: Record<string, OpeningKind>
-  byFloor: Record<string, FloorExtras>
-}
-
-const EMPTY_EXTRAS: LayoutExtras = {
-  grounds: [],
-  fixtures: [],
-  doorKinds: {},
-  byFloor: {},
-}
-
-function toFloorExtras(value: unknown): FloorExtras {
-  const p = (value ?? {}) as Partial<FloorExtras>
-  return {
-    grounds: Array.isArray(p.grounds) ? p.grounds : [],
-    fixtures: Array.isArray(p.fixtures) ? p.fixtures : [],
-  }
-}
-
-/**
- * Sparar det API:t inte kan lagra i webbläsaren, per plats. Det är en
- * nödlösning tills backend stödjer markytor och inventarier: kassan och
- * golvytan överlever en omladdning, men bara på den här datorn och syns
- * inte för kollegor. Backend behöver egna elementtyper för att lösa det.
- */
-export function loadLayoutExtras(locationId: string): LayoutExtras {
-  try {
-    const raw = localStorage.getItem(`${LOCAL_EXTRAS_KEY}:${locationId}`)
-    if (!raw) return EMPTY_EXTRAS
-    const parsed = JSON.parse(raw) as Partial<LayoutExtras>
-    const byFloor: Record<string, FloorExtras> = {}
-    if (parsed.byFloor && typeof parsed.byFloor === 'object') {
-      for (const [id, value] of Object.entries(parsed.byFloor)) {
-        byFloor[id] = toFloorExtras(value)
-      }
-    }
-    return {
-      ...toFloorExtras(parsed),
-      doorKinds:
-        parsed.doorKinds && typeof parsed.doorKinds === 'object'
-          ? parsed.doorKinds
-          : {},
-      byFloor,
-    }
-  } catch {
-    return EMPTY_EXTRAS
-  }
-}
-
-export function saveLayoutExtras(
-  locationId: string,
-  extras: LayoutExtras,
-): void {
-  try {
-    localStorage.setItem(
-      `${LOCAL_EXTRAS_KEY}:${locationId}`,
-      JSON.stringify({
-        grounds: extras.grounds,
-        fixtures: extras.fixtures,
-        doorKinds: extras.doorKinds,
-        byFloor: extras.byFloor,
-      }),
-    )
-  } catch {
-    // Full eller avstängd localStorage ska inte krascha editorn.
-  }
 }
 
 /* --- HTTP ---------------------------------------------------------------- */
@@ -602,9 +572,12 @@ export type LayoutActivation =
  * POST .../layout/versions/{n}/activate — utan body.
  *
  * Aktiveringen är omedelbar bara när platsen saknar gällande version. Finns
- * redan en, schemaläggs bytet till 01:00 UTC fyra veckor fram och svaret blir
- * `pending`. Att upprepa samma begäran är ofarligt, men att begära en ANNAN
- * version medan ett byte väntar ger 409.
+ * redan en, schemaläggs bytet i stället en bit fram i tiden och svaret blir
+ * `pending` — hur långt fram är miljöberoende, INTE alltid "01:00 UTC fyra
+ * veckor fram" (bekräftat av backend-teamet 2026-09-29: bara 5 minuter i
+ * dev, 28 dagar i prod). Lita på `cutoverAt` i svaret, anta aldrig ett
+ * fast intervall. Att upprepa samma begäran är ofarligt, men att begära en
+ * ANNAN version medan ett byte väntar ger 409.
  */
 export async function activateLayoutVersion(
   locationId: string,
@@ -641,6 +614,61 @@ export function listLayoutVersions(
   })
 }
 
+/**
+ * DELETE .../layout/versions/{version} — mjuk arkivering av en INAKTIV
+ * version (utan body). Ögonblicksbilden ligger kvar i lagringen (historik/
+ * versionsnumrering), men försvinner ur `listLayoutVersions` och går inte
+ * längre att aktivera — inget sätt att ångra via API:t. Gällande eller
+ * väntande version ger 409 (samma sak som "kan aldrig arkiveras" — de
+ * filtreras därför bort från knappen i LayoutVersionsModal redan innan
+ * anropet görs).
+ */
+export async function archiveLayoutVersion(
+  locationId: string,
+  version: number,
+): Promise<void> {
+  try {
+    await apiFetch<void>(
+      `/locations/${encodeURIComponent(locationId)}/layout/versions/${version}`,
+      { method: 'DELETE' },
+    )
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 409) {
+      throw new Error(
+        'Den här versionen gäller eller väntar på att aktiveras och kan inte arkiveras.',
+      )
+    }
+    throw toFriendlyLayoutError(err)
+  }
+}
+
+/**
+ * DELETE .../layout/pending-activation — avbryter ett väntande versionsbyte
+ * (utan body). Rör bara SCHEMALÄGGNINGEN: den gällande versionen fortsätter
+ * gälla utan slutdatum, och versionen som väntade blir en helt vanlig
+ * inaktiv version igen (kan därefter arkiveras precis som vilken annan
+ * inaktiv version som helst). Idempotent — ingen väntande aktivering alls
+ * ger också 204. Ett byte som redan hunnit gå i mål (förfallet) ger 409 och
+ * avbryts inte.
+ */
+export async function cancelPendingLayoutActivation(
+  locationId: string,
+): Promise<void> {
+  try {
+    await apiFetch<void>(
+      `/locations/${encodeURIComponent(locationId)}/layout/pending-activation`,
+      { method: 'DELETE' },
+    )
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 409) {
+      throw new Error(
+        'Bytet hann redan genomföras eller ändrades samtidigt. Ladda om listan.',
+      )
+    }
+    throw toFriendlyLayoutError(err)
+  }
+}
+
 /* --- Synkronisering ------------------------------------------------------ */
 
 export interface LayoutDiff {
@@ -665,6 +693,8 @@ const UPDATABLE_FIELDS = [
   'name',
   'level',
   'floorId',
+  'kind',
+  'label',
 ] as const
 
 function changedFields(
@@ -727,9 +757,8 @@ export interface LayoutSaveResult {
   elements: LayoutElement[]
   /**
    * Lokalt id -> serverns elementId för allt som just skapades. Behövs för
-   * att kunna föra över lokalt lagrade egenskaper (t.ex. om en dörr är
-   * entré eller kök, eller vilken våning kassan står på) till det id
-   * servern nu använder.
+   * att hitta rätt våning/element igen efter en sparning (t.ex. vilket
+   * elementId den nyss skapade våningen fick).
    */
   idMap: Map<string, string>
   /**
@@ -835,23 +864,6 @@ async function saveElements(
     idMap,
     flat,
   }
-}
-
-/**
- * Bygger kartan elementId -> dörrtyp som ska sparas lokalt, med lokala id:n
- * översatta till serverns efter en sparning. Fönster tas inte med — de har
- * en egen typ i API:t och behöver ingen lokal notering.
- */
-export function toDoorKinds(
-  openings: Opening[],
-  idMap: Map<string, string> = new Map(),
-): Record<string, OpeningKind> {
-  const out: Record<string, OpeningKind> = {}
-  for (const o of openings) {
-    if (o.kind === 'window') continue
-    out[idMap.get(o.id) ?? o.id] = o.kind
-  }
-  return out
 }
 
 /**

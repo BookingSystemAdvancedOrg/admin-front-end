@@ -1,5 +1,39 @@
 /* Live Layout Editor — CSS-3D-scen (Figma: admin-live-layout-editor-page) */
 
+/* "Se live" — skrivskyddat läge, en neutral notis snarare än ett fel. */
+.layout-viewmode-banner {
+  padding: 12px 16px;
+  background: #fbf3ec;
+  border: 1px solid #eddcc8;
+  color: #8a5a2b;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.layout-viewmode-banner .link-action {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Nollställer <fieldset>:s standardutseende (kant, padding, min-width) så
+   att disabled-tricket för "Se live" inte syns i layouten — bara i att
+   knapparna slutar gå att trycka på. */
+.props-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: contents;
+}
+
+.props-fieldset:disabled button,
+.props-fieldset:disabled input {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .editor-row {
   display: flex;
   gap: 24px;
@@ -414,9 +448,9 @@
 /* Ändhandtag för att ändra längd på vald vägg eller öppning */
 .seg-handle {
   position: absolute;
-  width: 18px;
-  height: 18px;
-  border-radius: 9px;
+  width: 22px;
+  height: 22px;
+  border-radius: 11px;
   background: var(--accent);
   border: 2px solid #fff;
   box-shadow: 0 1px 4px rgba(26, 43, 35, 0.35);
@@ -426,28 +460,28 @@
 }
 
 .seg-handle.h-a {
-  left: -9px;
+  left: -11px;
   top: 50%;
-  margin-top: -9px;
+  margin-top: -11px;
 }
 
 .seg-handle.h-b {
-  right: -9px;
+  right: -11px;
   top: 50%;
-  margin-top: -9px;
+  margin-top: -11px;
 }
 
 .seg-handle.v-a {
-  top: -9px;
+  top: -11px;
   left: 50%;
-  margin-left: -9px;
+  margin-left: -11px;
   cursor: ns-resize;
 }
 
 .seg-handle.v-b {
-  bottom: -9px;
+  bottom: -11px;
   left: 50%;
-  margin-left: -9px;
+  margin-left: -11px;
   cursor: ns-resize;
 }
 
@@ -519,9 +553,9 @@
    bordets mått fritt — samma accentprick som väggarnas handtag. */
 .table-handle {
   position: absolute;
-  width: 16px;
-  height: 16px;
-  border-radius: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 11px;
   background: var(--accent);
   border: 2px solid #fff;
   box-shadow: 0 1px 4px rgba(26, 43, 35, 0.35);
@@ -531,29 +565,29 @@
 
 .table-handle.e {
   top: 50%;
-  right: -8px;
-  margin-top: -8px;
+  right: -11px;
+  margin-top: -11px;
   cursor: ew-resize;
 }
 
 .table-handle.w {
   top: 50%;
-  left: -8px;
-  margin-top: -8px;
+  left: -11px;
+  margin-top: -11px;
   cursor: ew-resize;
 }
 
 .table-handle.n {
   left: 50%;
-  top: -8px;
-  margin-left: -8px;
+  top: -11px;
+  margin-left: -11px;
   cursor: ns-resize;
 }
 
 .table-handle.s {
   left: 50%;
-  bottom: -8px;
-  margin-left: -8px;
+  bottom: -11px;
+  margin-left: -11px;
   cursor: ns-resize;
 }
 
@@ -914,10 +948,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   border: 0;
-  border-radius: 13px;
+  border-radius: 16px;
   background: var(--green);
   color: #fff;
   font: 700 13px/1 var(--sans);
@@ -1006,5 +1040,147 @@
 
   .props-panel {
     width: 100%;
+  }
+}
+
+/* --- Publicerade versioner (LayoutVersionsModal) ------------------------- */
+
+/*
+ * En radlista i stället för en <table> — modalen är bara 480px bred och den
+ * gamla .data-table (min-width: 900px, byggd för de stora sidtabellerna)
+ * tvingade fram sidscroll för en lista med bara fyra korta fält. En
+ * flex-rad wrap:ar istället naturligt på egen bredd.
+ */
+.versions-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.version-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.version-row:first-child {
+  border-top: 0;
+}
+
+.version-row-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.version-row-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* .cell-strong/.cell-muted är annars scopade till .data-table i admin.css —
+   här är det ingen tabell, så basstilen och modifierarna sätts om lokalt. */
+.version-row-main,
+.version-row-right {
+  font: 400 14px/1.3 var(--sans);
+  color: var(--ink);
+}
+
+.version-row .cell-strong {
+  font-weight: 600;
+}
+
+.version-row .cell-muted {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/*
+ * En schemalagd (väntande) version fick tidigare en fylld badge precis som
+ * "Gäller nu" — lätt att läsa som "två aktiva" i förbifarten. Streckad
+ * kontur i stället för fyllnad gör skillnaden entydig på håll, inte bara
+ * i texten.
+ */
+.status-badge.pending-version {
+  background: transparent;
+  border: 1px dashed #8a5a2b;
+  color: #8a5a2b;
+}
+
+.pending-version-notice {
+  padding: 12px 16px;
+  background: #fbf3ec;
+  border: 1px solid #eddcc8;
+  color: #8a5a2b;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  /* Verktygsfältet blir en horisontell, skrollbar rad ovanför canvasen
+     istället för en smal kolumn bredvid den — annars klämmer den ihjäl
+     3D-scenen på en telefonbredd. */
+  .editor-toolbar {
+    flex-direction: row;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px;
+  }
+
+  .tool-btn {
+    flex-shrink: 0;
+  }
+
+  .floor-scene {
+    /* .floor-scene har `flex: 1 1 0` — flex-basis vinner över width i en
+       rad-flexbox, så basis måste sättas om explicit för att tvinga fram
+       en egen rad under verktygsfältet. */
+    flex: 1 1 100%;
+    width: 100%;
+    /* Fast 600px är högre än många telefoners hela skärm i liggande läge —
+       en andel av den synliga höjden håller canvasen användbar utan att
+       tvinga fram överdriven sidscroll. */
+    height: min(600px, 65vh);
+    min-height: 320px;
+  }
+
+  .props-panel {
+    padding: 16px;
+  }
+
+  /* Scene-controls får en egen rad UNDER floor-tabs (båda kvar upptill)
+     istället för att dela top:16px-raden — annars får de inte plats
+     bredvid varandra på en smal scen. Håll dem till EN rad var (skrollbar
+     i sidled vid behov) så höjden är förutsägbar och de aldrig krockar med
+     scene-hint-texten som bor längst ner. */
+  .scene-controls {
+    top: 58px;
+    left: 12px;
+    right: 12px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+
+  .view-toggle {
+    flex-shrink: 0;
+  }
+
+  .floor-tabs {
+    top: 12px;
+    left: 12px;
+    max-width: calc(100% - 24px);
+  }
+
+  .editor-statusbar {
+    flex-wrap: wrap;
+    gap: 8px 16px;
   }
 }

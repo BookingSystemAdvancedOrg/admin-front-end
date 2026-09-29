@@ -10,6 +10,7 @@ const NAV: { to: string; label: string; end?: boolean }[] = [
   { to: '/', label: 'Översikt', end: true },
   { to: '/bokningar', label: 'Bokningar' },
   { to: '/meny', label: 'Meny' },
+  { to: '/cateringkalkyl', label: 'Cateringkalkyl' },
   { to: '/layout', label: 'Layout' },
   { to: '/installningar', label: 'Inställningar' },
 ]

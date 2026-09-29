@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react'
-import { activateLayoutVersion, listLayoutVersions } from './layoutApi'
+import {
+  activateLayoutVersion,
+  archiveLayoutVersion,
+  cancelPendingLayoutActivation,
+  listLayoutVersions,
+} from './layoutApi'
 import type { LayoutActivation, PublishedLayoutSnapshot } from './layoutApi'
 
 /** "2026-10-05T01:00:00Z" -> "5 oktober 2026, 03:00" i lokal tid. */
@@ -15,13 +20,41 @@ function formatMoment(iso: string): string {
   }).format(d)
 }
 
+/** Kort variant för statusmärket i listan — "5 okt. 2026" — så raden inte
+ *  tvingar fram sidscroll. Fulla datumet + klockslag står redan i
+ *  bekräftelsetexten ovanför listan när man just aktiverat något. */
+function formatShortDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return new Intl.DateTimeFormat('sv-SE', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(d)
+}
+
 /**
- * Publicerade layoutversioner, med möjlighet att aktivera en av dem.
+ * Publicerade layoutversioner, med möjlighet att aktivera, avbryta eller
+ * arkivera en av dem.
  *
  * Aktiveringen är omedelbar bara när ingen version gäller ännu. Finns redan
- * en gällande version schemalägger API:t bytet fyra veckor fram — det måste
- * synas, annars tror man att bytet skett direkt. Bara ägare och systemadmin
- * får aktivera, så listan visas för alla men knappen bara för dem.
+ * en gällande version schemalägger API:t bytet ett stycke fram i tiden i
+ * stället — hur långt är miljöberoende (bekräftat av backend-teamet
+ * 2026-09-29: 5 minuter i dev, 28 dagar/fyra veckor i prod) — det måste
+ * synas, annars tror man att bytet skett direkt.
+ *
+ * Ett schemalagt byte går att avbryta (fick stöd i API:t 2026-09-29): den
+ * väntande versionen (badgen "Aktiveras …") får en "Avbryt"-knapp som bara
+ * rör SCHEMALÄGGNINGEN — den gällande versionen fortsätter gälla utan
+ * slutdatum, och den avbrutna versionen blir en vanlig inaktiv version igen
+ * (kan därefter arkiveras precis som vilken annan inaktiv version som helst).
+ *
+ * Arkivering (fick också stöd 2026-09-29) städar bort gamla, aldrig
+ * aktiverade eller redan förbrukade versioner ur listan — bara gällande och
+ * väntande version kan inte arkiveras direkt (avbryt bytet först).
+ *
+ * Bara ägare och systemadmin får göra något av detta, så listan visas för
+ * alla men knapparna bara för dem.
  */
 export function LayoutVersionsModal({
   locationId,
@@ -37,7 +70,10 @@ export function LayoutVersionsModal({
   const [versions, setVersions] = useState<PublishedLayoutSnapshot[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busyVersion, setBusyVersion] = useState<number | null>(null)
+  const [archivingVersion, setArchivingVersion] = useState<number | null>(null)
+  const [cancelling, setCancelling] = useState(false)
   const [result, setResult] = useState<LayoutActivation | null>(null)
+  const busy = busyVersion !== null || archivingVersion !== null || cancelling
 
   useEffect(() => {
     let cancelled = false
@@ -76,10 +112,55 @@ export function LayoutVersionsModal({
     }
   }
 
+  /**
+   * Mjuk arkivering — bara inaktiva versioner (aldrig gällande/väntande, det
+   * filtreras bort i knappen nedan). Ögonblicksbilden finns kvar i lagringen,
+   * men försvinner ur listan och går inte att ångra via API:t, därför en
+   * bekräftelse innan anropet (samma mönster som "Ta bort"-knapparna för
+   * användare/rätter).
+   */
+  async function archive(version: number, label: string) {
+    if (!window.confirm(`Arkivera ${label}? Går inte att ångra.`)) return
+    setError(null)
+    setArchivingVersion(version)
+    try {
+      await archiveLayoutVersion(locationId, version)
+      setVersions((prev) => prev?.filter((v) => v.version !== version) ?? prev)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Kunde inte arkivera versionen.')
+    } finally {
+      setArchivingVersion(null)
+    }
+  }
+
+  /**
+   * Avbryter det väntande bytet (utan att röra vilken version som är vald
+   * för det) — den gällande versionen fortsätter gälla utan slutdatum, och
+   * den väntande versionen blir en vanlig inaktiv version igen (går då att
+   * arkivera precis som vilken annan inaktiv version som helst). Läser om
+   * listan efteråt eftersom både den gällande och den väntande versionens
+   * lifecycle-fält ändras.
+   */
+  async function cancelPending() {
+    if (!window.confirm('Avbryta det schemalagda bytet?')) return
+    setError(null)
+    setResult(null)
+    setCancelling(true)
+    try {
+      await cancelPendingLayoutActivation(locationId)
+      setVersions(await listLayoutVersions(locationId))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Kunde inte avbryta bytet.')
+    } finally {
+      setCancelling(false)
+    }
+  }
+
   // En väntande version har ett framtida effectiveFrom men gäller inte än.
   const pendingVersion = versions?.find(
     (v) => !v.isCurrent && v.effectiveFrom && new Date(v.effectiveFrom) > new Date(),
   )
+  const currentVersion = versions?.find((v) => v.isCurrent)
 
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true">
@@ -100,6 +181,17 @@ export function LayoutVersionsModal({
           </p>
         )}
 
+        {pendingVersion && (
+          <p className="pending-version-notice">
+            <strong>Bara {currentVersion ? currentVersion.label : 'den nuvarande versionen'} gäller just nu.</strong>{' '}
+            {pendingVersion.label} tar över automatiskt
+            {pendingVersion.effectiveFrom
+              ? ` den ${formatShortDate(pendingVersion.effectiveFrom)}`
+              : ''}{' '}
+            — inte förrän dess.
+          </p>
+        )}
+
         {versions === null && <p className="cell-muted">Hämtar versioner…</p>}
 
         {versions?.length === 0 && !error && (
@@ -109,51 +201,59 @@ export function LayoutVersionsModal({
         )}
 
         {versions && versions.length > 0 && (
-          <div className="table-scroll">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Version</th>
-                  <th>Status</th>
-                  <th>Element</th>
-                  <th>Åtgärd</th>
-                </tr>
-              </thead>
-              <tbody>
-                {versions.map((v) => {
-                  const isPending = pendingVersion?.version === v.version
-                  return (
-                    <tr key={v.version}>
-                      <td className="cell-strong">{v.label}</td>
-                      <td>
-                        {v.isCurrent ? (
-                          <span className="status-badge reserved">Gäller nu</span>
-                        ) : isPending ? (
-                          <span className="status-badge waiting">
-                            Byte {v.effectiveFrom ? formatMoment(v.effectiveFrom) : ''}
-                          </span>
-                        ) : (
-                          <span className="cell-muted">Inaktiv</span>
-                        )}
-                      </td>
-                      <td className="cell-muted">{v.elements.length}</td>
-                      <td>
-                        {canActivate && !v.isCurrent && !isPending && (
-                          <button
-                            type="button"
-                            className="link-action"
-                            disabled={busyVersion !== null}
-                            onClick={() => activate(v.version)}
-                          >
-                            {busyVersion === v.version ? 'Aktiverar…' : 'Aktivera'}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+          <div className="versions-list">
+            {versions.map((v) => {
+              const isPending = pendingVersion?.version === v.version
+              return (
+                <div className="version-row" key={v.version}>
+                  <div className="version-row-main">
+                    <span className="cell-strong">{v.label}</span>
+                    <span className="cell-muted">{v.elements.length} element</span>
+                  </div>
+                  <div className="version-row-right">
+                    {v.isCurrent ? (
+                      <span className="status-badge reserved">Gäller nu</span>
+                    ) : isPending ? (
+                      <span className="status-badge pending-version">
+                        Aktiveras {v.effectiveFrom ? formatShortDate(v.effectiveFrom) : ''}
+                      </span>
+                    ) : (
+                      <span className="cell-muted">Inaktiv</span>
+                    )}
+                    {canActivate && isPending && (
+                      <button
+                        type="button"
+                        className="link-action danger"
+                        disabled={busy}
+                        onClick={cancelPending}
+                      >
+                        {cancelling ? 'Avbryter…' : 'Avbryt'}
+                      </button>
+                    )}
+                    {canActivate && !v.isCurrent && !isPending && (
+                      <>
+                        <button
+                          type="button"
+                          className="link-action"
+                          disabled={busy}
+                          onClick={() => activate(v.version)}
+                        >
+                          {busyVersion === v.version ? 'Aktiverar…' : 'Aktivera'}
+                        </button>
+                        <button
+                          type="button"
+                          className="link-action danger"
+                          disabled={busy}
+                          onClick={() => archive(v.version, v.label)}
+                        >
+                          {archivingVersion === v.version ? 'Arkiverar…' : 'Arkivera'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
 

@@ -27,16 +27,13 @@ import type {
   WallSegment,
 } from './data'
 import {
+  activateLayoutVersion,
   listLayoutElements,
   listLayoutVersions,
-  loadLayoutExtras,
   publishLayout,
   saveLayout,
-  saveLayoutExtras,
-  toDoorKinds,
   toFloors,
 } from './layoutApi'
-import type { FloorExtras } from './layoutApi'
 import './layout-editor.css'
 
 const TILT_DEG = 55
@@ -188,6 +185,17 @@ export default function LayoutEditorPage() {
   const [saving, setSaving] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
   const [layoutError, setLayoutError] = useState<string | null>(null)
+  // "Se live": byter tillfälligt ut `floors`/`currentFloorId` mot den
+  // aktiva publicerade versionens innehåll, skrivskyddat. `draftBackup`
+  // minns utkastet så det går att växla tillbaka utan att förlora något.
+  const [viewMode, setViewMode] = useState<'draft' | 'live'>('draft')
+  const [liveLoading, setLiveLoading] = useState(false)
+  const [liveError, setLiveError] = useState<string | null>(null)
+  const [liveVersionLabel, setLiveVersionLabel] = useState('')
+  const draftBackup = useRef<{ floors: Floor[]; currentFloorId: string } | null>(
+    null,
+  )
+  const readOnly = viewMode === 'live'
   const sceneRef = useRef<HTMLDivElement>(null)
   const warnTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const nextTable = useRef(14)
@@ -217,16 +225,14 @@ export default function LayoutEditorPage() {
     }
   }, [])
 
-  // Läs in den sparade layouten: våningar med sitt innehåll. Markytor,
-  // kassan och dörrtyperna kommer från webbläsaren — API:t kan inte lagra
-  // dem.
+  // Läs in den sparade layouten: våningar med sitt innehåll.
   useEffect(() => {
     if (!locationId) return
     let cancelled = false
     listLayoutElements(locationId)
       .then((elements) => {
         if (cancelled) return
-        const loaded = toFloors(elements, loadLayoutExtras(locationId))
+        const loaded = toFloors(elements)
         setFloors(loaded)
         setCurrentFloorId(loaded[0].id)
         setSelection(null)
@@ -254,6 +260,10 @@ export default function LayoutEditorPage() {
   }, [locationId])
 
   function patchFloor(patch: (f: Floor) => Partial<Floor>) {
+    // Nästan all redigering går via den här funktionen — en enda spärr här
+    // stoppar ritning, flytt, storleksändring och radering i skrivskyddat
+    // "Se live"-läge, utan att varje enskild åtgärd behöver kolla själv.
+    if (readOnly) return
     setFloors((prev) =>
       prev.map((f) => (f.id === floor.id ? { ...f, ...patch(f) } : f)),
     )
@@ -811,11 +821,16 @@ export default function LayoutEditorPage() {
     if (handMode) return
     if (isDrawTool) return
     e.stopPropagation()
-    if (tool === 'erase') {
+    if (tool === 'erase' && !readOnly) {
       removeByKind(kind, id)
       return
     }
     setSelection({ kind, id } as Selection)
+    // Markera/inspektera går bra i "Se live" — flytta gör det inte. Utan
+    // spärren hade ett drag känts trasigt (elementet rör sig inte, eftersom
+    // patchFloor redan stoppar själva ändringen) i stället för att tydligt
+    // inte gå att göra.
+    if (readOnly) return
     if (kind === 'ground') return
     const p = unproject(e.clientX, e.clientY)
     if (kind === 'wall') {
@@ -844,7 +859,7 @@ export default function LayoutEditorPage() {
     id: string,
     end: 'a' | 'b',
   ) {
-    if (handMode) return
+    if (handMode || readOnly) return
     e.stopPropagation()
     drag.current =
       kind === 'wall' ? { kind: 'wall-end', id, end } : { kind: 'op-end', id, end }
@@ -857,7 +872,7 @@ export default function LayoutEditorPage() {
     id: string,
     edge: 'n' | 's' | 'e' | 'w',
   ) {
-    if (handMode) return
+    if (handMode || readOnly) return
     e.stopPropagation()
     drag.current = { kind: 'table-resize', id, edge }
     ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
@@ -935,6 +950,7 @@ export default function LayoutEditorPage() {
   }
 
   function addTable(shape: TableShape) {
+    if (readOnly) return
     const n = nextTable.current++
     const seats = shape === 'round' ? 2 : 4
     const t: TableElement = {
@@ -956,6 +972,7 @@ export default function LayoutEditorPage() {
   }
 
   function addFloor() {
+    if (readOnly) return
     const f = emptyFloor(floors.length + 1)
     setFloors((prev) => [...prev, f])
     setCurrentFloorId(f.id)
@@ -974,7 +991,7 @@ export default function LayoutEditorPage() {
   }
 
   function removeCurrentFloor() {
-    if (floors.length <= 1) return
+    if (readOnly || floors.length <= 1) return
     const rest = floors.filter((f) => f.id !== floor.id)
     setFloors(rest.map((f, i) => ({ ...f, name: `Våning ${i + 1}` })))
     setCurrentFloorId(rest[0].id)
@@ -985,6 +1002,60 @@ export default function LayoutEditorPage() {
   async function refreshVersionLabel() {
     const loc = getStoredLocationId()
     if (loc) setVersionLabel(await versionLabelFor(loc))
+  }
+
+  /**
+   * Växlar canvasen till att visa den publicerade, GÄLLANDE versionen i
+   * stället för utkastet — skrivskyddat. Byter tillfälligt ut `floors`/
+   * `currentFloorId` (som resten av sidan redan är byggd kring) och sparar
+   * undan utkastet i `draftBackup` så "Se utkast" kan återställa det exakt.
+   */
+  async function showLive() {
+    if (!locationId) return
+    setLiveError(null)
+    setLiveLoading(true)
+    try {
+      const versions = await listLayoutVersions(locationId)
+      const current = versions.find((v) => v.isCurrent)
+      if (!current) {
+        setLiveError(
+          'Ingen version är aktiv än — publicera och aktivera en version ' +
+            'under Versioner först.',
+        )
+        return
+      }
+      const liveFloors = toFloors(current.elements)
+      draftBackup.current = { floors, currentFloorId }
+      setFloors(liveFloors)
+      setCurrentFloorId(liveFloors[0].id)
+      setSelection(null)
+      setTool('select')
+      setWallDraft(null)
+      setOpeningDraft(null)
+      setGroundDraft(null)
+      setLiveVersionLabel(current.label)
+      setViewMode('live')
+    } catch (err) {
+      setLiveError(
+        err instanceof Error
+          ? err.message
+          : 'Kunde inte hämta den publicerade versionen.',
+      )
+    } finally {
+      setLiveLoading(false)
+    }
+  }
+
+  /** Växlar tillbaka till utkastet — exakt som det låg innan "Se live". */
+  function showDraft() {
+    if (draftBackup.current) {
+      setFloors(draftBackup.current.floors)
+      setCurrentFloorId(draftBackup.current.currentFloorId)
+      draftBackup.current = null
+    }
+    setSelection(null)
+    setLiveError(null)
+    setViewMode('draft')
   }
 
   function requireLocation(): string | null {
@@ -998,36 +1069,20 @@ export default function LayoutEditorPage() {
 
   /** Skriver utkastet till API:t. Returnerar false om något gick fel. */
   async function saveDraft(): Promise<boolean> {
+    // Knappen är dold i "Se live"-läget, men gardera ändå — annars hade den
+    // skrivit över det riktiga utkastet med den låsta live-vyns innehåll.
+    if (readOnly) return false
     const loc = requireLocation()
     if (!loc) return false
     setLayoutError(null)
     setSaving(true)
     try {
       const result = await saveLayout(loc, floors)
-      // Markytor, kassan och skillnaden entré/kök kan API:t inte lagra — de
-      // sparas lokalt så att de åtminstone finns kvar efter en omladdning.
-      // Allt nycklas om till serverns id:n för det som just skapats, så att
-      // en ny vånings kassa hittas igen under våningens riktiga id.
       const serverId = (localId: string) => result.idMap.get(localId) ?? localId
-      const doorKinds = toDoorKinds(
-        floors.flatMap((f) => f.openings),
-        result.idMap,
-      )
-      const byFloor: Record<string, FloorExtras> = {}
-      for (const f of floors) {
-        byFloor[serverId(f.id)] = { grounds: f.grounds, fixtures: f.fixtures }
-      }
-      const extras = {
-        grounds: floors[0].grounds,
-        fixtures: floors[0].fixtures,
-        doorKinds,
-        byFloor,
-      }
-      saveLayoutExtras(loc, extras)
       // Läs in serverns svar igen: nyskapade element (och våningar) får sina
       // riktiga elementId, vilket nästa sparning behöver för att se dem som
       // befintliga istället för att skapa dubbletter.
-      const reloaded = toFloors(result.elements, extras)
+      const reloaded = toFloors(result.elements)
       // I platt reservläge finns bara första våningen på servern — de andra
       // behålls lokalt så att inget ritat försvinner.
       const next = result.flat ? [reloaded[0], ...floors.slice(1)] : reloaded
@@ -1054,9 +1109,20 @@ export default function LayoutEditorPage() {
   }
 
   /**
-   * Sparar utkastet och fryser det till en numrerad version. Ordningen är
-   * viktig: publish kopierar det som ligger i utkastet på servern, så
-   * osparade ändringar skulle annars inte komma med i versionen.
+   * Sparar utkastet, fryser det till en numrerad version, och försöker
+   * aktivera den versionen direkt — "Publicera" ska kännas som "gör den
+   * här skarp", inte kräva ett extra besök i Versioner för det vanliga
+   * fallet. Aktiveringen är serverns beslut, inte vårt: saknas en gällande
+   * version blir det omedelbart, men finns redan en schemalägger API:t
+   * bytet en bit fram i tiden istället (samma regel som att aktivera
+   * manuellt under Versioner — den går inte att kringgå härifrån). Hur
+   * långt fram är miljöberoende — bara 5 minuter i dev, 28 dagar i prod
+   * (bekräftat av backend-teamet 2026-09-29) — därför visas alltid det
+   * riktiga datumet från `cutoverAt`, aldrig ett hårdkodat "fyra veckor".
+   *
+   * Ordningen save->publish är viktig: publish kopierar det som ligger i
+   * utkastet på servern, så osparade ändringar skulle annars inte komma
+   * med i versionen.
    */
   async function publish() {
     const loc = requireLocation()
@@ -1065,13 +1131,31 @@ export default function LayoutEditorPage() {
     setPublishing(true)
     try {
       const snapshot = await publishLayout(loc)
-      await refreshVersionLabel()
-      setStatusText(
-        `Publicerad som version ${snapshot.version}. ` +
-          // En ny version är alltid inaktiv — den börjar gälla först när
-          // någon aktiverar den under "Versioner".
-          'Den gäller inte förrän du aktiverar den under Versioner.',
-      )
+      try {
+        const activation = await activateLayoutVersion(loc, snapshot.version)
+        await refreshVersionLabel()
+        setStatusText(
+          activation.status === 'active'
+            ? `Publicerad och aktiverad som version ${snapshot.version} — gäller nu.`
+            : `Publicerad som version ${snapshot.version}. En annan version gäller ` +
+                `redan, så bytet sker ${formatMoment(activation.cutoverAt)} istället för direkt.`,
+        )
+      } catch (activateErr) {
+        // Versionen finns — bara aktiveringen misslyckades (t.ex. saknad
+        // behörighet, eller ett annat versionsbyte redan inbokat). Säg det
+        // tydligt så ingen tror att publiceringen också gick fel; den kan
+        // fortfarande aktiveras manuellt. Felmeddelandet för "redan
+        // inbokat" (409) ger redan sin egen vägledning — dubblera den inte.
+        const detail =
+          activateErr instanceof Error ? activateErr.message : 'Okänt fel.'
+        const guidance = /aktivera/i.test(detail)
+          ? ''
+          : ' Aktivera den manuellt under Versioner.'
+        setLayoutError(
+          `Publicerad som version ${snapshot.version}, men aktiveringen ` +
+            `misslyckades: ${detail}${guidance}`,
+        )
+      }
     } catch (err) {
       setLayoutError(
         err instanceof Error
@@ -1124,19 +1208,36 @@ export default function LayoutEditorPage() {
             <button
               type="button"
               className="btn outline"
-              disabled={saving || publishing}
-              onClick={saveDraft}
+              disabled={!locationId || liveLoading}
+              onClick={readOnly ? showDraft : showLive}
             >
-              {saving && !publishing ? 'Sparar…' : 'Spara utkast'}
+              {liveLoading ? 'Hämtar…' : readOnly ? 'Se utkast' : 'Se live'}
             </button>
-            <button
-              type="button"
-              className="btn primary"
-              disabled={saving || publishing}
-              onClick={publish}
-            >
-              {publishing ? 'Publicerar…' : 'Publicera layout'}
-            </button>
+            {!readOnly && (
+              <>
+                <button
+                  type="button"
+                  className="btn outline"
+                  disabled={saving || publishing}
+                  onClick={saveDraft}
+                >
+                  {saving && !publishing ? 'Sparar…' : 'Spara utkast'}
+                </button>
+                <button
+                  type="button"
+                  className="btn primary"
+                  disabled={saving || publishing || !canActivate}
+                  title={
+                    canActivate
+                      ? undefined
+                      : 'Bara ägare och systemadmin kan publicera och aktivera en layout.'
+                  }
+                  onClick={publish}
+                >
+                  {publishing ? 'Publicerar…' : 'Publicera layout'}
+                </button>
+              </>
+            )}
           </span>
         }
       />
@@ -1154,18 +1255,32 @@ export default function LayoutEditorPage() {
             {layoutError}
           </p>
         )}
+        {liveError && (
+          <p className="form-error" role="alert">
+            {liveError}
+          </p>
+        )}
+        {readOnly && (
+          <p className="layout-viewmode-banner">
+            Du tittar på den publicerade, gällande versionen
+            {liveVersionLabel ? ` (${liveVersionLabel})` : ''} — skrivskyddat.{' '}
+            <button type="button" className="link-action" onClick={showDraft}>
+              Tillbaka till utkastet
+            </button>
+          </p>
+        )}
         <div className="editor-row">
           <div className="admin-card editor-toolbar">
             <ToolButton glyph="↖" caption="Välj" title="Välj, flytta och ändra storlek" active={tool === 'select'} onClick={() => pickTool('select')} />
-            <ToolButton glyph="▦" caption="Mark" title="Rita mark — väggar skapas runt om automatiskt" active={tool === 'ground'} onClick={() => pickTool('ground')} />
-            <ToolButton glyph="▬" caption="Vägg" title="Rita vägg — klicka och dra" active={tool === 'wall'} onClick={() => pickTool('wall')} />
-            <ToolButton glyph="▭" caption="Fönster" title="Fönster — placeras på en vägg" active={tool === 'window'} onClick={() => pickTool('window')} />
-            <ToolButton glyph="◐" caption="Entré" title="Entré — placeras på en vägg" active={tool === 'entrance'} onClick={() => pickTool('entrance')} />
-            <ToolButton glyph="◑" caption="Kök" title="Kökets ingång — placeras på en vägg" active={tool === 'kitchen'} onClick={() => pickTool('kitchen')} />
-            <ToolButton glyph="▣" caption="Kassa" title="Placera kassan — klicka" active={tool === 'counter'} onClick={() => pickTool('counter')} />
-            <ToolButton glyph="■" caption="Bord" title="Lägg till fyrkantigt bord" active={tool === 'add-square'} onClick={() => addTable('square')} />
-            <ToolButton glyph="●" caption="Bord" title="Lägg till runt bord" active={tool === 'add-round'} onClick={() => addTable('round')} />
-            <ToolButton glyph="✕" caption="Radera" title="Radera — klicka på ett element" active={tool === 'erase'} onClick={() => { setHandMode(false); setTool((t) => (t === 'erase' ? 'select' : 'erase')) }} />
+            <ToolButton glyph="▦" caption="Mark" title="Rita mark — väggar skapas runt om automatiskt" active={tool === 'ground'} disabled={readOnly} onClick={() => pickTool('ground')} />
+            <ToolButton glyph="▬" caption="Vägg" title="Rita vägg — klicka och dra" active={tool === 'wall'} disabled={readOnly} onClick={() => pickTool('wall')} />
+            <ToolButton glyph="▭" caption="Fönster" title="Fönster — placeras på en vägg" active={tool === 'window'} disabled={readOnly} onClick={() => pickTool('window')} />
+            <ToolButton glyph="◐" caption="Entré" title="Entré — placeras på en vägg" active={tool === 'entrance'} disabled={readOnly} onClick={() => pickTool('entrance')} />
+            <ToolButton glyph="◑" caption="Kök" title="Kökets ingång — placeras på en vägg" active={tool === 'kitchen'} disabled={readOnly} onClick={() => pickTool('kitchen')} />
+            <ToolButton glyph="▣" caption="Kassa" title="Placera kassan — klicka" active={tool === 'counter'} disabled={readOnly} onClick={() => pickTool('counter')} />
+            <ToolButton glyph="■" caption="Bord" title="Lägg till fyrkantigt bord" active={tool === 'add-square'} disabled={readOnly} onClick={() => addTable('square')} />
+            <ToolButton glyph="●" caption="Bord" title="Lägg till runt bord" active={tool === 'add-round'} disabled={readOnly} onClick={() => addTable('round')} />
+            <ToolButton glyph="✕" caption="Radera" title="Radera — klicka på ett element" active={tool === 'erase'} disabled={readOnly} onClick={() => { setHandMode(false); setTool((t) => (t === 'erase' ? 'select' : 'erase')) }} />
           </div>
 
           <div
@@ -1306,6 +1421,7 @@ export default function LayoutEditorPage() {
                     lowered={loweredById.get(w.id) ?? false}
                     selected={selection?.kind === 'wall' && selection.id === w.id}
                     showHandles={
+                      !readOnly &&
                       tool === 'select' &&
                       selection?.kind === 'wall' &&
                       selection.id === w.id
@@ -1330,6 +1446,7 @@ export default function LayoutEditorPage() {
                         selection?.kind === 'opening' && selection.id === o.id
                       }
                       showHandles={
+                        !readOnly &&
                         tool === 'select' &&
                         selection?.kind === 'opening' &&
                         selection.id === o.id
@@ -1429,7 +1546,8 @@ export default function LayoutEditorPage() {
                           </span>
                         </div>
                       </div>
-                      {tool === 'select' &&
+                      {!readOnly &&
+                        tool === 'select' &&
                         selection?.kind === 'table' &&
                         selection.id === t.id && (
                           <>
@@ -1504,6 +1622,15 @@ export default function LayoutEditorPage() {
                           : floor.name}
               </p>
             </div>
+
+            {/* `disabled` på en <fieldset> stänger av ALLA knappar/fält den
+                innehåller på en gång — enklare och säkrare än att lägga
+                `disabled={readOnly}` på vart och ett av de ~15 reglagen
+                nedan. `display:contents` gör att den inte påverkar layouten. */}
+            <fieldset
+              disabled={readOnly}
+              className="props-fieldset"
+            >
 
             {selectedTable && (
               <>
@@ -1706,6 +1833,7 @@ export default function LayoutEditorPage() {
                 )}
               </>
             )}
+            </fieldset>
           </aside>
         </div>
 
@@ -1730,6 +1858,19 @@ export default function LayoutEditorPage() {
       )}
     </>
   )
+}
+
+/** "2026-10-05T01:00:00Z" -> "5 oktober 2026, 03:00" i lokal tid. */
+function formatMoment(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return new Intl.DateTimeFormat('sv-SE', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(d)
 }
 
 /**

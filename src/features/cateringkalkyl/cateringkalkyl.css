@@ -1,0 +1,319 @@
+/* Figma: admin-catering-page, modal-rabattnivå. Delar knapp/kort/tabell-
+   klasserna i shared/admin.css — bara det som är unikt för den här sidan
+   (hint-boxen, förhandsvisningens rätt-rader/stegare, den mörka
+   kalkylpanelen) bor här. */
+
+/* Samma varma orange hint-ruta som layout-editorns .layout-viewmode-banner —
+   för statiska påminnelser, inte valideringsfel (se .form-error för det). */
+.calc-hint {
+  padding: 12px 16px;
+  background: #fbf3ec;
+  border: 1px solid #eddcc8;
+  color: #8a5a2b;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.field-note {
+  padding: 10px 14px;
+  background: var(--bg);
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.modal-subtitle {
+  margin-top: -12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.tier-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* --- Förhandsvisning ------------------------------------------------------ */
+
+.catering-preview-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.catering-preview-card {
+  flex: 2 1 0;
+  min-width: 1px;
+}
+
+.catering-preview-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg);
+  border-radius: 12px;
+  margin-bottom: 4px;
+}
+
+.catering-total-portions {
+  font: 600 16px/1.3 var(--serif);
+  color: var(--ink);
+}
+
+.catering-dish-list {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.catering-dish-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.catering-dish-swatch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg);
+  font-size: 18px;
+}
+
+.catering-dish-swatch img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.catering-dish-info {
+  flex: 1 1 0;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.catering-dish-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 90px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.catering-price-original {
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.catering-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.catering-stepper-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  font: 600 16px/1 var(--sans);
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.catering-stepper-btn:hover:not(:disabled) {
+  border-color: var(--green);
+}
+
+.catering-stepper-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.catering-stepper-value {
+  min-width: 20px;
+  text-align: center;
+  font: 600 14px/1.3 var(--sans);
+}
+
+.catering-dish-total {
+  min-width: 74px;
+  flex-shrink: 0;
+  text-align: right;
+  font: 600 14px/1.3 var(--sans);
+  color: var(--ink);
+}
+
+.catering-address-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.catering-address-row .form-field {
+  flex: 1 1 260px;
+}
+
+/* --- Kalkylpanelen (mörk, sticky höger kolumn) ----------------------------- */
+
+.catering-summary-panel {
+  flex: 1 1 0;
+  min-width: 260px;
+  position: sticky;
+  top: 96px;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px;
+  background: var(--green);
+  border-radius: 20px;
+  color: #fff;
+}
+
+.catering-summary-kicker {
+  font: 700 11px/1 var(--sans);
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.catering-summary-title {
+  font: 600 18px/1.3 var(--serif);
+  color: #fff;
+}
+
+.catering-summary-empty {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.catering-summary-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.catering-summary-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.catering-summary-subtotal {
+  padding-top: 4px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.catering-summary-discount {
+  color: var(--accent);
+}
+
+.catering-summary-total {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  font: 700 20px/1.3 var(--serif);
+  color: #fff;
+}
+
+.catering-summary-vat {
+  margin-top: -6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.catering-summary-upsell {
+  padding: 10px 12px;
+  background: rgba(217, 131, 83, 0.18);
+  border: 1px solid rgba(217, 131, 83, 0.4);
+  border-radius: 10px;
+  font-size: 12px;
+  color: #f3d9c8;
+}
+
+.catering-send-btn {
+  margin-top: 4px;
+  padding: 14px 20px;
+  border: 0;
+  border-radius: 24px;
+  background: var(--accent);
+  color: #fff;
+  font: 600 14px/1.2 var(--sans);
+  cursor: pointer;
+  transition: filter 120ms ease;
+}
+
+.catering-send-btn:hover {
+  filter: brightness(1.06);
+}
+
+@media (max-width: 1280px) {
+  .catering-preview-row {
+    flex-direction: column;
+  }
+
+  .catering-summary-panel {
+    width: 100%;
+    position: static;
+  }
+}
+
+@media (max-width: 720px) {
+  .catering-dish-row {
+    flex-wrap: wrap;
+  }
+
+  .catering-dish-price {
+    order: 3;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .catering-dish-total {
+    order: 4;
+    text-align: left;
+  }
+
+  .catering-address-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

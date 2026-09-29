@@ -5,16 +5,15 @@ import {
   LEGACY_FLOOR_ID,
   UNITS_PER_METER,
   activateLayoutVersion,
+  archiveLayoutVersion,
+  cancelPendingLayoutActivation,
   diffLayout,
   listLayoutElements,
   listLayoutVersions,
-  loadLayoutExtras,
   publishLayout,
   saveLayout,
-  saveLayoutExtras,
   toApiElements,
   toApiLayout,
-  toDoorKinds,
   toFloorElements,
   toFloors,
 } from './layoutApi'
@@ -80,7 +79,6 @@ const floor: Floor = {
 
 beforeEach(() => {
   mockedApiFetch.mockReset()
-  localStorage.clear()
 })
 
 describe('editor -> API mapping', () => {
@@ -123,9 +121,34 @@ describe('editor -> API mapping', () => {
     expect(table?.depth).toBe(0.9)
   })
 
-  it('omits grounds and fixtures, which the API cannot store', () => {
-    const ids = [...toApiElements(floor).keys()]
-    expect(ids).toEqual(['w-n', 'w-w', 'o-1', 't1'])
+  it('includes grounds and fixtures as real floorArea/cashRegister elements', () => {
+    const els = toApiElements(floor)
+    expect([...els.keys()]).toEqual(['g1', 'w-n', 'w-w', 'o-1', 'f-1', 't1'])
+    expect(els.get('g1')).toMatchObject({ type: 'floorArea' })
+    expect(els.get('f-1')).toMatchObject({ type: 'cashRegister', label: 'KASSA' })
+  })
+
+  it('centres a floorArea on the ground rect, which is stored as a corner', () => {
+    // g1: hörn (-100,-100), 200x200 -> mittpunkt (0,0) i editorenheter.
+    const ground = toApiElements(floor).get('g1')
+    expect(ground?.x).toBe(0)
+    expect(ground?.z).toBe(0)
+    expect(ground?.width).toBe(4)
+    expect(ground?.depth).toBe(4)
+  })
+
+  it('tags a door element with its entrance/kitchen kind, never a window', () => {
+    const kitchenFloor: Floor = {
+      ...floor,
+      openings: [
+        { id: 'o-2', kind: 'kitchen', wallId: 'w-n', offset: 0, length: 60 },
+      ],
+    }
+    expect(toApiElements(kitchenFloor).get('o-2')).toMatchObject({
+      type: 'door',
+      kind: 'kitchen',
+    })
+    expect(toApiElements(floor).get('o-1')).not.toHaveProperty('kind')
   })
 
   it('skips zero-length walls the API would reject as dimension <= 0', () => {
@@ -152,6 +175,8 @@ describe('API -> editor mapping', () => {
 
     const back = toFloorElements(stored)
     expect(back.walls).toEqual(floor.walls)
+    expect(back.grounds).toEqual(floor.grounds)
+    expect(back.fixtures).toEqual(floor.fixtures)
     expect(back.openings[0]).toMatchObject({
       wallId: 'w-n',
       offset: 40,
@@ -179,7 +204,15 @@ describe('API -> editor mapping', () => {
     expect(tables.map((t) => t.label)).toEqual(['T1', 'T2'])
   })
 
-  it('reads every door back as an entrance — the API has no kitchen type', () => {
+  it('reads a door\'s entrance/kitchen kind straight from the API element', () => {
+    const { openings } = toFloorElements([
+      element({ elementId: 'w1', type: 'wall', width: 4 }),
+      element({ elementId: 'd1', type: 'door', width: 1, wallId: 'w1', kind: 'kitchen' }),
+    ])
+    expect(openings[0].kind).toBe('kitchen')
+  })
+
+  it('defaults a legacy door without `kind` to entrance', () => {
     const { openings } = toFloorElements([
       element({ elementId: 'w1', type: 'wall', width: 4 }),
       element({ elementId: 'd1', type: 'door', width: 1, wallId: 'w1' }),
@@ -198,7 +231,8 @@ describe('API -> editor mapping', () => {
 describe('diffLayout', () => {
   it('creates elements that have no server counterpart', () => {
     const diff = diffLayout(toApiElements(floor), [])
-    expect(diff.created).toHaveLength(4)
+    // 1 markyta + 2 väggar + 1 öppning + 1 kassa + 1 bord.
+    expect(diff.created).toHaveLength(6)
     expect(diff.updated).toEqual([])
     expect(diff.deleted).toEqual([])
   })
@@ -241,8 +275,10 @@ describe('floors: editor -> API', () => {
       ...floor,
       id: 'floor-2',
       name: 'Plan 2',
+      grounds: [],
       walls: [{ id: 'w-up', dir: 'h', x: 0, y: 0, length: 100 }],
       openings: [],
+      fixtures: [],
       tables: [],
     }
     const out = toApiLayout([floor, upper])
@@ -291,34 +327,49 @@ describe('floors: API -> editor', () => {
     expect(floors[1].walls).toEqual([])
   })
 
-  it('reads a flat legacy layout as a single floor with the stored extras', () => {
-    const floors = toFloors([element({ elementId: 'w-1', type: 'wall' })], {
-      grounds: floor.grounds,
-      fixtures: floor.fixtures,
-      doorKinds: {},
-      byFloor: {},
-    })
+  it('reads a flat legacy layout as a single floor, grounds and fixtures included', () => {
+    const stored: LayoutElement[] = [
+      element({ elementId: 'w-1', type: 'wall' }),
+      element({ elementId: 'g-1', type: 'floorArea', width: 2, depth: 2 }),
+      element({ elementId: 'fx-1', type: 'cashRegister', width: 2, depth: 0.7, label: 'Kassa' }),
+    ]
+    const floors = toFloors(stored)
     expect(floors).toHaveLength(1)
     expect(floors[0].id).toBe(LEGACY_FLOOR_ID)
-    expect(floors[0].grounds).toEqual(floor.grounds)
     expect(floors[0].walls.map((w) => w.id)).toEqual(['w-1'])
+    expect(floors[0].grounds.map((g) => g.id)).toEqual(['g-1'])
+    expect(floors[0].fixtures.map((f) => f.id)).toEqual(['fx-1'])
   })
 
-  it('takes per-floor extras, falling back to the legacy top-level ones for the first floor', () => {
-    const floors = toFloors([groundFloor, upperFloor], {
-      grounds: floor.grounds,
-      fixtures: [],
-      doorKinds: {},
-      byFloor: { 'f-upper': { grounds: [], fixtures: floor.fixtures } },
-    })
-    expect(floors[0].grounds).toEqual(floor.grounds)
-    expect(floors[1].fixtures).toEqual(floor.fixtures)
+  it('assigns grounds and fixtures to the floor their floorId points at', () => {
+    const floors = toFloors([
+      groundFloor,
+      upperFloor,
+      element({ elementId: 'g-ground', type: 'floorArea', floorId: 'f-ground', width: 2, depth: 2 }),
+      element({
+        elementId: 'fx-upper',
+        type: 'cashRegister',
+        floorId: 'f-upper',
+        width: 2,
+        depth: 0.7,
+        label: 'Kassa',
+      }),
+    ])
+    expect(floors[0].grounds.map((g) => g.id)).toEqual(['g-ground'])
+    expect(floors[0].fixtures).toEqual([])
+    expect(floors[1].fixtures.map((f) => f.id)).toEqual(['fx-upper'])
+    expect(floors[1].grounds).toEqual([])
   })
 })
 
 describe('saveLayout', () => {
+  // Testerna här handlar om skapandeordning (våning -> vägg -> resten), inte
+  // markytor/kassa — de nollställs för att inte krocka på delade lokala id:n
+  // med `floor`-fixturen och för att hålla de mockade anropssekvenserna korta.
   const fresh: Floor = {
     ...floor,
+    grounds: [],
+    fixtures: [],
     walls: [{ id: 'local-wall', dir: 'h', x: 0, y: 0, length: 100 }],
     openings: [
       { id: 'local-op', kind: 'window', wallId: 'local-wall', offset: 0, length: 20 },
@@ -353,6 +404,8 @@ describe('saveLayout', () => {
   it('migrates a legacy flat draft: existing elements get the new floor id via update', async () => {
     const existing: Floor = {
       ...floor,
+      grounds: [],
+      fixtures: [],
       walls: [{ id: 'old-wall', dir: 'h', x: 0, y: 0, length: 100 }],
       openings: [],
       tables: [],
@@ -407,100 +460,6 @@ describe('saveLayout', () => {
     expect(mockedApiFetch).toHaveBeenCalledWith(
       '/locations/loc%201/layout-elements/items',
     )
-  })
-})
-
-describe('local extras (what the API cannot store)', () => {
-  it('round-trips grounds and fixtures per location and per floor', () => {
-    saveLayoutExtras('loc-1', {
-      grounds: floor.grounds,
-      fixtures: floor.fixtures,
-      doorKinds: {},
-      byFloor: { 'f-upper': { grounds: [], fixtures: floor.fixtures } },
-    })
-    expect(loadLayoutExtras('loc-1')).toEqual({
-      grounds: floor.grounds,
-      fixtures: floor.fixtures,
-      doorKinds: {},
-      byFloor: { 'f-upper': { grounds: [], fixtures: floor.fixtures } },
-    })
-  })
-
-  it('keeps locations separate', () => {
-    saveLayoutExtras('loc-1', {
-      grounds: floor.grounds,
-      fixtures: [],
-      doorKinds: {},
-      byFloor: {},
-    })
-    expect(loadLayoutExtras('loc-2')).toEqual({
-      grounds: [],
-      fixtures: [],
-      doorKinds: {},
-      byFloor: {},
-    })
-  })
-
-  it('reads extras saved before floors existed (no byFloor key)', () => {
-    localStorage.setItem(
-      'admin-layout-extras:loc-old',
-      JSON.stringify({ grounds: floor.grounds, fixtures: [], doorKinds: {} }),
-    )
-    expect(loadLayoutExtras('loc-old')).toEqual({
-      grounds: floor.grounds,
-      fixtures: [],
-      doorKinds: {},
-      byFloor: {},
-    })
-  })
-
-  it('treats corrupt stored data as empty instead of crashing', () => {
-    localStorage.setItem('admin-layout-extras:loc-3', '{not json')
-    expect(loadLayoutExtras('loc-3')).toEqual({
-      grounds: [],
-      fixtures: [],
-      doorKinds: {},
-      byFloor: {},
-    })
-  })
-})
-
-describe('entrance vs kitchen (both stored as `door` by the API)', () => {
-  it('reads a door back as a kitchen when that was recorded locally', () => {
-    const { openings } = toFloorElements(
-      [
-        element({ elementId: 'w1', type: 'wall', width: 4 }),
-        element({ elementId: 'd1', type: 'door', width: 1, wallId: 'w1' }),
-      ],
-      { d1: 'kitchen' },
-    )
-    expect(openings[0].kind).toBe('kitchen')
-  })
-
-  it('still defaults an unrecorded door to entrance', () => {
-    const { openings } = toFloorElements([
-      element({ elementId: 'w1', type: 'wall', width: 4 }),
-      element({ elementId: 'd1', type: 'door', width: 1, wallId: 'w1' }),
-    ])
-    expect(openings[0].kind).toBe('entrance')
-  })
-
-  it('records door kinds but not windows, which the API can tell apart', () => {
-    expect(
-      toDoorKinds([
-        { id: 'a', kind: 'kitchen', wallId: 'w', offset: 0, length: 20 },
-        { id: 'b', kind: 'entrance', wallId: 'w', offset: 0, length: 20 },
-        { id: 'c', kind: 'window', wallId: 'w', offset: 0, length: 20 },
-      ]),
-    ).toEqual({ a: 'kitchen', b: 'entrance' })
-  })
-
-  it('rekeys a newly created door to the id the server assigned it', () => {
-    const kinds = toDoorKinds(
-      [{ id: 'local-1', kind: 'kitchen', wallId: 'w', offset: 0, length: 20 }],
-      new Map([['local-1', 'server-1']]),
-    )
-    expect(kinds).toEqual({ 'server-1': 'kitchen' })
   })
 })
 
@@ -586,6 +545,52 @@ describe('publishing', () => {
     expect(mockedApiFetch).toHaveBeenCalledWith(
       '/locations/loc%201/layout/versions',
     )
+  })
+})
+
+describe('archiveLayoutVersion', () => {
+  it('DELETEs the numbered version, no body', async () => {
+    mockedApiFetch.mockResolvedValue(undefined)
+    await archiveLayoutVersion('loc-1', 3)
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/locations/loc-1/layout/versions/3',
+      { method: 'DELETE' },
+    )
+  })
+
+  it('explains a 409 as current/pending, not a generic conflict', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError(409, 'pending layout version cannot be archived'))
+    await expect(archiveLayoutVersion('loc-1', 3)).rejects.toThrow(
+      /gäller eller väntar/,
+    )
+  })
+
+  it('maps 403 to the permission message (staff may not archive)', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
+    await expect(archiveLayoutVersion('loc-1', 3)).rejects.toThrow(/inte behörighet/)
+  })
+})
+
+describe('cancelPendingLayoutActivation', () => {
+  it('DELETEs the pending-activation resource, no body', async () => {
+    mockedApiFetch.mockResolvedValue(undefined)
+    await cancelPendingLayoutActivation('loc-1')
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/locations/loc-1/layout/pending-activation',
+      { method: 'DELETE' },
+    )
+  })
+
+  it('explains a 409 as an already-completed or concurrent change', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError(409, 'cutover already applied'))
+    await expect(cancelPendingLayoutActivation('loc-1')).rejects.toThrow(
+      /hann redan genomföras/,
+    )
+  })
+
+  it('maps 403 to the permission message (staff may not cancel)', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
+    await expect(cancelPendingLayoutActivation('loc-1')).rejects.toThrow(/inte behörighet/)
   })
 })
 

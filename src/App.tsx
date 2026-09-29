@@ -3,6 +3,7 @@ import { AdminLayout } from './shared/AdminLayout'
 import OversiktPage from './features/oversikt/OversiktPage'
 import BokningarPage from './features/bokningar/BokningarPage'
 import MenyPage from './features/meny/MenyPage'
+import CateringkalkylPage from './features/cateringkalkyl/CateringkalkylPage'
 import LayoutEditorPage from './features/layout-editor/LayoutEditorPage'
 import InstallningarPage from './features/installningar/InstallningarPage'
 
@@ -18,6 +19,7 @@ function App() {
         <Route index element={<OversiktPage />} />
         <Route path="bokningar" element={<BokningarPage />} />
         <Route path="meny" element={<MenyPage />} />
+        <Route path="cateringkalkyl" element={<CateringkalkylPage />} />
         <Route path="layout" element={<LayoutEditorPage />} />
         <Route path="installningar" element={<InstallningarPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

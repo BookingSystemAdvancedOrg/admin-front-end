@@ -8,14 +8,19 @@ import { apiFetch, ApiError } from '../../shared/api'
  * servern, och så att klientfel fångas innan ett onödigt API-anrop görs.
  */
 
-export type CognitoGroup = 'staff_user' | 'owner_user' | 'super_user'
-export type UserRole = 'staff' | 'owner_user' | 'super_admin'
+/**
+ * Restaurangens två roller. (super_user/systemadmin finns inte längre:
+ * plattformens operatörer arbetar i operatörskonsolen, sbs-admin, och har
+ * ingen inloggning i restaurangernas app.)
+ */
+export type CognitoGroup = 'staff_user' | 'owner_user'
+export type UserRole = 'staff' | 'owner_user'
 export type UserStatus = 'active' | 'disabled'
 
 export interface User {
   cognitoSub: string
   role: UserRole
-  /** Tomt för owner_user/super_admin — bara personal (staff) hör till en plats. */
+  /** Tomt för ägare — bara personal (staff) hör till en plats. */
   locationId: string
   name: string
   email: string
@@ -49,22 +54,30 @@ export interface UserGroupChangeRequest {
 export const GROUP_TO_ROLE: Record<CognitoGroup, UserRole> = {
   staff_user: 'staff',
   owner_user: 'owner_user',
-  super_user: 'super_admin',
 }
 export const ROLE_TO_GROUP: Record<UserRole, CognitoGroup> = {
   staff: 'staff_user',
   owner_user: 'owner_user',
-  super_admin: 'super_user',
 }
 
 /** Svensk titel per Cognito-grupp — enda källan, återanvänd i stället för att duplicera. */
 export const GROUP_LABEL: Record<CognitoGroup, string> = {
   staff_user: 'Personal',
   owner_user: 'Ägare',
-  super_user: 'Systemadmin',
 }
 
-const GROUP_PRIORITY: CognitoGroup[] = ['super_user', 'owner_user', 'staff_user']
+const GROUP_PRIORITY: CognitoGroup[] = ['owner_user', 'staff_user']
+
+/**
+ * Användarposter som skapats av operatörskonsolen (sbs-admin) bär gruppnamnet
+ * som roll ("staff_user"); API:t skickar dem vidare som de är. Normaliseras
+ * här så att resten av appen bara behöver känna till UserRole.
+ */
+export function normalizeUser(user: User): User {
+  const role = user.role as string
+  if (role === 'staff_user') return { ...user, role: 'staff' }
+  return user
+}
 
 /** Titeln för den inloggade användaren i sidebaren — den mest priviligierade av dess grupper. */
 export function primaryGroupLabel(groups: string[]): string {
@@ -104,32 +117,27 @@ export function validateLocationId(
     return 'Plats-ID krävs för personal.'
   }
   if (group !== 'staff_user' && locationId.trim()) {
-    return 'Plats-ID måste vara tomt för ägare/systemadmin.'
+    return 'Ägare kopplas inte till en enskild plats.'
   }
   return null
 }
 
 /**
- * Kan caller bjuda in någon till den här gruppen? Personal (staff_user) får
- * inte bjuda in någon alls. Ägare får bjuda in personal och andra ägare (en
- * restaurang kan ha flera delägare), men inte systemadmin. Bara super_user
- * får sätta super_user.
+ * Kan caller bjuda in någon till den här gruppen? Speglar backendens
+ * _authorize_invite: ägare bjuder in personal. Fler ägare läggs upp av
+ * plattformen (operatörskonsolen), och personal får inte bjuda in någon.
  */
 export function canInvite(callerGroups: string[], group: CognitoGroup): boolean {
-  if (callerGroups.includes('super_user')) return true
-  if (callerGroups.includes('owner_user')) {
-    return group === 'staff_user' || group === 'owner_user'
-  }
-  return false
+  return callerGroups.includes('owner_user') && group === 'staff_user'
 }
 
 export type UserAction = 'profile' | 'deactivate' | 'reactivate' | 'delete' | 'group'
 
 /**
  * Kan caller utföra åtgärden mot den här användaren? Speglar _authorize_target:
- * ingen får agera på sig själv (utom att redigera sin egen profil), super_user
- * får hantera vem som helst, owner_user bara personal (role "staff"), och
- * personal (staff_user) får inte hantera några andra användare alls.
+ * ingen får agera på sig själv (utom att redigera sin egen profil), ägare
+ * hanterar personal (role "staff"), och personal hanterar inga andra
+ * användare alls.
  */
 export function canManageTarget(
   caller: { sub: string | null; groups: string[] },
@@ -138,23 +146,8 @@ export function canManageTarget(
 ): boolean {
   const isSelf = Boolean(caller.sub) && target.cognitoSub === caller.sub
   if (action !== 'profile' && isSelf) return false
-  if (caller.groups.includes('super_user')) return true
   if (action === 'profile' && isSelf) return true
   return caller.groups.includes('owner_user') && target.role === 'staff'
-}
-
-/**
- * Systemet kräver minst en aktiv systemadmin (super_admin/super_user) hela
- * tiden. Backend-kontraktet (openapi.yaml) dokumenterar inte den här regeln
- * uttryckligen, så det här är ett frontend-skyddsnät: blockera borttagning,
- * inaktivering eller nedgradering av den sista aktiva systemadmin-kontot.
- */
-export function isLastActiveSuperAdmin(users: User[], target: User): boolean {
-  if (target.role !== 'super_admin' || target.status !== 'active') return false
-  const activeSuperAdmins = users.filter(
-    (u) => u.role === 'super_admin' && u.status === 'active',
-  )
-  return activeSuperAdmins.length <= 1
 }
 
 /** Mappar API:ts { error: string } + statuskod till svenska meddelanden. */
@@ -171,7 +164,7 @@ function toFriendlyUserError(err: unknown): Error {
         return new Error('Plats-ID krävs för personal.')
       }
       if (err.message.includes('locationId must be empty')) {
-        return new Error('Plats-ID måste vara tomt för ägare/systemadmin.')
+        return new Error('Ägare kopplas inte till en enskild plats.')
       }
       if (err.message.includes('email must be valid')) {
         return new Error('E-postadressen ser inte korrekt ut.')
@@ -217,11 +210,15 @@ async function call<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
+async function userCall(fn: () => Promise<User>): Promise<User> {
+  return normalizeUser(await call(fn))
+}
+
 /**
  * GET /list-users — "List visible internal users". Kontraktet: { items: [...] },
  * redan sorterad av backend (namn skiftlägesokänsligt, sen cognitoSub).
- * Vilka som syns avgörs av callerns roll: super_user ser alla, owner ser
- * sin personal + sig själv.
+ * Ägaren ser restaurangens personal och sig själv — aldrig en annan
+ * restaurangs användare (servern listar per tenant).
  *
  * Sökvägen är medvetet inte /users: den hade krockat med /users/{cognitoSub},
  * som fångar allt under /users/ som ett cognitoSub.
@@ -229,7 +226,7 @@ async function call<T>(fn: () => Promise<T>): Promise<T> {
 export async function listUsers(): Promise<User[]> {
   try {
     const res = await apiFetch<{ items?: User[] }>('/list-users')
-    return res.items ?? []
+    return (res.items ?? []).map(normalizeUser)
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
       // 404 här betyder att rutten saknas (inte att en användare saknas).
@@ -247,11 +244,11 @@ export async function listUsers(): Promise<User[]> {
  * om en enskild användare efter en samtidig ändring (409).
  */
 export function getUser(cognitoSub: string): Promise<User> {
-  return call(() => apiFetch<User>(`/users/${encodeURIComponent(cognitoSub)}`))
+  return userCall(() => apiFetch<User>(`/users/${encodeURIComponent(cognitoSub)}`))
 }
 
 export function inviteUser(input: UserInviteRequest): Promise<User> {
-  return call(() =>
+  return userCall(() =>
     apiFetch<User>('/users/invite', {
       method: 'POST',
       body: JSON.stringify(input),
@@ -263,7 +260,7 @@ export function updateUserProfile(
   cognitoSub: string,
   updates: UserProfileUpdate,
 ): Promise<User> {
-  return call(() =>
+  return userCall(() =>
     apiFetch<User>(`/users/${encodeURIComponent(cognitoSub)}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
@@ -275,7 +272,7 @@ export function changeUserGroup(
   cognitoSub: string,
   input: UserGroupChangeRequest,
 ): Promise<User> {
-  return call(() =>
+  return userCall(() =>
     apiFetch<User>(`/users/${encodeURIComponent(cognitoSub)}/group`, {
       method: 'PUT',
       body: JSON.stringify(input),
@@ -284,7 +281,7 @@ export function changeUserGroup(
 }
 
 export function deactivateUser(cognitoSub: string): Promise<User> {
-  return call(() =>
+  return userCall(() =>
     apiFetch<User>(`/users/${encodeURIComponent(cognitoSub)}/deactivate`, {
       method: 'POST',
     }),
@@ -292,7 +289,7 @@ export function deactivateUser(cognitoSub: string): Promise<User> {
 }
 
 export function reactivateUser(cognitoSub: string): Promise<User> {
-  return call(() =>
+  return userCall(() =>
     apiFetch<User>(`/users/${encodeURIComponent(cognitoSub)}/reactivate`, {
       method: 'POST',
     }),

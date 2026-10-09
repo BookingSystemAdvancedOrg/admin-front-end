@@ -1,7 +1,7 @@
 /**
- * MOCKDATA för de delar av Inställningar som ännu saknar API: betalningar
- * (Stripe-status) och avbokningspolicyn. Ersätts med backend-anrop när de
- * endpointsen finns — se docs/BACKEND-KOPPLING.md.
+ * Startvärden för Inställningar. Ingen mockdata: betalningar kommer från
+ * GET /tenant (Stripe-status) och avbokningspolicyn har inget API än, så den
+ * visas inte som redigerbar.
  *
  * Personal & behörigheter innehåller INGEN mockdata: listan hämtas från
  * GET /list-users och alla åtgärder går mot /users/*-API:t (usersApi.ts).
@@ -22,13 +22,6 @@ export interface RestaurantProfile {
   phone: string
   address: string
   email: string
-}
-
-export interface CancellationPolicy {
-  lateFee: number
-  noShowFee: number
-  freeCancelHours: number
-  autoCharge: boolean
 }
 
 /**
@@ -66,17 +59,4 @@ export const EMPTY_BUSINESS_HOURS: BusinessHours = {
   friday: [],
   saturday: [],
   sunday: [],
-}
-
-export const MOCK_POLICY: CancellationPolicy = {
-  lateFee: 300,
-  noShowFee: 450,
-  freeCancelHours: 24,
-  autoCharge: true,
-}
-
-/** Stripe-status visas bara — riktiga kontouppgifter bor i backend. */
-export const MOCK_STRIPE = {
-  connected: true,
-  accountLabel: 'acct_1KällaAB · Utbetalning varje vecka',
 }

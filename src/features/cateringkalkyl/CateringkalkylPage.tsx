@@ -46,7 +46,6 @@ export default function CateringkalkylPage() {
   const [orderRules, setOrderRules] = useState<OrderRules>(MOCK_ORDER_RULES)
   const [delivery, setDelivery] = useState<DeliveryPricing>(MOCK_DELIVERY_PRICING)
   const [tiers, setTiers] = useState<DiscountTier[]>(MOCK_DISCOUNT_TIERS)
-  const [saved, setSaved] = useState(false)
 
   const [tierModal, setTierModal] = useState<TierModalState>(null)
   const [quantities, setQuantities] = useState<Record<string, number>>({})
@@ -75,12 +74,10 @@ export default function CateringkalkylPage() {
   }, [locationId])
 
   function updateOrderRules(patch: Partial<OrderRules>) {
-    setSaved(false)
     setOrderRules((prev) => ({ ...prev, ...patch }))
   }
 
   function updateDelivery(patch: Partial<DeliveryPricing>) {
-    setSaved(false)
     setDelivery((prev) => ({ ...prev, ...patch }))
   }
 
@@ -148,15 +145,10 @@ export default function CateringkalkylPage() {
         title="Cateringkalkyl"
         subtitle="Regler, rabattnivåer och leveranspriser för catering"
         actions={
-          <span className="row-actions">
-            {saved && <span className="save-notice">Sparat</span>}
-            <button
-              type="button"
-              className="btn primary square"
-              onClick={() => setSaved(true)}
-            >
-              Spara ändringar
-            </button>
+          // Reglerna har ingen backend än. En "Spara"-knapp som visar
+          // "Sparat" utan att något sparas lurar ägaren — säg som det är.
+          <span className="cell-muted">
+            Förhandsvisning — reglerna sparas inte än
           </span>
         }
       />

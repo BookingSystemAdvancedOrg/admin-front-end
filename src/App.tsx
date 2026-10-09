@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AdminLayout } from './shared/AdminLayout'
 import OversiktPage from './features/oversikt/OversiktPage'
 import BokningarPage from './features/bokningar/BokningarPage'
@@ -6,6 +6,16 @@ import MenyPage from './features/meny/MenyPage'
 import CateringkalkylPage from './features/cateringkalkyl/CateringkalkylPage'
 import LayoutEditorPage from './features/layout-editor/LayoutEditorPage'
 import InstallningarPage from './features/installningar/InstallningarPage'
+
+/**
+ * Stripe skickar tillbaka ägaren hit efter onboardingen (return/refresh-URL:er
+ * som backend bygger: ADMIN_APP_URL/settings/payments?stripe=return|refresh).
+ * Frågesträngen följer med till Inställningar, som visar resultatet.
+ */
+function StripeReturn() {
+  const { search } = useLocation()
+  return <Navigate to={`/installningar${search}#betalningar`} replace />
+}
 
 /**
  * Admin-panelen (skyddad av RequireAuth i main.tsx). AdminLayout ritar
@@ -22,6 +32,7 @@ function App() {
         <Route path="cateringkalkyl" element={<CateringkalkylPage />} />
         <Route path="layout" element={<LayoutEditorPage />} />
         <Route path="installningar" element={<InstallningarPage />} />
+        <Route path="settings/payments" element={<StripeReturn />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

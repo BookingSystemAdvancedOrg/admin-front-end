@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AdminTopbar } from '../../shared/AdminTopbar'
+import { isApiConfigured } from '../../shared/api'
 import {
   MOCK_RESERVATIONS,
   STATUS_CLASS,
@@ -9,7 +10,12 @@ import type { Reservation } from './data'
 import './bokningar.css'
 
 /**
- * Figma: admin-bokningar-page (45:2). Kör på mockdata tills API:t kopplas.
+ * Figma: admin-bokningar-page (45:2).
+ *
+ * Backend har ännu ingen rutt som listar en plats bokningar, så mot ett
+ * riktigt API visas en tom lista med en förklaring. Exempelbokningarna
+ * (MOCK_RESERVATIONS) visas BARA vid lokal utveckling utan API — en riktig
+ * restaurang ska aldrig se påhittade gäster som om de vore deras.
  *
  * Bokningar som är Reserverad/Väntar har en "Anlänt?"-knapp. Ett klick
  * visar "Bekräfta" (skydd mot feltryck), och klicket därpå låser raden
@@ -17,8 +23,9 @@ import './bokningar.css'
  * Mot backend blir det: PATCH /reservations/:id { status: 'arrived' }.
  */
 export default function BokningarPage() {
-  const [reservations, setReservations] =
-    useState<Reservation[]>(MOCK_RESERVATIONS)
+  const [reservations, setReservations] = useState<Reservation[]>(() =>
+    isApiConfigured() ? [] : MOCK_RESERVATIONS,
+  )
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -52,7 +59,9 @@ export default function BokningarPage() {
           <div className="card-head">
             <h2 className="card-title">Kommande bokningar</h2>
             <span className="cell-muted">
-              {reservations.length} bokningar denna vecka
+              {isApiConfigured()
+                ? 'Onlinebokning är inte igång än'
+                : `${reservations.length} exempelbokningar (lokal utveckling)`}
             </span>
           </div>
           <div className="table-scroll">
@@ -69,6 +78,14 @@ export default function BokningarPage() {
                 </tr>
               </thead>
               <tbody>
+                {reservations.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="cell-muted">
+                      Inga bokningar än. När gäster bokar via er bokningssida
+                      visas bokningarna här.
+                    </td>
+                  </tr>
+                )}
                 {reservations.map((r) => {
                   const canArrive =
                     r.status === 'reserved' || r.status === 'waiting'

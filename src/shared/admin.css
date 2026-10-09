@@ -43,14 +43,45 @@
 }
 
 .admin-logo-name {
-  font: 600 18px/1 var(--serif);
+  min-width: 0;
+  font: 600 18px/1.2 var(--serif);
   color: #fff;
+  overflow-wrap: anywhere;
 }
 
 .admin-logo-tag {
   font: 700 10px/1 var(--sans);
   letter-spacing: 0.08em;
   color: var(--accent);
+}
+
+/* Platsväljare — bara när restaurangen har flera platser. */
+.admin-location-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 20px 20px;
+}
+
+.admin-location-picker label {
+  font: 700 10px/1 var(--sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.admin-location-picker select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font: 500 14px/1.3 var(--sans);
+}
+
+.admin-location-picker select option {
+  color: #000;
 }
 
 .admin-nav {
@@ -1085,4 +1116,49 @@
   .quick-link {
     padding: 16px 18px;
   }
+}
+
+/* --- Tenant-läge: konto pausat, inte kopplat, eller tjänsten nere -------- */
+
+.tenant-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 560px;
+}
+
+/* --- Översikt: Kom igång-listan ------------------------------------------ */
+
+.setup-step {
+  text-decoration: none;
+}
+
+.setup-step:hover .activity-text {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.setup-step .activity-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.setup-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font: 700 11px/1 var(--sans);
+  color: var(--muted);
+}
+
+.setup-check.done {
+  border-color: var(--green);
+  background: var(--green);
+  color: #fff;
 }

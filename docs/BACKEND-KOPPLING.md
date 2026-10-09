@@ -1,18 +1,40 @@
-# Backend-koppling — mockdata idag, riktigt API sen
+# Backend-koppling
 
-Alla admin-sidor är byggda och fungerar, men kör på **mockdata**. Det här dokumentet beskriver var mockdatan bor, hur den byts mot riktiga API-anrop, och exakt var alla riktiga nycklar ska ligga när backend är på plats.
+Det här dokumentet beskriver vilka sidor som är kopplade mot backend, vad som fortfarande saknar API, och exakt var alla riktiga nycklar ska ligga.
 
 ## 1. Läget just nu
 
-| Sida | Mockdata | Framtida API-anrop (förslag) |
-| --- | --- | --- |
-| Översikt | `src/features/oversikt/OversiktPage.tsx` (inline) | `GET /dashboard` |
-| Bokningar | `src/features/bokningar/data.ts` | `GET /reservations` |
-| Meny | `src/features/meny/data.ts` | `GET/POST/PUT/DELETE /menu` |
-| Layout-editorn | **Kopplad** via `layout-editor/layoutApi.ts` | `…/layout-elements/items` (CRUD) + `…/layout/publish`, `…/layout/versions` |
-| Inställningar — personal | **Kopplad**: `GET /list-users` + `/users/*` (`usersApi.ts`) | — |
-| Inställningar — restaurangprofil | **Kopplad**: `/locations` (`locationApi.ts`) | — |
-| Inställningar — betalning/policy | `src/features/installningar/data.ts` | `GET/PUT /settings` |
+### Restaurangen (tenant) och platsen
+
+Plattformen är **multi-tenant**: en deployment betjänar alla restauranger.
+Appen skickar aldrig något restaurang-id — servern läser det ur
+access-tokenen. Startpunkten är `GET /tenant` (`src/shared/tenant.ts`):
+restaurangens namn, plan, Stripe-status och de platser den inloggade får
+arbeta med (ägare: alla, personal: bara sin egen).
+
+- Sidebaren visar restaurangens namn och — vid flera platser — en
+  **platsväljare**. Sidorna monteras om vid platsbyte.
+- Vald plats minns per restaurang (`admin-location-id:<tenantId>` i
+  localStorage) och godtas bara om den finns i serverns lista.
+- `src/shared/location.ts` (`useLocationId`, `useLocationSummary`) bygger
+  på samma store, så sidorna behöver inte veta något om tenants.
+- Konto pausat (`403 tenant_inactive`) eller inloggning utan restaurang
+  (`403 no_tenant`) ger en tydlig spärrsida i stället för tomma sidor.
+
+| Sida | Datakälla |
+| --- | --- |
+| Översikt | **Riktig**: platsens öppettider, menyn, layoutversioner, personal och Stripe-status. "Kom igång"-lista. Bokningar: tomt läge tills backend har en lista |
+| Bokningar | Inget API än (`GET /reservations` saknas) — tomt läge. Exempeldata (`bokningar/data.ts`) visas bara lokalt utan `VITE_API_BASE_URL` |
+| Meny | **Kopplad** via `meny/menuApi.ts` |
+| Cateringkalkyl | Rätterna från meny-API:t; reglerna saknar API och märks "sparas inte än" |
+| Layout-editorn | **Kopplad** via `layout-editor/layoutApi.ts` |
+| Inställningar — personal | **Kopplad**: `GET /list-users` + `/users/*` (`usersApi.ts`), bara för ägare. Personal kopplas till en plats via namn |
+| Inställningar — restaurangprofil | **Kopplad**: `/locations` (`locationApi.ts`), den valda platsen |
+| Inställningar — betalningar | **Kopplad**: `GET /tenant` (status) + `POST /tenant/stripe/account-link` (Stripes onboarding). Stripe skickar tillbaka till `/settings/payments?stripe=return\|refresh` |
+| Inställningar — avbokningspolicy | Inget API än — visas som "kommer", inte som redigerbara påhittade värden |
+
+Roller: `owner_user` (ägare) och `staff_user` (personal). `super_user` finns
+inte längre — plattformens operatörer arbetar i operatörskonsolen (sbs-admin).
 
 **Layout-editorn** läser in sitt utkast vid sidladdning. "Spara utkast"
 skriver elementen, och "Publicera layout" sparar först utkastet och fryser

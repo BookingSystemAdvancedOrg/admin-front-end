@@ -102,6 +102,12 @@ jobs:
   build:
     needs: config
     runs-on: ubuntu-latest
+    # Deploys (push to dev/main) run in the GitHub environment named like the
+    # target - "prod" has required reviewers, so nothing reaches prod without
+    # an approval. The environment also puts ":environment:<env>" in the OIDC
+    # token's sub, which the AWS deploy roles can trust. PR runs (tests /
+    # plan only) use no environment, so they never wait for approval.
+    environment: ${{ github.event_name == 'push' && inputs.environment || '' }}
     # id-token: write is required to mint the GitHub OIDC token used by
     # aws-actions/configure-aws-credentials. Only exercised on push (deploy).
     permissions:

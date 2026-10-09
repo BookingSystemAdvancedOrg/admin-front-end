@@ -1,81 +1,154 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
-
-/**
- * Demo-data tills API:t är kopplat (se docs/API-OCH-NYCKLAR.md avsnitt 3 för
- * hur anrop autentiseras). Ersätt med fetch mot ert API.
- */
-type BookingStatus = 'arrived' | 'reserved' | 'waiting' | 'cancelled'
-
-// Svensk visningstext för varje status-badge i bokningslistan.
-const STATUS_LABEL: Record<BookingStatus, string> = {
-  arrived: 'Anlänt',
-  reserved: 'Reserverad',
-  waiting: 'Väntar',
-  cancelled: 'Avbokad',
-}
-
-// Nyckeltalskorten högst upp på sidan.
-const STATS = [
-  { label: 'Bokningar idag', value: '12', note: '48 gäster totalt' },
-  { label: 'Beläggning ikväll', value: '76%', note: '10 av 13 bord bokade' },
-  {
-    label: 'Obetalda avgifter',
-    value: '2 st',
-    note: '750 kr att driva in',
-    danger: true,
-  },
-  { label: 'Nästa lediga tid', value: '20:30', note: 'för sällskap på 2–4' },
-]
-
-// Dagens bokningslista (vänsterkortet).
-const TODAYS_BOOKINGS: {
-  time: string
-  name: string
-  meta: string
-  status: BookingStatus
-}[] = [
-  { time: '17:00', name: 'Familjen Öberg', meta: 'Bord 8 · 6 pers', status: 'arrived' },
-  { time: '18:00', name: 'Klara Sandberg', meta: 'Bord 2 · 2 pers', status: 'reserved' },
-  { time: '18:30', name: 'Erik Lindqvist', meta: 'Bord 3 · 2 pers', status: 'reserved' },
-  { time: '19:00', name: 'Sofia Bergman', meta: 'Bord 8 · 6 pers', status: 'waiting' },
-  { time: '19:30', name: 'Petter Malm', meta: 'Bord 11 · 4 pers', status: 'reserved' },
-  { time: '20:00', name: 'Nina & Oskar', meta: 'Bord 6 · 4 pers', status: 'reserved' },
-]
-
-// Aktivitetsflödet (högerkortet).
-const ACTIVITY: { text: string; time: string }[] = [
-  { text: 'Sofia Bergman bokade Bord 8 för 6 personer', time: 'för 12 min sedan' },
-  { text: 'Layout publicerad — version 4', time: 'för 2 timmar sedan' },
-  { text: 'Betalningspåminnelse skickad till Maria Holm', time: 'igår, 14:20' },
-  { text: 'Ny rätt tillagd: Smörstekt Torskrygg', time: 'igår, 11:05' },
-  { text: 'Erik Lindqvist bekräftade bokning #KL-48213', time: 'igår, 09:40' },
-]
+import { currentLocation, stripeStage, useTenant } from '../../shared/tenant'
+import { getLocation } from '../installningar/locationApi'
+import type { Location } from '../installningar/locationApi'
+import { listMenuItems } from '../meny/menuApi'
+import { listLayoutVersions } from '../layout-editor/layoutApi'
+import { listUsers } from '../installningar/usersApi'
+import { hasAnyOpeningHours, setupSteps, todaysHours } from './overview'
 
 // Genvägskorten längst ned som länkar till de andra sidorna.
 const QUICK_LINKS = [
   { to: '/meny', icon: '🍽', label: 'Hantera meny' },
   { to: '/layout', icon: '📐', label: 'Redigera layout' },
   { to: '/bokningar', icon: '📅', label: 'Se alla bokningar' },
-  { to: '/installningar', icon: '👥', label: 'Bjud in personal' },
+  { to: '/installningar', icon: '⚙️', label: 'Inställningar' },
 ]
 
-/** Figma: admin-oversikt-page (36:165). */
+interface OverviewData {
+  /** Platsen datan gäller — en annan plats betyder att ny data hämtas. */
+  forLocation: string | null
+  location: Location | null
+  activeMenuItems: number | null
+  hasLiveLayout: boolean | null
+  staffCount: number | null
+}
+
+const EMPTY: OverviewData = {
+  forLocation: null,
+  location: null,
+  activeMenuItems: null,
+  hasLiveLayout: null,
+  staffCount: null,
+}
+
+/** Ett anrop som misslyckas ger `null` (okänt) i stället för att fälla sidan. */
+function orNull<T>(promise: Promise<T>): Promise<T | null> {
+  return promise.catch(() => null)
+}
+
+/**
+ * Figma: admin-oversikt-page (36:165).
+ *
+ * Allt på sidan är restaurangens riktiga data för den valda platsen. Tidigare
+ * visades påhittade bokningar och nyckeltal här — det ger en ny kund fel
+ * bild av sin egen restaurang. Där backend ännu saknar data (bokningar)
+ * står det uttryckligen i stället för att visa exempel.
+ */
 export default function OversiktPage() {
+  const tenantState = useTenant()
+  const { tenant, locationId } = tenantState
+  const location = currentLocation(tenantState)
+  const isOwner = tenant?.role === 'owner_user'
+  const [fetched, setFetched] = useState<OverviewData>(EMPTY)
+  // Data för en annan plats än den valda visas aldrig, inte ens en stund.
+  const loading = Boolean(locationId) && fetched.forLocation !== locationId
+  const data = loading ? EMPTY : fetched
+
+  useEffect(() => {
+    if (!locationId) return
+    let cancelled = false
+    Promise.all([
+      orNull(getLocation(locationId)),
+      orNull(listMenuItems(locationId)),
+      isOwner ? orNull(listLayoutVersions(locationId)) : Promise.resolve(null),
+      isOwner ? orNull(listUsers()) : Promise.resolve(null),
+    ]).then(([loc, menu, versions, users]) => {
+      if (cancelled) return
+      setFetched({
+        forLocation: locationId,
+        location: loc,
+        activeMenuItems: menu ? menu.filter((m) => m.active).length : null,
+        hasLiveLayout: versions ? versions.some((v) => v.isCurrent) : null,
+        staffCount: users ? users.filter((u) => u.role === 'staff').length : null,
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [locationId, isOwner])
+
+  const stage = tenant ? stripeStage(tenant.stripe) : 'missing'
+  const timezone = data.location?.timezone ?? location?.timezone ?? null
+  const steps = setupSteps({
+    isOwner,
+    hasOpeningHours: data.location ? hasAnyOpeningHours(data.location.businessHours) : null,
+    activeMenuItems: data.activeMenuItems,
+    hasLiveLayout: data.hasLiveLayout,
+    stripeStage: stage,
+    staffCount: data.staffCount,
+  })
+  const remaining = steps.filter((s) => s.done === false).length
+
+  const stats = [
+    {
+      label: 'Öppet idag',
+      value: data.location ? todaysHours(data.location.businessHours, timezone) : '—',
+      note: timezone ?? '',
+    },
+    {
+      label: 'Rätter på menyn',
+      value: data.activeMenuItems === null ? '—' : String(data.activeMenuItems),
+      note: 'aktiva rätter',
+    },
+    {
+      label: 'Kortbetalningar',
+      value: stage === 'ready' ? 'Aktiva' : 'Ej aktiva',
+      note: stage === 'ready' ? 'via Stripe' : 'Stripe är inte klart',
+      danger: stage !== 'ready',
+    },
+    {
+      label: 'Bokningar idag',
+      value: '—',
+      note: 'Onlinebokning är inte igång än',
+    },
+  ]
+
+  if (!locationId) {
+    return (
+      <>
+        <AdminTopbar title="Översikt" />
+        <div className="admin-main">
+          <section className="admin-card table-card">
+            <h2 className="card-title">Välkommen{tenant ? `, ${tenant.name}` : ''}!</h2>
+            <p className="cell-muted">
+              {isOwner
+                ? 'Restaurangen har ingen plats än. Börja med att lägga in restaurangens uppgifter under Inställningar.'
+                : 'Du är inte kopplad till någon plats än. Be restaurangens ägare att koppla dig till en plats.'}
+            </p>
+            {isOwner && (
+              <Link className="card-link" to="/installningar">
+                Till inställningar →
+              </Link>
+            )}
+          </section>
+        </div>
+      </>
+    )
+  }
+
   return (
     <>
       <AdminTopbar title="Översikt" />
       <div className="admin-main">
         <section className="stats-row" aria-label="Nyckeltal">
-          {STATS.map((stat) => (
+          {stats.map((stat) => (
             <article key={stat.label} className="admin-card stat-tile">
               <p className="stat-tile-label">{stat.label}</p>
-              <p
-                className={
-                  stat.danger ? 'stat-tile-value danger' : 'stat-tile-value'
-                }
-              >
-                {stat.value}
+              <p className={stat.danger ? 'stat-tile-value danger' : 'stat-tile-value'}>
+                {loading && stat.value === '—' ? '…' : stat.value}
               </p>
               <p className="stat-tile-note">{stat.note}</p>
             </article>
@@ -90,31 +163,42 @@ export default function OversiktPage() {
                 Visa alla →
               </Link>
             </div>
-            {TODAYS_BOOKINGS.map((b) => (
-              <div key={`${b.time}-${b.name}`} className="booking-row">
-                <div className="booking-left">
-                  <span className="booking-time">{b.time}</span>
-                  <span className="booking-name">{b.name}</span>
-                </div>
-                <div className="booking-right">
-                  <span className="booking-meta">{b.meta}</span>
-                  <span className={`status-badge ${b.status}`}>
-                    {STATUS_LABEL[b.status]}
-                  </span>
-                </div>
-              </div>
-            ))}
+            <p className="admin-empty">
+              Inga bokningar att visa. När onlinebokningen är igång visas
+              dagens bokningar för {location?.name || 'platsen'} här.
+            </p>
           </section>
 
-          <section className="admin-card activity-card" aria-label="Senaste aktivitet">
+          <section className="admin-card activity-card" aria-label="Kom igång">
             <div className="card-head">
-              <h2 className="card-title">Senaste aktivitet</h2>
+              <h2 className="card-title">Kom igång</h2>
+              {!loading && (
+                <span className="cell-muted">
+                  {remaining === 0 ? 'Allt klart' : `${remaining} kvar`}
+                </span>
+              )}
             </div>
-            {ACTIVITY.map((item) => (
-              <div key={item.text} className="activity-item">
-                <p className="activity-text">{item.text}</p>
-                <p className="activity-time">{item.time}</p>
-              </div>
+            {steps.map((step) => (
+              <Link key={step.id} to={step.to} className="activity-item setup-step">
+                <span className="activity-text">
+                  <span
+                    className={`setup-check ${step.done ? 'done' : ''}`}
+                    aria-hidden="true"
+                  >
+                    {step.done ? '✓' : step.done === null ? '?' : ''}
+                  </span>
+                  {step.label}
+                </span>
+                <span className="activity-time">
+                  {loading
+                    ? 'Kontrollerar…'
+                    : step.done
+                      ? 'Klart'
+                      : step.done === null
+                        ? 'Kunde inte kontrolleras'
+                        : 'Att göra'}
+                </span>
+              </Link>
             ))}
           </section>
         </div>

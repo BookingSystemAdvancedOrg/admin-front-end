@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { InfoTooltip } from '../../shared/InfoTooltip'
@@ -8,10 +9,9 @@ import {
   DEFAULT_TIMEZONE,
   EMPTY_BUSINESS_HOURS,
   EMPTY_PROFILE,
-  MOCK_POLICY,
-  MOCK_STRIPE,
 } from './data'
-import type { CancellationPolicy, RestaurantProfile } from './data'
+import type { RestaurantProfile } from './data'
+import { PaymentsCard } from './PaymentsCard'
 import { BusinessHoursEditor } from './BusinessHoursEditor'
 import {
   createLocation,
@@ -37,7 +37,6 @@ import {
   deactivateUser,
   deleteUser,
   inviteUser,
-  isLastActiveSuperAdmin,
   listUsers,
   reactivateUser,
   updateUserProfile,
@@ -48,11 +47,11 @@ import {
   resolveLocationId,
   useLocationId,
 } from '../../shared/location'
+import { useTenant } from '../../shared/tenant'
 
 const ROLE_LABEL: Record<User['role'], string> = {
   staff: 'Personal',
   owner_user: 'Ägare',
-  super_admin: 'Systemadmin',
 }
 
 
@@ -70,10 +69,19 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * Personal & behörigheter går mot det riktiga /users/*-API:t (usersApi.ts);
  * listan hämtas från GET /list-users vid sidladdning. Ingen mockdata.
  *
- * Betalningar/Avbokningspolicy kör fortfarande på ren mockdata.
+ * Betalningar visar restaurangens riktiga Stripe-status (GET /tenant) och
+ * öppnar Stripes onboarding. Avbokningspolicyn har ännu inget API och visas
+ * därför inte som redigerbar — påhittade värden som ser sparade ut är värre
+ * än inga.
+ *
+ * Personal (staff_user) ser sin plats men kan inte ändra den eller hantera
+ * andra användare — de rutterna är bara för ägare.
  */
 export default function InstallningarPage() {
   const { sub, groups } = useAuth()
+  const { tenant, refresh: refreshTenant } = useTenant()
+  const [searchParams] = useSearchParams()
+  const stripeReturn = searchParams.get('stripe')
   const [profile, setProfile] = useState<RestaurantProfile>(EMPTY_PROFILE)
   const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE)
   const [businessHours, setBusinessHours] =
@@ -95,7 +103,6 @@ export default function InstallningarPage() {
     null,
   )
 
-  const [policy, setPolicy] = useState<CancellationPolicy>(MOCK_POLICY)
   const [staff, setStaff] = useState<User[]>([])
   const [staffLoading, setStaffLoading] = useState(true)
   const [staffError, setStaffError] = useState<string | null>(null)
@@ -105,9 +112,14 @@ export default function InstallningarPage() {
   const [busySub, setBusySub] = useState<string | null>(null)
 
   const caller = { sub, groups }
-  const canManageStaff = groups.includes('owner_user') || groups.includes('super_user')
-  // Plats-ID:t (UUID) är ett internt teknisk detalj — bara systemadmin ska se det.
-  const isSuperUser = groups.includes('super_user')
+  // Rollen kommer från servern (GET /tenant), inte från klientens tolkning
+  // av tokenens grupper.
+  const isOwner = tenant?.role === 'owner_user'
+  const canManageStaff = isOwner
+  const locationOptions = (tenant?.locations ?? []).map((l) => ({
+    locationId: l.locationId,
+    name: l.name || 'Namnlös plats',
+  }))
 
   // En plats är redan skapad - hämta den riktiga datan istället för att
   // visa kvarvarande mockvärden.
@@ -151,8 +163,9 @@ export default function InstallningarPage() {
     }
   }, [locationId])
 
-  // Hämta hela användarlistan från GET /users vid sidladdning.
+  // Hämta restaurangens användare (bara ägare får lista dem).
   useEffect(() => {
+    if (!isOwner) return
     let cancelled = false
     listUsers()
       .then((users) => {
@@ -171,20 +184,11 @@ export default function InstallningarPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [isOwner])
 
   function updateProfile(field: keyof RestaurantProfile, value: string) {
     setSaved(false)
     setProfile((prev) => ({ ...prev, [field]: value }))
-  }
-
-  function updatePolicyNumber(
-    field: 'lateFee' | 'noShowFee' | 'freeCancelHours',
-    value: string,
-  ) {
-    setSaved(false)
-    const n = Number(value.replace(/[^\d]/g, ''))
-    setPolicy((prev) => ({ ...prev, [field]: Number.isNaN(n) ? 0 : n }))
   }
 
   async function handleSaveAll() {
@@ -284,17 +288,6 @@ export default function InstallningarPage() {
     if (modal?.mode === 'edit') {
       const original = modal.user
       const roleChanged = values.group !== ROLE_TO_GROUP[original.role]
-      // Systemet kräver minst en aktiv systemadmin — blockera en nedgradering
-      // som skulle lämna restaurangen utan någon.
-      if (
-        roleChanged &&
-        values.group !== 'super_user' &&
-        isLastActiveSuperAdmin(staff, original)
-      ) {
-        throw new Error(
-          'Går inte att ändra — minst en systemadmin måste finnas kvar.',
-        )
-      }
 
       const profileUpdates: Record<string, string> = {}
       if (values.name !== original.name) profileUpdates.name = values.name
@@ -322,12 +315,6 @@ export default function InstallningarPage() {
 
   async function handleToggleStatus(user: User) {
     setRowError(null)
-    // Knappen är redan spärrad i detta läge, men gardera ändå — annars kan
-    // restaurangen bli utan någon systemadmin.
-    if (user.status === 'active' && isLastActiveSuperAdmin(staff, user)) {
-      setRowError('Går inte att inaktivera — minst en systemadmin måste finnas kvar.')
-      return
-    }
     setBusySub(user.cognitoSub)
     try {
       const updated =
@@ -343,10 +330,6 @@ export default function InstallningarPage() {
   }
 
   async function handleDelete(user: User) {
-    if (isLastActiveSuperAdmin(staff, user)) {
-      setRowError('Går inte att ta bort — minst en systemadmin måste finnas kvar.')
-      return
-    }
     if (!window.confirm(`Ta bort ${user.name} permanent?`)) return
     setRowError(null)
     setBusySub(user.cognitoSub)
@@ -370,7 +353,8 @@ export default function InstallningarPage() {
             <button
               type="button"
               className="btn primary square"
-              disabled={savingLocation || resolvingLocation}
+              disabled={savingLocation || resolvingLocation || !isOwner}
+              title={isOwner ? undefined : 'Bara ägaren kan ändra restaurangens uppgifter'}
               onClick={handleSaveAll}
             >
               {savingLocation ? 'Sparar…' : 'Spara ändringar'}
@@ -387,10 +371,12 @@ export default function InstallningarPage() {
                 {resolvingLocation
                   ? 'Letar efter restaurangens plats…'
                   : locationId
-                    ? isSuperUser
-                      ? `Plats-ID: ${locationId} — ändringar sparas med "Spara ändringar".`
-                      : 'Ändringar sparas med "Spara ändringar".'
-                    : 'Grundläggande information om din restaurang. Sparas som en ny plats i backend, och krävs innan layouten kan sparas.'}
+                    ? isOwner
+                      ? 'Uppgifter för den valda platsen. Ändringar sparas med "Spara ändringar".'
+                      : 'Uppgifter för din plats. Bara ägaren kan ändra dem.'
+                    : isOwner
+                      ? 'Restaurangen har ingen plats än. Fyll i uppgifterna och spara för att skapa den första.'
+                      : 'Du är inte kopplad till någon plats än. Be ägaren att koppla dig till en plats.'}
               </p>
             </div>
           </div>
@@ -498,6 +484,7 @@ export default function InstallningarPage() {
           />
         </section>
 
+        {isOwner && (
         <section className="admin-card table-card">
           <div className="card-head">
             <div>
@@ -550,15 +537,19 @@ export default function InstallningarPage() {
                   const canToggleStatus = canManageTarget(caller, s, statusAction)
                   const canDelete = canManageTarget(caller, s, 'delete')
                   const busy = busySub === s.cognitoSub
-                  // Minst en aktiv systemadmin måste alltid finnas kvar.
-                  const lastSuperAdminLock =
-                    statusAction === 'deactivate' && isLastActiveSuperAdmin(staff, s)
-                  const deleteLock = isLastActiveSuperAdmin(staff, s)
-                  const lastAdminHint = 'Minst en systemadmin måste finnas kvar.'
                   return (
                     <tr key={s.cognitoSub}>
                       <td className="cell-strong">{s.name}</td>
-                      <td>{ROLE_LABEL[s.role]}</td>
+                      <td>
+                        {ROLE_LABEL[s.role] ?? s.role}
+                        {s.role === 'staff' && (
+                          <span className="cell-muted">
+                            {' · '}
+                            {locationOptions.find((l) => l.locationId === s.locationId)
+                              ?.name ?? 'Ingen plats'}
+                          </span>
+                        )}
+                      </td>
                       <td className="cell-muted">{s.email}</td>
                       <td>
                         <span
@@ -585,8 +576,7 @@ export default function InstallningarPage() {
                             <button
                               type="button"
                               className="link-action"
-                              disabled={busy || lastSuperAdminLock}
-                              title={lastSuperAdminLock ? lastAdminHint : undefined}
+                              disabled={busy}
                               onClick={() => handleToggleStatus(s)}
                             >
                               {s.status === 'active' ? 'Inaktivera' : 'Aktivera'}
@@ -596,8 +586,7 @@ export default function InstallningarPage() {
                             <button
                               type="button"
                               className="link-action danger"
-                              disabled={busy || deleteLock}
-                              title={deleteLock ? lastAdminHint : undefined}
+                              disabled={busy}
                               onClick={() => handleDelete(s)}
                             >
                               Ta bort
@@ -612,84 +601,26 @@ export default function InstallningarPage() {
             </table>
           </div>
         </section>
+        )}
 
         <div className="settings-row">
-          <section className="admin-card table-card">
-            <h2 className="card-title">Betalningar</h2>
-            <div style={{ height: 16 }} />
-            <div className="stripe-status">
-              <span
-                className={`stripe-dot ${MOCK_STRIPE.connected ? 'ok' : ''}`}
-                aria-hidden="true"
-              />
-              <div>
-                <p className="stripe-title">
-                  {MOCK_STRIPE.connected
-                    ? 'Ansluten till Stripe'
-                    : 'Ej ansluten till Stripe'}
-                </p>
-                <p className="cell-muted">Konto: {MOCK_STRIPE.accountLabel}</p>
-              </div>
-            </div>
-            <div style={{ height: 16 }} />
-            <button type="button" className="btn outline square stripe-manage">
-              Hantera i Stripe →
-            </button>
-          </section>
+          {tenant && (
+            <PaymentsCard
+              tenant={tenant}
+              isOwner={isOwner}
+              stripeReturn={stripeReturn}
+              onRefresh={refreshTenant}
+            />
+          )}
 
           <section className="admin-card table-card">
             <h2 className="card-title">Avbokningspolicy</h2>
             <div style={{ height: 16 }} />
-            <div className="form-grid">
-              <div className="form-field">
-                <label htmlFor="pol-late">Avgift, sen avbokning</label>
-                <input
-                  id="pol-late"
-                  value={`${policy.lateFee} kr`}
-                  onChange={(e) => updatePolicyNumber('lateFee', e.target.value)}
-                />
-              </div>
-              <div className="form-field">
-                <label htmlFor="pol-noshow">Avgift, uteblivande</label>
-                <input
-                  id="pol-noshow"
-                  value={`${policy.noShowFee} kr`}
-                  onChange={(e) =>
-                    updatePolicyNumber('noShowFee', e.target.value)
-                  }
-                />
-              </div>
-            </div>
-            <div style={{ height: 16 }} />
-            <div className="form-field">
-              <label htmlFor="pol-hours">
-                Framförhållning för fri avbokning (timmar)
-              </label>
-              <input
-                id="pol-hours"
-                value={policy.freeCancelHours}
-                onChange={(e) =>
-                  updatePolicyNumber('freeCancelHours', e.target.value)
-                }
-              />
-            </div>
-            <div style={{ height: 16 }} />
-            <div className="toggle-row">
-              <span className="toggle-row-label">
-                Aktivera automatisk debitering
-              </span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={policy.autoCharge}
-                aria-label="Aktivera automatisk debitering"
-                className="switch"
-                onClick={() => {
-                  setSaved(false)
-                  setPolicy((prev) => ({ ...prev, autoCharge: !prev.autoCharge }))
-                }}
-              />
-            </div>
+            <p className="cell-muted">
+              Avgifter för sen avbokning och uteblivna gäster går att ställa in
+              när onlinebokning med kortgaranti lanseras. Tills dess debiteras
+              inga avgifter.
+            </p>
           </section>
         </div>
       </div>
@@ -700,6 +631,7 @@ export default function InstallningarPage() {
           initial={modal.mode === 'edit' ? modal.user : null}
           callerGroups={groups}
           lockRole={modal.mode === 'edit' && modal.user.cognitoSub === sub}
+          locations={locationOptions}
           defaultLocationId={locationId ?? undefined}
           onSave={handleSave}
           onCancel={() => setModal(null)}

@@ -8,9 +8,9 @@ import {
   deactivateUser,
   deleteUser,
   getUser,
-  isLastActiveSuperAdmin,
   inviteUser,
   listUsers,
+  normalizeUser,
   reactivateUser,
   updateUserProfile,
   validateEmail,
@@ -74,7 +74,6 @@ describe('field validation (mirrors manage-user Lambda rules)', () => {
     expect(validateLocationId('staff_user', 'loc-1')).toBeNull()
     expect(validateLocationId('owner_user', 'loc-1')).not.toBeNull()
     expect(validateLocationId('owner_user', '')).toBeNull()
-    expect(validateLocationId('super_user', '')).toBeNull()
   })
 })
 
@@ -82,27 +81,24 @@ describe('canInvite', () => {
   it('blocks staff_user and no-group callers from inviting anyone', () => {
     expect(canInvite([], 'staff_user')).toBe(false)
     expect(canInvite([], 'owner_user')).toBe(false)
-    expect(canInvite([], 'super_user')).toBe(false)
     expect(canInvite(['staff_user'], 'staff_user')).toBe(false)
     expect(canInvite(['staff_user'], 'owner_user')).toBe(false)
   })
 
-  it('lets owners invite staff and other owners, but not super_user', () => {
+  it('lets owners invite staff only — more owners are added by the platform', () => {
     expect(canInvite(['owner_user'], 'staff_user')).toBe(true)
-    expect(canInvite(['owner_user'], 'owner_user')).toBe(true)
-    expect(canInvite(['owner_user'], 'super_user')).toBe(false)
+    expect(canInvite(['owner_user'], 'owner_user')).toBe(false)
   })
 
-  it('lets super_user invite any role', () => {
-    expect(canInvite(['super_user'], 'staff_user')).toBe(true)
-    expect(canInvite(['super_user'], 'owner_user')).toBe(true)
-    expect(canInvite(['super_user'], 'super_user')).toBe(true)
+  it('gives a stale super_user group no extra rights', () => {
+    expect(canInvite(['super_user'], 'staff_user')).toBe(false)
+    expect(canInvite(['super_user'], 'owner_user')).toBe(false)
   })
 })
 
 describe('canManageTarget', () => {
   it('never allows destructive or group-changing self-actions', () => {
-    const self = { sub: 'sub-1', groups: ['super_user'] }
+    const self = { sub: 'sub-1', groups: ['owner_user'] }
     expect(canManageTarget(self, baseUser, 'deactivate')).toBe(false)
     expect(canManageTarget(self, baseUser, 'reactivate')).toBe(false)
     expect(canManageTarget(self, baseUser, 'delete')).toBe(false)
@@ -114,11 +110,11 @@ describe('canManageTarget', () => {
     expect(canManageTarget(self, baseUser, 'profile')).toBe(true)
   })
 
-  it('lets super_user manage anyone, including other privileged accounts', () => {
+  it('gives a stale super_user group no extra rights', () => {
     const superUser = { sub: 'sub-owner', groups: ['super_user'] }
     const ownerTarget: User = { ...baseUser, cognitoSub: 'sub-2', role: 'owner_user' }
-    expect(canManageTarget(superUser, ownerTarget, 'delete')).toBe(true)
-    expect(canManageTarget(superUser, ownerTarget, 'group')).toBe(true)
+    expect(canManageTarget(superUser, ownerTarget, 'delete')).toBe(false)
+    expect(canManageTarget(superUser, baseUser, 'delete')).toBe(false)
   })
 
   it('restricts owner_user to staff-role targets only', () => {
@@ -138,25 +134,14 @@ describe('canManageTarget', () => {
   })
 })
 
-describe('isLastActiveSuperAdmin', () => {
-  const superAdmin: User = { ...baseUser, cognitoSub: 'sub-admin', role: 'super_admin' }
-
-  it('is true for the sole active super_admin', () => {
-    expect(isLastActiveSuperAdmin([superAdmin, baseUser], superAdmin)).toBe(true)
+describe('normalizeUser', () => {
+  it('maps the group-name role written by the operator console to staff', () => {
+    const fromConsole = { ...baseUser, role: 'staff_user' } as unknown as User
+    expect(normalizeUser(fromConsole).role).toBe('staff')
   })
 
-  it('is false when another active super_admin exists', () => {
-    const secondAdmin: User = { ...superAdmin, cognitoSub: 'sub-admin-2' }
-    expect(isLastActiveSuperAdmin([superAdmin, secondAdmin], superAdmin)).toBe(false)
-  })
-
-  it('is false for a disabled super_admin — it is not the one keeping the seat', () => {
-    const disabledAdmin: User = { ...superAdmin, status: 'disabled' }
-    expect(isLastActiveSuperAdmin([disabledAdmin], disabledAdmin)).toBe(false)
-  })
-
-  it('is false for a non-super_admin target', () => {
-    expect(isLastActiveSuperAdmin([superAdmin, baseUser], baseUser)).toBe(false)
+  it('leaves app roles untouched', () => {
+    expect(normalizeUser(baseUser)).toBe(baseUser)
   })
 })
 

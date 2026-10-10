@@ -35,6 +35,18 @@ export interface TenantStripeStatus {
   detailsSubmitted: boolean
 }
 
+/** Gäst- och restaurangnotiser (bokningsbekräftelser, påminnelser m.m.). */
+export interface TenantNotifications {
+  /** SMS till gästen (utöver e-post). Kostar per SMS. */
+  sms: boolean
+  /** E-post till restaurangen vid ny onlinebokning och avbokning. */
+  staffEmails: boolean
+  /** Påminnelse så många timmar före besöket; 0 = av. */
+  reminderHours: number
+}
+
+export const REMINDER_HOURS = [0, 2, 3, 6, 12, 24, 48] as const
+
 export interface Tenant {
   tenantId: string
   name: string
@@ -50,8 +62,16 @@ export interface Tenant {
   primaryDomain: string | null
   senderName: string | null
   replyToEmail: string | null
+  notifications: TenantNotifications
   role: TenantRole
   locations: TenantLocation[]
+}
+
+/** Det ägaren själv får ändra (PATCH /tenant). Tom sträng tar bort värdet. */
+export interface TenantEdit {
+  senderName?: string | null
+  replyToEmail?: string | null
+  notifications?: Partial<TenantNotifications>
 }
 
 /** Var restaurangen är i Stripe-flödet. */
@@ -66,6 +86,11 @@ export function stripeStage(stripe: TenantStripeStatus): StripeStage {
 
 export function getTenant(): Promise<Tenant> {
   return apiFetch<Tenant>('/tenant')
+}
+
+/** PATCH /tenant (bara ägare) — svarar med hela, uppdaterade restaurangen. */
+export function updateTenant(edit: TenantEdit): Promise<Tenant> {
+  return apiFetch<Tenant>('/tenant', { method: 'PATCH', body: JSON.stringify(edit) })
 }
 
 /**
@@ -102,6 +127,7 @@ const LOCAL_DEMO_TENANT: Tenant = {
   primaryDomain: null,
   senderName: null,
   replyToEmail: null,
+  notifications: { sms: false, staffEmails: true, reminderHours: 24 },
   role: 'owner_user',
   locations: [],
 }
@@ -253,6 +279,12 @@ export function loadTenant(
     })
   inflight = request
   return request
+}
+
+/** Ersätter restaurangen efter en ändring (PATCH-svaret är facit). */
+export function replaceTenant(tenant: Tenant): void {
+  if (state.status !== 'ready' || state.tenant?.tenantId !== tenant.tenantId) return
+  setState({ tenant, locationId: pickLocation(tenant, state.locationId) })
 }
 
 /** Byter plats (sidebarens väljare). Bara platser restaurangen har godtas. */

@@ -934,6 +934,12 @@
   color: var(--ink);
 }
 
+.notifications-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
 .save-notice {
   font-size: 13px;
   color: var(--green);

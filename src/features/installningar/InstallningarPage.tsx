@@ -11,6 +11,7 @@ import {
   EMPTY_PROFILE,
 } from './data'
 import type { RestaurantProfile } from './data'
+import { NotificationsCard } from './NotificationsCard'
 import { PaymentsCard } from './PaymentsCard'
 import { BusinessHoursEditor } from './BusinessHoursEditor'
 import {
@@ -613,6 +614,16 @@ export default function InstallningarPage() {
             />
           )}
 
+          {tenant && (
+            <NotificationsCard
+              key={`${tenant.tenantId}:${JSON.stringify(tenant.notifications)}:${tenant.senderName ?? ''}`}
+              tenant={tenant}
+              isOwner={isOwner}
+            />
+          )}
+        </div>
+
+        <div className="settings-row">
           <section className="admin-card table-card">
             <h2 className="card-title">Avbokningspolicy</h2>
             <div style={{ height: 16 }} />

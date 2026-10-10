@@ -36,6 +36,7 @@ function tenant(over: Partial<Tenant> = {}): Tenant {
     },
     primaryDomain: null,
     senderName: null,
+    notifications: { sms: false, staffEmails: true, reminderHours: 24 },
     replyToEmail: null,
     role: 'owner_user',
     locations: [

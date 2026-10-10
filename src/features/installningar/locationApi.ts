@@ -45,8 +45,20 @@ export interface LocationCreateRequest {
   gracePeriodHours: number
 }
 
+/** Kortgaranti (backend shared/guarantee.py). Avgifter i kr per person. */
+export interface GuaranteePolicy {
+  enabled: boolean
+  /** Kort krävs från den här sällskapsstorleken (1 = alltid). */
+  minPartySize: number
+  noShowFeePerPerson: number
+  lateCancelFeePerPerson: number
+  cancelCutoffHours: number
+}
+
 export interface Location
   extends Omit<LocationCreateRequest, 'email' | 'phoneNumber'> {
+  guarantee?: GuaranteePolicy
+  maxPartySizeOnline?: number
   locationId: string
   createdBy: string
   createdAt: string
@@ -216,7 +228,11 @@ export function getLocation(locationId: string): Promise<Location> {
 }
 
 /** Partiell uppdatering — skicka bara de fält som faktiskt ändrats. */
-export type LocationUpdate = Partial<LocationCreateRequest>
+export type LocationUpdate = Partial<LocationCreateRequest> & {
+  /** null tar bort policyn. */
+  guarantee?: GuaranteePolicy | null
+  maxPartySizeOnline?: number | null
+}
 
 export function updateLocation(
   locationId: string,

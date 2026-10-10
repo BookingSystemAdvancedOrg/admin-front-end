@@ -11,6 +11,7 @@ import {
   EMPTY_PROFILE,
 } from './data'
 import type { RestaurantProfile } from './data'
+import { CancellationPolicyCard } from './CancellationPolicyCard'
 import { NotificationsCard } from './NotificationsCard'
 import { PaymentsCard } from './PaymentsCard'
 import { BusinessHoursEditor } from './BusinessHoursEditor'
@@ -71,9 +72,8 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * listan hämtas från GET /list-users vid sidladdning. Ingen mockdata.
  *
  * Betalningar visar restaurangens riktiga Stripe-status (GET /tenant) och
- * öppnar Stripes onboarding. Avbokningspolicyn har ännu inget API och visas
- * därför inte som redigerbar — påhittade värden som ser sparade ut är värre
- * än inga.
+ * öppnar Stripes onboarding. Avbokningspolicyn (kortgaranti, avgifter för
+ * uteblivna gäster och sen avbokning) sparas per plats.
  *
  * Personal (staff_user) ser sin plats men kan inte ändra den eller hantera
  * andra användare — de rutterna är bara för ägare.
@@ -624,15 +624,12 @@ export default function InstallningarPage() {
         </div>
 
         <div className="settings-row">
-          <section className="admin-card table-card">
-            <h2 className="card-title">Avbokningspolicy</h2>
-            <div style={{ height: 16 }} />
-            <p className="cell-muted">
-              Avgifter för sen avbokning och uteblivna gäster går att ställa in
-              när onlinebokning med kortgaranti lanseras. Tills dess debiteras
-              inga avgifter.
-            </p>
-          </section>
+          <CancellationPolicyCard
+            key={locationId ?? 'none'}
+            locationId={locationId}
+            isOwner={isOwner}
+            stripeReady={Boolean(tenant?.stripe.chargesEnabled)}
+          />
         </div>
       </div>
 

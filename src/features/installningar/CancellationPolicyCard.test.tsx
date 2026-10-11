@@ -60,4 +60,15 @@ describe('CancellationPolicyCard', () => {
     expect(screen.getByRole('switch', { name: 'Kortgaranti vid onlinebokning' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Spara policy' })).toBeNull()
   })
+
+  it('says clearly when a saved policy is switched off', async () => {
+    const user = userEvent.setup()
+    getLocation.mockResolvedValue({ locationId: 'loc-1' })
+    updateLocation.mockImplementation(async (_id, body) => ({ locationId: 'loc-1', ...body }))
+    render(<CancellationPolicyCard locationId="loc-1" isOwner stripeReady />)
+    expect(await screen.findByText(/kortgaranti är avstängd - gästerna bokar utan kort/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Spara policy' }))
+    expect(await screen.findByText('Sparat - kortgarantin är avstängd.')).toBeInTheDocument()
+    expect(updateLocation.mock.calls[0][1].guarantee.enabled).toBe(false)
+  })
 })

@@ -112,7 +112,7 @@ export function CancellationPolicyCard({
     try {
       const updated = await updateLocation(locationId, { guarantee: policy })
       setSaved(updated.guarantee ?? policy)
-      setNotice('Sparat. Gäller nya bokningar.')
+      setNotice(policy.enabled ? 'Sparat. Gäller nya bokningar.' : 'Sparat - kortgarantin är avstängd.')
     } catch (err) {
       setError(
         err instanceof ApiError && err.status === 400
@@ -206,10 +206,14 @@ export function CancellationPolicyCard({
               />
             </div>
           </div>
-          {saved?.enabled && (
+          {saved?.enabled ? (
             <p className="cell-muted">
               Nu: kort från {saved.minPartySize} pers · no-show {saved.noShowFeePerPerson} kr/pers ·
               sen avbokning {saved.lateCancelFeePerPerson} kr/pers inom {saved.cancelCutoffHours} h.
+            </p>
+          ) : (
+            <p className="cell-muted">
+              Nu: kortgaranti är avstängd - gästerna bokar utan kort. Slå på reglaget ovan och spara.
             </p>
           )}
           {error && (

@@ -8,6 +8,15 @@ import { listMenuItems } from '../meny/menuApi'
 import { listLayoutVersions } from '../layout-editor/layoutApi'
 import { listUsers } from '../installningar/usersApi'
 import { hasAnyOpeningHours, setupSteps, todaysHours } from './overview'
+import {
+  ACTIVE_STATUSES,
+  STATUS_CLASS,
+  STATUS_LABEL,
+  listReservations,
+  tablesLabel,
+  todayIn,
+} from '../bokningar/bookingsApi'
+import type { Reservation } from '../bokningar/bookingsApi'
 
 // Genvägskorten längst ned som länkar till de andra sidorna.
 const QUICK_LINKS = [
@@ -24,6 +33,8 @@ interface OverviewData {
   activeMenuItems: number | null
   hasLiveLayout: boolean | null
   staffCount: number | null
+  /** Dagens bokningar (alla statusar); null = kunde inte hämtas. */
+  today: Reservation[] | null
 }
 
 const EMPTY: OverviewData = {
@@ -32,6 +43,7 @@ const EMPTY: OverviewData = {
   activeMenuItems: null,
   hasLiveLayout: null,
   staffCount: null,
+  today: null,
 }
 
 /** Ett anrop som misslyckas ger `null` (okänt) i stället för att fälla sidan. */
@@ -65,7 +77,8 @@ export default function OversiktPage() {
       orNull(listMenuItems(locationId)),
       isOwner ? orNull(listLayoutVersions(locationId)) : Promise.resolve(null),
       isOwner ? orNull(listUsers()) : Promise.resolve(null),
-    ]).then(([loc, menu, versions, users]) => {
+      orNull(listReservations(locationId, todayIn(location?.timezone))),
+    ]).then(([loc, menu, versions, users, today]) => {
       if (cancelled) return
       setFetched({
         forLocation: locationId,
@@ -73,11 +86,13 @@ export default function OversiktPage() {
         activeMenuItems: menu ? menu.filter((m) => m.active).length : null,
         hasLiveLayout: versions ? versions.some((v) => v.isCurrent) : null,
         staffCount: users ? users.filter((u) => u.role === 'staff').length : null,
+        today,
       })
     })
     return () => {
       cancelled = true
     }
+    // location.timezone följer locationId - ingen egen dependency.
   }, [locationId, isOwner])
 
   const stage = tenant ? stripeStage(tenant.stripe) : 'missing'
@@ -91,6 +106,10 @@ export default function OversiktPage() {
     staffCount: data.staffCount,
   })
   const remaining = steps.filter((s) => s.done === false).length
+
+  const todayActive = data.today
+    ? data.today.filter((r) => ACTIVE_STATUSES.includes(r.status))
+    : null
 
   const stats = [
     {
@@ -111,8 +130,11 @@ export default function OversiktPage() {
     },
     {
       label: 'Bokningar idag',
-      value: '—',
-      note: 'Onlinebokning är inte igång än',
+      value: todayActive === null ? '—' : String(todayActive.length),
+      note:
+        todayActive === null
+          ? 'kunde inte hämtas'
+          : `${todayActive.reduce((sum, r) => sum + r.partySize, 0)} gäster`,
     },
   ]
 
@@ -163,10 +185,34 @@ export default function OversiktPage() {
                 Visa alla →
               </Link>
             </div>
-            <p className="admin-empty">
-              Inga bokningar att visa. När onlinebokningen är igång visas
-              dagens bokningar för {location?.name || 'platsen'} här.
-            </p>
+            {todayActive && todayActive.length > 0 ? (
+              <ul className="today-list">
+                {todayActive.slice(0, 8).map((r) => (
+                  <li key={r.reservationId}>
+                    <span className="cell-strong">{r.startTime}</span>
+                    <span>
+                      {r.customerName || 'Gäst'} · {r.partySize} pers · {tablesLabel(r.tableIds)}
+                    </span>
+                    <span className={`status-badge ${STATUS_CLASS[r.status]}`}>
+                      {STATUS_LABEL[r.status]}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="admin-empty">
+                {loading
+                  ? 'Hämtar…'
+                  : todayActive === null
+                    ? 'Kunde inte hämta dagens bokningar.'
+                    : `Inga bokningar idag för ${location?.name || 'platsen'}.`}
+              </p>
+            )}
+            {todayActive && todayActive.length > 8 && (
+              <Link className="card-link" to="/bokningar">
+                + {todayActive.length - 8} till
+              </Link>
+            )}
           </section>
 
           <section className="admin-card activity-card" aria-label="Kom igång">

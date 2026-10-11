@@ -1168,3 +1168,26 @@
   background: var(--green);
   color: #fff;
 }
+
+/* Översiktens "Dagens bokningar" */
+.today-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.today-list li {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.today-list li:last-child {
+  border-bottom: 0;
+}

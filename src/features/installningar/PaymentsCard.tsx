@@ -13,6 +13,9 @@ import type { StripeStage as Stage, Tenant } from '../../shared/tenant'
  * statusen nedan ändras.
  */
 
+const POLL_INTERVAL_MS = 3000
+const POLL_TRIES = 20
+
 const STAGE_TEXT: Record<Stage, { title: string; text: string; ok: boolean }> = {
   missing: {
     title: 'Inget Stripe-konto än',
@@ -53,14 +56,30 @@ export function PaymentsCard({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Tillbaka från Stripe: hämta om statusen direkt (webhooken har ofta
-  // hunnit uppdatera den). Bara när sidan öppnas med en retur.
+  // Tillbaka från Stripe: Stripe meddelar backend via webhook några sekunder
+  // efter att formuläret skickats in. Hämta statusen direkt och sedan var
+  // tredje sekund i upp till en minut, tills Stripe är klart.
+  const [polling, setPolling] = useState(stripeReturn === 'return')
+  const isReady = stage === 'ready'
   const refreshAfterReturn = useEffectEvent(() => {
     void onRefresh()
   })
   useEffect(() => {
     if (stripeReturn) refreshAfterReturn()
   }, [stripeReturn])
+  useEffect(() => {
+    if (!polling || isReady) return
+    let tries = 0
+    const timer = window.setInterval(() => {
+      tries += 1
+      refreshAfterReturn()
+      if (tries >= POLL_TRIES) {
+        window.clearInterval(timer)
+        setPolling(false)
+      }
+    }, POLL_INTERVAL_MS)
+    return () => window.clearInterval(timer)
+  }, [polling, isReady])
 
   async function openOnboarding() {
     setError(null)
@@ -95,8 +114,9 @@ export function PaymentsCard({
       <div style={{ height: 16 }} />
       {stripeReturn === 'return' && stage !== 'ready' && (
         <p className="cell-muted" role="status">
-          Tillbaka från Stripe. Statusen uppdateras så snart Stripe har behandlat
-          uppgifterna — ladda om sidan om en stund.
+          {polling
+            ? 'Tillbaka från Stripe. Hämtar den nya statusen…'
+            : 'Tillbaka från Stripe. Stripe behandlar fortfarande uppgifterna — ladda om sidan om en stund.'}
         </p>
       )}
       {stripeReturn === 'refresh' && (

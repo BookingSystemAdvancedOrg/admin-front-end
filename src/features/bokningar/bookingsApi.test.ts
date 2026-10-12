@@ -10,9 +10,12 @@ import {
   feeSummary,
   formatKr,
   getAvailability,
+  isStaleSlotError,
   listReservations,
+  normalizePhone,
   paymentAction,
   todayIn,
+  validEmail,
 } from './bookingsApi'
 import type { Reservation } from './bookingsApi'
 
@@ -108,5 +111,50 @@ describe('bookingsApi', () => {
     expect(apiFetch).toHaveBeenLastCalledWith('/locations/loc-1/reservations/r1/payment', {
       method: 'POST', body: JSON.stringify({ action: 'refund', amount: 1500 }),
     })
+  })
+})
+
+describe('guest fields (same rules as the server)', () => {
+  it.each([
+    ['070-123 45 67', '+46701234567'],
+    ['0701234567', '+46701234567'],
+    ['+46 (0)70 123 45 67', '+46701234567'],
+    ['0046701234567', '+46701234567'],
+    ['+46701234567', '+46701234567'],
+    ['+358 40 123 4567', '+358401234567'],
+  ])('normalizes %s', (raw, expected) => {
+    expect(normalizePhone(raw)).toBe(expected)
+  })
+
+  it.each(['', '123', 'abc', '+0123456789', '07012345678901234'])('rejects %s', (raw) => {
+    expect(normalizePhone(raw)).toBeNull()
+  })
+
+  it('checks e-mail addresses', () => {
+    expect(validEmail('anna@example.se')).toBe(true)
+    expect(validEmail(' anna@example.se ')).toBe(true)
+    expect(validEmail('anna@example')).toBe(false)
+    expect(validEmail('anna example.se')).toBe(false)
+  })
+
+  it('explains refused times and fields in Swedish', () => {
+    expect(errorMessage(new ApiError(400, 'startTime is not a bookable time for this date'))).toBe(
+      'Den tiden går inte att boka längre. Välj en annan tid i listan.',
+    )
+    expect(errorMessage(new ApiError(400, 'phone must be a valid phone number, e.g. +46701234567'))).toMatch(/telefonnummer/i)
+    expect(errorMessage(new ApiError(400, 'a walk-in is booked for today'))).toBe('En drop-in bokas alltid idag.')
+    expect(errorMessage(new ApiError(400, 'a walk-in stays on its day'))).toBe(
+      'En drop-in kan inte flyttas till en annan dag.',
+    )
+    expect(errorMessage(new ApiError(400, 'something new'))).toMatch(/something new/)
+  })
+
+  it('knows which errors mean the chosen time or table went away', () => {
+    expect(isStaleSlotError(new ApiError(409, 'table_taken'))).toBe(true)
+    expect(isStaleSlotError(new ApiError(400, 'startTime is not a bookable time for this date'))).toBe(true)
+    expect(isStaleSlotError(new ApiError(400, "tableIds contains a table that isn't bookable at this time"))).toBe(true)
+    expect(isStaleSlotError(new ApiError(400, 'partySize must be between 1 and 50'))).toBe(false)
+    expect(isStaleSlotError(new ApiError(409, 'not_movable'))).toBe(false)
+    expect(isStaleSlotError(new Error('x'))).toBe(false)
   })
 })

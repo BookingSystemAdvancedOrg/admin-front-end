@@ -212,6 +212,31 @@ export function availableActions(r: Reservation, isOwner: boolean) {
   }
 }
 
+// --- guest fields (same rules as the server: shared/reservations.py) ----------
+
+export const NAME_MAX = 100
+export const EMAIL_MAX = 254
+export const NOTES_MAX = 500
+const E164 = /^\+[1-9]\d{7,14}$/
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+
+/**
+ * Telefonnummer i E.164 som servern sparar det (070-123 45 67 ->
+ * +46701234567, 0046… -> +46…), eller null om det inte går att tolka.
+ */
+export function normalizePhone(raw: string): string | null {
+  let digits = raw.trim().replace(/[\s\-.]/g, '')
+  digits = digits.replace(/^(\+\d{1,3})\(0\)/, '$1').replace(/[()]/g, '')
+  if (digits.startsWith('00')) digits = `+${digits.slice(2)}`
+  else if (digits.startsWith('0')) digits = `+46${digits.slice(1)}`
+  return E164.test(digits) ? digits : null
+}
+
+export function validEmail(raw: string): boolean {
+  const email = raw.trim()
+  return email.length <= EMAIL_MAX && EMAIL.test(email)
+}
+
 // --- errors -------------------------------------------------------------------
 
 const ERROR_TEXT: Record<string, string> = {
@@ -238,17 +263,56 @@ const ERROR_TEXT: Record<string, string> = {
   expired_card: 'Kortet har gått ut.',
 }
 
+/** Valideringsfel (400) från servern, i den ordning de ska matchas. */
+const VALIDATION_TEXT: [RegExp, string][] = [
+  [/^startTime is not a bookable time/,
+    'Den tiden går inte att boka längre. Välj en annan tid i listan.'],
+  [/^tableIds contains a table that isn't bookable/,
+    'Ett av borden går inte att boka den tiden längre. Välj bord igen.'],
+  [/^the selected tables seat (\d+)/, 'Valda bord har för få platser för sällskapet. Välj fler bord.'],
+  [/^a walk-in is booked for today/, 'En drop-in bokas alltid idag.'],
+  [/^a walk-in stays on its day/, 'En drop-in kan inte flyttas till en annan dag.'],
+  [/^date must not be in the past/, 'Datumet har redan passerat.'],
+  [/^date must not be more than 21 days ahead/, 'Det går att boka högst 21 dagar fram.'],
+  [/^phone must be a valid/, 'Skriv ett giltigt telefonnummer, t.ex. 070-123 45 67.'],
+  [/^(email|phone) is required/, 'En onlinebokning måste ha både e-post och telefon.'],
+  [/^email must be a valid/, 'Ange en giltig e-postadress.'],
+  [/^name is required/, 'Ange gästens namn.'],
+  [/^name must be at most/, `Namnet får vara högst ${NAME_MAX} tecken.`],
+  [/^email must be at most/, `E-postadressen får vara högst ${EMAIL_MAX} tecken.`],
+  [/^notes must be at most/, `Anteckningen får vara högst ${NOTES_MAX} tecken.`],
+  [/^partySize must be/, 'Antal personer måste vara ett heltal mellan 1 och 50.'],
+  [/^tableIds must be a non-empty list/, 'Välj minst ett bord.'],
+  [/^tableIds must /, 'Välj bord i listan igen.'],
+  [/^at most \d+ tables per booking/, 'Välj högst 6 bord per bokning.'],
+]
+
 export function errorMessage(err: unknown): string {
   if (err instanceof ApiError) {
     const known = ERROR_TEXT[err.message]
     if (known) return known
     if (err.status === 402) return `Betalningen gick inte igenom (${err.message}).`
-    if (err.status === 400) return err.message
+    if (err.status === 400) {
+      const match = VALIDATION_TEXT.find(([pattern]) => pattern.test(err.message))
+      return match ? match[1] : err.message
+    }
     if (err.status === 403) return 'Du har inte behörighet att göra detta.'
     if (err.status === 404) return 'Bokningen hittades inte - den kan ha tagits bort.'
     if (err.status === 401) return 'Du är inte inloggad längre. Logga in igen.'
   }
   return 'Något gick fel. Försök igen om en stund.'
+}
+
+/** Tiden eller bordet gick inte längre (tiden passerade 30-minutersgränsen
+ * eller någon hann före) - listan med lediga tider behöver hämtas om. */
+export function isStaleSlotError(err: unknown): boolean {
+  return (
+    err instanceof ApiError &&
+    (err.message === 'table_taken' ||
+      (err.status === 400 &&
+        (/^startTime is not a bookable time/.test(err.message) ||
+          /^tableIds contains a table that isn't bookable/.test(err.message))))
+  )
 }
 
 // --- calls --------------------------------------------------------------------

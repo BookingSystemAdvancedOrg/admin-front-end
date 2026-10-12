@@ -68,6 +68,7 @@ export default function OversiktPage() {
   // Data för en annan plats än den valda visas aldrig, inte ens en stund.
   const loading = Boolean(locationId) && fetched.forLocation !== locationId
   const data = loading ? EMPTY : fetched
+  const timezoneSetting = location?.timezone
 
   useEffect(() => {
     if (!locationId) return
@@ -77,7 +78,7 @@ export default function OversiktPage() {
       orNull(listMenuItems(locationId)),
       isOwner ? orNull(listLayoutVersions(locationId)) : Promise.resolve(null),
       isOwner ? orNull(listUsers()) : Promise.resolve(null),
-      orNull(listReservations(locationId, todayIn(location?.timezone))),
+      orNull(listReservations(locationId, todayIn(timezoneSetting))),
     ]).then(([loc, menu, versions, users, today]) => {
       if (cancelled) return
       setFetched({
@@ -92,8 +93,7 @@ export default function OversiktPage() {
     return () => {
       cancelled = true
     }
-    // location.timezone följer locationId - ingen egen dependency.
-  }, [locationId, isOwner])
+  }, [locationId, isOwner, timezoneSetting])
 
   const stage = tenant ? stripeStage(tenant.stripe) : 'missing'
   const timezone = data.location?.timezone ?? location?.timezone ?? null

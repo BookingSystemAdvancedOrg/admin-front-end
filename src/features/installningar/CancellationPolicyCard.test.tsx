@@ -71,4 +71,16 @@ describe('CancellationPolicyCard', () => {
     expect(await screen.findByText('Sparat - kortgarantin är avstängd.')).toBeInTheDocument()
     expect(updateLocation.mock.calls[0][1].guarantee.enabled).toBe(false)
   })
+
+  it('flags unsaved changes until the policy is saved', async () => {
+    const user = userEvent.setup()
+    getLocation.mockResolvedValue({ locationId: 'loc-1' })
+    updateLocation.mockImplementation(async (_id, body) => ({ locationId: 'loc-1', ...body }))
+    render(<CancellationPolicyCard locationId="loc-1" isOwner stripeReady />)
+    await user.click(await screen.findByRole('switch', { name: 'Kortgaranti vid onlinebokning' }))
+    expect(screen.getByText('Ej sparat - klicka Spara policy.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Spara policy' }))
+    expect(await screen.findByText('Sparat. Gäller nya bokningar.')).toBeInTheDocument()
+    expect(screen.queryByText('Ej sparat - klicka Spara policy.')).toBeNull()
+  })
 })

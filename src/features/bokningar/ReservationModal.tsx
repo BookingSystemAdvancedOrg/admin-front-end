@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { SlotTablePicker } from './SlotTablePicker'
+import type { SlotValue } from './SlotTablePicker'
 import {
+  EMAIL_MAX,
+  NAME_MAX,
+  NOTES_MAX,
   SOURCE_LABEL,
   STATUS_CLASS,
   STATUS_LABEL,
@@ -10,10 +14,13 @@ import {
   dayLabel,
   errorMessage,
   formatKr,
+  isStaleSlotError,
+  normalizePhone,
   paymentAction,
   tablesLabel,
   timestampLabel,
   updateReservation,
+  validEmail,
 } from './bookingsApi'
 import type { HistoryEntry, Reservation, ReservationEdit } from './bookingsApi'
 
@@ -55,11 +62,14 @@ function historyText(h: HistoryEntry): string {
 export function ReservationModal({
   reservation,
   isOwner,
+  today,
   onChanged,
   onClose,
 }: {
   reservation: Reservation
   isOwner: boolean
+  /** Dagens datum i platsens tidszon. */
+  today: string
   onChanged: (r: Reservation) => void
   onClose: () => void
 }) {
@@ -127,6 +137,7 @@ export function ReservationModal({
         {panel === 'edit' ? (
           <EditForm
             reservation={r}
+            today={today}
             onSaved={(u) => {
               onChanged(u)
               setPanel(null)
@@ -374,15 +385,14 @@ function PanelButtons({
   )
 }
 
-const PHONE = /^\+[1-9]\d{7,14}$/
-const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
-
 function EditForm({
   reservation: r,
+  today,
   onSaved,
   onCancel,
 }: {
   reservation: Reservation
+  today: string
   onSaved: (r: Reservation) => void
   onCancel: () => void
 }) {
@@ -391,24 +401,30 @@ function EditForm({
   const [email, setEmail] = useState(r.customerEmail ?? '')
   const [notes, setNotes] = useState(r.notes ?? '')
   const [partySize, setPartySize] = useState(String(r.partySize))
-  const [slot, setSlot] = useState({ date: r.date, startTime: r.startTime, tableIds: r.tableIds })
+  const [slot, setSlot] = useState<SlotValue>({ date: r.date, startTime: r.startTime, tableIds: r.tableIds })
+  const [refreshKey, setRefreshKey] = useState(0)
   const [notify, setNotify] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Onlinebokningar måste ha e-post och telefon (gästen fick länken dit).
+  const contactRequired = r.source === 'online'
   const size = Number(partySize)
   const sizeOk = /^\d+$/.test(partySize) && size >= 1 && size <= 50
-  const phoneOk = !phone.trim() || PHONE.test(phone.trim())
-  const emailOk = !email.trim() || EMAIL.test(email.trim())
+  const normalizedPhone = phone.trim() ? normalizePhone(phone) : null
+  const phoneOk = phone.trim() ? normalizedPhone !== null : !contactRequired
+  const emailOk = email.trim() ? validEmail(email) : !contactRequired
+  const arrived = r.status === 'arrived'
+  // En anländ gäst sitter redan: fler gäster än borden rymmer kräver bordsbyte.
+  const overSeats = arrived && typeof r.seats === 'number' && size > r.seats
   const moved = slot.date !== r.date || slot.startTime !== r.startTime
   const tablesChanged = [...slot.tableIds].sort().join() !== [...r.tableIds].sort().join()
-  const arrived = r.status === 'arrived'
 
   function changes(): ReservationEdit {
     const edit: ReservationEdit = {}
     if (name.trim() !== (r.customerName ?? '')) edit.name = name.trim()
-    if (phone.trim() !== (r.customerPhone ?? '')) edit.phone = phone.trim() || null
-    if (email.trim() !== (r.customerEmail ?? '')) edit.email = email.trim() || null
+    if ((normalizedPhone ?? '') !== (r.customerPhone ?? '')) edit.phone = normalizedPhone
+    if (email.trim().toLowerCase() !== (r.customerEmail ?? '')) edit.email = email.trim() || null
     if (notes.trim() !== (r.notes ?? '')) edit.notes = notes.trim() || null
     if (size !== r.partySize) edit.partySize = size
     if (!arrived) {
@@ -422,7 +438,12 @@ function EditForm({
 
   const edit = changes()
   const valid =
-    sizeOk && name.trim() && phoneOk && emailOk && (arrived || (slot.startTime && slot.tableIds.length > 0))
+    sizeOk &&
+    !overSeats &&
+    name.trim() &&
+    phoneOk &&
+    emailOk &&
+    (arrived || (slot.startTime && slot.tableIds.length > 0))
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -437,6 +458,12 @@ function EditForm({
       onSaved(await updateReservation(r.locationId, r.reservationId, edit))
     } catch (err) {
       setError(errorMessage(err))
+      if (isStaleSlotError(err)) {
+        // Den nya tiden/bordet gick inte längre: tillbaka till bokningens egen
+        // tid och hämta om listan.
+        setSlot({ date: r.date, startTime: r.startTime, tableIds: r.tableIds })
+        setRefreshKey((n) => n + 1)
+      }
       setBusy(false)
     }
   }
@@ -445,23 +472,42 @@ function EditForm({
     <form className="booking-form" onSubmit={submit}>
       <div className="form-field">
         <label htmlFor="ed-name">Namn</label>
-        <input id="ed-name" value={name} onChange={(e) => setName(e.target.value)} />
+        <input id="ed-name" maxLength={NAME_MAX} value={name} onChange={(e) => setName(e.target.value)} />
       </div>
       <div className="form-grid">
         <div className="form-field">
-          <label htmlFor="ed-phone">Telefon</label>
+          <label htmlFor="ed-phone">Telefon{contactRequired ? '' : ' (valfritt)'}</label>
           <input id="ed-phone" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-          {!phoneOk && <p className="field-hint error">Skriv numret som +46701234567.</p>}
+          {!phoneOk && (
+            <p className="field-hint error">
+              {phone.trim() ? 'Skriv ett giltigt nummer, t.ex. 070-123 45 67.' : 'En onlinebokning måste ha telefon.'}
+            </p>
+          )}
         </div>
         <div className="form-field">
-          <label htmlFor="ed-email">E-post</label>
-          <input id="ed-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          {!emailOk && <p className="field-hint error">Ange en giltig e-postadress.</p>}
+          <label htmlFor="ed-email">E-post{contactRequired ? '' : ' (valfritt)'}</label>
+          <input
+            id="ed-email"
+            type="email"
+            maxLength={EMAIL_MAX}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          {!emailOk && (
+            <p className="field-hint error">
+              {email.trim() ? 'Ange en giltig e-postadress.' : 'En onlinebokning måste ha e-post.'}
+            </p>
+          )}
         </div>
       </div>
       <div className="form-field">
         <label htmlFor="ed-size">Antal personer</label>
         <input id="ed-size" inputMode="numeric" value={partySize} onChange={(e) => setPartySize(e.target.value)} />
+        {overSeats && (
+          <p className="field-hint error">
+            Borden rymmer {r.seats} - ångra Anlänt först för att byta till större bord.
+          </p>
+        )}
       </div>
       {!arrived && (
         <SlotTablePicker
@@ -470,13 +516,19 @@ function EditForm({
           startTime={slot.startTime}
           tableIds={slot.tableIds}
           partySize={sizeOk ? size : 0}
-          keep={{ date: r.date, startTime: r.startTime, tableIds: r.tableIds }}
-          onChange={setSlot}
+          today={today}
+          walkIn={r.source === 'walk_in'}
+          refreshKey={refreshKey}
+          keep={{ date: r.date, startTime: r.startTime, tableIds: r.tableIds, seats: r.seats }}
+          onChange={(next) => {
+            setSlot(next)
+            setError(null)
+          }}
         />
       )}
       <div className="form-field">
         <label htmlFor="ed-notes">Meddelande / anteckning</label>
-        <textarea id="ed-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <textarea id="ed-notes" rows={2} maxLength={NOTES_MAX} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
       {moved && (r.customerEmail || r.customerPhone) && (
         <label className="check-row">

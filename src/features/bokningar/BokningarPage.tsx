@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { isApiConfigured } from '../../shared/api'
 import { currentLocation, useTenant } from '../../shared/tenant'
@@ -37,49 +37,67 @@ export default function BokningarPage() {
   const today = todayIn(location?.timezone)
 
   const [date, setDate] = useState(today)
-  const [items, setItems] = useState<Reservation[]>([])
-  const [loadedKey, setLoadedKey] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // Listan hör alltid ihop med den plats/dag den hämtades för - en annan
+  // dags bokningar visas aldrig under fel rubrik, inte ens en stund.
+  const [loaded, setLoaded] = useState<{ key: string; items: Reservation[]; error: string | null } | null>(
+    null,
+  )
   const [showCancelled, setShowCancelled] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  // Räknas upp vid varje ändring härifrån: ett svar som hämtades före
+  // ändringen skriver inte över den.
+  const edits = useRef(0)
+  const [reload, setReload] = useState(0)
 
   const key = locationId ? `${locationId}|${date}` : null
-  const loading = key !== null && loadedKey !== key
-
-  const load = useCallback(
-    async (forKey: string) => {
-      const [loc, day] = forKey.split('|')
-      try {
-        const list = await listReservations(loc, day)
-        setItems(list)
-        setError(null)
-      } catch (err) {
-        setError(errorMessage(err))
-      } finally {
-        setLoadedKey(forKey)
-      }
-    },
-    [],
-  )
+  const loading = key !== null && loaded?.key !== key
+  const items = !loading && loaded ? loaded.items : []
+  const error = !loading && loaded ? loaded.error : null
 
   useEffect(() => {
-    if (!key || !isApiConfigured()) return
-    void load(key)
-    const timer = window.setInterval(() => void load(key), REFRESH_MS)
-    return () => window.clearInterval(timer)
-  }, [key, load])
+    if (!key || !locationId || !isApiConfigured()) return
+    let cancelled = false
+    const fetchList = () => {
+      const at = edits.current
+      listReservations(locationId, date).then(
+        (list) => {
+          if (cancelled || edits.current !== at) return
+          setLoaded({ key, items: list, error: null })
+        },
+        (err) => {
+          if (cancelled) return
+          setLoaded((prev) => ({
+            key,
+            items: prev?.key === key ? prev.items : [],
+            error: errorMessage(err),
+          }))
+        },
+      )
+    }
+    fetchList()
+    const timer = window.setInterval(fetchList, REFRESH_MS)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [key, locationId, date, reload])
 
   function replace(updated: Reservation) {
-    if (updated.date !== date || updated.locationId !== locationId) {
-      // Flyttad till en annan dag: försvinner härifrån.
-      setItems((prev) => prev.filter((r) => r.reservationId !== updated.reservationId))
-      setOpenId(null)
+    const moved = updated.date !== date || updated.locationId !== locationId
+    if (moved) setOpenId(null)
+    if (loaded?.key !== key) {
+      // Dagens lista har inte kommit än: hämta den igen (den har ändringen).
+      setReload((n) => n + 1)
       return
     }
-    setItems((prev) => {
-      const rest = prev.filter((r) => r.reservationId !== updated.reservationId)
-      return [...rest, updated].sort((a, b) => a.startTime.localeCompare(b.startTime))
+    edits.current += 1
+    setLoaded((prev) => {
+      if (!prev || prev.key !== key) return prev
+      const rest = prev.items.filter((r) => r.reservationId !== updated.reservationId)
+      // Flyttad till en annan dag: försvinner härifrån.
+      if (moved) return { ...prev, items: rest }
+      return { ...prev, items: [...rest, updated].sort((a, b) => a.startTime.localeCompare(b.startTime)) }
     })
   }
 
@@ -237,6 +255,7 @@ export default function BokningarPage() {
           key={open.reservationId}
           reservation={open}
           isOwner={isOwner}
+          today={today}
           onChanged={replace}
           onClose={() => setOpenId(null)}
         />
@@ -245,6 +264,7 @@ export default function BokningarPage() {
         <NewReservationModal
           locationId={locationId}
           initialDate={date}
+          today={today}
           onCreated={(created) => {
             setCreating(false)
             if (created.date === date) replace(created)

@@ -127,6 +127,11 @@ export function CancellationPolicyCard({
   }
 
   const disabled = !isOwner || busy || loading || !locationId
+  // Kortet sparas för sig (inte med sidans "Spara ändringar") - visa tydligt
+  // när formuläret skiljer sig från det som faktiskt gäller.
+  const dirty =
+    !loading &&
+    JSON.stringify(form) !== JSON.stringify(toForm(saved ?? DEFAULTS))
 
   return (
     <section id="avbokningspolicy" className="admin-card table-card">
@@ -226,9 +231,14 @@ export function CancellationPolicyCard({
               <button type="submit" className="btn primary square" disabled={disabled}>
                 {busy ? 'Sparar…' : 'Spara policy'}
               </button>
-              {notice && (
+              {notice && !dirty && (
                 <span className="save-notice" role="status">
                   {notice}
+                </span>
+              )}
+              {dirty && !busy && (
+                <span className="form-error" role="status">
+                  Ej sparat - klicka Spara policy.
                 </span>
               )}
             </span>

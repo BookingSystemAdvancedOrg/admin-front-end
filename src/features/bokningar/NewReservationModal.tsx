@@ -1,27 +1,56 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { SlotTablePicker } from './SlotTablePicker'
-import { createManualReservation, errorMessage } from './bookingsApi'
+import type { SlotValue } from './SlotTablePicker'
+import {
+  EMAIL_MAX,
+  NAME_MAX,
+  NOTES_MAX,
+  addDays,
+  createManualReservation,
+  errorMessage,
+  isStaleSlotError,
+  normalizePhone,
+  validEmail,
+} from './bookingsApi'
 import type { Reservation } from './bookingsApi'
 
-const PHONE = /^\+[1-9]\d{7,14}$/
-const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+/** Ett datum inom bokningsbara dagar (idag … idag + 20). */
+function clampDate(date: string, today: string): string {
+  const last = addDays(today, 20)
+  if (date < today) return today
+  if (date > last) return last
+  return date
+}
 
-/** Telefonbokning eller drop-in, bokad av personalen. */
+/**
+ * Telefonbokning eller drop-in, bokad av personalen. Båda följer samma
+ * tider som gästerna (hel- och halvtimmar); en telefonbokning måste börja
+ * minst 30 minuter fram, en drop-in bokas idag och får ta en pågående tid
+ * eller en som börjar inom 30 minuter - gästen står ju redan där.
+ */
 export function NewReservationModal({
   locationId,
   initialDate,
+  today,
   onCreated,
   onCancel,
 }: {
   locationId: string
   initialDate: string
+  /** Dagens datum i platsens tidszon. */
+  today: string
   onCreated: (r: Reservation) => void
   onCancel: () => void
 }) {
   const [source, setSource] = useState<'phone' | 'walk_in'>('phone')
   const [partySize, setPartySize] = useState('2')
-  const [slot, setSlot] = useState({ date: initialDate, startTime: '', tableIds: [] as string[] })
+  const [slot, setSlot] = useState<SlotValue>({
+    date: clampDate(initialDate, today),
+    startTime: '',
+    tableIds: [],
+  })
+  const [refreshKey, setRefreshKey] = useState(0)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
@@ -32,11 +61,21 @@ export function NewReservationModal({
 
   const size = Number(partySize)
   const sizeOk = /^\d+$/.test(partySize) && size >= 1 && size <= 50
-  const phoneOk = !phone.trim() || PHONE.test(phone.trim())
-  const emailOk = !email.trim() || EMAIL.test(email.trim())
+  const normalizedPhone = phone.trim() ? normalizePhone(phone) : null
+  const phoneOk = !phone.trim() || normalizedPhone !== null
+  const emailOk = !email.trim() || validEmail(email)
   const valid =
     sizeOk && name.trim() && slot.startTime && slot.tableIds.length > 0 && phoneOk && emailOk
   const canNotify = Boolean(phone.trim() || email.trim())
+
+  function chooseSource(value: 'phone' | 'walk_in') {
+    if (value === source) return
+    setSource(value)
+    setNotify(value === 'phone')
+    setError(null)
+    // Tiderna skiljer sig (drop-in: idag, även pågående tider) - välj om.
+    setSlot((s) => ({ date: value === 'walk_in' ? today : s.date, startTime: '', tableIds: [] }))
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -50,7 +89,7 @@ export function NewReservationModal({
         tableIds: slot.tableIds,
         partySize: size,
         name: name.trim(),
-        ...(phone.trim() ? { phone: phone.trim() } : {}),
+        ...(normalizedPhone ? { phone: normalizedPhone } : {}),
         ...(email.trim() ? { email: email.trim() } : {}),
         ...(notes.trim() ? { notes: notes.trim() } : {}),
         source,
@@ -59,6 +98,11 @@ export function NewReservationModal({
       onCreated(created)
     } catch (err) {
       setError(errorMessage(err))
+      if (isStaleSlotError(err)) {
+        // Tiden eller bordet gick inte längre: hämta om listan och välj om.
+        setSlot((s) => ({ ...s, startTime: '', tableIds: [] }))
+        setRefreshKey((n) => n + 1)
+      }
       setBusy(false)
     }
   }
@@ -81,12 +125,7 @@ export function NewReservationModal({
                 role="radio"
                 aria-checked={source === value}
                 className={source === value ? 'active' : ''}
-                onClick={() => {
-                  setSource(value)
-                  setNotify(value === 'phone')
-                  // Tidslistan skiljer sig (drop-in får pågående tider).
-                  setSlot((s) => ({ ...s, startTime: '', tableIds: [] }))
-                }}
+                onClick={() => chooseSource(value)}
               >
                 {label}
               </button>
@@ -109,13 +148,23 @@ export function NewReservationModal({
             startTime={slot.startTime}
             tableIds={slot.tableIds}
             partySize={sizeOk ? size : 0}
+            today={today}
             walkIn={source === 'walk_in'}
-            onChange={setSlot}
+            refreshKey={refreshKey}
+            onChange={(next) => {
+              setSlot(next)
+              setError(null)
+            }}
           />
 
           <div className="form-field">
             <label htmlFor="nb-name">Namn</label>
-            <input id="nb-name" value={name} onChange={(e) => setName(e.target.value)} />
+            <input
+              id="nb-name"
+              maxLength={NAME_MAX}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
           </div>
           <div className="form-grid">
             <div className="form-field">
@@ -123,17 +172,18 @@ export function NewReservationModal({
               <input
                 id="nb-phone"
                 inputMode="tel"
-                placeholder="+46701234567"
+                placeholder="070-123 45 67"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
-              {!phoneOk && <p className="field-hint error">Skriv numret som +46701234567.</p>}
+              {!phoneOk && <p className="field-hint error">Skriv ett giltigt nummer, t.ex. 070-123 45 67.</p>}
             </div>
             <div className="form-field">
               <label htmlFor="nb-email">E-post (valfritt)</label>
               <input
                 id="nb-email"
                 type="email"
+                maxLength={EMAIL_MAX}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -145,6 +195,7 @@ export function NewReservationModal({
             <textarea
               id="nb-notes"
               rows={2}
+              maxLength={NOTES_MAX}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />

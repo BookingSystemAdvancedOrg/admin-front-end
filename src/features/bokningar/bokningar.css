@@ -268,9 +268,13 @@
   resize: vertical;
 }
 
-.booking-form .field-hint.error {
+.booking-form .field-hint {
   margin: 0;
   font-size: 12px;
+  color: var(--muted);
+}
+
+.booking-form .field-hint.error {
   color: var(--danger);
 }
 

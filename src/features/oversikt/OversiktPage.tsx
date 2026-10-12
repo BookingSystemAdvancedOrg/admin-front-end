@@ -8,12 +8,12 @@ import { listMenuItems } from '../meny/menuApi'
 import { listLayoutVersions } from '../layout-editor/layoutApi'
 import { listUsers } from '../installningar/usersApi'
 import { hasAnyOpeningHours, setupSteps, todaysHours } from './overview'
+import { tableNames, useTables } from '../../shared/tables'
 import {
   ACTIVE_STATUSES,
   STATUS_CLASS,
   STATUS_LABEL,
   listReservations,
-  tablesLabel,
   todayIn,
 } from '../bokningar/bookingsApi'
 import type { Reservation } from '../bokningar/bookingsApi'
@@ -63,6 +63,7 @@ export default function OversiktPage() {
   const tenantState = useTenant()
   const { tenant, locationId } = tenantState
   const location = currentLocation(tenantState)
+  const { labels } = useTables(locationId)
   const isOwner = tenant?.role === 'owner_user'
   const [fetched, setFetched] = useState<OverviewData>(EMPTY)
   // Data för en annan plats än den valda visas aldrig, inte ens en stund.
@@ -191,7 +192,7 @@ export default function OversiktPage() {
                   <li key={r.reservationId}>
                     <span className="cell-strong">{r.startTime}</span>
                     <span>
-                      {r.customerName || 'Gäst'} · {r.partySize} pers · {tablesLabel(r.tableIds)}
+                      {r.customerName || 'Gäst'} · {r.partySize} pers · {tableNames(r.tableIds, labels)}
                     </span>
                     <span className={`status-badge ${STATUS_CLASS[r.status]}`}>
                       {STATUS_LABEL[r.status]}

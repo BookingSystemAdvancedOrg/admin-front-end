@@ -172,11 +172,6 @@ export function formatKr(ore: number | undefined | null): string {
   })} kr`
 }
 
-export function tablesLabel(ids: string[]): string {
-  if (ids.length === 0) return '—'
-  return `Bord ${ids.join(', ')}`
-}
-
 /** Vad bokningens avgift gäller just nu (för listan), eller null. */
 export function feeSummary(r: Reservation): string | null {
   const p = r.payment
@@ -377,15 +372,40 @@ export function paymentAction(
 
 /** Lediga tider. `walkIn` tar även med pågående tider och de inom
  * 30-minutersgränsen (gästen står redan i restaurangen). */
+/** En avvikande dag (stängt, andra tider, ingen onlinebokning). */
+export interface DayStatus {
+  kind: 'closed' | 'hours' | 'no_online'
+  intervals?: { opensAt: string; closesAt: string }[]
+  note?: string
+}
+
+export interface AvailabilityResult {
+  slots: AvailabilitySlot[]
+  /** Satt bara på en avvikande dag. */
+  day: DayStatus | null
+}
+
 export async function getAvailability(
   locationId: string,
   date: string,
   { walkIn = false }: { walkIn?: boolean } = {},
-): Promise<AvailabilitySlot[]> {
-  const res = await apiFetch<{ slots?: AvailabilitySlot[] }>(
+): Promise<AvailabilityResult> {
+  const res = await apiFetch<{ slots?: AvailabilitySlot[]; day?: DayStatus }>(
     `${base(locationId)}/availability?date=${encodeURIComponent(date)}${walkIn ? '&walkIn=true' : ''}`,
   )
-  return res.slots ?? []
+  return { slots: res.slots ?? [], day: res.day ?? null }
+}
+
+/** Personalens rad om en avvikande dag, eller null. */
+export function dayNotice(day: DayStatus | null): string | null {
+  if (!day) return null
+  const note = day.note ? ` (${day.note})` : ''
+  if (day.kind === 'closed') return `Restaurangen är stängd den dagen${note}.`
+  if (day.kind === 'hours') {
+    const hours = (day.intervals ?? []).map((i) => `${i.opensAt}–${i.closesAt}`).join(', ')
+    return `Avvikande öppettider den dagen: ${hours}${note}.`
+  }
+  return `Onlinebokningen är stängd den dagen${note} - här kan du ändå boka.`
 }
 
 // --- dates --------------------------------------------------------------------

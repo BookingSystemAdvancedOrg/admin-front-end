@@ -55,10 +55,39 @@ export interface GuaranteePolicy {
   cancelCutoffHours: number
 }
 
+/** Avvikande dag (backend shared/booking_rules.py). */
+export type SpecialDayKind = 'closed' | 'hours' | 'no_online'
+
+export interface SpecialDay {
+  date: string
+  kind: SpecialDayKind
+  /** Bara för kind 'hours'. */
+  intervals?: BusinessHoursInterval[]
+  /** Visas för gästerna, högst 80 tecken. */
+  note?: string
+}
+
+/** Vilka sällskap ett bord erbjuds online (utan regel: halva platserna uppåt - alla). */
+export interface TableRule {
+  minParty: number
+  maxParty: number
+  online: boolean
+}
+
+/** Bord som gäster får boka tillsammans online. */
+export interface TableCombination {
+  tableIds: string[]
+  minParty: number
+  maxParty: number
+}
+
 export interface Location
   extends Omit<LocationCreateRequest, 'email' | 'phoneNumber'> {
   guarantee?: GuaranteePolicy
   maxPartySizeOnline?: number
+  specialDays?: SpecialDay[]
+  tableRules?: Record<string, TableRule>
+  tableCombinations?: TableCombination[]
   locationId: string
   createdBy: string
   createdAt: string
@@ -232,6 +261,10 @@ export type LocationUpdate = Partial<LocationCreateRequest> & {
   /** null tar bort policyn. */
   guarantee?: GuaranteePolicy | null
   maxPartySizeOnline?: number | null
+  /** null (eller []) tar bort dem. */
+  specialDays?: SpecialDay[] | null
+  tableRules?: Record<string, TableRule> | null
+  tableCombinations?: TableCombination[] | null
 }
 
 export function updateLocation(

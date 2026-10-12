@@ -1191,3 +1191,67 @@
 .today-list li:last-child {
   border-bottom: 0;
 }
+
+/* --- Inställningar: bord vid onlinebokning, avvikande öppettider --- */
+
+.rules-table td,
+.rules-table th {
+  vertical-align: middle;
+}
+
+.rules-number {
+  width: 64px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font: inherit;
+}
+
+.combo-list,
+.special-days {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.combo-list li,
+.special-day-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.special-days .form-error {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.combo-add,
+.special-day-add {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+.special-intervals {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.special-interval {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+

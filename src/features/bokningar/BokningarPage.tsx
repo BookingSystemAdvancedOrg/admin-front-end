@@ -15,10 +15,10 @@ import {
   feeSummary,
   isCancelled,
   listReservations,
-  tablesLabel,
   todayIn,
 } from './bookingsApi'
 import type { Reservation } from './bookingsApi'
+import { tableNames, useTables } from '../../shared/tables'
 import './bokningar.css'
 
 const REFRESH_MS = 60_000
@@ -35,6 +35,7 @@ export default function BokningarPage() {
   const location = currentLocation(tenantState)
   const isOwner = tenant?.role === 'owner_user'
   const today = todayIn(location?.timezone)
+  const { labels } = useTables(locationId)
 
   const [date, setDate] = useState(today)
   // Listan hör alltid ihop med den plats/dag den hämtades för - en annan
@@ -226,7 +227,7 @@ export default function BokningarPage() {
                       {r.customerPhone && <div className="cell-muted">{r.customerPhone}</div>}
                     </td>
                     <td>{r.partySize}</td>
-                    <td>{tablesLabel(r.tableIds)}</td>
+                    <td>{tableNames(r.tableIds, labels)}</td>
                     <td>
                       <span className={`status-badge ${STATUS_CLASS[r.status]}`}>
                         {STATUS_LABEL[r.status]}

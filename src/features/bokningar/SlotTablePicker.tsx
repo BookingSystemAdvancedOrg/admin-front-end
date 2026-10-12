@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { addDays, errorMessage, getAvailability } from './bookingsApi'
-import type { AvailabilitySlot } from './bookingsApi'
+import { addDays, dayNotice, errorMessage, getAvailability } from './bookingsApi'
+import type { AvailabilitySlot, DayStatus } from './bookingsApi'
+import { useTables } from '../../shared/tables'
 
 /** Hur ofta listan med lediga tider hämtas om medan formuläret är öppet. */
 export const SLOT_REFRESH_MS = 60_000
@@ -26,6 +27,10 @@ export interface SlotValue {
  * Listan hämtas om varje minut och när `refreshKey` ändras. Försvinner den
  * valda tiden (eller ett valt bord) tas valet bort med en förklaring, så att
  * ingen skickar en tid som inte går längre.
+ *
+ * Personalen får använda alla lediga bord med tillräckligt många platser
+ * (gästernas regler för bord online gäller inte här). En avvikande dag
+ * (stängt, andra tider, ingen onlinebokning) förklaras ovanför tiderna.
  */
 export function SlotTablePicker({
   locationId,
@@ -53,9 +58,11 @@ export function SlotTablePicker({
   onChange: (next: SlotValue) => void
 }) {
   const [slots, setSlots] = useState<AvailabilitySlot[] | null>(null)
+  const [day, setDay] = useState<DayStatus | null>(null)
+  const { labels } = useTables(locationId)
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [slotNotice, setSlotNotice] = useState<string | null>(null)
   const [tick, setTick] = useState(0)
   const requestKey = `${locationId}|${date}|${walkIn}`
 
@@ -74,9 +81,11 @@ export function SlotTablePicker({
   useEffect(() => {
     let cancelled = false
     getAvailability(locationId, date, { walkIn })
-      .then((fresh) => {
+      .then((result) => {
         if (cancelled) return
+        const fresh = result.slots
         setSlots(fresh)
+        setDay(result.day)
         setError(null)
         setLoadedFor(requestKey)
         const cur = latest.current
@@ -86,20 +95,21 @@ export function SlotTablePicker({
           : null
         const slot = fresh.find((s) => s.startTime === cur.startTime)
         if (!slot && !own) {
-          setNotice(`${cur.startTime} går inte att boka längre - välj en ny tid.`)
+          setSlotNotice(`${cur.startTime} går inte att boka längre - välj en ny tid.`)
           cur.onChange({ date, startTime: '', tableIds: [] })
           return
         }
         const free = new Set([...(slot?.tables ?? []).map((t) => t.tableId), ...(own?.tableIds ?? [])])
         const still = cur.tableIds.filter((id) => free.has(id))
         if (still.length !== cur.tableIds.length) {
-          setNotice('Ett valt bord har hunnit bokas - välj bord igen.')
+          setSlotNotice('Ett valt bord har hunnit bokas - välj bord igen.')
           cur.onChange({ date, startTime: cur.startTime, tableIds: still })
         }
       })
       .catch((err) => {
         if (cancelled) return
         setSlots([])
+        setDay(null)
         setError(errorMessage(err))
         setLoadedFor(requestKey)
       })
@@ -121,7 +131,10 @@ export function SlotTablePicker({
       if (!tables.some((t) => t.tableId === id)) tables.push({ tableId: id, seats: 0 })
     }
   }
-  tables.sort((a, b) => a.tableId.localeCompare(b.tableId, 'sv', { numeric: true }))
+  // "Bord 3" som gästerna ser det (inte API:ts långa id), i nummerordning.
+  const tableLabel = (id: string) => (labels ? (labels.get(id) ?? '?') : id)
+  tables.sort((a, b) => tableLabel(a.tableId).localeCompare(tableLabel(b.tableId), 'sv', { numeric: true }))
+  const notice = loading ? null : dayNotice(day)
   const chosen = tables.filter((t) => tableIds.includes(t.tableId))
   // Bokningens egna bord visas inte som lediga, så deras platser per bord är
   // okända här - bara summan för alla egna bord (keep.seats). Väljs en del
@@ -138,7 +151,7 @@ export function SlotTablePicker({
   const seats = otherSeats + (ownChosen.length > 0 ? (ownSlot?.seats ?? 0) : 0)
 
   function pick(next: SlotValue) {
-    setNotice(null)
+    setSlotNotice(null)
     onChange(next)
   }
 
@@ -188,8 +201,13 @@ export function SlotTablePicker({
         </div>
       </div>
       {notice && (
-        <p className="form-error" role="status">
+        <p className="field-hint" role="note">
           {notice}
+        </p>
+      )}
+      {slotNotice && (
+        <p className="form-error" role="status">
+          {slotNotice}
         </p>
       )}
       {error && (
@@ -212,7 +230,7 @@ export function SlotTablePicker({
                   checked={tableIds.includes(t.tableId)}
                   onChange={() => toggle(t.tableId)}
                 />
-                Bord {t.tableId}
+                Bord {tableLabel(t.tableId)}
                 {t.seats > 0 && <span className="cell-muted"> · {t.seats} pl</span>}
               </label>
             ))}

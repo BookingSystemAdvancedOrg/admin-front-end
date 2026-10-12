@@ -23,6 +23,11 @@ vi.mock('./bookingsApi', async (orig) => ({
 
 const TODAY = '2026-10-12'
 
+/** Svaret från GET /availability (personalvyn). */
+function avail(slots: unknown[] = [], day: unknown = null) {
+  return { slots, day }
+}
+
 function booking(over: Partial<Reservation> = {}): Reservation {
   return {
     reservationId: 'r1',
@@ -45,7 +50,7 @@ beforeEach(() => {
   for (const fn of [changeStatus, paymentAction, updateReservation, getAvailability, createManualReservation]) {
     fn.mockReset()
   }
-  getAvailability.mockResolvedValue([])
+  getAvailability.mockResolvedValue(avail([]))
 })
 
 describe('ReservationModal', () => {
@@ -135,9 +140,9 @@ describe('ReservationModal', () => {
 
   it('moves a booking to another time and table', async () => {
     const user = userEvent.setup()
-    getAvailability.mockResolvedValue([
+    getAvailability.mockResolvedValue(avail([
       { startTime: '17:00', endTime: '19:00', layoutVersion: 1, tables: [{ tableId: '5', seats: 4 }] },
-    ])
+    ]))
     updateReservation.mockResolvedValue(booking({ startTime: '17:00', tableIds: ['5'] }))
     const onChanged = vi.fn()
     render(<ReservationModal today={TODAY} reservation={booking()} isOwner onChanged={onChanged} onClose={() => {}} />)
@@ -157,9 +162,9 @@ describe('ReservationModal', () => {
 describe('NewReservationModal', () => {
   it('books a phone reservation', async () => {
     const user = userEvent.setup()
-    getAvailability.mockResolvedValue([
+    getAvailability.mockResolvedValue(avail([
       { startTime: '19:00', endTime: '21:00', layoutVersion: 1, tables: [{ tableId: '2', seats: 2 }] },
-    ])
+    ]))
     createManualReservation.mockResolvedValue(booking({ reservationId: 'new' }))
     const onCreated = vi.fn()
     render(<NewReservationModal locationId="loc-1" initialDate="2026-10-12" today={TODAY} onCreated={onCreated} onCancel={() => {}} />)
@@ -182,7 +187,7 @@ describe('NewReservationModal', () => {
   })
 
   it('keeps Boka disabled until a table and name are chosen', async () => {
-    getAvailability.mockResolvedValue([])
+    getAvailability.mockResolvedValue(avail([]))
     render(<NewReservationModal locationId="loc-1" initialDate="2026-10-12" today={TODAY} onCreated={() => {}} onCancel={() => {}} />)
     expect(await screen.findByText('Inga lediga tider')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Boka' })).toBeDisabled()
@@ -190,7 +195,7 @@ describe('NewReservationModal', () => {
 
   it('drop-ins ask for the walk-in times (running slot included)', async () => {
     const user = userEvent.setup()
-    getAvailability.mockResolvedValue([])
+    getAvailability.mockResolvedValue(avail([]))
     render(<NewReservationModal locationId="loc-1" initialDate="2026-10-12" today={TODAY} onCreated={() => {}} onCancel={() => {}} />)
     await screen.findByText('Inga lediga tider')
     expect(getAvailability).toHaveBeenLastCalledWith('loc-1', '2026-10-12', { walkIn: false })
@@ -211,7 +216,7 @@ describe('time rules in the forms', () => {
 
   it('a phone booking may drop the phone number; numbers are saved like the server does', async () => {
     const user = userEvent.setup()
-    getAvailability.mockResolvedValue([])
+    getAvailability.mockResolvedValue(avail([]))
     updateReservation.mockResolvedValue(booking())
     render(
       <ReservationModal
@@ -230,7 +235,7 @@ describe('time rules in the forms', () => {
 
   it('editing a drop-in uses the drop-in times; editing others the normal times', async () => {
     const user = userEvent.setup()
-    getAvailability.mockResolvedValue([])
+    getAvailability.mockResolvedValue(avail([]))
     const { unmount } = render(
       <ReservationModal today={TODAY} reservation={booking({ source: 'walk_in' })} isOwner onChanged={() => {}} onClose={() => {}} />,
     )
@@ -262,7 +267,7 @@ describe('time rules in the forms', () => {
 
   it('a drop-in is booked today and the date cannot be changed', async () => {
     const user = userEvent.setup()
-    getAvailability.mockResolvedValue([])
+    getAvailability.mockResolvedValue(avail([]))
     render(<NewReservationModal locationId="loc-1" initialDate="2026-10-15" today={TODAY} onCreated={() => {}} onCancel={() => {}} />)
     expect(screen.getByLabelText('Datum')).toHaveValue('2026-10-15')
     await user.click(screen.getByRole('radio', { name: 'Drop-in' }))
@@ -272,7 +277,7 @@ describe('time rules in the forms', () => {
   })
 
   it('a new booking never starts on a past day', () => {
-    getAvailability.mockResolvedValue([])
+    getAvailability.mockResolvedValue(avail([]))
     render(<NewReservationModal locationId="loc-1" initialDate="2026-10-01" today={TODAY} onCreated={() => {}} onCancel={() => {}} />)
     expect(screen.getByLabelText('Datum')).toHaveValue(TODAY)
     expect(screen.getByLabelText('Datum')).toHaveAttribute('min', TODAY)
@@ -280,9 +285,9 @@ describe('time rules in the forms', () => {
 
   it('a time that went stale is explained in Swedish and the list is fetched again', async () => {
     const user = userEvent.setup()
-    getAvailability.mockResolvedValue([
+    getAvailability.mockResolvedValue(avail([
       { startTime: '14:00', endTime: '16:00', layoutVersion: 1, tables: [{ tableId: '2', seats: 2 }] },
-    ])
+    ]))
     createManualReservation.mockRejectedValue(new ApiError(400, 'startTime is not a bookable time for this date'))
     render(<NewReservationModal locationId="loc-1" initialDate={TODAY} today={TODAY} onCreated={() => {}} onCancel={() => {}} />)
     await user.selectOptions(await screen.findByLabelText('Tid'), '14:00')
@@ -301,12 +306,12 @@ describe('SlotTablePicker refresh', () => {
     vi.useFakeTimers()
     try {
       getAvailability
-        .mockResolvedValueOnce([
+        .mockResolvedValueOnce(avail([
           { startTime: '14:00', endTime: '16:00', layoutVersion: 1, tables: [{ tableId: '2', seats: 2 }] },
-        ])
-        .mockResolvedValue([
+        ]))
+        .mockResolvedValue(avail([
           { startTime: '14:30', endTime: '16:30', layoutVersion: 1, tables: [{ tableId: '2', seats: 2 }] },
-        ])
+        ]))
       const onChange = vi.fn()
       render(
         <SlotTablePicker
@@ -337,13 +342,13 @@ describe('SlotTablePicker refresh', () => {
     vi.useFakeTimers()
     try {
       getAvailability
-        .mockResolvedValueOnce([
+        .mockResolvedValueOnce(avail([
           { startTime: '14:00', endTime: '16:00', layoutVersion: 1,
             tables: [{ tableId: '2', seats: 2 }, { tableId: '3', seats: 4 }] },
-        ])
-        .mockResolvedValue([
+        ]))
+        .mockResolvedValue(avail([
           { startTime: '14:00', endTime: '16:00', layoutVersion: 1, tables: [{ tableId: '3', seats: 4 }] },
-        ])
+        ]))
       const onChange = vi.fn()
       render(
         <SlotTablePicker
@@ -368,7 +373,7 @@ describe('SlotTablePicker refresh', () => {
   it("keeps the booking's own time and tables while editing", async () => {
     vi.useFakeTimers()
     try {
-      getAvailability.mockResolvedValue([])
+      getAvailability.mockResolvedValue(avail([]))
       const onChange = vi.fn()
       render(
         <SlotTablePicker

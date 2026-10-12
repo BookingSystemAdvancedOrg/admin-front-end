@@ -17,12 +17,12 @@ import {
   isStaleSlotError,
   normalizePhone,
   paymentAction,
-  tablesLabel,
   timestampLabel,
   updateReservation,
   validEmail,
 } from './bookingsApi'
 import type { HistoryEntry, Reservation, ReservationEdit } from './bookingsApi'
+import { tableNames, useTables } from '../../shared/tables'
 
 type Panel = null | 'no_show' | 'cancel' | 'refund' | 'edit'
 
@@ -75,6 +75,7 @@ export function ReservationModal({
 }) {
   const r = reservation
   const actions = availableActions(r, isOwner)
+  const { labels } = useTables(r.locationId)
   const [panel, setPanel] = useState<Panel>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -128,7 +129,7 @@ export function ReservationModal({
           <div>
             <h2>{r.customerName || 'Gäst'}</h2>
             <p className="cell-muted">
-              {dayLabel(r.date)} · {r.startTime}–{r.endTime} · {r.partySize} pers · {tablesLabel(r.tableIds)}
+              {dayLabel(r.date)} · {r.startTime}–{r.endTime} · {r.partySize} pers · {tableNames(r.tableIds, labels)}
             </p>
           </div>
           <span className={`status-badge ${STATUS_CLASS[r.status]}`}>{STATUS_LABEL[r.status]}</span>

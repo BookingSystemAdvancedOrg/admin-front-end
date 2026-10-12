@@ -14,6 +14,8 @@ import type { RestaurantProfile } from './data'
 import { CancellationPolicyCard } from './CancellationPolicyCard'
 import { NotificationsCard } from './NotificationsCard'
 import { PaymentsCard } from './PaymentsCard'
+import { SpecialDaysCard } from './SpecialDaysCard'
+import { TableRulesCard } from './TableRulesCard'
 import { BusinessHoursEditor } from './BusinessHoursEditor'
 import {
   createLocation,
@@ -630,6 +632,14 @@ export default function InstallningarPage() {
             isOwner={isOwner}
             stripeReady={Boolean(tenant?.stripe.chargesEnabled)}
           />
+        </div>
+
+        <div className="settings-row">
+          <SpecialDaysCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+        </div>
+
+        <div className="settings-row">
+          <TableRulesCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
         </div>
       </div>
 

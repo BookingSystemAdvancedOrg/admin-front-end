@@ -43,6 +43,8 @@ export interface MenuItem {
   category: MenuCategory
   imageKey: string
   active: boolean
+  /** Innehåller alkohol (backend: 25 % moms, inte till avhämtning). Saknas = false. */
+  alcohol?: boolean
   createdBy: string
   createdAt: string
   updatedBy: string
@@ -59,7 +61,7 @@ export type PublicMenuItem = Pick<
   MenuItem,
   'menuItemId' | 'name' | 'description' | 'price' | 'category' | 'imageKey'
 > &
-  Partial<Pick<MenuItem, 'active'>>
+  Partial<Pick<MenuItem, 'active' | 'alcohol'>>
 
 /** Alla sex fälten krävs vid skapande enligt kontraktet. */
 export interface MenuItemCreate {
@@ -69,6 +71,7 @@ export interface MenuItemCreate {
   category: MenuCategory
   imageKey: string
   active: boolean
+  alcohol?: boolean
 }
 
 /** Partiell uppdatering — minst ett fält krävs av API:t. */
@@ -100,6 +103,7 @@ export function toDish(item: MenuItem): Dish {
     category: CATEGORY_FROM_API[item.category],
     price: item.price,
     active: item.active,
+    alcohol: item.alcohol === true,
     imageKey: item.imageKey,
     image: menuImageUrl(item.imageKey),
   }
@@ -127,6 +131,9 @@ export function dishChanges(original: Dish, next: MenuItemCreate): MenuItemUpdat
     updates.category = next.category
   }
   if (next.active !== original.active) updates.active = next.active
+  if (next.alcohol !== undefined && next.alcohol !== original.alcohol) {
+    updates.alcohol = next.alcohol
+  }
   if (next.imageKey.trim() && next.imageKey !== original.imageKey) {
     updates.imageKey = next.imageKey
   }

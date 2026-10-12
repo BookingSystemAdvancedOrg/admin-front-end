@@ -10,6 +10,8 @@ export interface DishFormValues {
   category: DishCategory
   price: number
   active: boolean
+  /** Innehåller alkohol - 25 % moms, kan bara beställas vid bordet. */
+  alcohol: boolean
   /**
    * Nyvald bildfil att ladda upp till S3, eller null när bilden inte bytts.
    * Förhandsvisningen i dialogen är en lokal data-URL; den riktiga nyckeln
@@ -45,6 +47,7 @@ export function DishModal({
   )
   const [price, setPrice] = useState(initial ? String(initial.price) : '')
   const [active, setActive] = useState(initial?.active ?? true)
+  const [alcohol, setAlcohol] = useState(initial?.alcohol ?? false)
   // Förhandsvisning: befintlig CDN-bild eller data-URL för nyvald fil.
   const [preview, setPreview] = useState<string | null>(initial?.image ?? null)
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -94,6 +97,7 @@ export function DishModal({
         category,
         price: parsedPrice,
         active,
+        alcohol,
         imageFile,
       })
     } catch (err) {
@@ -202,6 +206,20 @@ export function DishModal({
             aria-label="Aktiv"
             className="switch"
             onClick={() => setActive((a) => !a)}
+          />
+        </div>
+
+        <div className="toggle-row">
+          <span className="toggle-row-label">
+            Innehåller alkohol — 25 % moms, kan bara beställas vid bordet
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={alcohol}
+            aria-label="Innehåller alkohol"
+            className="switch"
+            onClick={() => setAlcohol((a) => !a)}
           />
         </div>
 

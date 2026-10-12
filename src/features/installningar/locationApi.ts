@@ -55,6 +55,19 @@ export interface GuaranteePolicy {
   cancelCutoffHours: number
 }
 
+/** Matbeställning (backend shared/orders.py). */
+export interface OrderingPolicy {
+  enabled: boolean
+  /** Beställ online, hämta i kassan. */
+  pickup: boolean
+  /** Beställ via QR-koden på bordet, serveras vid bordet. */
+  table: boolean
+  /** Beräknad tillagningstid som gästen ser (5–180 min). */
+  prepMinutes: number
+  /** Sista beställning så här många minuter före stängning (0–120). */
+  lastOrderMinutes: number
+}
+
 /** Avvikande dag (backend shared/booking_rules.py). */
 export type SpecialDayKind = 'closed' | 'hours' | 'no_online'
 
@@ -84,6 +97,9 @@ export interface TableCombination {
 export interface Location
   extends Omit<LocationCreateRequest, 'email' | 'phoneNumber'> {
   guarantee?: GuaranteePolicy
+  ordering?: OrderingPolicy
+  /** Beställningar pausade till (ISO, satt av personalen). */
+  orderingPausedUntil?: string
   maxPartySizeOnline?: number
   specialDays?: SpecialDay[]
   tableRules?: Record<string, TableRule>
@@ -260,6 +276,7 @@ export function getLocation(locationId: string): Promise<Location> {
 export type LocationUpdate = Partial<LocationCreateRequest> & {
   /** null tar bort policyn. */
   guarantee?: GuaranteePolicy | null
+  ordering?: OrderingPolicy | null
   maxPartySizeOnline?: number | null
   /** null (eller []) tar bort dem. */
   specialDays?: SpecialDay[] | null

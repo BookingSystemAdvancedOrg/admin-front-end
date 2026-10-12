@@ -2,6 +2,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AdminLayout } from './shared/AdminLayout'
 import OversiktPage from './features/oversikt/OversiktPage'
 import BokningarPage from './features/bokningar/BokningarPage'
+import BestallningarPage from './features/bestallningar/BestallningarPage'
 import MenyPage from './features/meny/MenyPage'
 import CateringkalkylPage from './features/cateringkalkyl/CateringkalkylPage'
 import LayoutEditorPage from './features/layout-editor/LayoutEditorPage'
@@ -28,6 +29,7 @@ function App() {
       <Route element={<AdminLayout />}>
         <Route index element={<OversiktPage />} />
         <Route path="bokningar" element={<BokningarPage />} />
+        <Route path="bestallningar" element={<BestallningarPage />} />
         <Route path="meny" element={<MenyPage />} />
         <Route path="cateringkalkyl" element={<CateringkalkylPage />} />
         <Route path="layout" element={<LayoutEditorPage />} />

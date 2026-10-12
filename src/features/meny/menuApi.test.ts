@@ -157,6 +157,12 @@ describe('dishChanges', () => {
     )
   })
 
+  it('sends the alcohol flag when it changes', () => {
+    expect(original.alcohol).toBe(false)
+    expect(dishChanges(original, desired({ alcohol: true }))).toEqual({ alcohol: true })
+    expect(dishChanges(original, desired({ alcohol: false }))).toEqual({})
+  })
+
   it('never sends an empty imageKey — the API cannot clear it', () => {
     expect(dishChanges(original, desired({ imageKey: '' }))).toEqual({})
   })

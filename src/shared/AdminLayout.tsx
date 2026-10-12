@@ -7,9 +7,11 @@ import './admin.css'
 
 // Sidebar-länkarna. `end: true` gör att '/' bara markeras aktiv på exakt
 // träff, annars skulle den lysa upp på alla undersidor också.
-const NAV: { to: string; label: string; end?: boolean }[] = [
+const NAV: { to: string; label: string; end?: boolean; feature?: string }[] = [
   { to: '/', label: 'Översikt', end: true },
   { to: '/bokningar', label: 'Bokningar' },
+  // Bara för restauranger vars plan har matbeställning.
+  { to: '/bestallningar', label: 'Beställningar', feature: 'ordering' },
   { to: '/meny', label: 'Meny' },
   { to: '/cateringkalkyl', label: 'Cateringkalkyl' },
   { to: '/layout', label: 'Layout' },
@@ -81,7 +83,9 @@ export function AdminLayout() {
         )}
 
         <nav className="admin-nav" aria-label="Huvudmeny">
-          {NAV.map((item) => (
+          {NAV.filter(
+            (item) => !item.feature || Boolean(tenant?.entitlements.features[item.feature]),
+          ).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

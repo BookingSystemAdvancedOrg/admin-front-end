@@ -221,6 +221,7 @@ export default function MenyPage() {
       category: CATEGORY_TO_API[values.category],
       imageKey,
       active: values.active,
+      alcohol: values.alcohol,
     }
 
     if (modal?.mode === 'edit' && editingDish) {

@@ -22,6 +22,8 @@ export interface Dish {
   /** Pris i kr, högst två decimaler enligt API:t. */
   price: number
   active: boolean
+  /** Innehåller alkohol: 25 % moms och kan inte beställas för avhämtning. */
+  alcohol: boolean
   /**
    * S3-nyckeln som API:t lagrar. Tom sträng = ingen bild. Nyckeln kan inte
    * tömmas via API:t (fältet kräver minst ett tecken), bara ersättas.

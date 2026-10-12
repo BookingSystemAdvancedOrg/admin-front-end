@@ -13,6 +13,7 @@ import {
 import type { RestaurantProfile } from './data'
 import { CancellationPolicyCard } from './CancellationPolicyCard'
 import { NotificationsCard } from './NotificationsCard'
+import { OrderingCard } from './OrderingCard'
 import { PaymentsCard } from './PaymentsCard'
 import { SpecialDaysCard } from './SpecialDaysCard'
 import { TableRulesCard } from './TableRulesCard'
@@ -633,6 +634,17 @@ export default function InstallningarPage() {
             stripeReady={Boolean(tenant?.stripe.chargesEnabled)}
           />
         </div>
+
+        {tenant?.entitlements.features.ordering && (
+          <div className="settings-row">
+            <OrderingCard
+              key={locationId ?? 'none'}
+              locationId={locationId}
+              isOwner={isOwner}
+              stripeReady={Boolean(tenant?.stripe.chargesEnabled)}
+            />
+          </div>
+        )}
 
         <div className="settings-row">
           <SpecialDaysCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />

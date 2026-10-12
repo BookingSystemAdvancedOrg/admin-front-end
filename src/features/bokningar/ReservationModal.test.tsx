@@ -182,4 +182,14 @@ describe('NewReservationModal', () => {
     expect(await screen.findByText('Inga lediga tider')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Boka' })).toBeDisabled()
   })
+
+  it('drop-ins ask for the walk-in times (running slot included)', async () => {
+    const user = userEvent.setup()
+    getAvailability.mockResolvedValue([])
+    render(<NewReservationModal locationId="loc-1" initialDate="2026-10-12" onCreated={() => {}} onCancel={() => {}} />)
+    await screen.findByText('Inga lediga tider')
+    expect(getAvailability).toHaveBeenLastCalledWith('loc-1', '2026-10-12', { walkIn: false })
+    await user.click(screen.getByRole('radio', { name: 'Drop-in' }))
+    expect(getAvailability).toHaveBeenLastCalledWith('loc-1', '2026-10-12', { walkIn: true })
+  })
 })

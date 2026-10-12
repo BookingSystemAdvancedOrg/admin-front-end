@@ -311,9 +311,15 @@ export function paymentAction(
   )
 }
 
-export async function getAvailability(locationId: string, date: string): Promise<AvailabilitySlot[]> {
+/** Lediga tider. `walkIn` tar även med pågående tider och de inom
+ * 30-minutersgränsen (gästen står redan i restaurangen). */
+export async function getAvailability(
+  locationId: string,
+  date: string,
+  { walkIn = false }: { walkIn?: boolean } = {},
+): Promise<AvailabilitySlot[]> {
   const res = await apiFetch<{ slots?: AvailabilitySlot[] }>(
-    `${base(locationId)}/availability?date=${encodeURIComponent(date)}`,
+    `${base(locationId)}/availability?date=${encodeURIComponent(date)}${walkIn ? '&walkIn=true' : ''}`,
   )
   return res.slots ?? []
 }

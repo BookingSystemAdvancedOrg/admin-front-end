@@ -9,6 +9,7 @@ import {
   errorMessage,
   feeSummary,
   formatKr,
+  getAvailability,
   listReservations,
   paymentAction,
   todayIn,
@@ -81,6 +82,14 @@ describe('bookingsApi', () => {
     expect(errorMessage(new ApiError(402, 'authentication_required'))).toMatch(/godkänner/)
     expect(errorMessage(new ApiError(402, 'weird'))).toBe('Betalningen gick inte igenom (weird).')
     expect(errorMessage(new Error('x'))).toMatch(/Något gick fel/)
+  })
+
+  it('asks for walk-in times only for drop-ins', async () => {
+    apiFetch.mockResolvedValue({ slots: [] })
+    await getAvailability('loc-1', '2026-10-12')
+    expect(apiFetch).toHaveBeenLastCalledWith('/locations/loc-1/availability?date=2026-10-12')
+    await getAvailability('loc-1', '2026-10-12', { walkIn: true })
+    expect(apiFetch).toHaveBeenLastCalledWith('/locations/loc-1/availability?date=2026-10-12&walkIn=true')
   })
 
   it('calls the staff routes', async () => {

@@ -84,6 +84,8 @@ export function NewReservationModal({
                 onClick={() => {
                   setSource(value)
                   setNotify(value === 'phone')
+                  // Tidslistan skiljer sig (drop-in får pågående tider).
+                  setSlot((s) => ({ ...s, startTime: '', tableIds: [] }))
                 }}
               >
                 {label}
@@ -107,6 +109,7 @@ export function NewReservationModal({
             startTime={slot.startTime}
             tableIds={slot.tableIds}
             partySize={sizeOk ? size : 0}
+            walkIn={source === 'walk_in'}
             onChange={setSlot}
           />
 

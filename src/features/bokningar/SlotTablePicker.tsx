@@ -15,6 +15,7 @@ export function SlotTablePicker({
   tableIds,
   partySize,
   keep,
+  walkIn = false,
   onChange,
 }: {
   locationId: string
@@ -23,6 +24,8 @@ export function SlotTablePicker({
   tableIds: string[]
   partySize: number
   keep?: { date: string; startTime: string; tableIds: string[]; seats?: number }
+  /** Drop-in: även pågående tider och de som börjar inom 30 minuter. */
+  walkIn?: boolean
   onChange: (next: { date: string; startTime: string; tableIds: string[] }) => void
 }) {
   const [slots, setSlots] = useState<AvailabilitySlot[] | null>(null)
@@ -31,25 +34,25 @@ export function SlotTablePicker({
 
   useEffect(() => {
     let cancelled = false
-    getAvailability(locationId, date)
+    getAvailability(locationId, date, { walkIn })
       .then((s) => {
         if (cancelled) return
         setSlots(s)
         setError(null)
-        setLoadedFor(date)
+        setLoadedFor(`${date}|${walkIn}`)
       })
       .catch((err) => {
         if (cancelled) return
         setSlots([])
         setError(errorMessage(err))
-        setLoadedFor(date)
+        setLoadedFor(`${date}|${walkIn}`)
       })
     return () => {
       cancelled = true
     }
-  }, [locationId, date])
+  }, [locationId, date, walkIn])
 
-  const loading = loadedFor !== date
+  const loading = loadedFor !== `${date}|${walkIn}`
   const ownSlot = keep && keep.date === date ? keep : null
   const times = [...(slots ?? []).map((s) => s.startTime)]
   if (ownSlot && !times.includes(ownSlot.startTime)) times.push(ownSlot.startTime)

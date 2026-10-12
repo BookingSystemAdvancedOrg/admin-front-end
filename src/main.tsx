@@ -7,10 +7,14 @@ import { AuthProvider } from './features/auth/AuthContext.tsx'
 import { RequireAuth } from './features/auth/RequireAuth.tsx'
 import LoginPage from './features/auth/LoginPage.tsx'
 import NewPasswordPage from './features/auth/NewPasswordPage.tsx'
+import ForgotPasswordPage from './features/auth/ForgotPasswordPage.tsx'
+import ResetPasswordPage from './features/auth/ResetPasswordPage.tsx'
 
-// Top-level router. Only /logga-in and /nytt-losenord are reachable while
-// signed out; everything else is the admin panel (App.tsx) and is gated by
-// RequireAuth, which redirects signed-out visitors to /logga-in.
+// Top-level router. Only /logga-in, /nytt-losenord and the forgot-password
+// pages (/glomt-losenord, /aterstall-losenord - the emailed reset link) are
+// reachable while signed out; everything else is the admin panel (App.tsx)
+// and is gated by RequireAuth, which redirects signed-out visitors to
+// /logga-in.
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
@@ -18,6 +22,8 @@ createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route path="/logga-in" element={<LoginPage />} />
           <Route path="/nytt-losenord" element={<NewPasswordPage />} />
+          <Route path="/glomt-losenord" element={<ForgotPasswordPage />} />
+          <Route path="/aterstall-losenord" element={<ResetPasswordPage />} />
           <Route
             path="/*"
             element={

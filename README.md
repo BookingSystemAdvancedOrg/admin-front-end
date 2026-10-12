@@ -46,7 +46,9 @@ documented in [docs/BACKEND-KOPPLING.md](docs/BACKEND-KOPPLING.md).
 ## Authentication
 
 Staff sign-in goes through the backend's `/auth/*` endpoints, which talk to
-AWS Cognito server-side (`/logga-in` and `/nytt-losenord`). Required keys
+AWS Cognito server-side (`/logga-in` and `/nytt-losenord`). "Glömt
+lösenordet?" (`/glomt-losenord`) emails a link to `/aterstall-losenord`,
+where the user chooses a new password and is signed in. Required keys
 and the invite flow are documented in
 [docs/API-OCH-NYCKLAR.md](docs/API-OCH-NYCKLAR.md).
 

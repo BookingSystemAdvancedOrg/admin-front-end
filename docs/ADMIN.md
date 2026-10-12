@@ -30,7 +30,7 @@ src/
     AdminTopbar.tsx   # Sidhuvud i högerkolumnen (Figma: admin-topbar)
     admin.css         # All styling för admin-skalet
   App.tsx             # Skyddade admin-routes (renderas inuti RequireAuth)
-  main.tsx            # Toppnivå-router: /logga-in, /nytt-losenord, appen
+  main.tsx            # Toppnivå-router: /logga-in, /nytt-losenord, /glomt-losenord, /aterstall-losenord, appen
   index.css           # Globala CSS-variabler (färger, typsnitt) och resets
 ```
 
@@ -54,15 +54,22 @@ Personal loggar in på `/logga-in` mot AWS Cognito direkt från webbläsaren
 och Cognito-uppsättning finns i [API-OCH-NYCKLAR.md](API-OCH-NYCKLAR.md) —
 här är bara flödet:
 
-1. `main.tsx` renderar `/logga-in` och `/nytt-losenord` fritt; alla andra
-   sökvägar går genom `RequireAuth`, som skickar utloggade till `/logga-in`.
+1. `main.tsx` renderar `/logga-in`, `/nytt-losenord`, `/glomt-losenord` och
+   `/aterstall-losenord` fritt; alla andra sökvägar går genom `RequireAuth`,
+   som skickar utloggade till `/logga-in`.
 2. `AuthProvider` (`src/features/auth/AuthContext.tsx`) håller status
    (`loading` / `signed-out` / `signed-in`) och exponerar `login`,
    `finishNewPassword`, `logout` och `getToken` via `useAuth()`.
 3. Ett konto som precis blivit inbjudet har ett tillfälligt lösenord →
    Cognito svarar med `NEW_PASSWORD_REQUIRED` → appen skickar automatiskt
    personen till `/nytt-losenord`.
-4. I `npm run dev` finns även en mock-inloggning (`test@test.se` /
+4. "Glömt lösenordet?" på `/logga-in` leder till `/glomt-losenord`: backend
+   (`/auth/forgot-password`) ber Cognito mejla en länk till
+   `/aterstall-losenord#code=…&email=…`. Där väljer man ett nytt lösenord
+   (`/auth/reset-password`) och loggas in direkt. Visar mejlet en kod i
+   stället (poolen skickar inte via SES) fyller man i e-post och kod på
+   samma sida.
+5. I `npm run dev` finns även en mock-inloggning (`test@test.se` /
    `test1234`, se `src/features/auth/mockAuth.ts`) så man kan jobba med
    admin-panelen utan att Cognito är konfigurerat. Den koden är helt borta i
    `npm run build` (styrs av `import.meta.env.DEV`).

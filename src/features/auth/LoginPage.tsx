@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { isMockAuthEnabled, MOCK_EMAIL, MOCK_PASSWORD } from './mockAuth'
 import { useAuth } from './useAuth'
 import { AuthLayout } from './AuthLayout'
@@ -10,15 +10,18 @@ export default function LoginPage() {
   const { status, login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [email, setEmail] = useState('')
+  const state = location.state as {
+    from?: { pathname?: string }
+    email?: string
+  } | null
+  // Adressen följer med från "Glömt lösenordet?"-sidorna.
+  const [email, setEmail] = useState(() => state?.email ?? '')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   // Sidan användaren försökte nå innan RequireAuth skickade hit dem.
-  const from =
-    (location.state as { from?: { pathname?: string } } | null)?.from
-      ?.pathname ?? '/'
+  const from = state?.from?.pathname ?? '/'
 
   // Redan inloggad? Gå direkt till admin-panelen.
   if (status === 'signed-in') {
@@ -92,14 +95,18 @@ export default function LoginPage() {
         </button>
       </form>
 
+      <Link className="auth-link" to="/glomt-losenord" state={{ email: email.trim() }}>
+        Glömt lösenordet?
+      </Link>
+
       {isMockAuthEnabled() ? (
         <p className="auth-hint">
           Utveckling: {MOCK_EMAIL} / {MOCK_PASSWORD}
         </p>
       ) : (
         <p className="auth-hint">
-          Första gången? Du hittar ett tillfälligt lösenord i din
-          inbjudningsmejl från Cognito.
+          Första gången? Du hittar ett tillfälligt lösenord i inbjudan som
+          mejlades till dig.
         </p>
       )}
     </AuthLayout>

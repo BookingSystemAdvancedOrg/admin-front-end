@@ -3,22 +3,8 @@ import type { FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from './useAuth'
 import { AuthLayout } from './AuthLayout'
-
-/**
- * Lösenordskraven som visas i checklistan. Håll dem i synk med
- * User Poolens password policy i AWS (se docs/API-OCH-NYCKLAR.md).
- */
-const RULES: { id: string; label: string; test: (pw: string) => boolean }[] = [
-  { id: 'length', label: 'Minst 8 tecken', test: (pw) => pw.length >= 8 },
-  {
-    id: 'upper',
-    label: 'Minst en stor bokstav',
-    // Cognito räknar A–Z (inte Å/Ä/Ö) som versaler i sin policy, så vi
-    // kräver detsamma här för att aldrig godkänna något Cognito nekar.
-    test: (pw) => /[A-Z]/.test(pw),
-  },
-  { id: 'digit', label: 'Minst en siffra', test: (pw) => /\d/.test(pw) },
-]
+import { meetsAllRules, passwordProblem } from './passwordRules'
+import { PasswordRulesList } from './PasswordRulesList'
 
 /** Figma: nytt-losenord-page (41:26). */
 export default function NewPasswordPage() {
@@ -34,18 +20,15 @@ export default function NewPasswordPage() {
     return <Navigate to="/logga-in" replace />
   }
 
-  const allRulesMet = RULES.every((rule) => rule.test(password))
+  const allRulesMet = meetsAllRules(password)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (busy) return
     setError(null)
-    if (!allRulesMet) {
-      setError('Lösenordet uppfyller inte alla krav ännu.')
-      return
-    }
-    if (password !== confirm) {
-      setError('Lösenorden matchar inte.')
+    const problem = passwordProblem(password, confirm)
+    if (problem) {
+      setError(problem)
       return
     }
     setBusy(true)
@@ -99,20 +82,7 @@ export default function NewPasswordPage() {
           </div>
         </div>
 
-        <ul className="auth-rules" aria-label="Lösenordskrav">
-          {RULES.map((rule) => {
-            const met = rule.test(password)
-            return (
-              <li
-                key={rule.id}
-                className={met ? 'auth-rule met' : 'auth-rule'}
-              >
-                <span aria-hidden="true">{met ? '✓' : '○'}</span>
-                {rule.label}
-              </li>
-            )
-          })}
-        </ul>
+        <PasswordRulesList password={password} />
 
         {error && (
           <p className="auth-error" role="alert">

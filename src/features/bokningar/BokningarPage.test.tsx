@@ -42,7 +42,7 @@ function booking(over: Partial<Reservation> = {}): Reservation {
   return {
     reservationId: 'r1',
     locationId: 'loc-1',
-    date: '2026-10-12',
+    date: todayIn('Europe/Stockholm'),
     startTime: '19:00',
     endTime: '21:00',
     tableIds: ['3'],

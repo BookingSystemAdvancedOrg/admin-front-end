@@ -6,16 +6,55 @@ import type { Dish } from '../meny/data'
 import { getPublicMenu, listMenuItems, publicToDish, toDish } from '../meny/menuApi'
 import { DiscountTierModal } from './DiscountTierModal'
 import type { DiscountTierFormValues } from './DiscountTierModal'
-import {
-  DISCOUNT_SCOPE_LABEL,
-  MOCK_DELIVERY_PRICING,
-  MOCK_DISCOUNT_TIERS,
-  MOCK_ORDER_RULES,
-  nextTierAfter,
-  tierFor,
-} from './data'
+import { DISCOUNT_SCOPE_LABEL, nextTierAfter, tierFor } from './data'
 import type { DeliveryPricing, DiscountTier, OrderRules } from './data'
+import { getLocation } from '../installningar/locationApi'
+import { useTenant } from '../../shared/tenant'
+import {
+  DEFAULT_SETTINGS,
+  createTier,
+  deleteTier,
+  errorText,
+  listTiers,
+  saveSettings,
+  updateTier,
+} from '../catering/cateringApi'
+import type { CateringSettings, Tier } from '../catering/cateringApi'
 import './cateringkalkyl.css'
+
+function rulesOf(s: CateringSettings): OrderRules {
+  return {
+    minPortions: s.minPortions,
+    maxPortions: s.maxPortions,
+    advanceDays: s.advanceDays,
+    discountScope: 'alla_ratter',
+    visibleToCustomers: s.enabled,
+  }
+}
+
+function deliveryOf(s: CateringSettings): DeliveryPricing {
+  return {
+    area: s.deliveryArea,
+    maxDistanceKm: s.maxDistanceKm,
+    priceWithinLimit: s.priceWithinLimit,
+    priceBeyondLimit: s.priceBeyondLimit,
+    allowOutsideArea: s.allowOutsideArea,
+  }
+}
+
+function tierOf(t: Tier): DiscountTier {
+  return { id: t.tierId, name: t.name, fromPortions: t.fromPortions, toPortions: t.toPortions,
+    discountPercent: t.discountPercent, active: t.active }
+}
+
+function tierInput(t: DiscountTier | DiscountTierFormValues) {
+  return { name: t.name, fromPortions: t.fromPortions, toPortions: t.toPortions,
+    discountPercent: t.discountPercent, active: t.active }
+}
+
+function numberIn(value: string): number {
+  return Number(value.replace(/[^\d]/g, '')) || 0
+}
 
 type TierModalState = { mode: 'add' } | { mode: 'edit'; id: string } | null
 
@@ -31,11 +70,11 @@ function krPerUnit(n: number): string {
 }
 
 /**
- * Figma: admin-catering-page. Precis som avbokningspolicyn i Inställningar
- * (installningar/data.ts) finns ingen backend-rutt för reglerna, leverans-
- * priset eller rabattnivåerna än — allt är lokal mockdata som inte sparas
- * mellan sidladdningar. Rätterna i förhandsvisningen kommer däremot från det
- * RIKTIGA meny-API:t, så kalkylen räknar på riktiga priser.
+ * Figma: admin-catering-page. Reglerna, leveranspriserna, offert- och
+ * notisinställningarna sparas på platsen (PUT .../catering/settings, knappen
+ * uppe till höger); rabattnivåerna sparas direkt när de ändras
+ * (.../catering/discount-tiers). Förhandsvisningen räknar på den riktiga
+ * menyn med samma regler som servern använder för gästens förfrågan.
  */
 export default function CateringkalkylPage() {
   const { sub } = useAuth()
@@ -43,14 +82,42 @@ export default function CateringkalkylPage() {
 
   const [dishes, setDishes] = useState<Dish[]>([])
 
-  const [orderRules, setOrderRules] = useState<OrderRules>(MOCK_ORDER_RULES)
-  const [delivery, setDelivery] = useState<DeliveryPricing>(MOCK_DELIVERY_PRICING)
-  const [tiers, setTiers] = useState<DiscountTier[]>(MOCK_DISCOUNT_TIERS)
+  const { tenant } = useTenant()
+  const isOwner = tenant?.role === 'owner_user'
+  const [settings, setSettings] = useState<CateringSettings>(DEFAULT_SETTINGS)
+  const [orderRules, setOrderRules] = useState<OrderRules>(rulesOf(DEFAULT_SETTINGS))
+  const [delivery, setDelivery] = useState<DeliveryPricing>(deliveryOf(DEFAULT_SETTINGS))
+  const [tiers, setTiers] = useState<DiscountTier[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveNotice, setSaveNotice] = useState<string | null>(null)
+  const [tierError, setTierError] = useState<string | null>(null)
 
   const [tierModal, setTierModal] = useState<TierModalState>(null)
   const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [previewAddress, setPreviewAddress] = useState('Drottninggatan 52, Norrköping')
-  const [sentNotice, setSentNotice] = useState(false)
+
+  // Sparade inställningar (platsens cateringSettings) och rabattnivåer.
+  useEffect(() => {
+    if (!locationId) return
+    let cancelled = false
+    Promise.all([getLocation(locationId), listTiers(locationId)])
+      .then(([loc, loadedTiers]) => {
+        if (cancelled) return
+        const stored = (loc as { cateringSettings?: Partial<CateringSettings> }).cateringSettings ?? {}
+        const saved = { ...DEFAULT_SETTINGS, ...stored }
+        setSettings(saved)
+        setOrderRules(rulesOf(saved))
+        setDelivery(deliveryOf(saved))
+        setTiers(loadedTiers.map(tierOf))
+        setLoaded(true)
+      })
+      .catch(() => !cancelled && setSaveError('Kunde inte hämta cateringinställningarna.'))
+    return () => {
+      cancelled = true
+    }
+  }, [locationId])
 
   useEffect(() => {
     if (!locationId) return
@@ -89,22 +156,66 @@ export default function CateringkalkylPage() {
     setQuantities((prev) => ({ ...prev, [dishId]: Math.max(0, Math.round(n)) }))
   }
 
+  function updateSettings(patch: Partial<CateringSettings>) {
+    setSettings((prev) => ({ ...prev, ...patch }))
+    setSaveNotice(null)
+  }
+
+  async function save() {
+    if (!locationId) return
+    setSaving(true)
+    setSaveError(null)
+    setSaveNotice(null)
+    try {
+      const saved = await saveSettings(locationId, {
+        ...settings,
+        enabled: orderRules.visibleToCustomers,
+        minPortions: orderRules.minPortions,
+        maxPortions: orderRules.maxPortions,
+        advanceDays: orderRules.advanceDays,
+        deliveryArea: delivery.area,
+        maxDistanceKm: delivery.maxDistanceKm,
+        priceWithinLimit: delivery.priceWithinLimit,
+        priceBeyondLimit: delivery.priceBeyondLimit,
+        allowOutsideArea: delivery.allowOutsideArea,
+      })
+      setSettings(saved)
+      setSaveNotice(saved.enabled ? 'Sparat. Kalkylen visas på webbplatsen.' : 'Sparat. Kalkylen är dold för gäster.')
+    } catch (err) {
+      setSaveError(errorText(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function tierCall(action: () => Promise<unknown>) {
+    if (!locationId) return
+    setTierError(null)
+    try {
+      await action()
+      setTiers((await listTiers(locationId)).map(tierOf))
+    } catch (err) {
+      setTierError(errorText(err))
+    }
+  }
+
   function toggleTierActive(id: string) {
-    setTiers((prev) => prev.map((t) => (t.id === id ? { ...t, active: !t.active } : t)))
+    const tier = tiers.find((t) => t.id === id)
+    if (!tier || !locationId) return
+    void tierCall(() => updateTier(locationId, id, tierInput({ ...tier, active: !tier.active })))
   }
 
   function removeTier(tier: DiscountTier) {
-    if (!window.confirm(`Ta bort ${tier.name}?`)) return
-    setTiers((prev) => prev.filter((t) => t.id !== tier.id))
+    if (!locationId || !window.confirm(`Ta bort ${tier.name}?`)) return
+    void tierCall(() => deleteTier(locationId, tier.id))
   }
 
   function handleSaveTier(values: DiscountTierFormValues) {
-    if (tierModal?.mode === 'edit') {
-      const id = tierModal.id
-      setTiers((prev) => prev.map((t) => (t.id === id ? { ...t, ...values } : t)))
-    } else {
-      setTiers((prev) => [...prev, { id: crypto.randomUUID(), ...values }])
-    }
+    if (!locationId) return
+    const id = tierModal?.mode === 'edit' ? tierModal.id : null
+    void tierCall(() =>
+      id ? updateTier(locationId, id, tierInput(values)) : createTier(locationId, tierInput(values)),
+    )
     setTierModal(null)
   }
 
@@ -145,15 +256,19 @@ export default function CateringkalkylPage() {
         title="Cateringkalkyl"
         subtitle="Regler, rabattnivåer och leveranspriser för catering"
         actions={
-          // Reglerna har ingen backend än. En "Spara"-knapp som visar
-          // "Sparat" utan att något sparas lurar ägaren — säg som det är.
-          <span className="cell-muted">
-            Förhandsvisning — reglerna sparas inte än
-          </span>
+          isOwner ? (
+            <button type="button" className="btn primary" disabled={!loaded || saving} onClick={() => void save()}>
+              {saving ? 'Sparar…' : 'Spara inställningar'}
+            </button>
+          ) : (
+            <span className="cell-muted">Bara ägaren kan ändra</span>
+          )
         }
       />
 
       <main className="admin-main">
+        {saveError && <p className="form-error" role="alert">{saveError}</p>}
+        {saveNotice && <p className="save-notice" role="status">{saveNotice}</p>}
         <div className="settings-row">
           <section className="admin-card table-card">
             <h2 className="card-title">Beställningsregler</h2>
@@ -312,6 +427,61 @@ export default function CateringkalkylPage() {
         </div>
 
         <section className="admin-card table-card">
+          <h2 className="card-title">Offert, betalning och notiser</h2>
+          <p className="cell-muted">
+            Hur förfrågningar blir offerter, hur länge de gäller och vart du får besked om nya förfrågningar
+          </p>
+          <div style={{ height: 16 }} />
+          <div className="form-grid">
+            <div className="form-field">
+              <label htmlFor="cat-capacity">Max portioner per dag (tomt = ingen gräns)</label>
+              <input id="cat-capacity" inputMode="numeric" value={settings.maxPortionsPerDay ?? ''}
+                onChange={(e) => updateSettings({ maxPortionsPerDay: e.target.value.trim() ? numberIn(e.target.value) : null })} />
+            </div>
+            <div className="form-field">
+              <label htmlFor="cat-valid">Offert gäller (dagar)</label>
+              <input id="cat-valid" inputMode="numeric" value={settings.offerValidDays}
+                onChange={(e) => updateSettings({ offerValidDays: numberIn(e.target.value) })} />
+            </div>
+            <div className="form-field">
+              <label htmlFor="cat-terms-days">Betalningsvillkor företag (dagar)</label>
+              <input id="cat-terms-days" inputMode="numeric" value={settings.paymentTermsDays}
+                onChange={(e) => updateSettings({ paymentTermsDays: numberIn(e.target.value) })} />
+            </div>
+            <div className="form-field">
+              <label htmlFor="cat-expiry">Obesvarad förfrågan går ut efter (timmar)</label>
+              <input id="cat-expiry" inputMode="numeric" value={settings.requestExpiryHours}
+                onChange={(e) => updateSettings({ requestExpiryHours: numberIn(e.target.value) })} />
+            </div>
+            <div className="form-field">
+              <label htmlFor="cat-notify-email">Nya förfrågningar till e-post</label>
+              <input id="cat-notify-email" type="email" placeholder="Platsens e-post" value={settings.notifyEmail ?? ''}
+                onChange={(e) => updateSettings({ notifyEmail: e.target.value.trim() || null })} />
+            </div>
+            <div className="form-field">
+              <label htmlFor="cat-notify-phone">Nya förfrågningar till mobil (sms)</label>
+              <input id="cat-notify-phone" type="tel" placeholder="070-123 45 67" value={settings.notifyPhone ?? ''}
+                onChange={(e) => updateSettings({ notifyPhone: e.target.value.trim() || null })} />
+            </div>
+          </div>
+          <div className="toggle-row">
+            <span className="toggle-row-label" id="cat-pickup-label">Avhämtning</span>
+            <button type="button" role="switch" aria-checked={settings.pickup} aria-labelledby="cat-pickup-label"
+              className="switch" onClick={() => updateSettings({ pickup: !settings.pickup })} />
+          </div>
+          <div className="toggle-row">
+            <span className="toggle-row-label" id="cat-delivery-label">Leverans</span>
+            <button type="button" role="switch" aria-checked={settings.delivery} aria-labelledby="cat-delivery-label"
+              className="switch" onClick={() => updateSettings({ delivery: !settings.delivery })} />
+          </div>
+          <div className="form-field">
+            <label htmlFor="cat-terms">Villkor (visas i offerten och signeras av kunden)</label>
+            <textarea id="cat-terms" rows={4} maxLength={4000} value={settings.terms}
+              onChange={(e) => updateSettings({ terms: e.target.value })} />
+          </div>
+        </section>
+
+        <section className="admin-card table-card">
           <div className="card-head">
             <div>
               <h2 className="card-title">Rabattnivåer</h2>
@@ -327,6 +497,7 @@ export default function CateringkalkylPage() {
               + Ny rabattnivå
             </button>
           </div>
+          {tierError && <p className="form-error" role="alert">{tierError}</p>}
           <div className="table-scroll">
             <table className="data-table">
               <thead>
@@ -565,19 +736,9 @@ export default function CateringkalkylPage() {
                   </p>
                 )}
 
-                <button
-                  type="button"
-                  className="catering-send-btn"
-                  onClick={() => setSentNotice(true)}
-                >
-                  Skicka cateringförfrågan
-                </button>
-                {sentNotice && (
-                  <p className="catering-summary-empty">
-                    Det här är en förhandsvisning — riktiga beställningar tas emot när
-                    kundsajtens cateringflöde är klart.
-                  </p>
-                )}
+                <p className="catering-summary-empty">
+                  Förhandsvisning - gästerna skickar förfrågan från kalkylen på webbplatsen.
+                </p>
               </>
             )}
           </aside>

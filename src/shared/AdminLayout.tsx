@@ -13,7 +13,8 @@ const NAV: { to: string; label: string; end?: boolean; feature?: string }[] = [
   // Bara för restauranger vars plan har matbeställning.
   { to: '/bestallningar', label: 'Beställningar', feature: 'ordering' },
   { to: '/meny', label: 'Meny' },
-  { to: '/cateringkalkyl', label: 'Cateringkalkyl' },
+  // Förfrågningar; inställningar och rabatter nås därifrån (/cateringkalkyl).
+  { to: '/catering', label: 'Catering', feature: 'catering' },
   { to: '/layout', label: 'Layout' },
   { to: '/installningar', label: 'Inställningar' },
 ]

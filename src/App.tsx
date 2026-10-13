@@ -5,6 +5,8 @@ import BokningarPage from './features/bokningar/BokningarPage'
 import BestallningarPage from './features/bestallningar/BestallningarPage'
 import MenyPage from './features/meny/MenyPage'
 import CateringkalkylPage from './features/cateringkalkyl/CateringkalkylPage'
+import CateringPage from './features/catering/CateringPage'
+import CateringRequestPage from './features/catering/CateringRequestPage'
 import LayoutEditorPage from './features/layout-editor/LayoutEditorPage'
 import InstallningarPage from './features/installningar/InstallningarPage'
 
@@ -32,6 +34,8 @@ function App() {
         <Route path="bestallningar" element={<BestallningarPage />} />
         <Route path="meny" element={<MenyPage />} />
         <Route path="cateringkalkyl" element={<CateringkalkylPage />} />
+        <Route path="catering" element={<CateringPage />} />
+        <Route path="catering/:locationId/:requestId" element={<CateringRequestPage />} />
         <Route path="layout" element={<LayoutEditorPage />} />
         <Route path="installningar" element={<InstallningarPage />} />
         <Route path="settings/payments" element={<StripeReturn />} />

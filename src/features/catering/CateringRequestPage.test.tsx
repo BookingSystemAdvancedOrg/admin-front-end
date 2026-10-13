@@ -93,6 +93,17 @@ describe('CateringRequestPage', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Offerten är skickad')
   })
 
+  it('will not send an offer line priced above 10 000 kr', async () => {
+    const user = userEvent.setup()
+    getRequest.mockResolvedValue(request())
+    renderAt()
+    const price = await screen.findByLabelText('Rad 1 pris')
+    await user.clear(price)
+    await user.type(price, '12000')
+    expect(screen.getByRole('alert')).toHaveTextContent('Pris per rad får vara högst')
+    expect(screen.getByRole('button', { name: 'Skicka offert' })).toBeDisabled()
+  })
+
   it('declines with a message after confirming', async () => {
     const user = userEvent.setup()
     getRequest.mockResolvedValue(request())

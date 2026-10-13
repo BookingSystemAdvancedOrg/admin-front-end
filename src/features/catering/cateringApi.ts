@@ -296,6 +296,8 @@ const ERRORS: Record<string, string> = {
 export function errorText(err: unknown): string {
   if (err instanceof ApiError) {
     if (ERRORS[err.message]) return ERRORS[err.message]
+    if (/^price may be at most/.test(err.message)) return 'Pris per rad får vara högst 10 000 kr.'
+    if (/^offer total may be at most/.test(err.message)) return 'Offerten är för stor (högst 500 000 kr totalt).'
     if (err.status === 400) return `Kontrollera uppgifterna: ${err.message}`
     if (err.status === 403) return 'Bara restaurangens ägare kan göra det.'
     if (err.status === 404) return 'Förfrågan finns inte.'

@@ -146,9 +146,16 @@ export function validateDishName(name: string): string | null {
   return name.trim() ? null : 'Namn krävs.'
 }
 
+/** Högsta pris på en produkt (rätt eller cateringrad) - samma skrivfelsspärr
+ * som servern (application shared/prices.py). */
+export const MAX_ITEM_PRICE_KR = 10_000
+
 export function validateDishPrice(price: number): string | null {
   if (!Number.isFinite(price) || price < 0) {
     return 'Pris måste vara noll eller mer.'
+  }
+  if (price > MAX_ITEM_PRICE_KR) {
+    return `Pris får vara högst ${MAX_ITEM_PRICE_KR.toLocaleString('sv-SE')} kr.`
   }
   // multipleOf 0.01 — flyttalsbrus tolereras på tiondels öre.
   if (Math.abs(price * 100 - Math.round(price * 100)) > 1e-6) {
@@ -185,6 +192,9 @@ function toFriendlyMenuError(err: unknown): Error {
 
   switch (err.status) {
     case 400:
+      if (/^price may be at most/.test(err.message)) {
+        return new ApiError(400, `Pris får vara högst ${MAX_ITEM_PRICE_KR.toLocaleString('sv-SE')} kr.`)
+      }
       return new ApiError(400, `Rätten avvisades av servern: ${err.message}`)
     case 401:
       return new ApiError(401, 'Du är inte inloggad längre. Logga in igen.')

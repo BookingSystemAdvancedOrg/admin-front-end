@@ -20,6 +20,7 @@ import {
   statusClass,
 } from './cateringApi'
 import type { CateringRequest, OfferInput } from './cateringApi'
+import { MAX_ITEM_PRICE_KR } from '../meny/menuApi'
 import './catering.css'
 
 const EDITABLE = ['requested', 'change_requested', 'offer_sent']
@@ -132,9 +133,11 @@ export default function CateringRequestPage() {
   const nextVersion = (request.currentOfferVersion ?? 0) + 1
   const setLine = (i: number, patch: Partial<OfferInput['lines'][number]>) =>
     setOffer({ ...offer, lines: offer.lines.map((l, n) => (n === i ? { ...l, ...patch } : l)) })
+  const overPriced = offer.lines.some((l) => l.unitPrice > MAX_ITEM_PRICE_KR)
   const offerValid =
     offer.lines.length > 0 &&
     offer.lines.every((l) => l.name.trim() && l.unitPrice >= 0 && Number.isInteger(l.quantity) && l.quantity >= 1) &&
+    !overPriced &&
     totals.total > 0
 
   return (
@@ -273,6 +276,11 @@ export default function CateringRequestPage() {
               <li className="catering-lines-total"><span>Totalt inkl. moms</span><span>{kronor(totals.total)}</span></li>
               <li className="cell-muted"><span>varav moms 12 %</span><span>{kronor(totals.vat)}</span></li>
             </ul>
+            {overPriced && (
+              <p className="form-error" role="alert">
+                Pris per rad får vara högst {MAX_ITEM_PRICE_KR.toLocaleString('sv-SE')} kr.
+              </p>
+            )}
             {error && <p className="form-error" role="alert">{error}</p>}
             {notice && <p className="save-notice" role="status">{notice}</p>}
             <span className="row-actions">

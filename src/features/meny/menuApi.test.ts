@@ -125,6 +125,12 @@ describe('validateDishPrice', () => {
     expect(validateDishPrice(129.55)).toBeNull()
   })
 
+  it('caps a price at 10 000 kr (typo guard, same as the server)', () => {
+    expect(validateDishPrice(10000)).toBeNull()
+    expect(validateDishPrice(10000.01)).toBe('Pris får vara högst 10\u00a0000 kr.')
+    expect(validateDishPrice(3500000)).not.toBeNull()
+  })
+
   it('rejects negatives and more than two decimals', () => {
     expect(validateDishPrice(-1)).not.toBeNull()
     expect(validateDishPrice(129.555)).not.toBeNull()

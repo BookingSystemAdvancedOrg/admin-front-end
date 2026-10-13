@@ -191,7 +191,12 @@ export function DishModal({
               placeholder="t.ex. 195"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
+              aria-invalid={price.trim() !== '' && priceError ? true : undefined}
+              aria-describedby={price.trim() !== '' && priceError ? 'dish-price-error' : undefined}
             />
+            {price.trim() !== '' && priceError && (
+              <p id="dish-price-error" className="form-error">{priceError}</p>
+            )}
           </div>
         </div>
 

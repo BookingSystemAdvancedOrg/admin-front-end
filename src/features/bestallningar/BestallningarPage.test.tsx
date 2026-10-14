@@ -67,13 +67,26 @@ describe('BestallningarPage', () => {
     expect(screen.getByText(/Tar emot beställningar · sista beställning 21:45/)).toBeInTheDocument()
   })
 
-  it('marks a pickup order ready (sends the SMS) and moves it', async () => {
+  it('starts a new order with one click (the confirmation SMS) - no ready before that', async () => {
     const user = userEvent.setup()
     listOrders.mockResolvedValue(list([order()]))
+    moveOrder.mockResolvedValue(order({ status: 'preparing' }))
+    render(<BestallningarPage />)
+    const nya = await screen.findByRole('region', { name: 'Nya' })
+    expect(within(nya).queryByRole('button', { name: 'Klar – skicka sms' })).toBeNull()
+    await user.click(within(nya).getByRole('button', { name: 'Påbörja – skicka sms' }))
+    expect(moveOrder).toHaveBeenCalledWith('loc-1', expect.objectContaining({ status: 'confirmed' }), 'preparing')
+    const tillagas = screen.getByRole('region', { name: 'Tillagas' })
+    expect(within(tillagas).getByRole('button', { name: 'Klar – skicka sms' })).toBeInTheDocument()
+  })
+
+  it('marks a pickup order ready (sends the SMS) and moves it', async () => {
+    const user = userEvent.setup()
+    listOrders.mockResolvedValue(list([order({ status: 'preparing' })]))
     moveOrder.mockResolvedValue(order({ status: 'ready' }))
     render(<BestallningarPage />)
     await user.click(await screen.findByRole('button', { name: 'Klar – skicka sms' }))
-    expect(moveOrder).toHaveBeenCalledWith('loc-1', expect.objectContaining({ status: 'confirmed' }), 'ready')
+    expect(moveOrder).toHaveBeenCalledWith('loc-1', expect.objectContaining({ status: 'preparing' }), 'ready')
     const klara = screen.getByRole('region', { name: 'Klara' })
     expect(within(klara).getByRole('button', { name: 'Hämtad' })).toBeInTheDocument()
   })

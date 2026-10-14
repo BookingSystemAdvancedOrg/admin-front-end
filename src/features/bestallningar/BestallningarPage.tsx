@@ -34,8 +34,10 @@ function where(order: Order): string {
 
 /**
  * Köks-/kassaskärmen för matbeställningar: dagens betalda beställningar i
- * tre kolumner (Nya, Tillagas, Klara). "Klar" på en avhämtning skickar
- * sms:et till gästen; "Avbryt" återbetalar via Stripe (bekräftas i två
+ * tre kolumner (Nya, Tillagas, Klara). Två klick per beställning:
+ * "Påbörja" skickar gästens bekräftelse-sms (restaurangen har börjat, klar
+ * ca HH:MM räknat från klicket) och "Klar" på en avhämtning skickar sms:et
+ * att den kan hämtas. "Avbryt" återbetalar via Stripe (bekräftas i två
  * steg). Listan hämtas om var tionde sekund; nya beställningar markeras.
  */
 export default function BestallningarPage() {
@@ -182,12 +184,12 @@ export default function BestallningarPage() {
         </p>
         <div className="order-actions">
           {order.status === 'confirmed' && (
-            <button type="button" className="btn outline square" disabled={isBusy}
+            <button type="button" className="btn primary square" disabled={isBusy}
               onClick={() => void move(order, 'preparing')}>
-              Börja tillaga
+              Påbörja – skicka sms
             </button>
           )}
-          {(order.status === 'confirmed' || order.status === 'preparing') && (
+          {order.status === 'preparing' && (
             <button type="button" className="btn primary square" disabled={isBusy}
               onClick={() => void move(order, 'ready')}>
               {order.mode === 'pickup' ? 'Klar – skicka sms' : 'Klar att servera'}

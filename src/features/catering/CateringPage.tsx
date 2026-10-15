@@ -48,7 +48,7 @@ export default function CateringPage() {
         title="Catering"
         subtitle={waiting ? `${waiting} väntar på dig` : undefined}
         actions={
-          <Link className="btn outline square" to="/cateringkalkyl">
+          <Link className="btn outline square" to="/cateringkalkyl" data-tour="catering-settings">
             Inställningar och rabatter
           </Link>
         }
@@ -57,7 +57,7 @@ export default function CateringPage() {
         {!locationId ? (
           <p className="cell-muted">{resolving ? 'Hämtar platsen…' : 'Ingen plats är vald.'}</p>
         ) : (
-          <section className="admin-card table-card">
+          <section className="admin-card table-card" data-tour="catering-list">
             <div className="card-head">
               <h2 className="card-title">Förfrågningar och beställningar</h2>
               <select className="compact-select" aria-label="Visa" value={filter} onChange={(e) => setFilter(e.target.value as Filter)}>

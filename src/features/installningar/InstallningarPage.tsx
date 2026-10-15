@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { InfoTooltip } from '../../shared/InfoTooltip'
@@ -107,6 +107,12 @@ export default function InstallningarPage() {
   const [searchParams] = useSearchParams()
   const stripeReturn = searchParams.get('stripe')
   const [tab, setTab] = useState<SettingsTab>(() => initialTab(stripeReturn))
+  // Länkar (och guiden) kan öppna en flik via #flik i adressen.
+  const { hash } = useLocation()
+  useEffect(() => {
+    const fromHash = hash.replace(/^#/, '') as SettingsTab
+    if (fromHash in TAB_LABEL) setTab(fromHash)
+  }, [hash])
   function openTab(next: SettingsTab) {
     setTab(next)
     window.history.replaceState(null, '', `#${next}`)
@@ -382,6 +388,7 @@ export default function InstallningarPage() {
             <button
               type="button"
               className="btn primary square"
+              data-tour="settings-save"
               disabled={savingLocation || resolvingLocation || !isOwner}
               title={isOwner ? undefined : 'Bara ägaren kan ändra restaurangens uppgifter'}
               onClick={handleSaveAll}
@@ -400,6 +407,7 @@ export default function InstallningarPage() {
                 key={t}
                 type="button"
                 className={tab === t ? 'active' : ''}
+                data-tour={`settings-tab-${t}`}
                 aria-current={tab === t ? 'page' : undefined}
                 onClick={() => openTab(t)}
               >

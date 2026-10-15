@@ -123,7 +123,7 @@ export default function BestallningarPage() {
   const paused = ordering?.reason === 'paused'
 
   const pauseControls = (
-    <div className="orders-pause">
+    <div className="orders-pause" data-tour="orders-pause">
       {paused ? (
         <button type="button" className="btn outline square" onClick={() => void pause(0)}>
           Ta emot beställningar igen
@@ -255,7 +255,7 @@ export default function BestallningarPage() {
             {orders === null && !loadError ? (
               <p className="cell-muted">Hämtar beställningar…</p>
             ) : (
-              <div className="orders-board">
+              <div className="orders-board" data-tour="orders-board">
                 {COLUMNS.map((column) => {
                   const items = active.filter((o) => o.status === column.status)
                   return (

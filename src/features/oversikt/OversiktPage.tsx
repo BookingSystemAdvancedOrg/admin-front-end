@@ -216,7 +216,7 @@ export default function OversiktPage() {
             )}
           </section>
 
-          <section className="admin-card activity-card" aria-label="Kom igång">
+          <section className="admin-card activity-card" aria-label="Kom igång" data-tour="getting-started">
             <div className="card-head">
               <h2 className="card-title">Kom igång</h2>
               {!loading && (

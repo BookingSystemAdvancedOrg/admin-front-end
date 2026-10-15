@@ -1226,6 +1226,7 @@ export default function LayoutEditorPage() {
                 <button
                   type="button"
                   className="btn primary"
+                  data-tour="layout-publish"
                   disabled={saving || publishing || !canActivate}
                   title={
                     canActivate
@@ -1270,7 +1271,7 @@ export default function LayoutEditorPage() {
           </p>
         )}
         <div className="editor-row">
-          <div className="admin-card editor-toolbar">
+          <div className="admin-card editor-toolbar" data-tour="layout-tools">
             <ToolButton glyph="↖" caption="Välj" title="Välj, flytta och ändra storlek" active={tool === 'select'} onClick={() => pickTool('select')} />
             <ToolButton glyph="▦" caption="Mark" title="Rita mark — väggar skapas runt om automatiskt" active={tool === 'ground'} disabled={readOnly} onClick={() => pickTool('ground')} />
             <ToolButton glyph="▬" caption="Vägg" title="Rita vägg — klicka och dra" active={tool === 'wall'} disabled={readOnly} onClick={() => pickTool('wall')} />

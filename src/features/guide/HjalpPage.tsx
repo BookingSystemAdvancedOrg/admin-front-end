@@ -1,10 +1,7 @@
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useTenant } from '../../shared/tenant'
 import { useGuide } from './Guide'
-import { GUIDE_STEPS } from './steps'
-
-/** Delar som bara finns med vissa planer (samma som i menyn). */
-const FEATURE_OF: Record<string, string> = { bestallningar: 'ordering', catering: 'catering' }
+import { stepsFor } from './steps'
 
 /**
  * Hjälp: starta introduktionsguiden igen och läs vad varje del av appen gör
@@ -13,12 +10,10 @@ const FEATURE_OF: Record<string, string> = { bestallningar: 'ordering', catering
 export default function HjalpPage() {
   const { start } = useGuide()
   const { tenant } = useTenant()
-  const sections = GUIDE_STEPS.filter(
-    (s) =>
-      s.target?.startsWith('nav-') &&
-      s.id !== 'hjalp' &&
-      (!FEATURE_OF[s.id] || Boolean(tenant?.entitlements.features[FEATURE_OF[s.id]])),
-  )
+  const sections = stepsFor({
+    isOwner: tenant?.role === 'owner_user',
+    features: tenant?.entitlements.features ?? {},
+  }).filter((s) => s.section)
 
   return (
     <>
@@ -28,7 +23,7 @@ export default function HjalpPage() {
           <div className="card-head">
             <div>
               <h2 className="card-title">Guiden</h2>
-              <p className="cell-muted">En kort rundtur som visar var allt finns. Tar ungefär en minut.</p>
+              <p className="cell-muted">En rundtur genom appen, sida för sida. Tar ett par minuter.</p>
             </div>
             <button type="button" className="btn primary square" onClick={start}>
               Starta guiden
@@ -41,7 +36,7 @@ export default function HjalpPage() {
           <ul className="help-sections">
             {sections.map((s) => (
               <li key={s.id}>
-                <strong>{s.title}</strong>
+                <strong>{s.section}</strong>
                 <span>{s.text}</span>
               </li>
             ))}

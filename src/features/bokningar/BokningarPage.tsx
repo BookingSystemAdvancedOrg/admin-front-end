@@ -129,6 +129,7 @@ export default function BokningarPage() {
           <button
             type="button"
             className="btn primary square"
+            data-tour="booking-new"
             disabled={!locationId}
             onClick={() => setCreating(true)}
           >
@@ -139,7 +140,7 @@ export default function BokningarPage() {
       <div className="admin-main">
         <section className="admin-card table-card">
           <div className="card-head bookings-head">
-            <div className="day-nav">
+            <div className="day-nav" data-tour="booking-day">
               <button
                 type="button"
                 className="btn outline square day-step"
@@ -186,7 +187,7 @@ export default function BokningarPage() {
             </p>
           )}
 
-          <div className="table-scroll">
+          <div className="table-scroll" data-tour="booking-list">
             <table className="data-table bookings-table">
               <thead>
                 <tr>

@@ -58,7 +58,15 @@ export function AdminLayout() {
   const locations = tenant?.locations ?? []
 
   return (
-    <GuideProvider user={sub ?? email ?? null} autoStart={status === 'ready' && import.meta.env.MODE !== 'test'}>
+    <GuideProvider
+      user={sub ?? email ?? null}
+      context={{
+        isOwner: tenant?.role === 'owner_user',
+        features: tenant?.entitlements.features ?? {},
+        locations: locations.length,
+      }}
+      autoStart={status === 'ready' && import.meta.env.MODE !== 'test'}
+    >
     <div className="admin-shell">
       <aside className="admin-sidebar">
         <div className="admin-logo">

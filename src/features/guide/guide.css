@@ -36,6 +36,8 @@
 
 /* Liten pil mot målet. */
 .guide-bubble--right::before,
+.guide-bubble--left::before,
+.guide-bubble--above::before,
 .guide-bubble--below::before {
   content: '';
   position: absolute;
@@ -52,6 +54,16 @@
 
 .guide-bubble--below::before {
   top: -7px;
+  left: 24px;
+}
+
+.guide-bubble--left::before {
+  right: -7px;
+  top: calc(50% - 7px);
+}
+
+.guide-bubble--above::before {
+  bottom: -7px;
   left: 24px;
 }
 

@@ -244,6 +244,7 @@ export default function MenyPage() {
         title="Meny"
         actions={
           <button
+            data-tour="menu-add"
             type="button"
             className="btn primary"
             disabled={!canEdit}
@@ -361,7 +362,7 @@ export default function MenyPage() {
                       </td>
                     </tr>
                   )}
-                {filteredDishes.map((d) => (
+                {filteredDishes.map((d, index) => (
                   <tr key={d.id}>
                     <td>
                       <DishImage src={d.image} alt={d.name} />
@@ -382,6 +383,7 @@ export default function MenyPage() {
                       <button
                         type="button"
                         role="switch"
+                        data-tour={index === 0 ? 'menu-row-toggle' : undefined}
                         aria-checked={d.active}
                         aria-label={`${d.name} aktiv`}
                         className="switch"
@@ -390,7 +392,7 @@ export default function MenyPage() {
                       />
                     </td>
                     <td>
-                      <span className="row-actions">
+                      <span className="row-actions" data-tour={index === 0 ? 'menu-row-actions' : undefined}>
                         <button
                           type="button"
                           className="link-action"

@@ -164,3 +164,7 @@ ul {
 button {
   font: inherit;
 }
+
+a {
+  color: var(--accent-ink);
+}

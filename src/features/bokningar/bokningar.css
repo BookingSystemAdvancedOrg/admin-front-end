@@ -81,8 +81,16 @@
   color: var(--ink);
 }
 
-.booking-row {
+/* Tabellrader - inte Översiktens flex-rad med samma klassnamn (admin.css). */
+.bookings-table .booking-row {
+  display: table-row;
+  padding: 0;
+  border: 0;
   cursor: pointer;
+}
+
+.bookings-table {
+  min-width: 640px;
 }
 
 .booking-row:hover td,

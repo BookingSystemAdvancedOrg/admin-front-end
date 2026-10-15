@@ -81,11 +81,36 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * Personal (staff_user) ser sin plats men kan inte ändra den eller hantera
  * andra användare — de rutterna är bara för ägare.
  */
+/** Flikarna - en sektion i taget i stället för en lång sida. */
+type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'dagar' | 'bord'
+
+const TAB_LABEL: Record<SettingsTab, string> = {
+  profil: 'Restaurang',
+  personal: 'Personal',
+  betalningar: 'Betalningar',
+  notiser: 'Notiser',
+  avbokning: 'Avbokning',
+  bestallning: 'Beställning',
+  dagar: 'Avvikande dagar',
+  bord: 'Bord',
+}
+
+function initialTab(stripeReturn: string | null): SettingsTab {
+  if (stripeReturn) return 'betalningar'
+  const fromHash = window.location.hash.replace(/^#/, '') as SettingsTab
+  return fromHash in TAB_LABEL ? fromHash : 'profil'
+}
+
 export default function InstallningarPage() {
   const { sub, groups } = useAuth()
   const { tenant, refresh: refreshTenant } = useTenant()
   const [searchParams] = useSearchParams()
   const stripeReturn = searchParams.get('stripe')
+  const [tab, setTab] = useState<SettingsTab>(() => initialTab(stripeReturn))
+  function openTab(next: SettingsTab) {
+    setTab(next)
+    window.history.replaceState(null, '', `#${next}`)
+  }
   const [profile, setProfile] = useState<RestaurantProfile>(EMPTY_PROFILE)
   const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE)
   const [businessHours, setBusinessHours] =
@@ -352,7 +377,7 @@ export default function InstallningarPage() {
       <AdminTopbar
         title="Inställningar"
         actions={
-          <span className="row-actions">
+          tab === 'profil' && <span className="row-actions">
             {saved && <span className="save-notice">Sparat</span>}
             <button
               type="button"
@@ -367,7 +392,23 @@ export default function InstallningarPage() {
         }
       />
       <div className="admin-main">
-        <section className="admin-card table-card">
+        <nav className="settings-tabs" aria-label="Inställningar">
+          {(Object.keys(TAB_LABEL) as SettingsTab[])
+            .filter((t) => (t === 'personal' ? isOwner : t === 'bestallning' ? Boolean(tenant?.entitlements.features.ordering) : true))
+            .map((t) => (
+              <button
+                key={t}
+                type="button"
+                className={tab === t ? 'active' : ''}
+                aria-current={tab === t ? 'page' : undefined}
+                onClick={() => openTab(t)}
+              >
+                {TAB_LABEL[t]}
+              </button>
+            ))}
+        </nav>
+        {/* Flikar döljs (hidden) i stället för att tas bort - osparade ändringar ligger kvar. */}
+        <section className="admin-card table-card" hidden={tab !== 'profil'}>
           <div className="card-head">
             <div>
               <h2 className="card-title">Restaurangprofil</h2>
@@ -376,7 +417,7 @@ export default function InstallningarPage() {
                   ? 'Letar efter restaurangens plats…'
                   : locationId
                     ? isOwner
-                      ? 'Uppgifter för den valda platsen. Ändringar sparas med "Spara ändringar".'
+                      ? 'Namn, kontakt och öppettider. Spara med knappen uppe till höger.'
                       : 'Uppgifter för din plats. Bara ägaren kan ändra dem.'
                     : isOwner
                       ? 'Restaurangen har ingen plats än. Fyll i uppgifterna och spara för att skapa den första.'
@@ -489,7 +530,7 @@ export default function InstallningarPage() {
         </section>
 
         {isOwner && (
-        <section className="admin-card table-card">
+        <section className="admin-card table-card" hidden={tab !== 'personal'}>
           <div className="card-head">
             <div>
               <h2 className="card-title">Personal &amp; behörigheter</h2>
@@ -607,7 +648,7 @@ export default function InstallningarPage() {
         </section>
         )}
 
-        <div className="settings-row">
+        <div className="settings-row" hidden={tab !== 'betalningar'}>
           {tenant && (
             <PaymentsCard
               tenant={tenant}
@@ -616,7 +657,9 @@ export default function InstallningarPage() {
               onRefresh={refreshTenant}
             />
           )}
+        </div>
 
+        <div className="settings-row" hidden={tab !== 'notiser'}>
           {tenant && (
             <NotificationsCard
               key={`${tenant.tenantId}:${JSON.stringify(tenant.notifications)}:${tenant.senderName ?? ''}`}
@@ -626,7 +669,7 @@ export default function InstallningarPage() {
           )}
         </div>
 
-        <div className="settings-row">
+        <div className="settings-row" hidden={tab !== 'avbokning'}>
           <CancellationPolicyCard
             key={locationId ?? 'none'}
             locationId={locationId}
@@ -636,7 +679,7 @@ export default function InstallningarPage() {
         </div>
 
         {tenant?.entitlements.features.ordering && (
-          <div className="settings-row">
+          <div className="settings-row" hidden={tab !== 'bestallning'}>
             <OrderingCard
               key={locationId ?? 'none'}
               locationId={locationId}
@@ -646,11 +689,11 @@ export default function InstallningarPage() {
           </div>
         )}
 
-        <div className="settings-row">
+        <div className="settings-row" hidden={tab !== 'dagar'}>
           <SpecialDaysCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
         </div>
 
-        <div className="settings-row">
+        <div className="settings-row" hidden={tab !== 'bord'}>
           <TableRulesCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
         </div>
       </div>

@@ -195,14 +195,12 @@ export default function BokningarPage() {
                   <th>Pers</th>
                   <th>Bord</th>
                   <th>Status</th>
-                  <th>Avgift</th>
-                  <th>Källa</th>
                 </tr>
               </thead>
               <tbody>
                 {!loading && visible.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="cell-muted">
+                    <td colSpan={5} className="cell-muted">
                       Inga bokningar den här dagen.
                     </td>
                   </tr>
@@ -225,6 +223,9 @@ export default function BokningarPage() {
                       <span className="cell-strong">{r.customerName || 'Gäst'}</span>
                       {r.notes && <span className="note-dot" title={r.notes}> ✎</span>}
                       {r.customerPhone && <div className="cell-muted">{r.customerPhone}</div>}
+                      {r.source && r.source !== 'online' && (
+                        <div className="cell-muted">{SOURCE_LABEL[r.source]}</div>
+                      )}
                     </td>
                     <td>{r.partySize}</td>
                     <td>{tableNames(r.tableIds, labels)}</td>
@@ -235,9 +236,8 @@ export default function BokningarPage() {
                       {r.cardOnFile && r.status === 'reserved' && (
                         <span className="cell-muted" title="Kort sparat (kortgaranti)"> 💳</span>
                       )}
+                      {feeSummary(r) && <div className="cell-muted">{feeSummary(r)}</div>}
                     </td>
-                    <td className="cell-muted">{feeSummary(r) ?? '—'}</td>
-                    <td className="cell-muted">{r.source ? SOURCE_LABEL[r.source] : '—'}</td>
                   </tr>
                 ))}
               </tbody>

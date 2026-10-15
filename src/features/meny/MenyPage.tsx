@@ -279,7 +279,7 @@ export default function MenyPage() {
           </div>
           <div className="meny-filters">
             <div className="form-field">
-              <label htmlFor="menu-filter-name">Namn</label>
+              <label htmlFor="menu-filter-name">Sök</label>
               <input
                 id="menu-filter-name"
                 placeholder="Sök på namn…"
@@ -315,26 +315,6 @@ export default function MenyPage() {
                 <option value="active">Aktiva</option>
                 <option value="inactive">Inaktiva</option>
               </select>
-            </div>
-            <div className="form-field">
-              <label htmlFor="menu-filter-price-min">Pris från</label>
-              <input
-                id="menu-filter-price-min"
-                inputMode="decimal"
-                placeholder="0"
-                value={filterPriceMin}
-                onChange={(e) => setFilterPriceMin(e.target.value)}
-              />
-            </div>
-            <div className="form-field">
-              <label htmlFor="menu-filter-price-max">Pris till</label>
-              <input
-                id="menu-filter-price-max"
-                inputMode="decimal"
-                placeholder="Valfritt"
-                value={filterPriceMax}
-                onChange={(e) => setFilterPriceMax(e.target.value)}
-              />
             </div>
             {hasActiveFilters && (
               <div className="form-field meny-filters-clear">

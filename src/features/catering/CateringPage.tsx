@@ -60,7 +60,7 @@ export default function CateringPage() {
           <section className="admin-card table-card">
             <div className="card-head">
               <h2 className="card-title">Förfrågningar och beställningar</h2>
-              <select aria-label="Visa" value={filter} onChange={(e) => setFilter(e.target.value as Filter)}>
+              <select className="compact-select" aria-label="Visa" value={filter} onChange={(e) => setFilter(e.target.value as Filter)}>
                 <option value="aktiva">Pågående</option>
                 <option value="alla">Alla</option>
               </select>

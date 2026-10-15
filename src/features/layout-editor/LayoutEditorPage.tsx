@@ -1193,7 +1193,7 @@ export default function LayoutEditorPage() {
   return (
     <>
       <AdminTopbar
-        title="Live Layout Editor"
+        title="Layout"
         actions={
           <span className="row-actions">
             <span className="cell-muted">{versionLabel}</span>
@@ -1278,8 +1278,8 @@ export default function LayoutEditorPage() {
             <ToolButton glyph="◐" caption="Entré" title="Entré — placeras på en vägg" active={tool === 'entrance'} disabled={readOnly} onClick={() => pickTool('entrance')} />
             <ToolButton glyph="◑" caption="Kök" title="Kökets ingång — placeras på en vägg" active={tool === 'kitchen'} disabled={readOnly} onClick={() => pickTool('kitchen')} />
             <ToolButton glyph="▣" caption="Kassa" title="Placera kassan — klicka" active={tool === 'counter'} disabled={readOnly} onClick={() => pickTool('counter')} />
-            <ToolButton glyph="■" caption="Bord" title="Lägg till fyrkantigt bord" active={tool === 'add-square'} disabled={readOnly} onClick={() => addTable('square')} />
-            <ToolButton glyph="●" caption="Bord" title="Lägg till runt bord" active={tool === 'add-round'} disabled={readOnly} onClick={() => addTable('round')} />
+            <ToolButton glyph="■" caption="Fyrkant" title="Lägg till fyrkantigt bord" active={tool === 'add-square'} disabled={readOnly} onClick={() => addTable('square')} />
+            <ToolButton glyph="●" caption="Runt" title="Lägg till runt bord" active={tool === 'add-round'} disabled={readOnly} onClick={() => addTable('round')} />
             <ToolButton glyph="✕" caption="Radera" title="Radera — klicka på ett element" active={tool === 'erase'} disabled={readOnly} onClick={() => { setHandMode(false); setTool((t) => (t === 'erase' ? 'select' : 'erase')) }} />
           </div>
 

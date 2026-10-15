@@ -269,6 +269,29 @@ export default function CateringkalkylPage() {
       <main className="admin-main">
         {saveError && <p className="form-error" role="alert">{saveError}</p>}
         {saveNotice && <p className="save-notice" role="status">{saveNotice}</p>}
+        {/* Huvudreglaget först: syns catering på webbplatsen eller inte. */}
+        <section className="admin-card table-card catering-visibility">
+          <div className="toggle-row">
+            <div>
+              <h2 className="card-title">Catering på webbplatsen</h2>
+              <p className="cell-muted">
+                {orderRules.visibleToCustomers
+                  ? 'På - gästerna ser kalkylen och kan skicka förfrågningar. Spara efter ändringar.'
+                  : 'Av - gästerna ser inte catering. Slå på och tryck Spara inställningar.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={orderRules.visibleToCustomers}
+              aria-label="Visa kalkylen för kunder på webbplatsen"
+              className="switch"
+              onClick={() =>
+                updateOrderRules({ visibleToCustomers: !orderRules.visibleToCustomers })
+              }
+            />
+          </div>
+        </section>
         <div className="settings-row">
           <section className="admin-card table-card">
             <h2 className="card-title">Beställningsregler</h2>
@@ -332,20 +355,6 @@ export default function CateringkalkylPage() {
                   ))}
                 </select>
               </div>
-            </div>
-            <div style={{ height: 16 }} />
-            <div className="toggle-row">
-              <span className="toggle-row-label">Visa kalkylen för kunder på webbplatsen</span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={orderRules.visibleToCustomers}
-                aria-label="Visa kalkylen för kunder på webbplatsen"
-                className="switch"
-                onClick={() =>
-                  updateOrderRules({ visibleToCustomers: !orderRules.visibleToCustomers })
-                }
-              />
             </div>
             <div style={{ height: 16 }} />
             <p className="calc-hint">
@@ -464,6 +473,7 @@ export default function CateringkalkylPage() {
                 onChange={(e) => updateSettings({ notifyPhone: e.target.value.trim() || null })} />
             </div>
           </div>
+          <div className="toggle-stack">
           <div className="toggle-row">
             <span className="toggle-row-label" id="cat-pickup-label">Avhämtning</span>
             <button type="button" role="switch" aria-checked={settings.pickup} aria-labelledby="cat-pickup-label"
@@ -473,6 +483,7 @@ export default function CateringkalkylPage() {
             <span className="toggle-row-label" id="cat-delivery-label">Leverans</span>
             <button type="button" role="switch" aria-checked={settings.delivery} aria-labelledby="cat-delivery-label"
               className="switch" onClick={() => updateSettings({ delivery: !settings.delivery })} />
+          </div>
           </div>
           <div className="form-field">
             <label htmlFor="cat-terms">Villkor (visas i offerten och signeras av kunden)</label>
@@ -568,6 +579,8 @@ export default function CateringkalkylPage() {
           </div>
         </section>
 
+        <details className="admin-card catering-preview-details">
+          <summary>Förhandsvisning - så ser gästen kalkylen</summary>
         <div className="catering-preview-row">
           <section className="admin-card table-card catering-preview-card">
             <h2 className="card-title">Förhandsvisning · så ser kunden kalkylen</h2>
@@ -743,6 +756,7 @@ export default function CateringkalkylPage() {
             )}
           </aside>
         </div>
+        </details>
       </main>
 
       {tierModal && (

@@ -3,21 +3,22 @@ import { BrandMark, BrandWordmark } from './BrandMark'
 import { useAuth } from '../features/auth/useAuth'
 import { primaryGroupLabel } from '../features/installningar/usersApi'
 import { selectLocation, useTenant } from './tenant'
+import { GuideProvider } from '../features/guide/Guide'
 import type { TenantErrorCode } from './tenant'
 import './admin.css'
 
 // Sidebar-länkarna. `end: true` gör att '/' bara markeras aktiv på exakt
 // träff, annars skulle den lysa upp på alla undersidor också.
-const NAV: { to: string; label: string; end?: boolean; feature?: string }[] = [
-  { to: '/', label: 'Översikt', end: true },
-  { to: '/bokningar', label: 'Bokningar' },
+const NAV: { to: string; label: string; tour: string; end?: boolean; feature?: string }[] = [
+  { to: '/', label: 'Översikt', tour: 'nav-oversikt', end: true },
+  { to: '/bokningar', label: 'Bokningar', tour: 'nav-bokningar' },
   // Bara för restauranger vars plan har matbeställning.
-  { to: '/bestallningar', label: 'Beställningar', feature: 'ordering' },
-  { to: '/meny', label: 'Meny' },
+  { to: '/bestallningar', label: 'Beställningar', tour: 'nav-bestallningar', feature: 'ordering' },
+  { to: '/meny', label: 'Meny', tour: 'nav-meny' },
   // Förfrågningar; inställningar och rabatter nås därifrån (/cateringkalkyl).
-  { to: '/catering', label: 'Catering', feature: 'catering' },
-  { to: '/layout', label: 'Layout' },
-  { to: '/installningar', label: 'Inställningar' },
+  { to: '/catering', label: 'Catering', tour: 'nav-catering', feature: 'catering' },
+  { to: '/layout', label: 'Layout', tour: 'nav-layout' },
+  { to: '/installningar', label: 'Inställningar', tour: 'nav-installningar' },
 ]
 
 const TENANT_ERROR: Record<TenantErrorCode, { title: string; text: string }> = {
@@ -49,7 +50,7 @@ const TENANT_ERROR: Record<TenantErrorCode, { title: string; text: string }> = {
  * en plats till en annan.
  */
 export function AdminLayout() {
-  const { email, groups, logout } = useAuth()
+  const { email, sub, groups, logout } = useAuth()
   const { tenant, status, error, locationId, refresh } = useTenant()
   // Visningsnamn = det som står innan '@' i e-posten, t.ex. "anna@..." -> "anna".
   const displayName = email ? email.split('@')[0] : 'Personal'
@@ -57,6 +58,7 @@ export function AdminLayout() {
   const locations = tenant?.locations ?? []
 
   return (
+    <GuideProvider user={sub ?? email ?? null} autoStart={status === 'ready' && import.meta.env.MODE !== 'test'}>
     <div className="admin-shell">
       <aside className="admin-sidebar">
         <div className="admin-logo">
@@ -73,7 +75,7 @@ export function AdminLayout() {
         </div>
 
         {locations.length > 1 && (
-          <div className="admin-location-picker">
+          <div className="admin-location-picker" data-tour="location-picker">
             <label htmlFor="admin-location">Plats</label>
             <select
               id="admin-location"
@@ -97,6 +99,7 @@ export function AdminLayout() {
               key={item.to}
               to={item.to}
               end={item.end}
+              data-tour={item.tour}
               className={({ isActive }) =>
                 isActive ? 'admin-nav-item active' : 'admin-nav-item'
               }
@@ -107,6 +110,16 @@ export function AdminLayout() {
         </nav>
 
         <div className="admin-sidebar-spacer" />
+
+        <nav className="admin-nav admin-nav--bottom" aria-label="Hjälp">
+          <NavLink
+            to="/hjalp"
+            data-tour="nav-hjalp"
+            className={({ isActive }) => (isActive ? 'admin-nav-item active' : 'admin-nav-item')}
+          >
+            Hjälp
+          </NavLink>
+        </nav>
 
         <div className="admin-user">
           <div className="admin-user-row" title={email ?? undefined}>
@@ -159,5 +172,6 @@ export function AdminLayout() {
         )}
       </div>
     </div>
+    </GuideProvider>
   )
 }

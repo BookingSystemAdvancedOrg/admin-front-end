@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { QuickLinkIcon } from './QuickLinkIcon'
+import type { QuickLinkIconName } from './QuickLinkIcon'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { currentLocation, stripeStage, useTenant } from '../../shared/tenant'
 import { getLocation } from '../installningar/locationApi'
@@ -19,11 +21,11 @@ import {
 import type { Reservation } from '../bokningar/bookingsApi'
 
 // Genvägskorten längst ned som länkar till de andra sidorna.
-const QUICK_LINKS = [
-  { to: '/meny', icon: '🍽', label: 'Hantera meny' },
-  { to: '/layout', icon: '📐', label: 'Redigera layout' },
-  { to: '/bokningar', icon: '📅', label: 'Se alla bokningar' },
-  { to: '/installningar', icon: '⚙️', label: 'Inställningar' },
+const QUICK_LINKS: { to: string; icon: QuickLinkIconName; label: string }[] = [
+  { to: '/meny', icon: 'menu', label: 'Hantera meny' },
+  { to: '/layout', icon: 'layout', label: 'Redigera layout' },
+  { to: '/bokningar', icon: 'bookings', label: 'Se alla bokningar' },
+  { to: '/installningar', icon: 'settings', label: 'Inställningar' },
 ]
 
 interface OverviewData {
@@ -225,7 +227,7 @@ export default function OversiktPage() {
             <Link key={link.to + link.label} className="admin-card quick-link" to={link.to}>
               <span className="quick-link-label">
                 <span className="quick-link-icon" aria-hidden="true">
-                  {link.icon}
+                  <QuickLinkIcon name={link.icon} />
                 </span>
                 {link.label}
               </span>

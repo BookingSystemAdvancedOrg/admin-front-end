@@ -66,8 +66,11 @@ export function GuideProvider({
   const location = useLocation()
   const [steps, setSteps] = useState<GuideStep[] | null>(null)
   const [index, setIndex] = useState(0)
-  /** Steget som syns: satt först när sidan är rätt och målet hittat. */
-  const [shown, setShown] = useState<GuideStep | null>(null)
+  /**
+   * Steget som syns. Ligger kvar medan nästa steg laddas (sidbyte), så att
+   * ramen och bubblan kan glida från förra målet till nästa.
+   */
+  const [shown, setShown] = useState<{ step: GuideStep; number: number } | null>(null)
   const direction = useRef<1 | -1>(1)
   const navigatedFor = useRef<string | null>(null)
   const contextRef = useRef(context)
@@ -110,26 +113,24 @@ export function GuideProvider({
   const step = steps?.[index] ?? null
   useEffect(() => {
     if (!steps || !step) return
-    setShown(null)
     if (step.route && !routeMatches(step.route, location.pathname, location.hash)) {
       navigatedFor.current = step.id
+      // Ny sida: börja överst, som när man klickar i menyn.
+      if (step.route.split('#')[0] !== location.pathname) window.scrollTo({ top: 0 })
       navigate(step.route)
       return
     }
     const wait = navigatedFor.current === step.id ? TARGET_WAIT_MS : SAME_PAGE_WAIT_MS
-    if (!step.target) {
-      setShown(step)
-      return
-    }
-    if (targetOf(step)) {
-      setShown(step)
+    const show = () => setShown({ step, number: index + 1 })
+    if (!step.target || targetOf(step)) {
+      show()
       return
     }
     const startedAt = Date.now()
     const timer = window.setInterval(() => {
       if (targetOf(step)) {
         window.clearInterval(timer)
-        setShown(step)
+        show()
       } else if (Date.now() - startedAt > wait) {
         window.clearInterval(timer)
         const next = index + direction.current
@@ -141,43 +142,47 @@ export function GuideProvider({
   }, [steps, step, index, location.pathname, location.hash, navigate, finish])
 
   const api = useMemo(() => ({ start, active: steps !== null }), [start, steps])
+  const waiting = !shown || shown.step !== step
 
   return (
     <GuideCtx.Provider value={api}>
       {children}
       {steps && (
-        <div className="guide-layer">
-          {shown ? (
-            <GuideBubble
-              step={shown}
-              number={index + 1}
-              total={steps.length}
-              onNext={() => {
-                direction.current = 1
-                if (index + 1 < steps.length) setIndex(index + 1)
-                else finish()
-              }}
-              onBack={
-                index > 0
-                  ? () => {
-                      direction.current = -1
-                      setIndex(index - 1)
-                    }
-                  : undefined
-              }
-              onSkip={finish}
-            />
-          ) : (
-            <div className="guide-dim" aria-hidden="true" />
-          )}
-        </div>
+        <GuideOverlay
+          step={shown?.step ?? null}
+          waiting={waiting}
+          number={shown?.number ?? 1}
+          total={steps.length}
+          onNext={() => {
+            direction.current = 1
+            if (index + 1 < steps.length) setIndex(index + 1)
+            else finish()
+          }}
+          onBack={
+            index > 0
+              ? () => {
+                  direction.current = -1
+                  setIndex(index - 1)
+                }
+              : undefined
+          }
+          onSkip={finish}
+        />
       )}
     </GuideCtx.Provider>
   )
 }
 
+interface Rect {
+  top: number
+  left: number
+  width: number
+  height: number
+}
+
 interface Placement {
-  spot: { top: number; left: number; width: number; height: number } | null
+  /** Det upplysta området; mittsteg = en punkt mitt på skärmen (allt tonas ner). */
+  spot: Rect
   bubble: { top: number; left: number }
   side: 'right' | 'left' | 'below' | 'above' | 'center'
 }
@@ -186,17 +191,22 @@ const BUBBLE_WIDTH = 320
 const GAP = 14
 const PAD = 6
 
-function place(step: GuideStep, bubbleHeight: number): Placement {
+function centerPoint(): Rect {
+  return { top: window.innerHeight / 2, left: window.innerWidth / 2, width: 0, height: 0 }
+}
+
+function place(step: GuideStep | null, bubbleHeight: number): Placement | null {
   const vw = window.innerWidth
   const vh = window.innerHeight
-  const el = targetOf(step)
-  if (!el) {
-    return {
-      spot: null,
-      bubble: { top: Math.max(16, (vh - bubbleHeight) / 2), left: Math.max(16, (vw - BUBBLE_WIDTH) / 2) },
-      side: 'center',
-    }
+  const centered: Placement = {
+    spot: centerPoint(),
+    bubble: { top: Math.max(16, (vh - bubbleHeight) / 2), left: Math.max(16, (vw - BUBBLE_WIDTH) / 2) },
+    side: 'center',
   }
+  if (!step || !step.target) return centered
+  const el = targetOf(step)
+  // Målet är borta (sidan byts): behåll förra läget i stället för att hoppa.
+  if (!el) return null
   const r = el.getBoundingClientRect()
   const spot = { top: r.top - PAD, left: r.left - PAD, width: r.width + PAD * 2, height: r.height + PAD * 2 }
   const clampTop = (t: number) => Math.min(Math.max(16, t), vh - bubbleHeight - 16)
@@ -219,15 +229,23 @@ function place(step: GuideStep, bubbleHeight: number): Placement {
   return { spot, bubble: { top: vh - bubbleHeight - 16, left: vw - BUBBLE_WIDTH - 16 }, side: 'center' }
 }
 
-function GuideBubble({
+/**
+ * Ramen och bubblan ritas EN gång och ligger kvar genom hela guiden; bara
+ * position och storlek ändras. CSS-övergångarna får dem då att glida från
+ * förra målet till nästa - även när guiden byter sida - i stället för att
+ * ritas om från skärmens hörn.
+ */
+function GuideOverlay({
   step,
+  waiting,
   number,
   total,
   onNext,
   onBack,
   onSkip,
 }: {
-  step: GuideStep
+  step: GuideStep | null
+  waiting: boolean
   number: number
   total: number
   onNext: () => void
@@ -236,11 +254,27 @@ function GuideBubble({
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null)
   const nextRef = useRef<HTMLButtonElement>(null)
-  const [placement, setPlacement] = useState<Placement | null>(null)
+  const [placement, setPlacement] = useState<Placement>(() => place(null, 180)!)
+  // Övergångar först efter första uppritningen - annars glider allt in från hörnet.
+  const [animate, setAnimate] = useState(false)
+
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => setAnimate(true))
+    return () => window.cancelAnimationFrame(id)
+  }, [])
 
   useLayoutEffect(() => {
-    targetOf(step)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-    const update = () => setPlacement(place(step, bubbleRef.current?.offsetHeight ?? 180))
+    const el = step ? targetOf(step) : null
+    if (el) {
+      // Under det fasta sidhuvudet eller utanför skärmen: centrera målet.
+      const r = el.getBoundingClientRect()
+      const hidden = r.top < 100 && window.scrollY > 0 ? true : r.bottom > window.innerHeight
+      el.scrollIntoView({ block: hidden ? 'center' : 'nearest', inline: 'nearest' })
+    }
+    const update = () => {
+      const next = place(step, bubbleRef.current?.offsetHeight ?? 180)
+      if (next) setPlacement(next)
+    }
     update()
     window.addEventListener('resize', update)
     window.addEventListener('scroll', update, true)
@@ -251,8 +285,8 @@ function GuideBubble({
   }, [step])
 
   useEffect(() => {
-    nextRef.current?.focus()
-  }, [step])
+    if (step && !waiting) nextRef.current?.focus()
+  }, [step, waiting])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -263,48 +297,47 @@ function GuideBubble({
   }, [onSkip])
 
   const last = number === total
-  const titleId = `guide-title-${step.id}`
+  const titleId = step ? `guide-title-${step.id}` : undefined
 
   return (
-    <>
-      {placement?.spot ? (
-        <div className="guide-spot" style={placement.spot} aria-hidden="true" />
-      ) : (
-        <div className="guide-dim" aria-hidden="true" />
-      )}
-      <div
-        ref={bubbleRef}
-        className={`guide-bubble guide-bubble--${placement?.side ?? 'center'}`}
-        style={placement ? { top: placement.bubble.top, left: placement.bubble.left } : { visibility: 'hidden' }}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-      >
-        <p className="guide-count">
-          {number} av {total}
-        </p>
-        <h2 className="guide-title" id={titleId}>
-          {step.title}
-        </h2>
-        <p className="guide-text">{step.text}</p>
-        <div className="guide-actions">
-          {!last && (
-            <button type="button" className="guide-skip" onClick={onSkip}>
-              Hoppa över
-            </button>
-          )}
-          <span className="guide-actions-right">
-            {onBack && (
-              <button type="button" className="btn outline square" onClick={onBack}>
-                Tillbaka
+    <div className={`guide-layer${animate ? ' guide-layer--animate' : ''}`}>
+      <div className="guide-spot" style={placement.spot} aria-hidden="true" />
+      {step && (
+        <div
+          ref={bubbleRef}
+          className={`guide-bubble guide-bubble--${placement.side}${waiting ? ' guide-bubble--waiting' : ''}`}
+          style={{ top: placement.bubble.top, left: placement.bubble.left }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          aria-hidden={waiting || undefined}
+        >
+          <p className="guide-count">
+            {number} av {total}
+          </p>
+          <h2 className="guide-title" id={titleId}>
+            {step.title}
+          </h2>
+          <p className="guide-text">{step.text}</p>
+          <div className="guide-actions">
+            {!last && (
+              <button type="button" className="guide-skip" onClick={onSkip}>
+                Hoppa över
               </button>
             )}
-            <button ref={nextRef} type="button" className="btn primary square" onClick={onNext}>
-              {number === 1 ? 'Visa mig' : last ? 'Klar' : 'Nästa'}
-            </button>
-          </span>
+            <span className="guide-actions-right">
+              {onBack && (
+                <button type="button" className="btn outline square" onClick={onBack}>
+                  Tillbaka
+                </button>
+              )}
+              <button ref={nextRef} type="button" className="btn primary square" onClick={onNext}>
+                {number === 1 ? 'Visa mig' : last ? 'Klar' : 'Nästa'}
+              </button>
+            </span>
+          </div>
         </div>
-      </div>
-    </>
+      )}
+    </div>
   )
 }

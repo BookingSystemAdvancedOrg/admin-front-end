@@ -55,8 +55,8 @@ export const GUIDE_STEPS: GuideStep[] = [
     ownerOnly: true,
     title: 'Kom igång',
     text:
-      'Din checklista för att bli redo: öppettider, meny, planritning, betalningar och personal. ' +
-      'Tryck på ett steg för att gå dit - det bockas av när det är klart.',
+      'Längst ner på Översikt: din checklista för att bli redo - öppettider, meny, planritning, betalningar och personal. ' +
+      'Tryck på ett steg för att gå dit. Listan försvinner när allt är klart.',
   },
 
   // --- Inställningar (viktigast för ägaren) ---------------------------------

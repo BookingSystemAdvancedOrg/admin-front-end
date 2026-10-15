@@ -5,12 +5,6 @@
   z-index: 1000;
 }
 
-.guide-dim {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-}
-
 /* Det upplysta målet: en ram vars skugga tonar ner allt runt omkring. */
 .guide-spot {
   position: fixed;
@@ -18,7 +12,6 @@
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
   outline: 2px solid var(--on-accent);
   outline-offset: 0;
-  transition: top 0.25s var(--ease), left 0.25s var(--ease), width 0.25s var(--ease), height 0.25s var(--ease);
   pointer-events: none;
 }
 
@@ -30,8 +23,26 @@
   background: var(--surface);
   color: var(--ink);
   box-shadow: var(--shadow-lg);
-  transition: top 0.25s var(--ease), left 0.25s var(--ease);
   animation: guide-in 0.2s var(--ease);
+}
+
+/* Ramen och bubblan glider från förra målet till nästa (efter första ritningen). */
+.guide-layer {
+  --guide-move: 0.5s cubic-bezier(0.45, 0, 0.2, 1);
+}
+
+.guide-layer--animate .guide-spot {
+  transition: top var(--guide-move), left var(--guide-move), width var(--guide-move), height var(--guide-move);
+}
+
+.guide-layer--animate .guide-bubble {
+  transition: top var(--guide-move), left var(--guide-move), opacity 0.2s var(--ease);
+}
+
+/* Medan nästa steg laddas (sidbyte): bubblan tonas ut men ligger kvar. */
+.guide-bubble--waiting {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Liten pil mot målet. */
@@ -121,8 +132,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .guide-bubble,
-  .guide-spot {
+  .guide-layer--animate .guide-bubble,
+  .guide-layer--animate .guide-spot,
+  .guide-bubble {
     transition: none;
     animation: none;
   }

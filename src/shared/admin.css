@@ -1378,3 +1378,9 @@
 .admin-nav--bottom {
   margin-bottom: 12px;
 }
+
+/* Kom igång längst ner på Översikt (ägaren, tills allt är klart). */
+.setup-card {
+  flex: none;
+  width: 100%;
+}

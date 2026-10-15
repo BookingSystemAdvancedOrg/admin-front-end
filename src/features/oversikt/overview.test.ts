@@ -88,10 +88,7 @@ describe('setupSteps', () => {
     expect(steps.find((s) => s.id === 'staff')?.done).toBeNull()
   })
 
-  it('shows staff only the steps they can act on', () => {
-    expect(setupSteps({ ...owner, isOwner: false }).map((s) => s.id)).toEqual([
-      'hours',
-      'menu',
-    ])
+  it('gives staff no Kom igång steps at all (owner only)', () => {
+    expect(setupSteps({ ...owner, isOwner: false })).toEqual([])
   })
 })

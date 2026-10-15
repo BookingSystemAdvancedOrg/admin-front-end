@@ -60,15 +60,16 @@ export interface SetupInput {
 
 /**
  * "Kom igång"-listan: det en ny restaurang behöver göra innan gäster kan
- * boka. Personal ser bara de steg de själva kan påverka.
+ * boka. Bara för ägaren - personal får inga steg alls.
  */
 export function setupSteps(input: SetupInput): SetupStep[] {
+  if (!input.isOwner) return []
   const steps: SetupStep[] = [
     {
       id: 'hours',
       label: 'Lägg in öppettider',
       done: input.hasOpeningHours,
-      to: '/installningar',
+      to: '/installningar#profil',
     },
     {
       id: 'menu',
@@ -77,7 +78,6 @@ export function setupSteps(input: SetupInput): SetupStep[] {
       to: '/meny',
     },
   ]
-  if (!input.isOwner) return steps
   return [
     ...steps,
     {
@@ -96,7 +96,7 @@ export function setupSteps(input: SetupInput): SetupStep[] {
       id: 'staff',
       label: 'Bjud in personal',
       done: input.staffCount === null ? null : input.staffCount > 0,
-      to: '/installningar',
+      to: '/installningar#personal',
     },
   ]
 }

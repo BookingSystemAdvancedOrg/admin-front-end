@@ -107,6 +107,8 @@ export default function OversiktPage() {
     staffCount: data.staffCount,
   })
   const remaining = steps.filter((s) => s.done === false).length
+  // Visas när det finns något kvar (eller som inte gick att kontrollera).
+  const showSetup = isOwner && !loading && steps.some((s) => s.done !== true)
 
   const todayActive = data.today
     ? data.today.filter((r) => ACTIVE_STATUSES.includes(r.status))
@@ -216,38 +218,6 @@ export default function OversiktPage() {
             )}
           </section>
 
-          <section className="admin-card activity-card" aria-label="Kom igång" data-tour="getting-started">
-            <div className="card-head">
-              <h2 className="card-title">Kom igång</h2>
-              {!loading && (
-                <span className="cell-muted">
-                  {remaining === 0 ? 'Allt klart' : `${remaining} kvar`}
-                </span>
-              )}
-            </div>
-            {steps.map((step) => (
-              <Link key={step.id} to={step.to} className="activity-item setup-step">
-                <span className="activity-text">
-                  <span
-                    className={`setup-check ${step.done ? 'done' : ''}`}
-                    aria-hidden="true"
-                  >
-                    {step.done ? '✓' : step.done === null ? '?' : ''}
-                  </span>
-                  {step.label}
-                </span>
-                <span className="activity-time">
-                  {loading
-                    ? 'Kontrollerar…'
-                    : step.done
-                      ? 'Klart'
-                      : step.done === null
-                        ? 'Kunde inte kontrolleras'
-                        : 'Att göra'}
-                </span>
-              </Link>
-            ))}
-          </section>
         </div>
 
         <section className="quick-links-row" aria-label="Genvägar">
@@ -265,6 +235,42 @@ export default function OversiktPage() {
             </Link>
           ))}
         </section>
+
+        {/* Kom igång: bara ägaren, och bara tills allt är klart. */}
+        {showSetup && (
+        <section className="admin-card activity-card setup-card" aria-label="Kom igång" data-tour="getting-started">
+          <div className="card-head">
+            <h2 className="card-title">Kom igång</h2>
+            {!loading && (
+              <span className="cell-muted">
+                {remaining === 0 ? 'Kunde inte kontrollera allt' : `${remaining} kvar`}
+              </span>
+            )}
+          </div>
+          {steps.map((step) => (
+            <Link key={step.id} to={step.to} className="activity-item setup-step">
+              <span className="activity-text">
+                <span
+                  className={`setup-check ${step.done ? 'done' : ''}`}
+                  aria-hidden="true"
+                >
+                  {step.done ? '✓' : step.done === null ? '?' : ''}
+                </span>
+                {step.label}
+              </span>
+              <span className="activity-time">
+                {loading
+                  ? 'Kontrollerar…'
+                  : step.done
+                    ? 'Klart'
+                    : step.done === null
+                      ? 'Kunde inte kontrolleras'
+                      : 'Att göra'}
+              </span>
+            </Link>
+          ))}
+        </section>
+        )}
       </div>
     </>
   )

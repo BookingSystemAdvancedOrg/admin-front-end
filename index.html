@@ -2,10 +2,13 @@
 <html lang="sv">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Ikonerna ligger i src/assets så att Vite ger dem hashade filnamn:
+         deployen cachar allt utom index.html i ett år, så en ikon med fast
+         namn (public/favicon.svg) byts aldrig ut i webbläsaren. -->
+    <link rel="icon" type="image/svg+xml" href="/src/assets/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)" />
+    <link rel="apple-touch-icon" href="/src/assets/apple-touch-icon.png" />
+    <meta name="theme-color" content="#f5f4f4" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
     <title>Booqy Admin</title>
   </head>

@@ -421,12 +421,12 @@
 /* Kökets ingång och entrén ritas likadant — bara skylten skiljer dem åt. */
 .seg.kitchen .seg-face,
 .seg.entrance .seg-face {
-  background: linear-gradient(#409cff, #0071e3);
+  background: linear-gradient(#7a1d25, #4a0a0f);
 }
 
 .seg.kitchen .seg-cap,
 .seg.entrance .seg-cap {
-  background: #66b0ff;
+  background: #9a3a43;
 }
 
 .seg.selected .seg-face,
@@ -710,7 +710,7 @@
 }
 
 .table-el.selected .table-seats {
-  color: var(--accent);
+  color: var(--accent-ink);
   background: #fff;
 }
 
@@ -843,7 +843,7 @@
   position: absolute;
   inset: 0;
   background: var(--accent);
-  border: 1px solid #0071e3;
+  border: 1px solid var(--accent-active);
   transform: translateZ(var(--rh));
 }
 
@@ -884,7 +884,7 @@
 .props-kicker {
   font: 700 12px/1.2 var(--sans);
   letter-spacing: 0.06em;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .props-title {

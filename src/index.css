@@ -1,23 +1,28 @@
 /* Globala CSS-variabler och nollställningar. Sid-specifik styling bor i
    src/shared/admin.css (admin-panelen) och src/features/auth/auth.css
    (inloggningssidorna). */
-/* Designsystem: "Apple UI kit" - systemtypsnitt, en blå accent, neutrala
+/* Designsystem: "Apple UI kit" i Booqys färger - systemtypsnitt, en
+   accent (Booqy-vinrött #350001, samma som logotypen), varma neutrala
    gråtoner, mjuk djupverkan, 44 px höga kontroller. Ljust och mörkt läge
-   följer systemet. Gamla namn (--green, --serif, ...) pekar på de nya
-   värdena så att alla sidor följer med. */
+   följer systemet. --accent är fyllnadsfärgen (knappar, valt läge);
+   --accent-ink är samma färg för text/länkar och ljusas upp i mörkt läge
+   så att kontrasten håller (WCAG AA). Gamla namn (--green, --serif, ...)
+   pekar på de nya värdena så att alla sidor följer med. */
 :root {
-  --bg: #f5f5f7;
+  --bg: #f5f4f4;
   --surface: #ffffff;
-  --fill: #f5f5f7;
+  --fill: #f0eeee;
   --surface-glass: rgba(255, 255, 255, 0.72);
   --border: rgba(0, 0, 0, 0.08);
-  --ink: #1d1d1f;
-  --muted: #6e6e73;
-  --accent: #0071e3;
-  --accent-hover: #0077ed;
-  --accent-active: #006edb;
+  --ink: #1d1a1a;
+  --muted: #6e6969;
+  --accent: #350001;
+  --accent-hover: #4a0a0f;
+  --accent-active: #240001;
   --on-accent: #ffffff;
-  --focus: rgba(0, 113, 227, 0.25);
+  --accent-ink: #350001;
+  --brand: #350001;
+  --focus: rgba(53, 0, 1, 0.22);
   --danger: #ff3b30;
   --danger-ink: #d70015;
   --success: #34c759;
@@ -61,16 +66,17 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     --bg: #000000;
-    --surface: #1c1c1e;
-    --fill: #2c2c2e;
-    --surface-glass: rgba(28, 28, 30, 0.72);
+    --surface: #1c1a1a;
+    --fill: #2c2929;
+    --surface-glass: rgba(28, 26, 26, 0.72);
     --border: rgba(255, 255, 255, 0.12);
-    --ink: #f5f5f7;
-    --muted: #a1a1a6;
-    --accent: #0a84ff;
-    --accent-hover: #409cff;
-    --accent-active: #0071e3;
-    --focus: rgba(10, 132, 255, 0.35);
+    --ink: #f5f4f4;
+    --muted: #a6a1a1;
+    --accent: #b8444c;
+    --accent-hover: #c6525a;
+    --accent-active: #a3383f;
+    --accent-ink: #e07a82;
+    --focus: rgba(224, 122, 130, 0.38);
     --danger: #ff453a;
     --danger-ink: #ff6961;
     --success: #30d158;
@@ -88,16 +94,17 @@
 
 :root[data-theme='dark'] {
   --bg: #000000;
-  --surface: #1c1c1e;
-  --fill: #2c2c2e;
-  --surface-glass: rgba(28, 28, 30, 0.72);
+  --surface: #1c1a1a;
+  --fill: #2c2929;
+  --surface-glass: rgba(28, 26, 26, 0.72);
   --border: rgba(255, 255, 255, 0.12);
-  --ink: #f5f5f7;
-  --muted: #a1a1a6;
-  --accent: #0a84ff;
-  --accent-hover: #409cff;
-  --accent-active: #0071e3;
-  --focus: rgba(10, 132, 255, 0.35);
+  --ink: #f5f4f4;
+  --muted: #a6a1a1;
+  --accent: #b8444c;
+  --accent-hover: #c6525a;
+  --accent-active: #a3383f;
+  --accent-ink: #e07a82;
+  --focus: rgba(224, 122, 130, 0.38);
   --danger: #ff453a;
   --danger-ink: #ff6961;
   --success: #30d158;

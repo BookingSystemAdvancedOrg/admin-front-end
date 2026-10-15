@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { BrandMark } from '../../shared/BrandMark'
+import { BrandMark, BrandWordmark } from '../../shared/BrandMark'
 import './auth.css'
 
 /**
@@ -17,8 +17,8 @@ export function AuthLayout({ children }: { children: ReactNode }) {
             <BrandMark size={44} />
           </span>
           <span className="auth-logo-text">
-            <strong>Admin</strong>
-            <span>Bokningssystem</span>
+            <BrandWordmark height={26} />
+            <span>Admin</span>
           </span>
         </div>
         <section className="auth-card">{children}</section>

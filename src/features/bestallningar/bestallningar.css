@@ -26,7 +26,7 @@
 
 .orders-banner.open {
   background: var(--tint-green);
-  color: var(--green);
+  color: var(--accent-ink);
 }
 
 .orders-banner.paused {

@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { BrandMark } from './BrandMark'
+import { BrandMark, BrandWordmark } from './BrandMark'
 import { useAuth } from '../features/auth/useAuth'
 import { primaryGroupLabel } from '../features/installningar/usersApi'
 import { selectLocation, useTenant } from './tenant'
@@ -63,8 +63,13 @@ export function AdminLayout() {
           <span className="admin-logo-badge" aria-hidden="true">
             <BrandMark />
           </span>
-          <span className="admin-logo-name">{tenant?.name ?? ''}</span>
-          <span className="admin-logo-tag">ADMIN</span>
+          <span className="admin-logo-text">
+            <span className="admin-logo-brand">
+              <BrandWordmark height={18} />
+              <span className="admin-logo-tag">ADMIN</span>
+            </span>
+            <span className="admin-logo-name">{tenant?.name ?? ''}</span>
+          </span>
         </div>
 
         {locations.length > 1 && (

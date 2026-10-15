@@ -254,7 +254,7 @@
 
 .table-chip.selected {
   border-color: var(--green);
-  background: #eef2ef;
+  background: var(--tint-blue);
 }
 
 .booking-form textarea {

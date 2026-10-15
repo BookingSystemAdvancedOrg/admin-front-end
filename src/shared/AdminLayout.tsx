@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { BrandMark } from './BrandMark'
 import { useAuth } from '../features/auth/useAuth'
 import { primaryGroupLabel } from '../features/installningar/usersApi'
 import { selectLocation, useTenant } from './tenant'
@@ -60,7 +61,7 @@ export function AdminLayout() {
       <aside className="admin-sidebar">
         <div className="admin-logo">
           <span className="admin-logo-badge" aria-hidden="true">
-            {(tenant?.name?.[0] ?? 'R').toUpperCase()}
+            <BrandMark />
           </span>
           <span className="admin-logo-name">{tenant?.name ?? ''}</span>
           <span className="admin-logo-tag">ADMIN</span>

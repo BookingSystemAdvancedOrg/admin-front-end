@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { BrandMark } from '../../shared/BrandMark'
 import './auth.css'
 
 /**
@@ -11,10 +12,9 @@ export function AuthLayout({ children }: { children: ReactNode }) {
       <div className="auth-inner">
         <div className="auth-logo">
           {/* Ingen restaurang namnges: inloggningsskärmen visas utloggad, så
-              platsens riktiga namn går inte att hämta. Byt gärna till
-              produktens eget varumärke när det är bestämt. */}
+              platsens riktiga namn går inte att hämta - produktens ikon. */}
           <span className="auth-logo-badge" aria-hidden="true">
-            A
+            <BrandMark size={44} />
           </span>
           <span className="auth-logo-text">
             <strong>Admin</strong>

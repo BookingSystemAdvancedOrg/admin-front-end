@@ -19,18 +19,18 @@
   margin: 0;
   padding: 12px 16px;
   border-radius: 12px;
-  background: #f1e6da;
-  color: #8a5a2b;
+  background: var(--tint-orange);
+  color: var(--warning-ink);
   font-weight: 600;
 }
 
 .orders-banner.open {
-  background: #dbe8e2;
+  background: var(--tint-green);
   color: var(--green);
 }
 
 .orders-banner.paused {
-  background: #f3dcd6;
+  background: var(--tint-red);
   color: var(--danger);
 }
 
@@ -65,7 +65,7 @@
 
 .order-card.fresh {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(217, 131, 83, 0.25);
+  box-shadow: 0 0 0 4px var(--focus);
 }
 
 .order-card-head {
@@ -98,7 +98,7 @@
   margin: 0;
   padding: 8px 10px;
   border-radius: 8px;
-  background: #fbf3e6;
+  background: var(--tint-orange);
   font-size: 14px;
 }
 

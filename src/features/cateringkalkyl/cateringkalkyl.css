@@ -7,9 +7,9 @@
    för statiska påminnelser, inte valideringsfel (se .form-error för det). */
 .calc-hint {
   padding: 12px 16px;
-  background: #fbf3ec;
-  border: 1px solid #eddcc8;
-  color: #8a5a2b;
+  background: var(--tint-orange);
+  border: 0;
+  color: var(--warning-ink);
   border-radius: 12px;
   font-size: 13px;
 }
@@ -262,11 +262,11 @@
 
 .catering-summary-upsell {
   padding: 10px 12px;
-  background: rgba(217, 131, 83, 0.18);
-  border: 1px solid rgba(217, 131, 83, 0.4);
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 10px;
   font-size: 12px;
-  color: #f3d9c8;
+  color: #fff;
 }
 
 .catering-send-btn {

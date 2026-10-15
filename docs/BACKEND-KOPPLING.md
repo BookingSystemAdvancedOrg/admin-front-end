@@ -34,7 +34,7 @@ arbeta med (ägare: alla, personal: bara sin egen).
 | Inställningar — avbokningspolicy | Inget API än — visas som "kommer", inte som redigerbara påhittade värden |
 
 Roller: `owner_user` (ägare) och `staff_user` (personal). `super_user` finns
-inte längre — plattformens operatörer arbetar i operatörskonsolen (sbs-admin).
+inte längre — plattformens operatörer arbetar i operatörskonsolen (Booqy Console).
 
 **Layout-editorn** läser in sitt utkast vid sidladdning. "Spara utkast"
 skriver elementen, och "Publicera layout" sparar först utkastet och fryser

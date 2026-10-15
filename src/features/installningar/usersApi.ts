@@ -10,7 +10,7 @@ import { apiFetch, ApiError } from '../../shared/api'
 
 /**
  * Restaurangens två roller. (super_user/systemadmin finns inte längre:
- * plattformens operatörer arbetar i operatörskonsolen, sbs-admin, och har
+ * plattformens operatörer arbetar i operatörskonsolen, Booqy Console, och har
  * ingen inloggning i restaurangernas app.)
  */
 export type CognitoGroup = 'staff_user' | 'owner_user'
@@ -69,7 +69,7 @@ export const GROUP_LABEL: Record<CognitoGroup, string> = {
 const GROUP_PRIORITY: CognitoGroup[] = ['owner_user', 'staff_user']
 
 /**
- * Användarposter som skapats av operatörskonsolen (sbs-admin) bär gruppnamnet
+ * Användarposter som skapats av operatörskonsolen (Booqy Console) bär gruppnamnet
  * som roll ("staff_user"); API:t skickar dem vidare som de är. Normaliseras
  * här så att resten av appen bara behöver känna till UserRole.
  */

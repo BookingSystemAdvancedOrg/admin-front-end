@@ -20,7 +20,7 @@ import { resetTenantStore } from '../../shared/tenant'
 // Mock-inloggningen (bara i npm run dev) har ingen riktig Cognito-session, så
 // den ges ägarrollen (den högsta en restauranganvändare kan ha) för att kunna
 // testa hela gränssnittet lokalt. super_user finns inte längre: plattformens
-// operatörer arbetar i operatörskonsolen (sbs-admin), inte i den här appen.
+// operatörer arbetar i operatörskonsolen (Booqy Console), inte i den här appen.
 // Tomma i produktionsbygget, precis som uppgifterna i mockAuth.ts: identiteten
 // kan ändå aldrig aktiveras där (getMockSessionEmail() är DEV-bunden).
 const MOCK_SUB = import.meta.env.DEV ? 'mock-dev-sub' : ''

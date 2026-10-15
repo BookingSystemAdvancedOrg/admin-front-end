@@ -1390,3 +1390,34 @@
   flex: none;
   width: 100%;
 }
+
+/* Nyckeltalen överst på Översikt: hela rutan är en länk till åtgärden. */
+.stat-tile--link {
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+.stat-tile--link:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.stat-tile-note {
+  min-height: 2.6em;
+}
+
+.stat-tile-action {
+  margin-top: auto;
+  font: 600 13px/1.3 var(--font);
+  color: var(--accent-ink);
+}
+
+/* Något väntar: rutan markeras med varningsfärg. */
+.stat-tile--attention {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--warning) 70%, transparent), var(--shadow);
+}
+
+.stat-tile--attention .stat-tile-value {
+  color: var(--warning-ink);
+}

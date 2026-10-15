@@ -9,7 +9,19 @@ import type { Location } from '../installningar/locationApi'
 import { listMenuItems } from '../meny/menuApi'
 import { listLayoutVersions } from '../layout-editor/layoutApi'
 import { listUsers } from '../installningar/usersApi'
-import { hasAnyOpeningHours, setupSteps, todaysHours } from './overview'
+import {
+  activeOrders,
+  bookingsToday,
+  clockIn,
+  hasAnyOpeningHours,
+  revenueToday,
+  setupSteps,
+  todoQueue,
+} from './overview'
+import { kronor, listOrders } from '../bestallningar/ordersApi'
+import type { Order } from '../bestallningar/ordersApi'
+import { listRequests } from '../catering/cateringApi'
+import type { RequestSummary } from '../catering/cateringApi'
 import { tableNames, useTables } from '../../shared/tables'
 import {
   ACTIVE_STATUSES,
@@ -37,6 +49,10 @@ interface OverviewData {
   staffCount: number | null
   /** Dagens bokningar (alla statusar); null = kunde inte hämtas. */
   today: Reservation[] | null
+  /** Dagens beställningar; null = saknas i planen eller kunde inte hämtas. */
+  orders: Order[] | null
+  /** Cateringförfrågningar; null = saknas i planen eller kunde inte hämtas. */
+  catering: RequestSummary[] | null
 }
 
 const EMPTY: OverviewData = {
@@ -46,6 +62,8 @@ const EMPTY: OverviewData = {
   hasLiveLayout: null,
   staffCount: null,
   today: null,
+  orders: null,
+  catering: null,
 }
 
 /** Ett anrop som misslyckas ger `null` (okänt) i stället för att fälla sidan. */
@@ -72,6 +90,8 @@ export default function OversiktPage() {
   const loading = Boolean(locationId) && fetched.forLocation !== locationId
   const data = loading ? EMPTY : fetched
   const timezoneSetting = location?.timezone
+  const hasOrdering = Boolean(tenant?.entitlements.features.ordering)
+  const hasCatering = Boolean(tenant?.entitlements.features.catering)
 
   useEffect(() => {
     if (!locationId) return
@@ -82,7 +102,9 @@ export default function OversiktPage() {
       isOwner ? orNull(listLayoutVersions(locationId)) : Promise.resolve(null),
       isOwner ? orNull(listUsers()) : Promise.resolve(null),
       orNull(listReservations(locationId, todayIn(timezoneSetting))),
-    ]).then(([loc, menu, versions, users, today]) => {
+      hasOrdering ? orNull(listOrders(locationId)) : Promise.resolve(null),
+      hasCatering ? orNull(listRequests(locationId)) : Promise.resolve(null),
+    ]).then(([loc, menu, versions, users, today, orders, catering]) => {
       if (cancelled) return
       setFetched({
         forLocation: locationId,
@@ -91,12 +113,14 @@ export default function OversiktPage() {
         hasLiveLayout: versions ? versions.some((v) => v.isCurrent) : null,
         staffCount: users ? users.filter((u) => u.role === 'staff').length : null,
         today,
+        orders: orders ? orders.orders : null,
+        catering,
       })
     })
     return () => {
       cancelled = true
     }
-  }, [locationId, isOwner, timezoneSetting])
+  }, [locationId, isOwner, timezoneSetting, hasOrdering, hasCatering])
 
   const stage = tenant ? stripeStage(tenant.stripe) : 'missing'
   const timezone = data.location?.timezone ?? location?.timezone ?? null
@@ -116,30 +140,68 @@ export default function OversiktPage() {
     ? data.today.filter((r) => ACTIVE_STATUSES.includes(r.status))
     : null
 
-  const stats = [
-    {
-      label: 'Öppet idag',
-      value: data.location ? todaysHours(data.location.businessHours, timezone) : '—',
-      note: timezone ?? '',
-    },
-    {
-      label: 'Rätter på menyn',
-      value: data.activeMenuItems === null ? '—' : String(data.activeMenuItems),
-      note: 'aktiva rätter',
-    },
-    {
-      label: 'Kortbetalningar',
-      value: stage === 'ready' ? 'Aktiva' : 'Ej aktiva',
-      note: stage === 'ready' ? 'via Stripe' : 'Stripe är inte klart',
-      danger: stage !== 'ready',
-    },
+  // De fyra nyckeltalen överst. Varje ruta är en länk dit man åtgärdar saken.
+  const bookings = bookingsToday(data.today, clockIn(timezone))
+  const revenue = revenueToday(data.orders)
+  const inProgress = activeOrders(data.orders)
+  const todo = todoQueue(data.today, data.catering)
+  const notInPlan = 'Beställning ingår inte i er plan'
+
+  const stats: {
+    label: string
+    value: string
+    note: string
+    action: string
+    to: string
+    tone?: 'attention'
+  }[] = [
     {
       label: 'Bokningar idag',
-      value: todayActive === null ? '—' : String(todayActive.length),
-      note:
-        todayActive === null
-          ? 'kunde inte hämtas'
-          : `${todayActive.reduce((sum, r) => sum + r.partySize, 0)} gäster`,
+      value: bookings ? String(bookings.count) : '—',
+      note: !bookings
+        ? 'Kunde inte hämtas'
+        : bookings.next
+          ? `${bookings.guests} gäster · nästa ${bookings.next.startTime}, ${bookings.next.customerName || 'gäst'} (${bookings.next.partySize} pers)`
+          : `${bookings.guests} gäster · inga fler gäster idag`,
+      action: 'Se dagens bokningar',
+      to: '/bokningar',
+    },
+    {
+      label: 'Dagens omsättning',
+      value: !hasOrdering ? '—' : revenue ? kronor(revenue.amount) : '—',
+      note: !hasOrdering
+        ? notInPlan
+        : revenue
+          ? `${revenue.count} betalda beställningar`
+          : 'Kunde inte hämtas',
+      action: 'Se försäljningen',
+      to: '/bestallningar',
+    },
+    {
+      label: 'Aktiva beställningar',
+      value: !hasOrdering ? '—' : inProgress ? String(inProgress.count) : '—',
+      note: !hasOrdering
+        ? notInPlan
+        : !inProgress
+          ? 'Kunde inte hämtas'
+          : inProgress.count === 0
+            ? 'Inga pågående just nu'
+            : `${inProgress.fresh} nya · ${inProgress.preparing} tillagas · ${inProgress.ready} klara`,
+      action: 'Öppna beställningar',
+      to: '/bestallningar',
+    },
+    {
+      label: 'Att hantera',
+      value: todo ? String(todo.total) : '—',
+      note: !todo
+        ? 'Kunde inte hämtas'
+        : todo.total === 0
+          ? 'Inget väntar - bra jobbat!'
+          : todo.items.map((i) => `${i.count} ${i.label}`).join(' · '),
+      action: todo && todo.total > 0 ? 'Ta det viktigaste först' : 'Allt är hanterat',
+      // Till det mest brådskande först.
+      to: todo?.items[0]?.to ?? '/bokningar',
+      tone: todo && todo.total > 0 ? 'attention' : undefined,
     },
   ]
 
@@ -172,13 +234,18 @@ export default function OversiktPage() {
       <div className="admin-main">
         <section className="stats-row" aria-label="Nyckeltal">
           {stats.map((stat) => (
-            <article key={stat.label} className="admin-card stat-tile">
+            <Link
+              key={stat.label}
+              to={stat.to}
+              className={`admin-card stat-tile stat-tile--link${stat.tone ? ` stat-tile--${stat.tone}` : ''}`}
+            >
               <p className="stat-tile-label">{stat.label}</p>
-              <p className={stat.danger ? 'stat-tile-value danger' : 'stat-tile-value'}>
-                {loading && stat.value === '—' ? '…' : stat.value}
-              </p>
-              <p className="stat-tile-note">{stat.note}</p>
-            </article>
+              <p className="stat-tile-value">{loading ? '…' : stat.value}</p>
+              <p className="stat-tile-note">{loading ? 'Hämtar…' : stat.note}</p>
+              <span className="stat-tile-action">
+                {stat.action} <span aria-hidden="true">→</span>
+              </span>
+            </Link>
           ))}
         </section>
 

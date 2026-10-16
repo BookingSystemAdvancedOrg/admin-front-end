@@ -1,9 +1,11 @@
+import { useCallback, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { BrandMark, BrandWordmark } from './BrandMark'
 import { useAuth } from '../features/auth/useAuth'
 import { primaryGroupLabel } from '../features/installningar/usersApi'
 import { selectLocation, useTenant } from './tenant'
 import { GuideProvider } from '../features/guide/Guide'
+import { LogoutConfirm } from './LogoutConfirm'
 import type { TenantErrorCode } from './tenant'
 import './admin.css'
 
@@ -56,6 +58,10 @@ export function AdminLayout() {
   const displayName = email ? email.split('@')[0] : 'Personal'
   const initial = (displayName[0] ?? 'K').toUpperCase()
   const locations = tenant?.locations ?? []
+  // Sidomenyns "Logga ut" frågar först (felrutorna nedan loggar ut direkt -
+  // där går appen ändå inte att använda).
+  const [confirmLogout, setConfirmLogout] = useState(false)
+  const cancelLogout = useCallback(() => setConfirmLogout(false), [])
 
   return (
     <GuideProvider
@@ -139,11 +145,17 @@ export function AdminLayout() {
               {displayName} · {primaryGroupLabel(tenant ? [tenant.role] : groups)}
             </span>
           </div>
-          <button type="button" className="admin-logout" onClick={logout}>
+          <button
+            type="button"
+            className="admin-logout"
+            aria-haspopup="dialog"
+            onClick={() => setConfirmLogout(true)}
+          >
             Logga ut
           </button>
         </div>
       </aside>
+      {confirmLogout && <LogoutConfirm onConfirm={logout} onCancel={cancelLogout} />}
 
       <div className="admin-right">
         {status === 'error' && error ? (

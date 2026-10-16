@@ -880,6 +880,31 @@
   padding-top: 4px;
 }
 
+/* Korta ja/nej-frågor (t.ex. "Vill du logga ut?"). */
+.modal--confirm {
+  width: 400px;
+  gap: 12px;
+}
+
+.modal-text {
+  font: 400 15px/1.45 var(--font);
+  color: var(--muted);
+}
+
+.modal--confirm .modal-actions {
+  padding-top: 12px;
+}
+
+@media (max-width: 480px) {
+  .modal--confirm .modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .modal--confirm .modal-actions .btn {
+    width: 100%;
+  }
+}
+
 .form-error {
   padding: 12px 16px;
   background: var(--tint-red);

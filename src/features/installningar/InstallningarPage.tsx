@@ -1,16 +1,22 @@
 import { useEffect, useState } from 'react'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 import {
-  MOCK_BOOKING_DURATION_HOURS,
-  MOCK_BUSINESS_HOURS,
-  MOCK_GRACE_PERIOD_HOURS,
-  MOCK_POLICY,
-  MOCK_PROFILE,
-  MOCK_STRIPE,
-  MOCK_TIMEZONE,
+  DEFAULT_BOOKING_DURATION_HOURS,
+  DEFAULT_GRACE_PERIOD_HOURS,
+  DEFAULT_TIMEZONE,
+  EMPTY_BUSINESS_HOURS,
+  EMPTY_PROFILE,
 } from './data'
-import type { CancellationPolicy, RestaurantProfile } from './data'
+import type { RestaurantProfile } from './data'
+import { CancellationPolicyCard } from './CancellationPolicyCard'
+import { NotificationsCard } from './NotificationsCard'
+import { OrderingCard } from './OrderingCard'
+import { PaymentsCard } from './PaymentsCard'
+import { SpecialDaysCard } from './SpecialDaysCard'
+import { TableRulesCard } from './TableRulesCard'
 import { BusinessHoursEditor } from './BusinessHoursEditor'
 import {
   createLocation,
@@ -20,8 +26,10 @@ import {
   validateAddress,
   validateBookingDuration,
   validateBusinessHours,
+  validateEmail,
   validateGracePeriod,
   validateName as validateLocationName,
+  validatePhoneNumber,
   validateTimezone,
 } from './locationApi'
 import type { BusinessHours, LocationCreateRequest } from './locationApi'
@@ -39,17 +47,18 @@ import {
   updateUserProfile,
 } from './usersApi'
 import type { User } from './usersApi'
+import {
+  clearLocationSummaryCache,
+  resolveLocationId,
+  useLocationId,
+} from '../../shared/location'
+import { useTenant } from '../../shared/tenant'
 
 const ROLE_LABEL: Record<User['role'], string> = {
   staff: 'Personal',
   owner_user: 'Ägare',
-  super_admin: 'Systemadmin',
 }
 
-// Det finns ingen "hämta min plats"-endpoint, bara GET /locations/{id} - så
-// vi minns vilken plats som hör till den här restaurangen lokalt, i väntan
-// på en riktigare koppling (t.ex. platsen på den inloggades User-post).
-const LOCATION_ID_STORAGE_KEY = 'admin-location-id'
 
 type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
 
@@ -63,22 +72,65 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * behöver för att kunna spara.
  *
  * Personal & behörigheter går mot det riktiga /users/*-API:t (usersApi.ts);
- * listan hämtas från GET /users vid sidladdning.
+ * listan hämtas från GET /list-users vid sidladdning. Ingen mockdata.
  *
- * Betalningar/Avbokningspolicy kör fortfarande på ren mockdata.
+ * Betalningar visar restaurangens riktiga Stripe-status (GET /tenant) och
+ * öppnar Stripes onboarding. Avbokningspolicyn (kortgaranti, avgifter för
+ * uteblivna gäster och sen avbokning) sparas per plats.
+ *
+ * Personal (staff_user) ser sin plats men kan inte ändra den eller hantera
+ * andra användare — de rutterna är bara för ägare.
  */
+/** Flikarna - en sektion i taget i stället för en lång sida. */
+type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'dagar' | 'bord'
+
+const TAB_LABEL: Record<SettingsTab, string> = {
+  profil: 'Restaurang',
+  personal: 'Personal',
+  betalningar: 'Betalningar',
+  notiser: 'Notiser',
+  avbokning: 'Avbokning',
+  bestallning: 'Beställning',
+  dagar: 'Avvikande dagar',
+  bord: 'Bord',
+}
+
+function initialTab(stripeReturn: string | null): SettingsTab {
+  if (stripeReturn) return 'betalningar'
+  const fromHash = window.location.hash.replace(/^#/, '') as SettingsTab
+  return fromHash in TAB_LABEL ? fromHash : 'profil'
+}
+
 export default function InstallningarPage() {
   const { sub, groups } = useAuth()
-  const [profile, setProfile] = useState<RestaurantProfile>(MOCK_PROFILE)
-  const [timezone, setTimezone] = useState(MOCK_TIMEZONE)
-  const [businessHours, setBusinessHours] = useState<BusinessHours>(MOCK_BUSINESS_HOURS)
+  const { tenant, refresh: refreshTenant } = useTenant()
+  const [searchParams] = useSearchParams()
+  const stripeReturn = searchParams.get('stripe')
+  const [tab, setTab] = useState<SettingsTab>(() => initialTab(stripeReturn))
+  // Länkar (och guiden) kan öppna en flik via #flik i adressen.
+  const { hash } = useLocation()
+  useEffect(() => {
+    const fromHash = hash.replace(/^#/, '') as SettingsTab
+    if (fromHash in TAB_LABEL) setTab(fromHash)
+  }, [hash])
+  function openTab(next: SettingsTab) {
+    setTab(next)
+    window.history.replaceState(null, '', `#${next}`)
+  }
+  const [profile, setProfile] = useState<RestaurantProfile>(EMPTY_PROFILE)
+  const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE)
+  const [businessHours, setBusinessHours] =
+    useState<BusinessHours>(EMPTY_BUSINESS_HOURS)
   const [bookingDurationHours, setBookingDurationHours] = useState(
-    MOCK_BOOKING_DURATION_HOURS,
+    DEFAULT_BOOKING_DURATION_HOURS,
   )
-  const [gracePeriodHours, setGracePeriodHours] = useState(MOCK_GRACE_PERIOD_HOURS)
-  const [locationId, setLocationId] = useState<string | null>(() =>
-    localStorage.getItem(LOCATION_ID_STORAGE_KEY),
+  const [gracePeriodHours, setGracePeriodHours] = useState(
+    DEFAULT_GRACE_PERIOD_HOURS,
   )
+  // Plats-ID:t kan saknas i den här webbläsaren även när platsen finns i
+  // databasen — hooken letar då upp det via användarlistan.
+  const { locationId, setLocationId, resolving: resolvingLocation } =
+    useLocationId(sub)
   const [locationError, setLocationError] = useState<string | null>(null)
   const [savingLocation, setSavingLocation] = useState(false)
   // Senast sparade värden, för att kunna skicka bara det som ändrats i PUT:en.
@@ -86,7 +138,6 @@ export default function InstallningarPage() {
     null,
   )
 
-  const [policy, setPolicy] = useState<CancellationPolicy>(MOCK_POLICY)
   const [staff, setStaff] = useState<User[]>([])
   const [staffLoading, setStaffLoading] = useState(true)
   const [staffError, setStaffError] = useState<string | null>(null)
@@ -96,7 +147,14 @@ export default function InstallningarPage() {
   const [busySub, setBusySub] = useState<string | null>(null)
 
   const caller = { sub, groups }
-  const canManageStaff = groups.includes('owner_user') || groups.includes('super_user')
+  // Rollen kommer från servern (GET /tenant), inte från klientens tolkning
+  // av tokenens grupper.
+  const isOwner = tenant?.role === 'owner_user'
+  const canManageStaff = isOwner
+  const locationOptions = (tenant?.locations ?? []).map((l) => ({
+    locationId: l.locationId,
+    name: l.name || 'Namnlös plats',
+  }))
 
   // En plats är redan skapad - hämta den riktiga datan istället för att
   // visa kvarvarande mockvärden.
@@ -106,7 +164,13 @@ export default function InstallningarPage() {
     getLocation(locationId)
       .then((loc) => {
         if (cancelled) return
-        setProfile((prev) => ({ ...prev, name: loc.name, address: loc.address }))
+        setProfile((prev) => ({
+          ...prev,
+          name: loc.name,
+          address: loc.address,
+          phone: loc.phoneNumber ?? '',
+          email: loc.email ?? '',
+        }))
         setTimezone(loc.timezone)
         setBusinessHours(loc.businessHours)
         setBookingDurationHours(loc.bookingDurationHours)
@@ -114,6 +178,8 @@ export default function InstallningarPage() {
         setSavedLocation({
           name: loc.name,
           address: loc.address,
+          email: loc.email ?? '',
+          phoneNumber: loc.phoneNumber ?? '',
           timezone: loc.timezone,
           businessHours: loc.businessHours,
           bookingDurationHours: loc.bookingDurationHours,
@@ -132,8 +198,9 @@ export default function InstallningarPage() {
     }
   }, [locationId])
 
-  // Hämta hela användarlistan från GET /users vid sidladdning.
+  // Hämta restaurangens användare (bara ägare får lista dem).
   useEffect(() => {
+    if (!isOwner) return
     let cancelled = false
     listUsers()
       .then((users) => {
@@ -152,29 +219,26 @@ export default function InstallningarPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [isOwner])
 
   function updateProfile(field: keyof RestaurantProfile, value: string) {
     setSaved(false)
     setProfile((prev) => ({ ...prev, [field]: value }))
   }
 
-  function updatePolicyNumber(
-    field: 'lateFee' | 'noShowFee' | 'freeCancelHours',
-    value: string,
-  ) {
-    setSaved(false)
-    const n = Number(value.replace(/[^\d]/g, ''))
-    setPolicy((prev) => ({ ...prev, [field]: Number.isNaN(n) ? 0 : n }))
-  }
-
   async function handleSaveAll() {
     setSaved(false)
     setLocationError(null)
 
+    // Spara-knappen är spärrad medan platsen letas upp, men gardera ändå —
+    // en sparning utan känt plats-id hade skapat en dubblettplats.
+    if (resolvingLocation) return
+
     const firstError =
       validateLocationName(profile.name) ??
       validateAddress(profile.address) ??
+      validateEmail(profile.email) ??
+      validatePhoneNumber(profile.phone) ??
       validateTimezone(timezone) ??
       validateBookingDuration(bookingDurationHours) ??
       validateGracePeriod(gracePeriodHours) ??
@@ -187,6 +251,8 @@ export default function InstallningarPage() {
     const values: LocationCreateRequest = {
       name: profile.name.trim(),
       address: profile.address.trim(),
+      email: profile.email.trim(),
+      phoneNumber: profile.phone.trim(),
       timezone: timezone.trim(),
       businessHours,
       bookingDurationHours,
@@ -195,7 +261,15 @@ export default function InstallningarPage() {
 
     setSavingLocation(true)
     try {
-      if (locationId && savedLocation) {
+      if (locationId) {
+        if (!savedLocation) {
+          // Platsen finns men uppgifterna kunde inte hämtas — att ramla ner
+          // i skapa-grenen här var det som gav dubblettplatser förr.
+          setLocationError(
+            'Platsens sparade uppgifter kunde inte hämtas — ladda om sidan och försök igen.',
+          )
+          return
+        }
         // API:t kräver minst ett fält i uppdateringen, så en tom diff får
         // aldrig skickas iväg.
         const updates = locationChanges(savedLocation, values)
@@ -206,11 +280,25 @@ export default function InstallningarPage() {
         await updateLocation(locationId, updates)
         setSavedLocation(values)
       } else {
+        // Sista koll mot servern innan något skapas: har restaurangen redan
+        // en plats (t.ex. sparad från en annan enhet) ska den återanvändas,
+        // aldrig dubbleras.
+        const existing = await resolveLocationId(sub)
+        if (existing) {
+          setLocationId(existing)
+          setLocationError(
+            'Restaurangen har redan en sparad plats — uppgifterna hämtas nu. ' +
+              'Kontrollera dem och spara igen.',
+          )
+          return
+        }
         const created = await createLocation(values)
         setLocationId(created.locationId)
-        localStorage.setItem(LOCATION_ID_STORAGE_KEY, created.locationId)
         setSavedLocation(values)
       }
+      // Skalets namn/adress är cachade — töm så sidebar och topbar visar
+      // de nya uppgifterna direkt i stället för de gamla.
+      clearLocationSummaryCache()
       setSaved(true)
     } catch (err) {
       setLocationError(err instanceof Error ? err.message : 'Kunde inte spara platsen.')
@@ -234,12 +322,13 @@ export default function InstallningarPage() {
     }
     if (modal?.mode === 'edit') {
       const original = modal.user
+      const roleChanged = values.group !== ROLE_TO_GROUP[original.role]
+
       const profileUpdates: Record<string, string> = {}
       if (values.name !== original.name) profileUpdates.name = values.name
       if (values.email !== original.email) profileUpdates.email = values.email
       if (values.phone !== original.phone) profileUpdates.phone = values.phone
 
-      const roleChanged = values.group !== ROLE_TO_GROUP[original.role]
       if (!roleChanged && values.locationId !== original.locationId) {
         profileUpdates.locationId = values.locationId
       }
@@ -294,12 +383,14 @@ export default function InstallningarPage() {
       <AdminTopbar
         title="Inställningar"
         actions={
-          <span className="row-actions">
+          tab === 'profil' && <span className="row-actions">
             {saved && <span className="save-notice">Sparat</span>}
             <button
               type="button"
               className="btn primary square"
-              disabled={savingLocation}
+              data-tour="settings-save"
+              disabled={savingLocation || resolvingLocation || !isOwner}
+              title={isOwner ? undefined : 'Bara ägaren kan ändra restaurangens uppgifter'}
               onClick={handleSaveAll}
             >
               {savingLocation ? 'Sparar…' : 'Spara ändringar'}
@@ -308,14 +399,37 @@ export default function InstallningarPage() {
         }
       />
       <div className="admin-main">
-        <section className="admin-card table-card">
+        <nav className="settings-tabs" aria-label="Inställningar">
+          {(Object.keys(TAB_LABEL) as SettingsTab[])
+            .filter((t) => (t === 'personal' ? isOwner : t === 'bestallning' ? Boolean(tenant?.entitlements.features.ordering) : true))
+            .map((t) => (
+              <button
+                key={t}
+                type="button"
+                className={tab === t ? 'active' : ''}
+                data-tour={`settings-tab-${t}`}
+                aria-current={tab === t ? 'page' : undefined}
+                onClick={() => openTab(t)}
+              >
+                {TAB_LABEL[t]}
+              </button>
+            ))}
+        </nav>
+        {/* Flikar döljs (hidden) i stället för att tas bort - osparade ändringar ligger kvar. */}
+        <section className="admin-card table-card" hidden={tab !== 'profil'}>
           <div className="card-head">
             <div>
               <h2 className="card-title">Restaurangprofil</h2>
               <p className="cell-muted">
-                {locationId
-                  ? `Plats-ID: ${locationId} — ändringar sparas med "Spara ändringar".`
-                  : 'Grundläggande information om din restaurang. Sparas som en ny plats i backend, och krävs innan layouten kan sparas.'}
+                {resolvingLocation
+                  ? 'Letar efter restaurangens plats…'
+                  : locationId
+                    ? isOwner
+                      ? 'Namn, kontakt och öppettider. Spara med knappen uppe till höger.'
+                      : 'Uppgifter för din plats. Bara ägaren kan ändra dem.'
+                    : isOwner
+                      ? 'Restaurangen har ingen plats än. Fyll i uppgifterna och spara för att skapa den första.'
+                      : 'Du är inte kopplad till någon plats än. Be ägaren att koppla dig till en plats.'}
               </p>
             </div>
           </div>
@@ -337,6 +451,8 @@ export default function InstallningarPage() {
               <label htmlFor="rp-phone">Telefon</label>
               <input
                 id="rp-phone"
+                type="tel"
+                placeholder="+46701234567"
                 value={profile.phone}
                 onChange={(e) => updateProfile('phone', e.target.value)}
               />
@@ -372,7 +488,15 @@ export default function InstallningarPage() {
               />
             </div>
             <div className="form-field">
-              <label htmlFor="rp-duration">Bokningslängd (timmar)</label>
+              <span className="form-field-label-row">
+                <label htmlFor="rp-duration">Bokningslängd (timmar)</label>
+                <InfoTooltip label="Bokningslängd (timmar)">
+                  Hur länge ett bord är upptaget per bokning. Styr längden på
+                  varje ledig tid som visas för gästen — t.ex. ger 2 timmar
+                  bokningsbara pass som 18:00–20:00.
+                  Måste vara större än noll.
+                </InfoTooltip>
+              </span>
               <input
                 id="rp-duration"
                 inputMode="decimal"
@@ -384,7 +508,12 @@ export default function InstallningarPage() {
               />
             </div>
             <div className="form-field">
-              <label htmlFor="rp-grace">Grace period (timmar)</label>
+              <span className="form-field-label-row">
+                <label htmlFor="rp-grace">Grace period (timmar)</label>
+                <InfoTooltip label="Grace period (timmar)">
+                  Hur länge bordet ska hållas om gästen är sen. Ange mellan 0 och 1 timme. Exempel: 0,25 = 15 minuter. Därefter blir bordet ledigt igen. 
+                </InfoTooltip>
+              </span>
               <input
                 id="rp-grace"
                 inputMode="decimal"
@@ -408,7 +537,8 @@ export default function InstallningarPage() {
           />
         </section>
 
-        <section className="admin-card table-card">
+        {isOwner && (
+        <section className="admin-card table-card" hidden={tab !== 'personal'}>
           <div className="card-head">
             <div>
               <h2 className="card-title">Personal &amp; behörigheter</h2>
@@ -463,7 +593,16 @@ export default function InstallningarPage() {
                   return (
                     <tr key={s.cognitoSub}>
                       <td className="cell-strong">{s.name}</td>
-                      <td>{ROLE_LABEL[s.role]}</td>
+                      <td>
+                        {ROLE_LABEL[s.role] ?? s.role}
+                        {s.role === 'staff' && (
+                          <span className="cell-muted">
+                            {' · '}
+                            {locationOptions.find((l) => l.locationId === s.locationId)
+                              ?.name ?? 'Ingen plats'}
+                          </span>
+                        )}
+                      </td>
                       <td className="cell-muted">{s.email}</td>
                       <td>
                         <span
@@ -515,85 +654,55 @@ export default function InstallningarPage() {
             </table>
           </div>
         </section>
+        )}
 
-        <div className="settings-row">
-          <section className="admin-card table-card">
-            <h2 className="card-title">Betalningar</h2>
-            <div style={{ height: 16 }} />
-            <div className="stripe-status">
-              <span
-                className={`stripe-dot ${MOCK_STRIPE.connected ? 'ok' : ''}`}
-                aria-hidden="true"
-              />
-              <div>
-                <p className="stripe-title">
-                  {MOCK_STRIPE.connected
-                    ? 'Ansluten till Stripe'
-                    : 'Ej ansluten till Stripe'}
-                </p>
-                <p className="cell-muted">Konto: {MOCK_STRIPE.accountLabel}</p>
-              </div>
-            </div>
-            <div style={{ height: 16 }} />
-            <button type="button" className="btn outline square stripe-manage">
-              Hantera i Stripe →
-            </button>
-          </section>
+        <div className="settings-row" hidden={tab !== 'betalningar'}>
+          {tenant && (
+            <PaymentsCard
+              tenant={tenant}
+              isOwner={isOwner}
+              stripeReturn={stripeReturn}
+              onRefresh={refreshTenant}
+            />
+          )}
+        </div>
 
-          <section className="admin-card table-card">
-            <h2 className="card-title">Avbokningspolicy</h2>
-            <div style={{ height: 16 }} />
-            <div className="form-grid">
-              <div className="form-field">
-                <label htmlFor="pol-late">Avgift, sen avbokning</label>
-                <input
-                  id="pol-late"
-                  value={`${policy.lateFee} kr`}
-                  onChange={(e) => updatePolicyNumber('lateFee', e.target.value)}
-                />
-              </div>
-              <div className="form-field">
-                <label htmlFor="pol-noshow">Avgift, uteblivande</label>
-                <input
-                  id="pol-noshow"
-                  value={`${policy.noShowFee} kr`}
-                  onChange={(e) =>
-                    updatePolicyNumber('noShowFee', e.target.value)
-                  }
-                />
-              </div>
-            </div>
-            <div style={{ height: 16 }} />
-            <div className="form-field">
-              <label htmlFor="pol-hours">
-                Framförhållning för fri avbokning (timmar)
-              </label>
-              <input
-                id="pol-hours"
-                value={policy.freeCancelHours}
-                onChange={(e) =>
-                  updatePolicyNumber('freeCancelHours', e.target.value)
-                }
-              />
-            </div>
-            <div style={{ height: 16 }} />
-            <div className="toggle-row">
-              <span className="toggle-row-label">
-                Aktivera automatisk debitering
-              </span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={policy.autoCharge}
-                aria-label="Aktivera automatisk debitering"
-                className="switch"
-                onClick={() => {
-                  setSaved(false)
-                  setPolicy((prev) => ({ ...prev, autoCharge: !prev.autoCharge }))
-                }}
-              />
-            </div>
-          </section>
+        <div className="settings-row" hidden={tab !== 'notiser'}>
+          {tenant && (
+            <NotificationsCard
+              key={`${tenant.tenantId}:${JSON.stringify(tenant.notifications)}:${tenant.senderName ?? ''}`}
+              tenant={tenant}
+              isOwner={isOwner}
+            />
+          )}
+        </div>
+
+        <div className="settings-row" hidden={tab !== 'avbokning'}>
+          <CancellationPolicyCard
+            key={locationId ?? 'none'}
+            locationId={locationId}
+            isOwner={isOwner}
+            stripeReady={Boolean(tenant?.stripe.chargesEnabled)}
+          />
+        </div>
+
+        {tenant?.entitlements.features.ordering && (
+          <div className="settings-row" hidden={tab !== 'bestallning'}>
+            <OrderingCard
+              key={locationId ?? 'none'}
+              locationId={locationId}
+              isOwner={isOwner}
+              stripeReady={Boolean(tenant?.stripe.chargesEnabled)}
+            />
+          </div>
+        )}
+
+        <div className="settings-row" hidden={tab !== 'dagar'}>
+          <SpecialDaysCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+        </div>
+
+        <div className="settings-row" hidden={tab !== 'bord'}>
+          <TableRulesCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
         </div>
       </div>
 
@@ -603,6 +712,7 @@ export default function InstallningarPage() {
           initial={modal.mode === 'edit' ? modal.user : null}
           callerGroups={groups}
           lockRole={modal.mode === 'edit' && modal.user.cognitoSub === sub}
+          locations={locationOptions}
           defaultLocationId={locationId ?? undefined}
           onSave={handleSave}
           onCancel={() => setModal(null)}

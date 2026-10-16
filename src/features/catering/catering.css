@@ -1,0 +1,90 @@
+/* Catering - förfrågningar och offerteditor. */
+
+.catering-facts {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.catering-facts > div {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 12px;
+}
+
+.catering-facts dt {
+  color: var(--muted);
+}
+
+.catering-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.catering-facts .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.catering-lines {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.catering-lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.catering-lines-total {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  font-weight: 700;
+}
+
+.catering-callout {
+  margin: 0;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: var(--tint-orange);
+  color: var(--warning-ink);
+}
+
+.offer-table input {
+  width: 100%;
+  min-width: 70px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.catering-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  border-radius: 12px;
+}
+
+.catering-confirm textarea,
+.catering-request .form-field textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font: inherit;
+}
+
+.catering-versions,
+.catering-history {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+}

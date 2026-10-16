@@ -11,7 +11,10 @@ on:
         description: Node version used for install/build
         required: false
         type: string
-        default: "20"
+        # 20 kraschar i testerna: jsdoms undici träffar
+        # "webidl.util.markAsUncloneable is not a function" på Node 20.
+        # 24 är aktuell LTS och samma major som utvecklingsmiljön.
+        default: "24"
 
 permissions:
   contents: read
@@ -28,6 +31,7 @@ jobs:
       distribution_id: ${{ steps.vars.outputs.distribution_id }}
       aws_region: ${{ steps.vars.outputs.aws_region }}
       api_base_url: ${{ steps.vars.outputs.api_base_url }}
+      menu_image_base_url: ${{ steps.vars.outputs.menu_image_base_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -84,9 +88,26 @@ jobs:
           fi
           echo "api_base_url=$API_BASE_URL" >> "$GITHUB_OUTPUT"
 
+          # Same rules for the menu-image CDN: public, optional. Without it
+          # uploaded images are stored but rendered as placeholders, since the
+          # API only returns S3 keys, never a viewable URL.
+          MENU_IMAGE_VAR="VITE_MENU_IMAGE_BASE_URL_${SUFFIX}"
+          MENU_IMAGE_BASE_URL="${!MENU_IMAGE_VAR:-}"
+          if [ -z "$MENU_IMAGE_BASE_URL" ] || [[ "$MENU_IMAGE_BASE_URL" == *REPLACE_ME* ]]; then
+            echo "::warning::VITE_MENU_IMAGE_BASE_URL for environment '${{ inputs.environment }}' is missing or a placeholder in $ENV_FILE - menu images will render as placeholders."
+            MENU_IMAGE_BASE_URL=""
+          fi
+          echo "menu_image_base_url=$MENU_IMAGE_BASE_URL" >> "$GITHUB_OUTPUT"
+
   build:
     needs: config
     runs-on: ubuntu-latest
+    # Deploys (push to dev/main) run in the GitHub environment named like the
+    # target - "prod" has required reviewers, so nothing reaches prod without
+    # an approval. The environment also puts ":environment:<env>" in the OIDC
+    # token's sub, which the AWS deploy roles can trust. PR runs (tests /
+    # plan only) use no environment, so they never wait for approval.
+    environment: ${{ github.event_name == 'push' && inputs.environment || '' }}
     # id-token: write is required to mint the GitHub OIDC token used by
     # aws-actions/configure-aws-credentials. Only exercised on push (deploy).
     permissions:
@@ -106,13 +127,16 @@ jobs:
       - name: Lint
         run: npm run lint --if-present
 
+      # Ingen extra flagga: `npm test` kör `vitest run`, som redan är
+      # engångsläget för CI. `--ci` är en Jest-flagga som vitest avvisar.
       - name: Test
-        run: npm test --if-present -- --ci
+        run: npm test --if-present
 
       - name: Build
         run: npm run build
         env:
           VITE_API_BASE_URL: ${{ needs.config.outputs.api_base_url }}
+          VITE_MENU_IMAGE_BASE_URL: ${{ needs.config.outputs.menu_image_base_url }}
 
       - name: Verify dist/ output
         run: |

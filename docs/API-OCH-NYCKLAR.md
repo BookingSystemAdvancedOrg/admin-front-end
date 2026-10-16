@@ -67,19 +67,30 @@ klient:
 
 ### Lösenordspolicy
 
-Sidan "Välj ett nytt lösenord" (`src/features/auth/NewPasswordPage.tsx`)
-visar en checklista med kraven: **minst 8 tecken, minst en stor bokstav,
-minst en siffra**.
+Sidorna "Välj ett nytt lösenord" (`/nytt-losenord`) och "Återställ
+lösenord" (`/aterstall-losenord`) visar en checklista med kraven: **minst 8
+tecken, stor bokstav (A–Z), liten bokstav (a–z), siffra och specialtecken**.
+Kraven finns på ett ställe, `src/features/auth/passwordRules.ts`, och är
+desamma som User Poolens policy (infrastructure-repot,
+`storage/cognito/main.tf`). Ändras policyn där, ändra `PASSWORD_RULES` också -
+annars kan Cognito neka ett lösenord som ser godkänt ut i gränssnittet.
 
-Cognitos *standardpolicy* kräver dessutom liten bokstav och specialtecken. Se
-till att policyn i AWS matchar checklistan (annars kan Cognito neka ett
-lösenord som ser godkänt ut i gränssnittet):
+### Glömt lösenordet
 
-- Pool → **Authentication** → **Sign-in** / **Password policy** → Edit.
-- Sätt: minst 8 tecken, kräv versaler, kräv siffror. Slå av "special
-  characters" och "lowercase" **eller** lägg till motsvarande rader i
-  `RULES` i `src/features/auth/NewPasswordPage.tsx` så att checklistan och
-  policyn alltid säger samma sak.
+1. "Glömt lösenordet?" på `/logga-in` → `/glomt-losenord` → backend
+   `POST /auth/forgot-password`. Svaret är alltid detsamma, oavsett om
+   adressen har ett konto.
+2. Cognito mejlar en länk: `/aterstall-losenord#code=123456&email=…`
+   (gäller en timme, en gång). Koden ligger i fragmentet och tas bort ur
+   adressfältet när sidan läst den.
+3. Personen väljer ett nytt lösenord → `POST /auth/reset-password` → appen
+   loggar in direkt.
+
+Länken kräver att poolen skickar mejl via SES (`cognito_invites_via_ses` i
+infrastrukturen, på i dev). Utan SES innehåller mejlet bara koden - då
+fyller man i e-post och kod på `/aterstall-losenord` ("Ange koden här").
+Konton som aldrig loggat in (bara tillfälligt lösenord) kan inte återställas
+- de använder inbjudan.
 
 ### Så bjuder du in personal
 

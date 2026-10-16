@@ -2,15 +2,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../shared/api'
 import * as api from '../../shared/api'
 import {
+  LEGACY_FLOOR_ID,
   UNITS_PER_METER,
+  activateLayoutVersion,
+  archiveLayoutVersion,
+  cancelPendingLayoutActivation,
   diffLayout,
   listLayoutElements,
-  loadLayoutExtras,
-  saveFloor,
-  saveLayoutExtras,
+  listLayoutVersions,
+  publishLayout,
+  saveLayout,
   toApiElements,
-  toDoorKinds,
+  toApiLayout,
   toFloorElements,
+  toFloors,
 } from './layoutApi'
 import type { LayoutElement } from './layoutApi'
 import type { Floor } from './data'
@@ -64,13 +69,16 @@ const floor: Floor = {
       x: 50,
       y: 20,
       rotation: 90,
+      // Fyrsitsigt fyrkantsbord: defaultTableSize('square', 4) -> 68x45
+      // enheter -> 1.36 x 0.90 m (se testet nedan).
+      w: 68,
+      h: 45,
     },
   ],
 }
 
 beforeEach(() => {
   mockedApiFetch.mockReset()
-  localStorage.clear()
 })
 
 describe('editor -> API mapping', () => {
@@ -113,9 +121,34 @@ describe('editor -> API mapping', () => {
     expect(table?.depth).toBe(0.9)
   })
 
-  it('omits grounds and fixtures, which the API cannot store', () => {
-    const ids = [...toApiElements(floor).keys()]
-    expect(ids).toEqual(['w-n', 'w-w', 'o-1', 't1'])
+  it('includes grounds and fixtures as real floorArea/cashRegister elements', () => {
+    const els = toApiElements(floor)
+    expect([...els.keys()]).toEqual(['g1', 'w-n', 'w-w', 'o-1', 'f-1', 't1'])
+    expect(els.get('g1')).toMatchObject({ type: 'floorArea' })
+    expect(els.get('f-1')).toMatchObject({ type: 'cashRegister', label: 'KASSA' })
+  })
+
+  it('centres a floorArea on the ground rect, which is stored as a corner', () => {
+    // g1: hörn (-100,-100), 200x200 -> mittpunkt (0,0) i editorenheter.
+    const ground = toApiElements(floor).get('g1')
+    expect(ground?.x).toBe(0)
+    expect(ground?.z).toBe(0)
+    expect(ground?.width).toBe(4)
+    expect(ground?.depth).toBe(4)
+  })
+
+  it('tags a door element with its entrance/kitchen kind, never a window', () => {
+    const kitchenFloor: Floor = {
+      ...floor,
+      openings: [
+        { id: 'o-2', kind: 'kitchen', wallId: 'w-n', offset: 0, length: 60 },
+      ],
+    }
+    expect(toApiElements(kitchenFloor).get('o-2')).toMatchObject({
+      type: 'door',
+      kind: 'kitchen',
+    })
+    expect(toApiElements(floor).get('o-1')).not.toHaveProperty('kind')
   })
 
   it('skips zero-length walls the API would reject as dimension <= 0', () => {
@@ -142,6 +175,8 @@ describe('API -> editor mapping', () => {
 
     const back = toFloorElements(stored)
     expect(back.walls).toEqual(floor.walls)
+    expect(back.grounds).toEqual(floor.grounds)
+    expect(back.fixtures).toEqual(floor.fixtures)
     expect(back.openings[0]).toMatchObject({
       wallId: 'w-n',
       offset: 40,
@@ -154,6 +189,10 @@ describe('API -> editor mapping', () => {
       x: 50,
       y: 20,
       rotation: 90,
+      // Manuellt satt storlek (t.ex. via resize-handtagen) ska också
+      // rundtripa — inte bara härledas om ur seats vid varje inläsning.
+      w: 68,
+      h: 45,
     })
   })
 
@@ -165,7 +204,15 @@ describe('API -> editor mapping', () => {
     expect(tables.map((t) => t.label)).toEqual(['T1', 'T2'])
   })
 
-  it('reads every door back as an entrance — the API has no kitchen type', () => {
+  it('reads a door\'s entrance/kitchen kind straight from the API element', () => {
+    const { openings } = toFloorElements([
+      element({ elementId: 'w1', type: 'wall', width: 4 }),
+      element({ elementId: 'd1', type: 'door', width: 1, wallId: 'w1', kind: 'kitchen' }),
+    ])
+    expect(openings[0].kind).toBe('kitchen')
+  })
+
+  it('defaults a legacy door without `kind` to entrance', () => {
     const { openings } = toFloorElements([
       element({ elementId: 'w1', type: 'wall', width: 4 }),
       element({ elementId: 'd1', type: 'door', width: 1, wallId: 'w1' }),
@@ -184,7 +231,8 @@ describe('API -> editor mapping', () => {
 describe('diffLayout', () => {
   it('creates elements that have no server counterpart', () => {
     const diff = diffLayout(toApiElements(floor), [])
-    expect(diff.created).toHaveLength(4)
+    // 1 markyta + 2 väggar + 1 öppning + 1 kassa + 1 bord.
+    expect(diff.created).toHaveLength(6)
     expect(diff.updated).toEqual([])
     expect(diff.deleted).toEqual([])
   })
@@ -221,29 +269,189 @@ describe('diffLayout', () => {
   })
 })
 
-describe('saveFloor', () => {
-  it('creates walls first and rewrites a new opening to the served wall id', async () => {
-    const fresh: Floor = {
+describe('floors: editor -> API', () => {
+  it('emits one floor element per floor, levelled by list order, and stamps children with floorId', () => {
+    const upper: Floor = {
       ...floor,
-      walls: [{ id: 'local-wall', dir: 'h', x: 0, y: 0, length: 100 }],
-      openings: [
-        { id: 'local-op', kind: 'window', wallId: 'local-wall', offset: 0, length: 20 },
-      ],
+      id: 'floor-2',
+      name: 'Plan 2',
+      grounds: [],
+      walls: [{ id: 'w-up', dir: 'h', x: 0, y: 0, length: 100 }],
+      openings: [],
+      fixtures: [],
       tables: [],
     }
+    const out = toApiLayout([floor, upper])
+    expect(out.get('floor-1')).toMatchObject({ type: 'floor', name: 'Våning 1', level: 0 })
+    expect(out.get('floor-2')).toMatchObject({ type: 'floor', name: 'Plan 2', level: 1 })
+    expect(out.get('w-n')).toMatchObject({ type: 'wall', floorId: 'floor-1' })
+    expect(out.get('t1')).toMatchObject({ type: 'table', floorId: 'floor-1' })
+    expect(out.get('w-up')).toMatchObject({ type: 'wall', floorId: 'floor-2' })
+  })
+
+  it('leaves floorId out of a flat (legacy) mapping', () => {
+    for (const el of toApiElements(floor).values()) {
+      expect(el).not.toHaveProperty('floorId')
+    }
+  })
+})
+
+describe('floors: API -> editor', () => {
+  const groundFloor = element({ elementId: 'f-ground', type: 'floor', name: 'Entréplan', level: 0 })
+  const upperFloor = element({ elementId: 'f-upper', type: 'floor', name: 'Plan 2', level: 1 })
+
+  it('groups elements onto their floors, ordered by level', () => {
+    const floors = toFloors([
+      upperFloor,
+      element({ elementId: 'w-up', type: 'wall', floorId: 'f-upper' }),
+      groundFloor,
+      element({ elementId: 't-ground', type: 'table', floorId: 'f-ground', seats: 2 }),
+    ])
+    expect(floors.map((f) => [f.id, f.name])).toEqual([
+      ['f-ground', 'Entréplan'],
+      ['f-upper', 'Plan 2'],
+    ])
+    expect(floors[0].tables.map((t) => t.id)).toEqual(['t-ground'])
+    expect(floors[0].walls).toEqual([])
+    expect(floors[1].walls.map((w) => w.id)).toEqual(['w-up'])
+  })
+
+  it('parks elements with no or an unknown floor on the first floor', () => {
+    const floors = toFloors([
+      groundFloor,
+      upperFloor,
+      element({ elementId: 'w-orphan', type: 'wall' }),
+      element({ elementId: 'w-dangling', type: 'wall', floorId: 'f-deleted' }),
+    ])
+    expect(floors[0].walls.map((w) => w.id)).toEqual(['w-orphan', 'w-dangling'])
+    expect(floors[1].walls).toEqual([])
+  })
+
+  it('reads a flat legacy layout as a single floor, grounds and fixtures included', () => {
+    const stored: LayoutElement[] = [
+      element({ elementId: 'w-1', type: 'wall' }),
+      element({ elementId: 'g-1', type: 'floorArea', width: 2, depth: 2 }),
+      element({ elementId: 'fx-1', type: 'cashRegister', width: 2, depth: 0.7, label: 'Kassa' }),
+    ]
+    const floors = toFloors(stored)
+    expect(floors).toHaveLength(1)
+    expect(floors[0].id).toBe(LEGACY_FLOOR_ID)
+    expect(floors[0].walls.map((w) => w.id)).toEqual(['w-1'])
+    expect(floors[0].grounds.map((g) => g.id)).toEqual(['g-1'])
+    expect(floors[0].fixtures.map((f) => f.id)).toEqual(['fx-1'])
+  })
+
+  it('assigns grounds and fixtures to the floor their floorId points at', () => {
+    const floors = toFloors([
+      groundFloor,
+      upperFloor,
+      element({ elementId: 'g-ground', type: 'floorArea', floorId: 'f-ground', width: 2, depth: 2 }),
+      element({
+        elementId: 'fx-upper',
+        type: 'cashRegister',
+        floorId: 'f-upper',
+        width: 2,
+        depth: 0.7,
+        label: 'Kassa',
+      }),
+    ])
+    expect(floors[0].grounds.map((g) => g.id)).toEqual(['g-ground'])
+    expect(floors[0].fixtures).toEqual([])
+    expect(floors[1].fixtures.map((f) => f.id)).toEqual(['fx-upper'])
+    expect(floors[1].grounds).toEqual([])
+  })
+})
+
+describe('saveLayout', () => {
+  // Testerna här handlar om skapandeordning (våning -> vägg -> resten), inte
+  // markytor/kassa — de nollställs för att inte krocka på delade lokala id:n
+  // med `floor`-fixturen och för att hålla de mockade anropssekvenserna korta.
+  const fresh: Floor = {
+    ...floor,
+    grounds: [],
+    fixtures: [],
+    walls: [{ id: 'local-wall', dir: 'h', x: 0, y: 0, length: 100 }],
+    openings: [
+      { id: 'local-op', kind: 'window', wallId: 'local-wall', offset: 0, length: 20 },
+    ],
+    tables: [],
+  }
+
+  it('creates the floor first, then walls, then openings — each rewritten to served ids', async () => {
     mockedApiFetch
       .mockResolvedValueOnce({ items: [] }) // listan innan
+      .mockResolvedValueOnce(element({ elementId: 'server-floor', type: 'floor' }))
       .mockResolvedValueOnce(element({ elementId: 'server-wall', type: 'wall' }))
       .mockResolvedValueOnce(element({ elementId: 'server-op', type: 'window' }))
       .mockResolvedValueOnce({ items: [] }) // listan efter
 
-    await saveFloor('loc-1', fresh)
+    const result = await saveLayout('loc-1', [fresh])
 
-    const openingCall = mockedApiFetch.mock.calls[2]
-    expect(JSON.parse(String(openingCall[1]?.body))).toMatchObject({
+    const bodies = mockedApiFetch.mock.calls.map((c) =>
+      c[1]?.body ? JSON.parse(String(c[1].body)) : null,
+    )
+    expect(bodies[1]).toMatchObject({ type: 'floor', name: 'Våning 1', level: 0 })
+    expect(bodies[2]).toMatchObject({ type: 'wall', floorId: 'server-floor' })
+    expect(bodies[3]).toMatchObject({
       type: 'window',
       wallId: 'server-wall',
+      floorId: 'server-floor',
     })
+    expect(result.flat).toBe(false)
+    expect(result.idMap.get('floor-1')).toBe('server-floor')
+  })
+
+  it('migrates a legacy flat draft: existing elements get the new floor id via update', async () => {
+    const existing: Floor = {
+      ...floor,
+      grounds: [],
+      fixtures: [],
+      walls: [{ id: 'old-wall', dir: 'h', x: 0, y: 0, length: 100 }],
+      openings: [],
+      tables: [],
+    }
+    mockedApiFetch
+      .mockResolvedValueOnce({
+        items: [
+          element({ elementId: 'old-wall', type: 'wall', x: 1, z: 0, width: 2, rotationY: 0 }),
+        ],
+      })
+      .mockResolvedValueOnce(element({ elementId: 'server-floor', type: 'floor' }))
+      .mockResolvedValueOnce(element({ elementId: 'old-wall', type: 'wall' }))
+      .mockResolvedValueOnce({ items: [] })
+
+    await saveLayout('loc-1', [existing])
+
+    const updateCall = mockedApiFetch.mock.calls[2]
+    expect(updateCall[0]).toBe('/locations/loc-1/layout-elements/items/old-wall')
+    expect(updateCall[1]?.method).toBe('PUT')
+    expect(JSON.parse(String(updateCall[1]?.body))).toMatchObject({
+      floorId: 'server-floor',
+    })
+  })
+
+  it('falls back to a flat save of the first floor when the server rejects floors', async () => {
+    mockedApiFetch
+      .mockResolvedValueOnce({ items: [] }) // listan innan (våningsförsöket)
+      .mockRejectedValueOnce(new ApiError(400, 'unsupported type floor'))
+      .mockResolvedValueOnce({ items: [] }) // listan innan (platt)
+      .mockResolvedValueOnce(element({ elementId: 'server-wall', type: 'wall' }))
+      .mockResolvedValueOnce(element({ elementId: 'server-op', type: 'window' }))
+      .mockResolvedValueOnce({ items: [] }) // listan efter
+
+    const result = await saveLayout('loc-1', [fresh])
+
+    expect(result.flat).toBe(true)
+    const wallBody = JSON.parse(String(mockedApiFetch.mock.calls[3][1]?.body))
+    expect(wallBody).toMatchObject({ type: 'wall' })
+    expect(wallBody).not.toHaveProperty('floorId')
+  })
+
+  it('does not treat a permission error on the floor as missing floor support', async () => {
+    mockedApiFetch
+      .mockResolvedValueOnce({ items: [] })
+      .mockRejectedValueOnce(new ApiError(403, 'forbidden'))
+    await expect(saveLayout('loc-1', [fresh])).rejects.toThrow(/behörighet/)
   })
 
   it('uses the location-scoped layout path', async () => {
@@ -255,79 +463,134 @@ describe('saveFloor', () => {
   })
 })
 
-describe('local extras (what the API cannot store)', () => {
-  it('round-trips grounds and fixtures per location', () => {
-    saveLayoutExtras('loc-1', {
-      grounds: floor.grounds,
-      fixtures: floor.fixtures,
-      doorKinds: {},
+describe('publishing', () => {
+  it('POSTs to layout/publish with no body — the API numbers the version', async () => {
+    mockedApiFetch.mockResolvedValue({ version: 1, label: 'Version 1', elements: [] })
+    const snapshot = await publishLayout('loc-1')
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/locations/loc-1/layout/publish',
+      { method: 'POST' },
+    )
+    expect(snapshot.version).toBe(1)
+  })
+
+  it('lists versions newest first, unwrapping the items envelope', async () => {
+    mockedApiFetch.mockResolvedValue({
+      items: [
+        { version: 2, label: 'Version 2', elements: [] },
+        { version: 1, label: 'Version 1', elements: [] },
+      ],
     })
-    expect(loadLayoutExtras('loc-1')).toEqual({
-      grounds: floor.grounds,
-      fixtures: floor.fixtures,
-      doorKinds: {},
+    const versions = await listLayoutVersions('loc-1')
+    expect(versions.map((v) => v.version)).toEqual([2, 1])
+    expect(mockedApiFetch).toHaveBeenCalledWith('/locations/loc-1/layout/versions')
+  })
+
+  it('treats a location with no published versions as an empty list', async () => {
+    mockedApiFetch.mockResolvedValue({ items: [] })
+    expect(await listLayoutVersions('loc-1')).toEqual([])
+  })
+
+  it('activates a version with no body, on the numbered path', async () => {
+    mockedApiFetch.mockResolvedValue({
+      status: 'active',
+      version: 1,
+      effectiveFrom: '2026-09-10T10:00:00Z',
+    })
+    const res = await activateLayoutVersion('loc-1', 1)
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/locations/loc-1/layout/versions/1/activate',
+      { method: 'POST' },
+    )
+    expect(res.status).toBe('active')
+  })
+
+  it('reports a scheduled cutover rather than pretending the switch happened', async () => {
+    mockedApiFetch.mockResolvedValue({
+      status: 'pending',
+      version: 2,
+      currentVersion: 1,
+      cutoverAt: '2026-10-08T01:00:00Z',
+    })
+    const res = await activateLayoutVersion('loc-1', 2)
+    expect(res).toMatchObject({
+      status: 'pending',
+      currentVersion: 1,
+      cutoverAt: '2026-10-08T01:00:00Z',
     })
   })
 
-  it('keeps locations separate', () => {
-    saveLayoutExtras('loc-1', {
-      grounds: floor.grounds,
-      fixtures: [],
-      doorKinds: {},
-    })
-    expect(loadLayoutExtras('loc-2')).toEqual({
-      grounds: [],
-      fixtures: [],
-      doorKinds: {},
-    })
+  it('explains a 409 as a pending cutover, not a concurrent edit', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError(409, 'cutover pending'))
+    await expect(activateLayoutVersion('loc-1', 3)).rejects.toThrow(
+      /versionsbyte är redan inbokat/,
+    )
   })
 
-  it('treats corrupt stored data as empty instead of crashing', () => {
-    localStorage.setItem('admin-layout-extras:loc-3', '{not json')
-    expect(loadLayoutExtras('loc-3')).toEqual({
-      grounds: [],
-      fixtures: [],
-      doorKinds: {},
-    })
+  it('maps 403 on activate to the permission message (staff may not activate)', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
+    await expect(activateLayoutVersion('loc-1', 1)).rejects.toThrow(
+      /inte behörighet/,
+    )
+  })
+
+  it('maps 403 on publish to the permission message (staff may not publish)', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
+    await expect(publishLayout('loc-1')).rejects.toThrow(/inte behörighet/)
+  })
+
+  it('URL-encodes the location id', async () => {
+    mockedApiFetch.mockResolvedValue({ items: [] })
+    await listLayoutVersions('loc 1')
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/locations/loc%201/layout/versions',
+    )
   })
 })
 
-describe('entrance vs kitchen (both stored as `door` by the API)', () => {
-  it('reads a door back as a kitchen when that was recorded locally', () => {
-    const { openings } = toFloorElements(
-      [
-        element({ elementId: 'w1', type: 'wall', width: 4 }),
-        element({ elementId: 'd1', type: 'door', width: 1, wallId: 'w1' }),
-      ],
-      { d1: 'kitchen' },
+describe('archiveLayoutVersion', () => {
+  it('DELETEs the numbered version, no body', async () => {
+    mockedApiFetch.mockResolvedValue(undefined)
+    await archiveLayoutVersion('loc-1', 3)
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/locations/loc-1/layout/versions/3',
+      { method: 'DELETE' },
     )
-    expect(openings[0].kind).toBe('kitchen')
   })
 
-  it('still defaults an unrecorded door to entrance', () => {
-    const { openings } = toFloorElements([
-      element({ elementId: 'w1', type: 'wall', width: 4 }),
-      element({ elementId: 'd1', type: 'door', width: 1, wallId: 'w1' }),
-    ])
-    expect(openings[0].kind).toBe('entrance')
-  })
-
-  it('records door kinds but not windows, which the API can tell apart', () => {
-    expect(
-      toDoorKinds([
-        { id: 'a', kind: 'kitchen', wallId: 'w', offset: 0, length: 20 },
-        { id: 'b', kind: 'entrance', wallId: 'w', offset: 0, length: 20 },
-        { id: 'c', kind: 'window', wallId: 'w', offset: 0, length: 20 },
-      ]),
-    ).toEqual({ a: 'kitchen', b: 'entrance' })
-  })
-
-  it('rekeys a newly created door to the id the server assigned it', () => {
-    const kinds = toDoorKinds(
-      [{ id: 'local-1', kind: 'kitchen', wallId: 'w', offset: 0, length: 20 }],
-      new Map([['local-1', 'server-1']]),
+  it('explains a 409 as current/pending, not a generic conflict', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError(409, 'pending layout version cannot be archived'))
+    await expect(archiveLayoutVersion('loc-1', 3)).rejects.toThrow(
+      /gäller eller väntar/,
     )
-    expect(kinds).toEqual({ 'server-1': 'kitchen' })
+  })
+
+  it('maps 403 to the permission message (staff may not archive)', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
+    await expect(archiveLayoutVersion('loc-1', 3)).rejects.toThrow(/inte behörighet/)
+  })
+})
+
+describe('cancelPendingLayoutActivation', () => {
+  it('DELETEs the pending-activation resource, no body', async () => {
+    mockedApiFetch.mockResolvedValue(undefined)
+    await cancelPendingLayoutActivation('loc-1')
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/locations/loc-1/layout/pending-activation',
+      { method: 'DELETE' },
+    )
+  })
+
+  it('explains a 409 as an already-completed or concurrent change', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError(409, 'cutover already applied'))
+    await expect(cancelPendingLayoutActivation('loc-1')).rejects.toThrow(
+      /hann redan genomföras/,
+    )
+  })
+
+  it('maps 403 to the permission message (staff may not cancel)', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
+    await expect(cancelPendingLayoutActivation('loc-1')).rejects.toThrow(/inte behörighet/)
   })
 })
 

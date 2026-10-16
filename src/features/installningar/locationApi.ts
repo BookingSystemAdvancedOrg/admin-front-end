@@ -4,11 +4,15 @@ import { apiFetch, ApiError } from '../../shared/api'
  * Klient mot backendens /locations-endpoints (create-location/get-location).
  * Speglar valideringen i functions/create-location/app.py (dev-grenen):
  * alla sju veckodagar krävs, opensAt < closesAt, intervall får inte
- * överlappa, bookingDurationHours > 0, gracePeriodHours >= 0.
+ * överlappa, bookingDurationHours > 0, gracePeriodHours >= 0, email/
+ * phoneNumber krävs vid skapande (se openapi.yaml på localhost:8081).
  *
  * `PUT /locations/{id}` är trots verbet en PARTIELL uppdatering: minst ett
  * fält krävs, och skickas `businessHours` måste alla sju veckodagar vara med.
- * Den kräver owner_user/super_user, till skillnad från läsningen.
+ * Kontaktfälten är valfria vid uppdatering, men på en äldre plats som helt
+ * saknar dem måste den första kontaktuppdateringen skicka BÅDA — därför
+ * skickar locationChanges() alltid email och phoneNumber ihop. Den kräver
+ * owner_user/super_user, till skillnad från läsningen.
  */
 
 export const WEEKDAYS = [
@@ -33,19 +37,87 @@ export type BusinessHours = Record<Weekday, BusinessHoursInterval[]>
 export interface LocationCreateRequest {
   name: string
   address: string
+  email: string
+  phoneNumber: string
   timezone: string
   businessHours: BusinessHours
   bookingDurationHours: number
   gracePeriodHours: number
 }
 
-export interface Location extends LocationCreateRequest {
+/** Kortgaranti (backend shared/guarantee.py). Avgifter i kr per person. */
+export interface GuaranteePolicy {
+  enabled: boolean
+  /** Kort krävs från den här sällskapsstorleken (1 = alltid). */
+  minPartySize: number
+  noShowFeePerPerson: number
+  lateCancelFeePerPerson: number
+  cancelCutoffHours: number
+}
+
+/** Matbeställning (backend shared/orders.py). */
+export interface OrderingPolicy {
+  enabled: boolean
+  /** Beställ online, hämta i kassan. */
+  pickup: boolean
+  /** Beställ via QR-koden på bordet, serveras vid bordet. */
+  table: boolean
+  /** Beräknad tillagningstid som gästen ser (5–180 min). */
+  prepMinutes: number
+  /** Sista beställning så här många minuter före stängning (0–120). */
+  lastOrderMinutes: number
+}
+
+/** Avvikande dag (backend shared/booking_rules.py). */
+export type SpecialDayKind = 'closed' | 'hours' | 'no_online'
+
+export interface SpecialDay {
+  date: string
+  kind: SpecialDayKind
+  /** Bara för kind 'hours'. */
+  intervals?: BusinessHoursInterval[]
+  /** Visas för gästerna, högst 80 tecken. */
+  note?: string
+}
+
+/** Vilka sällskap ett bord erbjuds online (utan regel: halva platserna uppåt - alla). */
+export interface TableRule {
+  minParty: number
+  maxParty: number
+  online: boolean
+}
+
+/** Bord som gäster får boka tillsammans online. */
+export interface TableCombination {
+  tableIds: string[]
+  minParty: number
+  maxParty: number
+}
+
+export interface Location
+  extends Omit<LocationCreateRequest, 'email' | 'phoneNumber'> {
+  guarantee?: GuaranteePolicy
+  ordering?: OrderingPolicy
+  /** Beställningar pausade till (ISO, satt av personalen). */
+  orderingPausedUntil?: string
+  maxPartySizeOnline?: number
+  specialDays?: SpecialDay[]
+  tableRules?: Record<string, TableRule>
+  tableCombinations?: TableCombination[]
   locationId: string
   createdBy: string
   createdAt: string
+  /** Saknas bara på äldre platser som skapades innan kontaktfälten fanns. */
+  email?: string
+  phoneNumber?: string
+  /** Sätts av API:t vid en faktisk ändring; en no-op PUT lämnar dem orörda. */
+  updatedBy?: string
+  updatedAt?: string
 }
 
 const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+const PHONE_PATTERN = /^\+[1-9]\d{7,14}$/
 
 export function emptyBusinessHours(): BusinessHours {
   return {
@@ -65,6 +137,16 @@ export function validateName(name: string): string | null {
 
 export function validateAddress(address: string): string | null {
   return address.trim() ? null : 'Adress krävs.'
+}
+
+export function validateEmail(email: string): string | null {
+  return EMAIL_PATTERN.test(email.trim()) ? null : 'Ange en giltig e-postadress.'
+}
+
+export function validatePhoneNumber(phone: string): string | null {
+  return PHONE_PATTERN.test(phone.trim())
+    ? null
+    : 'Ange telefonnummer i internationellt format, t.ex. +46701234567.'
 }
 
 export function validateTimezone(timezone: string): string | null {
@@ -117,7 +199,12 @@ export function validateBusinessHours(hours: BusinessHours): string | null {
   return null
 }
 
-/** Mappar API:ts { error: string } + statuskod till svenska meddelanden. */
+/**
+ * Mappar API:ts { error: string } + statuskod till svenska meddelanden.
+ * Statuskoden bevaras (felet förblir en ApiError) så att anropare kan
+ * reagera på t.ex. 404 — "platsen finns inte" är ett tillstånd att hantera,
+ * inte bara en text att visa (se location.ts som rensar döda id:n).
+ */
 function toFriendlyLocationError(err: unknown): Error {
   if (!(err instanceof ApiError)) {
     return err instanceof Error ? err : new Error('Ett okänt fel inträffade.')
@@ -127,21 +214,24 @@ function toFriendlyLocationError(err: unknown): Error {
 
   switch (err.status) {
     case 400:
-      return new Error(err.message)
+      return new ApiError(400, err.message)
     case 401:
-      return new Error('Du är inte inloggad längre. Logga in igen.')
+      return new ApiError(401, 'Du är inte inloggad längre. Logga in igen.')
     case 403:
-      return new Error('Du har inte behörighet att göra detta.')
+      return new ApiError(403, 'Du har inte behörighet att göra detta.')
     case 404:
-      return new Error('Platsen hittades inte.')
+      return new ApiError(404, 'Platsen hittades inte.')
     case 409:
-      return new Error('En plats med det ID:t finns redan — testa igen.')
+      return new ApiError(409, 'En plats med det ID:t finns redan — testa igen.')
     case 501:
-      return new Error('Den här funktionen är inte klar på serversidan än.')
+      return new ApiError(501, 'Den här funktionen är inte klar på serversidan än.')
     case 503:
-      return new Error('Tjänsten är tillfälligt otillgänglig. Försök igen om en stund.')
+      return new ApiError(
+        503,
+        'Tjänsten är tillfälligt otillgänglig. Försök igen om en stund.',
+      )
     default:
-      return new Error(err.message || `Serverfel (${err.status}).`)
+      return new ApiError(err.status, err.message || `Serverfel (${err.status}).`)
   }
 }
 
@@ -151,6 +241,20 @@ async function call<T>(fn: () => Promise<T>): Promise<T> {
   } catch (err) {
     throw toFriendlyLocationError(err)
   }
+}
+
+/**
+ * GET /locations — hela platskatalogen. Kräver owner_user/super_user, så
+ * personal får 403 här och måste hitta sin plats på annat sätt.
+ *
+ * Systemet driftsätts med en instans per kund, så listan innehåller i
+ * praktiken exakt en plats: restaurangen det här systemet tillhör.
+ */
+export function listLocations(): Promise<Location[]> {
+  return call(async () => {
+    const res = await apiFetch<{ items?: Location[] }>('/locations')
+    return res.items ?? []
+  })
 }
 
 export function createLocation(input: LocationCreateRequest): Promise<Location> {
@@ -169,7 +273,16 @@ export function getLocation(locationId: string): Promise<Location> {
 }
 
 /** Partiell uppdatering — skicka bara de fält som faktiskt ändrats. */
-export type LocationUpdate = Partial<LocationCreateRequest>
+export type LocationUpdate = Partial<LocationCreateRequest> & {
+  /** null tar bort policyn. */
+  guarantee?: GuaranteePolicy | null
+  ordering?: OrderingPolicy | null
+  maxPartySizeOnline?: number | null
+  /** null (eller []) tar bort dem. */
+  specialDays?: SpecialDay[] | null
+  tableRules?: Record<string, TableRule> | null
+  tableCombinations?: TableCombination[] | null
+}
 
 export function updateLocation(
   locationId: string,
@@ -195,6 +308,13 @@ export function locationChanges(
   const updates: LocationUpdate = {}
   if (original.name !== next.name) updates.name = next.name
   if (original.address !== next.address) updates.address = next.address
+  // Servern kräver båda kontaktfälten tillsammans så fort ett av dem skickas
+  // (annars kan en äldre plats utan kontaktuppgifter inte uppdateras) — så
+  // de diffas och skickas alltid ihop, aldrig var för sig.
+  if (original.email !== next.email || original.phoneNumber !== next.phoneNumber) {
+    updates.email = next.email
+    updates.phoneNumber = next.phoneNumber
+  }
   if (original.timezone !== next.timezone) updates.timezone = next.timezone
   if (original.bookingDurationHours !== next.bookingDurationHours) {
     updates.bookingDurationHours = next.bookingDurationHours

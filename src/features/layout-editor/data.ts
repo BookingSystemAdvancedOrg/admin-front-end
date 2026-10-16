@@ -16,6 +16,14 @@ export interface TableElement {
   x: number
   y: number
   rotation: number
+  /**
+   * Bordets mått i golvenheter. Satta manuellt via resize-handtagen (dra en
+   * sida eller ände) — inte längre härledda ur form/antal platser, så ett
+   * "fyrkantigt" bord kan göras till en avlång rektangel. `defaultTableSize`
+   * ger bara ett rimligt startförslag när bordet skapas.
+   */
+  w: number
+  h: number
 }
 
 /**
@@ -108,18 +116,33 @@ export function emptyFloor(n: number): Floor {
   }
 }
 
-/** Bordets yta i golvenheter utifrån form och antal platser. */
-export function tableSize(t: Pick<TableElement, 'shape' | 'seats'>): {
+/**
+ * Förslag på bordsyta utifrån form och antal platser — används bara som
+ * startvärde när ett nytt bord skapas. Storleken är annars fri och styrs av
+ * användaren via resize-handtagen (se `tableSize`).
+ */
+export function defaultTableSize(
+  shape: TableShape,
+  seats: number,
+): { w: number; h: number } {
+  if (shape === 'round') {
+    const d = 44 + Math.min(seats, 10) * 4
+    return { w: d, h: d }
+  }
+  const w = 48 + Math.min(seats, 12) * 5
+  return { w, h: Math.round(w * 0.66) }
+}
+
+/** Bordets faktiska yta i golvenheter — en bekväm genväg för { w, h }. */
+export function tableSize(t: Pick<TableElement, 'w' | 'h'>): {
   w: number
   h: number
 } {
-  if (t.shape === 'round') {
-    const d = 44 + Math.min(t.seats, 10) * 4
-    return { w: d, h: d }
-  }
-  const w = 48 + Math.min(t.seats, 12) * 5
-  return { w, h: Math.round(w * 0.66) }
+  return { w: t.w, h: t.h }
 }
+
+/** Minsta tillåtna bordsmått vid manuell storleksändring. */
+export const MIN_TABLE_SIZE = 24
 
 /** Stolens storlek i golvenheter. */
 export const SEAT_SIZE = 13
@@ -134,7 +157,7 @@ const SEAT_GAP = 4
  * för fyra i hörnen.
  */
 export function seatPositions(
-  t: Pick<TableElement, 'shape' | 'seats'>,
+  t: Pick<TableElement, 'shape' | 'seats' | 'w' | 'h'>,
 ): { x: number; y: number }[] {
   const n = Math.max(0, Math.round(t.seats))
   if (n === 0) return []

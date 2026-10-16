@@ -1,28 +1,141 @@
 /* Globala CSS-variabler och nollställningar. Sid-specifik styling bor i
    src/shared/admin.css (admin-panelen) och src/features/auth/auth.css
    (inloggningssidorna). */
+/* Designsystem: "Apple UI kit" i Booqys färger - systemtypsnitt, en
+   accent (Booqy-vinrött #350001, samma som logotypen), varma neutrala
+   gråtoner, mjuk djupverkan, 44 px höga kontroller. Ljust och mörkt läge
+   följer systemet. --accent är fyllnadsfärgen (knappar, valt läge);
+   --accent-ink är samma färg för text/länkar och ljusas upp i mörkt läge
+   så att kontrasten håller (WCAG AA). Gamla namn (--green, --serif, ...)
+   pekar på de nya värdena så att alla sidor följer med. */
 :root {
-  /* KÄLLA admin — light theme (Figma: Admin-sidorna) */
-  --bg: #faf8f5;
+  --bg: #f5f4f4;
   --surface: #ffffff;
-  --border: #eae6df;
-  --ink: #111311;
-  --muted: #636863;
-  --green: #1a2b23;
-  --green-soft: #294436;
-  --accent: #d98353;
-  --danger: #b2472a;
-  --shadow: 0 8px 24px rgba(26, 43, 35, 0.05);
-  --serif: 'Fraunces', Georgia, serif;
-  --sans: 'Manrope', 'Segoe UI', system-ui, sans-serif;
+  --fill: #f0eeee;
+  --surface-glass: rgba(255, 255, 255, 0.72);
+  --border: rgba(0, 0, 0, 0.08);
+  --ink: #1d1a1a;
+  --muted: #6e6969;
+  --accent: #350001;
+  --accent-hover: #4a0a0f;
+  --accent-active: #240001;
+  --on-accent: #ffffff;
+  --accent-ink: #350001;
+  --brand: #350001;
+  --focus: rgba(53, 0, 1, 0.22);
+  --danger: #ff3b30;
+  --danger-ink: #d70015;
+  --success: #34c759;
+  --success-ink: #248a3d;
+  --warning: #ff9f0a;
+  --warning-ink: #c93400;
+  --purple: #af52de;
+  --purple-ink: #8944ab;
+  --tint-blue: color-mix(in srgb, var(--accent) 12%, transparent);
+  --tint-green: color-mix(in srgb, var(--success) 16%, transparent);
+  --tint-orange: color-mix(in srgb, var(--warning) 16%, transparent);
+  --tint-red: color-mix(in srgb, var(--danger) 12%, transparent);
+  --tint-purple: color-mix(in srgb, var(--purple) 14%, transparent);
+  --scrim: rgba(0, 0, 0, 0.3);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08), 0 24px 64px rgba(0, 0, 0, 0.12);
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Inter,
+    system-ui, sans-serif;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 20px;
+  --r-pill: 9999px;
+  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --spring: cubic-bezier(0.32, 0.72, 0, 1);
 
-  font: 16px/1.45 var(--sans);
+  /* Äldre namn */
+  --green: var(--accent);
+  --green-soft: var(--accent-hover);
+  --serif: var(--font);
+  --sans: var(--font);
+
+  font: 15px/1.47 var(--font);
   color: var(--ink);
   background: var(--bg);
   color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #000000;
+    --surface: #1c1a1a;
+    --fill: #2c2929;
+    --surface-glass: rgba(28, 26, 26, 0.72);
+    --border: rgba(255, 255, 255, 0.12);
+    --ink: #f5f4f4;
+    --muted: #a6a1a1;
+    --accent: #b8444c;
+    --accent-hover: #c6525a;
+    --accent-active: #a3383f;
+    --accent-ink: #e07a82;
+    --focus: rgba(224, 122, 130, 0.38);
+    --danger: #ff453a;
+    --danger-ink: #ff6961;
+    --success: #30d158;
+    --success-ink: #30d158;
+    --warning: #ff9f0a;
+    --warning-ink: #ffb340;
+    --purple: #bf5af2;
+    --purple-ink: #da8fff;
+    --scrim: rgba(0, 0, 0, 0.5);
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4), 0 24px 64px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #000000;
+  --surface: #1c1a1a;
+  --fill: #2c2929;
+  --surface-glass: rgba(28, 26, 26, 0.72);
+  --border: rgba(255, 255, 255, 0.12);
+  --ink: #f5f4f4;
+  --muted: #a6a1a1;
+  --accent: #b8444c;
+  --accent-hover: #c6525a;
+  --accent-active: #a3383f;
+  --accent-ink: #e07a82;
+  --focus: rgba(224, 122, 130, 0.38);
+  --danger: #ff453a;
+  --danger-ink: #ff6961;
+  --success: #30d158;
+  --success-ink: #30d158;
+  --warning: #ff9f0a;
+  --warning-ink: #ffb340;
+  --purple: #bf5af2;
+  --purple-ink: #da8fff;
+  --scrim: rgba(0, 0, 0, 0.5);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4), 0 24px 64px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+h1,
+h2 {
+  letter-spacing: -0.02em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
 * {
@@ -50,4 +163,8 @@ ul {
 
 button {
   font: inherit;
+}
+
+a {
+  color: var(--accent-ink);
 }

@@ -8,7 +8,9 @@ on:
 
 concurrency:
   group: dev-cicd-${{ github.ref }}
-  cancel-in-progress: true
+  # Deploys (push) always finish - a half-synced bucket is worse than a
+  # queued run. Superseded PR runs are cancelled.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   cicd:

@@ -176,7 +176,15 @@ async function toFriendlyError(res: Response): Promise<Error> {
         )
       }
       if (message.includes('reset')) {
-        return new Error('Lösenordet måste återställas. Kontakta en administratör.')
+        return new Error('Lösenordet måste återställas. Klicka på "Glömt lösenordet?".')
+      }
+      if (message === 'account_disabled') {
+        return new Error('Kontot är avstängt. Kontakta restaurangens ägare.')
+      }
+      if (message === 'account_not_provisioned') {
+        return new Error(
+          'Kontot är inte kopplat till någon restaurang. Kontakta restaurangens ägare.',
+        )
       }
       return new Error(message)
     case 429:
@@ -235,6 +243,99 @@ export async function completeNewPassword(
     throw new Error('Ytterligare en utmaning krävs, men stöds inte av gränssnittet ännu.')
   }
   return result.session
+}
+
+/**
+ * "Glömt lösenordet?" (backend /auth/forgot-password och /auth/reset-password,
+ * Cognito ForgotPassword/ConfirmForgotPassword). Felen har svenska texter;
+ * `needsNewLink` betyder att länken/koden inte går att använda längre.
+ */
+export class PasswordResetError extends Error {
+  readonly status: number
+  readonly code: string
+  readonly needsNewLink: boolean
+
+  constructor(status: number, code: string) {
+    super(resetErrorText(status, code))
+    this.name = 'PasswordResetError'
+    this.status = status
+    this.code = code
+    this.needsNewLink =
+      status === 400 && ['invalid code', 'code expired', 'invalid reset request'].includes(code)
+  }
+}
+
+function resetErrorText(status: number, code: string): string {
+  if (status === 400) {
+    switch (code) {
+      case 'invalid code':
+        return 'Länken eller koden fungerar inte längre - den kan redan ha använts eller ersatts av en nyare. Begär en ny länk.'
+      case 'code expired':
+        return 'Länken har gått ut (den gäller en timme). Begär en ny länk.'
+      case 'invalid reset request':
+        return 'Uppgifterna stämmer inte. Begär en ny länk.'
+      case 'password does not meet requirements':
+        return 'Lösenordet uppfyller inte kraven.'
+      case 'username must be an email address':
+        return 'Fyll i en giltig e-postadress.'
+      case 'code must be the 6-digit code from the email':
+        return 'Koden är de sex siffrorna i mejlet.'
+      default:
+        return 'Kontrollera uppgifterna och försök igen.'
+    }
+  }
+  if (status === 403 && code === 'account_disabled') {
+    return 'Kontot är avstängt. Kontakta restaurangens ägare.'
+  }
+  if (status === 429) return 'För många försök. Vänta en stund och försök igen.'
+  return 'Ingen kontakt med inloggningstjänsten just nu. Försök igen om en stund.'
+}
+
+async function resetRequest(path: string, body: unknown): Promise<void> {
+  if (!API_BASE_URL) {
+    throw new Error('VITE_API_BASE_URL är inte satt. Se docs/API-OCH-NYCKLAR.md.')
+  }
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } catch (err) {
+    console.error('[Auth] Nätverksfel mot', path, err)
+    throw new Error('Kunde inte nå inloggningstjänsten. Kontrollera anslutningen och försök igen.')
+  }
+  if (res.ok) return
+  let code = ''
+  try {
+    code = ((await res.json()) as { error?: string }).error ?? ''
+  } catch {
+    // Inget JSON-svar att läsa ut.
+  }
+  console.error(`[Auth] ${res.status}: ${code}`)
+  throw new PasswordResetError(res.status, code)
+}
+
+/**
+ * Ber om ett mejl med en länk för att välja nytt lösenord. Svaret är detsamma
+ * oavsett om adressen har ett konto (servern avslöjar aldrig vilka som har det).
+ */
+export async function requestPasswordReset(email: string): Promise<void> {
+  await resetRequest('/auth/forgot-password', { username: email.trim() })
+}
+
+/** Sätter det nya lösenordet med koden från länken (eller mejlet). */
+export async function confirmPasswordReset(
+  email: string,
+  code: string,
+  newPassword: string,
+): Promise<void> {
+  await resetRequest('/auth/reset-password', {
+    username: email.trim(),
+    code: code.replace(/\s+/g, ''),
+    newPassword,
+  })
 }
 
 async function refreshSession(session: StoredSession): Promise<StoredSession | null> {

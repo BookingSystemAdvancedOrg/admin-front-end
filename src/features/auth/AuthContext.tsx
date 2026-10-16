@@ -15,12 +15,16 @@ import {
   getMockSessionEmail,
   tryMockSignIn,
 } from './mockAuth'
+import { resetTenantStore } from '../../shared/tenant'
 
 // Mock-inloggningen (bara i npm run dev) har ingen riktig Cognito-session, så
-// den ges den mest tillåtande gruppen för att kunna testa hela gränssnittet
-// lokalt, inklusive personal-CRUD:et som kräver owner_user/super_user.
-const MOCK_SUB = 'mock-dev-sub'
-const MOCK_GROUPS = ['super_user']
+// den ges ägarrollen (den högsta en restauranganvändare kan ha) för att kunna
+// testa hela gränssnittet lokalt. super_user finns inte längre: plattformens
+// operatörer arbetar i operatörskonsolen (Booqy Console), inte i den här appen.
+// Tomma i produktionsbygget, precis som uppgifterna i mockAuth.ts: identiteten
+// kan ändå aldrig aktiveras där (getMockSessionEmail() är DEV-bunden).
+const MOCK_SUB = import.meta.env.DEV ? 'mock-dev-sub' : ''
+const MOCK_GROUPS = import.meta.env.DEV ? ['owner_user'] : []
 
 /**
  * Håller hela inloggningsläget för appen: vem som är inloggad, om ett
@@ -109,6 +113,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     clearMockSession()
     signOut()
+    // Nästa inloggning (kanske en annan restaurang) börjar från noll.
+    resetTenantStore()
     pendingChallenge.current = null
     setHasPendingNewPassword(false)
     setEmail(null)

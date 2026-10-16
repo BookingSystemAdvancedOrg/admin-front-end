@@ -1,0 +1,173 @@
+/* Beställningar - köks-/kassaskärmen (BestallningarPage). */
+
+.orders-pause {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 600 13px/1.2 var(--sans);
+}
+
+.orders-pause select {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  font: inherit;
+}
+
+.orders-banner {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--tint-orange);
+  color: var(--warning-ink);
+  font-weight: 600;
+}
+
+.orders-banner.open {
+  background: var(--tint-green);
+  color: var(--accent-ink);
+}
+
+.orders-banner.paused {
+  background: var(--tint-red);
+  color: var(--danger);
+}
+
+.orders-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.orders-column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.orders-column-title {
+  margin: 0;
+  font: 600 18px/1.2 var(--serif);
+}
+
+.order-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+.order-card.fresh {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+.order-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.order-number {
+  font: 700 22px/1 var(--sans);
+}
+
+.order-time {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.order-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 15px;
+}
+
+.order-notes {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--tint-orange);
+  font-size: 14px;
+}
+
+.order-meta {
+  margin: 0;
+  font-size: 13px;
+}
+
+.order-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.order-actions .btn.square {
+  padding: 10px 14px;
+}
+
+.order-cancel {
+  margin-left: auto;
+}
+
+.orders-done {
+  padding: 16px 20px;
+}
+
+.orders-done summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.orders-done ul {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+@media (max-width: 1100px) {
+  .orders-board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Utskrift av QR-koder (OrderingCard). */
+.qr-sheet {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.qr-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-align: center;
+  break-inside: avoid;
+}
+
+.qr-tile img {
+  width: 160px;
+  height: 160px;
+}
+
+.qr-tile-label {
+  font: 700 16px/1.2 var(--sans);
+}

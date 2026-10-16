@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { CognitoGroup, User } from './usersApi'
 import {
+  GROUP_LABEL,
   canInvite,
   validateEmail,
   validateLocationId,
@@ -17,20 +18,15 @@ export interface StaffFormValues {
   locationId: string
 }
 
-const ROLE_LABEL: Record<CognitoGroup, string> = {
-  staff_user: 'Personal',
-  owner_user: 'Ägare',
-  super_user: 'Systemadmin',
-}
-const ALL_GROUPS: CognitoGroup[] = ['staff_user', 'owner_user', 'super_user']
+const ALL_GROUPS: CognitoGroup[] = ['staff_user', 'owner_user']
 
 /**
  * Popup för att bjuda in eller redigera en användare i Personal & behörigheter.
  * Samma dialog för båda flödena, precis som DishModal i meny-vyn.
  *
  * `callerGroups` styr vilka roller som går att välja (speglar backendens
- * _authorize_invite/_authorize_target: owner_user kan bara hantera personal,
- * bara super_user kan sätta ägare/systemadmin). `lockRole` stängs av när man
+ * _authorize_invite/_authorize_target: ägare hanterar personal; fler ägare
+ * läggs upp av plattformen). `lockRole` stängs av när man
  * redigerar sin egen rad — man får inte ändra sin egen roll.
  */
 export function StaffModal({
@@ -38,6 +34,7 @@ export function StaffModal({
   initial,
   callerGroups,
   lockRole,
+  locations,
   defaultLocationId,
   onSave,
   onCancel,
@@ -46,7 +43,9 @@ export function StaffModal({
   initial: User | null
   callerGroups: string[]
   lockRole: boolean
-  /** Förifyllt Plats-ID för nya inbjudningar (t.ex. restaurangens enda plats). */
+  /** Restaurangens platser — personal kopplas till en av dem. */
+  locations: { locationId: string; name: string }[]
+  /** Förvald plats för nya inbjudningar (den som är vald i appen). */
   defaultLocationId?: string
   onSave: (values: StaffFormValues) => Promise<void>
   onCancel: () => void
@@ -57,9 +56,16 @@ export function StaffModal({
   const [group, setGroup] = useState<CognitoGroup>(
     initial ? roleToGroup(initial.role) : 'staff_user',
   )
-  const [locationId, setLocationId] = useState(
-    initial?.locationId ?? defaultLocationId ?? '',
-  )
+  // Personal kopplas till en av restaurangens platser, vald bland deras
+  // namn. En befintlig post behåller sin plats om den finns kvar; en post
+  // som pekar på en borttagen plats får den valda platsen i stället.
+  const knownIds = new Set(locations.map((l) => l.locationId))
+  const [locationId, setLocationId] = useState(() => {
+    if (initial?.locationId && knownIds.has(initial.locationId)) {
+      return initial.locationId
+    }
+    return defaultLocationId ?? locations[0]?.locationId ?? ''
+  })
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -71,9 +77,7 @@ export function StaffModal({
     return () => window.removeEventListener('keydown', onKey)
   }, [onCancel])
 
-  // Om vald roll blir otillåten (t.ex. gruppen ändras) - inte relevant här
-  // eftersom callerGroups är stabil, men lås rollen till "Personal" om
-  // caller inte är super_user och håller på att bjuda in en ny person.
+  // Bara roller caller får sätta (plus den nuvarande, så den syns).
   const selectableGroups = ALL_GROUPS.filter(
     (g) => g === group || canInvite(callerGroups, g),
   )
@@ -81,7 +85,11 @@ export function StaffModal({
   const nameError = validateName(name)
   const emailError = validateEmail(email)
   const phoneError = validatePhone(phone)
-  const locationError = validateLocationId(group, locationId)
+  // Validera det värde som faktiskt skickas: ägare skickas alltid
+  // med tomt Plats-ID (fältet är dolt då), så det förifyllda värdet som
+  // ligger kvar i state efter ett rollbyte får inte spärra knappen.
+  const effectiveLocationId = group === 'staff_user' ? locationId.trim() : ''
+  const locationError = validateLocationId(group, effectiveLocationId)
   const valid = !nameError && !emailError && !phoneError && !locationError
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -95,7 +103,7 @@ export function StaffModal({
         email: email.trim(),
         phone: phone.trim(),
         group,
-        locationId: group === 'staff_user' ? locationId.trim() : '',
+        locationId: effectiveLocationId,
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kunde inte spara.')
@@ -117,7 +125,7 @@ export function StaffModal({
             <input
               id="staff-name"
               value={name}
-              placeholder="t.ex. Anna Svensson"
+              placeholder="Förnamn Efternamn"
               onChange={(e) => setName(e.target.value)}
             />
           </div>
@@ -128,7 +136,7 @@ export function StaffModal({
               id="staff-email"
               type="email"
               value={email}
-              placeholder="anna@kallarestaurang.se"
+              placeholder="namn@domän.se"
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
@@ -155,7 +163,7 @@ export function StaffModal({
               >
                 {selectableGroups.map((g) => (
                   <option key={g} value={g}>
-                    {ROLE_LABEL[g]}
+                    {GROUP_LABEL[g]}
                   </option>
                 ))}
               </select>
@@ -165,13 +173,22 @@ export function StaffModal({
             </div>
             {group === 'staff_user' && (
               <div className="form-field">
-                <label htmlFor="staff-location">Plats-ID</label>
-                <input
+                <label htmlFor="staff-location">Plats</label>
+                <select
                   id="staff-location"
                   value={locationId}
-                  placeholder="t.ex. 154b5c59-..."
+                  disabled={locations.length === 0}
                   onChange={(e) => setLocationId(e.target.value)}
-                />
+                >
+                  {locations.length === 0 && (
+                    <option value="">Skapa en plats först</option>
+                  )}
+                  {locations.map((l) => (
+                    <option key={l.locationId} value={l.locationId}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
           </div>
@@ -201,7 +218,5 @@ export function StaffModal({
 }
 
 function roleToGroup(role: User['role']): CognitoGroup {
-  if (role === 'staff') return 'staff_user'
-  if (role === 'owner_user') return 'owner_user'
-  return 'super_user'
+  return role === 'owner_user' ? 'owner_user' : 'staff_user'
 }

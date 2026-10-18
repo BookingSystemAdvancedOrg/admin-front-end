@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { BrandMark, BrandWordmark } from '../../shared/BrandMark'
 import './auth.css'
+import './auth-brand.css'
 
 /**
  * Delad layout för personal-inloggning och nytt-lösenord

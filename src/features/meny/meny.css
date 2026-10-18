@@ -25,7 +25,7 @@
   display: block;
   width: 56px;
   height: 44px;
-  border-radius: 10px;
+  border-radius: 3px;
   object-fit: cover;
   border: 1px solid var(--border);
 }
@@ -36,7 +36,7 @@
   justify-content: center;
   width: 56px;
   height: 44px;
-  border-radius: 10px;
+  border-radius: 3px;
   background: var(--bg);
   border: 1px dashed var(--border);
   font-size: 18px;
@@ -60,7 +60,7 @@
   display: block;
   width: 96px;
   height: 72px;
-  border-radius: 12px;
+  border-radius: 3px;
   object-fit: cover;
   border: 1px solid var(--border);
   flex-shrink: 0;

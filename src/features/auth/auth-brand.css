@@ -1,0 +1,78 @@
+/* booqy.se:s varumärke på inloggningssidorna: den vinröda väggen och
+   inloggningslappen (samma som Booqy Console). Laddas efter auth.css i
+   AuthLayout, så reglerna här vinner. Tokens i src/index.css. */
+
+.auth-screen .brand-wordmark {
+  color: var(--on-ox);
+}
+
+.auth-screen {
+  background: var(--ox);
+}
+
+.auth-logo-badge {
+  display: none;
+}
+
+.auth-logo-text span {
+  font: 700 10.5px/1 var(--mono);
+  letter-spacing: 0.12em;
+  color: var(--on-ox-2);
+}
+
+.auth-card {
+  border-radius: 0;
+  padding-bottom: 46px;
+  background: #fbfaf6;
+  color: #1c1918;
+  box-shadow: none;
+  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.28)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.18));
+  -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 12px 6px
+      repeat-x,
+    linear-gradient(#000 0 0) top / 100% calc(100% - 5px) no-repeat;
+  mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 12px 6px repeat-x,
+    linear-gradient(#000 0 0) top / 100% calc(100% - 5px) no-repeat;
+}
+
+/* Lappen är alltid papper, även i mörkt läge. */
+.auth-screen .auth-card {
+  --auth-ink: #1c1918;
+  --auth-muted: #57504d;
+  --auth-bg: #f1eee6;
+  --auth-error: #9e1d26;
+  --auth-error-bg: #f6e6e4;
+  --fill: #f1eee6;
+  --accent: #1c1918;
+  --accent-hover: #000000;
+  --on-accent: #fbfaf6;
+  --accent-ink: #9e1d26;
+  --focus: rgba(158, 29, 38, 0.32);
+  --success-ink: #2c6a3f;
+  color-scheme: light;
+}
+
+.auth-heading h1 {
+  font: 820 28px/1.05 var(--font);
+  font-stretch: 118%;
+}
+
+.auth-field input {
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1.5px #d9d4c8;
+}
+
+.auth-field input:focus {
+  box-shadow: inset 0 0 0 2px var(--auth-ink);
+}
+
+.auth-rules,
+.auth-error {
+  border-radius: 3px;
+}
+
+.auth-submit {
+  border-radius: 3px;
+  font: 650 16px/1.2 var(--font);
+  font-stretch: 106%;
+  box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.35);
+}

@@ -6,7 +6,7 @@
   background: var(--tint-orange);
   border: 0;
   color: var(--warning-ink);
-  border-radius: 12px;
+  border-radius: 3px;
   font-size: 13px;
 }
 
@@ -47,7 +47,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border-radius: 16px;
+  border-radius: 6px;
   align-self: flex-start;
 }
 
@@ -59,7 +59,7 @@
   gap: 2px;
   width: 56px;
   height: 52px;
-  border-radius: 12px;
+  border-radius: 3px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--ink);
@@ -101,7 +101,7 @@
   height: 600px;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 6px;
   overflow: hidden;
   perspective: 1600px;
   user-select: none;
@@ -143,7 +143,7 @@
 .floor-tabs button {
   padding: 8px 14px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 3px;
   background: var(--surface);
   font: 600 13px/1.2 var(--sans);
   color: var(--muted);
@@ -168,7 +168,7 @@
 .view-toggle {
   display: flex;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 3px;
   overflow: hidden;
   background: var(--surface);
 }
@@ -302,7 +302,7 @@
 .scene-empty p {
   max-width: 340px;
   padding: 20px 24px;
-  border-radius: 16px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.85);
   border: 1px solid var(--border);
   font-size: 14px;
@@ -450,7 +450,7 @@
   position: absolute;
   width: 22px;
   height: 22px;
-  border-radius: 11px;
+  border-radius: 3px;
   background: var(--accent);
   border: 2px solid #fff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
@@ -555,7 +555,7 @@
   position: absolute;
   width: 22px;
   height: 22px;
-  border-radius: 11px;
+  border-radius: 3px;
   background: var(--accent);
   border: 2px solid #fff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
@@ -695,7 +695,7 @@
   font: 700 10px/1.1 var(--sans);
   color: #fff;
   background: var(--ink, #1d1d1f);
-  border-radius: 7px;
+  border-radius: 3px;
   padding: 1px 6px;
 }
 
@@ -907,7 +907,7 @@
 .shape-toggle {
   display: inline-flex;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 3px;
   overflow: hidden;
   align-self: flex-start;
 }
@@ -933,7 +933,7 @@
   gap: 16px;
   padding: 6px;
   border: 1px solid var(--border);
-  border-radius: 22px;
+  border-radius: 6px;
   align-self: flex-start;
 }
 
@@ -951,7 +951,7 @@
   width: 32px;
   height: 32px;
   border: 0;
-  border-radius: 16px;
+  border-radius: 6px;
   background: var(--green);
   color: #fff;
   font: 700 13px/1 var(--sans);
@@ -967,7 +967,7 @@
   align-self: flex-start;
   padding: 8px 16px;
   border: 0;
-  border-radius: 20px;
+  border-radius: 6px;
   background: var(--green);
   color: #fff;
   font: 600 13px/1.2 var(--sans);
@@ -1000,7 +1000,7 @@
 .floor-pill {
   padding: 8px 14px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 3px;
   background: var(--surface);
   font: 600 13px/1.2 var(--sans);
   color: var(--muted);
@@ -1022,7 +1022,7 @@
   width: 100%;
   padding: 14px 20px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 3px;
   background: var(--surface);
   font-size: 13px;
   color: var(--muted);
@@ -1118,7 +1118,7 @@
   background: var(--tint-orange);
   border: 0;
   color: var(--warning-ink);
-  border-radius: 12px;
+  border-radius: 3px;
   font-size: 13px;
 }
 

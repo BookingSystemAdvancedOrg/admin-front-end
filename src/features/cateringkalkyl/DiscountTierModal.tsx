@@ -11,7 +11,7 @@ export interface DiscountTierFormValues {
 }
 
 /**
- * Popup för att lägga till eller redigera en rabattnivå — samma formulär
+ * Popup för att lägga till eller redigera en rabattnivå - samma formulär
  * används för "+ Ny rabattnivå" (initial: null) och "Redigera" (initial satt).
  * Rent lokal validering (ingen server att fråga): två nivåers portionsintervall
  * får aldrig överlappa, annars vore det odefinierat vilken rabatt som gäller.
@@ -26,7 +26,7 @@ export function DiscountTierModal({
 }: {
   title: string
   initial: DiscountTier | null
-  /** Alla ÖVRIGA nivåer (inte den som redigeras) — för överlappskontrollen. */
+  /** Alla ÖVRIGA nivåer (inte den som redigeras) - för överlappskontrollen. */
   otherTiers: DiscountTier[]
   onSave: (values: DiscountTierFormValues) => void
   onCancel: () => void

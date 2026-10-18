@@ -40,14 +40,14 @@ const TILT_DEG = 55
 const PERSPECTIVE = 1600
 const TABLE_HEIGHT = 22
 const WALL_HEIGHT = 90
-/** Sockelhöjd för väggar som vetter mot kameran — borden ska alltid synas. */
+/** Sockelhöjd för väggar som vetter mot kameran - borden ska alltid synas. */
 const WALL_LOW = 16
 const WALL_THICKNESS = 10
 const OPENING_THICKNESS = 14
 const COUNTER_HEIGHT = 34
 /**
  * Hur långt från en vägg man får klicka och ändå träffa den. Måttet gäller
- * i golvplanet, och i 3D-vyn blir den zonen visuellt smal — därför generöst
+ * i golvplanet, och i 3D-vyn blir den zonen visuellt smal - därför generöst
  * tilltaget, annars är fönster och dörrar svåra att sätta dit.
  */
 const WALL_SNAP_DIST = 60
@@ -124,9 +124,9 @@ interface GroundDraft {
 }
 
 const OPENING_TOOLS: { tool: Tool; kind: OpeningKind; warn: string }[] = [
-  { tool: 'window', kind: 'window', warn: 'Fönster kan bara placeras på en vägg — rita väggen först.' },
-  { tool: 'entrance', kind: 'entrance', warn: 'Entrén kan bara placeras på en vägg — rita väggen först.' },
-  { tool: 'kitchen', kind: 'kitchen', warn: 'Kökets ingång kan bara placeras på en vägg — rita väggen först.' },
+  { tool: 'window', kind: 'window', warn: 'Fönster kan bara placeras på en vägg - rita väggen först.' },
+  { tool: 'entrance', kind: 'entrance', warn: 'Entrén kan bara placeras på en vägg - rita väggen först.' },
+  { tool: 'kitchen', kind: 'kitchen', warn: 'Kökets ingång kan bara placeras på en vägg - rita väggen först.' },
 ]
 
 /**
@@ -134,30 +134,30 @@ const OPENING_TOOLS: { tool: Tool; kind: OpeningKind; warn: string }[] = [
  * CSS. Origo ligger i canvasens mitt. Marken ritas fritt och får
  * automatiskt väggar runt om. Väggar som vetter mot kameran sänks till en
  * låg sockel så att borden alltid syns (och reser sig igen när vyn
- * roteras). Öppningar — fönster, entré, kökets ingång — sitter PÅ
+ * roteras). Öppningar - fönster, entré, kökets ingång - sitter PÅ
  * väggarna: väggen förblir hel, öppningen glider längs den när den
  * flyttas eller förlängs, och följer med om väggen flyttas.
  *
  * Våningar, väggar, öppningar och bord synkas mot det riktiga layout-API:t
  * (layoutApi.ts): de läses in vid sidladdning och skrivs vid "Spara
  * utkast"/"Publicera layout". Markytor och kassan finns inte i API:ts
- * datamodell och lever bara lokalt — se kommentaren i layoutApi.ts.
+ * datamodell och lever bara lokalt - se kommentaren i layoutApi.ts.
  */
 export default function LayoutEditorPage() {
-  // Den faktiskt inloggade användaren — statusraden visade tidigare ett
+  // Den faktiskt inloggade användaren - statusraden visade tidigare ett
   // påhittat namn ("Anna") oavsett vem som satt vid tangentbordet.
   const { email: editorEmail, sub: editorSub, groups } = useAuth()
   const canActivate =
     groups.includes('owner_user') || groups.includes('super_user')
   const editorName = editorEmail ? editorEmail.split('@')[0] : ''
   // Editorn startar tom och fylls av serverns layout. Ingen mockdata visas
-  // först — den hann annars blinka förbi innan inläsningen var klar.
+  // först - den hann annars blinka förbi innan inläsningen var klar.
   const [floors, setFloors] = useState<Floor[]>(() => [emptyFloor(1)])
   const [currentFloorId, setCurrentFloorId] = useState(() => floors[0].id)
   const [selection, setSelection] = useState<Selection>(null)
   const [tool, setTool] = useState<Tool>('select')
   const [is3d, setIs3d] = useState(true)
-  // Visar våningen under som en genomskinlig skugga — så att man alltid ser
+  // Visar våningen under som en genomskinlig skugga - så att man alltid ser
   // att man befinner sig på en annan våning, och kan rikta in t.ex. en
   // trappa mot samma plats som på våningen under.
   const [showFloorBelow, setShowFloorBelow] = useState(true)
@@ -176,7 +176,7 @@ export default function LayoutEditorPage() {
   const [drawWarning, setDrawWarning] = useState<string | null>(null)
   const [statusText, setStatusText] = useState('Hämtar layout…')
   const [versionLabel, setVersionLabel] = useState('')
-  // Utan en sparad plats finns inget layout-API att prata med — då kör
+  // Utan en sparad plats finns inget layout-API att prata med - då kör
   // editorn vidare på mockdatan som förut.
   // Samma återhämtning som i Inställningar: en ny webbläsare känner inte
   // till plats-ID:t även om layouten finns sparad i databasen.
@@ -239,8 +239,8 @@ export default function LayoutEditorPage() {
         const drawn = elements.filter((e) => e.type !== 'floor').length
         setStatusText(
           drawn === 0
-            ? 'Tom layout — rita och spara för att komma igång.'
-            : `Utkast inläst från servern — ${drawn} element på ${loaded.length} ` +
+            ? 'Tom layout - rita och spara för att komma igång.'
+            : `Utkast inläst från servern - ${drawn} element på ${loaded.length} ` +
                 (loaded.length === 1 ? 'våning.' : 'våningar.'),
         )
         void versionLabelFor(locationId).then((label) => {
@@ -260,7 +260,7 @@ export default function LayoutEditorPage() {
   }, [locationId])
 
   function patchFloor(patch: (f: Floor) => Partial<Floor>) {
-    // Nästan all redigering går via den här funktionen — en enda spärr här
+    // Nästan all redigering går via den här funktionen - en enda spärr här
     // stoppar ritning, flytt, storleksändring och radering i skrivskyddat
     // "Se live"-läge, utan att varje enskild åtgärd behöver kolla själv.
     if (readOnly) return
@@ -336,7 +336,7 @@ export default function LayoutEditorPage() {
 
   /**
    * Lokalens mittpunkt utifrån väggarnas utsträckning. Behövs för att veta
-   * vilket håll som är "inomhus" när det inte finns någon ritad markyta —
+   * vilket håll som är "inomhus" när det inte finns någon ritad markyta -
    * vilket alltid är fallet för en layout som lästs in från API:t, eftersom
    * markytor bara sparas lokalt.
    */
@@ -358,7 +358,7 @@ export default function LayoutEditorPage() {
   }
 
   /**
-   * En vägg sänks till sockel när den står mellan kameran och rummet —
+   * En vägg sänks till sockel när den står mellan kameran och rummet -
    * så att borden alltid syns. Vald vägg (eller vägg med vald öppning)
    * hålls alltid uppe så att den går att redigera.
    */
@@ -388,7 +388,7 @@ export default function LayoutEditorPage() {
       if (!centre) return false
       const toCentre = { x: centre.x - midX, y: centre.y - midY }
       const dot = n.x * toCentre.x + n.y * toCentre.y
-      // Väggen går genom mitten — den skymmer inget, låt den stå.
+      // Väggen går genom mitten - den skymmer inget, låt den stå.
       if (Math.abs(dot) < 1) return false
       nInt = dot > 0 ? n : { x: -n.x, y: -n.y }
     }
@@ -423,7 +423,7 @@ export default function LayoutEditorPage() {
     let bestDist = WALL_SNAP_DIST
     for (const w of floor.walls) {
       // Vinkelrätt avstånd får vara generöst, men längs väggen räcker en
-      // rutnätsruta utanför ändarna — annars fångas grannväggen i hörnen.
+      // rutnätsruta utanför ändarna - annars fångas grannväggen i hörnen.
       const withinExtent =
         w.dir === 'h'
           ? p.x >= w.x - GRID && p.x <= w.x + w.length + GRID
@@ -581,7 +581,7 @@ export default function LayoutEditorPage() {
         tables: fl.tables.map((t) => {
           if (t.id !== d.id) return t
 
-          // Runda bord förblir runda — vilket handtag som helst ändrar bara
+          // Runda bord förblir runda - vilket handtag som helst ändrar bara
           // diametern, symmetriskt kring bordets mitt (som förblir stilla).
           // Fyrkantiga/rektangulära bord ändras bara på den sida man drar i;
           // motstående kant hålls fast.
@@ -599,7 +599,7 @@ export default function LayoutEditorPage() {
           const right = t.x + t.w / 2
           const top = t.y - t.h / 2
           const bottom = t.y + t.h / 2
-          // Motstående kant hålls fast — bordet växer/krymper bara från den
+          // Motstående kant hålls fast - bordet växer/krymper bara från den
           // sida eller ände man drar i.
           if (d.edge === 'e') {
             const nx = clamp(p.x, left + MIN_TABLE_SIZE, HALF_W)
@@ -664,7 +664,7 @@ export default function LayoutEditorPage() {
           if (!host) return o
           const cur = clamp(snap(along(host, p)) - wallStart(host), 0, host.length)
           if (d.kind === 'op-move') {
-            // Öppningen glider längs väggen — aldrig utanför.
+            // Öppningen glider längs väggen - aldrig utanför.
             const offset = clamp(cur - d.grab, 0, host.length - o.length)
             return { ...o, offset: snap(offset) }
           }
@@ -723,7 +723,7 @@ export default function LayoutEditorPage() {
           w: groundDraft.w,
           h: groundDraft.h,
         }
-        // Marken får automatiskt väggar runt om — de ingår.
+        // Marken får automatiskt väggar runt om - de ingår.
         const mk = (dir: 'h' | 'v', x: number, y: number, length: number): WallSegment => ({
           id: `w${nextId.current++}`,
           dir,
@@ -800,7 +800,7 @@ export default function LayoutEditorPage() {
       const wasRotate = drag.current.kind === 'rotate'
       drag.current = null
       setIsRotating(false)
-      // Att rotera vyn är ingen innehållsändring — bara riktiga redigeringar
+      // Att rotera vyn är ingen innehållsändring - bara riktiga redigeringar
       // ska flagga osparat.
       if (!wasRotate) markDirty()
     }
@@ -815,7 +815,7 @@ export default function LayoutEditorPage() {
     origX = 0,
     origY = 0,
   ) {
-    // I handläget ska ett klick var som helst — även på ett element — rotera
+    // I handläget ska ett klick var som helst - även på ett element - rotera
     // vyn, inte välja/flytta. Ingen stopPropagation: klicket får bubbla upp
     // till scenens egen pointerdown-hanterare.
     if (handMode) return
@@ -826,7 +826,7 @@ export default function LayoutEditorPage() {
       return
     }
     setSelection({ kind, id } as Selection)
-    // Markera/inspektera går bra i "Se live" — flytta gör det inte. Utan
+    // Markera/inspektera går bra i "Se live" - flytta gör det inte. Utan
     // spärren hade ett drag känts trasigt (elementet rör sig inte, eftersom
     // patchFloor redan stoppar själva ändringen) i stället för att tydligt
     // inte gå att göra.
@@ -942,7 +942,7 @@ export default function LayoutEditorPage() {
     markDirty()
   }
 
-  /** Byter ritverktyg och lämnar alltid handläget — man kan inte rita och
+  /** Byter ritverktyg och lämnar alltid handläget - man kan inte rita och
    *  rotera samtidigt. */
   function pickTool(t: Tool) {
     setHandMode(false)
@@ -1006,7 +1006,7 @@ export default function LayoutEditorPage() {
 
   /**
    * Växlar canvasen till att visa den publicerade, GÄLLANDE versionen i
-   * stället för utkastet — skrivskyddat. Byter tillfälligt ut `floors`/
+   * stället för utkastet - skrivskyddat. Byter tillfälligt ut `floors`/
    * `currentFloorId` (som resten av sidan redan är byggd kring) och sparar
    * undan utkastet i `draftBackup` så "Se utkast" kan återställa det exakt.
    */
@@ -1019,7 +1019,7 @@ export default function LayoutEditorPage() {
       const current = versions.find((v) => v.isCurrent)
       if (!current) {
         setLiveError(
-          'Ingen version är aktiv än — publicera och aktivera en version ' +
+          'Ingen version är aktiv än - publicera och aktivera en version ' +
             'under Versioner först.',
         )
         return
@@ -1046,7 +1046,7 @@ export default function LayoutEditorPage() {
     }
   }
 
-  /** Växlar tillbaka till utkastet — exakt som det låg innan "Se live". */
+  /** Växlar tillbaka till utkastet - exakt som det låg innan "Se live". */
   function showDraft() {
     if (draftBackup.current) {
       setFloors(draftBackup.current.floors)
@@ -1061,7 +1061,7 @@ export default function LayoutEditorPage() {
   function requireLocation(): string | null {
     if (locationId) return locationId
     setLayoutError(
-      'Ingen plats är sparad än — skapa restaurangens plats under ' +
+      'Ingen plats är sparad än - skapa restaurangens plats under ' +
         'Inställningar innan layouten kan sparas.',
     )
     return null
@@ -1069,7 +1069,7 @@ export default function LayoutEditorPage() {
 
   /** Skriver utkastet till API:t. Returnerar false om något gick fel. */
   async function saveDraft(): Promise<boolean> {
-    // Knappen är dold i "Se live"-läget, men gardera ändå — annars hade den
+    // Knappen är dold i "Se live"-läget, men gardera ändå - annars hade den
     // skrivit över det riktiga utkastet med den låsta live-vyns innehåll.
     if (readOnly) return false
     const loc = requireLocation()
@@ -1083,7 +1083,7 @@ export default function LayoutEditorPage() {
       // riktiga elementId, vilket nästa sparning behöver för att se dem som
       // befintliga istället för att skapa dubbletter.
       const reloaded = toFloors(result.elements)
-      // I platt reservläge finns bara första våningen på servern — de andra
+      // I platt reservläge finns bara första våningen på servern - de andra
       // behålls lokalt så att inget ritat försvinner.
       const next = result.flat ? [reloaded[0], ...floors.slice(1)] : reloaded
       setFloors(next)
@@ -1091,10 +1091,10 @@ export default function LayoutEditorPage() {
       setCurrentFloorId(next.some((f) => f.id === current) ? current : next[0].id)
       setSelection(null)
       setStatusText(
-        `Utkast sparat — ${result.created} nya, ${result.updated} ändrade, ` +
+        `Utkast sparat - ${result.created} nya, ${result.updated} ändrade, ` +
           `${result.deleted} borttagna.` +
           (result.flat && floors.length > 1
-            ? ` Servern saknar våningsstöd — bara ${floors[0].name} sparades.`
+            ? ` Servern saknar våningsstöd - bara ${floors[0].name} sparades.`
             : ''),
       )
       return true
@@ -1110,14 +1110,14 @@ export default function LayoutEditorPage() {
 
   /**
    * Sparar utkastet, fryser det till en numrerad version, och försöker
-   * aktivera den versionen direkt — "Publicera" ska kännas som "gör den
+   * aktivera den versionen direkt - "Publicera" ska kännas som "gör den
    * här skarp", inte kräva ett extra besök i Versioner för det vanliga
    * fallet. Aktiveringen är serverns beslut, inte vårt: saknas en gällande
    * version blir det omedelbart, men finns redan en schemalägger API:t
    * bytet en bit fram i tiden istället (samma regel som att aktivera
-   * manuellt under Versioner — den går inte att kringgå härifrån). Hur
-   * långt fram är miljöberoende — bara 5 minuter i dev, 28 dagar i prod
-   * (bekräftat av backend-teamet 2026-09-29) — därför visas alltid det
+   * manuellt under Versioner - den går inte att kringgå härifrån). Hur
+   * långt fram är miljöberoende - bara 5 minuter i dev, 28 dagar i prod
+   * (bekräftat av backend-teamet 2026-09-29) - därför visas alltid det
    * riktiga datumet från `cutoverAt`, aldrig ett hårdkodat "fyra veckor".
    *
    * Ordningen save->publish är viktig: publish kopierar det som ligger i
@@ -1136,16 +1136,16 @@ export default function LayoutEditorPage() {
         await refreshVersionLabel()
         setStatusText(
           activation.status === 'active'
-            ? `Publicerad och aktiverad som version ${snapshot.version} — gäller nu.`
+            ? `Publicerad och aktiverad som version ${snapshot.version} - gäller nu.`
             : `Publicerad som version ${snapshot.version}. En annan version gäller ` +
                 `redan, så bytet sker ${formatMoment(activation.cutoverAt)} istället för direkt.`,
         )
       } catch (activateErr) {
-        // Versionen finns — bara aktiveringen misslyckades (t.ex. saknad
+        // Versionen finns - bara aktiveringen misslyckades (t.ex. saknad
         // behörighet, eller ett annat versionsbyte redan inbokat). Säg det
         // tydligt så ingen tror att publiceringen också gick fel; den kan
         // fortfarande aktiveras manuellt. Felmeddelandet för "redan
-        // inbokat" (409) ger redan sin egen vägledning — dubblera den inte.
+        // inbokat" (409) ger redan sin egen vägledning - dubblera den inte.
         const detail =
           activateErr instanceof Error ? activateErr.message : 'Okänt fel.'
         const guidance = /aktivera/i.test(detail)
@@ -1246,7 +1246,7 @@ export default function LayoutEditorPage() {
         {!locationId && !resolvingLocation && (
           <p className="form-error" role="alert">
             Layouten sparas inte: ingen restaurangplats är skapad än. Gå till
-            Inställningar och spara restaurangprofilen först — layouten lagras
+            Inställningar och spara restaurangprofilen först - layouten lagras
             per plats i API:t. Det du ritar här försvinner vid omladdning tills
             dess.
           </p>
@@ -1264,7 +1264,7 @@ export default function LayoutEditorPage() {
         {readOnly && (
           <p className="layout-viewmode-banner">
             Du tittar på den publicerade, gällande versionen
-            {liveVersionLabel ? ` (${liveVersionLabel})` : ''} — skrivskyddat.{' '}
+            {liveVersionLabel ? ` (${liveVersionLabel})` : ''} - skrivskyddat.{' '}
             <button type="button" className="link-action" onClick={showDraft}>
               Tillbaka till utkastet
             </button>
@@ -1273,15 +1273,15 @@ export default function LayoutEditorPage() {
         <div className="editor-row">
           <div className="admin-card editor-toolbar" data-tour="layout-tools">
             <ToolButton glyph="↖" caption="Välj" title="Välj, flytta och ändra storlek" active={tool === 'select'} onClick={() => pickTool('select')} />
-            <ToolButton glyph="▦" caption="Mark" title="Rita mark — väggar skapas runt om automatiskt" active={tool === 'ground'} disabled={readOnly} onClick={() => pickTool('ground')} />
-            <ToolButton glyph="▬" caption="Vägg" title="Rita vägg — klicka och dra" active={tool === 'wall'} disabled={readOnly} onClick={() => pickTool('wall')} />
-            <ToolButton glyph="▭" caption="Fönster" title="Fönster — placeras på en vägg" active={tool === 'window'} disabled={readOnly} onClick={() => pickTool('window')} />
-            <ToolButton glyph="◐" caption="Entré" title="Entré — placeras på en vägg" active={tool === 'entrance'} disabled={readOnly} onClick={() => pickTool('entrance')} />
-            <ToolButton glyph="◑" caption="Kök" title="Kökets ingång — placeras på en vägg" active={tool === 'kitchen'} disabled={readOnly} onClick={() => pickTool('kitchen')} />
-            <ToolButton glyph="▣" caption="Kassa" title="Placera kassan — klicka" active={tool === 'counter'} disabled={readOnly} onClick={() => pickTool('counter')} />
+            <ToolButton glyph="▦" caption="Mark" title="Rita mark - väggar skapas runt om automatiskt" active={tool === 'ground'} disabled={readOnly} onClick={() => pickTool('ground')} />
+            <ToolButton glyph="▬" caption="Vägg" title="Rita vägg - klicka och dra" active={tool === 'wall'} disabled={readOnly} onClick={() => pickTool('wall')} />
+            <ToolButton glyph="▭" caption="Fönster" title="Fönster - placeras på en vägg" active={tool === 'window'} disabled={readOnly} onClick={() => pickTool('window')} />
+            <ToolButton glyph="◐" caption="Entré" title="Entré - placeras på en vägg" active={tool === 'entrance'} disabled={readOnly} onClick={() => pickTool('entrance')} />
+            <ToolButton glyph="◑" caption="Kök" title="Kökets ingång - placeras på en vägg" active={tool === 'kitchen'} disabled={readOnly} onClick={() => pickTool('kitchen')} />
+            <ToolButton glyph="▣" caption="Kassa" title="Placera kassan - klicka" active={tool === 'counter'} disabled={readOnly} onClick={() => pickTool('counter')} />
             <ToolButton glyph="■" caption="Fyrkant" title="Lägg till fyrkantigt bord" active={tool === 'add-square'} disabled={readOnly} onClick={() => addTable('square')} />
             <ToolButton glyph="●" caption="Runt" title="Lägg till runt bord" active={tool === 'add-round'} disabled={readOnly} onClick={() => addTable('round')} />
-            <ToolButton glyph="✕" caption="Radera" title="Radera — klicka på ett element" active={tool === 'erase'} disabled={readOnly} onClick={() => { setHandMode(false); setTool((t) => (t === 'erase' ? 'select' : 'erase')) }} />
+            <ToolButton glyph="✕" caption="Radera" title="Radera - klicka på ett element" active={tool === 'erase'} disabled={readOnly} onClick={() => { setHandMode(false); setTool((t) => (t === 'erase' ? 'select' : 'erase')) }} />
           </div>
 
           <div
@@ -1338,7 +1338,7 @@ export default function LayoutEditorPage() {
                 <button
                   type="button"
                   className={handMode ? 'active' : ''}
-                  title="Handverktyg — klicka och dra var som helst för att rotera vyn fritt"
+                  title="Handverktyg - klicka och dra var som helst för att rotera vyn fritt"
                   aria-pressed={handMode}
                   onClick={() => setHandMode((v) => !v)}
                 >
@@ -1385,7 +1385,7 @@ export default function LayoutEditorPage() {
               >
                 {belowFloor && (
                   <div className="floor-ghost" aria-hidden="true">
-                    {/* Bara väggarna — de byggs neråt i Z-led via CSS
+                    {/* Bara väggarna - de byggs neråt i Z-led via CSS
                         (.floor-ghost .seg { --lift }), som om man tittade
                         rakt ner genom golvet på strukturen under. */}
                     {belowFloor.walls.map((w) => (
@@ -1514,7 +1514,7 @@ export default function LayoutEditorPage() {
                       }}
                       onPointerDown={(e) => onElementPointerDown(e, 'table', t.id, t.x, t.y)}
                     >
-                      {/* En stol per plats — antalet syns direkt i planen. */}
+                      {/* En stol per plats - antalet syns direkt i planen. */}
                       {seatPositions(t).map((s, i) => (
                         <div
                           key={i}
@@ -1585,7 +1585,7 @@ export default function LayoutEditorPage() {
                 <p>
                   <strong>{floor.name} är tom.</strong>
                   <br />
-                  Börja i mitten — origo (0,0) — med <b>Mark</b>-verktyget och
+                  Börja i mitten - origo (0,0) - med <b>Mark</b>-verktyget och
                   rita golvet. Väggar skapas runt marken automatiskt.
                 </p>
               </div>
@@ -1595,11 +1595,11 @@ export default function LayoutEditorPage() {
               {drawWarning
                 ? drawWarning
                 : tool === 'ground'
-                  ? 'Klicka och dra för att rita mark — väggar skapas runt om automatiskt'
+                  ? 'Klicka och dra för att rita mark - väggar skapas runt om automatiskt'
                   : openingTool
-                    ? 'Klicka på en vägg och dra längs den — öppningen sitter kvar på väggen'
+                    ? 'Klicka på en vägg och dra längs den - öppningen sitter kvar på väggen'
                     : tool === 'wall'
-                      ? 'Klicka och dra för att bygga — snappar till rutnätet'
+                      ? 'Klicka och dra för att bygga - snappar till rutnätet'
                       : tool === 'counter'
                         ? 'Klicka för att placera kassan'
                         : 'Väggar mot kameran sänks så borden syns · rotera med ⟲ ⟳'}
@@ -1625,7 +1625,7 @@ export default function LayoutEditorPage() {
             </div>
 
             {/* `disabled` på en <fieldset> stänger av ALLA knappar/fält den
-                innehåller på en gång — enklare och säkrare än att lägga
+                innehåller på en gång - enklare och säkrare än att lägga
                 `disabled={readOnly}` på vart och ett av de ~15 reglagen
                 nedan. `display:contents` gör att den inte påverkar layouten. */}
             <fieldset
@@ -1642,7 +1642,7 @@ export default function LayoutEditorPage() {
                       type="button"
                       className={selectedTable.shape === 'round' ? 'active' : ''}
                       onClick={() => {
-                        // Runda bord ska alltid vara cirkulära — jämna ut en
+                        // Runda bord ska alltid vara cirkulära - jämna ut en
                         // ev. rektangulär storlek till en diameter istället
                         // för att bli en oval.
                         const d = (selectedTable.w + selectedTable.h) / 2
@@ -1661,7 +1661,7 @@ export default function LayoutEditorPage() {
                   <p className="props-pos">{`${Math.round(selectedTable.w)} × ${Math.round(selectedTable.h)} enheter`}</p>
                   <p className="props-empty">
                     Dra i handtagen på en sida eller ände av bordet för att
-                    ändra bredd eller djup fritt — går att göra avlångt.
+                    ändra bredd eller djup fritt - går att göra avlångt.
                   </p>
                 </div>
                 <div className="props-field">
@@ -1715,7 +1715,7 @@ export default function LayoutEditorPage() {
                     </button>
                   </div>
                   <p className="props-empty">
-                    {selectedWall.dir === 'h' ? 'Vågrät' : 'Lodrät'} — dra i
+                    {selectedWall.dir === 'h' ? 'Vågrät' : 'Lodrät'} - dra i
                     handtagen eller flytta hela väggen. Öppningar på väggen
                     följer med.
                   </p>
@@ -1749,7 +1749,7 @@ export default function LayoutEditorPage() {
                     </button>
                   </div>
                   <p className="props-empty">
-                    Sitter på väggen — dra för att glida längs den, dra i
+                    Sitter på väggen - dra för att glida längs den, dra i
                     handtagen för att ändra längd. Kan aldrig lämna väggen.
                   </p>
                 </div>
@@ -1820,7 +1820,7 @@ export default function LayoutEditorPage() {
                 </button>
                 <p className="props-empty">
                   Rita mark så skapas väggar runt om automatiskt. Väggar som
-                  vetter mot kameran sänks så att borden alltid syns — rotera
+                  vetter mot kameran sänks så att borden alltid syns - rotera
                   vyn med ⟲ ⟳. Fönster, entré och kök sitter på väggarna och
                   följer med när väggen flyttas eller förlängs.
                 </p>
@@ -1876,7 +1876,7 @@ function formatMoment(iso: string): string {
 
 /**
  * Etiketten i topbaren visar vilken version som GÄLLER, inte bara den senast
- * publicerade — en publicerad version är inaktiv tills någon aktiverat den,
+ * publicerade - en publicerad version är inaktiv tills någon aktiverat den,
  * och den skillnaden är hela poängen med versionshanteringen.
  *
  * Ligger utanför komponenten för att vara stabil: den anropas både från en
@@ -1891,12 +1891,12 @@ async function versionLabelFor(locationId: string): Promise<string> {
       ? `Gäller: ${current.label}`
       : `${versions[0].label} · ej aktiverad`
   } catch {
-    // Utan versionslista är utkastet ändå inläst — visa inget hellre än fel.
+    // Utan versionslista är utkastet ändå inläst - visa inget hellre än fel.
     return ''
   }
 }
 
-/** Innehållets omslutande rektangel — styr auto-zoom och centrering. */
+/** Innehållets omslutande rektangel - styr auto-zoom och centrering. */
 function contentBounds(floor: Floor): {
   x: number
   y: number
@@ -2041,14 +2041,14 @@ function OpeningEl({
     >
       {opening.kind === 'window' && (
         <>
-          {/* glasband som sitter i väggen — väggen bakom är kvar */}
+          {/* glasband som sitter i väggen - väggen bakom är kvar */}
           <div className={`seg-face glass ${faceA}`} />
           <div className={`seg-face glass ${faceB}`} />
           <div className="seg-cap glass-cap" />
         </>
       )}
 
-      {/* Entré och kök ritas likadant — bara skylten skiljer dem åt. */}
+      {/* Entré och kök ritas likadant - bara skylten skiljer dem åt. */}
       {(opening.kind === 'kitchen' || opening.kind === 'entrance') && (
         <>
           <div className={`seg-face full ${faceA}`} />

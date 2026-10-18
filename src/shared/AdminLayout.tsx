@@ -47,8 +47,8 @@ const TENANT_ERROR: Record<TenantErrorCode, { title: string; text: string }> = {
  * Admin-skalet med mörkgrön sidebar (Figma: admin-sidebar, 36:166).
  * Ritas runt varje sida via <Outlet /> (se App.tsx).
  *
- * Sidebaren visar RESTAURANGEN (tenant) från GET /tenant, och — när den har
- * flera — en väljare för platsen. Sidan monteras om vid platsbyte
+ * Sidebaren visar RESTAURANGEN (tenant) från GET /tenant, och - när den har
+ * flera - en väljare för platsen. Sidan monteras om vid platsbyte
  * (`key`), så ingen sida kan bära med sig osparat eller inläst innehåll från
  * en plats till en annan.
  */

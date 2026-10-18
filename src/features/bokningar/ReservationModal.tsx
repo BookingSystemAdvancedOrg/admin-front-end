@@ -149,11 +149,11 @@ export function ReservationModal({
           <>
             <dl className="booking-details">
               <dt>Telefon</dt>
-              <dd>{r.customerPhone ? <a href={`tel:${r.customerPhone}`}>{r.customerPhone}</a> : '—'}</dd>
+              <dd>{r.customerPhone ? <a href={`tel:${r.customerPhone}`}>{r.customerPhone}</a> : '-'}</dd>
               <dt>E-post</dt>
-              <dd>{r.customerEmail ? <a href={`mailto:${r.customerEmail}`}>{r.customerEmail}</a> : '—'}</dd>
+              <dd>{r.customerEmail ? <a href={`mailto:${r.customerEmail}`}>{r.customerEmail}</a> : '-'}</dd>
               <dt>Källa</dt>
-              <dd>{r.source ? SOURCE_LABEL[r.source] : '—'}</dd>
+              <dd>{r.source ? SOURCE_LABEL[r.source] : '-'}</dd>
               {r.notes && (
                 <>
                   <dt>Meddelande</dt>

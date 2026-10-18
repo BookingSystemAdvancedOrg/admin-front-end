@@ -24,7 +24,7 @@ export function AdminTopbar({
 }) {
   // Underrubriken var tidigare en hårdkodad påhittad restaurang. Den visar nu
   // den riktiga platsen från API:t, och ingenting alls innan någon plats
-  // skapats — hellre tomt än fel restaurang.
+  // skapats - hellre tomt än fel restaurang.
   const location = useLocationSummary()
   const text =
     subtitle ??

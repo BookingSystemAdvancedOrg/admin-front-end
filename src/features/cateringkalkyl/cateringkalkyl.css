@@ -1,9 +1,9 @@
 /* Figma: admin-catering-page, modal-rabattnivå. Delar knapp/kort/tabell-
-   klasserna i shared/admin.css — bara det som är unikt för den här sidan
+   klasserna i shared/admin.css - bara det som är unikt för den här sidan
    (hint-boxen, förhandsvisningens rätt-rader/stegare, den mörka
    kalkylpanelen) bor här. */
 
-/* Samma varma orange hint-ruta som layout-editorns .layout-viewmode-banner —
+/* Samma varma orange hint-ruta som layout-editorns .layout-viewmode-banner -
    för statiska påminnelser, inte valideringsfel (se .form-error för det). */
 .calc-hint {
   padding: 12px 16px;

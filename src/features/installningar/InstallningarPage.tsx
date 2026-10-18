@@ -79,7 +79,7 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * uteblivna gäster och sen avbokning) sparas per plats.
  *
  * Personal (staff_user) ser sin plats men kan inte ändra den eller hantera
- * andra användare — de rutterna är bara för ägare.
+ * andra användare - de rutterna är bara för ägare.
  */
 /** Flikarna - en sektion i taget i stället för en lång sida. */
 type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'dagar' | 'bord'
@@ -128,7 +128,7 @@ export default function InstallningarPage() {
     DEFAULT_GRACE_PERIOD_HOURS,
   )
   // Plats-ID:t kan saknas i den här webbläsaren även när platsen finns i
-  // databasen — hooken letar då upp det via användarlistan.
+  // databasen - hooken letar då upp det via användarlistan.
   const { locationId, setLocationId, resolving: resolvingLocation } =
     useLocationId(sub)
   const [locationError, setLocationError] = useState<string | null>(null)
@@ -230,7 +230,7 @@ export default function InstallningarPage() {
     setSaved(false)
     setLocationError(null)
 
-    // Spara-knappen är spärrad medan platsen letas upp, men gardera ändå —
+    // Spara-knappen är spärrad medan platsen letas upp, men gardera ändå -
     // en sparning utan känt plats-id hade skapat en dubblettplats.
     if (resolvingLocation) return
 
@@ -263,10 +263,10 @@ export default function InstallningarPage() {
     try {
       if (locationId) {
         if (!savedLocation) {
-          // Platsen finns men uppgifterna kunde inte hämtas — att ramla ner
+          // Platsen finns men uppgifterna kunde inte hämtas - att ramla ner
           // i skapa-grenen här var det som gav dubblettplatser förr.
           setLocationError(
-            'Platsens sparade uppgifter kunde inte hämtas — ladda om sidan och försök igen.',
+            'Platsens sparade uppgifter kunde inte hämtas - ladda om sidan och försök igen.',
           )
           return
         }
@@ -287,7 +287,7 @@ export default function InstallningarPage() {
         if (existing) {
           setLocationId(existing)
           setLocationError(
-            'Restaurangen har redan en sparad plats — uppgifterna hämtas nu. ' +
+            'Restaurangen har redan en sparad plats - uppgifterna hämtas nu. ' +
               'Kontrollera dem och spara igen.',
           )
           return
@@ -296,7 +296,7 @@ export default function InstallningarPage() {
         setLocationId(created.locationId)
         setSavedLocation(values)
       }
-      // Skalets namn/adress är cachade — töm så sidebar och topbar visar
+      // Skalets namn/adress är cachade - töm så sidebar och topbar visar
       // de nya uppgifterna direkt i stället för de gamla.
       clearLocationSummaryCache()
       setSaved(true)
@@ -492,7 +492,7 @@ export default function InstallningarPage() {
                 <label htmlFor="rp-duration">Bokningslängd (timmar)</label>
                 <InfoTooltip label="Bokningslängd (timmar)">
                   Hur länge ett bord är upptaget per bokning. Styr längden på
-                  varje ledig tid som visas för gästen — t.ex. ger 2 timmar
+                  varje ledig tid som visas för gästen - t.ex. ger 2 timmar
                   bokningsbara pass som 18:00–20:00.
                   Måste vara större än noll.
                 </InfoTooltip>

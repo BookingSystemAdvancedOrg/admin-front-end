@@ -10,7 +10,7 @@ cp .env.example .env   # fill in the values, see docs/API-OCH-NYCKLAR.md
 npm run dev
 ```
 
-The Vite dev server starts at `http://localhost:7070` — this port is fixed
+The Vite dev server starts at `http://localhost:7070` - this port is fixed
 (`strictPort`) to avoid clashing with other local services (8081 is taken
 by Docker Desktop on the main dev machine). In dev, all API calls are
 proxied through the dev server (`/api/*` → `VITE_API_BASE_URL`, see

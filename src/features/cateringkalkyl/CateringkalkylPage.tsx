@@ -127,7 +127,7 @@ export default function CateringkalkylPage() {
         if (!cancelled) setDishes(items.map(toDish).filter((d) => d.active))
       })
       .catch(async () => {
-        // Adminrutten kanske inte är deployad — samma reservväg som MenyPage.
+        // Adminrutten kanske inte är deployad - samma reservväg som MenyPage.
         try {
           const items = await getPublicMenu(locationId)
           if (!cancelled) setDishes(items.map(publicToDish))
@@ -233,7 +233,7 @@ export default function CateringkalkylPage() {
   const discountPercent = currentTier?.discountPercent ?? 0
   const discountAmount = (subtotal * discountPercent) / 100
 
-  // Illustrativa exempelavstånd — ingen riktig geokodning finns, så
+  // Illustrativa exempelavstånd - ingen riktig geokodning finns, så
   // förhandsvisningens "leveransadress" är bara en etikett, inte en riktig
   // beräkning. Skalat mot avståndsgränsen så exemplet alltid är rimligt.
   const previewDistanceKm = Math.max(1, Math.round(delivery.maxDistanceKm * 0.72))
@@ -585,7 +585,7 @@ export default function CateringkalkylPage() {
           <section className="admin-card table-card catering-preview-card">
             <h2 className="card-title">Förhandsvisning · så ser kunden kalkylen</h2>
             <p className="cell-muted">
-              Kunden väljer antal portioner per rätt — rabatten gäller alla rätter när nivån nås
+              Kunden väljer antal portioner per rätt - rabatten gäller alla rätter när nivån nås
             </p>
             <div style={{ height: 16 }} />
 

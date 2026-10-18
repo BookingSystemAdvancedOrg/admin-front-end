@@ -111,7 +111,7 @@ export function useTables(locationId: string | null | undefined): TablesState {
  * hämta visas id:na som de är.
  */
 export function tableNames(ids: string[], labels: Map<string, string> | null): string {
-  if (ids.length === 0) return '—'
+  if (ids.length === 0) return '-'
   if (!labels) return `Bord ${ids.join(', ')}`
   return `Bord ${ids.map((id) => labels.get(id) ?? '?').join(', ')}`
 }

@@ -32,7 +32,7 @@ const ALL_CATEGORIES = Object.keys(CATEGORY_LABEL) as DishCategory[]
  * Rättens bild med platshållare som reserv. Bild-URL:en byggs från
  * VITE_MENU_IMAGE_BASE_URL + imageKey; pekar basen fel (eller saknas
  * CDN-regeln) svarar CDN:et med HTML och webbläsaren hade visat en trasig
- * ikon — då är platshållaren ärligare, och felet syns i nätverksfliken.
+ * ikon - då är platshållaren ärligare, och felet syns i nätverksfliken.
  */
 function DishImage({ src, alt }: { src: string | null; alt: string }) {
   const [failed, setFailed] = useState(false)
@@ -55,12 +55,12 @@ function DishImage({ src, alt }: { src: string | null; alt: string }) {
 
 /**
  * Figma: admin-meny-page (34:2). Kopplad mot det riktiga meny-API:t
- * (menuApi.ts) — rätterna hämtas från databasen per plats, och alla
+ * (menuApi.ts) - rätterna hämtas från databasen per plats, och alla
  * ändringar (lägg till, redigera, aktiv-växel, radera) skrivs dit.
  *
  * Adminrutterna (/menu/items) är i skrivande stund inte deployade på API:t;
  * tills de är det faller sidan tillbaka på den publika menyn
- * (GET /locations/{id}/menu — deployad och fungerande) i skrivskyddat läge,
+ * (GET /locations/{id}/menu - deployad och fungerande) i skrivskyddat läge,
  * med en banner som förklarar varför.
  */
 export default function MenyPage() {
@@ -93,7 +93,7 @@ export default function MenyPage() {
       .catch(async (err) => {
         if (cancelled) return
         if (isMenuRoutesMissing(err)) {
-          // Adminlistan finns inte än — publika menyn är deployad och ger
+          // Adminlistan finns inte än - publika menyn är deployad och ger
           // åtminstone de aktiva rätterna, i skrivskyddat läge.
           try {
             const items = await getPublicMenu(locationId)
@@ -205,7 +205,7 @@ export default function MenyPage() {
   async function handleSave(values: DishFormValues) {
     if (!locationId) {
       throw new Error(
-        'Ingen restaurangplats är sparad än — spara restaurangprofilen under Inställningar först.',
+        'Ingen restaurangplats är sparad än - spara restaurangprofilen under Inställningar först.',
       )
     }
     // Ny bild laddas upp till S3 först; rätten sparas med nyckeln vi får
@@ -225,7 +225,7 @@ export default function MenyPage() {
     }
 
     if (modal?.mode === 'edit' && editingDish) {
-      // API:t kräver minst ett fält — en tom diff skickas aldrig.
+      // API:t kräver minst ett fält - en tom diff skickas aldrig.
       const updates = dishChanges(editingDish, desired)
       if (Object.keys(updates).length > 0) {
         const saved = await updateMenuItem(locationId, editingDish.id, updates)
@@ -258,7 +258,7 @@ export default function MenyPage() {
         {!locationId && !resolvingLocation && (
           <p className="form-error" role="alert">
             Menyn kan inte hämtas: ingen restaurangplats är skapad än. Gå till
-            Inställningar och spara restaurangprofilen först — menyn lagras per
+            Inställningar och spara restaurangprofilen först - menyn lagras per
             plats i API:t.
           </p>
         )}

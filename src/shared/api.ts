@@ -2,7 +2,7 @@ import { getAccessToken } from '../features/auth/cognito'
 
 /**
  * Bas-URL till backend-API:t (API Gateway). Sätts i .env lokalt och i
- * .github/config/project.env för deploy — se docs/BACKEND-KOPPLING.md.
+ * .github/config/project.env för deploy - se docs/BACKEND-KOPPLING.md.
  * Så länge den inte är satt kör alla sidor på mockdata i respektive
  * features-mapps data.ts.
  */
@@ -83,7 +83,7 @@ async function fetchWithRetry(method: string, send: () => Promise<Response>): Pr
 
 /**
  * Anropar backend med inloggningens access-token i Authorization-headern
- * (API:ts JWT-authorizer validerar access-tokens, inte ID-tokens — se
+ * (API:ts JWT-authorizer validerar access-tokens, inte ID-tokens - se
  * backend-spec:ens 401-beskrivning).
  * Används när sidorna kopplas från mockdata till riktigt API, t.ex.:
  *
@@ -99,7 +99,7 @@ export async function apiFetch<T>(
 ): Promise<T> {
   if (!API_BASE_URL) {
     throw new Error(
-      'VITE_API_BASE_URL är inte satt — appen kör på mockdata. Se docs/BACKEND-KOPPLING.md.',
+      'VITE_API_BASE_URL är inte satt - appen kör på mockdata. Se docs/BACKEND-KOPPLING.md.',
     )
   }
   const token = await getAccessToken()

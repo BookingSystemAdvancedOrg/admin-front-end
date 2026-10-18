@@ -7,7 +7,7 @@
   gap: 8px;
 }
 
-/* Knappen som markerar att kunden anlänt — låser statusen permanent.
+/* Knappen som markerar att kunden anlänt - låser statusen permanent.
    Padding + negativ margin ger en bekväm tryckyta på touch utan att
    knappen ser större ut bredvid statusmärket. */
 .arrive-btn {

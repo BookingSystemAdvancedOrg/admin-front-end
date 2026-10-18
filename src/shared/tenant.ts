@@ -3,7 +3,7 @@ import { useAuth } from '../features/auth/useAuth'
 import { ApiError, apiFetch, isApiConfigured } from './api'
 
 /**
- * Den inloggade restaurangen (tenant) — GET /tenant.
+ * Den inloggade restaurangen (tenant) - GET /tenant.
  *
  * Systemet är multi-tenant: EN deployment betjänar alla restauranger, och
  * vilken restaurang anropet gäller avgörs av servern ur access-tokenen
@@ -88,13 +88,13 @@ export function getTenant(): Promise<Tenant> {
   return apiFetch<Tenant>('/tenant')
 }
 
-/** PATCH /tenant (bara ägare) — svarar med hela, uppdaterade restaurangen. */
+/** PATCH /tenant (bara ägare) - svarar med hela, uppdaterade restaurangen. */
 export function updateTenant(edit: TenantEdit): Promise<Tenant> {
   return apiFetch<Tenant>('/tenant', { method: 'PATCH', body: JSON.stringify(edit) })
 }
 
 /**
- * POST /tenant/stripe/account-link — en engångslänk (giltig några minuter)
+ * POST /tenant/stripe/account-link - en engångslänk (giltig några minuter)
  * till Stripes egen onboarding för restaurangens konto. Bara ägare.
  * 409 `no_stripe_account` = plattformen har inte skapat kontot än.
  */
@@ -135,7 +135,7 @@ const LOCAL_DEMO_TENANT: Tenant = {
 // --- Store ------------------------------------------------------------------
 //
 // En enda kopia per flik, delad av alla komponenter (sidebar, topbar, sidor)
-// via useSyncExternalStore — ett platsbyte i sidebaren syns överallt direkt.
+// via useSyncExternalStore - ett platsbyte i sidebaren syns överallt direkt.
 // Bunden till inloggningens `sub`: en annan användare (utloggning/inloggning
 // i samma flik) får aldrig se föregående användares restaurang.
 
@@ -181,7 +181,7 @@ export function getTenantState(): TenantState {
   return state
 }
 
-/** Glömmer allt — anropas vid utloggning. */
+/** Glömmer allt - anropas vid utloggning. */
 export function resetTenantStore(): void {
   inflight = null
   state = INITIAL
@@ -237,7 +237,7 @@ function errorCode(err: unknown): TenantErrorCode {
 
 /**
  * Hämtar (eller återanvänder) restaurangen för `sub`. `force` hämtar om
- * — t.ex. efter att en plats skapats eller Stripe-onboardingen avslutats.
+ * - t.ex. efter att en plats skapats eller Stripe-onboardingen avslutats.
  */
 export function loadTenant(
   sub: string | null,
@@ -262,7 +262,7 @@ export function loadTenant(
     })
     .catch((err: unknown) => {
       if (inflight !== request) return null
-      // Ett tidigare lyckat svar ligger kvar vid en tillfällig störning —
+      // Ett tidigare lyckat svar ligger kvar vid en tillfällig störning -
       // men aldrig vid 401/403: då gäller inte den gamla datan längre.
       const code = errorCode(err)
       const keep = code === 'unavailable' && state.tenant

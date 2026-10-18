@@ -41,7 +41,7 @@ const QUICK_LINKS: { to: string; icon: QuickLinkIconName; label: string }[] = [
 ]
 
 interface OverviewData {
-  /** Platsen datan gäller — en annan plats betyder att ny data hämtas. */
+  /** Platsen datan gäller - en annan plats betyder att ny data hämtas. */
   forLocation: string | null
   location: Location | null
   activeMenuItems: number | null
@@ -75,7 +75,7 @@ function orNull<T>(promise: Promise<T>): Promise<T | null> {
  * Figma: admin-oversikt-page (36:165).
  *
  * Allt på sidan är restaurangens riktiga data för den valda platsen. Tidigare
- * visades påhittade bokningar och nyckeltal här — det ger en ny kund fel
+ * visades påhittade bokningar och nyckeltal här - det ger en ny kund fel
  * bild av sin egen restaurang. Där backend ännu saknar data (bokningar)
  * står det uttryckligen i stället för att visa exempel.
  */
@@ -157,7 +157,7 @@ export default function OversiktPage() {
   }[] = [
     {
       label: 'Bokningar idag',
-      value: bookings ? String(bookings.count) : '—',
+      value: bookings ? String(bookings.count) : '-',
       note: !bookings
         ? 'Kunde inte hämtas'
         : bookings.next
@@ -168,7 +168,7 @@ export default function OversiktPage() {
     },
     {
       label: 'Dagens omsättning',
-      value: !hasOrdering ? '—' : revenue ? kronor(revenue.amount) : '—',
+      value: !hasOrdering ? '-' : revenue ? kronor(revenue.amount) : '-',
       note: !hasOrdering
         ? notInPlan
         : revenue
@@ -179,7 +179,7 @@ export default function OversiktPage() {
     },
     {
       label: 'Aktiva beställningar',
-      value: !hasOrdering ? '—' : inProgress ? String(inProgress.count) : '—',
+      value: !hasOrdering ? '-' : inProgress ? String(inProgress.count) : '-',
       note: !hasOrdering
         ? notInPlan
         : !inProgress
@@ -192,7 +192,7 @@ export default function OversiktPage() {
     },
     {
       label: 'Att hantera',
-      value: todo ? String(todo.total) : '—',
+      value: todo ? String(todo.total) : '-',
       note: !todo
         ? 'Kunde inte hämtas'
         : todo.total === 0

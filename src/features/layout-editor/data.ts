@@ -1,6 +1,6 @@
 /**
  * Typer och konstanter för golvplanen. Datan kommer från backend via
- * `layoutApi.ts` — det finns medvetet ingen mockplan här längre, eftersom
+ * `layoutApi.ts` - det finns medvetet ingen mockplan här längre, eftersom
  * den hann visas ett ögonblick innan den riktiga layouten lästs in.
  */
 
@@ -18,7 +18,7 @@ export interface TableElement {
   rotation: number
   /**
    * Bordets mått i golvenheter. Satta manuellt via resize-handtagen (dra en
-   * sida eller ände) — inte längre härledda ur form/antal platser, så ett
+   * sida eller ände) - inte längre härledda ur form/antal platser, så ett
    * "fyrkantigt" bord kan göras till en avlång rektangel. `defaultTableSize`
    * ger bara ett rimligt startförslag när bordet skapas.
    */
@@ -27,7 +27,7 @@ export interface TableElement {
 }
 
 /**
- * En vägg längs rutnätet. Väggar är alltid hela — öppningar (fönster,
+ * En vägg längs rutnätet. Väggar är alltid hela - öppningar (fönster,
  * entré, kökets ingång) ligger SOM PÅBYGGNAD på väggen (se Opening) och
  * klipper aldrig hål i den. När en markyta ritas skapas väggar runt om
  * den automatiskt.
@@ -69,7 +69,7 @@ export interface Fixture {
   h: number
 }
 
-/** En ritad markyta — golvet byggs av en eller flera sådana rektanglar. */
+/** En ritad markyta - golvet byggs av en eller flera sådana rektanglar. */
 export interface GroundRect {
   id: string
   x: number
@@ -78,7 +78,7 @@ export interface GroundRect {
   h: number
 }
 
-/** En våning. Nya våningar börjar helt tomma — marken ritas först. */
+/** En våning. Nya våningar börjar helt tomma - marken ritas först. */
 export interface Floor {
   id: string
   name: string
@@ -103,7 +103,7 @@ export const GRID = 20
 /** Arbetsytans storlek. Origo (0,0) ligger i canvasens mitt. */
 export const WORKSPACE = { w: 1200, h: 900 }
 
-/** En ny, helt tom våning — marken ritas först med Mark-verktyget. */
+/** En ny, helt tom våning - marken ritas först med Mark-verktyget. */
 export function emptyFloor(n: number): Floor {
   return {
     id: `floor-${n}-${Math.random().toString(36).slice(2, 7)}`,
@@ -117,7 +117,7 @@ export function emptyFloor(n: number): Floor {
 }
 
 /**
- * Förslag på bordsyta utifrån form och antal platser — används bara som
+ * Förslag på bordsyta utifrån form och antal platser - används bara som
  * startvärde när ett nytt bord skapas. Storleken är annars fri och styrs av
  * användaren via resize-handtagen (se `tableSize`).
  */
@@ -133,7 +133,7 @@ export function defaultTableSize(
   return { w, h: Math.round(w * 0.66) }
 }
 
-/** Bordets faktiska yta i golvenheter — en bekväm genväg för { w, h }. */
+/** Bordets faktiska yta i golvenheter - en bekväm genväg för { w, h }. */
 export function tableSize(t: Pick<TableElement, 'w' | 'h'>): {
   w: number
   h: number

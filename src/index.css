@@ -6,7 +6,7 @@
    tryckt svart, skrivarens röda). Archivo är läs- och rubrikstilen, Martian
    Mono trycker data (tider, belopp, status). --accent är fyllnadsfärgen
    (knappar, valt läge) = tryckt svart; --accent-ink är text/länkar =
-   skrivarens röda. Mörkt läge är den vinröda väggen. Gamla namn (--green,
+   skrivarens röda. Alltid ljust läge (inget mörkt läge). Gamla namn (--green,
    --serif, ...) pekar på de nya värdena så att alla sidor följer med. */
 @font-face {
   font-family: 'Archivo';
@@ -82,74 +82,6 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg: #1f0002;
-    --surface: #2b0003;
-    --fill: #3a0a0c;
-    --surface-glass: rgba(43, 0, 3, 0.9);
-    --border: rgba(246, 236, 233, 0.16);
-    --ink: #f6ece9;
-    --muted: #dcbcb7;
-    --accent: #f6ece9;
-    --accent-hover: #ffffff;
-    --accent-active: #ffffff;
-    --on-accent: #2b0003;
-    --accent-ink: #f0a8a3;
-    --focus: rgba(240, 168, 163, 0.4);
-    --danger: #f0a8a3;
-    --danger-ink: #f0a8a3;
-    --success: #9fd3ac;
-    --success-ink: #9fd3ac;
-    --warning: #f0c879;
-    --warning-ink: #f0c879;
-    --purple: #cdb6e8;
-    --purple-ink: #cdb6e8;
-    --tint-blue: rgba(246, 236, 233, 0.08);
-    --tint-green: rgba(159, 211, 172, 0.12);
-    --tint-orange: rgba(240, 200, 121, 0.12);
-    --tint-red: rgba(240, 168, 163, 0.12);
-    --tint-purple: rgba(205, 182, 232, 0.12);
-    --scrim: rgba(0, 0, 0, 0.55);
-    --shadow: 0 1px 1px rgba(0, 0, 0, 0.2), 0 6px 14px -8px rgba(0, 0, 0, 0.6);
-    --shadow-lg: 0 24px 48px -16px rgba(0, 0, 0, 0.7);
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme='dark'] {
-    --bg: #1f0002;
-  --surface: #2b0003;
-  --fill: #3a0a0c;
-  --surface-glass: rgba(43, 0, 3, 0.9);
-  --border: rgba(246, 236, 233, 0.16);
-  --ink: #f6ece9;
-  --muted: #dcbcb7;
-  --accent: #f6ece9;
-  --accent-hover: #ffffff;
-  --accent-active: #ffffff;
-  --on-accent: #2b0003;
-  --accent-ink: #f0a8a3;
-  --focus: rgba(240, 168, 163, 0.4);
-  --danger: #f0a8a3;
-  --danger-ink: #f0a8a3;
-  --success: #9fd3ac;
-  --success-ink: #9fd3ac;
-  --warning: #f0c879;
-  --warning-ink: #f0c879;
-  --purple: #cdb6e8;
-  --purple-ink: #cdb6e8;
-  --tint-blue: rgba(246, 236, 233, 0.08);
-  --tint-green: rgba(159, 211, 172, 0.12);
-  --tint-orange: rgba(240, 200, 121, 0.12);
-  --tint-red: rgba(240, 168, 163, 0.12);
-  --tint-purple: rgba(205, 182, 232, 0.12);
-  --scrim: rgba(0, 0, 0, 0.55);
-  --shadow: 0 1px 1px rgba(0, 0, 0, 0.2), 0 6px 14px -8px rgba(0, 0, 0, 0.6);
-  --shadow-lg: 0 24px 48px -16px rgba(0, 0, 0, 0.7);
-  color-scheme: dark;
 }
 
 ::selection {

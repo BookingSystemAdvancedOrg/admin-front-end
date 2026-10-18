@@ -89,7 +89,7 @@
   color: var(--accent-ink);
 }
 
-/* Platsväljare — bara när restaurangen har flera platser. */
+/* Platsväljare - bara när restaurangen har flera platser. */
 .admin-location-picker {
   display: flex;
   flex-direction: column;
@@ -550,7 +550,7 @@
 
 .link-action {
   /* Vertikal padding gör tryckytan bekväm på touch utan att texten ser
-     större ut — radhöjden i tabellen växer bara ett par pixlar. */
+     större ut - radhöjden i tabellen växer bara ett par pixlar. */
   padding: 10px 2px;
   margin: -10px -2px;
   border: 0;

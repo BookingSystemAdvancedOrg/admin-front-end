@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 
 /**
  * Litet infoikon-uppslag: klick öppnar en förklarande bubbla, stängs via X,
- * Escape, eller klick utanför. Tänkt att stå bredvid en <label> — placera den
+ * Escape, eller klick utanför. Tänkt att stå bredvid en <label> - placera den
  * som syskon, aldrig inuti <label>, annars triggar klicket både knappen och
  * labelns "fokusera fältet"-beteende.
  */

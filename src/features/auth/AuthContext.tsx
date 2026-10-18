@@ -123,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('signed-out')
   }, [])
 
-  // Access-tokenen, inte ID-tokenen — det är den API:ts authorizer godtar.
+  // Access-tokenen, inte ID-tokenen - det är den API:ts authorizer godtar.
   const getToken = useCallback(async () => {
     if (getMockSessionEmail()) return 'mock-dev-token'
     return getAccessToken()

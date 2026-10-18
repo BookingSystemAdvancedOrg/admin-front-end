@@ -6,7 +6,7 @@ import type { Order } from '../bestallningar/ordersApi'
 import type { RequestSummary } from '../catering/cateringApi'
 
 /**
- * Ren logik för Översikten — utan React, så den går att testa direkt.
+ * Ren logik för Översikten - utan React, så den går att testa direkt.
  * Allt som visas på sidan räknas fram ur riktig data från API:t.
  */
 
@@ -19,7 +19,7 @@ export function weekdayIn(timezone: string | null, now: Date = new Date()): Week
       timeZone: timezone || 'Europe/Stockholm',
     }).format(now)
   } catch {
-    // Ogiltig tidszon i datan — hellre svensk tid än en krasch.
+    // Ogiltig tidszon i datan - hellre svensk tid än en krasch.
     name = new Intl.DateTimeFormat('en-US', {
       weekday: 'long',
       timeZone: 'Europe/Stockholm',
@@ -47,7 +47,7 @@ export function hasAnyOpeningHours(hours: BusinessHours | undefined): boolean {
 export interface SetupStep {
   id: 'hours' | 'menu' | 'layout' | 'stripe' | 'staff'
   label: string
-  /** null = okänt (data kunde inte hämtas) — visas varken som klart eller ej. */
+  /** null = okänt (data kunde inte hämtas) - visas varken som klart eller ej. */
   done: boolean | null
   to: string
 }

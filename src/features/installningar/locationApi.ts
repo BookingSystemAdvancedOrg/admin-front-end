@@ -10,7 +10,7 @@ import { apiFetch, ApiError } from '../../shared/api'
  * `PUT /locations/{id}` är trots verbet en PARTIELL uppdatering: minst ett
  * fält krävs, och skickas `businessHours` måste alla sju veckodagar vara med.
  * Kontaktfälten är valfria vid uppdatering, men på en äldre plats som helt
- * saknar dem måste den första kontaktuppdateringen skicka BÅDA — därför
+ * saknar dem måste den första kontaktuppdateringen skicka BÅDA - därför
  * skickar locationChanges() alltid email och phoneNumber ihop. Den kräver
  * owner_user/super_user, till skillnad från läsningen.
  */
@@ -202,7 +202,7 @@ export function validateBusinessHours(hours: BusinessHours): string | null {
 /**
  * Mappar API:ts { error: string } + statuskod till svenska meddelanden.
  * Statuskoden bevaras (felet förblir en ApiError) så att anropare kan
- * reagera på t.ex. 404 — "platsen finns inte" är ett tillstånd att hantera,
+ * reagera på t.ex. 404 - "platsen finns inte" är ett tillstånd att hantera,
  * inte bara en text att visa (se location.ts som rensar döda id:n).
  */
 function toFriendlyLocationError(err: unknown): Error {
@@ -222,7 +222,7 @@ function toFriendlyLocationError(err: unknown): Error {
     case 404:
       return new ApiError(404, 'Platsen hittades inte.')
     case 409:
-      return new ApiError(409, 'En plats med det ID:t finns redan — testa igen.')
+      return new ApiError(409, 'En plats med det ID:t finns redan - testa igen.')
     case 501:
       return new ApiError(501, 'Den här funktionen är inte klar på serversidan än.')
     case 503:
@@ -244,7 +244,7 @@ async function call<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /**
- * GET /locations — hela platskatalogen. Kräver owner_user/super_user, så
+ * GET /locations - hela platskatalogen. Kräver owner_user/super_user, så
  * personal får 403 här och måste hitta sin plats på annat sätt.
  *
  * Systemet driftsätts med en instans per kund, så listan innehåller i
@@ -272,7 +272,7 @@ export function getLocation(locationId: string): Promise<Location> {
   )
 }
 
-/** Partiell uppdatering — skicka bara de fält som faktiskt ändrats. */
+/** Partiell uppdatering - skicka bara de fält som faktiskt ändrats. */
 export type LocationUpdate = Partial<LocationCreateRequest> & {
   /** null tar bort policyn. */
   guarantee?: GuaranteePolicy | null
@@ -298,7 +298,7 @@ export function updateLocation(
 
 /**
  * Räknar ut vilka fält som skiljer sig mot den sparade platsen. API:t kräver
- * minst ett fält, så en tom diff ska aldrig skickas — anroparen kan skilja
+ * minst ett fält, så en tom diff ska aldrig skickas - anroparen kan skilja
  * "inget ändrat" från ett riktigt anrop.
  */
 export function locationChanges(
@@ -309,7 +309,7 @@ export function locationChanges(
   if (original.name !== next.name) updates.name = next.name
   if (original.address !== next.address) updates.address = next.address
   // Servern kräver båda kontaktfälten tillsammans så fort ett av dem skickas
-  // (annars kan en äldre plats utan kontaktuppgifter inte uppdateras) — så
+  // (annars kan en äldre plats utan kontaktuppgifter inte uppdateras) - så
   // de diffas och skickas alltid ihop, aldrig var för sig.
   if (original.email !== next.email || original.phoneNumber !== next.phoneNumber) {
     updates.email = next.email

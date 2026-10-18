@@ -4,7 +4,7 @@ import { API_BASE_URL } from '../../shared/api'
  * Inloggningen går genom backendens /auth/*-endpoints (manage-auth-Lambdan),
  * som håller Cognito-app-klientens secret och anropar InitiateAuth /
  * RespondToAuthChallenge server-side. Webbläsaren pratar aldrig direkt med
- * Cognito — se docs/API-OCH-NYCKLAR.md och backend-repots openapi.yaml för
+ * Cognito - se docs/API-OCH-NYCKLAR.md och backend-repots openapi.yaml för
  * det fullständiga kontraktet.
  */
 
@@ -49,7 +49,7 @@ export type SignInResult =
 
 const STORAGE_KEY = 'admin-auth-session'
 
-/** JWT-payloaden är bara base64url-kodad JSON — inget bibliotek behövs för att läsa ut claims. */
+/** JWT-payloaden är bara base64url-kodad JSON - inget bibliotek behövs för att läsa ut claims. */
 function decodeJwtPayload(token: string): Record<string, unknown> {
   const payload = token.split('.')[1] ?? ''
   const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
@@ -93,10 +93,10 @@ function saveSession(session: StoredSession): void {
 /**
  * Normaliserar en sparad session till en giltig StoredSession. Krävs eftersom
  * en session sparad av en äldre version av den här filen kan sakna fält som
- * lagts till sen dess (t.ex. `groups`) — utan detta kraschar allt som läser
+ * lagts till sen dess (t.ex. `groups`) - utan detta kraschar allt som läser
  * `session.groups` med "Cannot read properties of undefined". Saknas
  * `groups` läses den istället ur den redan sparade ID-tokenen (den bar redan
- * cognito:groups-claimet, vi bara läste inte ut det innan) — annars skulle
+ * cognito:groups-claimet, vi bara läste inte ut det innan) - annars skulle
  * en gammal session ge tom behörighet tills nästa inloggning.
  */
 function toValidSession(parsed: unknown): StoredSession | null {
@@ -375,7 +375,7 @@ export async function getIdToken(): Promise<string | null> {
 
 /**
  * Access-tokenen är den som API:ts JWT-authorizer förväntar sig (se
- * openapi-spec:en: "invalid Cognito access token") — ID-tokenen är till för
+ * openapi-spec:en: "invalid Cognito access token") - ID-tokenen är till för
  * klienten själv (e-post m.m.), inte för Authorization-headern.
  */
 export async function getAccessToken(): Promise<string | null> {

@@ -7,12 +7,12 @@ Det här dokumentet beskriver vilka sidor som är kopplade mot backend, vad som 
 ### Restaurangen (tenant) och platsen
 
 Plattformen är **multi-tenant**: en deployment betjänar alla restauranger.
-Appen skickar aldrig något restaurang-id — servern läser det ur
+Appen skickar aldrig något restaurang-id - servern läser det ur
 access-tokenen. Startpunkten är `GET /tenant` (`src/shared/tenant.ts`):
 restaurangens namn, plan, Stripe-status och de platser den inloggade får
 arbeta med (ägare: alla, personal: bara sin egen).
 
-- Sidebaren visar restaurangens namn och — vid flera platser — en
+- Sidebaren visar restaurangens namn och - vid flera platser - en
   **platsväljare**. Sidorna monteras om vid platsbyte.
 - Vald plats minns per restaurang (`admin-location-id:<tenantId>` i
   localStorage) och godtas bara om den finns i serverns lista.
@@ -24,17 +24,17 @@ arbeta med (ägare: alla, personal: bara sin egen).
 | Sida | Datakälla |
 | --- | --- |
 | Översikt | **Riktig**: platsens öppettider, menyn, layoutversioner, personal och Stripe-status. "Kom igång"-lista. Bokningar: tomt läge tills backend har en lista |
-| Bokningar | Inget API än (`GET /reservations` saknas) — tomt läge. Exempeldata (`bokningar/data.ts`) visas bara lokalt utan `VITE_API_BASE_URL` |
+| Bokningar | Inget API än (`GET /reservations` saknas) - tomt läge. Exempeldata (`bokningar/data.ts`) visas bara lokalt utan `VITE_API_BASE_URL` |
 | Meny | **Kopplad** via `meny/menuApi.ts` |
 | Cateringkalkyl | Rätterna från meny-API:t; reglerna saknar API och märks "sparas inte än" |
 | Layout-editorn | **Kopplad** via `layout-editor/layoutApi.ts` |
-| Inställningar — personal | **Kopplad**: `GET /list-users` + `/users/*` (`usersApi.ts`), bara för ägare. Personal kopplas till en plats via namn |
-| Inställningar — restaurangprofil | **Kopplad**: `/locations` (`locationApi.ts`), den valda platsen |
-| Inställningar — betalningar | **Kopplad**: `GET /tenant` (status) + `POST /tenant/stripe/account-link` (Stripes onboarding). Stripe skickar tillbaka till `/settings/payments?stripe=return\|refresh` |
-| Inställningar — avbokningspolicy | Inget API än — visas som "kommer", inte som redigerbara påhittade värden |
+| Inställningar - personal | **Kopplad**: `GET /list-users` + `/users/*` (`usersApi.ts`), bara för ägare. Personal kopplas till en plats via namn |
+| Inställningar - restaurangprofil | **Kopplad**: `/locations` (`locationApi.ts`), den valda platsen |
+| Inställningar - betalningar | **Kopplad**: `GET /tenant` (status) + `POST /tenant/stripe/account-link` (Stripes onboarding). Stripe skickar tillbaka till `/settings/payments?stripe=return\|refresh` |
+| Inställningar - avbokningspolicy | Inget API än - visas som "kommer", inte som redigerbara påhittade värden |
 
 Roller: `owner_user` (ägare) och `staff_user` (personal). `super_user` finns
-inte längre — plattformens operatörer arbetar i operatörskonsolen (Booqy Console).
+inte längre - plattformens operatörer arbetar i operatörskonsolen (Booqy Console).
 
 **Layout-editorn** läser in sitt utkast vid sidladdning. "Spara utkast"
 skriver elementen, och "Publicera layout" sparar först utkastet och fryser
@@ -42,7 +42,7 @@ det sedan till en numrerad version (`POST …/layout/publish`).
 
 Under **Versioner** listas de publicerade ögonblicksbilderna, och en av dem
 kan aktiveras (`POST …/layout/versions/{n}/activate`). Aktiveringen sker
-omedelbart bara när ingen version gäller ännu — finns redan en gällande
+omedelbart bara när ingen version gäller ännu - finns redan en gällande
 version schemalägger API:t bytet till 01:00 UTC fyra veckor fram, och svaret
 blir `pending` med en `cutoverAt`. Modalen visar den skillnaden, eftersom ett
 schemalagt byte annars ser ut som ett genomfört. Att begära en annan version
@@ -59,17 +59,17 @@ kan inte sparas och lever bara lokalt: **markytor**, **inventarier** (kassan),
 `src/features/layout-editor/layoutApi.ts`. Vill man kunna spara dem behöver
 backend utöka layout-schemat.
 
-Mönstret: varje feature har sin `data.ts` med typer + mockkonstanter. Typerna behålls när API:t kopplas — det är bara datakällan som byts. Ändringar man gör i gränssnittet (toggla rätter, flytta bord, spara inställningar) lever i webbläsarens minne och försvinner vid omladdning — det är väntat tills backend finns.
+Mönstret: varje feature har sin `data.ts` med typer + mockkonstanter. Typerna behålls när API:t kopplas - det är bara datakällan som byts. Ändringar man gör i gränssnittet (toggla rätter, flytta bord, spara inställningar) lever i webbläsarens minne och försvinner vid omladdning - det är väntat tills backend finns.
 
 ## 2. Så byts mock mot API
 
 Hjälparen `src/shared/api.ts` är redan förberedd. Den läser `VITE_API_BASE_URL`, hämtar inloggningens ID-token från Cognito och skickar den som `Authorization: Bearer <token>`:
 
 ```ts
-// features/bokningar/BokningarPage.tsx — från:
+// features/bokningar/BokningarPage.tsx - från:
 const reservations = MOCK_RESERVATIONS
 
-// — till:
+// - till:
 import { useEffect, useState } from 'react'
 import { apiFetch } from '../../shared/api'
 import type { Reservation } from './data'
@@ -80,11 +80,11 @@ useEffect(() => {
 }, [])
 ```
 
-Backend (API Gateway) validerar tokenen med en **Cognito authorizer** — se avsnitt 3 i `docs/API-OCH-NYCKLAR.md`.
+Backend (API Gateway) validerar tokenen med en **Cognito authorizer** - se avsnitt 3 i `docs/API-OCH-NYCKLAR.md`.
 
 ## 3. Var de riktiga nycklarna ska ligga
 
-### Frontend (detta repo) — bara publika värden
+### Frontend (detta repo) - bara publika värden
 
 Frontendens "nycklar" är inga hemligheter: allt som byggs in i bundeln kan läsas av vem som helst som öppnar sidan. Här ska bara ligga:
 
@@ -94,18 +94,18 @@ Frontendens "nycklar" är inga hemligheter: allt som byggs in i bundeln kan läs
 | `VITE_COGNITO_CLIENT_ID` | `.env` | `project.env` → `VITE_COGNITO_CLIENT_ID_DEV` / `_PROD` |
 | `VITE_API_BASE_URL` | `.env`, t.ex. `https://xxxx.execute-api.eu-north-1.amazonaws.com/dev` | läggs till i `project.env` som `VITE_API_BASE_URL_DEV` / `_PROD` när API:t finns (se nedan) |
 
-`.env` är git-ignorerad och stannar på din dator. `project.env` är committad — det är okej just för att värdena är publika. Vite bakar in värdena vid **byggtillfället**: starta om `npm run dev` efter ändring, och i CI byggs de in av bygg-steget.
+`.env` är git-ignorerad och stannar på din dator. `project.env` är committad - det är okej just för att värdena är publika. Vite bakar in värdena vid **byggtillfället**: starta om `npm run dev` efter ändring, och i CI byggs de in av bygg-steget.
 
 När API-URL:en finns: lägg till raderna i `.github/config/project.env` och komplettera `reusable_cicd.yml` på samma sätt som Cognito-värdena redan hanteras (config-jobbet läser `VITE_API_BASE_URL_${SUFFIX}` och bygg-steget får `VITE_API_BASE_URL` i `env:`).
 
-### Backend (AWS) — här bor de riktiga hemligheterna
+### Backend (AWS) - här bor de riktiga hemligheterna
 
 Dessa får **aldrig** hamna i frontend, `.env`, `project.env` eller någon annanstans i det här repot:
 
 | Hemlighet | Rätt plats |
 | --- | --- |
 | Stripe **secret key** (`sk_live_…`) | AWS Secrets Manager, läses av Lambda. (Stripes *publishable key* `pk_…` är däremot okej i frontend om det behövs.) |
-| Databas-uppgifter (DynamoDB/RDS) | Lambdans IAM-roll respektive Secrets Manager — frontend pratar aldrig direkt med databasen. |
+| Databas-uppgifter (DynamoDB/RDS) | Lambdans IAM-roll respektive Secrets Manager - frontend pratar aldrig direkt med databasen. |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Ingenstans i detta repo. CI autentiserar redan nyckellöst via GitHub OIDC, och Lambdas får rättigheter via IAM-roller. |
 | Cognito app-klient **med** secret (server-side) | Endast i backend, om en sådan behövs. Frontendens klient är en publik klient utan secret. |
 | Tredjeparts-API-nycklar (SMS, e-post m.m.) | Lambda-miljövariabler eller Secrets Manager. |
@@ -117,6 +117,6 @@ Tumregel: frontend skickar bara sin JWT. Allt som kan spendera pengar eller läs
 1. Skapa API:t i API Gateway med Cognito authorizer mot samma User Pool, och CORS för er frontend-domän (+ `http://localhost:5173` för dev).
 2. Sätt `VITE_API_BASE_URL` i din lokala `.env` och verifiera mot dev-API:t.
 3. Lägg till `VITE_API_BASE_URL_DEV`/`_PROD` i `project.env` + bygg-steget i workflown.
-4. Byt sida för sida från `MOCK_…` till `apiFetch(...)` enligt mönstret i avsnitt 2 — typerna i `data.ts` återanvänds som API-kontrakt.
+4. Byt sida för sida från `MOCK_…` till `apiFetch(...)` enligt mönstret i avsnitt 2 - typerna i `data.ts` återanvänds som API-kontrakt.
 5. Ta bort mockkonstanterna när respektive sida är kopplad (eller behåll dem för Storybook/tester).
 6. Glöm inte: dev-inloggningen `test@test.se` (`features/auth/mockAuth.ts`) finns bara i `npm run dev` och följer aldrig med i produktionsbygget.

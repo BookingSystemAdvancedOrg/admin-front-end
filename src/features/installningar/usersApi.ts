@@ -20,7 +20,7 @@ export type UserStatus = 'active' | 'disabled'
 export interface User {
   cognitoSub: string
   role: UserRole
-  /** Tomt för ägare — bara personal (staff) hör till en plats. */
+  /** Tomt för ägare - bara personal (staff) hör till en plats. */
   locationId: string
   name: string
   email: string
@@ -60,7 +60,7 @@ export const ROLE_TO_GROUP: Record<UserRole, CognitoGroup> = {
   owner_user: 'owner_user',
 }
 
-/** Svensk titel per Cognito-grupp — enda källan, återanvänd i stället för att duplicera. */
+/** Svensk titel per Cognito-grupp - enda källan, återanvänd i stället för att duplicera. */
 export const GROUP_LABEL: Record<CognitoGroup, string> = {
   staff_user: 'Personal',
   owner_user: 'Ägare',
@@ -79,7 +79,7 @@ export function normalizeUser(user: User): User {
   return user
 }
 
-/** Titeln för den inloggade användaren i sidebaren — den mest priviligierade av dess grupper. */
+/** Titeln för den inloggade användaren i sidebaren - den mest priviligierade av dess grupper. */
 export function primaryGroupLabel(groups: string[]): string {
   const match = GROUP_PRIORITY.find((g) => groups.includes(g))
   return match ? GROUP_LABEL[match] : 'Personal'
@@ -88,7 +88,7 @@ export function primaryGroupLabel(groups: string[]): string {
 const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const PHONE_PATTERN = /^\+[1-9]\d{7,14}$/
 
-/** Klientspegling av Lambdans fältvalidering — samma regler, samma felmeddelanden. */
+/** Klientspegling av Lambdans fältvalidering - samma regler, samma felmeddelanden. */
 export function validateName(name: string): string | null {
   return name.trim() ? null : 'Namn krävs.'
 }
@@ -181,7 +181,7 @@ function toFriendlyUserError(err: unknown): Error {
     case 403:
       return new Error('Du har inte behörighet att göra detta.')
     case 404:
-      return new Error('Användaren hittades inte — kan redan vara borttagen.')
+      return new Error('Användaren hittades inte - kan redan vara borttagen.')
     case 409:
       if (err.message.includes('already exists')) {
         return new Error('Det finns redan en användare med den e-postadressen.')
@@ -215,9 +215,9 @@ async function userCall(fn: () => Promise<User>): Promise<User> {
 }
 
 /**
- * GET /list-users — "List visible internal users". Kontraktet: { items: [...] },
+ * GET /list-users - "List visible internal users". Kontraktet: { items: [...] },
  * redan sorterad av backend (namn skiftlägesokänsligt, sen cognitoSub).
- * Ägaren ser restaurangens personal och sig själv — aldrig en annan
+ * Ägaren ser restaurangens personal och sig själv - aldrig en annan
  * restaurangs användare (servern listar per tenant).
  *
  * Sökvägen är medvetet inte /users: den hade krockat med /users/{cognitoSub},
@@ -231,7 +231,7 @@ export async function listUsers(): Promise<User[]> {
     if (err instanceof ApiError && err.status === 404) {
       // 404 här betyder att rutten saknas (inte att en användare saknas).
       throw new Error(
-        'Listan kan inte hämtas — GET /list-users är inte deployad på API:t än.',
+        'Listan kan inte hämtas - GET /list-users är inte deployad på API:t än.',
       )
     }
     throw toFriendlyUserError(err)
@@ -239,8 +239,8 @@ export async function listUsers(): Promise<User[]> {
 }
 
 /**
- * GET /users/{cognitoSub}. Används inte av någon sida än — listan täcker
- * behovet — men hör till kontraktet och finns här för den som behöver läsa
+ * GET /users/{cognitoSub}. Används inte av någon sida än - listan täcker
+ * behovet - men hör till kontraktet och finns här för den som behöver läsa
  * om en enskild användare efter en samtidig ändring (409).
  */
 export function getUser(cognitoSub: string): Promise<User> {

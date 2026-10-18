@@ -10,7 +10,7 @@ import {
  * Vilken av restaurangens platser appen arbetar med.
  *
  * Källan är GET /tenant (se tenant.ts): servern listar de platser den
- * inloggade får se — ägaren alla restaurangens, personal bara sin egen — och
+ * inloggade får se - ägaren alla restaurangens, personal bara sin egen - och
  * appen väljer bland dem. Ett plats-id som inte finns i den listan (en annan
  * restaurangs, ett borttaget, ett gammalt i webbläsarens cache) kan därför
  * aldrig bli valt.
@@ -27,7 +27,7 @@ export function getStoredLocationId(): string | null {
 
 /**
  * Hämtar om restaurangen från servern och returnerar den plats som gäller
- * — t.ex. strax innan en ny plats skapas, för att aldrig skapa en dubblett.
+ * - t.ex. strax innan en ny plats skapas, för att aldrig skapa en dubblett.
  */
 export async function resolveLocationId(
   callerSub: string | null,
@@ -38,7 +38,7 @@ export async function resolveLocationId(
 
 /**
  * Plats-ID:t för den inloggade. `resolving` är sant tills restaurangen är
- * hämtad — sidorna ska inte påstå att ingen plats finns medan den laddas.
+ * hämtad - sidorna ska inte påstå att ingen plats finns medan den laddas.
  * `setLocationId` väljer en plats (t.ex. en som just skapats: listan hämtas
  * om först så att den nya platsen finns med).
  */

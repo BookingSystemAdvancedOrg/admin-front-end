@@ -17,7 +17,7 @@ export interface AuthContextValue {
   /** Slutför "nytt lösenord"-steget för konton med tillfälligt lösenord. */
   finishNewPassword: (newPassword: string) => Promise<void>
   logout: () => void
-  /** Färsk access-token (JWT) för Authorization-headern — den API:ts authorizer validerar. */
+  /** Färsk access-token (JWT) för Authorization-headern - den API:ts authorizer validerar. */
   getToken: () => Promise<string | null>
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { QuickLinkIcon } from './QuickLinkIcon'
+import { StatTile } from './StatTile'
 import type { QuickLinkIconName } from './QuickLinkIcon'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { currentLocation, stripeStage, useTenant } from '../../shared/tenant'
@@ -233,19 +234,8 @@ export default function OversiktPage() {
       <AdminTopbar title="Översikt" />
       <div className="admin-main">
         <section className="stats-row" aria-label="Nyckeltal">
-          {stats.map((stat) => (
-            <Link
-              key={stat.label}
-              to={stat.to}
-              className={`admin-card stat-tile stat-tile--link${stat.tone ? ` stat-tile--${stat.tone}` : ''}`}
-            >
-              <p className="stat-tile-label">{stat.label}</p>
-              <p className="stat-tile-value">{loading ? '…' : stat.value}</p>
-              <p className="stat-tile-note">{loading ? 'Hämtar…' : stat.note}</p>
-              <span className="stat-tile-action">
-                {stat.action} <span aria-hidden="true">→</span>
-              </span>
-            </Link>
+          {stats.map((stat, i) => (
+            <StatTile key={stat.label} {...stat} loading={loading} index={i} />
           ))}
         </section>
 

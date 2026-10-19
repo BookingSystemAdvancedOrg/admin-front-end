@@ -141,6 +141,79 @@
   letter-spacing: -0.01em;
 }
 
+/* Nyckeltalsrutorna: ett kärl som fylls (canvas bakom texten). Texten ligger
+   alltid ovanpå vätskan. --liquid är färgen som rgb-tripel, --liquid-alpha
+   hur tät den är; den röda rutan ("att hantera") får skrivarens röda. */
+.stat-tile {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  --liquid: 196, 188, 170;
+  --liquid-alpha: 0.32;
+}
+
+.stat-tile--attention {
+  --liquid: 158, 29, 38;
+  --liquid-alpha: 0.14;
+}
+
+.stat-tile-liquid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.stat-tile > :not(.stat-tile-liquid) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Utan animation (reducerad rörelse eller ingen canvas): fylld direkt. */
+.stat-tile--full {
+  background: linear-gradient(rgba(var(--liquid), var(--liquid-alpha)), rgba(var(--liquid), var(--liquid-alpha))), var(--surface);
+}
+
+.stat-tile--link {
+  transition: transform 260ms var(--ease), box-shadow 260ms var(--ease), border-color 260ms var(--ease);
+}
+
+.stat-tile--link:hover {
+  transform: translateY(-3px);
+  border-color: var(--ink);
+  box-shadow: 0 2px 4px rgba(28, 25, 24, 0.06), 0 18px 32px -14px rgba(28, 25, 24, 0.35);
+}
+
+.stat-tile--link:active {
+  transform: translateY(-1px);
+  transition-duration: 90ms;
+}
+
+.stat-tile-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-tile-action > span {
+  display: inline-block;
+  transition: transform 260ms var(--ease);
+}
+
+.stat-tile--link:hover .stat-tile-action > span {
+  transform: translateX(4px);
+}
+
+.stat-tile--attention {
+  box-shadow: inset 0 0 0 1.5px var(--accent-ink), var(--shadow);
+}
+
+.stat-tile--attention .stat-tile-value {
+  color: var(--accent-ink);
+}
+
 .stat-tile-label {
   font: 600 10.5px/1.3 var(--mono);
   letter-spacing: 0.08em;

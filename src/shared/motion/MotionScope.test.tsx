@@ -1,7 +1,7 @@
 import { fireEvent, render } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { MotionScope, motionThisLogin, resetMotion, resetMotionForTests, sidebarShouldPour, useMotionAllowed } from './MotionScope'
+import { MotionScope, REVEAL_WINDOW_MS, claimReveal, motionThisLogin, resetMotion, resetMotionForTests, sidebarShouldPour, useMotionAllowed } from './MotionScope'
 
 function Probe() {
   return <span data-testid="probe">{useMotionAllowed() ? 'moves' : 'still'}</span>
@@ -65,5 +65,25 @@ describe('MotionScope', () => {
     localStorage.setItem('booqy-motion-seen', '1')
     expect(sidebarShouldPour()).toBe(false)
     expect(motionThisLogin()).toBe(false)
+  })
+
+  it('does not hand motion to another page when the shell remounts', () => {
+    expect(session('/bokningar')).toBe('moves')
+    // Same page load, the layout remounts on a different page: still.
+    expect(session('/meny')).toBe('still')
+    expect(session('/bokningar')).toBe('still')
+  })
+
+  it('lets tiles and numbers join the reveal only inside its window', () => {
+    let now = 1000
+    vi.spyOn(performance, 'now').mockImplementation(() => now)
+    expect(claimReveal()).toBe(true)
+    now += REVEAL_WINDOW_MS - 1
+    expect(claimReveal()).toBe(true)
+    now += 2
+    // A refetch or a remount later on the same page: no replay.
+    expect(claimReveal()).toBe(false)
+    resetMotion()
+    expect(claimReveal()).toBe(true)
   })
 })

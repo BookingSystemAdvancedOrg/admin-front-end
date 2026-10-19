@@ -49,7 +49,7 @@ export function StatTile({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const tileRef = useRef<HTMLElement>(null)
   const allowed = useMotionAllowed()
-  const liquid = useLiquidFill(tileRef, canvasRef, { active: !loading, enabled: allowed, index, staggerMs: STAGGER_MS })
+  const liquid = useLiquidFill(tileRef, canvasRef, { active: !loading, enabled: allowed, index, staggerMs: STAGGER_MS, reveal: true })
 
   const touch = (e: PointerEvent<HTMLElement>, force: number) => {
     const tile = tileRef.current

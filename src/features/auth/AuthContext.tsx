@@ -72,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (loginEmail: string, password: string) => {
       if (tryMockSignIn(loginEmail, password)) {
+        resetMotion()
         pendingChallenge.current = null
         setHasPendingNewPassword(false)
         setEmail(loginEmail.trim())
@@ -87,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setHasPendingNewPassword(true)
         return 'new-password' as const
       }
+      resetMotion()
       pendingChallenge.current = null
       setHasPendingNewPassword(false)
       setEmail(result.session.email ?? loginEmail.trim())
@@ -104,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Ingen pågående inloggning. Logga in igen.')
     }
     const session = await completeNewPassword(pending, newPassword)
+    resetMotion()
     pendingChallenge.current = null
     setHasPendingNewPassword(false)
     setEmail((prev) => session.email ?? prev)

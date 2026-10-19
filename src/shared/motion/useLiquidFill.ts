@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { RefObject } from 'react'
 import { Liquid } from './liquid'
 import { easeOutCubic, reducedMotion } from './countUp'
+import { claimReveal } from './MotionScope'
 
 const COLUMNS = 48
 
@@ -22,6 +23,11 @@ export interface LiquidFillOptions {
   onProgress?: (progress: number, done: boolean) => void
   /** Utan canvas eller med reducerad rörelse: sätt slutläget direkt. */
   onStatic?: () => void
+  /**
+   * Del av sidans avslöjande (nyckeltalsrutor): fylls bara inom fönstret
+   * efter att sidans första ruta började (MotionScope.claimReveal).
+   */
+  reveal?: boolean
 }
 
 export interface LiquidHandle {
@@ -39,13 +45,16 @@ export interface LiquidHandle {
 export function useLiquidFill(
   hostRef: RefObject<HTMLElement | null>,
   canvasRef: RefObject<HTMLCanvasElement | null>,
-  { active, enabled = true, index = 0, fillMs = 1500, staggerMs = 140, pourAt = 0.18, onProgress, onStatic }: LiquidFillOptions,
+  { active, enabled = true, index = 0, fillMs = 1500, staggerMs = 140, pourAt = 0.18, onProgress, onStatic, reveal = false }: LiquidFillOptions,
 ): LiquidHandle {
   const liquidRef = useRef<Liquid | null>(null)
   const wakeRef = useRef<() => void>(() => {})
   const sizeRef = useRef({ width: 1, height: 1 })
   const progressRef = useRef(onProgress)
   const staticRef = useRef(onStatic)
+  // En gång per element: har den fyllts en gång står den full sedan, även om
+  // `active` slår av och på (sidan hämtar om) eller fönstret ändrar storlek.
+  const playedRef = useRef(false)
   progressRef.current = onProgress
   staticRef.current = onStatic
 
@@ -55,11 +64,13 @@ export function useLiquidFill(
     const canvas = canvasRef.current
     if (!host || !canvas) return
     const ctx = canvas.getContext('2d')
-    if (!ctx || !enabled || reducedMotion()) {
+    if (!ctx || !enabled || playedRef.current || reducedMotion() || (reveal && !claimReveal())) {
+      playedRef.current = true
       host.classList.add('liquid--full')
       staticRef.current?.()
       return
     }
+    playedRef.current = true
 
     const liquid = new Liquid(COLUMNS)
     liquidRef.current = liquid
@@ -216,7 +227,7 @@ export function useLiquidFill(
       ro?.disconnect()
       liquidRef.current = null
     }
-  }, [active, enabled, index, fillMs, staggerMs, pourAt, hostRef, canvasRef])
+  }, [active, enabled, index, fillMs, staggerMs, pourAt, reveal, hostRef, canvasRef])
 
   return {
     touch: (x, force) => {

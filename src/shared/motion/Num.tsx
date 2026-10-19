@@ -1,14 +1,14 @@
 import { useEffect, useRef } from 'react'
 import { easeOutExpo, formatStatValue, parseStatValue, reducedMotion } from './countUp'
-import { useMotionAllowed } from './MotionScope'
+import { claimReveal, useMotionAllowed } from './MotionScope'
 
 const DURATION_MS = 1100
 
 /**
  * Ett tal som räknas upp när det visas: rusar iväg från noll och saktar in
- * exponentiellt ju närmare det riktiga värdet det kommer. Bara en gång:
- * första gången sidan visas i fliken (MotionScope); därefter, och när ett
- * värde ändras senare, står talet bara där.
+ * exponentiellt ju närmare det riktiga värdet det kommer. Bara en gång per
+ * inloggning: på första sidan efter inloggningen, inom sidans avslöjande
+ * (MotionScope). Därefter, och när ett värde ändras senare, står talet bara där.
  *
  * `children` är den färdigformaterade texten ("1 250 kr", "12,50 kr",
  * "6,9 %"); prefix och suffix följer med och den sista bildrutan är exakt
@@ -25,7 +25,8 @@ export function Num({ children, className, delayMs = 0 }: { children: string | n
     const el = ref.current
     if (!el) return
     const parsed = parseStatValue(text)
-    if (!parsed || !allowed || played.current || reducedMotion()) {
+    if (!parsed || !allowed || played.current || reducedMotion() || !claimReveal()) {
+      played.current = true
       el.textContent = text
       shown.current = parsed?.value ?? null
       return

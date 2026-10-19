@@ -70,8 +70,8 @@ export function AdminLayout() {
   const [confirmLogout, setConfirmLogout] = useState(false)
   const cancelLogout = useCallback(() => setConfirmLogout(false), [])
 
-  // Första gången i fliken: väggen fylls med vinrött (samma vatten som
-  // nyckeltalsrutorna). Sidbyten däremellan rör den inte.
+  // En gång per inloggning: väggen fylls med vinrött (samma vatten som
+  // nyckeltalsrutorna). Sidbyten, flikbyten och omladdningar rör den inte.
   const [pour] = useState(sidebarShouldPour)
   const sidebarRef = useRef<HTMLElement>(null)
   const sidebarCanvas = useRef<HTMLCanvasElement>(null)

@@ -1,16 +1,16 @@
 /* Figma: admin-catering-page, modal-rabattnivå. Delar knapp/kort/tabell-
-   klasserna i shared/admin.css — bara det som är unikt för den här sidan
+   klasserna i shared/admin.css - bara det som är unikt för den här sidan
    (hint-boxen, förhandsvisningens rätt-rader/stegare, den mörka
    kalkylpanelen) bor här. */
 
-/* Samma varma orange hint-ruta som layout-editorns .layout-viewmode-banner —
+/* Samma varma orange hint-ruta som layout-editorns .layout-viewmode-banner -
    för statiska påminnelser, inte valideringsfel (se .form-error för det). */
 .calc-hint {
   padding: 12px 16px;
   background: var(--tint-orange);
   border: 0;
   color: var(--warning-ink);
-  border-radius: 12px;
+  border-radius: 3px;
   font-size: 13px;
 }
 
@@ -22,7 +22,7 @@
 .field-note {
   padding: 10px 14px;
   background: var(--bg);
-  border-radius: 10px;
+  border-radius: 3px;
   font-size: 12px;
   color: var(--muted);
 }
@@ -61,7 +61,7 @@
   gap: 12px;
   padding: 14px 16px;
   background: var(--bg);
-  border-radius: 12px;
+  border-radius: 3px;
   margin-bottom: 4px;
 }
 
@@ -93,7 +93,7 @@
   width: 48px;
   height: 40px;
   flex-shrink: 0;
-  border-radius: 10px;
+  border-radius: 3px;
   overflow: hidden;
   background: var(--bg);
   font-size: 18px;
@@ -139,7 +139,7 @@
 .catering-stepper-btn {
   width: 28px;
   height: 28px;
-  border-radius: 14px;
+  border-radius: 6px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--ink);
@@ -199,7 +199,7 @@
   gap: 10px;
   padding: 24px;
   background: var(--green);
-  border-radius: 20px;
+  border-radius: 6px;
   color: #fff;
 }
 
@@ -264,7 +264,7 @@
   padding: 10px 12px;
   background: rgba(255, 255, 255, 0.16);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 10px;
+  border-radius: 3px;
   font-size: 12px;
   color: #fff;
 }
@@ -273,7 +273,7 @@
   margin-top: 4px;
   padding: 14px 20px;
   border: 0;
-  border-radius: 24px;
+  border-radius: 6px;
   background: var(--accent);
   color: #fff;
   font: 600 14px/1.2 var(--sans);

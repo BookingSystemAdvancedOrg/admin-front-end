@@ -15,7 +15,7 @@ export interface GuideStep {
   title: string
   text: string
   ownerOnly?: boolean
-  feature?: 'ordering' | 'catering'
+  feature?: 'ordering' | 'catering' | 'marketing'
   /** Bara när restaurangen har flera platser (platsväljaren). */
   multiLocation?: boolean
   /** Rubrik i Hjälp-sidans lista (bara på stegen som beskriver en hel del). */
@@ -55,8 +55,8 @@ export const GUIDE_STEPS: GuideStep[] = [
     ownerOnly: true,
     title: 'Kom igång',
     text:
-      'Längst ner på Översikt: din checklista för att bli redo - öppettider, meny, planritning, betalningar och personal. ' +
-      'Tryck på ett steg för att gå dit. Listan försvinner när allt är klart.',
+      'Överst på Översikt: din checklista för att bli redo - öppettider, meny, planritning, betalningar och personal. ' +
+      'Tryck på ett steg för att gå dit. När allt är klart flyttar listan längst ner.',
   },
 
   // --- Inställningar (viktigast för ägaren) ---------------------------------
@@ -282,7 +282,7 @@ export const GUIDE_STEPS: GuideStep[] = [
     route: '/layout',
     target: 'layout-tools',
     title: 'Rita',
-    text: 'Välj ett verktyg: rita mark (väggar kommer automatiskt), lägg till fönster, entré och bord. Dra för att flytta.',
+    text: 'Välj ett verktyg (eller tryck dess bokstav): rita mark (väggar kommer automatiskt), lägg till fönster, entré och bord. Dra för att flytta, Cmd/Ctrl+Z ångrar. Tryck ? för alla kortkommandon.',
   },
   {
     id: 'layout-publish',
@@ -290,6 +290,19 @@ export const GUIDE_STEPS: GuideStep[] = [
     target: 'layout-publish',
     title: 'Publicera',
     text: 'Ändringar sparas som utkast. När du publicerar ser gästerna den nya planritningen.',
+  },
+
+  // --- Marknadsföring --------------------------------------------------------
+  {
+    id: 'marknadsforing',
+    route: '/marknadsforing',
+    target: 'nav-marknadsforing',
+    feature: 'marketing',
+    ownerOnly: true,
+    section: 'Marknadsföring',
+    title: 'Marknadsföring',
+    text:
+      'Se varifrån besökarna på er webbplats kommer och vad det ger i bokningar, utan cookies. Skicka nyhetsbrev och erbjudanden till gäster som själva bett om det.',
   },
 
   // --- Hjälp -----------------------------------------------------------------

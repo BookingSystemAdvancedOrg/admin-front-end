@@ -38,7 +38,7 @@
   flex-shrink: 0;
   width: 34px;
   height: 34px;
-  border-radius: 9px;
+  border-radius: 3px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--border);
 }
 
@@ -89,7 +89,7 @@
   color: var(--accent-ink);
 }
 
-/* Platsväljare — bara när restaurangen har flera platser. */
+/* Platsväljare - bara när restaurangen har flera platser. */
 .admin-location-picker {
   display: flex;
   flex-direction: column;
@@ -550,7 +550,7 @@
 
 .link-action {
   /* Vertikal padding gör tryckytan bekväm på touch utan att texten ser
-     större ut — radhöjden i tabellen växer bara ett par pixlar. */
+     större ut - radhöjden i tabellen växer bara ett par pixlar. */
   padding: 10px 2px;
   margin: -10px -2px;
   border: 0;
@@ -665,7 +665,7 @@
   display: block;
   width: 56px;
   height: 44px;
-  border-radius: 10px;
+  border-radius: 3px;
 }
 
 .row-actions {
@@ -805,7 +805,7 @@
   z-index: 20;
   width: max(240px, min(300px, 80vw));
   padding: 14px 16px;
-  border-radius: 14px;
+  border-radius: 6px;
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: var(--shadow-lg);
@@ -923,7 +923,7 @@
   padding: 0 16px;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 3px;
 }
 
 .hours-row {
@@ -953,7 +953,7 @@
   padding: 0 16px;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 3px;
 }
 
 .hours-editor-row {
@@ -1030,7 +1030,7 @@
   width: 100%;
   padding: 14px 16px;
   background: var(--bg);
-  border-radius: 12px;
+  border-radius: 3px;
 }
 
 .stripe-dot {
@@ -1052,7 +1052,7 @@
 
 .stripe-manage {
   width: 100%;
-  border-radius: 12px;
+  border-radius: 3px;
 }
 
 /* --- Platshållarsidor --------------------------------------------------- */
@@ -1191,7 +1191,7 @@
 
   .modal {
     padding: 20px;
-    border-radius: 16px;
+    border-radius: 6px;
   }
 
   .quick-link {
@@ -1233,7 +1233,7 @@
   width: 20px;
   height: 20px;
   border: 1.5px solid var(--border);
-  border-radius: 10px;
+  border-radius: 3px;
   font: 700 11px/1 var(--sans);
   color: var(--muted);
 }
@@ -1242,6 +1242,43 @@
   border-color: var(--green);
   background: var(--green);
   color: #fff;
+}
+
+.setup-lead {
+  margin: 4px 0 0;
+}
+
+/* Klart: en rad längst ned, stegen bakom "Visa stegen". */
+.setup-card--done {
+  padding: 14px 24px;
+}
+
+.setup-done-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+}
+
+.setup-done-summary::-webkit-details-marker {
+  display: none;
+}
+
+.setup-done-toggle {
+  margin-left: auto;
+  font-weight: 400;
+}
+
+.setup-card--done[open] .setup-done-toggle {
+  visibility: hidden;
+}
+
+.setup-done-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
 }
 
 /* Översiktens "Dagens bokningar" */
@@ -1278,7 +1315,7 @@
   width: 64px;
   padding: 6px 8px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 3px;
   background: var(--surface);
   font: inherit;
 }
@@ -1309,7 +1346,7 @@
 .combo-add,
 .special-day-add {
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 3px;
   padding: 12px 16px 16px;
   display: flex;
   flex-direction: column;
@@ -1410,7 +1447,7 @@
   margin-bottom: 12px;
 }
 
-/* Kom igång längst ner på Översikt (ägaren, tills allt är klart). */
+/* Kom igång på Översikt (ägaren): överst tills allt är klart, sedan längst ned. */
 .setup-card {
   flex: none;
   width: 100%;

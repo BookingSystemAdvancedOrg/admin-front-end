@@ -10,6 +10,7 @@ import CateringRequestPage from './features/catering/CateringRequestPage'
 import LayoutEditorPage from './features/layout-editor/LayoutEditorPage'
 import InstallningarPage from './features/installningar/InstallningarPage'
 import HjalpPage from './features/guide/HjalpPage'
+import MarknadsforingPage from './features/marknadsforing/MarknadsforingPage'
 
 /**
  * Stripe skickar tillbaka ägaren hit efter onboardingen (return/refresh-URL:er
@@ -38,6 +39,7 @@ function App() {
         <Route path="catering" element={<CateringPage />} />
         <Route path="catering/:locationId/:requestId" element={<CateringRequestPage />} />
         <Route path="layout" element={<LayoutEditorPage />} />
+        <Route path="marknadsforing" element={<MarknadsforingPage />} />
         <Route path="installningar" element={<InstallningarPage />} />
         <Route path="hjalp" element={<HjalpPage />} />
         <Route path="settings/payments" element={<StripeReturn />} />

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { BrandMark, BrandWordmark } from '../../shared/BrandMark'
 import './auth.css'
+import './auth-brand.css'
 
 /**
  * Delad layout för personal-inloggning och nytt-lösenord
@@ -17,7 +18,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
             <BrandMark size={44} />
           </span>
           <span className="auth-logo-text">
-            <BrandWordmark height={26} />
+            <BrandWordmark height={40} />
             <span>Admin</span>
           </span>
         </div>

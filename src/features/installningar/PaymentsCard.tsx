@@ -7,7 +7,7 @@ import type { StripeStage as Stage, Tenant } from '../../shared/tenant'
  * Betalningar: restaurangens Stripe-konto, från GET /tenant.
  *
  * Plattformen skapar kontot när restaurangen registreras. Ägaren fyller sedan
- * i företags- och bankuppgifter hos Stripe själv (onboarding) — appen ser
+ * i företags- och bankuppgifter hos Stripe själv (onboarding) - appen ser
  * aldrig de uppgifterna, bara statusen. Stripe meddelar statusändringar till
  * backend (webhook), så efter onboardingen kan det dröja en stund innan
  * statusen nedan ändras.
@@ -86,7 +86,7 @@ export function PaymentsCard({
     setBusy(true)
     try {
       const { url } = await createStripeAccountLink()
-      // Länken är en engångslänk som går ut efter några minuter — öppna
+      // Länken är en engångslänk som går ut efter några minuter - öppna
       // direkt, i samma flik (Stripe skickar tillbaka hit efteråt).
       window.location.assign(url)
     } catch (err) {
@@ -116,7 +116,7 @@ export function PaymentsCard({
         <p className="cell-muted" role="status">
           {polling
             ? 'Tillbaka från Stripe. Hämtar den nya statusen…'
-            : 'Tillbaka från Stripe. Stripe behandlar fortfarande uppgifterna — ladda om sidan om en stund.'}
+            : 'Tillbaka från Stripe. Stripe behandlar fortfarande uppgifterna - ladda om sidan om en stund.'}
         </p>
       )}
       {stripeReturn === 'refresh' && (

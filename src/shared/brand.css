@@ -1,0 +1,579 @@
+/* booqy.se:s varumärke ovanpå admin-skalet (samma språk som Booqy Console).
+   Laddas efter admin.css (AdminLayout), så reglerna här vinner.
+   Inloggningssidornas motsvarighet är features/auth/auth-brand.css. Färger och typsnitt kommer från
+   tokens i src/index.css; här bor bara formen: vinröd sidomeny, tryckta
+   statusstämplar, mono-rubriker i tabeller, streckade linjer, svarta
+   knappar med 3 px hörn. */
+
+/* --- Sidomenyn: den vinröda väggen -------------------------------------- */
+
+.admin-sidebar {
+  position: sticky;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--ox);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-right: 0;
+  color: var(--on-ox);
+}
+
+/* Första gången i fliken: väggen är tom (djupare, mattare röd) och fylls
+   med vinrött underifrån (AdminLayout, shared/motion/useLiquidFill). */
+.admin-sidebar--pouring {
+  background: #1d1516;
+  --liquid: 53, 0, 1;
+  --liquid-alpha: 1;
+  --liquid-edge: 220, 188, 183;
+}
+
+.admin-sidebar-liquid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.admin-sidebar > :not(.admin-sidebar-liquid) {
+  position: relative;
+  z-index: 1;
+}
+
+.admin-sidebar.liquid--full {
+  background: var(--ox);
+}
+
+.admin-logo {
+  padding-bottom: 24px;
+}
+
+/* Bokikonen är för små ytor (favicon); i menyn räcker ordmärket. */
+.admin-logo-badge {
+  display: none;
+}
+
+.admin-sidebar .brand-wordmark {
+  color: var(--on-ox);
+}
+
+.admin-logo-tag {
+  padding: 3px 6px 2px;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  background: transparent;
+  font: 700 9.5px/1.2 var(--mono);
+  letter-spacing: 0.1em;
+  color: var(--on-ox-2);
+}
+
+.admin-logo-name {
+  font: 600 13px/1.3 var(--font);
+  color: var(--on-ox-2);
+}
+
+.admin-location-picker label {
+  font: 600 10px/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--on-ox-3);
+}
+
+.admin-location-picker select {
+  border-radius: 3px;
+  background: rgba(246, 236, 233, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(246, 236, 233, 0.22);
+  color: var(--on-ox);
+  color-scheme: dark;
+}
+
+.admin-nav-item {
+  border-radius: 3px;
+  font: 600 15px/1.3 var(--font);
+  font-stretch: 106%;
+  color: var(--on-ox-2);
+}
+
+.admin-nav-item:hover {
+  background: rgba(246, 236, 233, 0.08);
+  color: var(--on-ox);
+}
+
+/* Vald sida: en papperslapp som sticker ut ur väggen. */
+.admin-nav-item.active {
+  background: #fbfaf6;
+  color: var(--ox);
+  box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.45);
+}
+
+.admin-nav--bottom {
+  border-top: 1.5px dashed rgba(246, 236, 233, 0.2);
+  padding-top: 10px;
+  margin-top: 8px;
+}
+
+.admin-avatar {
+  border-radius: 3px;
+  background: var(--on-ox);
+  color: var(--ox);
+  font: 700 13px/1 var(--mono);
+}
+
+.admin-user-name {
+  color: var(--on-ox);
+}
+
+.admin-logout {
+  color: var(--on-ox-2);
+  font-weight: 600;
+}
+
+.admin-logout:hover {
+  color: var(--on-ox);
+}
+
+/* --- Sidhuvud ------------------------------------------------------------ */
+
+.admin-topbar {
+  background: var(--surface-glass);
+  border-bottom: 1.5px dashed var(--border);
+}
+
+.admin-topbar-titles h1 {
+  font: 820 30px/1.05 var(--font);
+  font-stretch: 120%;
+  letter-spacing: -0.02em;
+}
+
+.admin-topbar-titles p {
+  font-size: 13px;
+}
+
+.admin-topbar-date {
+  font: 500 11.5px/1 var(--mono);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Kort: termopapper på skrivbordet ------------------------------------ */
+
+.admin-card,
+.modal {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.card-title,
+.modal h2 {
+  font-weight: 780;
+  font-stretch: 112%;
+  letter-spacing: -0.01em;
+}
+
+/* Nyckeltalsrutorna: ett kärl som fylls (canvas bakom texten). Texten ligger
+   alltid ovanpå vätskan. --liquid är färgen som rgb-tripel, --liquid-alpha
+   hur tät den är; den röda rutan ("att hantera") får skrivarens röda. */
+.stat-tile {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  --liquid: 196, 188, 170;
+  --liquid-alpha: 0.32;
+}
+
+.stat-tile--attention {
+  --liquid: 158, 29, 38;
+  --liquid-alpha: 0.14;
+}
+
+.stat-tile-liquid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.stat-tile > :not(.stat-tile-liquid) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Utan animation (reducerad rörelse eller ingen canvas): fylld direkt. */
+.stat-tile--full,
+.stat-tile.liquid--full {
+  background: linear-gradient(rgba(var(--liquid), var(--liquid-alpha)), rgba(var(--liquid), var(--liquid-alpha))), var(--surface);
+}
+
+.stat-tile--link {
+  transition: transform 260ms var(--ease), box-shadow 260ms var(--ease), border-color 260ms var(--ease);
+}
+
+.stat-tile--link:hover {
+  transform: translateY(-3px);
+  border-color: var(--ink);
+  box-shadow: 0 2px 4px rgba(28, 25, 24, 0.06), 0 18px 32px -14px rgba(28, 25, 24, 0.35);
+}
+
+.stat-tile--link:active {
+  transform: translateY(-1px);
+  transition-duration: 90ms;
+}
+
+.stat-tile-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* En ruta som är en knapp: samma utseende som länkrutan. */
+button.stat-tile {
+  border: 1px solid var(--border);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.stat-tile-delta {
+  float: right;
+  font: 600 12px/1.3 var(--mono);
+  color: var(--success-ink);
+}
+
+.stat-tile-delta.down {
+  color: var(--danger-ink);
+}
+
+.stat-tile-action > span {
+  display: inline-block;
+  transition: transform 260ms var(--ease);
+}
+
+.stat-tile--link:hover .stat-tile-action > span {
+  transform: translateX(4px);
+}
+
+.stat-tile--attention {
+  box-shadow: inset 0 0 0 1.5px var(--accent-ink), var(--shadow);
+}
+
+.stat-tile--attention .stat-tile-value {
+  color: var(--accent-ink);
+}
+
+.stat-tile-label {
+  font: 600 10.5px/1.3 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.stat-tile-value {
+  font: 820 34px/1.05 var(--font);
+  font-stretch: 112%;
+  letter-spacing: -0.02em;
+}
+
+.stat-tile-value.danger {
+  color: var(--danger-ink);
+}
+
+.booking-time,
+.activity-time,
+.booking-meta {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.booking-row,
+.activity-item {
+  border-top: 1.5px dashed var(--border);
+}
+
+.quick-link {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: border-color 140ms var(--ease), transform 140ms var(--ease);
+}
+
+.quick-link:hover {
+  border-color: var(--ink);
+}
+
+.quick-link-icon {
+  border-radius: 3px;
+  background: var(--fill);
+  color: var(--ink);
+}
+
+/* --- Statusstämplar ------------------------------------------------------ */
+
+.status-badge[class] {
+  padding: 3px 7px 2px;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  background: transparent;
+  font: 700 10.5px/1.2 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* "Ankommen" är klar, inte varning: tryckt svart. */
+.status-badge.arrived {
+  color: var(--ink);
+}
+
+/* --- Knappar: det omvända trycket ---------------------------------------- */
+
+.btn {
+  border-radius: 3px;
+  font: 650 15px/1.2 var(--font);
+  font-stretch: 106%;
+  transition: background-color 140ms var(--ease), border-color 140ms var(--ease),
+    transform 140ms var(--ease);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn.primary {
+  box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.35);
+}
+
+.btn.outline {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.btn.outline:hover:not(:disabled) {
+  filter: none;
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.btn.danger-outline {
+  background: transparent;
+  color: var(--danger-ink);
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+
+.btn.danger-outline:hover:not(:disabled) {
+  filter: none;
+  background: var(--tint-red);
+}
+
+.btn.square {
+  border-radius: 3px;
+}
+
+.link-action:hover {
+  color: var(--accent-ink);
+}
+
+/* --- Tabeller ------------------------------------------------------------ */
+
+.data-table th {
+  font: 600 10.5px/1.3 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.data-table td {
+  border-top: 1.5px dashed var(--border);
+}
+
+.data-table .cell-price {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* --- Formulär ------------------------------------------------------------ */
+
+.form-field label,
+.form-section-label {
+  font-weight: 650;
+}
+
+.form-field input,
+.form-field textarea,
+.form-field select {
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1.5px var(--border);
+}
+
+.form-field input:hover,
+.form-field textarea:hover,
+.form-field select:hover {
+  box-shadow: inset 0 0 0 1.5px var(--muted);
+}
+
+.form-field input:focus,
+.form-field textarea:focus,
+.form-field select:focus {
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+/* Inställningsflikar: tryckta lappar, vald flik i omvänt tryck. */
+.settings-tabs button {
+  border-radius: 3px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+  font-weight: 600;
+}
+
+.settings-tabs button:hover {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.settings-tabs button.active {
+  box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.35);
+}
+
+.switch[aria-checked='true'] {
+  background: var(--ink);
+}
+
+/* --- Mobil: sidomenyn blir ett vinrött band ------------------------------ */
+
+@media (max-width: 900px) {
+  .admin-nav-item {
+    border-bottom: 0;
+  }
+
+  .admin-nav-item.active {
+    border-bottom-color: transparent;
+  }
+
+  .admin-nav--bottom {
+    border-top: 0;
+    padding-top: 0;
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-topbar-titles h1 {
+    font-size: 22px;
+  }
+}
+
+/* --- Strimman överst medan något sparas (shared/motion/BusyBar) ----------- */
+
+/* Text bara för skärmläsare. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.busy-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: 0;
+  pointer-events: none;
+}
+
+.busy-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 4px;
+  width: 0;
+  overflow: hidden;
+  background: var(--accent-ink);
+  opacity: 0;
+  border-radius: 0 3px 3px 0;
+  box-shadow: 0 1px 6px rgba(158, 29, 38, 0.35);
+}
+
+/* Pågår: rinner snabbt in och kryper sedan långsamt mot kanten, så det
+   alltid rör sig men aldrig blir "klart" förrän svaret kommit. */
+.busy-bar--busy .busy-bar-fill {
+  opacity: 1;
+  animation: busy-creep 9s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes busy-creep {
+  0% {
+    width: 0;
+  }
+  12% {
+    width: 42%;
+  }
+  40% {
+    width: 72%;
+  }
+  100% {
+    width: 92%;
+  }
+}
+
+/* Ytan: ett ljust skimmer som vandrar längs strimman. */
+.busy-bar-wave {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(246, 236, 233, 0.55) 45%, transparent 90%);
+  background-size: 160px 100%;
+  background-repeat: no-repeat;
+  animation: busy-wave 1.1s linear infinite;
+}
+
+@keyframes busy-wave {
+  from {
+    background-position: -160px 0;
+  }
+  to {
+    background-position: calc(100% + 160px) 0;
+  }
+}
+
+/* Klart: fyller ut hela bredden och tonar bort. */
+.busy-bar--done .busy-bar-fill {
+  width: 100%;
+  animation: busy-done 900ms var(--ease) forwards;
+}
+
+@keyframes busy-done {
+  0% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Medan något sparas: pekaren säger det också, och knappar som redan är
+   avstängda (Sparar…) får inte se döda ut. */
+html.is-saving {
+  cursor: progress;
+}
+
+html.is-saving .btn:disabled {
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .busy-bar--busy .busy-bar-fill {
+    animation: none;
+    width: 70%;
+  }
+
+  .busy-bar-wave {
+    animation: none;
+  }
+}
+

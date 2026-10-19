@@ -55,7 +55,7 @@ describe('seatPositions', () => {
   })
 
   it('works for a manually resized, elongated table', () => {
-    // Ett bord som dragits ut till en avlång rektangel — inte längre
+    // Ett bord som dragits ut till en avlång rektangel - inte längre
     // härlett ur antal platser, men platserna ska fortfarande hamna
     // utanför den faktiska kanten.
     const t = { shape: 'square' as const, seats: 6, w: 200, h: 60 }

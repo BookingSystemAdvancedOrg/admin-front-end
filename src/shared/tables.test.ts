@@ -48,7 +48,7 @@ describe('tables', () => {
     const labels = new Map([['uuid-1', '1'], ['uuid-3', '3']])
     expect(tableNames(['uuid-1', 'uuid-3'], labels)).toBe('Bord 1, 3')
     expect(tableNames(['gone'], labels)).toBe('Bord ?')
-    expect(tableNames([], labels)).toBe('—')
+    expect(tableNames([], labels)).toBe('-')
     expect(tableNames(['raw'], null)).toBe('Bord raw')
   })
 

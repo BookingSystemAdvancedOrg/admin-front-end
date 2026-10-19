@@ -26,7 +26,7 @@ export interface DishFormValues {
  *
  * API:t kräver en bild när en rätt skapas (imageKey är obligatoriskt och
  * kan inte vara tomt), så "Lägg till rätt" är spärrad tills en bild valts.
- * Vid redigering kan bilden bara bytas, inte tas bort — kontraktet tillåter
+ * Vid redigering kan bilden bara bytas, inte tas bort - kontraktet tillåter
  * inte en tom imageKey.
  */
 export function DishModal({
@@ -75,7 +75,7 @@ export function DishModal({
     e.target.value = ''
   }
 
-  // Tillåt både "195" och "129,50"/"129.50" — API:t tar högst två decimaler.
+  // Tillåt både "195" och "129,50"/"129.50" - API:t tar högst två decimaler.
   const parsedPrice = Number(price.replace(/[^\d.,]/g, '').replace(',', '.'))
   const priceError =
     price.trim() === '' ? 'Pris krävs.' : validateDishPrice(parsedPrice)
@@ -202,7 +202,7 @@ export function DishModal({
 
         <div className="toggle-row">
           <span className="toggle-row-label">
-            Aktiv — visas i menyn för gäster
+            Aktiv - visas i menyn för gäster
           </span>
           <button
             type="button"
@@ -216,7 +216,7 @@ export function DishModal({
 
         <div className="toggle-row">
           <span className="toggle-row-label">
-            Innehåller alkohol — 25 % moms, kan bara beställas vid bordet
+            Innehåller alkohol - 25 % moms, kan bara beställas vid bordet
           </span>
           <button
             type="button"

@@ -19,7 +19,7 @@ type DoorKind = Exclude<OpeningKind, 'window'>
  * API:t lagrar en PLATT lista av 3D-element (floor/floorArea/wall/door/
  * window/table/cashRegister) med meter som enhet, medan editorn arbetar i
  * 2D-rutnätsenheter med våningar, markytor och inventarier. Den här filen
- * är översättningen mellan de två modellerna — se `toApiLayout`/`toFloors`.
+ * är översättningen mellan de två modellerna - se `toApiLayout`/`toFloors`.
  *
  * Våningar: en våning är ett `floor`-element (`name`, `level`), och varje
  * vägg/öppning/bord/markyta/kassa bär `floorId` till sin våning. Vid
@@ -29,7 +29,7 @@ type DoorKind = Exclude<OpeningKind, 'window'>
  *
  * Vad som fortfarande INTE går att spara (API:ts datamodell saknar
  * fälten, och alla scheman är `additionalProperties: false`):
- *   - bordens etiketter (T1, T2 …) — återskapas vid inläsning
+ *   - bordens etiketter (T1, T2 …) - återskapas vid inläsning
  * Markytor (`floorArea`), kassan (`cashRegister`) och skillnaden
  * entré/kökets ingång (`kind` på en `door`) fick stöd i API:t 2026-09-29
  * och sparas numera som riktiga element istället för i localStorage.
@@ -60,7 +60,7 @@ export interface LayoutElement {
   wallId?: string
   /** Bara dörrar; fönster har ingen klassificering. Äldre dörrar saknar den. */
   kind?: DoorKind
-  /** Visningsetikett — bara bord och kassa. */
+  /** Visningsetikett - bara bord och kassa. */
   label?: string
   /** Bara våningar: namn och signerad ordning (0 = entréplan). */
   name?: string
@@ -82,20 +82,20 @@ export type LayoutElementUpdate = Partial<Omit<LayoutElementCreate, 'type'>>
 
 /**
  * Editor-enheter per meter. Ett fyrsitsigt fyrkantsbord blir 68×45 enheter
- * ≈ 1.36×0.90 m, vilket matchar exempelbordet i spec:en (1.4×0.9) — så
+ * ≈ 1.36×0.90 m, vilket matchar exempelbordet i spec:en (1.4×0.9) - så
  * skalan är vald för att stämma med backendens verklighetsuppfattning.
  */
 export const UNITS_PER_METER = 50
 
 /** Höjder i meter. Editorns 2D-vy har ingen höjd, så de är konstanta. */
 const TABLE_HEIGHT_M = 0.75
-/** Takhöjd — våningen som volym; editorn har ingen egen siffra för det. */
+/** Takhöjd - våningen som volym; editorn har ingen egen siffra för det. */
 const FLOOR_HEIGHT_M = 3
 const WALL_HEIGHT_M = 1.8
 const WALL_THICKNESS_M = 0.2
 const DOOR_HEIGHT_M = 2
 const WINDOW_HEIGHT_M = 1.2
-/** En markyta är bara ett tunt, renderbart golvskikt — ingen egen volym. */
+/** En markyta är bara ett tunt, renderbart golvskikt - ingen egen volym. */
 const FLOOR_AREA_THICKNESS_M = 0.02
 /** Diskhöjd, ungefär som en bardisk. */
 const CASH_REGISTER_HEIGHT_M = 1
@@ -115,7 +115,7 @@ function round(n: number): number {
 
 /**
  * Våningen som volym: hela arbetsytan, centrerad i origo. Editorn har ingen
- * egen geometri för en våning, så måtten är arbetsytans — det som spelar
+ * egen geometri för en våning, så måtten är arbetsytans - det som spelar
  * roll för API:t är namnet, nivån och att barnen pekar hit.
  */
 function floorToApi(floor: Floor, level: number): LayoutElementCreate {
@@ -202,7 +202,7 @@ function fixtureToApi(f: Fixture): LayoutElementCreate | null {
 }
 
 function tableToApi(t: TableElement): LayoutElementCreate {
-  // Måtten är satta manuellt (resize-handtagen) — API:t har egna width/
+  // Måtten är satta manuellt (resize-handtagen) - API:t har egna width/
   // depth-fält för dem, så de läses tillbaka i tableFromApi nedan.
   const size = tableSize(t)
   return {
@@ -223,7 +223,7 @@ function tableToApi(t: TableElement): LayoutElementCreate {
 /**
  * Översätter en vånings innehåll till API-element, nycklade på editorns
  * lokala id så att diffen mot serverns lista kan matcha ihop dem. Element
- * utan giltig geometri (nollängd) utelämnas — API:t kräver dimensioner > 0.
+ * utan giltig geometri (nollängd) utelämnas - API:t kräver dimensioner > 0.
  * Med `floorId` stämplas varje element med sin våning (editorns lokala id;
  * `saveLayout` byter det mot serverns när våningen skapats).
  */
@@ -299,7 +299,7 @@ function wallFromApi(el: LayoutElement): WallSegment {
 function openingFromApi(el: LayoutElement, wall: WallSegment): Opening {
   const length = toUnits(el.width)
   const along = wall.dir === 'h' ? toUnits(el.x) - wall.x : toUnits(el.z) - wall.y
-  // Äldre dörrar (skapade innan API:t fick `kind`) saknar fältet — de blir
+  // Äldre dörrar (skapade innan API:t fick `kind`) saknar fältet - de blir
   // en entré, precis som innan.
   const kind: OpeningKind =
     el.type === 'window' ? 'window' : el.kind === 'kitchen' ? 'kitchen' : 'entrance'
@@ -339,7 +339,7 @@ function fixtureFromApi(el: LayoutElement): Fixture {
 function tableFromApi(el: LayoutElement, index: number): TableElement {
   return {
     id: el.elementId,
-    // Etiketten finns inte i API:t — numrera om efter listans ordning.
+    // Etiketten finns inte i API:t - numrera om efter listans ordning.
     label: `T${index + 1}`,
     shape: el.shape === 'round' ? 'round' : 'square',
     seats: el.seats ?? 2,
@@ -452,7 +452,7 @@ function toFriendlyLayoutError(err: unknown): Error {
     case 403:
       return new ApiError(403, 'Du har inte behörighet att ändra layouten.')
     case 404:
-      return new ApiError(404, 'Elementet finns inte längre — ladda om sidan.')
+      return new ApiError(404, 'Elementet finns inte längre - ladda om sidan.')
     case 409:
       return new ApiError(
         409,
@@ -528,7 +528,7 @@ export function deleteLayoutElement(
 export interface PublishedLayoutSnapshot {
   version: number
   label: string
-  /** Om versionen är den som gäller. Publish sätter alltid `false` — API:t
+  /** Om versionen är den som gäller. Publish sätter alltid `false` - API:t
    *  har ingen aktiveringsrutt än, så en publicerad version blir aldrig
    *  gällande av sig själv. */
   isCurrent: boolean
@@ -542,7 +542,7 @@ export interface PublishedLayoutSnapshot {
   updatedAt: string
 }
 
-/** POST .../layout/publish — utan body; API:t numrerar och etiketterar själv. */
+/** POST .../layout/publish - utan body; API:t numrerar och etiketterar själv. */
 export function publishLayout(
   locationId: string,
 ): Promise<PublishedLayoutSnapshot> {
@@ -556,7 +556,7 @@ export function publishLayout(
 
 /**
  * Svaret från en aktivering. Diskrimineras på `status`, eftersom API:t
- * svarar 200 för "gäller nu" och 202 för "schemalagt byte" — och `apiFetch`
+ * svarar 200 för "gäller nu" och 202 för "schemalagt byte" - och `apiFetch`
  * skiljer inte på statuskoderna.
  */
 export type LayoutActivation =
@@ -569,11 +569,11 @@ export type LayoutActivation =
     }
 
 /**
- * POST .../layout/versions/{n}/activate — utan body.
+ * POST .../layout/versions/{n}/activate - utan body.
  *
  * Aktiveringen är omedelbar bara när platsen saknar gällande version. Finns
  * redan en, schemaläggs bytet i stället en bit fram i tiden och svaret blir
- * `pending` — hur långt fram är miljöberoende, INTE alltid "01:00 UTC fyra
+ * `pending` - hur långt fram är miljöberoende, INTE alltid "01:00 UTC fyra
  * veckor fram" (bekräftat av backend-teamet 2026-09-29: bara 5 minuter i
  * dev, 28 dagar i prod). Lita på `cutoverAt` i svaret, anta aldrig ett
  * fast intervall. Att upprepa samma begäran är ofarligt, men att begära en
@@ -602,7 +602,7 @@ export async function activateLayoutVersion(
   }
 }
 
-/** GET .../layout/versions — nyast först enligt kontraktet. */
+/** GET .../layout/versions - nyast först enligt kontraktet. */
 export function listLayoutVersions(
   locationId: string,
 ): Promise<PublishedLayoutSnapshot[]> {
@@ -615,11 +615,11 @@ export function listLayoutVersions(
 }
 
 /**
- * DELETE .../layout/versions/{version} — mjuk arkivering av en INAKTIV
+ * DELETE .../layout/versions/{version} - mjuk arkivering av en INAKTIV
  * version (utan body). Ögonblicksbilden ligger kvar i lagringen (historik/
  * versionsnumrering), men försvinner ur `listLayoutVersions` och går inte
- * längre att aktivera — inget sätt att ångra via API:t. Gällande eller
- * väntande version ger 409 (samma sak som "kan aldrig arkiveras" — de
+ * längre att aktivera - inget sätt att ångra via API:t. Gällande eller
+ * väntande version ger 409 (samma sak som "kan aldrig arkiveras" - de
  * filtreras därför bort från knappen i LayoutVersionsModal redan innan
  * anropet görs).
  */
@@ -643,11 +643,11 @@ export async function archiveLayoutVersion(
 }
 
 /**
- * DELETE .../layout/pending-activation — avbryter ett väntande versionsbyte
+ * DELETE .../layout/pending-activation - avbryter ett väntande versionsbyte
  * (utan body). Rör bara SCHEMALÄGGNINGEN: den gällande versionen fortsätter
  * gälla utan slutdatum, och versionen som väntade blir en helt vanlig
  * inaktiv version igen (kan därefter arkiveras precis som vilken annan
- * inaktiv version som helst). Idempotent — ingen väntande aktivering alls
+ * inaktiv version som helst). Idempotent - ingen väntande aktivering alls
  * ger också 204. Ett byte som redan hunnit gå i mål (förfallet) ger 409 och
  * avbryts inte.
  */
@@ -753,7 +753,7 @@ export interface LayoutSaveResult {
   created: number
   updated: number
   deleted: number
-  /** Serverns lista efter sparandet — används för att läsa in layouten igen. */
+  /** Serverns lista efter sparandet - används för att läsa in layouten igen. */
   elements: LayoutElement[]
   /**
    * Lokalt id -> serverns elementId för allt som just skapades. Behövs för
@@ -763,12 +763,12 @@ export interface LayoutSaveResult {
   idMap: Map<string, string>
   /**
    * Sant när servern avvisade våningselement och layouten i stället
-   * sparades platt (bara första våningen, utan `floorId`) — som förr.
+   * sparades platt (bara första våningen, utan `floorId`) - som förr.
    */
   flat: boolean
 }
 
-/** Servern avvisade ett `floor`-element — den saknar våningsstöd. */
+/** Servern avvisade ett `floor`-element - den saknar våningsstöd. */
 class FloorsUnsupportedError extends Error {
   constructor(message: string) {
     super(message)
@@ -789,7 +789,7 @@ export async function saveLayout(
     return await saveElements(locationId, toApiLayout(floors), false)
   } catch (err) {
     if (!(err instanceof FloorsUnsupportedError)) throw err
-    console.warn(`[Layout] Servern saknar våningsstöd — sparar platt: ${err.message}`)
+    console.warn(`[Layout] Servern saknar våningsstöd - sparar platt: ${err.message}`)
     return saveElements(locationId, toApiElements(floors[0]), true)
   }
 }
@@ -800,7 +800,7 @@ export async function saveLayout(
  *
  * Skapandet sker i beroendeordning: våningar först, sedan väggar, sedan
  * resten. En ny dörr/fönster bär väggens LOKALA id i `wallId`, och allt
- * nytt bär våningens lokala id i `floorId` — de måste bytas mot serverns id
+ * nytt bär våningens lokala id i `floorId` - de måste bytas mot serverns id
  * innan elementet skapas, annars pekar det ut i tomma intet. Samma
  * ommappning gäller uppdateringar (en gammal vägg som nu får en våning).
  */

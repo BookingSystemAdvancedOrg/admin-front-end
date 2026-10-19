@@ -85,7 +85,7 @@ describe('canInvite', () => {
     expect(canInvite(['staff_user'], 'owner_user')).toBe(false)
   })
 
-  it('lets owners invite staff only — more owners are added by the platform', () => {
+  it('lets owners invite staff only - more owners are added by the platform', () => {
     expect(canInvite(['owner_user'], 'staff_user')).toBe(true)
     expect(canInvite(['owner_user'], 'owner_user')).toBe(false)
   })

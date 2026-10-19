@@ -53,6 +53,8 @@ describe('cognito.ts (backend /auth/* client)', () => {
       'https://api.test/auth/login',
       expect.objectContaining({
         method: 'POST',
+        credentials: 'same-origin',
+        headers: expect.objectContaining({ 'X-Booqy-Session': 'cookie' }),
         body: JSON.stringify({
           username: 'anna@kallarestaurang.se',
           password: 'pw',
@@ -111,23 +113,28 @@ describe('cognito.ts (backend /auth/* client)', () => {
     )
   })
 
-  it('getCurrentSession returns null when nothing is stored', async () => {
+  it('getCurrentSession asks the server (cookie) and is signed out on 401', async () => {
     const { getCurrentSession } = await import('./cognito')
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(401, { error: 'not signed in' }))
+
     await expect(getCurrentSession()).resolves.toBeNull()
+    expect(fetch).toHaveBeenCalledWith(
+      'https://api.test/auth/refresh',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: expect.objectContaining({ 'X-Booqy-Session': 'cookie' }),
+        body: '{}',
+      }),
+    )
   })
 
-  it('getCurrentSession returns the stored session without refreshing when still valid', async () => {
+  it('getCurrentSession returns the in-memory session without refreshing when still valid', async () => {
     const { signIn, getCurrentSession } = await import('./cognito')
     vi.mocked(fetch).mockResolvedValue(
       jsonResponse(200, {
         status: 'authenticated',
-        authenticationResult: {
-          AccessToken: 'access',
-          IdToken: idToken,
-          RefreshToken: 'refresh',
-          ExpiresIn: 3600,
-          TokenType: 'Bearer',
-        },
+        authenticationResult: { AccessToken: 'access', IdToken: idToken, ExpiresIn: 3600, TokenType: 'Bearer' },
       }),
     )
     await signIn('anna@kallarestaurang.se', 'pw')
@@ -139,7 +146,7 @@ describe('cognito.ts (backend /auth/* client)', () => {
     expect(session?.idToken).toBe(idToken)
   })
 
-  it('getCurrentSession refreshes an expired session using the stored sub + refresh token', async () => {
+  it('never writes anything about the session to web storage', async () => {
     const { signIn, getCurrentSession } = await import('./cognito')
     vi.mocked(fetch).mockResolvedValue(
       jsonResponse(200, {
@@ -147,77 +154,132 @@ describe('cognito.ts (backend /auth/* client)', () => {
         authenticationResult: {
           AccessToken: 'access',
           IdToken: idToken,
-          RefreshToken: 'refresh-token',
-          ExpiresIn: -10, // already expired the instant it was issued
+          // An old API answering with the token in the body: still not stored.
+          RefreshToken: 'refresh',
+          ExpiresIn: -10,
           TokenType: 'Bearer',
         },
       }),
     )
-    await signIn('anna@kallarestaurang.se', 'pw')
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
 
-    const refreshedIdToken = makeIdToken({
-      sub: 'user-sub-1',
-      email: 'anna@kallarestaurang.se',
-      'cognito:groups': ['owner_user'],
-    })
+    const result = await signIn('anna@kallarestaurang.se', 'pw')
+    await getCurrentSession()
+
+    expect(setItem).not.toHaveBeenCalled()
+    expect(result.kind === 'success' && result.session.refreshToken).toBeNull()
+    expect(localStorage.length).toBe(0)
+    expect(sessionStorage.length).toBe(0)
+    setItem.mockRestore()
+  })
+
+  it('removes a session an older version left in localStorage', async () => {
+    localStorage.setItem('admin-auth-session', JSON.stringify({ refreshToken: 'old' }))
+    await import('./cognito')
+    expect(localStorage.getItem('admin-auth-session')).toBeNull()
+  })
+
+  it('refreshes an expired access token through the cookie', async () => {
+    const { signIn, getCurrentSession } = await import('./cognito')
     vi.mocked(fetch).mockResolvedValue(
       jsonResponse(200, {
         status: 'authenticated',
-        authenticationResult: {
-          AccessToken: 'new-access',
-          IdToken: refreshedIdToken,
-          ExpiresIn: 3600,
-          TokenType: 'Bearer',
-        },
+        authenticationResult: { AccessToken: 'access', IdToken: idToken, ExpiresIn: -10, TokenType: 'Bearer' },
+      }),
+    )
+    await signIn('anna@kallarestaurang.se', 'pw')
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(200, {
+        status: 'authenticated',
+        authenticationResult: { AccessToken: 'new-access', IdToken: idToken, ExpiresIn: 3600, TokenType: 'Bearer' },
       }),
     )
 
     const session = await getCurrentSession()
 
-    expect(fetch).toHaveBeenCalledWith(
-      'https://api.test/auth/refresh',
-      expect.objectContaining({
-        body: JSON.stringify({
-          refreshToken: 'refresh-token',
-          sub: 'user-sub-1',
-        }),
-      }),
-    )
-    // Cognito doesn't return a new refresh token from this flow - the old one is kept.
-    expect(session?.refreshToken).toBe('refresh-token')
+    expect(fetch).toHaveBeenLastCalledWith('https://api.test/auth/refresh', expect.objectContaining({ body: '{}' }))
     expect(session?.accessToken).toBe('new-access')
   })
 
-  it('recovers groups from the cached idToken for a session saved before the groups field existed', async () => {
-    // Regression test: a session saved before `groups` existed on StoredSession
-    // must not crash callers that read it, AND must not silently downgrade an
-    // already-privileged user to no permissions - the idToken it already has
-    // carries cognito:groups, so that's the source of truth to fall back to.
-    localStorage.setItem(
-      'admin-auth-session',
-      JSON.stringify({
-        accessToken: 'access',
-        idToken, // already encodes cognito:groups: ['owner_user']
-        refreshToken: 'refresh',
-        sub: 'user-sub-1',
-        email: 'anna@kallarestaurang.se',
-        expiresAt: Date.now() + 3600_000,
-        // groups: intentionally omitted
+  it('shares one refresh between concurrent callers (rotation-safe)', async () => {
+    const { getAccessToken } = await import('./cognito')
+    let resolve!: (r: Response) => void
+    vi.mocked(fetch).mockReturnValue(new Promise<Response>((r) => (resolve = r)))
+
+    const a = getAccessToken()
+    const b = getAccessToken()
+    resolve(
+      jsonResponse(200, {
+        status: 'authenticated',
+        authenticationResult: { AccessToken: 'one', IdToken: idToken, ExpiresIn: 3600, TokenType: 'Bearer' },
       }),
     )
 
-    const { getCurrentSession } = await import('./cognito')
-    const session = await getCurrentSession()
-
-    expect(fetch).not.toHaveBeenCalled()
-    expect(session?.groups).toEqual(['owner_user'])
+    await expect(Promise.all([a, b])).resolves.toEqual(['one', 'one'])
+    expect(fetch).toHaveBeenCalledTimes(1)
   })
 
-  it('treats a corrupt cached session as signed-out instead of crashing', async () => {
-    localStorage.setItem('admin-auth-session', JSON.stringify({ garbage: true }))
+  it('signOut forgets the tokens and asks the server to revoke the cookie', async () => {
+    const { signIn, signOut, getAccessToken } = await import('./cognito')
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(200, {
+        status: 'authenticated',
+        authenticationResult: { AccessToken: 'access', IdToken: idToken, ExpiresIn: 3600, TokenType: 'Bearer' },
+      }),
+    )
+    await signIn('anna@kallarestaurang.se', 'pw')
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(200, { status: 'signed_out' }))
 
-    const { getCurrentSession } = await import('./cognito')
-    await expect(getCurrentSession()).resolves.toBeNull()
+    await signOut()
+
+    expect(fetch).toHaveBeenCalledWith(
+      'https://api.test/auth/logout',
+      expect.objectContaining({ method: 'POST', headers: expect.objectContaining({ 'X-Booqy-Session': 'cookie' }) }),
+    )
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(401, { error: 'not signed in' }))
+    await expect(getAccessToken()).resolves.toBeNull()
+  })
+
+  it('a refresh still in flight when signing out cannot sign the user back in', async () => {
+    const { getCurrentSession, signOut } = await import('./cognito')
+    let resolveRefresh!: (r: Response) => void
+    vi.mocked(fetch).mockImplementation((url) =>
+      String(url).endsWith('/auth/refresh')
+        ? new Promise<Response>((r) => (resolveRefresh = r))
+        : Promise.resolve(jsonResponse(200, { status: 'signed_out' })),
+    )
+
+    const pending = getCurrentSession()
+    const out = signOut()
+    resolveRefresh(
+      jsonResponse(200, {
+        status: 'authenticated',
+        authenticationResult: { AccessToken: 'late', IdToken: idToken, ExpiresIn: 3600, TokenType: 'Bearer' },
+      }),
+    )
+
+    await expect(pending).resolves.toBeNull()
+    await expect(out).resolves.toBe(true)
+    // The logout call went out after the refresh finished.
+    const calls = vi.mocked(fetch).mock.calls.map((c) => String(c[0]))
+    expect(calls).toEqual(['https://api.test/auth/refresh', 'https://api.test/auth/logout'])
+  })
+
+  it('a logout that cannot reach the server finishes on the next start instead of signing back in', async () => {
+    const { signOut } = await import('./cognito')
+    vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'))
+
+    await expect(signOut()).resolves.toBe(false)
+    expect(localStorage.getItem('booqy-logout-pending')).toBe('1')
+
+    vi.resetModules()
+    vi.mocked(fetch).mockReset()
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(200, { status: 'signed_out' }))
+    const fresh = await import('./cognito')
+
+    await expect(fresh.getCurrentSession()).resolves.toBeNull()
+    expect(vi.mocked(fetch).mock.calls.map((c) => String(c[0]))).toEqual(['https://api.test/auth/logout'])
+    expect(localStorage.getItem('booqy-logout-pending')).toBeNull()
   })
 
   it('getCurrentSession clears the session when refresh fails', async () => {
@@ -226,20 +288,12 @@ describe('cognito.ts (backend /auth/* client)', () => {
     vi.mocked(fetch).mockResolvedValue(
       jsonResponse(200, {
         status: 'authenticated',
-        authenticationResult: {
-          AccessToken: 'access',
-          IdToken: idToken,
-          RefreshToken: 'refresh-token',
-          ExpiresIn: -10,
-          TokenType: 'Bearer',
-        },
+        authenticationResult: { AccessToken: 'access', IdToken: idToken, ExpiresIn: -10, TokenType: 'Bearer' },
       }),
     )
     await signIn('anna@kallarestaurang.se', 'pw')
 
-    vi.mocked(fetch).mockResolvedValue(
-      jsonResponse(401, { error: 'invalid refresh token' }),
-    )
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(401, { error: 'invalid refresh token' }))
 
     const session = await getCurrentSession()
     expect(session).toBeNull()

@@ -1,6 +1,6 @@
 # Admin-panelen
 
-Allt som handlar om admin-appen (personal & ägare) — sidor, kodstruktur och
+Allt som handlar om admin-appen (personal & ägare) - sidor, kodstruktur och
 inloggningsflödet. För miljövariabler, nycklar och Cognito-uppsättning, se
 [API-OCH-NYCKLAR.md](API-OCH-NYCKLAR.md). För den kommande gäst/kund-vända
 appen, se [ANVANDARE.md](ANVANDARE.md).
@@ -20,8 +20,8 @@ Varje funktionsområde ligger i sin egen mapp under `src/features/`. Delad UI
 src/
   features/
     auth/            # Inloggning, nytt lösenord, Cognito + mock-auth
-    oversikt/        # Dashboard (Figma: admin-oversikt-page) — klar
-    bokningar/        # Platshållare — bokningslistan byggs härnäst
+    oversikt/        # Dashboard (Figma: admin-oversikt-page) - klar
+    bokningar/        # Platshållare - bokningslistan byggs härnäst
     meny/             # Platshållare
     layout-editor/    # Platshållare
     installningar/    # Platshållare
@@ -38,11 +38,11 @@ src/
 
 | Route | Sida | Status |
 | --- | --- | --- |
-| `/` | Översikt (`OversiktPage`) | Klar — nyckeltal, dagens bokningar, aktivitetsflöde, genvägar. Data är just nu hårdkodad demo-data i komponenten; ska ersättas med anrop mot backend-API:t (se API-OCH-NYCKLAR.md). |
-| `/bokningar` | Bokningar (`BokningarPage`) | Platshållare — byggs härnäst. |
+| `/` | Översikt (`OversiktPage`) | Klar - nyckeltal, dagens bokningar, aktivitetsflöde, genvägar. Data är just nu hårdkodad demo-data i komponenten; ska ersättas med anrop mot backend-API:t (se API-OCH-NYCKLAR.md). |
+| `/bokningar` | Bokningar (`BokningarPage`) | Platshållare - byggs härnäst. |
 | `/meny` | Meny (`MenyPage`) | Platshållare. |
-| `/layout` | Layout (`LayoutEditorPage`) | Platshållare — live layout-editor för bord. |
-| `/installningar` | Inställningar (`InstallningarPage`) | Platshållare — bl.a. tänkt för att bjuda in personal. |
+| `/layout` | Layout (`LayoutEditorPage`) | Platshållare - live layout-editor för bord. |
+| `/installningar` | Inställningar (`InstallningarPage`) | Platshållare - bl.a. tänkt för att bjuda in personal. |
 
 Okända sökvägar (`*`) skickas tillbaka till `/` istället för att visa en
 404-sida (se `src/App.tsx`).
@@ -51,7 +51,7 @@ Okända sökvägar (`*`) skickas tillbaka till `/` istället för att visa en
 
 Personal loggar in på `/logga-in` mot AWS Cognito direkt från webbläsaren
 (ingen egen backend för själva inloggningen). Full kodgenomgång, felsökning
-och Cognito-uppsättning finns i [API-OCH-NYCKLAR.md](API-OCH-NYCKLAR.md) —
+och Cognito-uppsättning finns i [API-OCH-NYCKLAR.md](API-OCH-NYCKLAR.md) -
 här är bara flödet:
 
 1. `main.tsx` renderar `/logga-in`, `/nytt-losenord`, `/glomt-losenord` och
@@ -80,7 +80,7 @@ här är bara flödet:
 konstanter (`STATS`, `TODAYS_BOOKINGS`, `ACTIVITY`, `QUICK_LINKS`) som
 demo-data. När backend-API:t finns, ersätt dessa med `fetch`/`useEffect` (eller
 ett data-fetching-bibliotek) mot API:t, autentiserat med token från
-`useAuth().getToken()` — se exempel i
+`useAuth().getToken()` - se exempel i
 [API-OCH-NYCKLAR.md](API-OCH-NYCKLAR.md#anropa-ert-api-med-inloggningen).
 
 ## 6. Deploy

@@ -1,6 +1,6 @@
 /**
  * Delade typer för meny-vyn. Rätterna kommer från backendens meny-API
- * (menuApi.ts) — mockdatan som låg här tidigare är borttagen.
+ * (menuApi.ts) - mockdatan som låg här tidigare är borttagen.
  *
  * Kategorierna speglar API:ts enum (starters/mains/desserts/drinks) men
  * behåller svenska värden i gränssnittet; översättningen bor i menuApi.ts.
@@ -16,7 +16,7 @@ export interface Dish {
   /** API:ts menuItemId. */
   id: string
   name: string
-  /** Får vara tom — API:t trimmar omgivande whitespace. */
+  /** Får vara tom - API:t trimmar omgivande whitespace. */
   description: string
   category: DishCategory
   /** Pris i kr, högst två decimaler enligt API:t. */

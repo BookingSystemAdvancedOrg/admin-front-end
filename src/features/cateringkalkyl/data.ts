@@ -1,16 +1,16 @@
 /**
- * MOCKDATA för Cateringkalkyl — precis som avbokningspolicyn i Inställningar
+ * MOCKDATA för Cateringkalkyl - precis som avbokningspolicyn i Inställningar
  * (installningar/data.ts) finns ingen backend-rutt för det här än. Rena
  * rätterna i förhandsvisningen kommer däremot från det RIKTIGA meny-API:t
- * (menuApi.ts) — bara reglerna/rabattnivåerna/leveranspriset är påhittade
+ * (menuApi.ts) - bara reglerna/rabattnivåerna/leveranspriset är påhittade
  * tills en catering-rutt finns. Ersätts med riktiga anrop den dagen den
- * finns — se docs/BACKEND-KOPPLING.md.
+ * finns - se docs/BACKEND-KOPPLING.md.
  */
 
 export interface OrderRules {
   /** Minsta antal portioner (totalt över alla rätter) för en beställning. */
   minPortions: number
-  /** Högsta antal portioner (totalt) — även taket för sista rabattnivån. */
+  /** Högsta antal portioner (totalt) - även taket för sista rabattnivån. */
   maxPortions: number
   /** Hur många dagars framförhållning som krävs innan leveransdatumet. */
   advanceDays: number
@@ -40,7 +40,7 @@ export interface DeliveryPricing {
 
 /**
  * En rabattnivå. Räknas på TOTALT antal portioner i beställningen (över alla
- * rätter), inte per rätt. `toPortions: null` betyder "och uppåt" — i praktiken
+ * rätter), inte per rätt. `toPortions: null` betyder "och uppåt" - i praktiken
  * begränsat av `OrderRules.maxPortions` (visas som "{max} (max)" i tabellen
  * i stället för ett oändlighetstecken, eftersom en beställning aldrig kan
  * bli större än så ändå).

@@ -1,7 +1,7 @@
 # API:er och nycklar
 
 Alla miljövariabler, nycklar och API-kopplingar för hela projektet samlade på
-ett ställe — både de som finns idag (Cognito) och de som kommer längre fram
+ett ställe - både de som finns idag (Cognito) och de som kommer längre fram
 (ett eget backend-API). För admin-panelens sidor och kodstruktur, se
 [ADMIN.md](ADMIN.md).
 
@@ -33,22 +33,22 @@ VITE_COGNITO_CLIENT_ID_PROD=9z8y7x6w5v4u3t2s1r0qponml
 Båda miljöernas värden får alltså ligga i samma `.env`. Vilket par som används
 avgörs av `VITE_COGNITO_ENV`, som `src/features/auth/cognito.ts` läser vid
 start. De osuffixade namnen (`VITE_COGNITO_USER_POOL_ID`,
-`VITE_COGNITO_CLIENT_ID`) fungerar fortfarande och tar då över båda paren —
+`VITE_COGNITO_CLIENT_ID`) fungerar fortfarande och tar då över båda paren -
 praktiskt för ett bygge som bara ska peka mot en enda pool. Rader som är tomma
 eller innehåller platshållare (`...`, `REPLACE_ME`) räknas som ej ifyllda.
 
 Viktigt om `.env`:
 
-- `.env` är redan git-ignorerad i det här projektet — committa den aldrig.
+- `.env` är redan git-ignorerad i det här projektet - committa den aldrig.
 - Vite läser bara variabler som börjar med `VITE_`.
 - Vite bakar in värdena vid **byggtillfället**. Starta om `npm run dev` efter
   att du ändrat `.env`, och bygg om (`npm run build`) inför deploy.
 - `VITE_COGNITO_*` är inga hemligheter i sig, men lägg **aldrig**
   `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` eller andra riktiga hemligheter
-  i frontend — de blir synliga för alla som öppnar sidan (allt i en
+  i frontend - de blir synliga för alla som öppnar sidan (allt i en
   Vite-bundel är publikt).
 
-## 2. Cognito — krav på app-klienten
+## 2. Cognito - krav på app-klienten
 
 Frontend är en SPA (körs helt i webbläsaren), så app-klienten måste vara
 konfigurerad så här. Kontrollera under din pool → **App clients** → din
@@ -56,13 +56,13 @@ klient:
 
 1. **Ingen client secret.** Klienten måste vara skapad utan "Generate client
    secret" (typ "Public client"/"Single-page application"). En klient med
-   secret kan inte användas från en webbläsare — har er klient en secret,
+   secret kan inte användas från en webbläsare - har er klient en secret,
    skapa en ny app-klient utan.
 2. **Auth flow: `ALLOW_USER_SRP_AUTH`** ska vara aktiverad (standard). Koden
    använder SRP, vilket betyder att lösenordet aldrig skickas i klartext.
    `ALLOW_REFRESH_TOKEN_AUTH` ska också vara på (standard) så att sessionen
    kan förnyas.
-3. Ingen Hosted UI, ingen callback-URL och inga OAuth-scopes behövs — vi
+3. Ingen Hosted UI, ingen callback-URL och inga OAuth-scopes behövs - vi
    använder Cognitos API direkt, inte Hosted UI.
 
 ### Lösenordspolicy
@@ -105,12 +105,19 @@ Konton som aldrig loggat in (bara tillfälligt lösenord) kan inte återställas
    och personen loggas in i admin-panelen.
 
 Tips: det tillfälliga lösenordet har en giltighetstid (standard 7 dagar).
-Går den ut visar appen ett felmeddelande — skicka då en ny inbjudan
+Går den ut visar appen ett felmeddelande - skicka då en ny inbjudan
 (Users → välj användaren → "Reset password"/skapa om användaren).
 
-Sessionen (JWT-tokens) sparas av Cognito-biblioteket i webbläsarens
-localStorage och förnyas automatiskt, så personalen förblir inloggad tills de
-loggar ut eller refresh-tokenen går ut (standard 30 dagar).
+Sessionen: refresh-tokenen ligger i en HttpOnly-cookie (`__Secure-booqy_rt`,
+satt av manage-auth, bara för `/api/auth` på appens egen adress) som inget
+skript kan läsa. Access- och ID-tokenen (1 timme) finns bara i minnet och
+förnyas automatiskt via cookien, även efter omladdning eller i en ny flik.
+Personalen förblir inloggad tills de loggar ut eller i 12 timmar; refresh-
+tokenen byts ut vid varje förnyelse. Ingenting om inloggningen sparas i
+localStorage eller sessionStorage. Därför går appen i det deployade bygget mot
+API:t via `/api` på sin egen adress (CloudFront), inte direkt mot API Gateway.
+Allt appen sparar i webbläsaren listas i `src/shared/storageRegistry.ts` och
+visas på sidan `/cookies`.
 
 ## 3. Anropa ert API med inloggningen
 
@@ -140,7 +147,7 @@ kopplas på, dokumentera dem här enligt samma mall som Cognito-nycklarna ovan:
 
 | Nyckel | Vad det är | Var du hittar den | Status |
 | --- | --- | --- | --- |
-| `VITE_API_BASE_URL` | Bas-URL till backend-API:t. | — | Ej i bruk än |
+| `VITE_API_BASE_URL` | Bas-URL till backend-API:t. | - | Ej i bruk än |
 
 Kom ihåg samma regel som ovan: allt som börjar med `VITE_` hamnar synligt i
 den publika bundeln. Riktiga hemligheter (databaslösenord, tredjeparts-API-
@@ -165,7 +172,7 @@ CLOUDFRONT_DISTRIBUTION_ID_PROD=...
 
 Dessa är inte hemligheter (bucket-namn, roll-ARN:er och distributions-ID:n
 avslöjar inget känsligt i sig), så det är okej att de är committade. CI
-autentiserar till AWS via GitHub OIDC — inga långlivade AWS-nycklar lagras
+autentiserar till AWS via GitHub OIDC - inga långlivade AWS-nycklar lagras
 i GitHub.
 
 **Cognito-värden för deployade miljöer** fylls i separat, som fyra
@@ -179,12 +186,12 @@ VITE_COGNITO_CLIENT_ID_PROD=...
 ```
 
 > **Obs:** i skrivande stund plockar inte `reusable_cicd.yml` faktiskt upp
-> dessa fyra rader ännu — bygg-steget behöver kopplas ihop med dem innan
+> dessa fyra rader ännu - bygg-steget behöver kopplas ihop med dem innan
 > deployad dev/prod kan logga in mot Cognito. Lokal utveckling (`.env`)
 > fungerar redan idag oavsett detta.
 
 Precis som `VITE_COGNITO_*` lokalt är inte dessa fyra hemligheter (de syns
-ändå i den publika JS-bundeln), så det är okej att de är committade — samma
+ändå i den publika JS-bundeln), så det är okej att de är committade - samma
 mönster som bucket- och distributions-ID:na. Saknas värdena byggs och
 deployas appen ändå, men med en varning i workflow-loggen, och inloggningen
 visar då "Cognito är inte konfigurerat".
@@ -201,8 +208,8 @@ en omladdning på `/logga-in` ett fel.
 | --- | --- |
 | "Cognito är inte konfigurerat" | `.env` saknas eller är tom, eller dev-servern startades inte om efter ändring. |
 | `User pool client ... does not exist` | Fel `VITE_COGNITO_CLIENT_ID`, eller klienten hör till en annan pool/region. |
-| `Unable to verify secret hash for client` | App-klienten har en client secret — skapa en klient utan secret (avsnitt 2). |
+| `Unable to verify secret hash for client` | App-klienten har en client secret - skapa en klient utan secret (avsnitt 2). |
 | "Fel e-post eller lösenord" direkt vid första inloggningen | Kontrollera att användaren skapades med e-posten som användarnamn och att det tillfälliga lösenordet kopierades exakt (inga mellanslag). |
-| Cognito nekar det nya lösenordet trots grön checklista | Poolens password policy kräver mer än checklistan (t.ex. specialtecken) — synka policyn och `RULES` (avsnitt 2). |
+| Cognito nekar det nya lösenordet trots grön checklista | Poolens password policy kräver mer än checklistan (t.ex. specialtecken) - synka policyn och `RULES` (avsnitt 2). |
 | Sidan blir 404/403 vid omladdning på `/logga-in` i dev/prod | SPA-fallback saknas i CloudFront (avsnitt 5). |
 | Inloggningen fungerar lokalt men inte i deployad miljö | `VITE_COGNITO_*`-raderna i `.github/config/project.env` är inte ifyllda/kopplade för den miljön (avsnitt 5). |

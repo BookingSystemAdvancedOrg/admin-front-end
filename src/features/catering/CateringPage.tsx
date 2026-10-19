@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { StatTile } from '../../shared/motion/StatTile'
+import { Num } from '../../shared/motion/Num'
 import { Link } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useLocationId } from '../../shared/location'
@@ -6,6 +8,7 @@ import { useAuth } from '../auth/useAuth'
 import { NEEDS_OWNER, STATUS_LABEL, formatDate, kronor, listRequests, statusClass } from './cateringApi'
 import type { CateringStatus, RequestSummary } from './cateringApi'
 import './catering.css'
+import { Loading } from '../../shared/Loading'
 
 type Filter = 'aktiva' | 'alla'
 const ACTIVE: CateringStatus[] = ['requested', 'offer_sent', 'change_requested', 'signed', 'confirmed', 'delivered']
@@ -41,6 +44,19 @@ export default function CateringPage() {
       return wa - wb || a.deliveryDate.localeCompare(b.deliveryDate)
     })
   const waiting = (rows ?? []).filter((r) => NEEDS_OWNER.includes(r.status)).length
+  const ongoing = (rows ?? []).filter((r) => ACTIVE.includes(r.status))
+  const [{ today, weekAhead }] = useState(() => ({
+    today: new Date().toISOString().slice(0, 10),
+    weekAhead: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+  }))
+  const upcoming = ongoing.filter((r) => r.deliveryDate >= today && r.deliveryDate <= weekAhead).length
+  const value = ongoing.reduce((sum, r) => sum + (r.total ?? 0), 0)
+  const tiles = [
+    { label: 'Väntar på dig', value: String(waiting), note: waiting ? 'Nya eller ändring önskas' : 'Inget att svara på', tone: waiting ? ('attention' as const) : undefined },
+    { label: 'Pågående', value: String(ongoing.length), note: 'Offert, signerad eller bekräftad' },
+    { label: 'Kommande 7 dagar', value: String(upcoming), note: upcoming ? 'Leveranser att förbereda' : 'Inga leveranser' },
+    { label: 'Värde pågående', value: kronor(value), note: `${ongoing.length} ${ongoing.length === 1 ? 'beställning' : 'beställningar'}` },
+  ]
 
   return (
     <>
@@ -55,8 +71,14 @@ export default function CateringPage() {
       />
       <main className="admin-main">
         {!locationId ? (
-          <p className="cell-muted">{resolving ? 'Hämtar platsen…' : 'Ingen plats är vald.'}</p>
+          resolving ? <Loading label="Hämtar platsen" /> : <p className="cell-muted">Ingen plats är vald.</p>
         ) : (
+          <>
+          <section className="stats-row" aria-label="Cateringens siffror">
+            {tiles.map((t, i) => (
+              <StatTile key={t.label} {...t} loading={rows === null && !error} index={i} />
+            ))}
+          </section>
           <section className="admin-card table-card" data-tour="catering-list">
             <div className="card-head">
               <h2 className="card-title">Förfrågningar och beställningar</h2>
@@ -66,7 +88,7 @@ export default function CateringPage() {
               </select>
             </div>
             {error && <p className="form-error" role="alert">Kunde inte hämta förfrågningarna.</p>}
-            {rows === null && !error && <p className="cell-muted">Hämtar…</p>}
+            {rows === null && !error && <Loading />}
             {rows !== null && visible.length === 0 && (
               <p className="cell-muted">
                 Inga {filter === 'aktiva' ? 'pågående ' : ''}cateringförfrågningar. Gäster skickar dem från
@@ -97,8 +119,8 @@ export default function CateringPage() {
                           {r.companyName ? `${r.companyName} · ` : ''}
                           {r.customerName}
                         </td>
-                        <td>{r.portions ?? '–'}</td>
-                        <td>{kronor(r.total)}</td>
+                        <td>{r.portions != null ? <Num>{r.portions}</Num> : '-'}</td>
+                        <td><Num>{kronor(r.total)}</Num></td>
                         <td>
                           <span className={`status-badge ${statusClass(r.status)}`}>{STATUS_LABEL[r.status]}</span>
                           {r.paid && <span className="cell-muted"> · betald</span>}
@@ -115,6 +137,7 @@ export default function CateringPage() {
               </div>
             )}
           </section>
+          </>
         )}
       </main>
     </>

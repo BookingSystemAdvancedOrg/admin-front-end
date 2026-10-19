@@ -169,7 +169,7 @@ describe('dishChanges', () => {
     expect(dishChanges(original, desired({ alcohol: false }))).toEqual({})
   })
 
-  it('never sends an empty imageKey — the API cannot clear it', () => {
+  it('never sends an empty imageKey - the API cannot clear it', () => {
     expect(dishChanges(original, desired({ imageKey: '' }))).toEqual({})
   })
 })

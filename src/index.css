@@ -1,52 +1,72 @@
 /* Globala CSS-variabler och nollställningar. Sid-specifik styling bor i
    src/shared/admin.css (admin-panelen) och src/features/auth/auth.css
    (inloggningssidorna). */
-/* Designsystem: "Apple UI kit" i Booqys färger - systemtypsnitt, en
-   accent (Booqy-vinrött #350001, samma som logotypen), varma neutrala
-   gråtoner, mjuk djupverkan, 44 px höga kontroller. Ljust och mörkt läge
-   följer systemet. --accent är fyllnadsfärgen (knappar, valt läge);
-   --accent-ink är samma färg för text/länkar och ljusas upp i mörkt läge
-   så att kontrasten håller (WCAG AA). Gamla namn (--green, --serif, ...)
-   pekar på de nya värdena så att alla sidor följer med. */
+/* Designsystem: booqy.se:s varumärke, byggt för dagligt arbete - samma
+   material som den publika sajten och Booqy Console (vinrött, termopapper,
+   tryckt svart, skrivarens röda). Archivo är läs- och rubrikstilen, Martian
+   Mono trycker data (tider, belopp, status). --accent är fyllnadsfärgen
+   (knappar, valt läge) = tryckt svart; --accent-ink är text/länkar =
+   skrivarens röda. Alltid ljust läge (inget mörkt läge). Gamla namn (--green,
+   --serif, ...) pekar på de nya värdena så att alla sidor följer med. */
+@font-face {
+  font-family: 'Archivo';
+  src: url('./assets/fonts/archivo.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Martian Mono';
+  src: url('./assets/fonts/martian-mono.woff2') format('woff2-variations');
+  font-weight: 100 800;
+  font-stretch: 75% 112.5%;
+  font-display: swap;
+}
+
 :root {
-  --bg: #f5f4f4;
-  --surface: #ffffff;
-  --fill: #f0eeee;
-  --surface-glass: rgba(255, 255, 255, 0.72);
-  --border: rgba(0, 0, 0, 0.08);
-  --ink: #1d1a1a;
-  --muted: #6e6969;
-  --accent: #350001;
-  --accent-hover: #4a0a0f;
-  --accent-active: #240001;
-  --on-accent: #ffffff;
-  --accent-ink: #350001;
+  --bg: #f1eee6;
+  --surface: #fbfaf6;
+  --fill: #f4f1ea;
+  --surface-glass: rgba(251, 250, 246, 0.9);
+  --border: #d9d4c8;
+  --ink: #1c1918;
+  --muted: #57504d;
+  --accent: #1c1918;
+  --accent-hover: #000000;
+  --accent-active: #000000;
+  --on-accent: #fbfaf6;
+  --accent-ink: #9e1d26;
   --brand: #350001;
-  --focus: rgba(53, 0, 1, 0.22);
-  --danger: #ff3b30;
-  --danger-ink: #d70015;
-  --success: #34c759;
-  --success-ink: #248a3d;
-  --warning: #ff9f0a;
-  --warning-ink: #c93400;
-  --purple: #af52de;
-  --purple-ink: #8944ab;
-  --tint-blue: color-mix(in srgb, var(--accent) 12%, transparent);
-  --tint-green: color-mix(in srgb, var(--success) 16%, transparent);
-  --tint-orange: color-mix(in srgb, var(--warning) 16%, transparent);
-  --tint-red: color-mix(in srgb, var(--danger) 12%, transparent);
-  --tint-purple: color-mix(in srgb, var(--purple) 14%, transparent);
-  --scrim: rgba(0, 0, 0, 0.3);
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08), 0 24px 64px rgba(0, 0, 0, 0.12);
-  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Inter,
-    system-ui, sans-serif;
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 20px;
+  --ox: #350001;
+  --ox-deep: #2b0003;
+  --on-ox: #f6ece9;
+  --on-ox-2: #dcbcb7;
+  --on-ox-3: #b88f8a;
+  --focus: rgba(158, 29, 38, 0.32);
+  --danger: #9e1d26;
+  --danger-ink: #9e1d26;
+  --success: #2c6a3f;
+  --success-ink: #2c6a3f;
+  --warning: #8a5a00;
+  --warning-ink: #8a5a00;
+  --purple: #5b3f7a;
+  --purple-ink: #5b3f7a;
+  --tint-blue: #ece7dc;
+  --tint-green: #e8efe6;
+  --tint-orange: #f6eedb;
+  --tint-red: #f6e6e4;
+  --tint-purple: #ece6f0;
+  --scrim: rgba(28, 25, 24, 0.38);
+  --shadow: 0 1px 1px rgba(28, 25, 24, 0.04), 0 6px 14px -8px rgba(28, 25, 24, 0.22);
+  --shadow-lg: 0 2px 4px rgba(28, 25, 24, 0.06), 0 24px 48px -16px rgba(28, 25, 24, 0.32);
+  --font: 'Archivo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'Martian Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --r-sm: 3px;
+  --r-md: 3px;
+  --r-lg: 6px;
   --r-pill: 9999px;
-  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
-  --spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --spring: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Äldre namn */
   --green: var(--accent);
@@ -54,69 +74,19 @@
   --serif: var(--font);
   --sans: var(--font);
 
-  font: 15px/1.47 var(--font);
+  font: 15px/1.5 var(--font);
   color: var(--ink);
   background: var(--bg);
   color-scheme: light;
+  accent-color: var(--ink);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg: #000000;
-    --surface: #1c1a1a;
-    --fill: #2c2929;
-    --surface-glass: rgba(28, 26, 26, 0.72);
-    --border: rgba(255, 255, 255, 0.12);
-    --ink: #f5f4f4;
-    --muted: #a6a1a1;
-    --accent: #b8444c;
-    --accent-hover: #c6525a;
-    --accent-active: #a3383f;
-    --accent-ink: #e07a82;
-    --focus: rgba(224, 122, 130, 0.38);
-    --danger: #ff453a;
-    --danger-ink: #ff6961;
-    --success: #30d158;
-    --success-ink: #30d158;
-    --warning: #ff9f0a;
-    --warning-ink: #ffb340;
-    --purple: #bf5af2;
-    --purple-ink: #da8fff;
-    --scrim: rgba(0, 0, 0, 0.5);
-    --shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4), 0 24px 64px rgba(0, 0, 0, 0.5);
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme='dark'] {
-  --bg: #000000;
-  --surface: #1c1a1a;
-  --fill: #2c2929;
-  --surface-glass: rgba(28, 26, 26, 0.72);
-  --border: rgba(255, 255, 255, 0.12);
-  --ink: #f5f4f4;
-  --muted: #a6a1a1;
-  --accent: #b8444c;
-  --accent-hover: #c6525a;
-  --accent-active: #a3383f;
-  --accent-ink: #e07a82;
-  --focus: rgba(224, 122, 130, 0.38);
-  --danger: #ff453a;
-  --danger-ink: #ff6961;
-  --success: #30d158;
-  --success-ink: #30d158;
-  --warning: #ff9f0a;
-  --warning-ink: #ffb340;
-  --purple: #bf5af2;
-  --purple-ink: #da8fff;
-  --scrim: rgba(0, 0, 0, 0.5);
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4), 0 24px 64px rgba(0, 0, 0, 0.5);
-  color-scheme: dark;
+::selection {
+  background: var(--ink);
+  color: var(--surface);
 }
 
 :focus-visible {
@@ -126,7 +96,8 @@
 
 h1,
 h2 {
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
+  font-stretch: 112%;
 }
 
 @media (prefers-reduced-motion: reduce) {

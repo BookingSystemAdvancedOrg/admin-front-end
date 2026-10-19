@@ -27,7 +27,7 @@ const ALL_GROUPS: CognitoGroup[] = ['staff_user', 'owner_user']
  * `callerGroups` styr vilka roller som går att välja (speglar backendens
  * _authorize_invite/_authorize_target: ägare hanterar personal; fler ägare
  * läggs upp av plattformen). `lockRole` stängs av när man
- * redigerar sin egen rad — man får inte ändra sin egen roll.
+ * redigerar sin egen rad - man får inte ändra sin egen roll.
  */
 export function StaffModal({
   title,
@@ -43,7 +43,7 @@ export function StaffModal({
   initial: User | null
   callerGroups: string[]
   lockRole: boolean
-  /** Restaurangens platser — personal kopplas till en av dem. */
+  /** Restaurangens platser - personal kopplas till en av dem. */
   locations: { locationId: string; name: string }[]
   /** Förvald plats för nya inbjudningar (den som är vald i appen). */
   defaultLocationId?: string

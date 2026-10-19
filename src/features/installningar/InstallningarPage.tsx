@@ -53,6 +53,7 @@ import {
   useLocationId,
 } from '../../shared/location'
 import { useTenant } from '../../shared/tenant'
+import { Loading } from '../../shared/Loading'
 
 const ROLE_LABEL: Record<User['role'], string> = {
   staff: 'Personal',
@@ -79,7 +80,7 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * uteblivna gäster och sen avbokning) sparas per plats.
  *
  * Personal (staff_user) ser sin plats men kan inte ändra den eller hantera
- * andra användare — de rutterna är bara för ägare.
+ * andra användare - de rutterna är bara för ägare.
  */
 /** Flikarna - en sektion i taget i stället för en lång sida. */
 type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'dagar' | 'bord'
@@ -99,6 +100,14 @@ function initialTab(stripeReturn: string | null): SettingsTab {
   if (stripeReturn) return 'betalningar'
   const fromHash = window.location.hash.replace(/^#/, '') as SettingsTab
   return fromHash in TAB_LABEL ? fromHash : 'profil'
+}
+
+/** Bokningslängd väljs i hela timmar; grace period i 5-minuterssteg. */
+const DURATION_HOURS = [1, 2, 3, 4]
+const GRACE_MINUTES = [15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
+
+function hoursLabel(h: number): string {
+  return h === 1 ? '1 timme' : `${h} timmar`
 }
 
 export default function InstallningarPage() {
@@ -127,8 +136,10 @@ export default function InstallningarPage() {
   const [gracePeriodHours, setGracePeriodHours] = useState(
     DEFAULT_GRACE_PERIOD_HOURS,
   )
+  // Lagras i timmar i API:t; väljs i minuter.
+  const graceMinutes = Math.round(gracePeriodHours * 60)
   // Plats-ID:t kan saknas i den här webbläsaren även när platsen finns i
-  // databasen — hooken letar då upp det via användarlistan.
+  // databasen - hooken letar då upp det via användarlistan.
   const { locationId, setLocationId, resolving: resolvingLocation } =
     useLocationId(sub)
   const [locationError, setLocationError] = useState<string | null>(null)
@@ -173,8 +184,8 @@ export default function InstallningarPage() {
         }))
         setTimezone(loc.timezone)
         setBusinessHours(loc.businessHours)
-        setBookingDurationHours(loc.bookingDurationHours)
-        setGracePeriodHours(loc.gracePeriodHours)
+        setBookingDurationHours(loc.bookingDurationHours ?? DEFAULT_BOOKING_DURATION_HOURS)
+        setGracePeriodHours(loc.gracePeriodHours ?? DEFAULT_GRACE_PERIOD_HOURS)
         setSavedLocation({
           name: loc.name,
           address: loc.address,
@@ -230,7 +241,7 @@ export default function InstallningarPage() {
     setSaved(false)
     setLocationError(null)
 
-    // Spara-knappen är spärrad medan platsen letas upp, men gardera ändå —
+    // Spara-knappen är spärrad medan platsen letas upp, men gardera ändå -
     // en sparning utan känt plats-id hade skapat en dubblettplats.
     if (resolvingLocation) return
 
@@ -263,10 +274,10 @@ export default function InstallningarPage() {
     try {
       if (locationId) {
         if (!savedLocation) {
-          // Platsen finns men uppgifterna kunde inte hämtas — att ramla ner
+          // Platsen finns men uppgifterna kunde inte hämtas - att ramla ner
           // i skapa-grenen här var det som gav dubblettplatser förr.
           setLocationError(
-            'Platsens sparade uppgifter kunde inte hämtas — ladda om sidan och försök igen.',
+            'Platsens sparade uppgifter kunde inte hämtas - ladda om sidan och försök igen.',
           )
           return
         }
@@ -287,7 +298,7 @@ export default function InstallningarPage() {
         if (existing) {
           setLocationId(existing)
           setLocationError(
-            'Restaurangen har redan en sparad plats — uppgifterna hämtas nu. ' +
+            'Restaurangen har redan en sparad plats - uppgifterna hämtas nu. ' +
               'Kontrollera dem och spara igen.',
           )
           return
@@ -296,7 +307,7 @@ export default function InstallningarPage() {
         setLocationId(created.locationId)
         setSavedLocation(values)
       }
-      // Skalets namn/adress är cachade — töm så sidebar och topbar visar
+      // Skalets namn/adress är cachade - töm så sidebar och topbar visar
       // de nya uppgifterna direkt i stället för de gamla.
       clearLocationSummaryCache()
       setSaved(true)
@@ -475,54 +486,57 @@ export default function InstallningarPage() {
               />
             </div>
             <div className="form-field">
-              <label htmlFor="rp-timezone">Tidszon</label>
-              <input
-                id="rp-timezone"
-                value={timezone}
-
-                placeholder="Europe/Stockholm"
-                onChange={(e) => {
-                  setSaved(false)
-                  setTimezone(e.target.value)
-                }}
-              />
-            </div>
-            <div className="form-field">
               <span className="form-field-label-row">
-                <label htmlFor="rp-duration">Bokningslängd (timmar)</label>
-                <InfoTooltip label="Bokningslängd (timmar)">
+                <label htmlFor="rp-duration">Bokningslängd</label>
+                <InfoTooltip label="Bokningslängd">
                   Hur länge ett bord är upptaget per bokning. Styr längden på
-                  varje ledig tid som visas för gästen — t.ex. ger 2 timmar
-                  bokningsbara pass som 18:00–20:00.
-                  Måste vara större än noll.
+                  varje ledig tid som visas för gästen - t.ex. ger 2 timmar
+                  bokningsbara pass som 18:00-20:00.
                 </InfoTooltip>
               </span>
-              <input
+              <select
                 id="rp-duration"
-                inputMode="decimal"
                 value={bookingDurationHours}
                 onChange={(e) => {
                   setSaved(false)
-                  setBookingDurationHours(Number(e.target.value) || 0)
+                  setBookingDurationHours(Number(e.target.value))
                 }}
-              />
+              >
+                {!DURATION_HOURS.includes(bookingDurationHours) && (
+                  <option value={bookingDurationHours}>{hoursLabel(bookingDurationHours)}</option>
+                )}
+                {DURATION_HOURS.map((h) => (
+                  <option key={h} value={h}>
+                    {hoursLabel(h)}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="form-field">
               <span className="form-field-label-row">
-                <label htmlFor="rp-grace">Grace period (timmar)</label>
-                <InfoTooltip label="Grace period (timmar)">
-                  Hur länge bordet ska hållas om gästen är sen. Ange mellan 0 och 1 timme. Exempel: 0,25 = 15 minuter. Därefter blir bordet ledigt igen. 
+                <label htmlFor="rp-grace">Grace period (minuter)</label>
+                <InfoTooltip label="Grace period (minuter)">
+                  Hur länge bordet hålls om gästen är sen. Därefter blir bordet
+                  ledigt igen.
                 </InfoTooltip>
               </span>
-              <input
+              <select
                 id="rp-grace"
-                inputMode="decimal"
-                value={gracePeriodHours}
+                value={graceMinutes}
                 onChange={(e) => {
                   setSaved(false)
-                  setGracePeriodHours(Number(e.target.value) || 0)
+                  setGracePeriodHours(Number(e.target.value) / 60)
                 }}
-              />
+              >
+                {!GRACE_MINUTES.includes(graceMinutes) && (
+                  <option value={graceMinutes}>{graceMinutes} min</option>
+                )}
+                {GRACE_MINUTES.map((m) => (
+                  <option key={m} value={m}>
+                    {m} min
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           <div style={{ height: 20 }} />
@@ -544,7 +558,7 @@ export default function InstallningarPage() {
               <h2 className="card-title">Personal &amp; behörigheter</h2>
               <p className="cell-muted">
                 {staffLoading
-                  ? 'Hämtar användare…'
+                  ? <Loading variant="inline" label="Hämtar användare" />
                   : `${staff.length} användare, varav ${
                       staff.filter((s) => s.status === 'active').length
                     } aktiva`}

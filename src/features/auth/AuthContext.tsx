@@ -7,6 +7,7 @@ import {
   completeNewPassword,
   getAccessToken,
   getCurrentSession,
+  onSignedOutElsewhere,
   signIn,
   signOut,
 } from './cognito'
@@ -16,6 +17,7 @@ import {
   tryMockSignIn,
 } from './mockAuth'
 import { resetTenantStore } from '../../shared/tenant'
+import { resetMotion } from '../../shared/motion/MotionScope'
 
 // Mock-inloggningen (bara i npm run dev) har ingen riktig Cognito-session, så
 // den ges ägarrollen (den högsta en restauranganvändare kan ha) för att kunna
@@ -70,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (loginEmail: string, password: string) => {
       if (tryMockSignIn(loginEmail, password)) {
+        resetMotion()
         pendingChallenge.current = null
         setHasPendingNewPassword(false)
         setEmail(loginEmail.trim())
@@ -85,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setHasPendingNewPassword(true)
         return 'new-password' as const
       }
+      resetMotion()
       pendingChallenge.current = null
       setHasPendingNewPassword(false)
       setEmail(result.session.email ?? loginEmail.trim())
@@ -102,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Ingen pågående inloggning. Logga in igen.')
     }
     const session = await completeNewPassword(pending, newPassword)
+    resetMotion()
     pendingChallenge.current = null
     setHasPendingNewPassword(false)
     setEmail((prev) => session.email ?? prev)
@@ -110,11 +115,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('signed-in')
   }, [])
 
-  const logout = useCallback(() => {
-    clearMockSession()
-    signOut()
+  const forgetUser = useCallback(() => {
     // Nästa inloggning (kanske en annan restaurang) börjar från noll.
     resetTenantStore()
+    resetMotion()
     pendingChallenge.current = null
     setHasPendingNewPassword(false)
     setEmail(null)
@@ -123,7 +127,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('signed-out')
   }, [])
 
-  // Access-tokenen, inte ID-tokenen — det är den API:ts authorizer godtar.
+  const logout = useCallback(() => {
+    clearMockSession()
+    // Inte väntat på: sidan visar utloggat direkt. Når anropet inte servern
+    // loggar cognito.ts ut vid nästa start i stället för att logga in igen.
+    void signOut()
+    forgetUser()
+  }, [forgetUser])
+
+  // Utloggad i en annan flik: visa inloggningen här också.
+  useEffect(() => onSignedOutElsewhere(forgetUser), [forgetUser])
+
+  // Access-tokenen, inte ID-tokenen - det är den API:ts authorizer godtar.
   const getToken = useCallback(async () => {
     if (getMockSessionEmail()) return 'mock-dev-token'
     return getAccessToken()

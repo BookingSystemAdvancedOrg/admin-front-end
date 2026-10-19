@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   const apiTarget = env.VITE_API_BASE_URL ?? ''
   // I dev proxas alla API-anrop genom dev-servern (samma origin) istället för
   // att webbläsaren pratar direkt med API Gateway. Det gör lokal inloggning
-  // oberoende av API:ts CORS-allowlist — den listan täcker bara de deployade
+  // oberoende av API:ts CORS-allowlist - den listan täcker bara de deployade
   // domänerna, inte localhost. Bygget (npm run build) påverkas inte: där
   // används VITE_API_BASE_URL från .env / project.env som vanligt.
   const useDevProxy = mode === 'development' && /^https?:/.test(apiTarget)

@@ -6,6 +6,7 @@ import {
   listLayoutVersions,
 } from './layoutApi'
 import type { LayoutActivation, PublishedLayoutSnapshot } from './layoutApi'
+import { Loading } from '../../shared/Loading'
 
 /** "2026-10-05T01:00:00Z" -> "5 oktober 2026, 03:00" i lokal tid. */
 function formatMoment(iso: string): string {
@@ -20,7 +21,7 @@ function formatMoment(iso: string): string {
   }).format(d)
 }
 
-/** Kort variant för statusmärket i listan — "5 okt. 2026" — så raden inte
+/** Kort variant för statusmärket i listan - "5 okt. 2026" - så raden inte
  *  tvingar fram sidscroll. Fulla datumet + klockslag står redan i
  *  bekräftelsetexten ovanför listan när man just aktiverat något. */
 function formatShortDate(iso: string): string {
@@ -39,18 +40,18 @@ function formatShortDate(iso: string): string {
  *
  * Aktiveringen är omedelbar bara när ingen version gäller ännu. Finns redan
  * en gällande version schemalägger API:t bytet ett stycke fram i tiden i
- * stället — hur långt är miljöberoende (bekräftat av backend-teamet
- * 2026-09-29: 5 minuter i dev, 28 dagar/fyra veckor i prod) — det måste
+ * stället - hur långt är miljöberoende (bekräftat av backend-teamet
+ * 2026-09-29: 5 minuter i dev, 28 dagar/fyra veckor i prod) - det måste
  * synas, annars tror man att bytet skett direkt.
  *
  * Ett schemalagt byte går att avbryta (fick stöd i API:t 2026-09-29): den
  * väntande versionen (badgen "Aktiveras …") får en "Avbryt"-knapp som bara
- * rör SCHEMALÄGGNINGEN — den gällande versionen fortsätter gälla utan
+ * rör SCHEMALÄGGNINGEN - den gällande versionen fortsätter gälla utan
  * slutdatum, och den avbrutna versionen blir en vanlig inaktiv version igen
  * (kan därefter arkiveras precis som vilken annan inaktiv version som helst).
  *
  * Arkivering (fick också stöd 2026-09-29) städar bort gamla, aldrig
- * aktiverade eller redan förbrukade versioner ur listan — bara gällande och
+ * aktiverade eller redan förbrukade versioner ur listan - bara gällande och
  * väntande version kan inte arkiveras direkt (avbryt bytet först).
  *
  * Bara ägare och systemadmin får göra något av detta, så listan visas för
@@ -113,7 +114,7 @@ export function LayoutVersionsModal({
   }
 
   /**
-   * Mjuk arkivering — bara inaktiva versioner (aldrig gällande/väntande, det
+   * Mjuk arkivering - bara inaktiva versioner (aldrig gällande/väntande, det
    * filtreras bort i knappen nedan). Ögonblicksbilden finns kvar i lagringen,
    * men försvinner ur listan och går inte att ångra via API:t, därför en
    * bekräftelse innan anropet (samma mönster som "Ta bort"-knapparna för
@@ -135,7 +136,7 @@ export function LayoutVersionsModal({
 
   /**
    * Avbryter det väntande bytet (utan att röra vilken version som är vald
-   * för det) — den gällande versionen fortsätter gälla utan slutdatum, och
+   * för det) - den gällande versionen fortsätter gälla utan slutdatum, och
    * den väntande versionen blir en vanlig inaktiv version igen (går då att
    * arkivera precis som vilken annan inaktiv version som helst). Läser om
    * listan efteråt eftersom både den gällande och den väntande versionens
@@ -188,11 +189,11 @@ export function LayoutVersionsModal({
             {pendingVersion.effectiveFrom
               ? ` den ${formatShortDate(pendingVersion.effectiveFrom)}`
               : ''}{' '}
-            — inte förrän dess.
+            - inte förrän dess.
           </p>
         )}
 
-        {versions === null && <p className="cell-muted">Hämtar versioner…</p>}
+        {versions === null && <Loading label="Hämtar versioner" />}
 
         {versions?.length === 0 && !error && (
           <p className="cell-muted">

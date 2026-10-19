@@ -1,12 +1,12 @@
-/* Live Layout Editor — CSS-3D-scen (Figma: admin-live-layout-editor-page) */
+/* Live Layout Editor - CSS-3D-scen (Figma: admin-live-layout-editor-page) */
 
-/* "Se live" — skrivskyddat läge, en neutral notis snarare än ett fel. */
+/* "Se live" - skrivskyddat läge, en neutral notis snarare än ett fel. */
 .layout-viewmode-banner {
   padding: 12px 16px;
   background: var(--tint-orange);
   border: 0;
   color: var(--warning-ink);
-  border-radius: 12px;
+  border-radius: 3px;
   font-size: 13px;
 }
 
@@ -18,7 +18,7 @@
 }
 
 /* Nollställer <fieldset>:s standardutseende (kant, padding, min-width) så
-   att disabled-tricket för "Se live" inte syns i layouten — bara i att
+   att disabled-tricket för "Se live" inte syns i layouten - bara i att
    knapparna slutar gå att trycka på. */
 .props-fieldset {
   border: 0;
@@ -47,7 +47,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border-radius: 16px;
+  border-radius: 6px;
   align-self: flex-start;
 }
 
@@ -59,7 +59,7 @@
   gap: 2px;
   width: 56px;
   height: 52px;
-  border-radius: 12px;
+  border-radius: 3px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--ink);
@@ -71,6 +71,25 @@
 .tool-btn small {
   font: 500 9px/1 var(--sans);
   color: var(--muted);
+}
+
+/* Verktygets bokstav i hörnet, som i Figma - lär ut kortkommandot. */
+.tool-btn {
+  position: relative;
+}
+
+.tool-key {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  font: 600 8px/1 var(--mono, ui-monospace, monospace);
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.tool-btn.active .tool-key {
+  color: inherit;
+  opacity: 0.85;
 }
 
 .tool-btn:hover:not(:disabled) {
@@ -101,7 +120,7 @@
   height: 600px;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 6px;
   overflow: hidden;
   perspective: 1600px;
   user-select: none;
@@ -143,7 +162,7 @@
 .floor-tabs button {
   padding: 8px 14px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 3px;
   background: var(--surface);
   font: 600 13px/1.2 var(--sans);
   color: var(--muted);
@@ -168,7 +187,7 @@
 .view-toggle {
   display: flex;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 3px;
   overflow: hidden;
   background: var(--surface);
 }
@@ -185,6 +204,88 @@
 .view-toggle button.active {
   background: var(--green);
   color: #fff;
+}
+
+.view-toggle button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* --- Kortkommandon ("?") ---------------------------------------------------- */
+
+.shortcut-sheet {
+  position: absolute;
+  top: 64px;
+  right: 16px;
+  z-index: 6;
+  width: min(560px, calc(100% - 32px));
+  max-height: calc(100% - 96px);
+  overflow: auto;
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 12px 32px -12px rgba(28, 20, 18, 0.35);
+  cursor: default;
+}
+
+.shortcut-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.shortcut-close {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.shortcut-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px 24px;
+}
+
+.shortcut-groups h3 {
+  margin: 0 0 6px;
+  font: 700 12px/1.2 var(--sans);
+  color: var(--ink);
+}
+
+.shortcut-groups dl {
+  margin: 0;
+}
+
+.shortcut-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  border-top: 1px dashed var(--border);
+  font: 400 12px/1.35 var(--sans);
+}
+
+.shortcut-row dt {
+  flex-shrink: 0;
+}
+
+.shortcut-row dd {
+  margin: 0;
+  color: var(--muted);
+  text-align: right;
+}
+
+.shortcut-row kbd {
+  font: 600 11px/1 var(--mono, ui-monospace, monospace);
+  padding: 2px 5px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg, #f6f3ee);
+  color: var(--ink);
 }
 
 .view-toggle .zoom-value {
@@ -212,18 +313,19 @@
   left: 50%;
   top: 50%;
   transform-style: preserve-3d;
-  transform: translate(-50%, -50%) scale(var(--zoom, 1))
-    rotateX(var(--tilt, 0deg)) rotateZ(var(--spin, 0deg));
+  /* --pan-x/--pan-y: panorering i skärmpixlar (scroll, hand, mellanslag). */
+  transform: translate(calc(-50% + var(--pan-x, 0px)), calc(-50% + var(--pan-y, 0px)))
+    scale(var(--zoom, 1)) rotateX(var(--tilt, 0deg)) rotateZ(var(--spin, 0deg));
   transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Under fri dragrotation (handverktyget) stängs övergången av — annars
+/* Under fri dragrotation (handverktyget) stängs övergången av - annars
    släpar vyn efter varje musrörelse istället för att följa direkt. */
 .floor-world.no-anim {
   transition: none;
 }
 
-/* Arbetsytan är genomskinlig — marken är de ritade ytorna ovanpå den. */
+/* Arbetsytan är genomskinlig - marken är de ritade ytorna ovanpå den. */
 .floor-plane {
   position: relative;
   border: 1px dashed rgba(0, 0, 0, 0.18);
@@ -233,7 +335,7 @@
 
 /*
  * Skuggan av våningen under ("Våning under"-knappen i scene-controls).
- * Ett icke-interaktivt lager bakom den aktiva våningens innehåll — samma
+ * Ett icke-interaktivt lager bakom den aktiva våningens innehåll - samma
  * koordinatsystem (ingen omräkning behövs). Bara väggarna visas, och de
  * byggs neråt i Z-led (--lift = -höjd i stället för 0) i stället för uppåt,
  * så det läser som att man tittar rakt ner genom golvet på strukturen
@@ -259,7 +361,7 @@
 
 .floor-ghost .seg-cap {
   /* Kröntransformen (translateZ(--wh)) förutsätter --lift: 0 och skulle
-     hamna fel med väggen neråtriktad — ingen synlig topp på en skugga. */
+     hamna fel med väggen neråtriktad - ingen synlig topp på en skugga. */
   display: none;
 }
 
@@ -302,7 +404,7 @@
 .scene-empty p {
   max-width: 340px;
   padding: 20px 24px;
-  border-radius: 16px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.85);
   border: 1px solid var(--border);
   font-size: 14px;
@@ -318,7 +420,7 @@
 
 /*
  * Väggar är alltid hela. Höjden styrs av --wh: full höjd normalt, låg
- * sockel när väggen skymmer rummet (dockskåpsvy) — övergången animeras
+ * sockel när väggen skymmer rummet (dockskåpsvy) - övergången animeras
  * så att rotation känns smooth. Öppningar (fönster/entré/kök) sitter PÅ
  * väggen och ärver samma höjd, så de följer sänkningen automatiskt.
  */
@@ -405,7 +507,7 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
-/* Fönster — glasband som sitter i väggen (väggen bakom är kvar) */
+/* Fönster - glasband som sitter i väggen (väggen bakom är kvar) */
 .seg.window .seg-face.glass {
   background: linear-gradient(
     rgba(214, 235, 243, 0.9),
@@ -418,7 +520,7 @@
   background: #9fc4d2;
 }
 
-/* Kökets ingång och entrén ritas likadant — bara skylten skiljer dem åt. */
+/* Kökets ingång och entrén ritas likadant - bara skylten skiljer dem åt. */
 .seg.kitchen .seg-face,
 .seg.entrance .seg-face {
   background: linear-gradient(#7a1d25, #4a0a0f);
@@ -450,7 +552,7 @@
   position: absolute;
   width: 22px;
   height: 22px;
-  border-radius: 11px;
+  border-radius: 3px;
   background: var(--accent);
   border: 2px solid #fff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
@@ -485,7 +587,7 @@
   cursor: ns-resize;
 }
 
-/* Etiketter (KÖK/ENTRÉ) — vänder sig alltid mot kameran */
+/* Etiketter (KÖK/ENTRÉ) - vänder sig alltid mot kameran */
 .seg-tag {
   position: absolute;
   left: 50%;
@@ -550,12 +652,12 @@
 }
 
 /* Resize-handtag: dra en sida (bredd) eller ände (djup) för att ändra
-   bordets mått fritt — samma accentprick som väggarnas handtag. */
+   bordets mått fritt - samma accentprick som väggarnas handtag. */
 .table-handle {
   position: absolute;
   width: 22px;
   height: 22px;
-  border-radius: 11px;
+  border-radius: 3px;
   background: var(--accent);
   border: 2px solid #fff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
@@ -695,7 +797,7 @@
   font: 700 10px/1.1 var(--sans);
   color: #fff;
   background: var(--ink, #1d1d1f);
-  border-radius: 7px;
+  border-radius: 3px;
   padding: 1px 6px;
 }
 
@@ -907,7 +1009,7 @@
 .shape-toggle {
   display: inline-flex;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 3px;
   overflow: hidden;
   align-self: flex-start;
 }
@@ -933,7 +1035,7 @@
   gap: 16px;
   padding: 6px;
   border: 1px solid var(--border);
-  border-radius: 22px;
+  border-radius: 6px;
   align-self: flex-start;
 }
 
@@ -951,7 +1053,7 @@
   width: 32px;
   height: 32px;
   border: 0;
-  border-radius: 16px;
+  border-radius: 6px;
   background: var(--green);
   color: #fff;
   font: 700 13px/1 var(--sans);
@@ -967,7 +1069,7 @@
   align-self: flex-start;
   padding: 8px 16px;
   border: 0;
-  border-radius: 20px;
+  border-radius: 6px;
   background: var(--green);
   color: #fff;
   font: 600 13px/1.2 var(--sans);
@@ -1000,7 +1102,7 @@
 .floor-pill {
   padding: 8px 14px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 3px;
   background: var(--surface);
   font: 600 13px/1.2 var(--sans);
   color: var(--muted);
@@ -1022,7 +1124,7 @@
   width: 100%;
   padding: 14px 20px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 3px;
   background: var(--surface);
   font-size: 13px;
   color: var(--muted);
@@ -1046,7 +1148,7 @@
 /* --- Publicerade versioner (LayoutVersionsModal) ------------------------- */
 
 /*
- * En radlista i stället för en <table> — modalen är bara 480px bred och den
+ * En radlista i stället för en <table> - modalen är bara 480px bred och den
  * gamla .data-table (min-width: 900px, byggd för de stora sidtabellerna)
  * tvingade fram sidscroll för en lista med bara fyra korta fält. En
  * flex-rad wrap:ar istället naturligt på egen bredd.
@@ -1084,7 +1186,7 @@
   gap: 10px;
 }
 
-/* .cell-strong/.cell-muted är annars scopade till .data-table i admin.css —
+/* .cell-strong/.cell-muted är annars scopade till .data-table i admin.css -
    här är det ingen tabell, så basstilen och modifierarna sätts om lokalt. */
 .version-row-main,
 .version-row-right {
@@ -1103,7 +1205,7 @@
 
 /*
  * En schemalagd (väntande) version fick tidigare en fylld badge precis som
- * "Gäller nu" — lätt att läsa som "två aktiva" i förbifarten. Streckad
+ * "Gäller nu" - lätt att läsa som "två aktiva" i förbifarten. Streckad
  * kontur i stället för fyllnad gör skillnaden entydig på håll, inte bara
  * i texten.
  */
@@ -1118,13 +1220,13 @@
   background: var(--tint-orange);
   border: 0;
   color: var(--warning-ink);
-  border-radius: 12px;
+  border-radius: 3px;
   font-size: 13px;
 }
 
 @media (max-width: 760px) {
   /* Verktygsfältet blir en horisontell, skrollbar rad ovanför canvasen
-     istället för en smal kolumn bredvid den — annars klämmer den ihjäl
+     istället för en smal kolumn bredvid den - annars klämmer den ihjäl
      3D-scenen på en telefonbredd. */
   .editor-toolbar {
     flex-direction: row;
@@ -1139,12 +1241,12 @@
   }
 
   .floor-scene {
-    /* .floor-scene har `flex: 1 1 0` — flex-basis vinner över width i en
+    /* .floor-scene har `flex: 1 1 0` - flex-basis vinner över width i en
        rad-flexbox, så basis måste sättas om explicit för att tvinga fram
        en egen rad under verktygsfältet. */
     flex: 1 1 100%;
     width: 100%;
-    /* Fast 600px är högre än många telefoners hela skärm i liggande läge —
+    /* Fast 600px är högre än många telefoners hela skärm i liggande läge -
        en andel av den synliga höjden håller canvasen användbar utan att
        tvinga fram överdriven sidscroll. */
     height: min(600px, 65vh);
@@ -1156,7 +1258,7 @@
   }
 
   /* Scene-controls får en egen rad UNDER floor-tabs (båda kvar upptill)
-     istället för att dela top:16px-raden — annars får de inte plats
+     istället för att dela top:16px-raden - annars får de inte plats
      bredvid varandra på en smal scen. Håll dem till EN rad var (skrollbar
      i sidled vid behov) så höjden är förutsägbar och de aldrig krockar med
      scene-hint-texten som bor längst ner. */
@@ -1183,4 +1285,113 @@
     flex-wrap: wrap;
     gap: 8px 16px;
   }
+}
+
+/* --- Flera valda, hjälplinjer, ruta och bord som dras in -------------------- */
+
+.props-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Hjälplinje på golvet medan ett bord eller kassan dras (Figmas röda linje,
+   här i skrivarens röda). Lyft en pixel så den inte flimrar mot golvet. */
+.guide-line {
+  position: absolute;
+  background: var(--accent-ink, #b3150e);
+  pointer-events: none;
+  transform: translateZ(1px);
+}
+
+/* Markeringsrutan ritas i skärmläge ovanpå scenen, inte i 3D-planet. */
+.marquee {
+  position: absolute;
+  z-index: 4;
+  border: 1px solid var(--accent-ink, #b3150e);
+  background: color-mix(in srgb, var(--accent-ink, #b3150e) 8%, transparent);
+  pointer-events: none;
+}
+
+/* Skuggan av ett bord som dras ut från verktygsfältet. */
+.table-ghost {
+  position: absolute;
+  border: 2px dashed var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 4px;
+  pointer-events: none;
+  transform: translateZ(2px);
+}
+
+.table-ghost.round {
+  border-radius: 50%;
+}
+
+/* --- Måttlapp och högerklicksmeny -------------------------------------------- */
+
+.measure-tag {
+  position: absolute;
+  z-index: 6;
+  padding: 3px 7px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: #fff;
+  font: 600 11px/1.2 var(--mono, ui-monospace, monospace);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 50;
+  min-width: 230px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 14px 36px -12px rgba(28, 20, 18, 0.4);
+}
+
+.context-menu-group + .context-menu-group {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink);
+  font: 500 13px/1.2 var(--sans);
+  text-align: left;
+  cursor: pointer;
+}
+
+.context-menu-item:hover:not(:disabled),
+.context-menu-item:focus-visible {
+  background: var(--bg);
+  outline: none;
+}
+
+.context-menu-item:disabled {
+  color: var(--muted);
+  opacity: 0.55;
+  cursor: default;
+}
+
+.context-menu-item.danger {
+  color: var(--danger);
+}
+
+.context-menu-item kbd {
+  font: 500 10px/1 var(--mono, ui-monospace, monospace);
+  color: var(--muted);
 }

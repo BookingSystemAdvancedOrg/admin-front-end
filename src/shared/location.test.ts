@@ -120,7 +120,7 @@ describe('loadTenant', () => {
     expect(mockedFetch).toHaveBeenCalledTimes(2)
   })
 
-  it("starts from scratch for another user — never shows the previous user's tenant", async () => {
+  it("starts from scratch for another user - never shows the previous user's tenant", async () => {
     mockedFetch.mockResolvedValueOnce(tenant())
     await loadTenant('owner-a')
     mockedFetch.mockResolvedValueOnce(

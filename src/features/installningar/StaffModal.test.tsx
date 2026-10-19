@@ -46,7 +46,7 @@ function renderInvite(overrides: Partial<Parameters<typeof StaffModal>[0]> = {})
   return props
 }
 
-describe('StaffModal — invite mode', () => {
+describe('StaffModal - invite mode', () => {
   it('lets an owner invite staff only (owners are added by the platform)', () => {
     renderInvite()
     const roleSelect = screen.getByLabelText('Roll') as HTMLSelectElement
@@ -120,7 +120,7 @@ describe('StaffModal — invite mode', () => {
   })
 })
 
-describe('StaffModal — edit mode', () => {
+describe('StaffModal - edit mode', () => {
   it('prefills fields and keeps the user on their own location', () => {
     renderInvite({ title: 'Redigera användare', initial: existingStaff })
     expect(screen.getByLabelText('Namn')).toHaveValue('Erik Lindqvist')

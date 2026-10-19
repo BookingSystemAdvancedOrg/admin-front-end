@@ -1,14 +1,25 @@
 import { getAccessToken } from '../features/auth/cognito'
+import { busyEnd, busyStart } from './motion/busy'
 
 /**
- * Bas-URL till backend-API:t (API Gateway). Sätts i .env lokalt och i
- * .github/config/project.env för deploy — se docs/BACKEND-KOPPLING.md.
+ * Bas-URL till backend-API:t. VITE_API_BASE_URL sätts i .env lokalt och i
+ * .github/config/project.env för deploy - se docs/BACKEND-KOPPLING.md.
  * Så länge den inte är satt kör alla sidor på mockdata i respektive
  * features-mapps data.ts.
+ *
+ * I det deployade bygget går API:t alltid via /api på appens egen adress
+ * (CloudFront skickar vidare till API Gateway). Samma origin är det som gör
+ * att inloggningens refresh-token kan ligga i en HttpOnly-cookie, och appen
+ * behöver ingen CORS. I `npm run dev` gör vite.config.ts samma sak med sin
+ * proxy.
  */
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as
-  | string
-  | undefined
+const CONFIGURED_API = import.meta.env.VITE_API_BASE_URL as string | undefined
+
+export const API_BASE_URL: string | undefined = CONFIGURED_API
+  ? import.meta.env.PROD
+    ? '/api'
+    : CONFIGURED_API
+  : undefined
 
 export function isApiConfigured(): boolean {
   return Boolean(API_BASE_URL)
@@ -83,7 +94,7 @@ async function fetchWithRetry(method: string, send: () => Promise<Response>): Pr
 
 /**
  * Anropar backend med inloggningens access-token i Authorization-headern
- * (API:ts JWT-authorizer validerar access-tokens, inte ID-tokens — se
+ * (API:ts JWT-authorizer validerar access-tokens, inte ID-tokens - se
  * backend-spec:ens 401-beskrivning).
  * Används när sidorna kopplas från mockdata till riktigt API, t.ex.:
  *
@@ -99,19 +110,27 @@ export async function apiFetch<T>(
 ): Promise<T> {
   if (!API_BASE_URL) {
     throw new Error(
-      'VITE_API_BASE_URL är inte satt — appen kör på mockdata. Se docs/BACKEND-KOPPLING.md.',
+      'VITE_API_BASE_URL är inte satt - appen kör på mockdata. Se docs/BACKEND-KOPPLING.md.',
     )
   }
   const token = await getAccessToken()
   const method = (options.method ?? 'GET').toUpperCase()
-  const res = await fetchWithRetry(method, () => fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  }))
+  // Skrivningar syns som en strimma överst (shared/motion/BusyBar) tills de är klara.
+  const writing = method !== 'GET'
+  if (writing) busyStart()
+  let res: Response
+  try {
+    res = await fetchWithRetry(method, () => fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    }))
+  } finally {
+    if (writing) busyEnd()
+  }
   if (!res.ok) {
     throw await toApiError(res)
   }

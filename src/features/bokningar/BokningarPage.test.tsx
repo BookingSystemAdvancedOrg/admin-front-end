@@ -84,7 +84,7 @@ describe('BokningarPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Nästa dag' }))
     expect(screen.queryByText('Anna')).toBeNull()
-    expect(screen.getByText('Hämtar…')).toBeInTheDocument()
+    expect(screen.getAllByText('Hämtar…').length).toBeGreaterThan(0)
 
     await act(async () => second.resolve([booking({ reservationId: 'r2', customerName: 'Bertil' })]))
     expect(await screen.findByText('Bertil')).toBeInTheDocument()

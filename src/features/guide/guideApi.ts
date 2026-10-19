@@ -1,4 +1,5 @@
 import { apiFetch, isApiConfigured } from '../../shared/api'
+import { GUIDE_KEY_PREFIX } from '../../shared/storageRegistry'
 
 /**
  * Om användaren har gått igenom guiden sparas på KONTOT
@@ -7,19 +8,28 @@ import { apiFetch, isApiConfigured } from '../../shared/api'
  * att ingen fråga behövs vid varje inloggning.
  */
 
-const STORAGE_PREFIX = 'booqy-guide-done:'
+// Nyckeln bär användarens id (sub), aldrig e-postadressen: localStorage
+// ligger kvar efter utloggning, och en e-post där vore en personuppgift som
+// blir kvar på en delad dator.
+function keyFor(user: string): string | null {
+  return user && !user.includes('@') ? `${GUIDE_KEY_PREFIX}${user}` : null
+}
 
 export function seenLocally(user: string): boolean {
+  const key = keyFor(user)
+  if (!key) return false
   try {
-    return localStorage.getItem(`${STORAGE_PREFIX}${user}`) === '1'
+    return localStorage.getItem(key) === '1'
   } catch {
     return false
   }
 }
 
 export function rememberLocally(user: string): void {
+  const key = keyFor(user)
+  if (!key) return
   try {
-    localStorage.setItem(`${STORAGE_PREFIX}${user}`, '1')
+    localStorage.setItem(key, '1')
   } catch {
     // Ingen lagring (privat läge) - kontot minns ändå.
   }

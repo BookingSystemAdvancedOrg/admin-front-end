@@ -41,6 +41,8 @@ export interface Order {
   lines: OrderLine[]
   /** Öre. */
   totalAmount: number
+  /** Välkomsterbjudandets kod (raderna är redan rabatterade). */
+  discount?: { code: string; percent: number; amount: number }
   customerName?: string
   customerPhone?: string
   customerEmail?: string

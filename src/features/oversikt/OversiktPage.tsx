@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Num } from '../../shared/motion/Num'
 import { Link } from 'react-router-dom'
 import { QuickLinkIcon } from './QuickLinkIcon'
+import { StatTile } from './StatTile'
 import type { QuickLinkIconName } from './QuickLinkIcon'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { currentLocation, stripeStage, useTenant } from '../../shared/tenant'
@@ -31,6 +33,7 @@ import {
   todayIn,
 } from '../bokningar/bookingsApi'
 import type { Reservation } from '../bokningar/bookingsApi'
+import { Loading } from '../../shared/Loading'
 
 // Genvägskorten längst ned som länkar till de andra sidorna.
 const QUICK_LINKS: { to: string; icon: QuickLinkIconName; label: string }[] = [
@@ -41,7 +44,7 @@ const QUICK_LINKS: { to: string; icon: QuickLinkIconName; label: string }[] = [
 ]
 
 interface OverviewData {
-  /** Platsen datan gäller — en annan plats betyder att ny data hämtas. */
+  /** Platsen datan gäller - en annan plats betyder att ny data hämtas. */
   forLocation: string | null
   location: Location | null
   activeMenuItems: number | null
@@ -75,7 +78,7 @@ function orNull<T>(promise: Promise<T>): Promise<T | null> {
  * Figma: admin-oversikt-page (36:165).
  *
  * Allt på sidan är restaurangens riktiga data för den valda platsen. Tidigare
- * visades påhittade bokningar och nyckeltal här — det ger en ny kund fel
+ * visades påhittade bokningar och nyckeltal här - det ger en ny kund fel
  * bild av sin egen restaurang. Där backend ännu saknar data (bokningar)
  * står det uttryckligen i stället för att visa exempel.
  */
@@ -133,8 +136,24 @@ export default function OversiktPage() {
     staffCount: data.staffCount,
   })
   const remaining = steps.filter((s) => s.done === false).length
-  // Visas när det finns något kvar (eller som inte gick att kontrollera).
-  const showSetup = isOwner && !loading && steps.some((s) => s.done !== true)
+  // Kom igång (bara ägaren): överst så länge något är kvar (eller inte gick
+  // att kontrollera), längst ned som liten bekräftelse när allt är klart.
+  const setupIncomplete = isOwner && !loading && steps.some((s) => s.done !== true)
+  const setupComplete = isOwner && !loading && steps.every((s) => s.done === true)
+
+  const setupList = steps.map((step) => (
+    <Link key={step.id} to={step.to} className="activity-item setup-step">
+      <span className="activity-text">
+        <span className={`setup-check ${step.done ? 'done' : ''}`} aria-hidden="true">
+          {step.done ? '✓' : step.done === null ? '?' : ''}
+        </span>
+        {step.label}
+      </span>
+      <span className="activity-time">
+        {step.done ? 'Klart' : step.done === null ? 'Kunde inte kontrolleras' : 'Att göra'}
+      </span>
+    </Link>
+  ))
 
   const todayActive = data.today
     ? data.today.filter((r) => ACTIVE_STATUSES.includes(r.status))
@@ -157,7 +176,7 @@ export default function OversiktPage() {
   }[] = [
     {
       label: 'Bokningar idag',
-      value: bookings ? String(bookings.count) : '—',
+      value: bookings ? String(bookings.count) : '-',
       note: !bookings
         ? 'Kunde inte hämtas'
         : bookings.next
@@ -168,7 +187,7 @@ export default function OversiktPage() {
     },
     {
       label: 'Dagens omsättning',
-      value: !hasOrdering ? '—' : revenue ? kronor(revenue.amount) : '—',
+      value: !hasOrdering ? '-' : revenue ? kronor(revenue.amount) : '-',
       note: !hasOrdering
         ? notInPlan
         : revenue
@@ -179,7 +198,7 @@ export default function OversiktPage() {
     },
     {
       label: 'Aktiva beställningar',
-      value: !hasOrdering ? '—' : inProgress ? String(inProgress.count) : '—',
+      value: !hasOrdering ? '-' : inProgress ? String(inProgress.count) : '-',
       note: !hasOrdering
         ? notInPlan
         : !inProgress
@@ -192,7 +211,7 @@ export default function OversiktPage() {
     },
     {
       label: 'Att hantera',
-      value: todo ? String(todo.total) : '—',
+      value: todo ? String(todo.total) : '-',
       note: !todo
         ? 'Kunde inte hämtas'
         : todo.total === 0
@@ -232,20 +251,24 @@ export default function OversiktPage() {
     <>
       <AdminTopbar title="Översikt" />
       <div className="admin-main">
-        <section className="stats-row" aria-label="Nyckeltal">
-          {stats.map((stat) => (
-            <Link
-              key={stat.label}
-              to={stat.to}
-              className={`admin-card stat-tile stat-tile--link${stat.tone ? ` stat-tile--${stat.tone}` : ''}`}
-            >
-              <p className="stat-tile-label">{stat.label}</p>
-              <p className="stat-tile-value">{loading ? '…' : stat.value}</p>
-              <p className="stat-tile-note">{loading ? 'Hämtar…' : stat.note}</p>
-              <span className="stat-tile-action">
-                {stat.action} <span aria-hidden="true">→</span>
+        {setupIncomplete && (
+          <section className="admin-card activity-card setup-card" aria-label="Kom igång" data-tour="getting-started">
+            <div className="card-head">
+              <div>
+                <h2 className="card-title">Kom igång</h2>
+                <p className="cell-muted setup-lead">Gör klart de här stegen så att gästerna kan boka och beställa.</p>
+              </div>
+              <span className="cell-muted">
+                {remaining === 0 ? 'Kunde inte kontrollera allt' : <><Num>{remaining}</Num> kvar</>}
               </span>
-            </Link>
+            </div>
+            {setupList}
+          </section>
+        )}
+
+        <section className="stats-row" aria-label="Nyckeltal">
+          {stats.map((stat, i) => (
+            <StatTile key={stat.label} {...stat} loading={loading} index={i} />
           ))}
         </section>
 
@@ -263,7 +286,7 @@ export default function OversiktPage() {
                   <li key={r.reservationId}>
                     <span className="cell-strong">{r.startTime}</span>
                     <span>
-                      {r.customerName || 'Gäst'} · {r.partySize} pers · {tableNames(r.tableIds, labels)}
+                      {r.customerName || 'Gäst'} · <Num>{r.partySize}</Num> pers · {tableNames(r.tableIds, labels)}
                     </span>
                     <span className={`status-badge ${STATUS_CLASS[r.status]}`}>
                       {STATUS_LABEL[r.status]}
@@ -274,7 +297,7 @@ export default function OversiktPage() {
             ) : (
               <p className="admin-empty">
                 {loading
-                  ? 'Hämtar…'
+                  ? <Loading variant="inline" />
                   : todayActive === null
                     ? 'Kunde inte hämta dagens bokningar.'
                     : `Inga bokningar idag för ${location?.name || 'platsen'}.`}
@@ -305,40 +328,15 @@ export default function OversiktPage() {
           ))}
         </section>
 
-        {/* Kom igång: bara ägaren, och bara tills allt är klart. */}
-        {showSetup && (
-        <section className="admin-card activity-card setup-card" aria-label="Kom igång" data-tour="getting-started">
-          <div className="card-head">
-            <h2 className="card-title">Kom igång</h2>
-            {!loading && (
-              <span className="cell-muted">
-                {remaining === 0 ? 'Kunde inte kontrollera allt' : `${remaining} kvar`}
-              </span>
-            )}
-          </div>
-          {steps.map((step) => (
-            <Link key={step.id} to={step.to} className="activity-item setup-step">
-              <span className="activity-text">
-                <span
-                  className={`setup-check ${step.done ? 'done' : ''}`}
-                  aria-hidden="true"
-                >
-                  {step.done ? '✓' : step.done === null ? '?' : ''}
-                </span>
-                {step.label}
-              </span>
-              <span className="activity-time">
-                {loading
-                  ? 'Kontrollerar…'
-                  : step.done
-                    ? 'Klart'
-                    : step.done === null
-                      ? 'Kunde inte kontrolleras'
-                      : 'Att göra'}
-              </span>
-            </Link>
-          ))}
-        </section>
+        {setupComplete && (
+          <details className="admin-card setup-card setup-card--done" data-tour="getting-started">
+            <summary className="setup-done-summary">
+              <span className="setup-check done" aria-hidden="true">✓</span>
+              <span>Kom igång: allt är klart</span>
+              <span className="cell-muted setup-done-toggle">Visa stegen</span>
+            </summary>
+            <div className="setup-done-list">{setupList}</div>
+          </details>
         )}
       </div>
     </>

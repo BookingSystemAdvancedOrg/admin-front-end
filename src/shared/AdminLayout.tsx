@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { BrandMark, BrandWordmark } from './BrandMark'
 import { useAuth } from '../features/auth/useAuth'
@@ -8,10 +8,16 @@ import { GuideProvider } from '../features/guide/Guide'
 import { LogoutConfirm } from './LogoutConfirm'
 import type { TenantErrorCode } from './tenant'
 import './admin.css'
+import './brand.css'
+import './select.css'
+import { Loading } from './Loading'
+import { useLiquidFill } from './motion/useLiquidFill'
+import { MotionScope, sidebarPourDone, sidebarShouldPour } from './motion/MotionScope'
+import { BusyBar } from './motion/BusyBar'
 
 // Sidebar-länkarna. `end: true` gör att '/' bara markeras aktiv på exakt
 // träff, annars skulle den lysa upp på alla undersidor också.
-const NAV: { to: string; label: string; tour: string; end?: boolean; feature?: string }[] = [
+const NAV: { to: string; label: string; tour: string; end?: boolean; feature?: string; ownerOnly?: boolean }[] = [
   { to: '/', label: 'Översikt', tour: 'nav-oversikt', end: true },
   { to: '/bokningar', label: 'Bokningar', tour: 'nav-bokningar' },
   // Bara för restauranger vars plan har matbeställning.
@@ -20,6 +26,8 @@ const NAV: { to: string; label: string; tour: string; end?: boolean; feature?: s
   // Förfrågningar; inställningar och rabatter nås därifrån (/cateringkalkyl).
   { to: '/catering', label: 'Catering', tour: 'nav-catering', feature: 'catering' },
   { to: '/layout', label: 'Layout', tour: 'nav-layout' },
+  // Statistik och e-postutskick; bara ägare, och bara med marknadsföring i planen.
+  { to: '/marknadsforing', label: 'Marknadsföring', tour: 'nav-marknadsforing', feature: 'marketing', ownerOnly: true },
   { to: '/installningar', label: 'Inställningar', tour: 'nav-installningar' },
 ]
 
@@ -46,8 +54,8 @@ const TENANT_ERROR: Record<TenantErrorCode, { title: string; text: string }> = {
  * Admin-skalet med mörkgrön sidebar (Figma: admin-sidebar, 36:166).
  * Ritas runt varje sida via <Outlet /> (se App.tsx).
  *
- * Sidebaren visar RESTAURANGEN (tenant) från GET /tenant, och — när den har
- * flera — en väljare för platsen. Sidan monteras om vid platsbyte
+ * Sidebaren visar RESTAURANGEN (tenant) från GET /tenant, och - när den har
+ * flera - en väljare för platsen. Sidan monteras om vid platsbyte
  * (`key`), så ingen sida kan bära med sig osparat eller inläst innehåll från
  * en plats till en annan.
  */
@@ -63,6 +71,28 @@ export function AdminLayout() {
   const [confirmLogout, setConfirmLogout] = useState(false)
   const cancelLogout = useCallback(() => setConfirmLogout(false), [])
 
+  // En gång per inloggning: väggen fylls med vinrött (samma vatten som
+  // nyckeltalsrutorna). Sidbyten, flikbyten och omladdningar rör den inte.
+  const [pour] = useState(sidebarShouldPour)
+  const sidebarRef = useRef<HTMLElement>(null)
+  const sidebarCanvas = useRef<HTMLCanvasElement>(null)
+  const [poured, setPoured] = useState(!pour)
+  const wall = useLiquidFill(sidebarRef, sidebarCanvas, {
+    active: pour && status === 'ready',
+    fillMs: 1900,
+    pourAt: 0.5,
+    onProgress: (_, done) => {
+      if (done) {
+        sidebarPourDone()
+        setPoured(true)
+      }
+    },
+    onStatic: () => {
+      sidebarPourDone()
+      setPoured(true)
+    },
+  })
+
   return (
     <GuideProvider
       user={sub ?? email ?? null}
@@ -74,14 +104,23 @@ export function AdminLayout() {
       autoStart={status === 'ready' && import.meta.env.MODE !== 'test'}
     >
     <div className="admin-shell">
-      <aside className="admin-sidebar">
+      <aside
+        ref={sidebarRef}
+        className={`admin-sidebar${poured ? ' admin-sidebar--full' : ' admin-sidebar--pouring'}`}
+        onPointerMove={(e) => {
+          if (poured || Math.random() > 0.2) return
+          const rect = e.currentTarget.getBoundingClientRect()
+          wall.touch((e.clientX - rect.left) / rect.width, 0.4)
+        }}
+      >
+        {pour && <canvas ref={sidebarCanvas} className="admin-sidebar-liquid" aria-hidden="true" />}
         <div className="admin-logo">
           <span className="admin-logo-badge" aria-hidden="true">
             <BrandMark />
           </span>
           <span className="admin-logo-text">
             <span className="admin-logo-brand">
-              <BrandWordmark height={18} />
+              <BrandWordmark height={22} />
               <span className="admin-logo-tag">ADMIN</span>
             </span>
             <span className="admin-logo-name">{tenant?.name ?? ''}</span>
@@ -107,7 +146,9 @@ export function AdminLayout() {
 
         <nav className="admin-nav" aria-label="Huvudmeny">
           {NAV.filter(
-            (item) => !item.feature || Boolean(tenant?.entitlements.features[item.feature]),
+            (item) =>
+              (!item.feature || Boolean(tenant?.entitlements.features[item.feature])) &&
+              (!item.ownerOnly || tenant?.role === 'owner_user'),
           ).map((item) => (
             <NavLink
               key={item.to}
@@ -158,6 +199,7 @@ export function AdminLayout() {
       {confirmLogout && <LogoutConfirm onConfirm={logout} onCancel={cancelLogout} />}
 
       <div className="admin-right">
+        <BusyBar />
         {status === 'error' && error ? (
           <div className="admin-main">
             <section className="admin-card table-card tenant-notice" role="alert">
@@ -182,12 +224,12 @@ export function AdminLayout() {
             </section>
           </div>
         ) : status === 'ready' ? (
-          <Outlet key={locationId ?? 'no-location'} />
+          <MotionScope>
+            <Outlet key={locationId ?? 'no-location'} />
+          </MotionScope>
         ) : (
           <div className="admin-main">
-            <p className="cell-muted" aria-live="polite">
-              Hämtar restaurangen…
-            </p>
+            <Loading variant="screen" label="Hämtar restaurangen" />
           </div>
         )}
       </div>

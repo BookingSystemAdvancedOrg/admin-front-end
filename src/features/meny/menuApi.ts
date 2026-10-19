@@ -1,21 +1,22 @@
 import { apiFetch, ApiError } from '../../shared/api'
+import { withBusy } from '../../shared/motion/busy'
 import type { Dish, DishCategory } from './data'
 
 /**
  * Klient mot backendens meny-endpoints (openapi.yaml, Menu/Media-taggarna):
  *
- *   GET    /locations/{id}/menu                    — publik meny (bara aktiva)
- *   GET    /locations/{id}/menu/items              — alla rätter, kräver inloggning
- *   POST   /locations/{id}/menu/items              — skapa
- *   PUT    /locations/{id}/menu/items/{menuItemId} — partiell uppdatering
- *   DELETE /locations/{id}/menu/items/{menuItemId} — ta bort
- *   GET    /menu-images/presigned-url              — S3-uppladdnings-URL (5 min)
+ *   GET    /locations/{id}/menu                    - publik meny (bara aktiva)
+ *   GET    /locations/{id}/menu/items              - alla rätter, kräver inloggning
+ *   POST   /locations/{id}/menu/items              - skapa
+ *   PUT    /locations/{id}/menu/items/{menuItemId} - partiell uppdatering
+ *   DELETE /locations/{id}/menu/items/{menuItemId} - ta bort
+ *   GET    /menu-images/presigned-url              - S3-uppladdnings-URL (5 min)
  *
  * Speglar kontraktets validering: namn krävs, pris >= 0 med högst två
  * decimaler, kategori ur enum:en, imageKey krävs vid skapande (och kan
- * aldrig tömmas — bara ersättas). Beskrivningen får vara tom.
+ * aldrig tömmas - bara ersättas). Beskrivningen får vara tom.
  *
- * OBS enligt kontraktet verifierar meny-Lambdan INTE att platsen finns —
+ * OBS enligt kontraktet verifierar meny-Lambdan INTE att platsen finns -
  * en tom lista kan alltså också betyda "fel plats-id".
  */
 
@@ -52,7 +53,7 @@ export interface MenuItem {
 }
 
 /**
- * Den publika menyns kundvända form — inga auditfält, bara aktiva rätter.
+ * Den publika menyns kundvända form - inga auditfält, bara aktiva rätter.
  * `active` är med som frivilligt fält: backend-teamet har beskrivit en
  * variant där samma rutt ger fulla listan (inkl. inaktiva) till inloggade,
  * och då ska flaggan respekteras i stället för att antas vara sann.
@@ -74,14 +75,14 @@ export interface MenuItemCreate {
   alcohol?: boolean
 }
 
-/** Partiell uppdatering — minst ett fält krävs av API:t. */
+/** Partiell uppdatering - minst ett fält krävs av API:t. */
 export type MenuItemUpdate = Partial<MenuItemCreate>
 
 /* --- Bildvisning ---------------------------------------------------------- */
 
 /**
  * Bas-URL (CDN/CloudFront) för att visa lagrade menybilder. API:t returnerar
- * bara S3-nyckeln, aldrig en färdig URL — utan den här variabeln kan bilder
+ * bara S3-nyckeln, aldrig en färdig URL - utan den här variabeln kan bilder
  * laddas upp men inte visas (platshållaren används i stället).
  */
 export const MENU_IMAGE_BASE_URL = (
@@ -116,7 +117,7 @@ export function publicToDish(item: PublicMenuItem): Dish {
 
 /**
  * Ändrade fält jämfört med den sparade rätten, för PUT:en. API:t kräver
- * minst ett fält, så en tom diff ska aldrig skickas — anroparen kan skilja
+ * minst ett fält, så en tom diff ska aldrig skickas - anroparen kan skilja
  * "inget ändrat" från ett riktigt anrop. En tom imageKey skickas aldrig
  * (fältet kan inte tömmas enligt kontraktet).
  */
@@ -157,7 +158,7 @@ export function validateDishPrice(price: number): string | null {
   if (price > MAX_ITEM_PRICE_KR) {
     return `Pris får vara högst ${MAX_ITEM_PRICE_KR.toLocaleString('sv-SE')} kr.`
   }
-  // multipleOf 0.01 — flyttalsbrus tolereras på tiondels öre.
+  // multipleOf 0.01 - flyttalsbrus tolereras på tiondels öre.
   if (Math.abs(price * 100 - Math.round(price * 100)) > 1e-6) {
     return 'Pris får ha högst två decimaler.'
   }
@@ -172,7 +173,7 @@ export function validateDishPrice(price: number): string | null {
  * found". De behöver helt olika texter.
  */
 export const MENU_ROUTES_MISSING_MESSAGE =
-  'Menyns adminrutter är inte deployade på API:t än — publika menyn visas i stället, och ändringar kan inte sparas.'
+  'Menyns adminrutter är inte deployade på API:t än - publika menyn visas i stället, och ändringar kan inte sparas.'
 
 export function isMenuRoutesMissing(err: unknown): boolean {
   return (
@@ -203,7 +204,7 @@ function toFriendlyMenuError(err: unknown): Error {
     case 404:
       return err.message === 'Not Found'
         ? new ApiError(404, MENU_ROUTES_MISSING_MESSAGE)
-        : new ApiError(404, 'Rätten finns inte längre — ladda om sidan.')
+        : new ApiError(404, 'Rätten finns inte längre - ladda om sidan.')
     case 409:
       return new ApiError(
         409,
@@ -230,7 +231,7 @@ function itemsPath(locationId: string): string {
   return `/locations/${encodeURIComponent(locationId)}/menu/items`
 }
 
-/** Publika menyn — bara aktiva rätter, ingen inloggning krävs. */
+/** Publika menyn - bara aktiva rätter, ingen inloggning krävs. */
 export function getPublicMenu(locationId: string): Promise<PublicMenuItem[]> {
   return call(async () => {
     const res = await apiFetch<{ items?: PublicMenuItem[] }>(
@@ -302,7 +303,7 @@ export interface MenuImageUpload {
   requiredHeaders: { 'Content-Type': MenuImageContentType }
 }
 
-/** Kräver owner_user/super_user — personal får 403 här enligt kontraktet. */
+/** Kräver owner_user/super_user - personal får 403 här enligt kontraktet. */
 export function createMenuImageUploadUrl(
   locationId: string,
   contentType: MenuImageContentType,
@@ -316,7 +317,7 @@ export function createMenuImageUploadUrl(
 /**
  * Laddar upp en bildfil: hämtar en femminuters presigned S3-URL och PUT:ar
  * filen dit med exakt den Content-Type servern kräver. Returnerar imageKey
- * som ska sparas på rätten. S3-anropet går utan Authorization-header —
+ * som ska sparas på rätten. S3-anropet går utan Authorization-header -
  * behörigheten ligger i själva URL:en.
  */
 export async function uploadMenuImage(
@@ -328,13 +329,14 @@ export async function uploadMenuImage(
     throw new Error('Bilden måste vara AVIF, JPEG, PNG eller WebP.')
   }
   const grant = await createMenuImageUploadUrl(locationId, contentType)
-  const res = await fetch(grant.uploadUrl, {
+  // Själva uppladdningen går till S3, inte via apiFetch: visa den som pågående själv.
+  const res = await withBusy(() => fetch(grant.uploadUrl, {
     method: 'PUT',
     body: file,
     headers: { 'Content-Type': grant.requiredHeaders['Content-Type'] },
-  })
+  }))
   if (!res.ok) {
-    throw new Error('Bilduppladdningen misslyckades — försök igen.')
+    throw new Error('Bilduppladdningen misslyckades - försök igen.')
   }
   return grant.imageKey
 }

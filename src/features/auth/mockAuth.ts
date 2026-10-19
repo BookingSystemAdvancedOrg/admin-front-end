@@ -1,4 +1,8 @@
-const STORAGE_KEY = 'admin-mock-session'
+import { MOCK_SESSION_KEY } from '../../shared/storageRegistry'
+
+// Bara i npm run dev (finns inte i produktionsbygget), därför inte i
+// registrets tabell.
+const STORAGE_KEY = MOCK_SESSION_KEY
 
 /**
  * Dev-inloggningens uppgifter. Vite ersätter `import.meta.env.DEV` med
@@ -7,7 +11,7 @@ const STORAGE_KEY = 'admin-mock-session'
  *
  * Det spelar roll: mock-inloggningen är visserligen avstängd i produktion
  * ändå, men en bundel som skyltar med "test@test.se / test1234" ger vem som
- * helst ett färdigt par att prova mot det RIKTIGA /auth/login — skulle
+ * helst ett färdigt par att prova mot det RIKTIGA /auth/login - skulle
  * kontot någon gång ha skapats på riktigt i Cognito vore det en direkt väg in.
  */
 export const MOCK_EMAIL = import.meta.env.DEV ? 'test@test.se' : ''

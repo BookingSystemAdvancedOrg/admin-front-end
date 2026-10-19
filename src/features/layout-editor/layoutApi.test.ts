@@ -190,7 +190,7 @@ describe('API -> editor mapping', () => {
       y: 20,
       rotation: 90,
       // Manuellt satt storlek (t.ex. via resize-handtagen) ska också
-      // rundtripa — inte bara härledas om ur seats vid varje inläsning.
+      // rundtripa - inte bara härledas om ur seats vid varje inläsning.
       w: 68,
       h: 45,
     })
@@ -364,7 +364,7 @@ describe('floors: API -> editor', () => {
 
 describe('saveLayout', () => {
   // Testerna här handlar om skapandeordning (våning -> vägg -> resten), inte
-  // markytor/kassa — de nollställs för att inte krocka på delade lokala id:n
+  // markytor/kassa - de nollställs för att inte krocka på delade lokala id:n
   // med `floor`-fixturen och för att hålla de mockade anropssekvenserna korta.
   const fresh: Floor = {
     ...floor,
@@ -377,7 +377,7 @@ describe('saveLayout', () => {
     tables: [],
   }
 
-  it('creates the floor first, then walls, then openings — each rewritten to served ids', async () => {
+  it('creates the floor first, then walls, then openings - each rewritten to served ids', async () => {
     mockedApiFetch
       .mockResolvedValueOnce({ items: [] }) // listan innan
       .mockResolvedValueOnce(element({ elementId: 'server-floor', type: 'floor' }))
@@ -464,7 +464,7 @@ describe('saveLayout', () => {
 })
 
 describe('publishing', () => {
-  it('POSTs to layout/publish with no body — the API numbers the version', async () => {
+  it('POSTs to layout/publish with no body - the API numbers the version', async () => {
     mockedApiFetch.mockResolvedValue({ version: 1, label: 'Version 1', elements: [] })
     const snapshot = await publishLayout('loc-1')
     expect(mockedApiFetch).toHaveBeenCalledWith(

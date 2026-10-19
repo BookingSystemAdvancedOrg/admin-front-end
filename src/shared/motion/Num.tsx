@@ -40,22 +40,33 @@ export function Num({ children, className, delayMs = 0 }: { children: string | n
     played.current = true
     const start = performance.now() + delayMs
     let raf = 0
+    let finished = false
+    let current = from
     const frame = (now: number) => {
       const p = easeOutExpo((now - start) / DURATION_MS)
       if (p >= 1) {
         el.textContent = text
         shown.current = to
+        finished = true
         raf = 0
         return
       }
-      el.textContent = formatStatValue(parsed, from + (to - from) * p)
+      current = from + (to - from) * p
+      el.textContent = formatStatValue(parsed, current)
       raf = requestAnimationFrame(frame)
     }
     el.textContent = formatStatValue(parsed, from)
     raf = requestAnimationFrame(frame)
     return () => {
       if (raf) cancelAnimationFrame(raf)
-      shown.current = to
+      // Avbruten innan målet (React StrictMode kör effekten två gånger i
+      // utveckling): nästa körning får räkna klart från där den var.
+      if (finished) {
+        shown.current = to
+      } else {
+        played.current = false
+        shown.current = current
+      }
     }
   }, [text, delayMs, allowed])
 

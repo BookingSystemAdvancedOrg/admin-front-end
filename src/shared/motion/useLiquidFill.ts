@@ -226,6 +226,9 @@ export function useLiquidFill(
       if (raf) cancelAnimationFrame(raf)
       ro?.disconnect()
       liquidRef.current = null
+      // Avbruten innan den var full (React StrictMode kör effekten två
+      // gånger i utveckling): nästa körning får fylla på nytt.
+      if (!finished) playedRef.current = false
     }
   }, [active, enabled, index, fillMs, staggerMs, pourAt, reveal, hostRef, canvasRef])
 

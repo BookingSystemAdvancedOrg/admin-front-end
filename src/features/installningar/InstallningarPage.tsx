@@ -54,6 +54,7 @@ import {
 } from '../../shared/location'
 import { useTenant } from '../../shared/tenant'
 import { Loading } from '../../shared/Loading'
+import { PhoneInput } from '../../shared/PhoneInput'
 
 const ROLE_LABEL: Record<User['role'], string> = {
   staff: 'Personal',
@@ -460,13 +461,7 @@ export default function InstallningarPage() {
             </div>
             <div className="form-field">
               <label htmlFor="rp-phone">Telefon</label>
-              <input
-                id="rp-phone"
-                type="tel"
-                placeholder="+46701234567"
-                value={profile.phone}
-                onChange={(e) => updateProfile('phone', e.target.value)}
-              />
+              <PhoneInput id="rp-phone" value={profile.phone} onChange={(v) => updateProfile('phone', v)} />
             </div>
             <div className="form-field">
               <label htmlFor="rp-address">Adress</label>

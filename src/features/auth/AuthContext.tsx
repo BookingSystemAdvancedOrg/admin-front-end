@@ -7,6 +7,7 @@ import {
   completeNewPassword,
   getAccessToken,
   getCurrentSession,
+  onSignedOutElsewhere,
   signIn,
   signOut,
 } from './cognito'
@@ -110,9 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('signed-in')
   }, [])
 
-  const logout = useCallback(() => {
-    clearMockSession()
-    signOut()
+  const forgetUser = useCallback(() => {
     // Nästa inloggning (kanske en annan restaurang) börjar från noll.
     resetTenantStore()
     pendingChallenge.current = null
@@ -122,6 +121,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setGroups([])
     setStatus('signed-out')
   }, [])
+
+  const logout = useCallback(() => {
+    clearMockSession()
+    // Inte väntat på: sidan visar utloggat direkt. Når anropet inte servern
+    // loggar cognito.ts ut vid nästa start i stället för att logga in igen.
+    void signOut()
+    forgetUser()
+  }, [forgetUser])
+
+  // Utloggad i en annan flik: visa inloggningen här också.
+  useEffect(() => onSignedOutElsewhere(forgetUser), [forgetUser])
 
   // Access-tokenen, inte ID-tokenen - det är den API:ts authorizer godtar.
   const getToken = useCallback(async () => {

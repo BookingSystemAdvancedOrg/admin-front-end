@@ -1,4 +1,8 @@
-const STORAGE_KEY = 'admin-mock-session'
+import { MOCK_SESSION_KEY } from '../../shared/storageRegistry'
+
+// Bara i npm run dev (finns inte i produktionsbygget), därför inte i
+// registrets tabell.
+const STORAGE_KEY = MOCK_SESSION_KEY
 
 /**
  * Dev-inloggningens uppgifter. Vite ersätter `import.meta.env.DEV` med

@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { useAuth } from '../features/auth/useAuth'
 import { ApiError, apiFetch, isApiConfigured } from './api'
+import { LEGACY_LOCATION_KEY, LOCATION_KEY_PREFIX } from './storageRegistry'
 
 /**
  * Den inloggade restaurangen (tenant) - GET /tenant.
@@ -190,8 +191,7 @@ export function resetTenantStore(): void {
 
 // Vald plats minns per restaurang, så en delad dator aldrig bär med sig en
 // annan restaurangs plats-id. Den gamla, globala nyckeln städas bort.
-const LEGACY_LOCATION_KEY = 'admin-location-id'
-const locationKey = (tenantId: string) => `admin-location-id:${tenantId}`
+const locationKey = (tenantId: string) => `${LOCATION_KEY_PREFIX}${tenantId}`
 
 function readStoredLocation(tenantId: string): string | null {
   try {

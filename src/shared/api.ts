@@ -1,14 +1,24 @@
 import { getAccessToken } from '../features/auth/cognito'
 
 /**
- * Bas-URL till backend-API:t (API Gateway). Sätts i .env lokalt och i
+ * Bas-URL till backend-API:t. VITE_API_BASE_URL sätts i .env lokalt och i
  * .github/config/project.env för deploy - se docs/BACKEND-KOPPLING.md.
  * Så länge den inte är satt kör alla sidor på mockdata i respektive
  * features-mapps data.ts.
+ *
+ * I det deployade bygget går API:t alltid via /api på appens egen adress
+ * (CloudFront skickar vidare till API Gateway). Samma origin är det som gör
+ * att inloggningens refresh-token kan ligga i en HttpOnly-cookie, och appen
+ * behöver ingen CORS. I `npm run dev` gör vite.config.ts samma sak med sin
+ * proxy.
  */
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as
-  | string
-  | undefined
+const CONFIGURED_API = import.meta.env.VITE_API_BASE_URL as string | undefined
+
+export const API_BASE_URL: string | undefined = CONFIGURED_API
+  ? import.meta.env.PROD
+    ? '/api'
+    : CONFIGURED_API
+  : undefined
 
 export function isApiConfigured(): boolean {
   return Boolean(API_BASE_URL)

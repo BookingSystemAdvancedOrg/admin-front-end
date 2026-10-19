@@ -108,9 +108,16 @@ Tips: det tillfälliga lösenordet har en giltighetstid (standard 7 dagar).
 Går den ut visar appen ett felmeddelande - skicka då en ny inbjudan
 (Users → välj användaren → "Reset password"/skapa om användaren).
 
-Sessionen (JWT-tokens) sparas av Cognito-biblioteket i webbläsarens
-localStorage och förnyas automatiskt, så personalen förblir inloggad tills de
-loggar ut eller refresh-tokenen går ut (standard 30 dagar).
+Sessionen: refresh-tokenen ligger i en HttpOnly-cookie (`__Secure-booqy_rt`,
+satt av manage-auth, bara för `/api/auth` på appens egen adress) som inget
+skript kan läsa. Access- och ID-tokenen (1 timme) finns bara i minnet och
+förnyas automatiskt via cookien, även efter omladdning eller i en ny flik.
+Personalen förblir inloggad tills de loggar ut eller i 12 timmar; refresh-
+tokenen byts ut vid varje förnyelse. Ingenting om inloggningen sparas i
+localStorage eller sessionStorage. Därför går appen i det deployade bygget mot
+API:t via `/api` på sin egen adress (CloudFront), inte direkt mot API Gateway.
+Allt appen sparar i webbläsaren listas i `src/shared/storageRegistry.ts` och
+visas på sidan `/cookies`.
 
 ## 3. Anropa ert API med inloggningen
 

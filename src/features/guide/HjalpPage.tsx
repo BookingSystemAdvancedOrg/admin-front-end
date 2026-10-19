@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useTenant } from '../../shared/tenant'
 import { useGuide } from './Guide'
@@ -41,6 +42,16 @@ export default function HjalpPage() {
               </li>
             ))}
           </ul>
+        </section>
+
+        <section className="admin-card table-card">
+          <h2 className="card-title">Cookies och lagring</h2>
+          <p className="cell-muted">
+            Appen sparar bara det som behövs för att du ska vara inloggad och för dina egna val.{' '}
+            <Link className="card-link" to="/cookies">
+              Se vad som sparas
+            </Link>
+          </p>
         </section>
       </div>
     </>

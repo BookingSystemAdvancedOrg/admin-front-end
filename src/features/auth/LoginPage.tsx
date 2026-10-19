@@ -109,6 +109,10 @@ export default function LoginPage() {
           mejlades till dig.
         </p>
       )}
+
+      <Link className="auth-link auth-link--quiet" to="/cookies">
+        Cookies och lagring
+      </Link>
     </AuthLayout>
   )
 }

@@ -8,6 +8,8 @@ const COLUMNS = 48
 export interface LiquidFillOptions {
   /** Kör animationen (false = vänta, t.ex. tills datan kommit). */
   active: boolean
+  /** false: ingen rörelse alls, visa slutläget (sidan har redan visats). */
+  enabled?: boolean
   /** Ordningsnummer: varje ruta börjar lite efter den förra. */
   index?: number
   /** Hur länge påfyllningen tar. */
@@ -37,7 +39,7 @@ export interface LiquidHandle {
 export function useLiquidFill(
   hostRef: RefObject<HTMLElement | null>,
   canvasRef: RefObject<HTMLCanvasElement | null>,
-  { active, index = 0, fillMs = 1500, staggerMs = 140, pourAt = 0.18, onProgress, onStatic }: LiquidFillOptions,
+  { active, enabled = true, index = 0, fillMs = 1500, staggerMs = 140, pourAt = 0.18, onProgress, onStatic }: LiquidFillOptions,
 ): LiquidHandle {
   const liquidRef = useRef<Liquid | null>(null)
   const wakeRef = useRef<() => void>(() => {})
@@ -53,7 +55,7 @@ export function useLiquidFill(
     const canvas = canvasRef.current
     if (!host || !canvas) return
     const ctx = canvas.getContext('2d')
-    if (!ctx || reducedMotion()) {
+    if (!ctx || !enabled || reducedMotion()) {
       host.classList.add('liquid--full')
       staticRef.current?.()
       return
@@ -214,7 +216,7 @@ export function useLiquidFill(
       ro?.disconnect()
       liquidRef.current = null
     }
-  }, [active, index, fillMs, staggerMs, pourAt, hostRef, canvasRef])
+  }, [active, enabled, index, fillMs, staggerMs, pourAt, hostRef, canvasRef])
 
   return {
     touch: (x, force) => {

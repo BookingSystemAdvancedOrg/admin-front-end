@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react'
 import { easeOutExpo, formatStatValue, parseStatValue, reducedMotion } from './countUp'
+import { useMotionAllowed } from './MotionScope'
 
 const DURATION_MS = 1100
 
 /**
  * Ett tal som räknas upp när det visas: rusar iväg från noll och saktar in
- * exponentiellt ju närmare det riktiga värdet det kommer. Ändras värdet
- * senare (en lista hämtas om) räknar det från det gamla till det nya.
+ * exponentiellt ju närmare det riktiga värdet det kommer. Bara en gång:
+ * första gången sidan visas i fliken (MotionScope); därefter, och när ett
+ * värde ändras senare, står talet bara där.
  *
  * `children` är den färdigformaterade texten ("1 250 kr", "12,50 kr",
  * "6,9 %"); prefix och suffix följer med och den sista bildrutan är exakt
@@ -16,12 +18,14 @@ export function Num({ children, className, delayMs = 0 }: { children: string | n
   const text = String(children)
   const ref = useRef<HTMLSpanElement>(null)
   const shown = useRef<number | null>(null)
+  const allowed = useMotionAllowed()
+  const played = useRef(false)
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
     const parsed = parseStatValue(text)
-    if (!parsed || reducedMotion()) {
+    if (!parsed || !allowed || played.current || reducedMotion()) {
       el.textContent = text
       shown.current = parsed?.value ?? null
       return
@@ -32,6 +36,7 @@ export function Num({ children, className, delayMs = 0 }: { children: string | n
       el.textContent = text
       return
     }
+    played.current = true
     const start = performance.now() + delayMs
     let raf = 0
     const frame = (now: number) => {
@@ -51,7 +56,7 @@ export function Num({ children, className, delayMs = 0 }: { children: string | n
       if (raf) cancelAnimationFrame(raf)
       shown.current = to
     }
-  }, [text, delayMs])
+  }, [text, delayMs, allowed])
 
   // Tal har alltid samma bredd per siffra, så raden inte hoppar medan det räknas.
   return (

@@ -12,6 +12,7 @@ import './brand.css'
 import { Loading } from './Loading'
 import { useLiquidFill } from './motion/useLiquidFill'
 import { sidebarShouldPour } from './motion/sidebarPour'
+import { MotionScope } from './motion/MotionScope'
 
 // Sidebar-länkarna. `end: true` gör att '/' bara markeras aktiv på exakt
 // träff, annars skulle den lysa upp på alla undersidor också.
@@ -215,7 +216,9 @@ export function AdminLayout() {
             </section>
           </div>
         ) : status === 'ready' ? (
-          <Outlet key={locationId ?? 'no-location'} />
+          <MotionScope>
+            <Outlet key={locationId ?? 'no-location'} />
+          </MotionScope>
         ) : (
           <div className="admin-main">
             <Loading variant="screen" label="Hämtar restaurangen" />

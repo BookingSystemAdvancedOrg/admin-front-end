@@ -3,6 +3,7 @@ import type { PointerEvent, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Num } from './Num'
 import { useLiquidFill } from './useLiquidFill'
+import { useMotionAllowed } from './MotionScope'
 
 const STAGGER_MS = 140
 
@@ -29,7 +30,8 @@ export interface StatTileProps {
  * Nyckeltalsruta som fylls med vätska när siffran kommer (samma vatten som
  * Översikt): strålen häller i från ovan, ytan gungar och siffran räknas upp
  * exponentiellt till det riktiga värdet. Pekaren rör vid ytan. Texten
- * ligger alltid ovanpå. Med "minska rörelse" i systemet visas slutläget.
+ * ligger alltid ovanpå. Bara första gången sidan visas i fliken
+ * (MotionScope); sedan, och med "minska rörelse", visas slutläget direkt.
  */
 export function StatTile({
   label,
@@ -46,7 +48,8 @@ export function StatTile({
 }: StatTileProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const tileRef = useRef<HTMLElement>(null)
-  const liquid = useLiquidFill(tileRef, canvasRef, { active: !loading, index, staggerMs: STAGGER_MS })
+  const allowed = useMotionAllowed()
+  const liquid = useLiquidFill(tileRef, canvasRef, { active: !loading, enabled: allowed, index, staggerMs: STAGGER_MS })
 
   const touch = (e: PointerEvent<HTMLElement>, force: number) => {
     const tile = tileRef.current

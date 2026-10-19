@@ -72,10 +72,10 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
   },
   {
     name: MOTION_SEEN_KEY,
-    kind: 'sessionStorage',
+    kind: 'localStorage',
     setBy: 'Booqy',
-    purpose: 'Vilka sidor som redan visat sina animationer (siffror som räknas upp, rutor som fylls), så att de bara spelas en gång. Inga personuppgifter.',
-    lifetime: 'Tills fliken stängs',
+    purpose: 'Att animationerna (siffror som räknas upp, rutor som fylls) redan spelats den här inloggningen, så att de bara spelas en gång. Inga personuppgifter.',
+    lifetime: 'Tills du loggar ut',
     category: 'nödvändig',
   },
 ]

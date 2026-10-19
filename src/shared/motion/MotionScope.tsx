@@ -5,48 +5,60 @@ import { MOTION_SEEN_KEY } from '../storageRegistry'
 
 /**
  * Rörelsen (vätskan i rutorna, talen som räknas upp, sidomenyn som fylls)
- * sker en gång per sida: första gången sidan visas i fliken. Kommer man
- * tillbaka står siffrorna redan där. Varje flik under Marknadsföring räknas
- * som en egen sida. Listan över visade sidor ligger i sessionStorage (se
- * registret), så en omladdning av fliken inte spelar allt igen; en ny flik
- * börjar om.
+ * sker en gång per inloggning: på den första sidan som visas efter att man
+ * loggat in. Därefter står allt stilla, på alla sidor, tills man loggar ut
+ * och in igen. Flaggan ligger i localStorage (se registret), så en
+ * omladdning eller en ny flik inte spelar om den; utloggningen tar bort den.
+ * Laddningsindikatorn (Loading) och sparindikatorn (BusyBar) rör sig alltid.
  */
-const SIDEBAR = 'sidebar'
-let cache: Set<string> | null = null
-
-function load(): Set<string> {
-  if (cache) return cache
-  try {
-    const raw = sessionStorage.getItem(MOTION_SEEN_KEY)
-    cache = new Set(raw ? (JSON.parse(raw) as string[]) : [])
-  } catch {
-    cache = new Set()
-  }
-  return cache
-}
-
-function save(seen: Set<string>): void {
-  try {
-    sessionStorage.setItem(MOTION_SEEN_KEY, JSON.stringify([...seen]))
-  } catch {
-    // Utan lagring minns vi det i minnet så länge fliken lever.
-  }
-}
-
-export function claimFirstVisit(key: string): boolean {
-  const seen = load()
-  if (seen.has(key)) return false
-  seen.add(key)
-  save(seen)
-  return true
-}
-
-/** Sidomenyn fylls bara första gången i fliken. Svaret hålls tills
- * fyllningen är klar, så en omritning under tiden inte ändrar det. */
+let decision: boolean | null = null
 let sidebarDecision: boolean | null = null
 
+function hasPlayed(): boolean {
+  try {
+    return localStorage.getItem(MOTION_SEEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function markPlayed(): void {
+  try {
+    localStorage.setItem(MOTION_SEEN_KEY, '1')
+  } catch {
+    // Utan lagring minns vi det i minnet så länge sidan lever.
+  }
+}
+
+/**
+ * Får rörelsen spelas i den här sidladdningen? Första anropet efter
+ * inloggningen svarar ja och skriver flaggan; svaret hålls sedan för hela
+ * sidladdningen, så sidomenyn och sidan får samma besked.
+ */
+export function motionThisLogin(): boolean {
+  if (decision === null) {
+    decision = !hasPlayed()
+    if (decision) markPlayed()
+  }
+  return decision
+}
+
+/** Vid utloggning: nästa inloggning får rörelsen igen. */
+export function resetMotion(): void {
+  decision = null
+  sidebarDecision = null
+  try {
+    localStorage.removeItem(MOTION_SEEN_KEY)
+  } catch {
+    // ingen lagring
+  }
+}
+
+/** Sidomenyn fylls bara på den första sidan efter inloggningen. Svaret hålls
+ * tills fyllningen är klar, så en omritning under tiden inte ändrar det. */
+
 export function sidebarShouldPour(): boolean {
-  if (sidebarDecision === null) sidebarDecision = claimFirstVisit(SIDEBAR)
+  if (sidebarDecision === null) sidebarDecision = motionThisLogin()
   return sidebarDecision
 }
 
@@ -56,7 +68,7 @@ export function sidebarPourDone(): void {
 
 const MotionContext = createContext(true)
 
-/** Får den här sidan röra på sig just nu (första besöket)? */
+/** Får den här sidan röra på sig just nu (första sidan efter inloggningen)? */
 export function useMotionAllowed(): boolean {
   return useContext(MotionContext)
 }
@@ -65,20 +77,16 @@ export function MotionScope({ children }: { children: ReactNode }) {
   const { pathname, search } = useLocation()
   const tab = new URLSearchParams(search).get('flik') ?? ''
   const key = `${pathname}?${tab}`
-  // Beslutet tas en gång per sida och hålls medan man är kvar på den, så en
-  // omritning (listan hämtas om) aldrig startar om rörelsen.
-  const decided = useRef(new Map<string, boolean>())
-  if (!decided.current.has(key)) decided.current.set(key, claimFirstVisit(key))
-  return <MotionContext.Provider value={decided.current.get(key)!}>{children}</MotionContext.Provider>
+  // Beslutet tas när skalet monteras och gäller bara den sida man då står
+  // på; byter man sida (eller flik under Marknadsföring) är det över. En
+  // omritning av samma sida (listan hämtas om) startar aldrig om rörelsen.
+  const first = useRef<string | null>(null)
+  if (first.current === null) first.current = motionThisLogin() ? key : ''
+  else if (first.current !== key) first.current = '' // lämnade första sidan: över för gott
+  return <MotionContext.Provider value={first.current !== '' && first.current === key}>{children}</MotionContext.Provider>
 }
 
 /** Endast för tester. */
 export function resetMotionForTests(): void {
-  cache = null
-  sidebarDecision = null
-  try {
-    sessionStorage.removeItem(MOTION_SEEN_KEY)
-  } catch {
-    // ingen lagring
-  }
+  resetMotion()
 }

@@ -9,7 +9,7 @@ const STORAGE_KEY = MOCK_SESSION_KEY
  * `false` i produktionsbygget, så båda blir tomma strängar och själva
  * texterna försvinner ur den publika JS-bundeln.
  *
- * Det spelar roll: mock-inloggningen är visserligen avstängd i produktion
+ * Det spelar roll: mock-inloggningen är visserligen avstängd utanför dev
  * ändå, men en bundel som skyltar med "test@test.se / test1234" ger vem som
  * helst ett färdigt par att prova mot det RIKTIGA /auth/login - skulle
  * kontot någon gång ha skapats på riktigt i Cognito vore det en direkt väg in.

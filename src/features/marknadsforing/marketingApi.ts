@@ -350,10 +350,11 @@ export function cancelCampaign(id: string): Promise<{ status: 'cancelled' }> {
 
 // --- mottagare --------------------------------------------------------------
 
-export type SubscriberStatus = 'subscribed' | 'unsubscribed' | 'bounced' | 'complained'
+export type SubscriberStatus = 'subscribed' | 'pending' | 'unsubscribed' | 'bounced' | 'complained'
 
 export const SUBSCRIBER_STATUS_LABEL: Record<SubscriberStatus, string> = {
   subscribed: 'Prenumererar',
+  pending: 'Väntar på bekräftelse',
   unsubscribed: 'Avregistrerad',
   bounced: 'Studsar',
   complained: 'Markerade som skräppost',
@@ -361,6 +362,7 @@ export const SUBSCRIBER_STATUS_LABEL: Record<SubscriberStatus, string> = {
 
 export const SUBSCRIBER_STATUS_CLASS: Record<SubscriberStatus, string> = {
   subscribed: 'reserved',
+  pending: 'waiting',
   unsubscribed: 'invited',
   bounced: 'cancelled',
   complained: 'cancelled',
@@ -530,4 +532,77 @@ export function errorText(err: unknown, fallback: string): string {
     if (err.status === 400 && err.message) return `${fallback} (${err.message})`
   }
   return fallback
+}
+
+// --- välkomsterbjudande ---------------------------------------------------
+
+export interface OfferSettings {
+  enabled: boolean
+  percent: number
+  minOrderOre: number
+  validDays: number
+  headline: string
+  text: string
+  buttonLabel: string
+  imageMenuItemId: string | null
+  imageLocationId: string | null
+  delaySeconds: number
+  scrollPercent: number
+  pages: 'all' | 'menu'
+  frequency: 'visit' | 'page'
+  showOnMobile: boolean
+  activeFrom: string | null
+  activeTo: string | null
+}
+
+export interface OfferView extends OfferSettings {
+  imageUrl: string | null
+  dishName: string | null
+  updatedAt: string | null
+  stats: { views: number; signups: number; redeemed: number; revenueOre: number; discountOre: number }
+}
+
+export function withPercent(text: string, percent: number): string {
+  return text.split('{procent}').join(String(percent))
+}
+
+export function getOfferSettings(): Promise<OfferView> {
+  return apiFetch<OfferView>('/marketing/offer')
+}
+
+export function saveOfferSettings(s: OfferSettings): Promise<OfferView> {
+  return apiFetch<OfferView>('/marketing/offer', {
+    method: 'PUT',
+    body: JSON.stringify({
+      ...s,
+      headline: s.headline.trim(),
+      text: s.text.trim(),
+      buttonLabel: s.buttonLabel.trim(),
+      activeFrom: s.activeFrom || null,
+      activeTo: s.activeTo || null,
+    }),
+  })
+}
+
+export function offerErrors(s: OfferSettings): string[] {
+  const out: string[] = []
+  if (!s.headline.trim()) out.push('Rubriken får inte vara tom.')
+  if (s.headline.trim().length > 60) out.push('Rubriken får vara högst 60 tecken.')
+  if (!s.text.trim()) out.push('Texten får inte vara tom.')
+  if (s.text.trim().length > 180) out.push('Texten får vara högst 180 tecken.')
+  if (!s.buttonLabel.trim()) out.push('Knappen behöver en text.')
+  if (s.buttonLabel.trim().length > 30) out.push('Knapptexten får vara högst 30 tecken.')
+  if (!Number.isInteger(s.minOrderOre) || s.minOrderOre < 0 || s.minOrderOre > 500000) {
+    out.push('Minsta belopp ska vara mellan 0 och 5 000 kr.')
+  }
+  if (s.activeFrom && s.activeTo && s.activeFrom > s.activeTo) out.push('Startdatum måste vara före slutdatum.')
+  // Felaktig procentsiffra i texten vore vilseledande reklam.
+  for (const text of [s.headline, s.text, s.buttonLabel]) {
+    for (const m of text.matchAll(/(\d{1,3})\s?%/g)) {
+      if (Number(m[1]) !== s.percent) {
+        out.push(`Texten säger ${m[1]} % men rabatten är ${s.percent} %. Skriv {procent} så stämmer siffran alltid.`)
+      }
+    }
+  }
+  return out
 }

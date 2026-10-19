@@ -6,12 +6,14 @@ import { TemplatesTab } from './TemplatesTab'
 import { CampaignsTab } from './CampaignsTab'
 import { SubscribersTab } from './SubscribersTab'
 import { LinksTab } from './LinksTab'
+import { OfferTab } from './OfferTab'
 import './marknadsforing.css'
 
 const TABS = [
   { id: 'oversikt', label: 'Översikt' },
   { id: 'kampanjer', label: 'Kampanjer' },
   { id: 'mallar', label: 'Mallar' },
+  { id: 'erbjudande', label: 'Välkomsterbjudande' },
   { id: 'mottagare', label: 'Mottagare' },
   { id: 'lankar', label: 'Länkar och QR' },
 ] as const
@@ -25,7 +27,10 @@ type TabId = (typeof TABS)[number]['id']
  *    vad de gav: bokningar, gäster, beställningar och omsättning.
  *  - Kampanjer: välj mall och målgrupp, testa, skicka nu eller schemalägg.
  *  - Mallar: e-postmallar byggda av block, med förhandsvisning.
- *  - Mottagare: gäster som kryssat i "erbjudanden" vid bokningen.
+ *  - Välkomsterbjudande: rabattkupongen på webbplatsen (e-post mot en kod
+ *    som gäller en gång), när och hur ofta den visas, och resultatet.
+ *  - Mottagare: gäster som sagt ja till erbjudanden (bokning, beställning,
+ *    catering eller välkomsterbjudandet).
  *  - Länkar och QR: spårbara länkar för Instagram, affischer och annat.
  *
  * Fliken står i adressen (?flik=), så en länk kan peka direkt på den.
@@ -87,6 +92,7 @@ export default function MarknadsforingPage() {
           {tab === 'oversikt' && <OverviewTab onOpen={select} />}
           {tab === 'kampanjer' && <CampaignsTab onOpen={select} />}
           {tab === 'mallar' && <TemplatesTab />}
+          {tab === 'erbjudande' && <OfferTab />}
           {tab === 'mottagare' && <SubscribersTab />}
           {tab === 'lankar' && <LinksTab primaryDomain={tenant?.primaryDomain ?? null} />}
         </div>

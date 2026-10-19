@@ -179,6 +179,7 @@ export default function BestallningarPage() {
         <p className="order-meta cell-muted">
           {order.customerName}
           {order.customerPhone ? ` · ${order.customerPhone}` : ''} · {kronor(order.totalAmount)}
+          {order.discount ? ` (rabatt ${order.discount.percent} %, kod ${order.discount.code})` : ''}
           {order.mode === 'pickup' && order.status !== 'ready' && order.readyEstimate
             ? ` · lovad ca ${clock(order.readyEstimate)}`
             : ''}

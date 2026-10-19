@@ -13,6 +13,13 @@ import {
 import type { Subscriber, SubscriberStatus } from './marketingApi'
 import { useEscape } from './useEscape'
 
+const CONSENT_SOURCE: Record<string, string> = {
+  booking: 'Vid bokning',
+  order: 'Vid beställning',
+  catering: 'Cateringförfrågan',
+  welcome_offer: 'Välkomsterbjudandet',
+}
+
 /**
  * Gäster som kryssat i "erbjudanden" när de bokade. Ägaren kan avregistrera
  * någon (t.ex. efter ett samtal), radera en person helt (GDPR) och ladda ned
@@ -111,6 +118,7 @@ export function SubscribersTab() {
                 setStatus(e.target.value as SubscriberStatus | '')
               }}>
               <option value="subscribed">Prenumererar</option>
+              <option value="pending">Väntar på bekräftelse</option>
               <option value="unsubscribed">Avregistrerade</option>
               <option value="bounced">Studsar</option>
               <option value="complained">Markerade som skräppost</option>
@@ -149,7 +157,10 @@ export function SubscribersTab() {
                       {s.name && <div className="cell-muted">{s.email}</div>}
                     </td>
                     <td><span className={`status-badge ${SUBSCRIBER_STATUS_CLASS[s.status]}`}>{SUBSCRIBER_STATUS_LABEL[s.status]}</span></td>
-                    <td className="cell-muted">{formatDateTime(s.consentAt)}</td>
+                    <td className="cell-muted">
+                      {formatDateTime(s.consentAt)}
+                      {s.consentSource && <div>{CONSENT_SOURCE[s.consentSource] ?? s.consentSource}</div>}
+                    </td>
                     <td className="cell-muted">{s.lastVisit ? s.lastVisit.slice(0, 10) : '-'}</td>
                     <td className="mk-row-actions">
                       {s.status === 'subscribed' && (

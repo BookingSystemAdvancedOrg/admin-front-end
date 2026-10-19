@@ -13,7 +13,7 @@ import { Loading } from './Loading'
 
 // Sidebar-länkarna. `end: true` gör att '/' bara markeras aktiv på exakt
 // träff, annars skulle den lysa upp på alla undersidor också.
-const NAV: { to: string; label: string; tour: string; end?: boolean; feature?: string }[] = [
+const NAV: { to: string; label: string; tour: string; end?: boolean; feature?: string; ownerOnly?: boolean }[] = [
   { to: '/', label: 'Översikt', tour: 'nav-oversikt', end: true },
   { to: '/bokningar', label: 'Bokningar', tour: 'nav-bokningar' },
   // Bara för restauranger vars plan har matbeställning.
@@ -22,6 +22,8 @@ const NAV: { to: string; label: string; tour: string; end?: boolean; feature?: s
   // Förfrågningar; inställningar och rabatter nås därifrån (/cateringkalkyl).
   { to: '/catering', label: 'Catering', tour: 'nav-catering', feature: 'catering' },
   { to: '/layout', label: 'Layout', tour: 'nav-layout' },
+  // Statistik och e-postutskick; bara ägare, och bara med marknadsföring i planen.
+  { to: '/marknadsforing', label: 'Marknadsföring', tour: 'nav-marknadsforing', feature: 'marketing', ownerOnly: true },
   { to: '/installningar', label: 'Inställningar', tour: 'nav-installningar' },
 ]
 
@@ -109,7 +111,9 @@ export function AdminLayout() {
 
         <nav className="admin-nav" aria-label="Huvudmeny">
           {NAV.filter(
-            (item) => !item.feature || Boolean(tenant?.entitlements.features[item.feature]),
+            (item) =>
+              (!item.feature || Boolean(tenant?.entitlements.features[item.feature])) &&
+              (!item.ownerOnly || tenant?.role === 'owner_user'),
           ).map((item) => (
             <NavLink
               key={item.to}

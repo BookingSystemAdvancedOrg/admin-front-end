@@ -15,7 +15,7 @@ export interface GuideStep {
   title: string
   text: string
   ownerOnly?: boolean
-  feature?: 'ordering' | 'catering'
+  feature?: 'ordering' | 'catering' | 'marketing'
   /** Bara när restaurangen har flera platser (platsväljaren). */
   multiLocation?: boolean
   /** Rubrik i Hjälp-sidans lista (bara på stegen som beskriver en hel del). */
@@ -290,6 +290,19 @@ export const GUIDE_STEPS: GuideStep[] = [
     target: 'layout-publish',
     title: 'Publicera',
     text: 'Ändringar sparas som utkast. När du publicerar ser gästerna den nya planritningen.',
+  },
+
+  // --- Marknadsföring --------------------------------------------------------
+  {
+    id: 'marknadsforing',
+    route: '/marknadsforing',
+    target: 'nav-marknadsforing',
+    feature: 'marketing',
+    ownerOnly: true,
+    section: 'Marknadsföring',
+    title: 'Marknadsföring',
+    text:
+      'Se varifrån besökarna på er webbplats kommer och vad det ger i bokningar, utan cookies. Skicka nyhetsbrev och erbjudanden till gäster som själva bett om det.',
   },
 
   // --- Hjälp -----------------------------------------------------------------

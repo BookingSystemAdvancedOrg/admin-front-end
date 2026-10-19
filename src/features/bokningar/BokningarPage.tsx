@@ -20,6 +20,7 @@ import {
 import type { Reservation } from './bookingsApi'
 import { tableNames, useTables } from '../../shared/tables'
 import './bokningar.css'
+import { Loading } from '../../shared/Loading'
 
 const REFRESH_MS = 60_000
 
@@ -151,11 +152,13 @@ export default function BokningarPage() {
               </button>
               <div className="day-nav-label">
                 <h2 className="card-title">{date === today ? `Idag · ${dayLabel(date)}` : dayLabel(date)}</h2>
-                <span className="cell-muted">
-                  {loading
-                    ? 'Hämtar…'
-                    : `${active.length} ${active.length === 1 ? 'bokning' : 'bokningar'} · ${guests} gäster`}
-                </span>
+                {loading ? (
+                  <Loading variant="inline" />
+                ) : (
+                  <span className="cell-muted">
+                    {`${active.length} ${active.length === 1 ? 'bokning' : 'bokningar'} · ${guests} gäster`}
+                  </span>
+                )}
               </div>
               <button
                 type="button"

@@ -1,0 +1,165 @@
+/* Laddningsindikatorn: orderlappen som skrivs (se Loading.tsx).
+   Ett kvitto matas ut ur springan, raderna skrivs en i taget, lappen rivs av
+   och nästa matas ut. Hela loopen är 2,6 s. */
+
+.loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  vertical-align: middle;
+  color: var(--muted);
+}
+
+.loading--block {
+  display: flex;
+  padding: 14px 0;
+}
+
+.loading--screen {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  justify-content: center;
+  min-height: 60svh;
+}
+
+.loading-label {
+  font: 500 12px/1 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.loading--inline {
+  gap: 8px;
+}
+
+.loading--inline .loading-label {
+  text-transform: none;
+  letter-spacing: 0;
+  font: inherit;
+}
+
+/* Skrivaren: springan överst, lappen kommer ut under. */
+.loading-printer {
+  position: relative;
+  display: inline-block;
+  width: 56px;
+  height: 66px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.loading--inline .loading-printer {
+  width: 18px;
+  height: 20px;
+}
+
+.loading-slot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--ink);
+  z-index: 2;
+}
+
+.loading--inline .loading-slot {
+  height: 3px;
+}
+
+.loading-slip {
+  position: absolute;
+  top: 5px;
+  left: 6px;
+  right: 6px;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 6px;
+  background: #fbfaf6;
+  box-shadow: inset 0 0 0 1px var(--border);
+  /* Riven underkant, som kvittot. */
+  -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 6px 3px repeat-x,
+    linear-gradient(#000 0 0) top / 100% calc(100% - 3px) no-repeat;
+  mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 6px 3px repeat-x,
+    linear-gradient(#000 0 0) top / 100% calc(100% - 3px) no-repeat;
+  animation: loading-feed 2.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.loading--inline .loading-slip {
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  gap: 2px;
+  padding: 3px 2px;
+}
+
+.loading--inline .loading-line--head,
+.loading--inline .loading-line--sum {
+  height: 2px;
+}
+
+.loading-line {
+  display: block;
+  height: 3px;
+  width: 100%;
+  border-radius: 1px;
+  background: var(--ink);
+  opacity: 0.75;
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: loading-write 2.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.loading--inline .loading-line {
+  height: 2px;
+}
+
+.loading-line--head {
+  width: 55%;
+  height: 4px;
+}
+
+.loading-line--short {
+  width: 70%;
+}
+
+.loading-line--sum {
+  width: 45%;
+  margin-left: auto;
+  transform-origin: right center;
+  height: 4px;
+}
+
+/* Raderna skrivs i tur och ordning medan lappen ligger stilla. */
+.loading-line:nth-child(1) { animation-delay: 0ms; }
+.loading-line:nth-child(2) { animation-delay: 160ms; }
+.loading-line:nth-child(3) { animation-delay: 320ms; }
+.loading-line:nth-child(4) { animation-delay: 480ms; }
+.loading-line:nth-child(5) { animation-delay: 700ms; }
+
+@keyframes loading-feed {
+  0% { transform: translateY(-100%); }
+  28% { transform: translateY(0); }
+  84% { transform: translateY(0); opacity: 1; }
+  92% { transform: translateY(8px); opacity: 0; }
+  100% { transform: translateY(-100%); opacity: 0; }
+}
+
+@keyframes loading-write {
+  0%, 30% { transform: scaleX(0); }
+  44% { transform: scaleX(1); }
+  84% { transform: scaleX(1); opacity: 0.75; }
+  92%, 100% { transform: scaleX(1); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-slip,
+  .loading-line {
+    animation: none;
+    transform: none;
+  }
+}

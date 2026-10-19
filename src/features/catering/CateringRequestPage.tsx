@@ -22,6 +22,7 @@ import {
 import type { CateringRequest, OfferInput } from './cateringApi'
 import { MAX_ITEM_PRICE_KR } from '../meny/menuApi'
 import './catering.css'
+import { Loading } from '../../shared/Loading'
 
 const EDITABLE = ['requested', 'change_requested', 'offer_sent']
 
@@ -122,7 +123,7 @@ export default function CateringRequestPage() {
       <>
         <AdminTopbar title="Catering" />
         <main className="admin-main">
-          <p className="cell-muted">Hämtar förfrågan…</p>
+          <Loading label="Hämtar förfrågan" />
         </main>
       </>
     )

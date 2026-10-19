@@ -16,6 +16,7 @@ import {
   sortDays,
 } from './bookingRules'
 import type { Draft } from './bookingRules'
+import { Loading } from '../../shared/Loading'
 
 /**
  * Avvikande öppettider för den valda platsen (backend shared/booking_rules.py):
@@ -180,7 +181,7 @@ export function SpecialDaysCard({
             {error}
           </p>
         ) : (
-          <p className="cell-muted">Hämtar…</p>
+          <Loading />
         )
       ) : (
         <form onSubmit={save} className="notifications-form">

@@ -9,6 +9,7 @@ import { LogoutConfirm } from './LogoutConfirm'
 import type { TenantErrorCode } from './tenant'
 import './admin.css'
 import './brand.css'
+import { Loading } from './Loading'
 
 // Sidebar-länkarna. `end: true` gör att '/' bara markeras aktiv på exakt
 // träff, annars skulle den lysa upp på alla undersidor också.
@@ -186,9 +187,7 @@ export function AdminLayout() {
           <Outlet key={locationId ?? 'no-location'} />
         ) : (
           <div className="admin-main">
-            <p className="cell-muted" aria-live="polite">
-              Hämtar restaurangen…
-            </p>
+            <Loading variant="screen" label="Hämtar restaurangen" />
           </div>
         )}
       </div>

@@ -6,6 +6,7 @@ import { useAuth } from '../auth/useAuth'
 import { NEEDS_OWNER, STATUS_LABEL, formatDate, kronor, listRequests, statusClass } from './cateringApi'
 import type { CateringStatus, RequestSummary } from './cateringApi'
 import './catering.css'
+import { Loading } from '../../shared/Loading'
 
 type Filter = 'aktiva' | 'alla'
 const ACTIVE: CateringStatus[] = ['requested', 'offer_sent', 'change_requested', 'signed', 'confirmed', 'delivered']
@@ -55,7 +56,7 @@ export default function CateringPage() {
       />
       <main className="admin-main">
         {!locationId ? (
-          <p className="cell-muted">{resolving ? 'Hämtar platsen…' : 'Ingen plats är vald.'}</p>
+          resolving ? <Loading label="Hämtar platsen" /> : <p className="cell-muted">Ingen plats är vald.</p>
         ) : (
           <section className="admin-card table-card" data-tour="catering-list">
             <div className="card-head">
@@ -66,7 +67,7 @@ export default function CateringPage() {
               </select>
             </div>
             {error && <p className="form-error" role="alert">Kunde inte hämta förfrågningarna.</p>}
-            {rows === null && !error && <p className="cell-muted">Hämtar…</p>}
+            {rows === null && !error && <Loading />}
             {rows !== null && visible.length === 0 && (
               <p className="cell-muted">
                 Inga {filter === 'aktiva' ? 'pågående ' : ''}cateringförfrågningar. Gäster skickar dem från

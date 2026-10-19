@@ -32,6 +32,7 @@ import {
   todayIn,
 } from '../bokningar/bookingsApi'
 import type { Reservation } from '../bokningar/bookingsApi'
+import { Loading } from '../../shared/Loading'
 
 // Genvägskorten längst ned som länkar till de andra sidorna.
 const QUICK_LINKS: { to: string; icon: QuickLinkIconName; label: string }[] = [
@@ -264,7 +265,7 @@ export default function OversiktPage() {
             ) : (
               <p className="admin-empty">
                 {loading
-                  ? 'Hämtar…'
+                  ? <Loading variant="inline" />
                   : todayActive === null
                     ? 'Kunde inte hämta dagens bokningar.'
                     : `Inga bokningar idag för ${location?.name || 'platsen'}.`}

@@ -22,6 +22,7 @@ import {
 } from './menuApi'
 import type { MenuItemCreate } from './menuApi'
 import './meny.css'
+import { Loading } from '../../shared/Loading'
 
 type ModalState = { mode: 'add' } | { mode: 'edit'; id: string } | null
 type StatusFilter = 'alla' | 'active' | 'inactive'
@@ -272,7 +273,7 @@ export default function MenyPage() {
             <h2 className="card-title">Menyrätter</h2>
             <span className="cell-muted">
               {fetching
-                ? 'Hämtar meny…'
+                ? <Loading variant="inline" label="Hämtar meny" />
                 : hasActiveFilters
                   ? `${filteredDishes.length} av ${dishes.length} rätter · ${activeCount} aktiva totalt`
                   : `${dishes.length} rätter · ${activeCount} aktiva`}

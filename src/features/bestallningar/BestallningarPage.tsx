@@ -13,6 +13,7 @@ import {
 } from './ordersApi'
 import type { Order, OrderingState, StaffMove } from './ordersApi'
 import './bestallningar.css'
+import { Loading } from '../../shared/Loading'
 
 /** Hur ofta listan hämtas om (köksskärmen står öppen hela kvällen). */
 export const POLL_MS = 10_000
@@ -227,7 +228,7 @@ export default function BestallningarPage() {
       <AdminTopbar title="Beställningar" actions={ordering ? pauseControls : undefined} />
       <div className="admin-main">
         {!locationId ? (
-          <p className="cell-muted">{resolving ? 'Hämtar platsen…' : 'Ingen plats är vald.'}</p>
+          resolving ? <Loading label="Hämtar platsen" /> : <p className="cell-muted">Ingen plats är vald.</p>
         ) : (
           <>
             {ordering && !ordering.open && (
@@ -253,7 +254,7 @@ export default function BestallningarPage() {
               </p>
             )}
             {orders === null && !loadError ? (
-              <p className="cell-muted">Hämtar beställningar…</p>
+              <Loading label="Hämtar beställningar" />
             ) : (
               <div className="orders-board" data-tour="orders-board">
                 {COLUMNS.map((column) => {

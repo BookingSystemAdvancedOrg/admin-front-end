@@ -14,6 +14,7 @@ import {
 } from './bookingRules'
 import type { ComboDraft, RowState } from './bookingRules'
 import '../bokningar/bokningar.css'
+import { Loading } from '../../shared/Loading'
 
 /**
  * Bord vid onlinebokning för den valda platsen (backend shared/booking_rules.py).
@@ -168,7 +169,7 @@ export function TableRulesCard({
           Kunde inte hämta planritningen.
         </p>
       ) : !tables || !saved ? (
-        <p className="cell-muted">Hämtar…</p>
+        <Loading />
       ) : tables.length === 0 ? (
         <p className="cell-muted">Publicera en planritning med bord först (Planritning).</p>
       ) : (

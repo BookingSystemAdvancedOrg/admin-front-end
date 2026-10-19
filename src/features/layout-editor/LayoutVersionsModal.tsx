@@ -6,6 +6,7 @@ import {
   listLayoutVersions,
 } from './layoutApi'
 import type { LayoutActivation, PublishedLayoutSnapshot } from './layoutApi'
+import { Loading } from '../../shared/Loading'
 
 /** "2026-10-05T01:00:00Z" -> "5 oktober 2026, 03:00" i lokal tid. */
 function formatMoment(iso: string): string {
@@ -192,7 +193,7 @@ export function LayoutVersionsModal({
           </p>
         )}
 
-        {versions === null && <p className="cell-muted">Hämtar versioner…</p>}
+        {versions === null && <Loading label="Hämtar versioner" />}
 
         {versions?.length === 0 && !error && (
           <p className="cell-muted">

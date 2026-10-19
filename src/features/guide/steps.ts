@@ -282,7 +282,7 @@ export const GUIDE_STEPS: GuideStep[] = [
     route: '/layout',
     target: 'layout-tools',
     title: 'Rita',
-    text: 'Välj ett verktyg: rita mark (väggar kommer automatiskt), lägg till fönster, entré och bord. Dra för att flytta.',
+    text: 'Välj ett verktyg (eller tryck dess bokstav): rita mark (väggar kommer automatiskt), lägg till fönster, entré och bord. Dra för att flytta, Cmd/Ctrl+Z ångrar. Tryck ? för alla kortkommandon.',
   },
   {
     id: 'layout-publish',

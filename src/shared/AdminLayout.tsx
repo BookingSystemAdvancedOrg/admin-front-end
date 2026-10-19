@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { BrandMark, BrandWordmark } from './BrandMark'
 import { useAuth } from '../features/auth/useAuth'
@@ -10,6 +10,8 @@ import type { TenantErrorCode } from './tenant'
 import './admin.css'
 import './brand.css'
 import { Loading } from './Loading'
+import { useLiquidFill } from './motion/useLiquidFill'
+import { sidebarShouldPour } from './motion/sidebarPour'
 
 // Sidebar-länkarna. `end: true` gör att '/' bara markeras aktiv på exakt
 // träff, annars skulle den lysa upp på alla undersidor också.
@@ -67,6 +69,22 @@ export function AdminLayout() {
   const [confirmLogout, setConfirmLogout] = useState(false)
   const cancelLogout = useCallback(() => setConfirmLogout(false), [])
 
+  // Första gången i fliken: väggen fylls med vinrött (samma vatten som
+  // nyckeltalsrutorna). Sidbyten däremellan rör den inte.
+  const [pour] = useState(sidebarShouldPour)
+  const sidebarRef = useRef<HTMLElement>(null)
+  const sidebarCanvas = useRef<HTMLCanvasElement>(null)
+  const [poured, setPoured] = useState(!pour)
+  const wall = useLiquidFill(sidebarRef, sidebarCanvas, {
+    active: pour && status === 'ready',
+    fillMs: 1900,
+    pourAt: 0.5,
+    onProgress: (_, done) => {
+      if (done) setPoured(true)
+    },
+    onStatic: () => setPoured(true),
+  })
+
   return (
     <GuideProvider
       user={sub ?? email ?? null}
@@ -78,7 +96,16 @@ export function AdminLayout() {
       autoStart={status === 'ready' && import.meta.env.MODE !== 'test'}
     >
     <div className="admin-shell">
-      <aside className="admin-sidebar">
+      <aside
+        ref={sidebarRef}
+        className={`admin-sidebar${poured ? ' admin-sidebar--full' : ' admin-sidebar--pouring'}`}
+        onPointerMove={(e) => {
+          if (poured || Math.random() > 0.2) return
+          const rect = e.currentTarget.getBoundingClientRect()
+          wall.touch((e.clientX - rect.left) / rect.width, 0.4)
+        }}
+      >
+        {pour && <canvas ref={sidebarCanvas} className="admin-sidebar-liquid" aria-hidden="true" />}
         <div className="admin-logo">
           <span className="admin-logo-badge" aria-hidden="true">
             <BrandMark />

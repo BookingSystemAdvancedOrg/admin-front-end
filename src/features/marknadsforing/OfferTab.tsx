@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { StatTile } from '../../shared/motion/StatTile'
 import type { FormEvent } from 'react'
 import { Loading } from '../../shared/Loading'
 import { useTenant } from '../../shared/tenant'
@@ -139,18 +140,14 @@ export function OfferTab() {
 
   return (
     <div className="mk-stack">
-      <section className="mk-tiles" aria-label="Resultat">
+      <section className="stats-row" aria-label="Resultat">
         {[
           { label: 'Visningar', value: st.views.toLocaleString('sv-SE'), note: 'Gånger kortet visats' },
           { label: 'Anmälningar', value: st.signups.toLocaleString('sv-SE'), note: `${percent(st.signups, st.views)} av visningarna` },
           { label: 'Använda koder', value: st.redeemed.toLocaleString('sv-SE'), note: `${percent(st.redeemed, st.signups)} av anmälningarna` },
           { label: 'Omsättning', value: kronorFromOre(st.revenueOre), note: `${kronorFromOre(st.discountOre)} i rabatt` },
-        ].map((t) => (
-          <div key={t.label} className="admin-card mk-tile">
-            <p className="mk-tile-label">{t.label}</p>
-            <p className="mk-tile-value">{t.value}</p>
-            <p className="mk-tile-note">{t.note}</p>
-          </div>
+        ].map((t, i) => (
+          <StatTile key={t.label} label={t.label} value={t.value} note={t.note} index={i} />
         ))}
       </section>
 

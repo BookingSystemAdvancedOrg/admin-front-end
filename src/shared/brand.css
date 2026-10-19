@@ -8,11 +8,41 @@
 /* --- Sidomenyn: den vinröda väggen -------------------------------------- */
 
 .admin-sidebar {
+  position: sticky;
+  isolation: isolate;
+  overflow: hidden;
   background: var(--ox);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   border-right: 0;
   color: var(--on-ox);
+}
+
+/* Första gången i fliken: väggen är tom (djupare, mattare röd) och fylls
+   med vinrött underifrån (AdminLayout, shared/motion/useLiquidFill). */
+.admin-sidebar--pouring {
+  background: #1d1516;
+  --liquid: 53, 0, 1;
+  --liquid-alpha: 1;
+  --liquid-edge: 220, 188, 183;
+}
+
+.admin-sidebar-liquid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.admin-sidebar > :not(.admin-sidebar-liquid) {
+  position: relative;
+  z-index: 1;
+}
+
+.admin-sidebar.liquid--full {
+  background: var(--ox);
 }
 
 .admin-logo {
@@ -172,7 +202,8 @@
 }
 
 /* Utan animation (reducerad rörelse eller ingen canvas): fylld direkt. */
-.stat-tile--full {
+.stat-tile--full,
+.stat-tile.liquid--full {
   background: linear-gradient(rgba(var(--liquid), var(--liquid-alpha)), rgba(var(--liquid), var(--liquid-alpha))), var(--surface);
 }
 
@@ -195,6 +226,24 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+/* En ruta som är en knapp: samma utseende som länkrutan. */
+button.stat-tile {
+  border: 1px solid var(--border);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.stat-tile-delta {
+  float: right;
+  font: 600 12px/1.3 var(--mono);
+  color: var(--success-ink);
+}
+
+.stat-tile-delta.down {
+  color: var(--danger-ink);
 }
 
 .stat-tile-action > span {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Num } from '../../shared/motion/Num'
 import type { FormEvent } from 'react'
 import { Loading } from '../../shared/Loading'
 import { useTenant } from '../../shared/tenant'
@@ -346,21 +347,21 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
                         {c.status === 'sent' && <div className="cell-muted">{formatDateTime(c.sentAt ?? c.finishedAt)}</div>}
                       </td>
                       <td>
-                        {sent}
+                        <Num>{sent}</Num>
                         {(s.bounced ?? 0) + (s.failed ?? 0) > 0 && (
                           <div className="cell-muted">{(s.bounced ?? 0) + (s.failed ?? 0)} kom inte fram</div>
                         )}
                       </td>
                       <td>
-                        {s.clicked ?? 0}
+                        <Num>{s.clicked ?? 0}</Num>
                         <div className="cell-muted">{percent(s.clicked ?? 0, sent)}</div>
                       </td>
                       <td>
-                        {s.bookings ?? 0}
+                        <Num>{s.bookings ?? 0}</Num>
                         {(s.guests ?? 0) > 0 && <div className="cell-muted">{s.guests} gäster</div>}
                       </td>
                       <td>
-                        {kronorFromOre(s.revenueOre ?? 0)}
+                        <Num>{kronorFromOre(s.revenueOre ?? 0)}</Num>
                         {(s.unsubscribed ?? 0) > 0 && <div className="cell-muted">{s.unsubscribed} avregistrerade</div>}
                       </td>
                       <td className="mk-row-actions">

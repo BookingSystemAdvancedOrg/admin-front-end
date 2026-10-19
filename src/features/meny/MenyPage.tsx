@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { StatTile } from '../../shared/motion/StatTile'
+import { Num } from '../../shared/motion/Num'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useLocationId } from '../../shared/location'
@@ -128,6 +130,16 @@ export default function MenyPage() {
   // medan platsen letas upp eller medan menyn för en känd plats laddas.
   const fetching = resolvingLocation || (Boolean(locationId) && loading)
   const activeCount = dishes.filter((d) => d.active).length
+  const withImage = dishes.filter((d) => d.imageKey).length
+  const avgPrice = activeCount
+    ? Math.round(dishes.filter((d) => d.active).reduce((sum, d) => sum + d.price, 0) / activeCount)
+    : 0
+  const tiles = [
+    { label: 'Rätter på menyn', value: String(dishes.length), note: `${new Set(dishes.map((d) => d.category)).size} kategorier` },
+    { label: 'Aktiva', value: String(activeCount), note: dishes.length ? `${dishes.length - activeCount} dolda för gästerna` : 'Lägg till din första rätt' },
+    { label: 'Med bild', value: String(withImage), note: dishes.length ? `${Math.round((withImage / dishes.length) * 100)} % av rätterna` : '-' },
+    { label: 'Snittpris', value: activeCount ? `${avgPrice} kr` : '-', note: 'Aktiva rätter' },
+  ]
   const editingDish =
     modal?.mode === 'edit' ? dishes.find((d) => d.id === modal.id) ?? null : null
   const canEdit = Boolean(locationId) && !readOnly
@@ -268,6 +280,11 @@ export default function MenyPage() {
             {MENU_ROUTES_MISSING_MESSAGE}
           </p>
         )}
+        <section className="stats-row" aria-label="Menyns siffror">
+          {tiles.map((t, i) => (
+            <StatTile key={t.label} {...t} loading={fetching} index={i} />
+          ))}
+        </section>
         <section className="admin-card table-card">
           <div className="card-head">
             <h2 className="card-title">Menyrätter</h2>
@@ -379,7 +396,7 @@ export default function MenyPage() {
                         {CATEGORY_LABEL[d.category]}
                       </span>
                     </td>
-                    <td className="cell-price">{d.price} kr</td>
+                    <td className="cell-price"><Num>{`${d.price} kr`}</Num></td>
                     <td>
                       <button
                         type="button"

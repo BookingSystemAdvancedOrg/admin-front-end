@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { StatTile } from '../../shared/motion/StatTile'
+import { Num } from '../../shared/motion/Num'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { isApiConfigured } from '../../shared/api'
 import { currentLocation, useTenant } from '../../shared/tenant'
@@ -107,7 +109,15 @@ export default function BokningarPage() {
   const active = items.filter((r) => ACTIVE_STATUSES.includes(r.status))
   const guests = active.reduce((sum, r) => sum + r.partySize, 0)
   const cancelledCount = items.length - items.filter((r) => !isCancelled(r.status)).length
+  const arrived = items.filter((r) => r.status === 'arrived').length
   const open = items.find((r) => r.reservationId === openId) ?? null
+  const dayWord = date === today ? 'idag' : 'den dagen'
+  const tiles = [
+    { label: 'Bokningar', value: String(active.length), note: `Aktiva ${dayWord}` },
+    { label: 'Gäster', value: String(guests), note: active.length ? `${(guests / active.length).toFixed(1).replace('.', ',')} per bokning` : 'Inga bokningar' },
+    { label: 'Anlända', value: String(arrived), note: active.length ? `${Math.round((arrived / active.length) * 100)} % av bokningarna` : 'Ingen än' },
+    { label: 'Avbokade', value: String(cancelledCount), note: cancelledCount ? 'Visa dem under listan' : 'Inga avbokningar' },
+  ]
 
   if (!isApiConfigured()) {
     return (
@@ -139,6 +149,11 @@ export default function BokningarPage() {
         }
       />
       <div className="admin-main">
+        <section className="stats-row" aria-label="Dagens siffror">
+          {tiles.map((t, i) => (
+            <StatTile key={t.label} {...t} loading={loading} index={i} />
+          ))}
+        </section>
         <section className="admin-card table-card">
           <div className="card-head bookings-head">
             <div className="day-nav" data-tour="booking-day">
@@ -156,7 +171,7 @@ export default function BokningarPage() {
                   <Loading variant="inline" />
                 ) : (
                   <span className="cell-muted">
-                    {`${active.length} ${active.length === 1 ? 'bokning' : 'bokningar'} · ${guests} gäster`}
+                    <Num>{active.length}</Num> {active.length === 1 ? 'bokning' : 'bokningar'} · <Num>{guests}</Num> gäster
                   </span>
                 )}
               </div>
@@ -231,7 +246,7 @@ export default function BokningarPage() {
                         <div className="cell-muted">{SOURCE_LABEL[r.source]}</div>
                       )}
                     </td>
-                    <td>{r.partySize}</td>
+                    <td><Num>{r.partySize}</Num></td>
                     <td>{tableNames(r.tableIds, labels)}</td>
                     <td>
                       <span className={`status-badge ${STATUS_CLASS[r.status]}`}>

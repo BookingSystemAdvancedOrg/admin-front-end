@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { StatTile } from '../../shared/motion/StatTile'
+import { Num } from '../../shared/motion/Num'
+import { revenueToday } from '../oversikt/overview'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useLocationId } from '../../shared/location'
 import { useAuth } from '../auth/useAuth'
@@ -122,6 +125,14 @@ export default function BestallningarPage() {
   const active = (orders ?? []).filter((o) => ['confirmed', 'preparing', 'ready'].includes(o.status))
   const done = (orders ?? []).filter((o) => o.status === 'completed' || o.status === 'cancelled')
   const paused = ordering?.reason === 'paused'
+  const revenue = revenueToday(orders)
+  const count = (status: string) => active.filter((o) => o.status === status).length
+  const tiles = [
+    { label: 'Nya', value: String(count('confirmed')), note: count('confirmed') ? 'Väntar på köket' : 'Inget nytt just nu', tone: count('confirmed') ? ('attention' as const) : undefined },
+    { label: 'Tillagas', value: String(count('preparing')), note: 'I köket' },
+    { label: 'Klara', value: String(count('ready')), note: 'Att hämta eller servera' },
+    { label: 'Omsättning idag', value: revenue ? kronor(revenue.amount) : '-', note: revenue ? `${revenue.count} betalda beställningar` : 'Kunde inte hämtas' },
+  ]
 
   const pauseControls = (
     <div className="orders-pause" data-tour="orders-pause">
@@ -178,7 +189,7 @@ export default function BestallningarPage() {
         {order.notes && <p className="order-notes">”{order.notes}”</p>}
         <p className="order-meta cell-muted">
           {order.customerName}
-          {order.customerPhone ? ` · ${order.customerPhone}` : ''} · {kronor(order.totalAmount)}
+          {order.customerPhone ? ` · ${order.customerPhone}` : ''} · <Num>{kronor(order.totalAmount)}</Num>
           {order.discount ? ` (rabatt ${order.discount.percent} %, kod ${order.discount.code})` : ''}
           {order.mode === 'pickup' && order.status !== 'ready' && order.readyEstimate
             ? ` · lovad ca ${clock(order.readyEstimate)}`
@@ -254,6 +265,11 @@ export default function BestallningarPage() {
                 Kunde inte hämta beställningarna. Försöker igen…
               </p>
             )}
+            <section className="stats-row" aria-label="Dagens siffror">
+              {tiles.map((t, i) => (
+                <StatTile key={t.label} {...t} loading={orders === null} index={i} />
+              ))}
+            </section>
             {orders === null && !loadError ? (
               <Loading label="Hämtar beställningar" />
             ) : (
@@ -263,7 +279,7 @@ export default function BestallningarPage() {
                   return (
                     <section key={column.status} className="orders-column" aria-label={column.title}>
                       <h2 className="orders-column-title">
-                        {column.title} <span className="cell-muted">{items.length}</span>
+                        {column.title} <span className="cell-muted"><Num>{items.length}</Num></span>
                       </h2>
                       {items.length ? items.map(card) : <p className="cell-muted">{column.empty}</p>}
                     </section>
@@ -279,7 +295,7 @@ export default function BestallningarPage() {
                 <ul>
                   {done.map((o) => (
                     <li key={o.orderId}>
-                      #{o.number} · {where(o)} · {o.customerName} · {kronor(o.totalAmount)} ·{' '}
+                      #{o.number} · {where(o)} · {o.customerName} · <Num>{kronor(o.totalAmount)}</Num> ·{' '}
                       {o.status === 'cancelled' ? 'Avbruten, återbetald' : `Klar ${clock(o.completedAt)}`}
                     </li>
                   ))}

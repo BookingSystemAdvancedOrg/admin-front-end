@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Num } from '../../shared/motion/Num'
 import { Link } from 'react-router-dom'
 import { QuickLinkIcon } from './QuickLinkIcon'
 import { StatTile } from './StatTile'
@@ -254,7 +255,7 @@ export default function OversiktPage() {
                   <li key={r.reservationId}>
                     <span className="cell-strong">{r.startTime}</span>
                     <span>
-                      {r.customerName || 'Gäst'} · {r.partySize} pers · {tableNames(r.tableIds, labels)}
+                      {r.customerName || 'Gäst'} · <Num>{r.partySize}</Num> pers · {tableNames(r.tableIds, labels)}
                     </span>
                     <span className={`status-badge ${STATUS_CLASS[r.status]}`}>
                       {STATUS_LABEL[r.status]}
@@ -303,7 +304,7 @@ export default function OversiktPage() {
             <h2 className="card-title">Kom igång</h2>
             {!loading && (
               <span className="cell-muted">
-                {remaining === 0 ? 'Kunde inte kontrollera allt' : `${remaining} kvar`}
+                {remaining === 0 ? 'Kunde inte kontrollera allt' : <><Num>{remaining}</Num> kvar</>}
               </span>
             )}
           </div>

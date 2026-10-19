@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { StatTile } from '../../shared/motion/StatTile'
+import { Num } from '../../shared/motion/Num'
 import { Loading } from '../../shared/Loading'
 import { useTenant } from '../../shared/tenant'
 import {
@@ -126,18 +128,16 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
 
       {data && (
         <>
-          <section className="mk-tiles" aria-label="Nyckeltal">
-            {tiles.map((tile) => (
-              <div key={tile.label} className="admin-card mk-tile">
-                <p className="mk-tile-label">{tile.label}</p>
-                <p className="mk-tile-value">
-                  {tile.value}
-                  {tile.delta && (
-                    <span className={tile.delta.startsWith('-') ? 'mk-delta down' : 'mk-delta'}>{tile.delta}</span>
-                  )}
-                </p>
-                <p className="mk-tile-note">{tile.note}</p>
-              </div>
+          <section className="stats-row" aria-label="Nyckeltal">
+            {tiles.map((tile, i) => (
+              <StatTile
+                key={tile.label}
+                label={tile.label}
+                value={tile.value}
+                note={tile.note}
+                index={i}
+                delta={tile.delta ?? undefined}
+              />
             ))}
           </section>
 
@@ -177,9 +177,9 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
                       {data.channels.map((c) => (
                         <tr key={c.channel}>
                           <td className="cell-strong">{channelLabel(c.channel)}</td>
-                          <td>{c.visits}</td>
-                          <td>{c.bookings}</td>
-                          <td>{kronorFromOre(c.revenueOre)}</td>
+                          <td><Num>{c.visits}</Num></td>
+                          <td><Num>{c.bookings}</Num></td>
+                          <td><Num>{kronorFromOre(c.revenueOre)}</Num></td>
                         </tr>
                       ))}
                     </tbody>
@@ -217,9 +217,9 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
                             {c.campaign}
                             <div className="cell-muted">{channelLabel(c.channel)}</div>
                           </td>
-                          <td>{c.visits}</td>
-                          <td>{c.bookings}</td>
-                          <td>{kronorFromOre(c.revenueOre)}</td>
+                          <td><Num>{c.visits}</Num></td>
+                          <td><Num>{c.bookings}</Num></td>
+                          <td><Num>{kronorFromOre(c.revenueOre)}</Num></td>
                         </tr>
                       ))}
                     </tbody>

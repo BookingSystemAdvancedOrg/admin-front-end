@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { easeOutCubic, formatStatValue, parseStatValue } from './countUp'
+import { easeOutCubic, easeOutExpo, formatStatValue, parseStatValue } from './countUp'
 
 describe('parseStatValue', () => {
   it('reads a plain count', () => {
@@ -38,5 +38,15 @@ describe('easeOutCubic', () => {
     expect(easeOutCubic(1)).toBe(1)
     expect(easeOutCubic(2)).toBe(1)
     expect(easeOutCubic(0.5)).toBeCloseTo(0.875)
+  })
+})
+
+describe('easeOutExpo', () => {
+  it('starts fast and lands exactly on 1', () => {
+    expect(easeOutExpo(0)).toBe(0)
+    expect(easeOutExpo(0.1)).toBeCloseTo(0.5, 2)
+    expect(easeOutExpo(0.5)).toBeGreaterThan(0.96)
+    expect(easeOutExpo(1)).toBe(1)
+    expect(easeOutExpo(2)).toBe(1)
   })
 })

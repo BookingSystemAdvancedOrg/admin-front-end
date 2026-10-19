@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { emptyFloor } from './data'
+import { UNITS_PER_METER } from './layoutApi'
 import type { Floor, TableElement } from './data'
 import {
   HISTORY_LIMIT,
@@ -11,8 +12,13 @@ import {
   panForZoom,
   pasteClip,
   record,
+  UNITS_PER_METRE,
+  formatMetres,
+  formatSize,
+  moveClipsTo,
   snapToGuides,
   tableRow,
+  wallTowards,
   turnTable,
   redo,
   startHistory,
@@ -74,6 +80,7 @@ describe('actionForKey', () => {
     expect(actionForKey({ key: '?' })).toEqual({ type: 'help' })
     expect(actionForKey({ key: 'R', shiftKey: true })).toEqual({ type: 'rotate' })
     expect(actionForKey({ key: 'a', metaKey: true })).toEqual({ type: 'select-all' })
+    expect(actionForKey({ key: 'Enter' })).toEqual({ type: 'confirm' })
   })
 
   it('maps single letters to tools, but not with modifiers', () => {
@@ -202,5 +209,38 @@ describe('snapToGuides', () => {
 
   it('does nothing outside the threshold', () => {
     expect(snapToGuides(box, [{ x: 300, y: 300, w: 60, h: 40 }], [], 8)).toEqual({ dx: 0, dy: 0, guides: [] })
+  })
+})
+
+describe('measurements', () => {
+  it('uses the same scale as the layout API', () => {
+    expect(UNITS_PER_METRE).toBe(UNITS_PER_METER)
+  })
+
+  it('shows metres with a Swedish decimal comma', () => {
+    expect(formatMetres(160)).toBe('3,2 m')
+    expect(formatMetres(20)).toBe('0,4 m')
+    expect(formatSize(200, 160)).toBe('4,0 × 3,2 m')
+  })
+})
+
+describe('moveClipsTo', () => {
+  it('moves the group so its centre lands on the point, on the grid', () => {
+    const clips = moveClipsTo(
+      [
+        { kind: 'table', table: table({ x: 0, y: 0 }) },
+        { kind: 'table', table: table({ id: 't2', x: 100, y: 0 }) },
+      ],
+      { x: 250, y: 103 },
+    )
+    expect(clips.map((c) => (c.kind === 'table' ? [c.table.x, c.table.y] : null))).toEqual([[200, 100], [300, 100]])
+  })
+})
+
+describe('wallTowards', () => {
+  it('follows the dominant direction and reports the far end', () => {
+    expect(wallTowards(0, 0, 100, 20)).toEqual({ dir: 'h', x: 0, y: 0, length: 100, end: { x: 100, y: 0 } })
+    expect(wallTowards(0, 0, -20, -140)).toEqual({ dir: 'v', x: 0, y: -140, length: 140, end: { x: 0, y: -140 } })
+    expect(wallTowards(40, 40, -60, 40)).toEqual({ dir: 'h', x: -60, y: 40, length: 100, end: { x: -60, y: 40 } })
   })
 })

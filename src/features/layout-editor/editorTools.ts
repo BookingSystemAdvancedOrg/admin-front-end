@@ -84,6 +84,7 @@ export type EditorAction =
   | { type: 'help' }
   | { type: 'rotate' }
   | { type: 'select-all' }
+  | { type: 'confirm' }
 
 /** Bokstav -> verktyg. Svenska ord där det går (Mark, Fönster, Entré, Kök). */
 export const TOOL_KEYS: Record<string, ShortcutTool> = {
@@ -144,6 +145,7 @@ export function actionForKey(e: KeyLike): EditorAction | null {
   if (e.key === '?') return { type: 'help' }
   if (e.key === 'Delete' || e.key === 'Backspace') return { type: 'delete' }
   if (e.key === 'Escape') return { type: 'escape' }
+  if (e.key === 'Enter') return { type: 'confirm' }
 
   const arrows: Record<string, [number, number]> = {
     ArrowLeft: [-1, 0],
@@ -431,4 +433,73 @@ export function snapToGuides(
     }
   }
   return { dx: sx.delta, dy: sy.delta, guides }
+}
+
+/* --- Mått i meter ------------------------------------------------------------ */
+
+/** Samma skala som layoutApi (UNITS_PER_METER): 50 editorenheter = 1 m. */
+export const UNITS_PER_METRE = 50
+
+/** 160 -> "3,2 m" (svensk decimal, en decimal räcker - rutnätet är 0,4 m). */
+export function formatMetres(units: number): string {
+  return `${(units / UNITS_PER_METRE).toFixed(1).replace('.', ',')} m`
+}
+
+/** Bredd × djup: "4,0 × 3,2 m". */
+export function formatSize(w: number, h: number): string {
+  const m = (u: number) => (u / UNITS_PER_METRE).toFixed(1).replace('.', ',')
+  return `${m(w)} × ${m(h)} m`
+}
+
+/* --- Klistra in på en viss plats ---------------------------------------------- */
+
+/**
+ * Flyttar klippen så att deras gemensamma mittpunkt hamnar på `at` -
+ * "Klistra in här" i högerklicksmenyn. Väggar hålls på rutnätet.
+ */
+export function moveClipsTo(clips: Clip[], at: { x: number; y: number }): Clip[] {
+  if (clips.length === 0) return clips
+  const centres = clips.map((c) =>
+    c.kind === 'table'
+      ? { x: c.table.x, y: c.table.y }
+      : c.kind === 'fixture'
+        ? { x: c.fixture.x, y: c.fixture.y }
+        : {
+            x: c.wall.x + (c.wall.dir === 'h' ? c.wall.length / 2 : 0),
+            y: c.wall.y + (c.wall.dir === 'v' ? c.wall.length / 2 : 0),
+          },
+  )
+  const cx = centres.reduce((a, c) => a + c.x, 0) / centres.length
+  const cy = centres.reduce((a, c) => a + c.y, 0) / centres.length
+  const dx = Math.round((at.x - cx) / GRID) * GRID
+  const dy = Math.round((at.y - cy) / GRID) * GRID
+  return clips.map((c) => {
+    if (c.kind === 'table') return { ...c, table: { ...c.table, x: c.table.x + dx, y: c.table.y + dy } }
+    if (c.kind === 'fixture') return { ...c, fixture: { ...c.fixture, x: c.fixture.x + dx, y: c.fixture.y + dy } }
+    return { ...c, wall: { ...c.wall, x: c.wall.x + dx, y: c.wall.y + dy } }
+  })
+}
+
+/* --- Väggar som en sammanhängande linje ---------------------------------------- */
+
+/**
+ * En vägg från (x0, y0) mot pekaren, alltid vågrät eller lodrät (det
+ * dominerande hållet), snappad till rutnätet. `x`/`y` är väggens
+ * startpunkt (vänster/övre änden) och `end` är änden vid pekaren - där
+ * nästa vägg i linjen börjar.
+ */
+export function wallTowards(
+  x0: number,
+  y0: number,
+  px: number,
+  py: number,
+): { dir: 'h' | 'v'; x: number; y: number; length: number; end: { x: number; y: number } } {
+  const dx = px - x0
+  const dy = py - y0
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    const length = Math.abs(dx)
+    return { dir: 'h', x: dx < 0 ? x0 - length : x0, y: y0, length, end: { x: x0 + dx, y: y0 } }
+  }
+  const length = Math.abs(dy)
+  return { dir: 'v', x: x0, y: dy < 0 ? y0 - length : y0, length, end: { x: x0, y: y0 + dy } }
 }

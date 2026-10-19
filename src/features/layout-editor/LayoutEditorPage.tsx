@@ -571,7 +571,9 @@ export default function LayoutEditorPage() {
     if (!d) return
 
     if (d.kind === 'rotate') {
-      setSpin(d.startSpin + (e.clientX - d.startX) * 0.4)
+      // Minus: rotateZ(+) vrider medurs, så golvets närmaste kant flyttade
+      // sig mot dragningen. Nu följer den musen - samma som kundsajten.
+      setSpin(d.startSpin - (e.clientX - d.startX) * 0.4)
       return
     }
 

@@ -136,8 +136,24 @@ export default function OversiktPage() {
     staffCount: data.staffCount,
   })
   const remaining = steps.filter((s) => s.done === false).length
-  // Visas när det finns något kvar (eller som inte gick att kontrollera).
-  const showSetup = isOwner && !loading && steps.some((s) => s.done !== true)
+  // Kom igång (bara ägaren): överst så länge något är kvar (eller inte gick
+  // att kontrollera), längst ned som liten bekräftelse när allt är klart.
+  const setupIncomplete = isOwner && !loading && steps.some((s) => s.done !== true)
+  const setupComplete = isOwner && !loading && steps.every((s) => s.done === true)
+
+  const setupList = steps.map((step) => (
+    <Link key={step.id} to={step.to} className="activity-item setup-step">
+      <span className="activity-text">
+        <span className={`setup-check ${step.done ? 'done' : ''}`} aria-hidden="true">
+          {step.done ? '✓' : step.done === null ? '?' : ''}
+        </span>
+        {step.label}
+      </span>
+      <span className="activity-time">
+        {step.done ? 'Klart' : step.done === null ? 'Kunde inte kontrolleras' : 'Att göra'}
+      </span>
+    </Link>
+  ))
 
   const todayActive = data.today
     ? data.today.filter((r) => ACTIVE_STATUSES.includes(r.status))
@@ -235,6 +251,21 @@ export default function OversiktPage() {
     <>
       <AdminTopbar title="Översikt" />
       <div className="admin-main">
+        {setupIncomplete && (
+          <section className="admin-card activity-card setup-card" aria-label="Kom igång" data-tour="getting-started">
+            <div className="card-head">
+              <div>
+                <h2 className="card-title">Kom igång</h2>
+                <p className="cell-muted setup-lead">Gör klart de här stegen så att gästerna kan boka och beställa.</p>
+              </div>
+              <span className="cell-muted">
+                {remaining === 0 ? 'Kunde inte kontrollera allt' : <><Num>{remaining}</Num> kvar</>}
+              </span>
+            </div>
+            {setupList}
+          </section>
+        )}
+
         <section className="stats-row" aria-label="Nyckeltal">
           {stats.map((stat, i) => (
             <StatTile key={stat.label} {...stat} loading={loading} index={i} />
@@ -297,40 +328,15 @@ export default function OversiktPage() {
           ))}
         </section>
 
-        {/* Kom igång: bara ägaren, och bara tills allt är klart. */}
-        {showSetup && (
-        <section className="admin-card activity-card setup-card" aria-label="Kom igång" data-tour="getting-started">
-          <div className="card-head">
-            <h2 className="card-title">Kom igång</h2>
-            {!loading && (
-              <span className="cell-muted">
-                {remaining === 0 ? 'Kunde inte kontrollera allt' : <><Num>{remaining}</Num> kvar</>}
-              </span>
-            )}
-          </div>
-          {steps.map((step) => (
-            <Link key={step.id} to={step.to} className="activity-item setup-step">
-              <span className="activity-text">
-                <span
-                  className={`setup-check ${step.done ? 'done' : ''}`}
-                  aria-hidden="true"
-                >
-                  {step.done ? '✓' : step.done === null ? '?' : ''}
-                </span>
-                {step.label}
-              </span>
-              <span className="activity-time">
-                {loading
-                  ? 'Kontrollerar…'
-                  : step.done
-                    ? 'Klart'
-                    : step.done === null
-                      ? 'Kunde inte kontrolleras'
-                      : 'Att göra'}
-              </span>
-            </Link>
-          ))}
-        </section>
+        {setupComplete && (
+          <details className="admin-card setup-card setup-card--done" data-tour="getting-started">
+            <summary className="setup-done-summary">
+              <span className="setup-check done" aria-hidden="true">✓</span>
+              <span>Kom igång: allt är klart</span>
+              <span className="cell-muted setup-done-toggle">Visa stegen</span>
+            </summary>
+            <div className="setup-done-list">{setupList}</div>
+          </details>
         )}
       </div>
     </>

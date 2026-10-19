@@ -1244,6 +1244,43 @@
   color: #fff;
 }
 
+.setup-lead {
+  margin: 4px 0 0;
+}
+
+/* Klart: en rad längst ned, stegen bakom "Visa stegen". */
+.setup-card--done {
+  padding: 14px 24px;
+}
+
+.setup-done-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+}
+
+.setup-done-summary::-webkit-details-marker {
+  display: none;
+}
+
+.setup-done-toggle {
+  margin-left: auto;
+  font-weight: 400;
+}
+
+.setup-card--done[open] .setup-done-toggle {
+  visibility: hidden;
+}
+
+.setup-done-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+}
+
 /* Översiktens "Dagens bokningar" */
 .today-list {
   display: flex;
@@ -1410,7 +1447,7 @@
   margin-bottom: 12px;
 }
 
-/* Kom igång längst ner på Översikt (ägaren, tills allt är klart). */
+/* Kom igång på Översikt (ägaren): överst tills allt är klart, sedan längst ned. */
 .setup-card {
   flex: none;
   width: 100%;

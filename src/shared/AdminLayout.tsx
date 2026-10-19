@@ -119,7 +119,7 @@ export function AdminLayout() {
           </span>
           <span className="admin-logo-text">
             <span className="admin-logo-brand">
-              <BrandWordmark height={18} />
+              <BrandWordmark height={22} />
               <span className="admin-logo-tag">ADMIN</span>
             </span>
             <span className="admin-logo-name">{tenant?.name ?? ''}</span>

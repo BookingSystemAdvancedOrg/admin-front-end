@@ -18,7 +18,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
             <BrandMark size={44} />
           </span>
           <span className="auth-logo-text">
-            <BrandWordmark height={26} />
+            <BrandWordmark height={40} />
             <span>Admin</span>
           </span>
         </div>

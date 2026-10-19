@@ -33,6 +33,7 @@ export const GUIDE_KEY_PREFIX = 'booqy-guide-done:'
 export const LEGACY_SESSION_KEY = 'admin-auth-session'
 export const MOCK_SESSION_KEY = 'admin-mock-session'
 export const LOGOUT_PENDING_KEY = 'booqy-logout-pending'
+export const MOTION_SEEN_KEY = 'booqy-motion-seen'
 
 export const STORAGE_REGISTRY: readonly StorageEntry[] = [
   {
@@ -67,6 +68,14 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     setBy: 'Booqy',
     purpose: 'Att du har gått igenom introduktionsguiden, så att den inte visas igen.',
     lifetime: 'Tills du rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: MOTION_SEEN_KEY,
+    kind: 'sessionStorage',
+    setBy: 'Booqy',
+    purpose: 'Vilka sidor som redan visat sina animationer (siffror som räknas upp, rutor som fylls), så att de bara spelas en gång. Inga personuppgifter.',
+    lifetime: 'Tills fliken stängs',
     category: 'nödvändig',
   },
 ]

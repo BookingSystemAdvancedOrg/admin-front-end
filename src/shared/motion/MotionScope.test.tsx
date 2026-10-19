@@ -24,6 +24,14 @@ describe('MotionScope', () => {
   beforeEach(resetMotionForTests)
   afterEach(() => vi.restoreAllMocks())
 
+  it('remembers across a reload of the tab (sessionStorage), not across tabs', () => {
+    expect(at('/bokningar')).toBe('moves')
+    expect(JSON.parse(sessionStorage.getItem('booqy-motion-seen')!)).toEqual(['/bokningar?'])
+    sessionStorage.clear() // a new tab
+    resetMotionForTests()
+    expect(at('/bokningar')).toBe('moves')
+  })
+
   it('lets a page move the first time only, per page and marketing tab', () => {
     expect(at('/bokningar')).toBe('moves')
     expect(at('/bokningar')).toBe('still')

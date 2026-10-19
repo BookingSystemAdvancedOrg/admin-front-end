@@ -11,8 +11,8 @@ import './admin.css'
 import './brand.css'
 import { Loading } from './Loading'
 import { useLiquidFill } from './motion/useLiquidFill'
-import { sidebarShouldPour } from './motion/sidebarPour'
-import { MotionScope } from './motion/MotionScope'
+import { MotionScope, sidebarPourDone, sidebarShouldPour } from './motion/MotionScope'
+import { BusyBar } from './motion/BusyBar'
 
 // Sidebar-länkarna. `end: true` gör att '/' bara markeras aktiv på exakt
 // träff, annars skulle den lysa upp på alla undersidor också.
@@ -81,9 +81,15 @@ export function AdminLayout() {
     fillMs: 1900,
     pourAt: 0.5,
     onProgress: (_, done) => {
-      if (done) setPoured(true)
+      if (done) {
+        sidebarPourDone()
+        setPoured(true)
+      }
     },
-    onStatic: () => setPoured(true),
+    onStatic: () => {
+      sidebarPourDone()
+      setPoured(true)
+    },
   })
 
   return (
@@ -192,6 +198,7 @@ export function AdminLayout() {
       {confirmLogout && <LogoutConfirm onConfirm={logout} onCancel={cancelLogout} />}
 
       <div className="admin-right">
+        <BusyBar />
         {status === 'error' && error ? (
           <div className="admin-main">
             <section className="admin-card table-card tenant-notice" role="alert">

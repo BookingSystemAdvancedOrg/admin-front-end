@@ -1,4 +1,5 @@
 import { getAccessToken } from '../features/auth/cognito'
+import { busyEnd, busyStart } from './motion/busy'
 
 /**
  * Bas-URL till backend-API:t. VITE_API_BASE_URL sätts i .env lokalt och i
@@ -114,14 +115,22 @@ export async function apiFetch<T>(
   }
   const token = await getAccessToken()
   const method = (options.method ?? 'GET').toUpperCase()
-  const res = await fetchWithRetry(method, () => fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  }))
+  // Skrivningar syns som en strimma överst (shared/motion/BusyBar) tills de är klara.
+  const writing = method !== 'GET'
+  if (writing) busyStart()
+  let res: Response
+  try {
+    res = await fetchWithRetry(method, () => fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    }))
+  } finally {
+    if (writing) busyEnd()
+  }
   if (!res.ok) {
     throw await toApiError(res)
   }

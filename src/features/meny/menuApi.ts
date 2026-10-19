@@ -1,4 +1,5 @@
 import { apiFetch, ApiError } from '../../shared/api'
+import { withBusy } from '../../shared/motion/busy'
 import type { Dish, DishCategory } from './data'
 
 /**
@@ -328,11 +329,12 @@ export async function uploadMenuImage(
     throw new Error('Bilden måste vara AVIF, JPEG, PNG eller WebP.')
   }
   const grant = await createMenuImageUploadUrl(locationId, contentType)
-  const res = await fetch(grant.uploadUrl, {
+  // Själva uppladdningen går till S3, inte via apiFetch: visa den som pågående själv.
+  const res = await withBusy(() => fetch(grant.uploadUrl, {
     method: 'PUT',
     body: file,
     headers: { 'Content-Type': grant.requiredHeaders['Content-Type'] },
-  })
+  }))
   if (!res.ok) {
     throw new Error('Bilduppladdningen misslyckades - försök igen.')
   }

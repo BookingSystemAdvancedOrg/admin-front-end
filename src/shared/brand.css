@@ -460,3 +460,120 @@ button.stat-tile {
     font-size: 22px;
   }
 }
+
+/* --- Strimman överst medan något sparas (shared/motion/BusyBar) ----------- */
+
+/* Text bara för skärmläsare. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.busy-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: 0;
+  pointer-events: none;
+}
+
+.busy-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 4px;
+  width: 0;
+  overflow: hidden;
+  background: var(--accent-ink);
+  opacity: 0;
+  border-radius: 0 3px 3px 0;
+  box-shadow: 0 1px 6px rgba(158, 29, 38, 0.35);
+}
+
+/* Pågår: rinner snabbt in och kryper sedan långsamt mot kanten, så det
+   alltid rör sig men aldrig blir "klart" förrän svaret kommit. */
+.busy-bar--busy .busy-bar-fill {
+  opacity: 1;
+  animation: busy-creep 9s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes busy-creep {
+  0% {
+    width: 0;
+  }
+  12% {
+    width: 42%;
+  }
+  40% {
+    width: 72%;
+  }
+  100% {
+    width: 92%;
+  }
+}
+
+/* Ytan: ett ljust skimmer som vandrar längs strimman. */
+.busy-bar-wave {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(246, 236, 233, 0.55) 45%, transparent 90%);
+  background-size: 160px 100%;
+  background-repeat: no-repeat;
+  animation: busy-wave 1.1s linear infinite;
+}
+
+@keyframes busy-wave {
+  from {
+    background-position: -160px 0;
+  }
+  to {
+    background-position: calc(100% + 160px) 0;
+  }
+}
+
+/* Klart: fyller ut hela bredden och tonar bort. */
+.busy-bar--done .busy-bar-fill {
+  width: 100%;
+  animation: busy-done 900ms var(--ease) forwards;
+}
+
+@keyframes busy-done {
+  0% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Medan något sparas: pekaren säger det också, och knappar som redan är
+   avstängda (Sparar…) får inte se döda ut. */
+html.is-saving {
+  cursor: progress;
+}
+
+html.is-saving .btn:disabled {
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .busy-bar--busy .busy-bar-fill {
+    animation: none;
+    width: 70%;
+  }
+
+  .busy-bar-wave {
+    animation: none;
+  }
+}
+

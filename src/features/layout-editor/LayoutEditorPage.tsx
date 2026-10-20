@@ -2163,10 +2163,10 @@ export default function LayoutEditorPage() {
                 </button>
               </div>
               <div className="view-toggle">
-                <button type="button" title="Rotera vyn moturs (eller Alt + dra)" aria-label="Rotera moturs" onClick={() => setSpin((s) => s - 45)}>
+                <button type="button" className="view-icon" title="Rotera vyn moturs (eller Alt + dra)" aria-label="Rotera moturs" onClick={() => setSpin((s) => s - 45)}>
                   ⟲
                 </button>
-                <button type="button" title="Rotera vyn medurs (eller Alt + dra)" aria-label="Rotera medurs" onClick={() => setSpin((s) => s + 45)}>
+                <button type="button" className="view-icon" title="Rotera vyn medurs (eller Alt + dra)" aria-label="Rotera medurs" onClick={() => setSpin((s) => s + 45)}>
                   ⟳
                 </button>
               </div>

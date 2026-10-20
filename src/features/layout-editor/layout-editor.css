@@ -288,6 +288,14 @@
   color: var(--ink);
 }
 
+/* Vridpilarna (⟲ ⟳) är små tecken i typsnittet: större, samma knapphöjd. */
+.view-toggle button.view-icon {
+  padding: 6px 14px;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--ink);
+}
+
 .view-toggle .zoom-value {
   min-width: 52px;
   font-variant-numeric: tabular-nums;

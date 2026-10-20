@@ -575,7 +575,7 @@ export type LayoutActivation =
  * redan en, schemaläggs bytet i stället en bit fram i tiden och svaret blir
  * `pending` - hur långt fram är miljöberoende, INTE alltid "01:00 UTC fyra
  * veckor fram" (bekräftat av backend-teamet 2026-09-29: bara 5 minuter i
- * dev, 28 dagar i prod). Lita på `cutoverAt` i svaret, anta aldrig ett
+ * dev, annars 28 dagar). Lita på `cutoverAt` i svaret, anta aldrig ett
  * fast intervall. Att upprepa samma begäran är ofarligt, men att begära en
  * ANNAN version medan ett byte väntar ger 409.
  */

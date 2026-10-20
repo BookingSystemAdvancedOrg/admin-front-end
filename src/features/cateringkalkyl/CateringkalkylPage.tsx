@@ -10,6 +10,7 @@ import { DISCOUNT_SCOPE_LABEL, nextTierAfter, tierFor } from './data'
 import type { DeliveryPricing, DiscountTier, OrderRules } from './data'
 import { getLocation } from '../installningar/locationApi'
 import { useTenant } from '../../shared/tenant'
+import { PhoneInput } from '../../shared/PhoneInput'
 import {
   DEFAULT_SETTINGS,
   createTier,
@@ -469,8 +470,8 @@ export default function CateringkalkylPage() {
             </div>
             <div className="form-field">
               <label htmlFor="cat-notify-phone">Nya förfrågningar till mobil (sms)</label>
-              <input id="cat-notify-phone" type="tel" placeholder="070-123 45 67" value={settings.notifyPhone ?? ''}
-                onChange={(e) => updateSettings({ notifyPhone: e.target.value.trim() || null })} />
+              <PhoneInput id="cat-notify-phone" value={settings.notifyPhone ?? ''}
+                onChange={(v) => updateSettings({ notifyPhone: v || null })} />
             </div>
           </div>
           <div className="toggle-stack">

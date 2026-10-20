@@ -98,9 +98,20 @@ describe('StaffModal - invite mode', () => {
     renderInvite()
     await user.type(screen.getByLabelText('Namn'), 'Ny Person')
     await user.type(screen.getByLabelText('E-post'), 'ny@kallarestaurang.se')
-    await user.type(screen.getByLabelText('Telefon'), '0709999999') // missing +country code
+    await user.type(screen.getByLabelText('Telefon'), '070') // far too short
 
     expect(screen.getByRole('button', { name: 'Skicka inbjudan' })).toBeDisabled()
+  })
+
+  it('accepts a national number - the field turns it into +46', async () => {
+    const user = userEvent.setup()
+    renderInvite()
+    await user.type(screen.getByLabelText('Namn'), 'Ny Person')
+    await user.type(screen.getByLabelText('E-post'), 'ny@kallarestaurang.se')
+    await user.type(screen.getByLabelText('Telefon'), '0709999999')
+
+    expect(screen.getByLabelText('Telefon')).toHaveValue('+46 70 999 99 99')
+    expect(screen.getByRole('button', { name: 'Skicka inbjudan' })).toBeEnabled()
   })
 
   it('shows the server error message when onSave rejects', async () => {

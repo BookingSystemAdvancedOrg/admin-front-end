@@ -9,6 +9,7 @@ import {
   validateName,
   validatePhone,
 } from './usersApi'
+import { PhoneInput } from '../../shared/PhoneInput'
 
 export interface StaffFormValues {
   name: string
@@ -143,13 +144,7 @@ export function StaffModal({
 
           <div className="form-field">
             <label htmlFor="staff-phone">Telefon</label>
-            <input
-              id="staff-phone"
-              type="tel"
-              value={phone}
-              placeholder="+46701234567"
-              onChange={(e) => setPhone(e.target.value)}
-            />
+            <PhoneInput id="staff-phone" value={phone} onChange={setPhone} />
           </div>
 
           <div className="form-grid">

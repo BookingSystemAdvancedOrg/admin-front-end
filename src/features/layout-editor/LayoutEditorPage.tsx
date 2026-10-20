@@ -1940,7 +1940,7 @@ export default function LayoutEditorPage() {
    * version blir det omedelbart, men finns redan en schemalägger API:t
    * bytet en bit fram i tiden istället (samma regel som att aktivera
    * manuellt under Versioner - den går inte att kringgå härifrån). Hur
-   * långt fram är miljöberoende - bara 5 minuter i dev, 28 dagar i prod
+   * långt fram är miljöberoende - bara 5 minuter i dev, annars 28 dagar
    * (bekräftat av backend-teamet 2026-09-29) - därför visas alltid det
    * riktiga datumet från `cutoverAt`, aldrig ett hårdkodat "fyra veckor".
    *

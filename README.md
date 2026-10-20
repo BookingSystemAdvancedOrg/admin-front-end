@@ -65,6 +65,6 @@ Two workflows, `dev.yml` (branch `dev`) and `prod.yml` (branch `main`), both cal
 
 - **PR into `dev` or `main`** → install/lint/test/build only.
 - **Push to `dev`** → build and deploy to the dev S3/CloudFront stack.
-- **Push to `main`** → same, against prod.
+- **Push to `main`** → same, against production.
 
 Non-secret deploy config lives in `.github/config/project.env`.

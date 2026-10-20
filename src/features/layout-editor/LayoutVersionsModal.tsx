@@ -41,7 +41,7 @@ function formatShortDate(iso: string): string {
  * Aktiveringen är omedelbar bara när ingen version gäller ännu. Finns redan
  * en gällande version schemalägger API:t bytet ett stycke fram i tiden i
  * stället - hur långt är miljöberoende (bekräftat av backend-teamet
- * 2026-09-29: 5 minuter i dev, 28 dagar/fyra veckor i prod) - det måste
+ * 2026-09-29: 5 minuter i dev, annars 28 dagar/fyra veckor) - det måste
  * synas, annars tror man att bytet skett direkt.
  *
  * Ett schemalagt byte går att avbryta (fick stöd i API:t 2026-09-29): den

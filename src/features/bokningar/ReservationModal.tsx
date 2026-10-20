@@ -23,6 +23,7 @@ import {
 } from './bookingsApi'
 import type { HistoryEntry, Reservation, ReservationEdit } from './bookingsApi'
 import { tableNames, useTables } from '../../shared/tables'
+import { PhoneInput } from '../../shared/PhoneInput'
 
 type Panel = null | 'no_show' | 'cancel' | 'refund' | 'edit'
 
@@ -478,7 +479,7 @@ function EditForm({
       <div className="form-grid">
         <div className="form-field">
           <label htmlFor="ed-phone">Telefon{contactRequired ? '' : ' (valfritt)'}</label>
-          <input id="ed-phone" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <PhoneInput id="ed-phone" value={phone} onChange={setPhone} />
           {!phoneOk && (
             <p className="field-hint error">
               {phone.trim() ? 'Skriv ett giltigt nummer, t.ex. 070-123 45 67.' : 'En onlinebokning måste ha telefon.'}

@@ -26,7 +26,7 @@ VITE_COGNITO_CLIENT_ID_PROD=9z8y7x6w5v4u3t2s1r0qponml
 | Nyckel | Vad det är | Var du hittar den |
 | --- | --- | --- |
 | `VITE_COGNITO_USER_POOL_ID_DEV` / `_PROD` | ID:t för er User Pool (användardatabasen för personalen). Format: `<region>_XXXXXXXXX`. | AWS Console → **Amazon Cognito** → **User pools** → klicka på er pool → ID:t visas högst upp under poolens namn ("User pool ID"). |
-| `VITE_COGNITO_CLIENT_ID_DEV` / `_PROD` | ID:t för app-klienten som frontend loggar in genom. Klient-ID:t hör till en specifik pool, så dev och prod har olika. | Samma pool → **App clients** i vänstermenyn (äldre konsol: fliken **App integration** → **App clients and analytics**) → klicka på klienten → "Client ID". |
+| `VITE_COGNITO_CLIENT_ID_DEV` / `_PROD` | ID:t för app-klienten som frontend loggar in genom. Klient-ID:t hör till en specifik pool, så dev och produktion har olika. | Samma pool → **App clients** i vänstermenyn (äldre konsol: fliken **App integration** → **App clients and analytics**) → klicka på klienten → "Client ID". |
 | `VITE_COGNITO_ENV` *(valfritt)* | Väljer vilket par av värden ovan som används: `prod` tar `_PROD`-raderna. Utan den körs `_DEV`. | Sätts av dig, inte i AWS. |
 | `VITE_API_BASE_URL` *(valfritt, ännu inte i bruk)* | Bas-URL till ert backend-API. | Fylls i när API:t finns, se [avsnitt 4](#4-framtida-api-nycklar). |
 
@@ -157,7 +157,7 @@ aldrig i den här frontend-koden eller i `.env`.
 ## 5. CI/CD-konfiguration (ej hemligt)
 
 Det här repot deployas via GitHub Actions (`.github/workflows/`) till
-S3 + CloudFront, med separata AWS-konton för dev och prod. Icke-hemlig
+S3 + CloudFront, med separata AWS-konton för dev och produktion. Icke-hemlig
 deploy-konfiguration ligger i `.github/config/project.env`:
 
 ```bash
@@ -181,13 +181,13 @@ i GitHub.
 ```bash
 VITE_COGNITO_USER_POOL_ID_DEV=...   # poolen i dev-kontot (877653167825)
 VITE_COGNITO_CLIENT_ID_DEV=...
-VITE_COGNITO_USER_POOL_ID_PROD=...  # poolen i prod-kontot (343695380960)
+VITE_COGNITO_USER_POOL_ID_PROD=...  # poolen i produktionskontot (343695380960)
 VITE_COGNITO_CLIENT_ID_PROD=...
 ```
 
 > **Obs:** i skrivande stund plockar inte `reusable_cicd.yml` faktiskt upp
 > dessa fyra rader ännu - bygg-steget behöver kopplas ihop med dem innan
-> deployad dev/prod kan logga in mot Cognito. Lokal utveckling (`.env`)
+> deployad dev/produktion kan logga in mot Cognito. Lokal utveckling (`.env`)
 > fungerar redan idag oavsett detta.
 
 Precis som `VITE_COGNITO_*` lokalt är inte dessa fyra hemligheter (de syns
@@ -211,5 +211,5 @@ en omladdning på `/logga-in` ett fel.
 | `Unable to verify secret hash for client` | App-klienten har en client secret - skapa en klient utan secret (avsnitt 2). |
 | "Fel e-post eller lösenord" direkt vid första inloggningen | Kontrollera att användaren skapades med e-posten som användarnamn och att det tillfälliga lösenordet kopierades exakt (inga mellanslag). |
 | Cognito nekar det nya lösenordet trots grön checklista | Poolens password policy kräver mer än checklistan (t.ex. specialtecken) - synka policyn och `RULES` (avsnitt 2). |
-| Sidan blir 404/403 vid omladdning på `/logga-in` i dev/prod | SPA-fallback saknas i CloudFront (avsnitt 5). |
+| Sidan blir 404/403 vid omladdning på `/logga-in` i dev/produktion | SPA-fallback saknas i CloudFront (avsnitt 5). |
 | Inloggningen fungerar lokalt men inte i deployad miljö | `VITE_COGNITO_*`-raderna i `.github/config/project.env` är inte ifyllda/kopplade för den miljön (avsnitt 5). |

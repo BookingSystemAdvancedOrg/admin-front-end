@@ -7,6 +7,11 @@ on:
         description: Deploy target - must match a suffix in project.env (dev|prod)
         required: true
         type: string
+      ref:
+        description: Commit to build and deploy instead of the branch head (used by "Redeploy a commit")
+        required: false
+        type: string
+        default: ""
       node-version:
         description: Node version used for install/build
         required: false
@@ -34,6 +39,8 @@ jobs:
       menu_image_base_url: ${{ steps.vars.outputs.menu_image_base_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       - id: vars
         shell: bash
@@ -103,11 +110,11 @@ jobs:
     needs: config
     runs-on: ubuntu-latest
     # Deploys (push to dev/main) run in the GitHub environment named like the
-    # target - "prod" has required reviewers, so nothing reaches prod without
-    # an approval. The environment also puts ":environment:<env>" in the OIDC
+    # target - "prod" only accepts main (no approval step), so a merge to main
+    # deploys at once. The environment also puts ":environment:<env>" in the OIDC
     # token's sub, which the AWS deploy roles can trust. PR runs (tests /
-    # plan only) use no environment, so they never wait for approval.
-    environment: ${{ github.event_name == 'push' && inputs.environment || '' }}
+    # plan only) use no environment.
+    environment: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && inputs.environment || '' }}
     # id-token: write is required to mint the GitHub OIDC token used by
     # aws-actions/configure-aws-credentials. Only exercised on push (deploy).
     permissions:
@@ -115,6 +122,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       - uses: actions/setup-node@v4
         with:
@@ -148,14 +157,14 @@ jobs:
       # Everything below only runs on an actual push (merge) to dev/main,
       # never on a pull_request - PRs are build/lint/test only, no AWS access.
       - name: Configure AWS credentials (OIDC)
-        if: github.event_name == 'push'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ needs.config.outputs.role_arn }}
           aws-region: ${{ needs.config.outputs.aws_region }}
 
       - name: Deploy dist/ to S3
-        if: github.event_name == 'push'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         run: |
           set -euo pipefail
           BUCKET="${{ needs.config.outputs.bucket }}"
@@ -173,8 +182,25 @@ jobs:
             --cache-control "no-cache,no-store,must-revalidate"
 
       - name: Invalidate CloudFront
-        if: github.event_name == 'push'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         run: |
           aws cloudfront create-invalidation \
             --distribution-id "${{ needs.config.outputs.distribution_id }}" \
             --paths "/*"
+
+      - name: Smoke test (API, admin app, customer site)
+        # After the deploy and invalidation: the API answers GET /site-config
+        # and every app serves its script bundle. A failure fails this job
+        # and emails the alerts topic (scripts/smoke-test.sh - needs
+        # sns:Publish on the deploy role, otherwise only the job fails);
+        # success sends nothing. Values come from project.env (SMOKE_*).
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        env:
+          SUFFIX: ${{ inputs.environment == 'prod' && 'PROD' || 'DEV' }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          SOURCE: admin-front-end@${{ github.sha }}
+        run: |
+          set -a; source .github/config/project.env; set +a
+          for k in SMOKE_HOST SMOKE_SITES ALERT_TOPIC_ARN; do v="${k}_${SUFFIX}"; export "$k=${!v:-}"; done
+          v="VITE_API_BASE_URL_${SUFFIX}"; export API_BASE_URL="${!v}"
+          bash scripts/smoke-test.sh

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { Loading } from '../../shared/Loading'
 import { Num } from '../../shared/motion/Num'
@@ -88,7 +88,12 @@ export default function StatistikPage() {
   const timezone = location?.timezone ?? null
   const today = todayIn(timezone)
 
-  const [preset, setPreset] = useState<PresetId>('d30')
+  // Perioden står i adressen (?period=month), så Översiktens länk, en
+  // omladdning och ett bokmärke öppnar samma period.
+  const [params, setParams] = useSearchParams()
+  const fromUrl = params.get('period')
+  const preset: PresetId = PRESETS.some((pr) => pr.id === fromUrl) ? (fromUrl as PresetId) : 'd30'
+  const setPreset = (id: PresetId) => setParams({ period: id }, { replace: true })
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [error, setError] = useState(false)

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Num } from '../../shared/motion/Num'
 import { Link } from 'react-router-dom'
 import { QuickLinkIcon } from './QuickLinkIcon'
+import { MonthCard } from './MonthCard'
 import { StatTile } from './StatTile'
 import type { QuickLinkIconName } from './QuickLinkIcon'
 import { AdminTopbar } from '../../shared/AdminTopbar'
@@ -36,11 +37,14 @@ import type { Reservation } from '../bokningar/bookingsApi'
 import { Loading } from '../../shared/Loading'
 import { SAMPLE_TABLE_LABELS, sampleData, sampleModeOn, setSampleMode } from './sample'
 
-// Genvägskorten längst ned som länkar till de andra sidorna.
-const QUICK_LINKS: { to: string; icon: QuickLinkIconName; label: string }[] = [
+// Genvägskorten längst ned som länkar till de andra sidorna. Ägaren får
+// Statistik i stället för "Se alla bokningar" (dagens bokningar har redan
+// "Visa alla" ovanför).
+const QUICK_LINKS: { to: string; icon: QuickLinkIconName; label: string; ownerOnly?: boolean; staffOnly?: boolean }[] = [
+  { to: '/statistik?period=month', icon: 'stats', label: 'Månadens statistik', ownerOnly: true },
   { to: '/meny', icon: 'menu', label: 'Hantera meny' },
   { to: '/layout', icon: 'layout', label: 'Redigera layout' },
-  { to: '/bokningar', icon: 'bookings', label: 'Se alla bokningar' },
+  { to: '/bokningar', icon: 'bookings', label: 'Se alla bokningar', staffOnly: true },
   { to: '/installningar', icon: 'settings', label: 'Inställningar' },
 ]
 
@@ -345,8 +349,18 @@ export default function OversiktPage() {
 
         </div>
 
+        {isOwner && (
+          <MonthCard
+            locationId={locationId}
+            today={todayIn(timezoneSetting)}
+            catering={loading ? null : data.catering}
+            sample={sample}
+            showRevenue={hasOrdering || hasCatering}
+          />
+        )}
+
         <section className="quick-links-row" aria-label="Genvägar">
-          {QUICK_LINKS.map((link) => (
+          {QUICK_LINKS.filter((link) => (link.ownerOnly ? isOwner : link.staffOnly ? !isOwner : true)).map((link) => (
             <Link key={link.to + link.label} className="admin-card quick-link" to={link.to}>
               <span className="quick-link-label">
                 <span className="quick-link-icon" aria-hidden="true">

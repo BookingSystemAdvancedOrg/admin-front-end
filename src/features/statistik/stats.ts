@@ -313,7 +313,7 @@ export function fmtDecimal(n: number | null | undefined, digits = 1): string {
 export function fmtPct(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return '-'
   const digits = Math.abs(n) < 10 && Math.abs(n) !== 0 ? 1 : 0
-  return `${n.toLocaleString('sv-SE', { minimumFractionDigits: 0, maximumFractionDigits: digits })} %`
+  return `${n.toLocaleString('sv-SE', { minimumFractionDigits: 0, maximumFractionDigits: digits })}\u00a0%`
 }
 
 /** "21 okt" */

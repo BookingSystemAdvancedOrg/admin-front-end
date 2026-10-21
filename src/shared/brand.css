@@ -687,3 +687,36 @@ html.is-saving .btn:disabled {
   }
 }
 
+
+/* --- Sidomenyns grupper ------------------------------------------------
+   Översikt och Statistik överst utan rubrik, sedan "Under passet" och
+   "Restaurangen" med en liten rubrik i samma stil som Plats-väljaren.
+   På smala skärmar ligger menyn som en rad: grupperna löses upp och
+   rubrikerna göms, länkarna ligger kvar i samma ordning. */
+.admin-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-nav-group + .admin-nav-group {
+  margin-top: 14px;
+}
+
+.admin-nav-heading {
+  padding: 0 12px 6px;
+  font: 600 10px/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--on-ox-3);
+}
+
+@media (max-width: 900px) {
+  .admin-nav-group {
+    display: contents;
+  }
+
+  .admin-nav-heading {
+    display: none;
+  }
+}

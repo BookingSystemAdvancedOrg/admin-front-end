@@ -1,0 +1,616 @@
+/* Statistik (StatistikPage.tsx): restaurangens egna siffror, samma tryckstil
+   som Översikt. Färger: bläck på papper för serien, skrivarens röda för det
+   som sticker ut, stål för förra perioden. Allt kommer från tokens i
+   src/index.css, så mörkt läge följer med. */
+
+:root {
+  --sk-steel: #80868c;
+}
+
+:root[data-theme='dark'] {
+  --sk-steel: #8a9096;
+}
+
+/* --- Verktygsraden: period ---------------------------------------------- */
+
+.sk-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.sk-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sk-chip {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 3px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+  font: 600 13.5px/1 var(--font);
+  color: var(--ink);
+  cursor: pointer;
+  transition: box-shadow 140ms var(--ease), background-color 140ms var(--ease);
+}
+
+.sk-chip:hover {
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.sk-chip[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.35);
+}
+
+.sk-period {
+  font: 500 12px/1.4 var(--mono);
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.sk-progress {
+  margin-left: auto;
+  font: 500 12px/1.4 var(--mono);
+  color: var(--muted);
+}
+
+/* --- Hjälten och ringarna --------------------------------------------------- */
+
+.sk-hero {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(0, 2.2fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+.sk-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 22px 24px;
+}
+
+.sk-kpi-label {
+  font: 600 10.5px/1.3 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sk-kpi-value {
+  font: 820 30px/1.05 var(--font);
+  font-stretch: 112%;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.sk-kpi--hero .sk-kpi-value {
+  font-size: 46px;
+  letter-spacing: -0.03em;
+}
+
+.sk-kpi-sub {
+  font: 400 12.5px/1.4 var(--mono);
+  font-stretch: 87.5%;
+  color: var(--muted);
+}
+
+.sk-kpi-insight {
+  font: 500 14px/1.45 var(--font);
+  color: var(--ink);
+  max-width: 28em;
+  text-wrap: balance;
+}
+
+.sk-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 3px 14px;
+  margin: 8px 0 0;
+  padding-top: 12px;
+  border-top: 1.5px dashed var(--border);
+  font: 420 12.5px/1.5 var(--mono);
+  font-stretch: 87.5%;
+}
+
+.sk-facts dt {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.sk-facts dd {
+  margin: 0;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-rings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px 18px;
+  padding: 18px 22px 22px;
+  align-content: start;
+}
+
+.sk-ring {
+  margin: 0;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sk-ring-title {
+  font: 600 10.5px/1.3 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+}
+
+.sk-ring-svg {
+  width: 150px;
+  height: 150px;
+  display: block;
+}
+
+.sk-ring-track {
+  fill: none;
+  stroke: var(--fill);
+  stroke-width: 14;
+}
+
+.sk-ring-seg {
+  fill: none;
+  stroke-width: 14;
+  transition: stroke-dasharray 900ms var(--ease);
+}
+
+.sk-ring-seg--ink {
+  stroke: var(--ink);
+}
+
+.sk-ring-seg--red {
+  stroke: var(--accent-ink);
+}
+
+.sk-ring-seg--steel {
+  stroke: var(--sk-steel);
+}
+
+.sk-swatch--ink {
+  background: var(--ink);
+}
+
+.sk-swatch--red {
+  background: var(--accent-ink);
+}
+
+.sk-swatch--steel {
+  background: var(--sk-steel);
+}
+
+.sk-bar {
+  fill: var(--ink);
+}
+
+.sk-bar--peak {
+  fill: var(--accent-ink);
+}
+
+.sk-ring-value {
+  font: 820 24px var(--font);
+  font-stretch: 112%;
+  letter-spacing: -0.02em;
+  fill: var(--ink);
+}
+
+.sk-ring-center {
+  font: 500 10.5px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: var(--muted);
+}
+
+.sk-ring-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  gap: 3px;
+  font: 420 12px/1.5 var(--mono);
+  font-stretch: 87.5%;
+}
+
+.sk-ring-legend li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.sk-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.sk-swatch--line {
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--sk-steel);
+}
+
+.sk-ring-label {
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sk-ring-pct {
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-ring-amount {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Nyckeltalsraden --------------------------------------------------------- */
+
+.sk-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.sk-kpis .sk-kpi {
+  padding: 18px 20px 20px;
+}
+
+.sk-kpi--warn .sk-kpi-value {
+  color: var(--warning-ink);
+}
+
+.sk-kpi--bad .sk-kpi-value {
+  color: var(--danger-ink);
+}
+
+/* --- Förändringen: en stämpel ----------------------------------------------- */
+
+.sk-delta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  align-items: baseline;
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 3px 7px 2px;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  font: 700 11px/1.3 var(--mono);
+  letter-spacing: 0.04em;
+  max-width: 100%;
+}
+
+.sk-delta--good {
+  color: var(--success-ink);
+}
+
+.sk-delta--bad {
+  color: var(--danger-ink);
+}
+
+.sk-delta--flat {
+  color: var(--muted);
+}
+
+.sk-delta--none {
+  color: var(--muted);
+  border-style: dashed;
+  font-weight: 500;
+}
+
+.sk-delta-label {
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+/* --- Diagramkorten ------------------------------------------------------------ */
+
+.sk-charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.sk-charts > .admin-card {
+  min-width: 0;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sk-charts .card-title {
+  font-size: 18px;
+}
+
+.sk-insight {
+  margin: -4px 0 4px;
+  font-size: 13.5px;
+  color: var(--muted);
+  max-width: 60ch;
+}
+
+.sk-chart {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sk-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  font-family: var(--mono);
+}
+
+.sk-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+.sk-tick {
+  font-size: 10.5px;
+  fill: var(--muted);
+}
+
+.sk-value {
+  font-size: 10.5px;
+  font-weight: 700;
+  fill: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-line {
+  fill: none;
+  stroke: var(--sk-steel);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.sk-dot {
+  fill: var(--surface);
+  stroke: var(--sk-steel);
+  stroke-width: 2;
+}
+
+.sk-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font: 500 11px/1.4 var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sk-legend span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.sk-empty {
+  margin: 0;
+  padding: 36px 0;
+  text-align: center;
+  color: var(--muted);
+  font: 600 10.5px/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Tabellen bakom diagrammet. */
+.sk-table summary {
+  cursor: pointer;
+  font: 500 12px/1.4 var(--mono);
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.sk-table table {
+  width: 100%;
+  margin-top: 8px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.sk-table th {
+  text-align: left;
+  font: 600 10.5px/1.3 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 12px 6px 0;
+}
+
+.sk-table td {
+  padding: 6px 12px 6px 0;
+  border-top: 1.5px dashed var(--border);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mest sålda: en vanlig tabell i kortet. */
+.sk-dishes {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sk-dishes th {
+  text-align: left;
+  font: 600 10.5px/1.3 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 12px 8px 0;
+}
+
+.sk-dishes td {
+  padding: 10px 12px 10px 0;
+  border-top: 1.5px dashed var(--border);
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.sk-dishes .num {
+  text-align: right;
+  padding-right: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sk-dishes .sk-rank {
+  width: 28px;
+  font-family: var(--mono);
+  color: var(--muted);
+}
+
+.sk-foot {
+  font: 400 12px/1.5 var(--mono);
+  color: var(--muted);
+}
+
+/* Diagrammen växer upp en gång; linjen ritas, punkterna kommer sist. */
+@media (prefers-reduced-motion: no-preference) {
+  .sk-bar--grow {
+    transform-box: fill-box;
+    transform-origin: bottom;
+    animation: sk-grow 640ms var(--ease) both;
+    animation-delay: calc(var(--i, 0) * 14ms);
+  }
+
+  .sk-bar--row {
+    transform-box: fill-box;
+    animation: sk-row 560ms var(--ease) both;
+    animation-delay: calc(var(--i, 0) * 50ms);
+  }
+
+  .sk-line--draw {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: sk-draw 1000ms var(--ease) 160ms forwards;
+  }
+
+  .sk-dot--in {
+    opacity: 0;
+    animation: sk-in 300ms var(--ease) forwards;
+    animation-delay: calc(260ms + var(--i, 0) * 18ms);
+  }
+}
+
+@keyframes sk-grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes sk-row {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes sk-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes sk-in {
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-ring-seg {
+    transition: none;
+  }
+}
+
+/* --- Responsivt -------------------------------------------------------------- */
+
+@media (max-width: 1280px) {
+  .sk-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1000px) {
+  .sk-hero,
+  .sk-charts {
+    grid-template-columns: 1fr;
+  }
+
+  .sk-kpi--hero .sk-kpi-value {
+    font-size: 36px;
+  }
+}
+
+@media (max-width: 600px) {
+  .sk-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .sk-rings {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    padding: 16px 16px 20px;
+  }
+
+  .sk-ring-svg {
+    width: 130px;
+    height: 130px;
+  }
+
+  .sk-charts > .admin-card,
+  .sk-kpi {
+    padding: 16px;
+  }
+
+  .sk-progress {
+    margin-left: 0;
+  }
+}

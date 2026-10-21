@@ -20,6 +20,8 @@ import { ThemeToggle } from './ThemeToggle'
 // träff, annars skulle den lysa upp på alla undersidor också.
 const NAV: { to: string; label: string; tour: string; end?: boolean; feature?: string; ownerOnly?: boolean }[] = [
   { to: '/', label: 'Översikt', tour: 'nav-oversikt', end: true },
+  // Restaurangens siffror över tid; bara ägare.
+  { to: '/statistik', label: 'Statistik', tour: 'nav-statistik', ownerOnly: true },
   { to: '/bokningar', label: 'Bokningar', tour: 'nav-bokningar' },
   // Bara för restauranger vars plan har matbeställning.
   { to: '/bestallningar', label: 'Beställningar', tour: 'nav-bestallningar', feature: 'ordering' },

@@ -11,6 +11,7 @@ import LayoutEditorPage from './features/layout-editor/LayoutEditorPage'
 import InstallningarPage from './features/installningar/InstallningarPage'
 import HjalpPage from './features/guide/HjalpPage'
 import MarknadsforingPage from './features/marknadsforing/MarknadsforingPage'
+import StatistikPage from './features/statistik/StatistikPage'
 
 /**
  * Stripe skickar tillbaka ägaren hit efter onboardingen (return/refresh-URL:er
@@ -32,6 +33,7 @@ function App() {
     <Routes>
       <Route element={<AdminLayout />}>
         <Route index element={<OversiktPage />} />
+        <Route path="statistik" element={<StatistikPage />} />
         <Route path="bokningar" element={<BokningarPage />} />
         <Route path="bestallningar" element={<BestallningarPage />} />
         <Route path="meny" element={<MenyPage />} />

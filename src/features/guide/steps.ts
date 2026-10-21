@@ -292,6 +292,18 @@ export const GUIDE_STEPS: GuideStep[] = [
     text: 'Ändringar sparas som utkast. När du publicerar ser gästerna den nya planritningen.',
   },
 
+  // --- Statistik -------------------------------------------------------------
+  {
+    id: 'statistik',
+    route: '/statistik',
+    target: 'nav-statistik',
+    ownerOnly: true,
+    section: 'Statistik',
+    title: 'Statistik',
+    text:
+      'Omsättning, bokningar, uteblivna gäster, när gästerna kommer och vad de beställer, för en period i taget och jämfört med perioden före.',
+  },
+
   // --- Marknadsföring --------------------------------------------------------
   {
     id: 'marknadsforing',

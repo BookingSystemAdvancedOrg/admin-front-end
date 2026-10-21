@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Num } from '../../shared/motion/Num'
 import { Link } from 'react-router-dom'
 import { QuickLinkIcon } from './QuickLinkIcon'
+import { MonthCard } from './MonthCard'
 import { StatTile } from './StatTile'
 import type { QuickLinkIconName } from './QuickLinkIcon'
 import { AdminTopbar } from '../../shared/AdminTopbar'
@@ -34,12 +35,16 @@ import {
 } from '../bokningar/bookingsApi'
 import type { Reservation } from '../bokningar/bookingsApi'
 import { Loading } from '../../shared/Loading'
+import { SAMPLE_TABLE_LABELS, sampleData, sampleModeOn, setSampleMode } from './sample'
 
-// Genvägskorten längst ned som länkar till de andra sidorna.
-const QUICK_LINKS: { to: string; icon: QuickLinkIconName; label: string }[] = [
+// Genvägskorten längst ned som länkar till de andra sidorna. Ägaren får
+// Statistik i stället för "Se alla bokningar" (dagens bokningar har redan
+// "Visa alla" ovanför).
+const QUICK_LINKS: { to: string; icon: QuickLinkIconName; label: string; ownerOnly?: boolean; staffOnly?: boolean }[] = [
+  { to: '/statistik?period=month', icon: 'stats', label: 'Månadens statistik', ownerOnly: true },
   { to: '/meny', icon: 'menu', label: 'Hantera meny' },
   { to: '/layout', icon: 'layout', label: 'Redigera layout' },
-  { to: '/bokningar', icon: 'bookings', label: 'Se alla bokningar' },
+  { to: '/bokningar', icon: 'bookings', label: 'Se alla bokningar', staffOnly: true },
   { to: '/installningar', icon: 'settings', label: 'Inställningar' },
 ]
 
@@ -81,6 +86,12 @@ function orNull<T>(promise: Promise<T>): Promise<T | null> {
  * visades påhittade bokningar och nyckeltal här - det ger en ny kund fel
  * bild av sin egen restaurang. Där backend ännu saknar data (bokningar)
  * står det uttryckligen i stället för att visa exempel.
+ *
+ * Undantaget är exempelläget (sample.ts): den som vill se hur Översikten
+ * ser ut en fullsatt kväll kan slå på det själv. Då byts dagens bokningar,
+ * beställningar och cateringförfrågningar mot exempel, alla funktioner
+ * visas, och en stämpel överst säger att siffrorna inte är riktiga.
+ * Kom igång-listan och platsen är alltid de riktiga.
  */
 export default function OversiktPage() {
   const tenantState = useTenant()
@@ -89,12 +100,22 @@ export default function OversiktPage() {
   const { labels } = useTables(locationId)
   const isOwner = tenant?.role === 'owner_user'
   const [fetched, setFetched] = useState<OverviewData>(EMPTY)
+  const [sample, setSample] = useState(sampleModeOn)
+  const chooseSample = (on: boolean) => {
+    setSampleMode(on)
+    setSample(on)
+  }
   // Data för en annan plats än den valda visas aldrig, inte ens en stund.
   const loading = Boolean(locationId) && fetched.forLocation !== locationId
-  const data = loading ? EMPTY : fetched
   const timezoneSetting = location?.timezone
-  const hasOrdering = Boolean(tenant?.entitlements.features.ordering)
-  const hasCatering = Boolean(tenant?.entitlements.features.catering)
+  const data: OverviewData = loading
+    ? EMPTY
+    : sample
+      ? { ...fetched, ...sampleData(todayIn(timezoneSetting)) }
+      : fetched
+  const hasOrdering = sample || Boolean(tenant?.entitlements.features.ordering)
+  const hasCatering = sample || Boolean(tenant?.entitlements.features.catering)
+  const tableLabels = sample ? (SAMPLE_TABLE_LABELS as Map<string, string>) : labels
 
   useEffect(() => {
     if (!locationId) return
@@ -251,6 +272,15 @@ export default function OversiktPage() {
     <>
       <AdminTopbar title="Översikt" />
       <div className="admin-main">
+        {sample && (
+          <div className="sample-notice" role="status">
+            <span className="sample-stamp">Exempel</span>
+            <span>Du ser exempeldata, inte restaurangens riktiga siffror.</span>
+            <button type="button" className="link-action" onClick={() => chooseSample(false)}>
+              Visa riktiga siffror
+            </button>
+          </div>
+        )}
         {setupIncomplete && (
           <section className="admin-card activity-card setup-card" aria-label="Kom igång" data-tour="getting-started">
             <div className="card-head">
@@ -286,7 +316,7 @@ export default function OversiktPage() {
                   <li key={r.reservationId}>
                     <span className="cell-strong">{r.startTime}</span>
                     <span>
-                      {r.customerName || 'Gäst'} · <Num>{r.partySize}</Num> pers · {tableNames(r.tableIds, labels)}
+                      {r.customerName || 'Gäst'} · <Num>{r.partySize}</Num> pers · {tableNames(r.tableIds, tableLabels)}
                     </span>
                     <span className={`status-badge ${STATUS_CLASS[r.status]}`}>
                       {STATUS_LABEL[r.status]}
@@ -300,7 +330,14 @@ export default function OversiktPage() {
                   ? <Loading variant="inline" />
                   : todayActive === null
                     ? 'Kunde inte hämta dagens bokningar.'
-                    : `Inga bokningar idag för ${location?.name || 'platsen'}.`}
+                    : (
+                      <>
+                        Inga bokningar idag för {location?.name || 'platsen'}.
+                        <button type="button" className="sample-offer" onClick={() => chooseSample(true)}>
+                          Visa med exempeldata
+                        </button>
+                      </>
+                    )}
               </p>
             )}
             {todayActive && todayActive.length > 8 && (
@@ -312,8 +349,18 @@ export default function OversiktPage() {
 
         </div>
 
+        {isOwner && (
+          <MonthCard
+            locationId={locationId}
+            today={todayIn(timezoneSetting)}
+            catering={loading ? null : data.catering}
+            sample={sample}
+            showRevenue={hasOrdering || hasCatering}
+          />
+        )}
+
         <section className="quick-links-row" aria-label="Genvägar">
-          {QUICK_LINKS.map((link) => (
+          {QUICK_LINKS.filter((link) => (link.ownerOnly ? isOwner : link.staffOnly ? !isOwner : true)).map((link) => (
             <Link key={link.to + link.label} className="admin-card quick-link" to={link.to}>
               <span className="quick-link-label">
                 <span className="quick-link-icon" aria-hidden="true">

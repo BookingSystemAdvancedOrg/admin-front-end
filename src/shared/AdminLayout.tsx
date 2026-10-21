@@ -14,21 +14,45 @@ import { Loading } from './Loading'
 import { useLiquidFill } from './motion/useLiquidFill'
 import { MotionScope, sidebarPourDone, sidebarShouldPour } from './motion/MotionScope'
 import { BusyBar } from './motion/BusyBar'
+import { ThemeToggle } from './ThemeToggle'
 
-// Sidebar-länkarna. `end: true` gör att '/' bara markeras aktiv på exakt
-// träff, annars skulle den lysa upp på alla undersidor också.
-const NAV: { to: string; label: string; tour: string; end?: boolean; feature?: string; ownerOnly?: boolean }[] = [
-  { to: '/', label: 'Översikt', tour: 'nav-oversikt', end: true },
-  { to: '/bokningar', label: 'Bokningar', tour: 'nav-bokningar' },
-  // Bara för restauranger vars plan har matbeställning.
-  { to: '/bestallningar', label: 'Beställningar', tour: 'nav-bestallningar', feature: 'ordering' },
-  { to: '/meny', label: 'Meny', tour: 'nav-meny' },
-  // Förfrågningar; inställningar och rabatter nås därifrån (/cateringkalkyl).
-  { to: '/catering', label: 'Catering', tour: 'nav-catering', feature: 'catering' },
-  { to: '/layout', label: 'Layout', tour: 'nav-layout' },
-  // Statistik och e-postutskick; bara ägare, och bara med marknadsföring i planen.
-  { to: '/marknadsforing', label: 'Marknadsföring', tour: 'nav-marknadsforing', feature: 'marketing', ownerOnly: true },
-  { to: '/installningar', label: 'Inställningar', tour: 'nav-installningar' },
+// Sidebar-länkarna, i grupper efter när man behöver dem: överblicken,
+// det som händer under passet, och det man ställer in mer sällan.
+// `end: true` gör att '/' bara markeras aktiv på exakt träff, annars skulle
+// den lysa upp på alla undersidor också.
+type NavItem = { to: string; label: string; tour: string; end?: boolean; feature?: string; ownerOnly?: boolean }
+const NAV_GROUPS: { id: string; label: string | null; items: NavItem[] }[] = [
+  {
+    id: 'overblick',
+    label: null,
+    items: [
+      { to: '/', label: 'Översikt', tour: 'nav-oversikt', end: true },
+      // Restaurangens siffror över tid; bara ägare.
+      { to: '/statistik', label: 'Statistik', tour: 'nav-statistik', ownerOnly: true },
+    ],
+  },
+  {
+    id: 'passet',
+    label: 'Under passet',
+    items: [
+      { to: '/bokningar', label: 'Bokningar', tour: 'nav-bokningar' },
+      // Bara för restauranger vars plan har matbeställning.
+      { to: '/bestallningar', label: 'Beställningar', tour: 'nav-bestallningar', feature: 'ordering' },
+      // Förfrågningar; inställningar och rabatter nås därifrån (/cateringkalkyl).
+      { to: '/catering', label: 'Catering', tour: 'nav-catering', feature: 'catering' },
+    ],
+  },
+  {
+    id: 'restaurangen',
+    label: 'Restaurangen',
+    items: [
+      { to: '/meny', label: 'Meny', tour: 'nav-meny' },
+      { to: '/layout', label: 'Layout', tour: 'nav-layout' },
+      // E-postutskick; bara ägare, och bara med marknadsföring i planen.
+      { to: '/marknadsforing', label: 'Marknadsföring', tour: 'nav-marknadsforing', feature: 'marketing', ownerOnly: true },
+      { to: '/installningar', label: 'Inställningar', tour: 'nav-installningar' },
+    ],
+  },
 ]
 
 const TENANT_ERROR: Record<TenantErrorCode, { title: string; text: string }> = {
@@ -145,23 +169,40 @@ export function AdminLayout() {
         )}
 
         <nav className="admin-nav" aria-label="Huvudmeny">
-          {NAV.filter(
-            (item) =>
-              (!item.feature || Boolean(tenant?.entitlements.features[item.feature])) &&
-              (!item.ownerOnly || tenant?.role === 'owner_user'),
-          ).map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              data-tour={item.tour}
-              className={({ isActive }) =>
-                isActive ? 'admin-nav-item active' : 'admin-nav-item'
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          {NAV_GROUPS.map((group) => {
+            const items = group.items.filter(
+              (item) =>
+                (!item.feature || Boolean(tenant?.entitlements.features[item.feature])) &&
+                (!item.ownerOnly || tenant?.role === 'owner_user'),
+            )
+            if (items.length === 0) return null
+            const headingId = `nav-group-${group.id}`
+            return (
+              <div
+                key={group.id}
+                className="admin-nav-group"
+                role={group.label ? 'group' : undefined}
+                aria-labelledby={group.label ? headingId : undefined}
+              >
+                {group.label && (
+                  <span className="admin-nav-heading" id={headingId}>
+                    {group.label}
+                  </span>
+                )}
+                {items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.end}
+                    data-tour={item.tour}
+                    className={({ isActive }) => (isActive ? 'admin-nav-item active' : 'admin-nav-item')}
+                  >
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
+            )
+          })}
         </nav>
 
         <div className="admin-sidebar-spacer" />
@@ -174,6 +215,7 @@ export function AdminLayout() {
           >
             Hjälp
           </NavLink>
+          <ThemeToggle label className="admin-nav-item admin-theme-toggle" />
         </nav>
 
         <div className="admin-user">

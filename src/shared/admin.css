@@ -544,7 +544,11 @@
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  /* Avstängd: dämpat bläck på pappersskugga, läsbart i båda lägena, ingen toning. */
+  background: var(--fill);
+  color: var(--muted);
+  box-shadow: none;
+  filter: none;
   cursor: not-allowed;
 }
 
@@ -1241,7 +1245,7 @@
 .setup-check.done {
   border-color: var(--green);
   background: var(--green);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .setup-lead {
@@ -1482,4 +1486,107 @@
 
 .stat-tile--attention .stat-tile-value {
   color: var(--warning-ink);
+}
+
+/* --- Den här månaden (Översikt, ägaren) ---------------------------------
+   Månaden hittills: en ring för hur bokningarna slutade och fyra siffror,
+   med en länk vidare till Statistik. */
+.month-card {
+  padding: 24px;
+}
+
+.month-card-range {
+  margin-top: 2px;
+  font: 500 12px/1.4 var(--mono);
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.month-card-loading {
+  padding: 18px 0 6px;
+}
+
+.month-card-body {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  gap: 20px 32px;
+  align-items: center;
+  padding-top: 6px;
+}
+
+.month-card-kpis {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.month-kpi {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: 14px 16px;
+  border-radius: var(--r-sm);
+  background: var(--fill);
+}
+
+.month-kpi dt {
+  font: 600 10.5px/1.3 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.month-kpi dd {
+  margin: 0;
+  white-space: nowrap;
+  font: 800 26px/1.1 var(--font);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.month-kpi--hero dd {
+  color: var(--accent-ink);
+}
+
+.month-kpi--warn dd {
+  color: var(--accent-ink);
+}
+
+.month-kpi-sub {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.month-card-note {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+@media (max-width: 1180px) {
+  .month-card-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .month-card {
+    padding: 20px 18px;
+  }
+
+  .month-card-body {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: stretch;
+  }
+
+  .month-card-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .month-kpi dd {
+    font-size: 22px;
+  }
 }

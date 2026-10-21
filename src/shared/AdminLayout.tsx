@@ -14,6 +14,7 @@ import { Loading } from './Loading'
 import { useLiquidFill } from './motion/useLiquidFill'
 import { MotionScope, sidebarPourDone, sidebarShouldPour } from './motion/MotionScope'
 import { BusyBar } from './motion/BusyBar'
+import { ThemeToggle } from './ThemeToggle'
 
 // Sidebar-länkarna. `end: true` gör att '/' bara markeras aktiv på exakt
 // träff, annars skulle den lysa upp på alla undersidor också.
@@ -174,6 +175,7 @@ export function AdminLayout() {
           >
             Hjälp
           </NavLink>
+          <ThemeToggle label className="admin-nav-item admin-theme-toggle" />
         </nav>
 
         <div className="admin-user">

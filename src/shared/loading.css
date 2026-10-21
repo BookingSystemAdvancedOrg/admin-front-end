@@ -79,7 +79,7 @@
   flex-direction: column;
   gap: 6px;
   padding: 8px 6px;
-  background: #fbfaf6;
+  background: var(--surface);
   box-shadow: inset 0 0 0 1px var(--border);
   /* Riven underkant, som kvittot. */
   -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 6px 3px repeat-x,

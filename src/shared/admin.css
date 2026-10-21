@@ -1241,7 +1241,7 @@
 .setup-check.done {
   border-color: var(--green);
   background: var(--green);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .setup-lead {

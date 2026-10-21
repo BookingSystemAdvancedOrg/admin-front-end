@@ -434,6 +434,11 @@
 }
 
 .mk-offer-ticket {
+  /* Förhandsvisningen av gästens kupong: alltid vitt papper med Booqys röda,
+     oavsett läge (så ser den ut i gästens e-post). */
+  --accent-ink: #9e1d26;
+  color: #1c1918;
+  color-scheme: light;
   display: grid;
   grid-template-columns: 84px 1fr;
   max-width: 380px;

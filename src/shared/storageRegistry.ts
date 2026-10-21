@@ -34,6 +34,8 @@ export const LEGACY_SESSION_KEY = 'admin-auth-session'
 export const MOCK_SESSION_KEY = 'admin-mock-session'
 export const LOGOUT_PENDING_KEY = 'booqy-logout-pending'
 export const MOTION_SEEN_KEY = 'booqy-motion-seen'
+export const THEME_KEY = 'booqy-theme'
+export const SAMPLE_DATA_KEY = 'booqy-sample-data'
 
 export const STORAGE_REGISTRY: readonly StorageEntry[] = [
   {
@@ -76,6 +78,22 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     setBy: 'Booqy',
     purpose: 'Att animationerna (siffror som räknas upp, rutor som fylls) redan spelats den här inloggningen, så att de bara spelas en gång. Inga personuppgifter.',
     lifetime: 'Tills du loggar ut',
+    category: 'nödvändig',
+  },
+  {
+    name: THEME_KEY,
+    kind: 'localStorage',
+    setBy: 'Booqy',
+    purpose: 'Ditt val av ljust eller mörkt läge (knappen i sidomenyn). Samma nyckel på booqy.se och i Booqy Console. Inga personuppgifter.',
+    lifetime: 'Tills du rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: SAMPLE_DATA_KEY,
+    kind: 'localStorage',
+    setBy: 'Booqy',
+    purpose: 'Att du valt att se Översikten med exempeldata i stället för restaurangens riktiga siffror. Inga personuppgifter.',
+    lifetime: 'Tills du stänger av det eller rensar webbläsaren',
     category: 'nödvändig',
   },
 ]

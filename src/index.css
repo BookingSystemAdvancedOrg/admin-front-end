@@ -6,7 +6,10 @@
    tryckt svart, skrivarens röda). Archivo är läs- och rubrikstilen, Martian
    Mono trycker data (tider, belopp, status). --accent är fyllnadsfärgen
    (knappar, valt läge) = tryckt svart; --accent-ink är text/länkar =
-   skrivarens röda. Alltid ljust läge (inget mörkt läge). Gamla namn (--green,
+   skrivarens röda. Två lägen: ljust (standard) och mörkt, valt med knappen
+   i sidomenyn och satt som <html data-theme> (shared/theme.ts). Mörkt läge
+   är samma värld i varmt tryckfärgsvart: skrivbordet blir svart, papperet
+   sotat, trycket ljust; den vinröda väggen är kvar. Gamla namn (--green,
    --serif, ...) pekar på de nya värdena så att alla sidor följer med. */
 @font-face {
   font-family: 'Archivo';
@@ -59,6 +62,14 @@
   --scrim: rgba(28, 25, 24, 0.38);
   --shadow: 0 1px 1px rgba(28, 25, 24, 0.04), 0 6px 14px -8px rgba(28, 25, 24, 0.22);
   --shadow-lg: 0 2px 4px rgba(28, 25, 24, 0.06), 0 24px 48px -16px rgba(28, 25, 24, 0.32);
+  /* Papperslappen som sticker ut ur väggen (vald sida i sidomenyn). */
+  --slip: #fbfaf6;
+  --on-slip: #350001;
+  /* Vätskan i nyckeltalsrutorna (rgb-tripel och täthet, se brand.css). */
+  --liquid-tile: 196, 188, 170;
+  --liquid-tile-alpha: 0.32;
+  --liquid-attention: 158, 29, 38;
+  --liquid-attention-alpha: 0.14;
   --font: 'Archivo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --mono: 'Martian Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --r-sm: 3px;
@@ -82,6 +93,48 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Mörkt läge: samma material i varmt tryckfärgsvart. Knapparna är det
+   omvända trycket (ljusa med mörk text), skrivarens röda ljusnar så den
+   går att läsa på sot. Varje textpar minst 4,5:1. */
+:root[data-theme='dark'] {
+  --bg: #1c1918;
+  --surface: #2a2523;
+  --fill: #332e2b;
+  --surface-glass: rgba(42, 37, 35, 0.9);
+  --border: #463f3b;
+  --ink: #f6ece9;
+  --muted: #b8aca6;
+  --accent: #f6ece9;
+  --accent-hover: #ffffff;
+  --accent-active: #e4d8d4;
+  --on-accent: #1c1918;
+  --accent-ink: #ee8a90;
+  --focus: rgba(238, 138, 144, 0.4);
+  --danger: #ee8a90;
+  --danger-ink: #ee8a90;
+  --success: #7cc695;
+  --success-ink: #7cc695;
+  --warning: #e0b35a;
+  --warning-ink: #e0b35a;
+  --purple: #c9b3e0;
+  --purple-ink: #c9b3e0;
+  --tint-blue: #3a3430;
+  --tint-green: #223a2a;
+  --tint-orange: #3a2f16;
+  --tint-red: #432326;
+  --tint-purple: #352a40;
+  --scrim: rgba(0, 0, 0, 0.66);
+  --shadow: 0 1px 1px rgba(0, 0, 0, 0.3), 0 10px 18px -8px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.4), 0 24px 48px -16px rgba(0, 0, 0, 0.7);
+  --slip: #f6ece9;
+  --on-slip: #350001;
+  --liquid-tile: 112, 100, 94;
+  --liquid-tile-alpha: 0.42;
+  --liquid-attention: 238, 138, 144;
+  --liquid-attention-alpha: 0.16;
+  color-scheme: dark;
 }
 
 ::selection {

@@ -206,7 +206,7 @@
 .catering-summary-kicker {
   font: 700 11px/1 var(--sans);
   letter-spacing: 0.08em;
-  color: var(--accent-ink);
+  color: color-mix(in srgb, var(--on-accent) 78%, transparent);
 }
 
 .catering-summary-title {
@@ -242,7 +242,7 @@
 }
 
 .catering-summary-discount {
-  color: var(--accent-ink);
+  color: color-mix(in srgb, var(--on-accent) 85%, transparent);
 }
 
 .catering-summary-total {

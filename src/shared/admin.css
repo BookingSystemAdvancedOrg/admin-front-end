@@ -544,7 +544,11 @@
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  /* Avstängd: dämpat bläck på pappersskugga, läsbart i båda lägena, ingen toning. */
+  background: var(--fill);
+  color: var(--muted);
+  box-shadow: none;
+  filter: none;
   cursor: not-allowed;
 }
 

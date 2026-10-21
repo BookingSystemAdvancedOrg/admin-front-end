@@ -84,7 +84,6 @@
   right: 4px;
   font: 600 8px/1 var(--mono, ui-monospace, monospace);
   color: var(--muted);
-  opacity: 0.7;
 }
 
 .tool-btn.active .tool-key {
@@ -207,7 +206,9 @@
 }
 
 .view-toggle button:disabled {
-  opacity: 0.35;
+  /* Dämpad men läsbar: texten håller 4,5:1 i båda lägena. */
+  color: var(--muted);
+  opacity: 0.85;
   cursor: default;
 }
 

@@ -15,6 +15,8 @@ const declineRequest = vi.fn()
 const cancelRequest = vi.fn()
 const markDelivered = vi.fn()
 const listRequests = vi.fn()
+const restaurantSign = vi.fn()
+const restaurantSignStatus = vi.fn()
 vi.mock('./cateringApi', async (orig) => ({
   ...(await orig<typeof import('./cateringApi')>()),
   getRequest: (...a: unknown[]) => getRequest(...a),
@@ -24,7 +26,10 @@ vi.mock('./cateringApi', async (orig) => ({
   cancelRequest: (...a: unknown[]) => cancelRequest(...a),
   markDelivered: (...a: unknown[]) => markDelivered(...a),
   listRequests: (...a: unknown[]) => listRequests(...a),
+  restaurantSign: (...a: unknown[]) => restaurantSign(...a),
+  restaurantSignStatus: (...a: unknown[]) => restaurantSignStatus(...a),
 }))
+vi.mock('qrcode', () => ({ default: { toDataURL: (d: string) => Promise.resolve(`data:qr,${d}`) } }))
 vi.mock('../../shared/AdminTopbar', () => ({
   AdminTopbar: ({ title, subtitle }: { title: string; subtitle?: string }) => (
     <header>
@@ -105,7 +110,7 @@ describe('CateringRequestPage', () => {
     expect(sendOffer).toHaveBeenCalledWith('loc-1', 'req-1', expect.objectContaining({
       lines: [{ menuItemId: 'm1', name: 'Lasagne', unitPrice: 55, quantity: 20 }],
     }))
-    expect(await screen.findByRole('status')).toHaveTextContent('Offerten är skickad')
+    expect(await screen.findByRole('status')).toHaveTextContent('Offerten är klar. Signera den')
   })
 
   it('adds a catering package for the guests, switches to food only and shows the review label', async () => {
@@ -130,6 +135,25 @@ describe('CateringRequestPage', () => {
     expect(sendOffer).toHaveBeenCalledWith('loc-1', 'req-1', expect.objectContaining({
       serviceIncluded: false, lines: [{ packageId: 'p1', name: 'Mingelpaket', unitPrice: 245, quantity: 40 }],
     }))
+  })
+
+  it('the restaurant signs the sent offer with BankID before the customer gets it', async () => {
+    const user = userEvent.setup()
+    const sent = request({ status: 'offer_sent', currentOfferVersion: 1, signing: { offerVersion: 1, pdfSha256: 'a'.repeat(64) },
+      offers: [{ version: 1, lines: [], totals: TOTALS, validUntil: '2026-11-01' }] })
+    getRequest.mockResolvedValue(sent)
+    restaurantSign.mockResolvedValue({ kind: 'bankid', qrData: 'bankid.a.0.b', autoStartToken: 'ast' })
+    restaurantSignStatus.mockResolvedValueOnce({ state: 'pending', hint: 'userSign', qrData: 'bankid.a.1.c' })
+      .mockResolvedValueOnce({ state: 'signed', request: { ...sent, restaurantSignedAt: '2026-10-12T12:00:00Z',
+        signing: { offerVersion: 1, restaurant: { name: 'Roma AB', method: 'bankid', signedAt: '2026-10-12T12:00:00Z' } } } })
+    renderAt()
+    expect(await screen.findByText('Väntar på er signatur')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Signera med BankID' }))
+    expect(await screen.findByAltText('QR-kod för BankID')).toHaveAttribute('src', 'data:qr,bankid.a.0.b')
+    expect(await screen.findByText(/Skriv in din säkerhetskod/, {}, { timeout: 3000 })).toBeInTheDocument()
+    expect(await screen.findByText(/Signerad. Offerten är skickad till kunden/, {}, { timeout: 3000 })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Signera offerten' })).not.toBeInTheDocument()
+    expect(screen.getByText('Offert skickad')).toBeInTheDocument()
   })
 
   it('shows a not cleaned return and keeps its fee in the offer', async () => {
@@ -212,7 +236,7 @@ describe('CateringRequestPage', () => {
     }))
     markDelivered.mockResolvedValue(request({ status: 'closed' }))
     renderAt()
-    expect(await screen.findByText('Signerad med BankID')).toBeInTheDocument()
+    expect(await screen.findByText('Signerad av båda parter')).toBeInTheDocument()
     expect(screen.getByText('Anna Andersson (19800101-****)')).toBeInTheDocument()
     expect(screen.getByText('Betald online')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Markera levererad' }))
@@ -240,7 +264,7 @@ describe('CateringRequestPage', () => {
 describe('CateringPage', () => {
   it('lists requests waiting for the owner first', async () => {
     listRequests.mockResolvedValue([
-      { ...request({ requestId: 'r-sent', status: 'offer_sent', customerName: 'Bo' }) },
+      { ...request({ requestId: 'r-sent', status: 'offer_sent', customerName: 'Bo', restaurantSignedAt: '2026-10-12T12:00:00Z' }) },
       { ...request({ requestId: 'r-new', status: 'requested', customerName: 'Cia' }) },
     ])
     render(<MemoryRouter><CateringPage /></MemoryRouter>)

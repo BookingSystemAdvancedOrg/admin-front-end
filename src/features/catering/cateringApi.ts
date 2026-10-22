@@ -163,8 +163,18 @@ export const STATUS_LABEL: Record<CateringStatus, string> = {
 export const NEEDS_OWNER: CateringStatus[] = ['requested', 'change_requested']
 
 /** Statusens etikett; en ny förfrågan som ägaren börjat på är "Under granskning". */
-export function statusLabel(r: { status: CateringStatus; reviewedAt?: string }): string {
-  return r.status === 'requested' && r.reviewedAt ? 'Under granskning' : STATUS_LABEL[r.status]
+export function statusLabel(r: { status: CateringStatus; reviewedAt?: string; restaurantSignedAt?: string }): string {
+  if (r.status === 'requested' && r.reviewedAt) return 'Under granskning'
+  if (r.status === 'offer_sent' && !r.restaurantSignedAt) return 'Väntar på er signatur'
+  return STATUS_LABEL[r.status]
+}
+
+/** Vem som har signerat den aktuella offertversionen. */
+export interface SignerState {
+  name?: string
+  role?: string
+  method?: string
+  signedAt?: string
 }
 
 export interface Line {
@@ -224,6 +234,8 @@ export interface RequestSummary {
   guests?: number
   /** Ägaren har börjat på offerten ("Under granskning"). */
   reviewedAt?: string
+  /** Restaurangen har signerat den skickade versionen; först då får kunden den. */
+  restaurantSignedAt?: string
 }
 
 export interface CateringRequest extends RequestSummary {
@@ -251,7 +263,10 @@ export interface CateringRequest extends RequestSummary {
   rejectReason?: string
   cancelReason?: string
   refundNote?: string
-  signature?: { name: string; personalNumberMasked: string; signedAt: string; documentHash: string }
+  signature?: { name: string; personalNumberMasked?: string; signedAt: string; documentHash?: string; method?: string;
+    role?: string; pdfSha256?: string }
+  signing?: { offerVersion: number; pdfSha256?: string; restaurant?: SignerState; customer?: SignerState }
+  signedPdfKey?: string
   stripeInvoiceId?: string
   invoiceNumber?: string
   invoiceUrl?: string
@@ -470,6 +485,35 @@ export function signatureLink(locationId: string, requestId: string): Promise<{ 
   return apiFetch(`${req(locationId, requestId)}/documents/signature`)
 }
 
+/** En nedladdningslänk (5 minuter) till offerten, den signerade kopian eller signaturbeviset. */
+export function documentLink(locationId: string, requestId: string, docId: 'offer' | 'signed' | 'signature'):
+  Promise<{ url: string }> {
+  return apiFetch(`${req(locationId, requestId)}/documents/${docId}`)
+}
+
+export interface SignStart {
+  kind: 'bankid' | 'redirect'
+  url?: string
+  qrData?: string
+  autoStartToken?: string
+}
+
+export interface SignPoll {
+  state: 'pending' | 'failed' | 'signed'
+  hint?: string
+  qrData?: string
+  request?: CateringRequest
+}
+
+/** Restaurangen signerar offerten (först), med BankID här eller på signeringstjänstens sida. */
+export function restaurantSign(locationId: string, requestId: string): Promise<SignStart> {
+  return apiFetch(`${req(locationId, requestId)}/restaurant-sign`, { method: 'POST' })
+}
+
+export function restaurantSignStatus(locationId: string, requestId: string): Promise<SignPoll> {
+  return apiFetch(`${req(locationId, requestId)}/restaurant-sign/status`, { method: 'POST' })
+}
+
 /** Förfrågans rader som offertutkast (kronor). */
 export function offerFromRequest(r: CateringRequest): OfferInput {
   const source = r.draft ?? r.offer
@@ -541,6 +585,11 @@ const ERRORS: Record<string, string> = {
   not_confirmed: 'Bara bekräftade beställningar kan markeras som levererade.',
   payment_provider_rejected: 'Stripe nekade åtgärden. Kontrollera i Stripe och försök igen.',
   payment_unavailable: 'Stripe svarar inte just nu. Försök igen om en stund.',
+  signing_unavailable: 'Signeringstjänsten svarar inte just nu. Försök igen om en stund.',
+  document_unavailable: 'Offerten kunde inte skapas som PDF just nu. Försök igen om en stund.',
+  not_signable: 'Den här offertversionen kan inte signeras. Skicka offerten igen.',
+  already_signed: 'Offerten är redan signerad av restaurangen.',
+  signing_alreadyInProgress: 'En BankID-signering pågår redan. Avbryt den i appen och försök igen.',
 }
 
 export function errorText(err: unknown): string {

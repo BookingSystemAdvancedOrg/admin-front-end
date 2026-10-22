@@ -108,3 +108,19 @@
   max-width: 100%;
   min-width: 0;
 }
+
+/* Restaurangens BankID-signering av offerten. */
+.restaurant-signing .bankid-box {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.restaurant-signing .bankid-qr {
+  width: 200px;
+  height: 200px;
+  padding: 8px;
+  border-radius: 6px;
+  background: #fff;
+}

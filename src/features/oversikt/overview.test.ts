@@ -27,7 +27,7 @@ describe('todaysHours', () => {
       ],
     }
     expect(todaysHours(hours, 'Europe/Stockholm', FRIDAY_NIGHT_UTC)).toBe(
-      '11:00–14:00, 17:00–22:00',
+      '11:00-14:00, 17:00-22:00',
     )
   })
 

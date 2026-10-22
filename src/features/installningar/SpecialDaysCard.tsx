@@ -273,7 +273,7 @@ export function SpecialDaysCard({
                         value={iv.opensAt}
                         onChange={(e) => setInterval_(i, { opensAt: e.target.value })}
                       />
-                      <span>–</span>
+                      <span>-</span>
                       <input
                         type="time"
                         aria-label={`Stänger (tid ${i + 1})`}

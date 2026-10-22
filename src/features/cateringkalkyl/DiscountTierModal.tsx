@@ -69,7 +69,7 @@ export function DiscountTierModal({
   const discount = Number(discountPercent.replace(/[^\d]/g, ''))
   const discountError =
     discountPercent.trim() === '' || Number.isNaN(discount) || discount < 0 || discount > 100
-      ? 'Ange 0–100.'
+      ? 'Ange 0-100.'
       : null
 
   const overlap =
@@ -156,7 +156,7 @@ export function DiscountTierModal({
 
         {overlap ? (
           <p className="form-error" role="alert">
-            Överlappar {overlap.name} ({overlap.fromPortions}–
+            Överlappar {overlap.name} ({overlap.fromPortions}-
             {overlap.toPortions ?? 'och uppåt'} portioner). Intervallen får inte
             överlappa andra nivåer.
           </p>

@@ -29,7 +29,7 @@ export function weekdayIn(timezone: string | null, now: Date = new Date()): Week
   return WEEKDAYS.includes(day) ? day : 'monday'
 }
 
-/** Dagens öppettider som text, t.ex. "11:00–14:00, 17:00–22:00" eller "Stängt". */
+/** Dagens öppettider som text, t.ex. "11:00-14:00, 17:00-22:00" eller "Stängt". */
 export function todaysHours(
   hours: BusinessHours | undefined,
   timezone: string | null,
@@ -37,7 +37,7 @@ export function todaysHours(
 ): string {
   const intervals = hours?.[weekdayIn(timezone, now)] ?? []
   if (intervals.length === 0) return 'Stängt'
-  return intervals.map((i) => `${i.opensAt}–${i.closesAt}`).join(', ')
+  return intervals.map((i) => `${i.opensAt}-${i.closesAt}`).join(', ')
 }
 
 export function hasAnyOpeningHours(hours: BusinessHours | undefined): boolean {

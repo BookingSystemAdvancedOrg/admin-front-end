@@ -69,7 +69,7 @@ klient:
 
 Sidorna "Välj ett nytt lösenord" (`/nytt-losenord`) och "Återställ
 lösenord" (`/aterstall-losenord`) visar en checklista med kraven: **minst 8
-tecken, stor bokstav (A–Z), liten bokstav (a–z), siffra och specialtecken**.
+tecken, stor bokstav (A-Z), liten bokstav (a-z), siffra och specialtecken**.
 Kraven finns på ett ställe, `src/features/auth/passwordRules.ts`, och är
 desamma som User Poolens policy (infrastructure-repot,
 `storage/cognito/main.tf`). Ändras policyn där, ändra `PASSWORD_RULES` också -

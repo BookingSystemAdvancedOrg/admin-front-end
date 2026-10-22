@@ -62,9 +62,9 @@ export interface OrderingPolicy {
   pickup: boolean
   /** Beställ via QR-koden på bordet, serveras vid bordet. */
   table: boolean
-  /** Beräknad tillagningstid som gästen ser (5–180 min). */
+  /** Beräknad tillagningstid som gästen ser (5-180 min). */
   prepMinutes: number
-  /** Sista beställning så här många minuter före stängning (0–120). */
+  /** Sista beställning så här många minuter före stängning (0-120). */
   lastOrderMinutes: number
 }
 

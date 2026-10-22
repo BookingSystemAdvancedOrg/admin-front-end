@@ -42,7 +42,7 @@ describe('SpecialDaysCard', () => {
       ],
     })
     render(<SpecialDaysCard locationId="loc-1" isOwner />)
-    expect(await screen.findByText(/Andra öppettider 17:00–22:00/)).toBeInTheDocument()
+    expect(await screen.findByText(/Andra öppettider 17:00-22:00/)).toBeInTheDocument()
     expect(screen.getByText(/Stängt · ”Julafton”/)).toBeInTheDocument()
     // A passed day is not shown (and is dropped on the next save).
     expect(screen.queryByText(/Söndag 11 oktober/)).toBeNull()

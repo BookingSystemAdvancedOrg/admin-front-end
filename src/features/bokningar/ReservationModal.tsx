@@ -130,7 +130,7 @@ export function ReservationModal({
           <div>
             <h2>{r.customerName || 'Gäst'}</h2>
             <p className="cell-muted">
-              {dayLabel(r.date)} · {r.startTime}–{r.endTime} · {r.partySize} pers · {tableNames(r.tableIds, labels)}
+              {dayLabel(r.date)} · {r.startTime}-{r.endTime} · {r.partySize} pers · {tableNames(r.tableIds, labels)}
             </p>
           </div>
           <span className={`status-badge ${STATUS_CLASS[r.status]}`}>{STATUS_LABEL[r.status]}</span>

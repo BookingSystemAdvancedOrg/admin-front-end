@@ -614,7 +614,7 @@ export default function CateringkalkylPage() {
               <div>
                 <p className="catering-total-portions">{totalPortions} portioner totalt</p>
                 <p className="cell-muted">
-                  Minst {orderRules.minPortions} – max {orderRules.maxPortions} portioner
+                  Minst {orderRules.minPortions} - max {orderRules.maxPortions} portioner
                 </p>
               </div>
               {currentTier && currentTier.discountPercent > 0 && (
@@ -685,7 +685,7 @@ export default function CateringkalkylPage() {
                         </button>
                       </div>
                       <span className="catering-dish-total">
-                        {q > 0 ? krWhole(discounted * q) : '–'}
+                        {q > 0 ? krWhole(discounted * q) : '-'}
                       </span>
                     </li>
                   )

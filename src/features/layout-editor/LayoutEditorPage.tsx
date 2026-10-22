@@ -2618,7 +2618,7 @@ export default function LayoutEditorPage() {
                   <p className="props-label">PLATSER</p>
                   <div className="seats-stepper">
                     <button type="button" className="step-btn" disabled={selectedTable.seats <= 1} onClick={() => updateTable({ seats: selectedTable.seats - 1 })}>
-                      –
+                      -
                     </button>
                     <span>{selectedTable.seats}</span>
                     <button type="button" className="step-btn" disabled={selectedTable.seats >= 12} onClick={() => updateTable({ seats: selectedTable.seats + 1 })}>
@@ -2653,7 +2653,7 @@ export default function LayoutEditorPage() {
                   <p className="props-label">UPPREPA I RAD</p>
                   <div className="seats-stepper">
                     <button type="button" className="step-btn" aria-label="Färre bord" disabled={rowCount <= 1} onClick={() => setRowCount((c) => c - 1)}>
-                      –
+                      -
                     </button>
                     <span>{rowCount}</span>
                     <button type="button" className="step-btn" aria-label="Fler bord" disabled={rowCount >= 12} onClick={() => setRowCount((c) => c + 1)}>
@@ -2686,7 +2686,7 @@ export default function LayoutEditorPage() {
                   <p className="props-label">LÄNGD</p>
                   <div className="seats-stepper">
                     <button type="button" className="step-btn" disabled={selectedWall.length <= GRID} onClick={() => updateWallLength(-GRID)}>
-                      –
+                      -
                     </button>
                     <span>{formatMetres(selectedWall.length)}</span>
                     <button type="button" className="step-btn" onClick={() => updateWallLength(GRID)}>
@@ -2720,7 +2720,7 @@ export default function LayoutEditorPage() {
                   <p className="props-label">LÄNGD</p>
                   <div className="seats-stepper">
                     <button type="button" className="step-btn" disabled={selectedOpening.length <= GRID} onClick={() => updateOpeningLength(-GRID)}>
-                      –
+                      -
                     </button>
                     <span>{formatMetres(selectedOpening.length)}</span>
                     <button type="button" className="step-btn" onClick={() => updateOpeningLength(GRID)}>

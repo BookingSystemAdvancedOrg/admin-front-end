@@ -15,7 +15,7 @@ admin-panelen för personal och ägare.
 - Vad appen är till för (t.ex. gäster som bokar bord, ser meny, hanterar sin
   bokning) och vilket repo/projekt den bor i (eget repo eller egen mapp här -
   bestäms när arbetet startar).
-- Projektstruktur, motsvarande avsnitt 2–3 i [ADMIN.md](ADMIN.md).
+- Projektstruktur, motsvarande avsnitt 2-3 i [ADMIN.md](ADMIN.md).
 - Inloggnings-/identifieringsflöde för gäster, om det behövs (troligen inte
   samma Cognito User Pool som personalen - separat pool eller ingen
   inloggning alls beroende på lösning).

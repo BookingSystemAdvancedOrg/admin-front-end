@@ -402,7 +402,7 @@ export function dayNotice(day: DayStatus | null): string | null {
   const note = day.note ? ` (${day.note})` : ''
   if (day.kind === 'closed') return `Restaurangen är stängd den dagen${note}.`
   if (day.kind === 'hours') {
-    const hours = (day.intervals ?? []).map((i) => `${i.opensAt}–${i.closesAt}`).join(', ')
+    const hours = (day.intervals ?? []).map((i) => `${i.opensAt}-${i.closesAt}`).join(', ')
     return `Avvikande öppettider den dagen: ${hours}${note}.`
   }
   return `Onlinebokningen är stängd den dagen${note} - här kan du ändå boka.`

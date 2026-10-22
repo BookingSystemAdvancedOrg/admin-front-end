@@ -73,7 +73,7 @@ export function BusinessHoursEditor({
                     updateInterval(day, index, 'opensAt', e.target.value)
                   }
                 />
-                <span aria-hidden="true">–</span>
+                <span aria-hidden="true">-</span>
                 <input
                   type="time"
                   aria-label={`${DAY_LABEL[day]} stänger`}

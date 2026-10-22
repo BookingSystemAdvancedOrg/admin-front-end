@@ -54,7 +54,7 @@ export function rulesToSave(
     const max = whole(row.max)
     const name = `Bord ${t.label}`
     if (min === null || max === null || min < 1 || max < 1 || min > MAX_PARTY || max > MAX_PARTY) {
-      return { rules, error: `${name}: ange antal personer som heltal 1–${MAX_PARTY}.` }
+      return { rules, error: `${name}: ange antal personer som heltal 1-${MAX_PARTY}.` }
     }
     if (min > max) return { rules, error: `${name}: minst kan inte vara fler än högst.` }
     if (max > t.seats) return { rules, error: `${name}: högst ${t.seats} personer (bordets platser).` }
@@ -102,7 +102,7 @@ export function intervalsError(intervals: BusinessHoursInterval[]): string | nul
 
 export function describe(day: SpecialDay): string {
   if (day.kind === 'hours') {
-    return `${KIND_LABEL.hours} ${(day.intervals ?? []).map((i) => `${i.opensAt}–${i.closesAt}`).join(', ')}`
+    return `${KIND_LABEL.hours} ${(day.intervals ?? []).map((i) => `${i.opensAt}-${i.closesAt}`).join(', ')}`
   }
   return KIND_LABEL[day.kind]
 }

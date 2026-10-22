@@ -93,11 +93,11 @@ export function CancellationPolicyCard({
     const noShow = whole(form.noShow, 0, 5000)
     const lateCancel = whole(form.lateCancel, 0, 5000)
     const cutoff = whole(form.cutoff, 0, 168)
-    if (minPartySize === null) return setError('Sällskapsstorlek: ett heltal 1–50.')
+    if (minPartySize === null) return setError('Sällskapsstorlek: ett heltal 1-50.')
     if (noShow === null || lateCancel === null) {
-      return setError('Avgifterna: heltal 0–5000 kr per person.')
+      return setError('Avgifterna: heltal 0-5000 kr per person.')
     }
-    if (cutoff === null) return setError('Avbokningsgränsen: ett heltal 0–168 timmar.')
+    if (cutoff === null) return setError('Avbokningsgränsen: ett heltal 0-168 timmar.')
     if (form.enabled && noShow === 0 && lateCancel === 0) {
       return setError('Ange en no-show-avgift eller en avgift för sen avbokning.')
     }

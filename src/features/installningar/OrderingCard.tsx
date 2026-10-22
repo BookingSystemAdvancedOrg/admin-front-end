@@ -118,8 +118,8 @@ export function OrderingCard({
     setNotice(null)
     const prep = whole(form.prep, 5, 180)
     const last = whole(form.last, 0, 120)
-    if (prep === null) return setError('Tillagningstid: ett heltal 5–180 minuter.')
-    if (last === null) return setError('Sista beställning: ett heltal 0–120 minuter före stängning.')
+    if (prep === null) return setError('Tillagningstid: ett heltal 5-180 minuter.')
+    if (last === null) return setError('Sista beställning: ett heltal 0-120 minuter före stängning.')
     if (form.enabled && !form.pickup && !form.table) {
       return setError('Välj avhämtning, beställning vid bordet eller båda.')
     }

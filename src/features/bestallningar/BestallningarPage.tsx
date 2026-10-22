@@ -171,7 +171,7 @@ export default function BestallningarPage() {
         aria-label={`Beställning ${order.number ?? ''}`}
       >
         <header className="order-card-head">
-          <span className="order-number">#{order.number ?? '–'}</span>
+          <span className="order-number">#{order.number ?? '-'}</span>
           <span className={`status-badge ${order.mode === 'table' ? 'arrived' : 'waiting'}`}>
             {where(order)}
           </span>
@@ -199,13 +199,13 @@ export default function BestallningarPage() {
           {order.status === 'confirmed' && (
             <button type="button" className="btn primary square" disabled={isBusy}
               onClick={() => void move(order, 'preparing')}>
-              Påbörja – skicka sms
+              Påbörja - skicka sms
             </button>
           )}
           {order.status === 'preparing' && (
             <button type="button" className="btn primary square" disabled={isBusy}
               onClick={() => void move(order, 'ready')}>
-              {order.mode === 'pickup' ? 'Klar – skicka sms' : 'Klar att servera'}
+              {order.mode === 'pickup' ? 'Klar - skicka sms' : 'Klar att servera'}
             </button>
           )}
           {order.status === 'ready' && (

@@ -66,7 +66,7 @@ function Tile({
   value: string
   sub?: string
   delta?: ReactNode
-  spark?: number[]
+  spark?: { points: { label: string; value: number }[]; format: (v: number) => string }
   tone?: 'warn' | 'bad'
 }) {
   return (
@@ -75,7 +75,7 @@ function Tile({
       <strong className="sk-kpi-value">
         <Num>{value}</Num>
       </strong>
-      {spark && <Sparkline values={spark} />}
+      {spark && <Sparkline points={spark.points} format={spark.format} label={label} />}
       {sub && <span className="sk-kpi-sub">{sub}</span>}
       {delta}
     </div>
@@ -214,8 +214,8 @@ export default function StatistikPage() {
       </Delta>
     ) : undefined
   const days = daysBetween(f.from, f.to)
-  const spark = (pick: (d: InsightsSummary['byDay'][number]) => number | null | undefined) =>
-    s && s.byDay.length >= 7 ? s.byDay.map((d) => pick(d) ?? 0) : undefined
+  const spark = (pick: (d: InsightsSummary['byDay'][number]) => number | null | undefined, format: (v: number) => string = fmtInt) =>
+    s && s.byDay.length >= 7 ? { points: s.byDay.map((d) => ({ label: shortDate(d.date), value: pick(d) ?? 0 })), format } : undefined
   const split = Number((ready?.locations.find((l) => l.locationId === f.locationId) ?? ready?.locations[0])?.lunchUntil?.slice(0, 2) ?? 15)
   const todo = s ? signals(s, p, { split, marketing: Boolean(features.marketing) }) : []
   const nothing = s !== null && s.bookings + s.cancelled + s.orders + s.catering.requests === 0
@@ -422,7 +422,7 @@ export default function StatistikPage() {
                   label="Beläggning"
                   value={fmtPct(s.occupancy)}
                   sub={s.seatFill !== null ? `${fmtPct(s.seatFill)} av stolarna fyllda` : 'av bordstiden bokad'}
-                  spark={spark((d) => d.occupancy)}
+                  spark={spark((d) => d.occupancy, (v) => fmtPct(v))}
                   delta={delta(s.occupancy, p?.occupancy)}
                 />
                 <Tile
@@ -442,7 +442,7 @@ export default function StatistikPage() {
                       label="Omsättning"
                       value={fmtKr(s.revenue)}
                       sub={`Beställningar ${fmtKr(s.orderRevenue)}, catering ${fmtKr(s.cateringRevenue)}`}
-                      spark={spark((d) => d.revenue)}
+                      spark={spark((d) => d.revenue, (v) => fmtKr(v))}
                       delta={delta(s.revenue, p?.revenue)}
                     />
                     <Tile
@@ -528,6 +528,7 @@ export default function StatistikPage() {
                       label: shortDate(d.date),
                       value: d.guests,
                       previous: prevByDay(i)?.guests,
+                      detail: `${fmtInt(d.bookings)} bokningar`,
                       title: `${shortDate(d.date)}: ${fmtInt(d.guests)} gäster i ${fmtInt(d.bookings)} bokningar${prevByDay(i) ? `, ${cmp} ${fmtInt(prevByDay(i)!.guests)}` : ''}`,
                     }))}
                     tableHead={['Dag', 'Gäster', 'Bokningar', 'Uteblivna', 'Avbokade']}
@@ -544,11 +545,13 @@ export default function StatistikPage() {
                   <p className="sk-insight">Bokningar per starttimme.</p>
                   <BarChart
                     format={fmtInt}
+                    seriesLabel="Bokningar"
                     ariaLabel="Bokningar per timme"
                     rows={s.byHour.filter((h) => h.bookings > 0).map((h) => ({
                       key: String(h.hour),
                       label: hourLabel(h.hour),
                       value: h.bookings,
+                      detail: `${fmtInt(h.guests)} gäster`,
                       title: `${hourLabel(h.hour)}: ${fmtInt(h.bookings)} bokningar, ${fmtInt(h.guests)} gäster`,
                     }))}
                     tableHead={['Timme', 'Bokningar', 'Gäster']}
@@ -561,11 +564,13 @@ export default function StatistikPage() {
                   <p className="sk-insight">Den tyngsta dagen i rött.</p>
                   <BarChart
                     format={fmtInt}
+                    seriesLabel="Gäster"
                     ariaLabel="Gäster per veckodag"
                     rows={s.byWeekday.map((d) => ({
                       key: String(d.weekday),
                       label: WEEKDAY_LABELS[d.weekday],
                       value: d.guests,
+                      detail: `${fmtInt(d.bookings)} bokningar`,
                       title: `${WEEKDAY_LABELS[d.weekday]}: ${fmtInt(d.guests)} gäster i ${fmtInt(d.bookings)} bokningar`,
                     }))}
                     tableHead={['Veckodag', 'Gäster', 'Bokningar', 'Beläggning']}
@@ -617,6 +622,7 @@ export default function StatistikPage() {
                 <Card title={leadSoon !== null ? `${fmtPct(leadSoon)} bokar samma dag eller dagen före` : 'Hur långt i förväg'} label="Framförhållning">
                   <BarChart
                     format={fmtInt}
+                    seriesLabel="Bokningar"
                     ariaLabel="Bokningar efter hur långt i förväg de gjordes"
                     rows={s.lead.map((l) => ({
                       key: l.label,
@@ -633,10 +639,12 @@ export default function StatistikPage() {
                 <Card title={s.avgParty ? `${fmtDecimal(s.avgParty)} gäster per sällskap` : 'Sällskapens storlek'} label="Sällskapens storlek">
                   <BarChart
                     format={fmtInt}
+                    seriesLabel="Bokningar"
                     ariaLabel="Bokningar per sällskapsstorlek"
                     rows={s.party.map((x) => ({
                       key: String(x.size),
                       label: x.size >= 8 ? '8+' : String(x.size),
+                      heading: `${x.size >= 8 ? '8 eller fler' : x.size} gäster`,
                       value: x.bookings,
                       title: `${x.size >= 8 ? '8 eller fler' : x.size} gäster: ${fmtInt(x.bookings)} bokningar`,
                     }))}
@@ -672,6 +680,7 @@ export default function StatistikPage() {
                 <Card title={lowSize ? `${SIZE_LABELS[lowSize.size] ?? lowSize.size} används minst` : 'Beläggning per bordsstorlek'} label="Beläggning per bordsstorlek">
                   <BarChart
                     format={(v) => fmtPct(v)}
+                    seriesLabel="Beläggning"
                     ariaLabel="Beläggning per bordsstorlek"
                     rows={sizeRows.map((r) => ({
                       key: r.size,
@@ -688,6 +697,7 @@ export default function StatistikPage() {
                 <Card title="Beläggning per veckodag" label="Beläggning per veckodag">
                   <BarChart
                     format={(v) => fmtPct(v)}
+                    seriesLabel="Beläggning"
                     ariaLabel="Beläggning per veckodag"
                     rows={s.byWeekday.map((d) => ({
                       key: String(d.weekday),
@@ -722,6 +732,7 @@ export default function StatistikPage() {
                             label: shortDate(d.date),
                             value: d.revenue ?? 0,
                             previous: prevByDay(i)?.revenue,
+                            detail: `${fmtInt(d.orders)} beställningar`,
                             title: `${shortDate(d.date)}: ${fmtKr(d.revenue)} (${fmtInt(d.orders)} beställningar)${prevByDay(i) ? `, ${cmp} ${fmtKr(prevByDay(i)!.revenue)}` : ''}`,
                           }))}
                           tableHead={['Dag', 'Omsättning', 'Beställningar', 'Catering']}
@@ -739,6 +750,7 @@ export default function StatistikPage() {
                           centerLabel="avhämtning"
                           empty="Inget betalt än"
                           format={fmtKr}
+                          valueLabel="Belopp"
                           segments={[
                             { key: 'pickup', label: 'Avhämtning', value: s.pickupRevenue ?? 0, tone: 'ink' },
                             { key: 'table', label: 'Vid bordet', value: s.tableRevenue ?? 0, tone: 'red' },
@@ -876,11 +888,12 @@ export default function StatistikPage() {
                     <Card title={s.catering.conversionPct !== null ? `${fmtPct(s.catering.conversionPct)} av offerterna blev beställningar` : 'Från förfrågan till beställning'} label="Catering">
                       <BarChart
                         format={fmtInt}
+                        seriesLabel="Antal"
                         ariaLabel="Catering från förfrågan till beställning"
                         rows={[
-                          { key: 'req', label: 'Förfr.', value: s.catering.requests, title: `${fmtInt(s.catering.requests)} förfrågningar` },
-                          { key: 'off', label: 'Offert', value: s.catering.offers, title: `${fmtInt(s.catering.offers)} offerter skickade` },
-                          { key: 'won', label: 'Ja', value: s.catering.won, title: `${fmtInt(s.catering.won)} accepterade` },
+                          { key: 'req', label: 'Förfr.', heading: 'Förfrågningar', value: s.catering.requests, title: `${fmtInt(s.catering.requests)} förfrågningar` },
+                          { key: 'off', label: 'Offert', heading: 'Offerter skickade', value: s.catering.offers, title: `${fmtInt(s.catering.offers)} offerter skickade` },
+                          { key: 'won', label: 'Ja', heading: 'Accepterade', value: s.catering.won, title: `${fmtInt(s.catering.won)} accepterade` },
                         ]}
                         tableHead={['Steg', 'Antal']}
                         tableRows={[

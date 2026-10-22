@@ -151,7 +151,7 @@
   fill: var(--accent-ink);
 }
 
-.mk-bar:hover {
+.mk-bar--on {
   fill: var(--ink);
 }
 

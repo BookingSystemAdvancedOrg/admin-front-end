@@ -1,5 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode, RefObject } from 'react'
+import { ChartTip } from '../../shared/ChartTip'
+import { useChartTip } from '../../shared/chartTipState'
+import type { TipContent } from '../../shared/chartTipState'
 import { reducedMotion } from '../../shared/motion/countUp'
 import { heatStep, niceMax, tickLabel } from './chartScale'
 import { fmtPct } from './stats'
@@ -10,7 +13,8 @@ import { fmtPct } from './stats'
  * Varje diagram ritas i kortets verkliga bredd (texten behåller sin
  * storlek på mobil), namnger sina värden för skärmläsare och har en tabell
  * bakom "Visa som tabell". Staplarna växer upp en gång; med "minska
- * rörelse" står allt stilla.
+ * rörelse" står allt stilla. Varje punkt visar ett verktygstips vid hovring,
+ * tryck och tangentbord (ChartTip).
  */
 
 const H = 220
@@ -72,8 +76,10 @@ export interface ColumnPoint {
   value: number
   /** Samma mått i förra perioden (ritas som en stålgrå linje). */
   previous?: number
-  /** Text för tabellen och verktygstipset. */
+  /** Hela meningen, för skärmläsare. */
   title: string
+  /** Extra rad i verktygstipset, t.ex. "i 12 bokningar". */
+  detail?: string
 }
 
 /** Stående staplar per dag, förra perioden som en grå linje över samma dagar. */
@@ -98,6 +104,7 @@ export function ColumnChart({
 }) {
   const id = useId()
   const [ref, W] = useWidth()
+  const tip = useChartTip(points.length)
   if (points.length === 0 || points.every((p) => p.value === 0 && !p.previous)) return <Empty text="Inget att visa i perioden." />
   const hasPrev = points.some((p) => p.previous !== undefined)
   const max = niceMax(Math.max(...points.map((p) => Math.max(p.value, p.previous ?? 0)), 1))
@@ -115,10 +122,31 @@ export function ColumnChart({
         .map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(p.previous ?? 0).toFixed(1)}`)
         .join(' ')
     : ''
+  const a = tip.active
+  const ap = a !== null ? points[a] : null
+  const content: TipContent | null = ap
+    ? {
+        heading: ap.label,
+        rows: [
+          { label: seriesLabel, value: format(ap.value), tone: 'ink' },
+          ...(hasPrev && ap.previous !== undefined ? [{ label: previousLabel ?? 'Förra perioden', value: format(ap.previous), tone: 'line' as const }] : []),
+        ],
+        note: ap.detail,
+      }
+    : null
   return (
-    <figure className="sk-chart" ref={ref as RefObject<HTMLElement>}>
-      <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img" aria-labelledby={`${id}-t`} className="sk-svg">
+    <figure className="sk-chart chart-tip-host" ref={ref as RefObject<HTMLElement>}>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        width={W}
+        height={H}
+        role="img"
+        aria-labelledby={`${id}-t`}
+        className="sk-svg chart-tip-surface"
+        {...tip.surface}
+      >
         <title id={`${id}-t`}>{ariaLabel}</title>
+        {a !== null && <rect x={PAD.left + slot * a} y={PAD.top} width={slot} height={innerH} className="chart-band" />}
         {ticks.map((t) => (
           <g key={t}>
             <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} className="sk-grid" />
@@ -137,9 +165,7 @@ export function ColumnChart({
               rx={2}
               className={`sk-bar sk-bar--grow${i === peak && p.value > 0 ? ' sk-bar--peak' : ''}`}
               style={{ '--i': i } as CSSProperties}
-            >
-              <title>{p.title}</title>
-            </rect>
+            />
             {i % labelEvery === 0 && (
               <text x={x(i)} y={H - 10} textAnchor="middle" className="sk-tick">
                 {p.label}
@@ -157,7 +183,15 @@ export function ColumnChart({
           points.map((p, i) => (
             <circle key={p.key} cx={x(i)} cy={y(p.previous ?? 0)} r={2.4} className="sk-dot sk-dot--in" style={{ '--i': i } as CSSProperties} />
           ))}
+        {points.map((p, i) => (
+          <rect key={p.key} x={PAD.left + slot * i} y={PAD.top} width={slot} height={innerH + PAD.bottom} className="chart-hit" {...tip.hit(i)} />
+        ))}
       </svg>
+      <ChartTip
+        tip={tip}
+        at={ap ? { x: x(a!), y: Math.min(y(ap.value), hasPrev ? y(ap.previous ?? 0) : Infinity) } : null}
+        content={content}
+      />
       <figcaption className="sk-legend">
         <span>
           <i className="sk-swatch sk-swatch--ink" aria-hidden="true" />
@@ -179,19 +213,27 @@ export interface BarRow {
   key: string
   label: string
   value: number
+  /** Hela meningen, för skärmläsare. */
   title: string
+  /** Etiketten i verktygstipset när den korta etiketten inte räcker ("Förfr." blir "Förfrågningar"). */
+  heading?: string
+  /** Extra rad i verktygstipset, t.ex. "8 gäster". */
+  detail?: string
 }
 
 /** Liggande staplar (timmar, veckodagar): den största i rött, värdet vid spetsen. */
-export function BarChart({ rows, format, ariaLabel, tableHead, tableRows }: {
+export function BarChart({ rows, format, seriesLabel, ariaLabel, tableHead, tableRows }: {
   rows: BarRow[]
   format: (v: number) => string
+  /** Vad värdet är ("Bokningar", "Beläggning"), i verktygstipset. */
+  seriesLabel: string
   ariaLabel: string
   tableHead: string[]
   tableRows: (string | number)[][]
 }) {
   const id = useId()
   const [ref, W] = useWidth()
+  const tip = useChartTip(rows.length)
   if (rows.length === 0 || rows.every((r) => r.value === 0)) return <Empty text="Inget att visa i perioden." />
   const max = Math.max(...rows.map((r) => r.value), 1)
   const rowH = 26
@@ -201,13 +243,25 @@ export function BarChart({ rows, format, ariaLabel, tableHead, tableRows }: {
   const h = rows.length * rowH + 6
   const innerW = Math.max(40, W - labelW - valueW - 8)
   const peak = rows.reduce((best, r, i) => (r.value > rows[best].value ? i : best), 0)
+  const a = tip.active
+  const ar = a !== null ? rows[a] : null
+  const cyOf = (i: number) => i * rowH + rowH / 2 + 3
   return (
-    <figure className="sk-chart" ref={ref as RefObject<HTMLElement>}>
-      <svg viewBox={`0 0 ${W} ${h}`} width={W} height={h} role="img" aria-labelledby={`${id}-t`} className="sk-svg">
+    <figure className="sk-chart chart-tip-host" ref={ref as RefObject<HTMLElement>}>
+      <svg
+        viewBox={`0 0 ${W} ${h}`}
+        width={W}
+        height={h}
+        role="img"
+        aria-labelledby={`${id}-t`}
+        className="sk-svg chart-tip-surface"
+        {...tip.surface}
+      >
         <title id={`${id}-t`}>{ariaLabel}</title>
+        {a !== null && <rect x={0} y={a * rowH + 3} width={W} height={rowH} rx={2} className="chart-band" />}
         {rows.map((r, i) => {
           const w = (r.value / max) * innerW
-          const cy = i * rowH + rowH / 2 + 3
+          const cy = cyOf(i)
           return (
             <g key={r.key}>
               <text x={labelW - 8} y={cy + 4} textAnchor="end" className="sk-tick">
@@ -221,16 +275,22 @@ export function BarChart({ rows, format, ariaLabel, tableHead, tableRows }: {
                 rx={2}
                 className={`sk-bar sk-bar--row${i === peak ? ' sk-bar--peak' : ''}`}
                 style={{ '--i': i } as CSSProperties}
-              >
-                <title>{r.title}</title>
-              </rect>
+              />
               <text x={labelW + Math.max(r.value > 0 ? 3 : 0, w) + 8} y={cy + 4} className="sk-value">
                 {r.value > 0 ? format(r.value) : ''}
               </text>
             </g>
           )
         })}
+        {rows.map((r, i) => (
+          <rect key={r.key} x={0} y={i * rowH + 3} width={W} height={rowH} className="chart-hit" {...tip.hit(i)} />
+        ))}
       </svg>
+      <ChartTip
+        tip={tip}
+        at={ar ? { x: labelW + Math.max(ar.value > 0 ? 3 : 0, (ar.value / max) * innerW) / 2, y: cyOf(a!) - 8 } : null}
+        content={ar ? { heading: ar.heading ?? ar.label, rows: [{ label: seriesLabel, value: format(ar.value), tone: a === peak ? 'red' : 'ink' }], note: ar.detail } : null}
+      />
       <ChartTable caption={ariaLabel} head={tableHead} rows={tableRows} />
     </figure>
   )
@@ -256,16 +316,19 @@ const C = 2 * Math.PI * R
  * mitten och en förklaring som skriver ut varje andel, så att färgen aldrig
  * är enda signalen. Bågarna växer in en gång när ringen visas.
  */
-export function Ring({ title, segments, total, centerLabel, empty, format }: {
+export function Ring({ title, segments, total, centerLabel, empty, format, valueLabel = 'Antal' }: {
   title: string
   segments: RingSegment[]
   total: number
   centerLabel: string
   empty: string
   format: (n: number) => string
+  /** Vad värdet är i verktygstipset ("Antal", "Belopp"). */
+  valueLabel?: string
 }) {
   const id = useId()
   const [grown, setGrown] = useState(() => reducedMotion())
+  const tip = useChartTip(total > 0 ? segments.length : 0)
   useEffect(() => {
     if (grown) return
     const t = requestAnimationFrame(() => setGrown(true))
@@ -279,28 +342,48 @@ export function Ring({ title, segments, total, centerLabel, empty, format }: {
     const length = grown ? C * s.share : 0
     return { ...s, dash: `${length} ${Math.max(0, C - length)}`, offset: -starts[i] }
   })
+  // Bågen under pekaren: vinkeln från mitten (medurs från klockan tolv) och
+  // avståndet till ringen, så att mitten och hörnen inte räknas.
+  const pick = (e: { clientX: number; clientY: number }) => {
+    const svg = tip.svg
+    if (!svg || total <= 0) return
+    const r = svg.getBoundingClientRect()
+    const dx = ((e.clientX - r.left) / r.width) * SIZE - SIZE / 2
+    const dy = ((e.clientY - r.top) / r.height) * SIZE - SIZE / 2
+    const dist = Math.hypot(dx, dy)
+    if (dist < R - 16 || dist > R + 16) return tip.set(null)
+    const turn = ((Math.atan2(dy, dx) + Math.PI / 2 + 2 * Math.PI) % (2 * Math.PI)) / (2 * Math.PI)
+    const i = shares.findIndex((_s, k) => turn * C >= starts[k] && turn * C < starts[k] + C * shares[k].share)
+    tip.set(i >= 0 ? i : null)
+  }
+  const a = tip.active
+  const as = a !== null ? shares[a] : null
+  const mid = as ? ((starts[a!] + (C * as.share) / 2) / C) * 2 * Math.PI - Math.PI / 2 : 0
   return (
-    <figure className="sk-ring" aria-labelledby={`${id}-t`}>
+    <figure className="sk-ring chart-tip-host" aria-labelledby={`${id}-t`}>
       <figcaption className="sk-ring-title" id={`${id}-t`}>
         {title}
       </figcaption>
       <svg
         viewBox={`0 0 ${SIZE} ${SIZE}`}
-        className="sk-ring-svg"
+        className="sk-ring-svg chart-tip-surface"
         role="img"
         aria-label={`${title}: ${shares.map((s) => `${s.label} ${total > 0 ? fmtPct(s.share * 100) : '-'}`).join(', ')}`}
+        {...tip.surface}
+        onPointerMove={pick}
+        onPointerDown={pick}
       >
         <circle cx={SIZE / 2} cy={SIZE / 2} r={R} className="sk-ring-track" />
         <g transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}>
-          {arcs.map((a) => (
+          {arcs.map((arc, i) => (
             <circle
-              key={a.key}
+              key={arc.key}
               cx={SIZE / 2}
               cy={SIZE / 2}
               r={R}
-              className={`sk-ring-seg sk-ring-seg--${a.tone}`}
-              strokeDasharray={a.dash}
-              strokeDashoffset={a.offset}
+              className={`sk-ring-seg sk-ring-seg--${arc.tone}${a === i ? ' sk-ring-seg--on' : ''}`}
+              strokeDasharray={arc.dash}
+              strokeDashoffset={arc.offset}
             />
           ))}
         </g>
@@ -319,6 +402,21 @@ export function Ring({ title, segments, total, centerLabel, empty, format }: {
           </text>
         )}
       </svg>
+      <ChartTip
+        tip={tip}
+        at={as ? { x: SIZE / 2 + Math.cos(mid) * R, y: SIZE / 2 + Math.sin(mid) * R - 8 } : null}
+        content={
+          as
+            ? {
+                heading: as.label,
+                rows: [
+                  { label: 'Andel', value: fmtPct(as.share * 100), tone: as.tone },
+                  { label: valueLabel, value: format(as.value) },
+                ],
+              }
+            : null
+        }
+      />
       <ul className="sk-ring-legend">
         {shares.map((s) => (
           <li key={s.key}>
@@ -374,6 +472,7 @@ export function Heatmap({ rows, cols, cells, ariaLabel, tableHead, tableRows }: 
 }) {
   const id = useId()
   const [ref, W] = useWidth()
+  const tip = useChartTip(rows.length * cols.length, cols.length)
   if (cells.length === 0 || cols.length === 0) return <Empty text="Inga öppettider eller bord att räkna på i perioden." />
   const labelW = 40
   const top = 22
@@ -385,10 +484,23 @@ export function Heatmap({ rows, cols, cells, ariaLabel, tableHead, tableRows }: 
   const byKey = new Map(cells.map((c) => [`${c.row}|${c.col}`, c]))
   const showValues = cellW >= 26
   const labelEvery = cellW >= 30 ? 1 : 2
+  const a = tip.active
+  const ar = a !== null ? Math.floor(a / cols.length) : 0
+  const ac = a !== null ? a % cols.length : 0
+  const acell = a !== null ? byKey.get(`${ar}|${ac}`) : undefined
+  const avalue = acell && acell.value !== null ? fmtPct(acell.value) : 'Stängt'
   return (
-    <figure className="sk-chart sk-heat" ref={ref as RefObject<HTMLElement>}>
+    <figure className="sk-chart sk-heat chart-tip-host" ref={ref as RefObject<HTMLElement>}>
       <div className="sk-heat-scroll">
-        <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} role="img" aria-labelledby={`${id}-t`} className="sk-svg">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          width={width}
+          height={height}
+          role="img"
+          aria-labelledby={`${id}-t`}
+          className="sk-svg chart-tip-surface"
+          {...tip.surface}
+        >
           <title id={`${id}-t`}>{ariaLabel}</title>
           {cols.map((c, j) =>
             j % labelEvery === 0 ? (
@@ -409,9 +521,15 @@ export function Heatmap({ rows, cols, cells, ariaLabel, tableHead, tableRows }: 
                 const y = top + i * (cellH + gap)
                 return (
                   <g key={c}>
-                    <rect x={x} y={y} width={cellW} height={cellH} rx={2} className={`sk-heat-cell sk-heat-cell--${step < 0 ? 'none' : step}`}>
-                      <title>{cell?.title ?? `${r} ${c}: stängt`}</title>
-                    </rect>
+                    <rect
+                      x={x}
+                      y={y}
+                      width={cellW}
+                      height={cellH}
+                      rx={2}
+                      className={`sk-heat-cell sk-heat-cell--${step < 0 ? 'none' : step}${a === i * cols.length + j ? ' sk-heat-cell--on' : ''}`}
+                      {...tip.hit(i * cols.length + j)}
+                    />
                     {showValues && cell && cell.value !== null && (
                       <text x={x + cellW / 2} y={y + cellH / 2 + 4} textAnchor="middle" className={`sk-heat-value${step >= 3 ? ' sk-heat-value--on' : ''}`}>
                         {Math.round(cell.value)}
@@ -424,6 +542,11 @@ export function Heatmap({ rows, cols, cells, ariaLabel, tableHead, tableRows }: 
           ))}
         </svg>
       </div>
+      <ChartTip
+        tip={tip}
+        at={a !== null ? { x: labelW + ac * (cellW + gap) + cellW / 2, y: top + ar * (cellH + gap) } : null}
+        content={a !== null ? { heading: `${rows[ar]} kl. ${cols[ac]}`, rows: [{ label: 'Beläggning', value: avalue }] } : null}
+      />
       <figcaption className="sk-legend sk-heat-legend">
         <span className="sk-heat-legend-label">Beläggning</span>
         {['0-19', '20-39', '40-59', '60-79', '80-100'].map((label, i) => (
@@ -440,17 +563,37 @@ export function Heatmap({ rows, cols, cells, ariaLabel, tableHead, tableRows }: 
 
 /* --- Gnistlinjen i nyckeltalen ----------------------------------------------- */
 
-/** En liten linje över perioden, bara form (värdena står i kortet). */
-export function Sparkline({ values }: { values: number[] }) {
-  if (values.length < 2 || values.every((v) => v === 0)) return null
+/** En liten linje över perioden; varje dag visar sitt värde i verktygstipset. */
+export function Sparkline({ points, format, label }: { points: { label: string; value: number }[]; format: (v: number) => string; label: string }) {
+  const tip = useChartTip(points.length)
+  if (points.length < 2 || points.every((p) => p.value === 0)) return null
   const w = 96
   const h = 24
-  const max = Math.max(...values, 1)
-  const step = w / (values.length - 1)
-  const d = values.map((v, i) => `${i === 0 ? 'M' : 'L'}${(i * step).toFixed(1)},${(h - 2 - (v / max) * (h - 4)).toFixed(1)}`).join(' ')
+  const max = Math.max(...points.map((p) => p.value), 1)
+  const step = w / (points.length - 1)
+  const px = (i: number) => i * step
+  const py = (v: number) => h - 2 - (v / max) * (h - 4)
+  const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${px(i).toFixed(1)},${py(p.value).toFixed(1)}`).join(' ')
+  const a = tip.active
+  const ap = a !== null ? points[a] : null
   return (
-    <svg className="sk-spark" viewBox={`0 0 ${w} ${h}`} width={w} height={h} aria-hidden="true" focusable="false">
-      <path d={d} />
-    </svg>
+    <span className="sk-spark-wrap chart-tip-host">
+      <svg
+        className="sk-spark chart-tip-surface"
+        viewBox={`0 0 ${w} ${h}`}
+        width={w}
+        height={h}
+        role="img"
+        aria-label={`${label} per dag`}
+        {...tip.surface}
+      >
+        <path d={d} />
+        {ap && <circle cx={px(a!)} cy={py(ap.value)} r={2.5} className="sk-spark-dot" />}
+        {points.map((_p, i) => (
+          <rect key={i} x={px(i) - step / 2} y={-4} width={step} height={h + 8} className="chart-hit" {...tip.hit(i)} />
+        ))}
+      </svg>
+      <ChartTip tip={tip} at={ap ? { x: px(a!), y: py(ap.value) - 3 } : null} content={ap ? { heading: ap.label, rows: [{ label, value: format(ap.value) }] } : null} />
+    </span>
   )
 }

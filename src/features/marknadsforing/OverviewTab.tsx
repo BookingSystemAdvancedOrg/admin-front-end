@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { ChartTip } from '../../shared/ChartTip'
+import { useChartTip } from '../../shared/chartTipState'
 import { StatTile } from '../../shared/motion/StatTile'
 import { Num } from '../../shared/motion/Num'
 import { Loading } from '../../shared/Loading'
@@ -30,11 +32,22 @@ function range(days: number): { from: string; to: string } {
 
 /** Besök per dag som staplar (bokningar markerade ovanpå). */
 function VisitsChart({ series }: { series: Overview['series'] }) {
+  const tip = useChartTip(series.length)
   const max = Math.max(1, ...series.map((d) => d.visits))
   const w = 100 / Math.max(1, series.length)
+  const a = tip.active
+  const ad = a !== null ? series[a] : null
   return (
-    <figure className="mk-chart" aria-label="Besök per dag">
-      <svg viewBox="0 0 100 40" preserveAspectRatio="none" role="img" aria-hidden="true">
+    <figure className="mk-chart chart-tip-host" aria-label="Besök per dag">
+      <svg
+        viewBox="0 0 100 40"
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={`Besök per dag, högst ${max} besök på en dag`}
+        className="chart-tip-surface"
+        {...tip.surface}
+      >
+        {a !== null && <rect x={a * w} y={0} width={w} height={40} className="chart-band" />}
         {series.map((d, i) => {
           const h = (d.visits / max) * 36
           return (
@@ -44,13 +57,29 @@ function VisitsChart({ series }: { series: Overview['series'] }) {
               y={40 - h}
               width={w * 0.7}
               height={Math.max(h, d.visits ? 0.6 : 0)}
-              className={d.bookings ? 'mk-bar mk-bar--booked' : 'mk-bar'}
-            >
-              <title>{`${d.date}: ${d.visits} besök, ${d.bookings} bokningar`}</title>
-            </rect>
+              className={`${d.bookings ? 'mk-bar mk-bar--booked' : 'mk-bar'}${a === i ? ' mk-bar--on' : ''}`}
+            />
           )
         })}
+        {series.map((d, i) => (
+          <rect key={d.date} x={i * w} y={0} width={w} height={40} className="chart-hit" {...tip.hit(i)} />
+        ))}
       </svg>
+      <ChartTip
+        tip={tip}
+        at={ad ? { x: a! * w + w / 2, y: 40 - Math.max((ad.visits / max) * 36, 0.6) } : null}
+        content={
+          ad
+            ? {
+                heading: dayLabel(ad.date),
+                rows: [
+                  { label: 'Besök', value: ad.visits.toLocaleString('sv-SE'), tone: 'border' },
+                  { label: 'Bokningar', value: ad.bookings.toLocaleString('sv-SE'), tone: 'red' },
+                ],
+              }
+            : null
+        }
+      />
       <figcaption className="mk-chart-legend">
         <span><i className="mk-dot" /> Besök</span>
         <span><i className="mk-dot mk-dot--booked" /> Dag med bokning via webbplatsen</span>
@@ -58,6 +87,13 @@ function VisitsChart({ series }: { series: Overview['series'] }) {
       </figcaption>
     </figure>
   )
+}
+
+/** "2026-10-12" blir "mån 12 okt". */
+function dayLabel(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return iso
+  return new Intl.DateTimeFormat('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' }).format(d).replace(/\./g, '')
 }
 
 export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {

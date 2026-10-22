@@ -992,3 +992,32 @@
   max-width: 100%;
   overflow-x: auto;
 }
+
+/* --- Verktygstipset: punkten som visas (ChartTip) ----------------------------- */
+
+.sk-ring-seg--on {
+  stroke-width: 18;
+}
+
+.sk-heat-cell--on {
+  stroke: var(--accent-ink);
+  stroke-width: 2;
+}
+
+.sk-spark-wrap {
+  display: inline-block;
+  width: max-content;
+}
+
+.sk-spark-wrap .chart-tip {
+  min-width: 96px;
+}
+
+.sk-spark-dot {
+  fill: var(--ink);
+}
+
+.sk-spark-wrap .chart-tip {
+  width: max-content;
+  max-width: none;
+}

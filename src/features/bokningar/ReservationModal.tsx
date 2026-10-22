@@ -40,6 +40,7 @@ const HISTORY_ACTION: Record<string, string> = {
   fee: 'Avgift',
   refund: 'Återbetalning',
   extended: 'Sluttid ändrad',
+  shortened: 'Sluttid ändrad',
 }
 
 function who(by: string | undefined): string {
@@ -58,7 +59,7 @@ function historyText(h: HistoryEntry): string {
   if (h.action === 'status' && status) parts[0] = status
   if (h.action === 'fee' && status) parts.push(`${status.toLowerCase()} ${amount}`.trim())
   if (h.action === 'refund' && amount) parts.push(amount)
-  if (h.action === 'extended') {
+  if (h.action === 'extended' || h.action === 'shortened') {
     parts.push(`${String(h.previous ?? '')} till ${String(h.endTime ?? '')}`)
     if (h.override) parts.push('utanför regeln')
   }

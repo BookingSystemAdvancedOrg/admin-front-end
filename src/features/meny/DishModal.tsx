@@ -3,6 +3,7 @@ import type { ChangeEvent } from 'react'
 import { CATEGORY_LABEL } from './data'
 import type { Dish, DishCategory } from './data'
 import { validateDishName, validateDishPrice } from './menuApi'
+import { utcToZonedInput, zonedInputToUtc } from './schedule'
 
 export interface DishFormValues {
   name: string
@@ -18,6 +19,28 @@ export interface DishFormValues {
    * skapas av sidan via uploadMenuImage när rätten sparas.
    */
   imageFile: File | null
+  /** Schemat i UTC ("...Z"), null = ingen gräns. */
+  availableFrom: string | null
+  availableUntil: string | null
+}
+
+const GAP_ERROR =
+  'Den tiden finns inte (klockan ställs fram en timme vid sommartid). Välj en annan tid.'
+
+/**
+ * Inmatat schemafält -> UTC. Oförändrat fält behåller det sparade värdet,
+ * så en tid i höstens dubbeltimme eller med sekunder ändras inte av en
+ * omöjlig tur-och-retur. undefined = tiden finns inte.
+ */
+function scheduleValue(
+  input: string,
+  initialInput: string,
+  stored: string | null,
+  timeZone: string,
+): string | null | undefined {
+  if (!input) return null
+  if (input === initialInput) return stored
+  return zonedInputToUtc(input, timeZone) ?? undefined
 }
 
 /**
@@ -32,11 +55,14 @@ export interface DishFormValues {
 export function DishModal({
   title,
   initial,
+  timeZone,
   onSave,
   onCancel,
 }: {
   title: string
   initial: Dish | null
+  /** Platsens tidszon (IANA); schemat matas in och visas i den. */
+  timeZone: string
   onSave: (values: DishFormValues) => Promise<void>
   onCancel: () => void
 }) {
@@ -51,6 +77,11 @@ export function DishModal({
   // Förhandsvisning: befintlig CDN-bild eller data-URL för nyvald fil.
   const [preview, setPreview] = useState<string | null>(initial?.image ?? null)
   const [imageFile, setImageFile] = useState<File | null>(null)
+  const [initialFrom] = useState(() => utcToZonedInput(initial?.availableFrom ?? null, timeZone))
+  const [initialUntil] = useState(() => utcToZonedInput(initial?.availableUntil ?? null, timeZone))
+  const [openedAt] = useState(() => Date.now())
+  const [fromInput, setFromInput] = useState(initialFrom)
+  const [untilInput, setUntilInput] = useState(initialUntil)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -84,10 +115,21 @@ export function DishModal({
   // rätt har redan sin imageKey och behöver ingen ny fil.
   const imageError =
     !initial && !imageFile ? 'En bild krävs för att skapa rätten.' : null
-  const valid = !nameError && !priceError && !imageError
+  const availableFrom = scheduleValue(fromInput, initialFrom, initial?.availableFrom ?? null, timeZone)
+  const availableUntil = scheduleValue(untilInput, initialUntil, initial?.availableUntil ?? null, timeZone)
+  const orderError =
+    availableFrom && availableUntil && Date.parse(availableUntil) <= Date.parse(availableFrom)
+      ? 'Slutet måste vara efter starten.'
+      : null
+  const scheduleWarning =
+    !orderError && availableUntil && Date.parse(availableUntil) <= openedAt
+      ? 'Sluttiden har redan passerat - rätten visas inte för gäster.'
+      : null
+  const scheduleValid = availableFrom !== undefined && availableUntil !== undefined && !orderError
+  const valid = !nameError && !priceError && !imageError && scheduleValid
 
   async function save() {
-    if (busy || !valid) return
+    if (busy || !valid || availableFrom === undefined || availableUntil === undefined) return
     setError(null)
     setBusy(true)
     try {
@@ -99,6 +141,8 @@ export function DishModal({
         active,
         alcohol,
         imageFile,
+        availableFrom,
+        availableUntil,
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kunde inte spara.')
@@ -227,6 +271,62 @@ export function DishModal({
             onClick={() => setAlcohol((a) => !a)}
           />
         </div>
+
+        <fieldset className="dish-schedule">
+          <legend>Schema (valfritt)</legend>
+          <p className="dish-schedule-help">
+            Rätten visas för gäster när den är aktiv och tiden är inom schemat. Till-tiden
+            räknas inte med: till 14:00 betyder att rätten försvinner 14:00. Tider i{' '}
+            {timeZone}.
+          </p>
+          <div className="form-grid">
+            <div className="form-field">
+              <label htmlFor="dish-available-from">Visas från</label>
+              <input
+                id="dish-available-from"
+                type="datetime-local"
+                value={fromInput}
+                onChange={(e) => setFromInput(e.target.value)}
+                aria-invalid={availableFrom === undefined ? true : undefined}
+                aria-describedby={availableFrom === undefined ? 'dish-from-error' : undefined}
+              />
+              {availableFrom === undefined && (
+                <p id="dish-from-error" className="form-error">{GAP_ERROR}</p>
+              )}
+            </div>
+            <div className="form-field">
+              <label htmlFor="dish-available-until">Visas till</label>
+              <input
+                id="dish-available-until"
+                type="datetime-local"
+                value={untilInput}
+                onChange={(e) => setUntilInput(e.target.value)}
+                aria-invalid={availableUntil === undefined || orderError ? true : undefined}
+                aria-describedby={
+                  availableUntil === undefined || orderError ? 'dish-until-error' : undefined
+                }
+              />
+              {(availableUntil === undefined || orderError) && (
+                <p id="dish-until-error" className="form-error">
+                  {availableUntil === undefined ? GAP_ERROR : orderError}
+                </p>
+              )}
+            </div>
+          </div>
+          {scheduleWarning && <p className="dish-schedule-warning">{scheduleWarning}</p>}
+          {(fromInput || untilInput) && (
+            <button
+              type="button"
+              className="btn outline square"
+              onClick={() => {
+                setFromInput('')
+                setUntilInput('')
+              }}
+            >
+              Rensa schema
+            </button>
+          )}
+        </fieldset>
 
         {error && (
           <p className="form-error" role="alert">

@@ -25,7 +25,7 @@ vi.mock('../../shared/api', async (orig) => ({
   isApiConfigured: () => true,
 }))
 vi.mock('../installningar/locationApi', () => ({
-  getLocation: () => Promise.resolve({ cateringSettings: { enabled: false, minPortions: 15, notifyEmail: 'boss@example.se',
+  getLocation: () => Promise.resolve({ cateringSettings: { enabled: false, minPortions: 15, minGuests: 15, notifyEmail: 'boss@example.se',
     cleaningFee: 350 } }),
 }))
 vi.mock('../meny/menuApi', () => ({
@@ -63,7 +63,7 @@ describe('CateringkalkylPage', () => {
   it('loads saved settings and tiers from the API', async () => {
     render(<CateringkalkylPage />)
     expect(await screen.findByText('Nivå 1')).toBeInTheDocument()
-    expect(screen.getByLabelText('Minsta antal portioner (totalt)')).toHaveValue('15 st')
+    expect(screen.getByLabelText('Minsta antal gäster')).toHaveValue('15 gäster')
     expect(screen.getByLabelText('Nya förfrågningar till e-post')).toHaveValue('boss@example.se')
     expect(screen.queryByText(/MOCK|exempeldata/i)).not.toBeInTheDocument()
   })
@@ -77,6 +77,18 @@ describe('CateringkalkylPage', () => {
     await user.click(screen.getByRole('button', { name: 'Spara inställningar' }))
     expect(saveSettings).toHaveBeenCalledWith('loc-1', expect.objectContaining({ enabled: true, minPortions: 15 }))
     expect(await screen.findByText('Sparat. Kalkylen visas på webbplatsen.')).toBeInTheDocument()
+  })
+
+  it('saves the delivery origin and warns when the map cannot find it', async () => {
+    const user = userEvent.setup()
+    saveSettings.mockImplementation((_l: string, s: object) => Promise.resolve({ ...s, originFound: false }))
+    render(<CateringkalkylPage />)
+    await screen.findByText('Nivå 1')
+    await user.type(screen.getByLabelText('Leveranser utgår från'), 'Okänd väg 1')
+    await user.click(screen.getByRole('button', { name: 'Spara inställningar' }))
+    expect(saveSettings).toHaveBeenCalledWith('loc-1', expect.objectContaining({ originAddress: 'Okänd väg 1' }))
+    expect(await screen.findByText(/startadress hittades inte på kartan/)).toBeInTheDocument()
+    expect(saveSettings.mock.calls[0][1]).not.toHaveProperty('originFound')
   })
 
   it('changes the cleaning fee and saves it', async () => {

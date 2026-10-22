@@ -64,6 +64,8 @@ export interface CateringSettings {
   dayBeforeReminder: boolean
   /** Kunden får godkänna utan BankID (namn + kryssruta). */
   allowSimpleAcceptance: boolean
+  /** Varifrån leveranser utgår (vägavstånd); tom = restaurangens adress. */
+  originAddress: string
 }
 
 export interface LeadTimeRule {
@@ -108,6 +110,7 @@ export const DEFAULT_SETTINGS: CateringSettings = {
   signReminderDaysBefore: 2,
   dayBeforeReminder: true,
   allowSimpleAcceptance: false,
+  originAddress: '',
 }
 
 /** Sparade inställningar utan intervall (äldre platser): samma översättning som servern gör. */
@@ -257,8 +260,10 @@ const loc = (locationId: string) => `/locations/${encodeURIComponent(locationId)
 const req = (locationId: string, requestId: string) =>
   `${loc(locationId)}/requests/${encodeURIComponent(requestId)}`
 
-export function saveSettings(locationId: string, settings: Partial<CateringSettings>): Promise<CateringSettings> {
-  if (!isApiConfigured()) return withBusy(async () => ({ ...DEFAULT_SETTINGS, ...settings }))
+/** originFound: om leveransernas startadress hittas på kartan (null = leverans av eller tjänsten nere). */
+export function saveSettings(locationId: string, settings: Partial<CateringSettings>):
+  Promise<CateringSettings & { originFound?: boolean | null }> {
+  if (!isApiConfigured()) return withBusy(async () => ({ ...DEFAULT_SETTINGS, ...settings, originFound: true }))
   return apiFetch(`${loc(locationId)}/settings`, { method: 'PUT', body: JSON.stringify(settings) })
 }
 

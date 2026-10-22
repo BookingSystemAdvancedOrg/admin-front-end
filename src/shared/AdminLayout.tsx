@@ -15,6 +15,7 @@ import { useLiquidFill } from './motion/useLiquidFill'
 import { MotionScope, sidebarPourDone, sidebarShouldPour } from './motion/MotionScope'
 import { BusyBar } from './motion/BusyBar'
 import { ThemeToggle } from './ThemeToggle'
+import { DpaBanner } from '../features/dpa/DpaBanner'
 
 // Sidebar-länkarna, i grupper efter när man behöver dem: överblicken,
 // det som händer under passet, och det man ställer in mer sällan.
@@ -268,6 +269,7 @@ export function AdminLayout() {
           </div>
         ) : status === 'ready' ? (
           <MotionScope>
+            <DpaBanner />
             <Outlet key={locationId ?? 'no-location'} />
           </MotionScope>
         ) : (

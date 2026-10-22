@@ -15,6 +15,7 @@ import { CancellationPolicyCard } from './CancellationPolicyCard'
 import { InsightsSettingsCard } from './InsightsSettingsCard'
 import { NotificationsCard } from './NotificationsCard'
 import { OrderingCard } from './OrderingCard'
+import { PrivacyCard } from './PrivacyCard'
 import { PaymentsCard } from './PaymentsCard'
 import { SpecialDaysCard } from './SpecialDaysCard'
 import { TableRulesCard } from './TableRulesCard'
@@ -85,7 +86,7 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * andra användare - de rutterna är bara för ägare.
  */
 /** Flikarna - en sektion i taget i stället för en lång sida. */
-type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'dagar' | 'bord' | 'statistik'
+type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'dagar' | 'bord' | 'statistik' | 'integritet'
 
 const TAB_LABEL: Record<SettingsTab, string> = {
   profil: 'Restaurang',
@@ -97,6 +98,7 @@ const TAB_LABEL: Record<SettingsTab, string> = {
   dagar: 'Avvikande dagar',
   bord: 'Bord',
   statistik: 'Statistik',
+  integritet: 'Integritet',
 }
 
 function initialTab(stripeReturn: string | null): SettingsTab {
@@ -415,7 +417,7 @@ export default function InstallningarPage() {
       <div className="admin-main">
         <nav className="settings-tabs" aria-label="Inställningar">
           {(Object.keys(TAB_LABEL) as SettingsTab[])
-            .filter((t) => (t === 'personal' || t === 'statistik' ? isOwner : t === 'bestallning' ? Boolean(tenant?.entitlements.features.ordering) : true))
+            .filter((t) => (t === 'personal' || t === 'statistik' || t === 'integritet' ? isOwner : t === 'bestallning' ? Boolean(tenant?.entitlements.features.ordering) : true))
             .map((t) => (
               <button
                 key={t}
@@ -723,6 +725,12 @@ export default function InstallningarPage() {
               tenant={tenant}
               locationId={locationId}
             />
+          </div>
+        )}
+
+        {isOwner && tab === 'integritet' && (
+          <div className="settings-row">
+            <PrivacyCard />
           </div>
         )}
       </div>

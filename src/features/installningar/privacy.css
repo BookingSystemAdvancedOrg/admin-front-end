@@ -1,0 +1,170 @@
+/* Inställningar > Integritet (PrivacyCard.tsx). Färger från temats variabler: ljust och mörkt. */
+
+.privacy-stack {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.privacy-lead {
+  margin: 8px 0 16px;
+  max-width: 68ch;
+}
+
+.privacy-status {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.privacy-form,
+.privacy-search {
+  display: grid;
+  gap: 12px;
+}
+
+.privacy-textarea {
+  width: 100%;
+  min-height: 320px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.55;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.privacy-textarea:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.privacy-hint {
+  margin-top: 6px;
+  font-size: 12.5px;
+}
+
+.privacy-hint code {
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--fill);
+  color: var(--ink);
+}
+
+.privacy-search {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.consent-results {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.consent-channel {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.consent-channel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+
+.consent-channel-head h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.consent-channel-head .btn {
+  margin-left: auto;
+}
+
+.consent-state {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.consent-state.is-granted {
+  background: var(--tint-green);
+  color: var(--success-ink);
+}
+
+.consent-state.is-withdrawn {
+  background: var(--tint-red);
+  color: var(--danger-ink);
+}
+
+.consent-state.is-none {
+  background: var(--fill);
+  color: var(--muted);
+}
+
+.consent-history {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.consent-history li {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 2px 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 13.5px;
+}
+
+.consent-when {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.consent-history details {
+  grid-column: 2;
+}
+
+.consent-history summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.consent-history details p {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--border);
+  background: var(--fill);
+}
+
+@media (max-width: 720px) {
+  .privacy-search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .consent-history li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .consent-history details {
+    grid-column: 1;
+  }
+
+  .consent-channel-head .btn {
+    margin-left: 0;
+    width: 100%;
+  }
+}

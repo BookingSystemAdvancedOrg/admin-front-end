@@ -155,6 +155,7 @@ export default function OversiktPage() {
     hasLiveLayout: data.hasLiveLayout,
     stripeStage: stage,
     staffCount: data.staffCount,
+    dpaAccepted: tenant?.dpa ? tenant.dpa.upToDate : undefined,
   })
   const remaining = steps.filter((s) => s.done === false).length
   // Kom igång (bara ägaren): överst så länge något är kvar (eller inte gick

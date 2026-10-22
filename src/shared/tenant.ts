@@ -53,6 +53,16 @@ export interface TenantInsightsSettings {
   staffAccess: 'operations' | 'none'
 }
 
+/** Personuppgiftsbiträdesavtalet (features/dpa). */
+export interface TenantDpa {
+  currentVersion: string
+  acceptedVersion: string | null
+  acceptedAt: string | null
+  /** Ny restaurang: webbplatsen publiceras först när avtalet är godkänt. */
+  required: boolean
+  upToDate: boolean
+}
+
 export interface Tenant {
   tenantId: string
   name: string
@@ -71,6 +81,8 @@ export interface Tenant {
   notifications: TenantNotifications
   /** Saknas från äldre API-versioner: då gäller standard (driftsiffror). */
   insights?: TenantInsightsSettings
+  /** Saknas från äldre API-versioner: då visas ingen avtalsruta. */
+  dpa?: TenantDpa
   role: TenantRole
   locations: TenantLocation[]
 }
@@ -137,6 +149,7 @@ const LOCAL_DEMO_TENANT: Tenant = {
   senderName: null,
   replyToEmail: null,
   notifications: { sms: false, staffEmails: true, reminderHours: 24 },
+  dpa: { currentVersion: '2026-10-v1', acceptedVersion: null, acceptedAt: null, required: false, upToDate: false },
   role: 'owner_user',
   locations: [],
 }

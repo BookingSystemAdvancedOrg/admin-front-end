@@ -437,6 +437,26 @@ export default function CateringkalkylPage() {
         </div>
 
         <section className="admin-card table-card">
+          <h2 className="card-title">Retur av utrustning</h2>
+          <p className="cell-muted">
+            Gästen väljer om fat och utrustning lämnas tillbaka rengjorda (ingen extra kostnad) eller ej rengjorda
+          </p>
+          <div style={{ height: 16 }} />
+          <div className="form-grid">
+            <div className="form-field">
+              <label htmlFor="cat-cleaning-fee">Rengöringsavgift, ej rengjord utrustning (inkl. moms)</label>
+              <input id="cat-cleaning-fee" inputMode="numeric" value={`${settings.cleaningFee} kr`}
+                onChange={(e) => updateSettings({ cleaningFee: numberIn(e.target.value) })} />
+            </div>
+          </div>
+          <div style={{ height: 16 }} />
+          <p className="calc-hint">
+            Visas som egen rad i offerten. Ändrar du avgiften gäller den nya förfrågningar och nya
+            offertversioner; redan skickade och signerade offerter behåller sitt pris.
+          </p>
+        </section>
+
+        <section className="admin-card table-card">
           <h2 className="card-title">Offert, betalning och notiser</h2>
           <p className="cell-muted">
             Hur förfrågningar blir offerter, hur länge de gäller och vart du får besked om nya förfrågningar

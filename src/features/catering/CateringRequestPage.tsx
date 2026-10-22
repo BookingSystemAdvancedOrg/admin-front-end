@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useTenant } from '../../shared/tenant'
 import {
+  EQUIPMENT_RETURN_LABEL,
   STATUS_LABEL,
   cancelRequest,
   declineRequest,
@@ -19,7 +20,7 @@ import {
   signatureLink,
   statusClass,
 } from './cateringApi'
-import type { CateringRequest, OfferInput } from './cateringApi'
+import type { CateringRequest, EquipmentReturn, OfferInput } from './cateringApi'
 import { MAX_ITEM_PRICE_KR } from '../meny/menuApi'
 import './catering.css'
 import { Loading } from '../../shared/Loading'
@@ -173,6 +174,14 @@ export default function CateringRequestPage() {
                 </div>
               )}
               {request.guests && <div><dt>Gäster</dt><dd>{request.guests}</dd></div>}
+              <div>
+                <dt>Retur av utrustning</dt>
+                <dd>
+                  {request.equipmentReturn === 'not_cleaned'
+                    ? <strong className="catering-return-flag">Ej rengjord: vi diskar och rengör</strong>
+                    : 'Rengjord av kunden'}
+                </dd>
+              </div>
               {request.notes && <div><dt>Meddelande</dt><dd>{request.notes}</dd></div>}
               {request.capacityLeft !== null && (
                 <div><dt>Kapacitet dagen</dt><dd>{request.capacityLeft} portioner kvar</dd></div>
@@ -194,6 +203,9 @@ export default function CateringRequestPage() {
                   <span>-{kronor(request.request.discount)}</span></li>
               )}
               {request.request.deliveryFee > 0 && <li><span>Leverans</span><span>{kronor(request.request.deliveryFee)}</span></li>}
+              {(request.request.cleaningFee ?? 0) > 0 && (
+                <li><span>Rengöringsavgift</span><span>{kronor(request.request.cleaningFee)}</span></li>
+              )}
               <li className="catering-lines-total"><span>Totalt inkl. moms</span><span>{kronor(request.request.total)}</span></li>
             </ul>
           </section>
@@ -260,6 +272,21 @@ export default function CateringRequestPage() {
                   onChange={(e) => setOffer({ ...offer, deliveryFee: Number(e.target.value.replace(',', '.')) || 0 })} />
               </div>
               <div className="form-field">
+                <label htmlFor="offer-return">Retur av utrustning</label>
+                <select id="offer-return" value={offer.equipmentReturn}
+                  onChange={(e) => setOffer({ ...offer, equipmentReturn: e.target.value as EquipmentReturn })}>
+                  <option value="cleaned">{EQUIPMENT_RETURN_LABEL.cleaned} (ingen avgift)</option>
+                  <option value="not_cleaned">{EQUIPMENT_RETURN_LABEL.not_cleaned} (rengöringsavgift)</option>
+                </select>
+              </div>
+              {offer.equipmentReturn === 'not_cleaned' && (
+                <div className="form-field">
+                  <label htmlFor="offer-cleaning">Rengöringsavgift (kr)</label>
+                  <input id="offer-cleaning" inputMode="decimal" value={String(offer.cleaningFee)}
+                    onChange={(e) => setOffer({ ...offer, cleaningFee: Number(e.target.value.replace(',', '.')) || 0 })} />
+                </div>
+              )}
+              <div className="form-field">
                 <label htmlFor="offer-valid">Giltig till och med</label>
                 <input id="offer-valid" type="date" value={offer.validUntil ?? ''} max={request.deliveryDate}
                   onChange={(e) => setOffer({ ...offer, validUntil: e.target.value || undefined })} />
@@ -274,6 +301,7 @@ export default function CateringRequestPage() {
               <li><span>Delsumma</span><span>{kronor(totals.subtotal)}</span></li>
               {totals.discount > 0 && <li><span>Rabatt {totals.discountPercent} %</span><span>-{kronor(totals.discount)}</span></li>}
               {totals.deliveryFee > 0 && <li><span>Leverans</span><span>{kronor(totals.deliveryFee)}</span></li>}
+              {(totals.cleaningFee ?? 0) > 0 && <li><span>Rengöringsavgift</span><span>{kronor(totals.cleaningFee)}</span></li>}
               <li className="catering-lines-total"><span>Totalt inkl. moms</span><span>{kronor(totals.total)}</span></li>
               <li className="cell-muted"><span>varav moms 12 %</span><span>{kronor(totals.vat)}</span></li>
             </ul>
@@ -321,7 +349,9 @@ export default function CateringRequestPage() {
             <ul className="catering-versions">
               {[...request.offers].reverse().map((o) => (
                 <li key={o.version}>
-                  <strong>v{o.version}</strong> · {kronor(o.totals.total)} · giltig t.o.m. {o.validUntil}
+                  <strong>v{o.version}</strong> · {kronor(o.totals.total)}
+                  {o.equipmentReturn === 'not_cleaned' ? ` (varav rengöring ${kronor(o.totals.cleaningFee)})` : ''}
+                  {' '}· giltig t.o.m. {o.validUntil}
                   {o.createdAt ? ` · skickad ${o.createdAt.slice(0, 16).replace('T', ' ')}` : ''}
                   {request.signature && request.offer?.version === o.version && request.status !== 'offer_sent'
                     ? ' · signerad' : ''}

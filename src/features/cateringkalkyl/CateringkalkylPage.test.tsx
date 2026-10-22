@@ -13,7 +13,8 @@ vi.mock('../catering/cateringApi', async (orig) => ({
   updateTier: (...a: unknown[]) => updateTier(...a),
 }))
 vi.mock('../installningar/locationApi', () => ({
-  getLocation: () => Promise.resolve({ cateringSettings: { enabled: false, minPortions: 15, notifyEmail: 'boss@example.se' } }),
+  getLocation: () => Promise.resolve({ cateringSettings: { enabled: false, minPortions: 15, notifyEmail: 'boss@example.se',
+    cleaningFee: 350 } }),
 }))
 vi.mock('../meny/menuApi', () => ({
   listMenuItems: () => Promise.resolve([]),
@@ -62,6 +63,19 @@ describe('CateringkalkylPage', () => {
     await user.click(screen.getByRole('button', { name: 'Spara inställningar' }))
     expect(saveSettings).toHaveBeenCalledWith('loc-1', expect.objectContaining({ enabled: true, minPortions: 15 }))
     expect(await screen.findByText('Sparat. Kalkylen visas på webbplatsen.')).toBeInTheDocument()
+  })
+
+  it('changes the cleaning fee and saves it', async () => {
+    const user = userEvent.setup()
+    saveSettings.mockImplementation((_l: string, s: object) => Promise.resolve(s))
+    render(<CateringkalkylPage />)
+    await screen.findByText('Nivå 1')
+    const fee = screen.getByLabelText('Rengöringsavgift, ej rengjord utrustning (inkl. moms)')
+    expect(fee).toHaveValue('350 kr')
+    await user.clear(fee)
+    await user.type(fee, '450')
+    await user.click(screen.getByRole('button', { name: 'Spara inställningar' }))
+    expect(saveSettings).toHaveBeenCalledWith('loc-1', expect.objectContaining({ cleaningFee: 450 }))
   })
 
   it('toggles a tier through the API', async () => {

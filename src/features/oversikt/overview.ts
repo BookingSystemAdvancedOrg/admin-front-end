@@ -45,7 +45,7 @@ export function hasAnyOpeningHours(hours: BusinessHours | undefined): boolean {
 }
 
 export interface SetupStep {
-  id: 'hours' | 'menu' | 'layout' | 'stripe' | 'staff'
+  id: 'dpa' | 'hours' | 'menu' | 'layout' | 'stripe' | 'staff'
   label: string
   /** null = okänt (data kunde inte hämtas) - visas varken som klart eller ej. */
   done: boolean | null
@@ -59,6 +59,8 @@ export interface SetupInput {
   hasLiveLayout: boolean | null
   stripeStage: StripeStage
   staffCount: number | null
+  /** Personuppgiftsbiträdesavtalet: undefined = API:t saknar det (inget steg). */
+  dpaAccepted?: boolean
 }
 
 /**
@@ -68,6 +70,10 @@ export interface SetupInput {
 export function setupSteps(input: SetupInput): SetupStep[] {
   if (!input.isOwner) return []
   const steps: SetupStep[] = [
+    // Först: en ny restaurang publiceras inte förrän avtalet är godkänt.
+    ...(input.dpaAccepted === undefined
+      ? []
+      : [{ id: 'dpa' as const, label: 'Godkänn personuppgiftsbiträdesavtalet', done: input.dpaAccepted, to: '/avtal' }]),
     {
       id: 'hours',
       label: 'Lägg in öppettider',

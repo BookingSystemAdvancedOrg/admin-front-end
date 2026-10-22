@@ -113,7 +113,10 @@ export default function CateringPage() {
                       <tr key={r.requestId}>
                         <td className="cell-strong">
                           {formatDate(r.deliveryDate)} {r.deliveryTime}
-                          <div className="cell-muted">{r.fulfilment === 'delivery' ? 'Leverans' : 'Avhämtning'}</div>
+                          <div className="cell-muted">
+                            {r.fulfilment === 'delivery' ? 'Leverans' : 'Avhämtning'}
+                            {r.equipmentReturn === 'not_cleaned' && <> · <span className="catering-return-flag">ej rengjord retur</span></>}
+                          </div>
                         </td>
                         <td>
                           {r.companyName ? `${r.companyName} · ` : ''}

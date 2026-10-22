@@ -91,4 +91,12 @@ describe('setupSteps', () => {
   it('gives staff no Kom igång steps at all (owner only)', () => {
     expect(setupSteps({ ...owner, isOwner: false })).toEqual([])
   })
+
+  it('puts the DPA first when the API has it, and leaves it out otherwise', () => {
+    expect(setupSteps({ ...owner, dpaAccepted: false })[0]).toEqual({
+      id: 'dpa', label: 'Godkänn personuppgiftsbiträdesavtalet', done: false, to: '/avtal',
+    })
+    expect(setupSteps({ ...owner, dpaAccepted: true })[0].done).toBe(true)
+    expect(setupSteps({ ...owner, isOwner: false, dpaAccepted: false })).toEqual([])
+  })
 })

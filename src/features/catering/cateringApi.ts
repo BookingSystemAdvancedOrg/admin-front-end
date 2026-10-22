@@ -11,8 +11,19 @@ import { ApiError, apiFetch } from '../../shared/api'
  * -> levererad -> klar när den är både levererad och betald.
  *
  * Belopp från API:t är i öre; det ägaren skriver in (offertrader,
- * leveransavgift) skickas i kronor.
+ * leveransavgift, rengöringsavgift) skickas i kronor.
+ *
+ * Retur av utrustning: gästen väljer rengjord (gratis) eller ej rengjord
+ * (platsens rengöringsavgift). Varje offertversion har en egen kopia av
+ * valet och avgiften, så en signerad offert ändras aldrig när avgiften gör det.
  */
+
+export type EquipmentReturn = 'cleaned' | 'not_cleaned'
+
+export const EQUIPMENT_RETURN_LABEL: Record<EquipmentReturn, string> = {
+  cleaned: 'Rengjord utrustning',
+  not_cleaned: 'Ej rengjord utrustning',
+}
 
 export interface CateringSettings {
   enabled: boolean
@@ -27,6 +38,8 @@ export interface CateringSettings {
   priceWithinLimit: number
   priceBeyondLimit: number
   allowOutsideArea: boolean
+  /** Kronor inkl. moms när gästen lämnar tillbaka utrustningen ej rengjord. */
+  cleaningFee: number
   offerValidDays: number
   paymentTermsDays: number
   requestExpiryHours: number
@@ -48,6 +61,7 @@ export const DEFAULT_SETTINGS: CateringSettings = {
   priceWithinLimit: 395,
   priceBeyondLimit: 795,
   allowOutsideArea: false,
+  cleaningFee: 0,
   offerValidDays: 7,
   paymentTermsDays: 30,
   requestExpiryHours: 72,
@@ -110,6 +124,8 @@ export interface Totals {
   discountPercent: number
   discount: number
   deliveryFee: number
+  /** Saknas på offerter skickade innan valet fanns. */
+  cleaningFee?: number
   total: number
   vat: number
   vatRate: number
@@ -119,6 +135,7 @@ export interface Offer {
   version: number
   lines: Line[]
   totals: Totals
+  equipmentReturn?: EquipmentReturn
   validUntil: string
   message?: string
   documentHash?: string
@@ -140,6 +157,8 @@ export interface RequestSummary {
   total?: number
   paid?: boolean
   invoiceStatus?: string
+  /** Saknas på förfrågningar från innan valet fanns (= rengjord). */
+  equipmentReturn?: EquipmentReturn
 }
 
 export interface CateringRequest extends RequestSummary {
@@ -153,7 +172,7 @@ export interface CateringRequest extends RequestSummary {
   deliveryZone?: 'within' | 'beyond'
   guests?: number
   notes?: string
-  request: { lines: Line[]; portions: number; tierName?: string | null } & Totals
+  request: { lines: Line[]; portions: number; tierName?: string | null; equipmentReturn?: EquipmentReturn } & Totals
   draft?: Omit<Offer, 'version'>
   offer?: Offer
   offers: Offer[]
@@ -170,6 +189,7 @@ export interface CateringRequest extends RequestSummary {
   invoiceUrl?: string
   capacityHeld?: number
   capacityLeft: number | null
+  settings?: Partial<CateringSettings>
   history: { action: string; by: string; at: string; [k: string]: unknown }[]
 }
 
@@ -178,6 +198,9 @@ export interface OfferInput {
   lines: { menuItemId?: string; name: string; unitPrice: number; quantity: number }[]
   discountPercent: number
   deliveryFee: number
+  equipmentReturn: EquipmentReturn
+  /** Kronor; räknas bara när equipmentReturn är not_cleaned. */
+  cleaningFee: number
   message: string
   validUntil?: string
 }
@@ -247,6 +270,9 @@ export function offerFromRequest(r: CateringRequest): OfferInput {
   const source = r.draft ?? r.offer
   const lines = source?.lines ?? r.request.lines
   const totals = source?.totals ?? r.request
+  const equipmentReturn = source?.equipmentReturn ?? r.equipmentReturn ?? 'cleaned'
+  // Avgiften som redan står i förfrågan/offerten, annars platsens nuvarande.
+  const savedFee = Number(totals.cleaningFee ?? 0) / 100
   return {
     lines: lines.map((l) => ({
       ...(l.menuItemId ? { menuItemId: l.menuItemId } : {}),
@@ -256,6 +282,8 @@ export function offerFromRequest(r: CateringRequest): OfferInput {
     })),
     discountPercent: Number(totals.discountPercent ?? 0),
     deliveryFee: Number(totals.deliveryFee ?? 0) / 100,
+    equipmentReturn,
+    cleaningFee: savedFee > 0 ? savedFee : Number(r.settings?.cleaningFee ?? 0),
     message: source?.message ?? '',
     validUntil: source?.validUntil,
   }
@@ -265,12 +293,14 @@ export function offerFromRequest(r: CateringRequest): OfferInput {
 export function offerTotals(offer: OfferInput): Totals {
   const subtotal = offer.lines.reduce((sum, l) => sum + Math.round(l.unitPrice * 100) * l.quantity, 0)
   const discount = Math.round((subtotal * offer.discountPercent) / 100)
-  const total = subtotal - discount + Math.round(offer.deliveryFee * 100)
+  const cleaningFee = offer.equipmentReturn === 'not_cleaned' ? Math.round(offer.cleaningFee * 100) : 0
+  const total = subtotal - discount + Math.round(offer.deliveryFee * 100) + cleaningFee
   return {
     subtotal,
     discountPercent: offer.discountPercent,
     discount,
     deliveryFee: Math.round(offer.deliveryFee * 100),
+    cleaningFee,
     total,
     vat: Math.round((total * 12) / 112),
     vatRate: 12,

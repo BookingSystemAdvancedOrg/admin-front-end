@@ -71,8 +71,16 @@ beforeEach(() => {
 
 describe('offerTotals', () => {
   it('matches the server: discount on dishes, 12 % VAT included', () => {
-    const t = offerTotals({ lines: [{ name: 'A', unitPrice: 50, quantity: 20 }], discountPercent: 10, deliveryFee: 395, message: '' })
-    expect(t).toMatchObject({ subtotal: 100000, discount: 10000, deliveryFee: 39500, total: 129500, vat: 13875 })
+    const t = offerTotals({ lines: [{ name: 'A', unitPrice: 50, quantity: 20 }], discountPercent: 10, deliveryFee: 395,
+      equipmentReturn: 'cleaned', cleaningFee: 300, message: '' })
+    expect(t).toMatchObject({ subtotal: 100000, discount: 10000, deliveryFee: 39500, cleaningFee: 0, total: 129500, vat: 13875 })
+  })
+
+  it('adds the cleaning fee when the equipment comes back not cleaned, outside the discount', () => {
+    const t = offerTotals({ lines: [{ name: 'A', unitPrice: 50, quantity: 20 }], discountPercent: 10, deliveryFee: 395,
+      equipmentReturn: 'not_cleaned', cleaningFee: 300, message: '' })
+    // same numbers as the server test: 1000 - 100 + 395 + 300 kr, VAT 12/112
+    expect(t).toMatchObject({ discount: 10000, cleaningFee: 30000, total: 159500, vat: 17089 })
   })
 })
 
@@ -91,6 +99,37 @@ describe('CateringRequestPage', () => {
       lines: [{ menuItemId: 'm1', name: 'Lasagne', unitPrice: 55, quantity: 20 }],
     }))
     expect(await screen.findByRole('status')).toHaveTextContent('Offerten är skickad')
+  })
+
+  it('shows a not cleaned return and keeps its fee in the offer', async () => {
+    const user = userEvent.setup()
+    getRequest.mockResolvedValue(request({
+      equipmentReturn: 'not_cleaned',
+      request: { lines: [{ menuItemId: 'm1', name: 'Lasagne', unitPrice: 5000, quantity: 20 }], portions: 20,
+        equipmentReturn: 'not_cleaned', ...TOTALS, cleaningFee: 35000, total: 135000 },
+      settings: { cleaningFee: 500 },
+    }))
+    sendOffer.mockResolvedValue(request({ status: 'offer_sent' }))
+    renderAt()
+    expect(await screen.findByText('Ej rengjord: vi diskar och rengör')).toBeInTheDocument()
+    expect(screen.getByLabelText('Retur av utrustning')).toHaveValue('not_cleaned')
+    // the fee the guest saw, not the location's newer one
+    expect(screen.getByLabelText('Rengöringsavgift (kr)')).toHaveValue('350')
+    expect(screen.getAllByText('Rengöringsavgift')).toHaveLength(2)
+    await user.click(screen.getByRole('button', { name: 'Skicka offert' }))
+    expect(sendOffer).toHaveBeenCalledWith('loc-1', 'req-1', expect.objectContaining({
+      equipmentReturn: 'not_cleaned', cleaningFee: 350,
+    }))
+  })
+
+  it('switches an offer to cleaned and drops the fee', async () => {
+    const user = userEvent.setup()
+    getRequest.mockResolvedValue(request({ equipmentReturn: 'not_cleaned', settings: { cleaningFee: 500 } }))
+    renderAt()
+    expect(await screen.findByLabelText('Rengöringsavgift (kr)')).toHaveValue('500')
+    await user.selectOptions(screen.getByLabelText('Retur av utrustning'), 'cleaned')
+    expect(screen.queryByLabelText('Rengöringsavgift (kr)')).not.toBeInTheDocument()
+    expect(screen.queryByText('Rengöringsavgift')).not.toBeInTheDocument()
   })
 
   it('will not send an offer line priced above 10 000 kr', async () => {
@@ -180,5 +219,18 @@ describe('CateringPage', () => {
     expect(rows[2]).toHaveTextContent('Offert skickad')
     expect(screen.getByText('1 väntar på dig')).toBeInTheDocument()
     expect(within(rows[1]).getByRole('link', { name: 'Öppna' })).toHaveAttribute('href', '/catering/loc-1/r-new')
+  })
+
+  it('flags requests whose equipment comes back not cleaned', async () => {
+    listRequests.mockResolvedValue([
+      request({ requestId: 'r-dirty', customerName: 'Bo', equipmentReturn: 'not_cleaned' }),
+      request({ requestId: 'r-clean', customerName: 'Cia', equipmentReturn: 'cleaned', createdAt: '2026-10-11T10:00:00Z' }),
+    ])
+    render(<MemoryRouter><CateringPage /></MemoryRouter>)
+    const rows = await screen.findAllByRole('row')
+    const dirty = rows.find((r) => r.textContent?.includes('Bo'))!
+    const clean = rows.find((r) => r.textContent?.includes('Cia'))!
+    expect(dirty).toHaveTextContent('ej rengjord retur')
+    expect(clean).not.toHaveTextContent('ej rengjord retur')
   })
 })

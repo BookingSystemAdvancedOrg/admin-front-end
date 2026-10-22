@@ -12,6 +12,7 @@ import InstallningarPage from './features/installningar/InstallningarPage'
 import HjalpPage from './features/guide/HjalpPage'
 import MarknadsforingPage from './features/marknadsforing/MarknadsforingPage'
 import StatistikPage from './features/statistik/StatistikPage'
+import AvtalPage from './features/dpa/AvtalPage'
 
 /**
  * Stripe skickar tillbaka ägaren hit efter onboardingen (return/refresh-URL:er
@@ -44,6 +45,7 @@ function App() {
         <Route path="marknadsforing" element={<MarknadsforingPage />} />
         <Route path="installningar" element={<InstallningarPage />} />
         <Route path="hjalp" element={<HjalpPage />} />
+        <Route path="avtal" element={<AvtalPage />} />
         <Route path="settings/payments" element={<StripeReturn />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

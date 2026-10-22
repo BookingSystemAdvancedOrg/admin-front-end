@@ -78,32 +78,6 @@ export const MOCK_DISCOUNT_TIERS: DiscountTier[] = [
   { id: 'niva-3', name: 'Nivå 3', fromPortions: 100, toPortions: null, discountPercent: 15, active: true },
 ]
 
-/** Den aktiva nivån vars intervall täcker `totalPortions`, om någon. */
-export function tierFor(
-  tiers: DiscountTier[],
-  totalPortions: number,
-): DiscountTier | null {
-  return (
-    tiers.find(
-      (t) =>
-        t.active &&
-        totalPortions >= t.fromPortions &&
-        (t.toPortions === null || totalPortions <= t.toPortions),
-    ) ?? null
-  )
-}
-
-/** Nästa (högre) aktiva nivå efter den som gäller nu, om någon finns kvar. */
-export function nextTierAfter(
-  tiers: DiscountTier[],
-  current: DiscountTier | null,
-): DiscountTier | null {
-  const active = [...tiers].filter((t) => t.active).sort((a, b) => a.fromPortions - b.fromPortions)
-  if (!current) return active[0] ?? null
-  const i = active.findIndex((t) => t.id === current.id)
-  return i >= 0 ? active[i + 1] ?? null : null
-}
-
 /**
  * Två intervall [aFrom, aTo] och [bFrom, bTo] (öppen övre gräns = null)
  * överlappar om de delar minst en portion. Används för att stoppa två

@@ -66,6 +66,51 @@
   flex-shrink: 0;
 }
 
+.dish-schedule {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 16px 0 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.dish-schedule > .form-grid {
+  align-self: stretch;
+}
+
+.dish-schedule legend {
+  float: left;
+  padding: 0;
+  font: 600 14px/1.3 var(--font);
+  color: var(--ink);
+}
+
+.dish-schedule-help {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.dish-schedule-warning {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--tint-orange);
+  color: var(--warning-ink);
+  font-size: 13px;
+}
+
+.dish-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .dish-upload-actions {
   display: flex;
   flex-direction: column;

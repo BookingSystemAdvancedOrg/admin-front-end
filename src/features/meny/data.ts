@@ -34,6 +34,9 @@ export interface Dish {
    * VITE_MENU_IMAGE_BASE_URL är satt, annars null (platshållare visas).
    */
   image: string | null
+  /** Schema i UTC ("...Z"), null = ingen gräns (schedule.ts). */
+  availableFrom: string | null
+  availableUntil: string | null
 }
 
 export const CATEGORY_LABEL: Record<DishCategory, string> = {

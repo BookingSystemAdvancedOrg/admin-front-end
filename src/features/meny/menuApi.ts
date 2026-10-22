@@ -46,6 +46,9 @@ export interface MenuItem {
   active: boolean
   /** Innehåller alkohol (backend: 25 % moms, inte till avhämtning). Saknas = false. */
   alcohol?: boolean
+  /** Schema i UTC; null eller saknas = ingen gräns. Slutet är exklusivt. */
+  availableFrom?: string | null
+  availableUntil?: string | null
   createdBy: string
   createdAt: string
   updatedBy: string
@@ -73,6 +76,9 @@ export interface MenuItemCreate {
   imageKey: string
   active: boolean
   alcohol?: boolean
+  /** null rensar gränsen. */
+  availableFrom?: string | null
+  availableUntil?: string | null
 }
 
 /** Partiell uppdatering - minst ett fält krävs av API:t. */
@@ -107,6 +113,8 @@ export function toDish(item: MenuItem): Dish {
     alcohol: item.alcohol === true,
     imageKey: item.imageKey,
     image: menuImageUrl(item.imageKey),
+    availableFrom: item.availableFrom ?? null,
+    availableUntil: item.availableUntil ?? null,
   }
 }
 
@@ -134,6 +142,12 @@ export function dishChanges(original: Dish, next: MenuItemCreate): MenuItemUpdat
   if (next.active !== original.active) updates.active = next.active
   if (next.alcohol !== undefined && next.alcohol !== original.alcohol) {
     updates.alcohol = next.alcohol
+  }
+  if (next.availableFrom !== undefined && next.availableFrom !== original.availableFrom) {
+    updates.availableFrom = next.availableFrom
+  }
+  if (next.availableUntil !== undefined && next.availableUntil !== original.availableUntil) {
+    updates.availableUntil = next.availableUntil
   }
   if (next.imageKey.trim() && next.imageKey !== original.imageKey) {
     updates.imageKey = next.imageKey
@@ -195,6 +209,9 @@ function toFriendlyMenuError(err: unknown): Error {
     case 400:
       if (/^price may be at most/.test(err.message)) {
         return new ApiError(400, `Pris får vara högst ${MAX_ITEM_PRICE_KR.toLocaleString('sv-SE')} kr.`)
+      }
+      if (err.message === 'availableUntil must be after availableFrom') {
+        return new ApiError(400, 'Slutet på schemat måste vara efter starten.')
       }
       return new ApiError(400, `Rätten avvisades av servern: ${err.message}`)
     case 401:

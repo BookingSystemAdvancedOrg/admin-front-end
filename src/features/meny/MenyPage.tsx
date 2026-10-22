@@ -4,6 +4,8 @@ import { Num } from '../../shared/motion/Num'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useLocationId } from '../../shared/location'
+import { currentLocation, useTenant } from '../../shared/tenant'
+import { DEFAULT_TIMEZONE } from '../installningar/data'
 import { CATEGORY_LABEL } from './data'
 import type { Dish, DishCategory } from './data'
 import { DishModal } from './DishModal'
@@ -23,11 +25,19 @@ import {
   uploadMenuImage,
 } from './menuApi'
 import type { MenuItemCreate } from './menuApi'
+import { dishStatus, dishStatusLabel, matchesStatus } from './schedule'
+import type { DishStatus, StatusFilter } from './schedule'
 import './meny.css'
 import { Loading } from '../../shared/Loading'
 
 type ModalState = { mode: 'add' } | { mode: 'edit'; id: string } | null
-type StatusFilter = 'alla' | 'active' | 'inactive'
+
+const STATUS_BADGE: Record<DishStatus, string> = {
+  active: 'reserved',
+  scheduled: 'arrived',
+  expired: 'waiting',
+  off: 'cancelled-free',
+}
 
 const ALL_CATEGORIES = Object.keys(CATEGORY_LABEL) as DishCategory[]
 
@@ -69,6 +79,13 @@ function DishImage({ src, alt }: { src: string | null; alt: string }) {
 export default function MenyPage() {
   const { sub } = useAuth()
   const { locationId, resolving: resolvingLocation } = useLocationId(sub)
+  const timeZone = currentLocation(useTenant())?.timezone || DEFAULT_TIMEZONE
+  // Schemats status räknas om varje minut, så badgen byter utan omladdning.
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 60_000)
+    return () => window.clearInterval(id)
+  }, [])
   const [dishes, setDishes] = useState<Dish[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -129,10 +146,12 @@ export default function MenyPage() {
   // Härledd i stället för att sättas synkront i effekten: "hämtar" gäller
   // medan platsen letas upp eller medan menyn för en känd plats laddas.
   const fetching = resolvingLocation || (Boolean(locationId) && loading)
-  const activeCount = dishes.filter((d) => d.active).length
+  // "Aktiva" = syns för gäster just nu (växeln på och inom schemat).
+  const visibleDishes = dishes.filter((d) => dishStatus(d, now) === 'active')
+  const activeCount = visibleDishes.length
   const withImage = dishes.filter((d) => d.imageKey).length
   const avgPrice = activeCount
-    ? Math.round(dishes.filter((d) => d.active).reduce((sum, d) => sum + d.price, 0) / activeCount)
+    ? Math.round(visibleDishes.reduce((sum, d) => sum + d.price, 0) / activeCount)
     : 0
   const tiles = [
     { label: 'Rätter på menyn', value: String(dishes.length), note: `${new Set(dishes.map((d) => d.category)).size} kategorier` },
@@ -160,8 +179,7 @@ export default function MenyPage() {
       return false
     }
     if (filterCategory !== 'alla' && d.category !== filterCategory) return false
-    if (filterStatus === 'active' && !d.active) return false
-    if (filterStatus === 'inactive' && d.active) return false
+    if (!matchesStatus(filterStatus, dishStatus(d, now))) return false
     if (priceMin !== null && Number.isFinite(priceMin) && d.price < priceMin) {
       return false
     }
@@ -235,6 +253,8 @@ export default function MenyPage() {
       imageKey,
       active: values.active,
       alcohol: values.alcohol,
+      availableFrom: values.availableFrom,
+      availableUntil: values.availableUntil,
     }
 
     if (modal?.mode === 'edit' && editingDish) {
@@ -332,6 +352,8 @@ export default function MenyPage() {
               >
                 <option value="alla">Alla</option>
                 <option value="active">Aktiva</option>
+                <option value="scheduled">Schemalagda</option>
+                <option value="expired">Utgångna</option>
                 <option value="inactive">Inaktiva</option>
               </select>
             </div>
@@ -357,7 +379,7 @@ export default function MenyPage() {
                   <th>Rätt</th>
                   <th>Kategori</th>
                   <th>Pris</th>
-                  <th>Aktiv</th>
+                  <th>Status</th>
                   <th>Åtgärder</th>
                 </tr>
               </thead>
@@ -398,16 +420,21 @@ export default function MenyPage() {
                     </td>
                     <td className="cell-price"><Num>{`${d.price} kr`}</Num></td>
                     <td>
-                      <button
-                        type="button"
-                        role="switch"
-                        data-tour={index === 0 ? 'menu-row-toggle' : undefined}
-                        aria-checked={d.active}
-                        aria-label={`${d.name} aktiv`}
-                        className="switch"
-                        disabled={!canEdit || busyId === d.id}
-                        onClick={() => toggleActive(d)}
-                      />
+                      <span className="dish-status">
+                        <button
+                          type="button"
+                          role="switch"
+                          data-tour={index === 0 ? 'menu-row-toggle' : undefined}
+                          aria-checked={d.active}
+                          aria-label={`${d.name} aktiv`}
+                          className="switch"
+                          disabled={!canEdit || busyId === d.id}
+                          onClick={() => toggleActive(d)}
+                        />
+                        <span className={`status-badge ${STATUS_BADGE[dishStatus(d, now)]}`}>
+                          {dishStatusLabel(d, now, timeZone)}
+                        </span>
+                      </span>
                     </td>
                     <td>
                       <span className="row-actions" data-tour={index === 0 ? 'menu-row-actions' : undefined}>
@@ -441,6 +468,7 @@ export default function MenyPage() {
         <DishModal
           title={modal.mode === 'add' ? 'Lägg till rätt' : 'Redigera rätt'}
           initial={editingDish}
+          timeZone={timeZone}
           onSave={handleSave}
           onCancel={() => setModal(null)}
         />

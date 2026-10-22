@@ -6,11 +6,23 @@ import CateringkalkylPage from './CateringkalkylPage'
 const saveSettings = vi.fn()
 const listTiers = vi.fn()
 const updateTier = vi.fn()
+const saveCateringDish = vi.fn()
+const deleteCateringDish = vi.fn()
+const DISH = { dishId: 'd1', name: 'Laxtallrik', description: '', pricePerPortion: 145, allergens: ['fish'],
+  dietary: [], active: true, sort: 0, version: 3 }
 vi.mock('../catering/cateringApi', async (orig) => ({
   ...(await orig<typeof import('../catering/cateringApi')>()),
   saveSettings: (...a: unknown[]) => saveSettings(...a),
   listTiers: (...a: unknown[]) => listTiers(...a),
   updateTier: (...a: unknown[]) => updateTier(...a),
+  listCateringDishes: () => Promise.resolve([DISH]),
+  listCateringPackages: () => Promise.resolve([]),
+  saveCateringDish: (...a: unknown[]) => saveCateringDish(...a),
+  deleteCateringDish: (...a: unknown[]) => deleteCateringDish(...a),
+}))
+vi.mock('../../shared/api', async (orig) => ({
+  ...(await orig<typeof import('../../shared/api')>()),
+  isApiConfigured: () => true,
 }))
 vi.mock('../installningar/locationApi', () => ({
   getLocation: () => Promise.resolve({ cateringSettings: { enabled: false, minPortions: 15, notifyEmail: 'boss@example.se',
@@ -42,6 +54,8 @@ beforeEach(() => {
   saveSettings.mockReset()
   listTiers.mockReset()
   updateTier.mockReset()
+  saveCateringDish.mockReset()
+  deleteCateringDish.mockReset()
   listTiers.mockResolvedValue([TIER])
 })
 
@@ -84,5 +98,59 @@ describe('CateringkalkylPage', () => {
     render(<CateringkalkylPage />)
     await user.click(await screen.findByRole('switch', { name: 'Nivå 1 aktiv' }))
     expect(updateTier).toHaveBeenCalledWith('loc-1', 't1', expect.objectContaining({ active: false }))
+  })
+
+  it('creates a catering dish with allergens', async () => {
+    const user = userEvent.setup()
+    saveCateringDish.mockResolvedValue({ ...DISH, dishId: 'd2' })
+    render(<CateringkalkylPage />)
+    expect(await screen.findByText('Laxtallrik')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '+ Ny rätt' }))
+    await user.type(screen.getByLabelText('Namn'), 'Pannacotta')
+    await user.type(screen.getByLabelText('Pris per portion (kr inkl. moms)'), '45,50')
+    await user.click(screen.getByLabelText('Mjölk'))
+    await user.click(screen.getByRole('button', { name: 'Spara rätt' }))
+    expect(saveCateringDish).toHaveBeenCalledWith('loc-1', expect.objectContaining({
+      name: 'Pannacotta', pricePerPortion: 45.5, allergens: ['milk'], active: true }), undefined)
+  })
+
+  it('sends the version when a dish is switched off', async () => {
+    const user = userEvent.setup()
+    saveCateringDish.mockResolvedValue({ ...DISH, active: false })
+    render(<CateringkalkylPage />)
+    await user.click(await screen.findByRole('switch', { name: 'Laxtallrik aktiv' }))
+    expect(saveCateringDish).toHaveBeenCalledWith('loc-1', expect.objectContaining({ active: false }), DISH)
+  })
+
+  it('asks before deleting a dish', async () => {
+    const user = userEvent.setup()
+    deleteCateringDish.mockResolvedValue(undefined)
+    render(<CateringkalkylPage />)
+    await screen.findByText('Laxtallrik')
+    await user.click(screen.getAllByRole('button', { name: 'Radera' })[0])
+    expect(deleteCateringDish).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('dialog', { name: 'Radera Laxtallrik' }).querySelector('.danger-outline')!)
+    expect(deleteCateringDish).toHaveBeenCalledWith('loc-1', 'd1')
+  })
+
+  it('saves delivery bands and lead time, and stops a gap before saving', async () => {
+    const user = userEvent.setup()
+    saveSettings.mockImplementation((_l: string, s: object) => Promise.resolve(s))
+    render(<CateringkalkylPage />)
+    await screen.findByText('Nivå 1')
+    await user.click(screen.getAllByRole('button', { name: '+ Lägg till intervall' })[1])
+    await user.click(screen.getByRole('button', { name: 'Spara inställningar' }))
+    expect(saveSettings).toHaveBeenCalledWith('loc-1', expect.objectContaining({
+      deliveryBands: [{ upToKm: 25, price: 395 }], maxDeliveryKm: 25,
+      leadTimeRules: [{ fromGuests: 15, toGuests: null, days: 5 }] }))
+    saveSettings.mockClear()
+    const from = screen.getByLabelText('Intervall 1, från antal gäster')
+    await user.click(screen.getAllByRole('button', { name: '+ Lägg till intervall' })[1])
+    await user.clear(screen.getByLabelText('Intervall 2, från antal gäster'))
+    await user.type(screen.getByLabelText('Intervall 2, från antal gäster'), '90')
+    await user.click(screen.getByRole('button', { name: 'Spara inställningar' }))
+    expect(from).toHaveValue('15')
+    expect(saveSettings).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent(/luckor/)
   })
 })

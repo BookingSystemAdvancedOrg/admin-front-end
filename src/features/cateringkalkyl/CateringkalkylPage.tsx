@@ -6,8 +6,10 @@ import type { Dish } from '../meny/data'
 import { getPublicMenu, listMenuItems, publicToDish, toDish } from '../meny/menuApi'
 import { DiscountTierModal } from './DiscountTierModal'
 import type { DiscountTierFormValues } from './DiscountTierModal'
-import { DISCOUNT_SCOPE_LABEL, nextTierAfter, tierFor } from './data'
-import type { DeliveryPricing, DiscountTier, OrderRules } from './data'
+import { DISCOUNT_SCOPE_LABEL, nextTierAfter, settingsProblem, tierFor } from './data'
+import type { DiscountTier, OrderRules } from './data'
+import { CateringMenuCard } from './CateringMenuCard'
+import { isApiConfigured } from '../../shared/api'
 import { getLocation } from '../installningar/locationApi'
 import { useTenant } from '../../shared/tenant'
 import { PhoneInput } from '../../shared/PhoneInput'
@@ -19,8 +21,9 @@ import {
   listTiers,
   saveSettings,
   updateTier,
+  withBands,
 } from '../catering/cateringApi'
-import type { CateringSettings, Tier } from '../catering/cateringApi'
+import type { CateringSettings, DeliveryBand, LeadTimeRule, Tier } from '../catering/cateringApi'
 import './cateringkalkyl.css'
 
 function rulesOf(s: CateringSettings): OrderRules {
@@ -30,16 +33,6 @@ function rulesOf(s: CateringSettings): OrderRules {
     advanceDays: s.advanceDays,
     discountScope: 'alla_ratter',
     visibleToCustomers: s.enabled,
-  }
-}
-
-function deliveryOf(s: CateringSettings): DeliveryPricing {
-  return {
-    area: s.deliveryArea,
-    maxDistanceKm: s.maxDistanceKm,
-    priceWithinLimit: s.priceWithinLimit,
-    priceBeyondLimit: s.priceBeyondLimit,
-    allowOutsideArea: s.allowOutsideArea,
   }
 }
 
@@ -87,7 +80,6 @@ export default function CateringkalkylPage() {
   const isOwner = tenant?.role === 'owner_user'
   const [settings, setSettings] = useState<CateringSettings>(DEFAULT_SETTINGS)
   const [orderRules, setOrderRules] = useState<OrderRules>(rulesOf(DEFAULT_SETTINGS))
-  const [delivery, setDelivery] = useState<DeliveryPricing>(deliveryOf(DEFAULT_SETTINGS))
   const [tiers, setTiers] = useState<DiscountTier[]>([])
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -103,14 +95,14 @@ export default function CateringkalkylPage() {
   useEffect(() => {
     if (!locationId) return
     let cancelled = false
-    Promise.all([getLocation(locationId), listTiers(locationId)])
+    // Utan API (mockläge) finns ingen plats att läsa: standardinställningarna.
+    Promise.all([isApiConfigured() ? getLocation(locationId) : Promise.resolve({}), listTiers(locationId)])
       .then(([loc, loadedTiers]) => {
         if (cancelled) return
         const stored = (loc as { cateringSettings?: Partial<CateringSettings> }).cateringSettings ?? {}
-        const saved = { ...DEFAULT_SETTINGS, ...stored }
+        const saved = withBands({ ...DEFAULT_SETTINGS, ...stored })
         setSettings(saved)
         setOrderRules(rulesOf(saved))
-        setDelivery(deliveryOf(saved))
         setTiers(loadedTiers.map(tierOf))
         setLoaded(true)
       })
@@ -145,10 +137,6 @@ export default function CateringkalkylPage() {
     setOrderRules((prev) => ({ ...prev, ...patch }))
   }
 
-  function updateDelivery(patch: Partial<DeliveryPricing>) {
-    setDelivery((prev) => ({ ...prev, ...patch }))
-  }
-
   function qty(dishId: string): number {
     return quantities[dishId] ?? 0
   }
@@ -162,24 +150,45 @@ export default function CateringkalkylPage() {
     setSaveNotice(null)
   }
 
+  function setBand(i: number, patch: Partial<DeliveryBand>) {
+    updateSettings({ deliveryBands: settings.deliveryBands.map((b, j) => (j === i ? { ...b, ...patch } : b)) })
+  }
+
+  function setRule(i: number, patch: Partial<LeadTimeRule>) {
+    updateSettings({ leadTimeRules: settings.leadTimeRules.map((r, j) => (j === i ? { ...r, ...patch } : r)) })
+  }
+
+  // Ny rad börjar direkt efter den sista; en öppen sista rad ("och uppåt") stängs först.
+  function addRule() {
+    const rules = [...settings.leadTimeRules]
+    const last = rules[rules.length - 1]
+    if (last && last.toGuests === null) rules[rules.length - 1] = { ...last, toGuests: last.fromGuests + 49 }
+    const tail = rules[rules.length - 1]
+    const from = tail ? (tail.toGuests ?? tail.fromGuests) + 1 : settings.minGuests
+    updateSettings({ leadTimeRules: [...rules, { fromGuests: from, toGuests: null, days: orderRules.advanceDays }] })
+  }
+
   async function save() {
     if (!locationId) return
+    const next = {
+      ...settings,
+      enabled: orderRules.visibleToCustomers,
+      minPortions: orderRules.minPortions,
+      maxPortions: orderRules.maxPortions,
+      advanceDays: orderRules.advanceDays,
+      maxDeliveryKm: settings.deliveryBands[settings.deliveryBands.length - 1]?.upToKm ?? null,
+    }
+    const problem = settingsProblem(next)
+    if (problem) {
+      setSaveError(problem)
+      setSaveNotice(null)
+      return
+    }
     setSaving(true)
     setSaveError(null)
     setSaveNotice(null)
     try {
-      const saved = await saveSettings(locationId, {
-        ...settings,
-        enabled: orderRules.visibleToCustomers,
-        minPortions: orderRules.minPortions,
-        maxPortions: orderRules.maxPortions,
-        advanceDays: orderRules.advanceDays,
-        deliveryArea: delivery.area,
-        maxDistanceKm: delivery.maxDistanceKm,
-        priceWithinLimit: delivery.priceWithinLimit,
-        priceBeyondLimit: delivery.priceBeyondLimit,
-        allowOutsideArea: delivery.allowOutsideArea,
-      })
+      const saved = withBands({ ...DEFAULT_SETTINGS, ...(await saveSettings(locationId, next)) })
       setSettings(saved)
       setSaveNotice(saved.enabled ? 'Sparat. Kalkylen visas på webbplatsen.' : 'Sparat. Kalkylen är dold för gäster.')
     } catch (err) {
@@ -234,22 +243,15 @@ export default function CateringkalkylPage() {
   const discountPercent = currentTier?.discountPercent ?? 0
   const discountAmount = (subtotal * discountPercent) / 100
 
-  // Illustrativa exempelavstånd - ingen riktig geokodning finns, så
-  // förhandsvisningens "leveransadress" är bara en etikett, inte en riktig
-  // beräkning. Skalat mot avståndsgränsen så exemplet alltid är rimligt.
-  const previewDistanceKm = Math.max(1, Math.round(delivery.maxDistanceKm * 0.72))
-  const withinDeliveryArea = previewDistanceKm <= delivery.maxDistanceKm
-  const deliveryPrice =
-    totalPortions === 0
-      ? 0
-      : withinDeliveryArea
-        ? delivery.priceWithinLimit
-        : delivery.priceBeyondLimit
+  // Illustrativt exempelavstånd - ingen riktig geokodning ännu, så
+  // förhandsvisningens "leveransadress" är bara en etikett. Skalat mot det
+  // första intervallet så exemplet alltid hamnar i ett intervall.
+  const bands = settings.deliveryBands
+  const previewDistanceKm = Math.max(1, Math.round((bands[0]?.upToKm ?? 10) * 0.72))
+  const previewBand = bands.find((b) => previewDistanceKm <= b.upToKm) ?? null
+  const deliveryPrice = totalPortions === 0 ? 0 : previewBand?.price ?? 0
 
   const total = subtotal - discountAmount + deliveryPrice
-
-  const exampleNear = Math.max(1, Math.round(delivery.maxDistanceKm * 0.72))
-  const exampleFar = Math.round(delivery.maxDistanceKm * 1.68)
 
   return (
     <>
@@ -293,6 +295,7 @@ export default function CateringkalkylPage() {
             />
           </div>
         </section>
+        <CateringMenuCard locationId={locationId} isOwner={isOwner} />
         <div className="settings-row">
           <section className="admin-card table-card">
             <h2 className="card-title">Beställningsregler</h2>
@@ -324,6 +327,11 @@ export default function CateringkalkylPage() {
                     })
                   }
                 />
+              </div>
+              <div className="form-field">
+                <label htmlFor="min-guests">Minsta antal gäster</label>
+                <input id="min-guests" inputMode="numeric" value={`${settings.minGuests} gäster`}
+                  onChange={(e) => updateSettings({ minGuests: numberIn(e.target.value) })} />
               </div>
               <div className="form-field">
                 <label htmlFor="advance-days">Framförhållning</label>
@@ -364,75 +372,158 @@ export default function CateringkalkylPage() {
           </section>
 
           <section className="admin-card table-card">
-            <h2 className="card-title">Leverans inom {delivery.area}</h2>
-            <p className="cell-muted">Pris baseras på avstånd från restaurangen</p>
+            <h2 className="card-title">Leveranspris per avstånd</h2>
+            <p className="cell-muted">Avstånd från restaurangen till leveransadressen, längs vägen</p>
             <div style={{ height: 16 }} />
-            <div className="form-grid">
-              <div className="form-field">
-                <label htmlFor="delivery-area">Leveransområde</label>
-                <input
-                  id="delivery-area"
-                  value={delivery.area}
-                  onChange={(e) => updateDelivery({ area: e.target.value })}
-                />
-              </div>
-              <div className="form-field">
-                <label htmlFor="delivery-limit">Avståndsgräns</label>
-                <input
-                  id="delivery-limit"
-                  inputMode="numeric"
-                  value={`${delivery.maxDistanceKm} km`}
-                  onChange={(e) =>
-                    updateDelivery({
-                      maxDistanceKm: Number(e.target.value.replace(/[^\d]/g, '')) || 0,
-                    })
-                  }
-                />
-              </div>
-              <div className="form-field">
-                <label htmlFor="price-within">Pris upp till {delivery.maxDistanceKm} km</label>
-                <input
-                  id="price-within"
-                  inputMode="numeric"
-                  value={`${delivery.priceWithinLimit} kr`}
-                  onChange={(e) =>
-                    updateDelivery({
-                      priceWithinLimit: Number(e.target.value.replace(/[^\d]/g, '')) || 0,
-                    })
-                  }
-                />
-              </div>
-              <div className="form-field">
-                <label htmlFor="price-beyond">Pris över {delivery.maxDistanceKm} km</label>
-                <input
-                  id="price-beyond"
-                  inputMode="numeric"
-                  value={`${delivery.priceBeyondLimit} kr`}
-                  onChange={(e) =>
-                    updateDelivery({
-                      priceBeyondLimit: Number(e.target.value.replace(/[^\d]/g, '')) || 0,
-                    })
-                  }
-                />
-              </div>
+            <div className="form-field">
+              <label htmlFor="delivery-area">Leveransområde (visas för gästen)</label>
+              <input id="delivery-area" value={settings.deliveryArea}
+                onChange={(e) => updateSettings({ deliveryArea: e.target.value })} />
             </div>
+            <div style={{ height: 12 }} />
+            <ul className="band-list" aria-label="Leveransintervall">
+              {bands.map((b, i) => (
+                <li key={i} className="band-row">
+                  <span className="band-from">{i === 0 ? '0' : bands[i - 1].upToKm} till</span>
+                  <label className="band-field">
+                    <span className="sr-only">Intervall {i + 1}, upp till km</span>
+                    <input inputMode="numeric" value={`${b.upToKm} km`}
+                      onChange={(e) => setBand(i, { upToKm: numberIn(e.target.value) })} />
+                  </label>
+                  <label className="band-field">
+                    <span className="sr-only">Intervall {i + 1}, pris</span>
+                    <input inputMode="numeric" value={`${b.price} kr`}
+                      onChange={(e) => setBand(i, { price: numberIn(e.target.value) })} />
+                  </label>
+                  <button type="button" className="link-action danger" disabled={bands.length === 1}
+                    aria-label={`Ta bort intervall ${i + 1}`}
+                    onClick={() => updateSettings({ deliveryBands: bands.filter((_, j) => j !== i) })}>
+                    Ta bort
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button type="button" className="btn outline band-add" disabled={bands.length >= 10}
+              onClick={() => {
+                const last = bands[bands.length - 1]
+                updateSettings({ deliveryBands: [...bands, { upToKm: (last?.upToKm ?? 0) + 10, price: last?.price ?? 0 }] })
+              }}>
+              + Lägg till intervall
+            </button>
+            <div style={{ height: 16 }} />
+            <p className="calc-hint">
+              Längsta leveransavstånd: {bands[bands.length - 1]?.upToKm ?? 0} km. Längre bort än så går det inte att
+              beställa leverans.
+            </p>
+          </section>
+        </div>
+
+        <section className="admin-card table-card">
+          <div className="card-head">
+            <div>
+              <h2 className="card-title">Förberedelsetid per antal gäster</h2>
+              <p className="cell-muted">
+                Hur många dagar i förväg en beställning måste komma in, beroende på storleken
+              </p>
+            </div>
+            <button type="button" className="btn outline" disabled={settings.leadTimeRules.length >= 10}
+              onClick={addRule}>
+              + Lägg till intervall
+            </button>
+          </div>
+          {settings.leadTimeRules.length === 0 ? (
+            <p className="cm-empty">
+              Inga intervall: framförhållningen {orderRules.advanceDays} dagar gäller alla beställningar.
+            </p>
+          ) : (
+            <div className="table-scroll">
+              <table className="data-table lead-table">
+                <thead>
+                  <tr>
+                    <th>Från antal gäster</th>
+                    <th>Till antal gäster</th>
+                    <th>Dagar i förväg</th>
+                    <th><span className="sr-only">Åtgärder</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {settings.leadTimeRules.map((r, i) => (
+                    <tr key={i}>
+                      <td>
+                        <input aria-label={`Intervall ${i + 1}, från antal gäster`} inputMode="numeric"
+                          value={r.fromGuests} onChange={(e) => setRule(i, { fromGuests: numberIn(e.target.value) })} />
+                      </td>
+                      <td>
+                        <input aria-label={`Intervall ${i + 1}, till antal gäster`} inputMode="numeric"
+                          placeholder="och uppåt" value={r.toGuests ?? ''}
+                          onChange={(e) => setRule(i, { toGuests: e.target.value.trim() ? numberIn(e.target.value) : null })} />
+                      </td>
+                      <td>
+                        <input aria-label={`Intervall ${i + 1}, dagar i förväg`} inputMode="numeric"
+                          value={r.days} onChange={(e) => setRule(i, { days: numberIn(e.target.value) })} />
+                      </td>
+                      <td>
+                        <button type="button" className="link-action danger" aria-label={`Ta bort intervall ${i + 1}`}
+                          onClick={() => updateSettings({ leadTimeRules: settings.leadTimeRules.filter((_, j) => j !== i) })}>
+                          Ta bort
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div style={{ height: 12 }} />
+          <p className="calc-hint">
+            Intervallen ska följa direkt på varandra utan luckor. Lämna "Till" tomt på sista raden för "och uppåt".
+            Beställningar utanför intervallen får {orderRules.advanceDays} dagars framförhållning.
+          </p>
+        </section>
+
+        <div className="settings-row">
+          <section className="admin-card table-card">
+            <h2 className="card-title">Moms och servering</h2>
+            <p className="cell-muted">Vad en ny offert utgår från. Du kan ändra det per offert.</p>
             <div style={{ height: 16 }} />
             <div className="toggle-row">
-              <span className="toggle-row-label">Tillåt leverans utanför {delivery.area}</span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={delivery.allowOutsideArea}
-                aria-label={`Tillåt leverans utanför ${delivery.area}`}
-                className="switch"
-                onClick={() => updateDelivery({ allowOutsideArea: !delivery.allowOutsideArea })}
-              />
+              <span className="toggle-row-label" id="cat-service-label">Servering ingår som standard</span>
+              <button type="button" role="switch" aria-checked={settings.defaultServiceIncluded}
+                aria-labelledby="cat-service-label" className="switch"
+                onClick={() => updateSettings({ defaultServiceIncluded: !settings.defaultServiceIncluded })} />
             </div>
             <div style={{ height: 16 }} />
             <p className="calc-hint">
-              Exempel: {exampleNear} km → {krWhole(delivery.priceWithinLimit)} · {exampleFar} km →{' '}
-              {krWhole(delivery.priceBeyondLimit)}
+              {settings.defaultServiceIncluded
+                ? 'Med servering räknas catering som restaurangtjänst (12 % moms).'
+                : 'Bara mat räknas som livsmedel (6 % moms 1 april 2026 till 31 december 2027, annars 12 %).'}{' '}
+              Stäm av med er redovisningskonsult.
             </p>
+          </section>
+
+          <section className="admin-card table-card">
+            <h2 className="card-title">Påminnelser</h2>
+            <p className="cell-muted">Automatiska påminnelser per e-post. 0 = ingen påminnelse.</p>
+            <div style={{ height: 16 }} />
+            <div className="form-grid">
+              <div className="form-field">
+                <label htmlFor="cat-owner-reminder">Obesvarad förfrågan, påminn mig efter (timmar)</label>
+                <input id="cat-owner-reminder" inputMode="numeric" value={settings.ownerReminderHours}
+                  onChange={(e) => updateSettings({ ownerReminderHours: numberIn(e.target.value) })} />
+              </div>
+              <div className="form-field">
+                <label htmlFor="cat-sign-reminder">Osignerad offert, påminn kunden (dagar innan den går ut)</label>
+                <input id="cat-sign-reminder" inputMode="numeric" value={settings.signReminderDaysBefore}
+                  onChange={(e) => updateSettings({ signReminderDaysBefore: numberIn(e.target.value) })} />
+              </div>
+            </div>
+            <div style={{ height: 8 }} />
+            <div className="toggle-row">
+              <span className="toggle-row-label" id="cat-day-before-label">Påminn kunden dagen före leverans</span>
+              <button type="button" role="switch" aria-checked={settings.dayBeforeReminder}
+                aria-labelledby="cat-day-before-label" className="switch"
+                onClick={() => updateSettings({ dayBeforeReminder: !settings.dayBeforeReminder })} />
+            </div>
           </section>
         </div>
 
@@ -505,6 +596,14 @@ export default function CateringkalkylPage() {
             <button type="button" role="switch" aria-checked={settings.delivery} aria-labelledby="cat-delivery-label"
               className="switch" onClick={() => updateSettings({ delivery: !settings.delivery })} />
           </div>
+          <div className="toggle-row">
+            <span className="toggle-row-label" id="cat-simple-label">
+              Kunden får godkänna offerten utan BankID (namn och kryssruta)
+            </span>
+            <button type="button" role="switch" aria-checked={settings.allowSimpleAcceptance}
+              aria-labelledby="cat-simple-label" className="switch"
+              onClick={() => updateSettings({ allowSimpleAcceptance: !settings.allowSimpleAcceptance })} />
+          </div>
           </div>
           <div className="form-field">
             <label htmlFor="cat-terms">Villkor (visas i offerten och signeras av kunden)</label>
@@ -518,7 +617,7 @@ export default function CateringkalkylPage() {
             <div>
               <h2 className="card-title">Rabattnivåer</h2>
               <p className="cell-muted">
-                Räknas på totalt antal portioner. När nivån nås rabatteras alla rätter.
+                Räknas på antal gäster. När nivån nås rabatteras alla rätter.
               </p>
             </div>
             <button
@@ -535,8 +634,8 @@ export default function CateringkalkylPage() {
               <thead>
                 <tr>
                   <th>Nivå</th>
-                  <th>Från antal portioner</th>
-                  <th>Till antal portioner</th>
+                  <th>Från antal gäster</th>
+                  <th>Till antal gäster</th>
                   <th>Rabatt</th>
                   <th>Status</th>
                   <th>Aktiv</th>
@@ -547,12 +646,8 @@ export default function CateringkalkylPage() {
                 {tiers.map((t) => (
                   <tr key={t.id}>
                     <td className="cell-strong">{t.name}</td>
-                    <td>{t.fromPortions} st</td>
-                    <td>
-                      {t.toPortions != null
-                        ? `${t.toPortions} st`
-                        : `${orderRules.maxPortions} (max)`}
-                    </td>
+                    <td>{t.fromPortions} gäster</td>
+                    <td>{t.toPortions != null ? `${t.toPortions} gäster` : 'och uppåt'}</td>
                     <td>
                       {t.discountPercent > 0 ? (
                         <span className="cell-price">-{t.discountPercent} %</span>
@@ -703,9 +798,9 @@ export default function CateringkalkylPage() {
                   onChange={(e) => setPreviewAddress(e.target.value)}
                 />
               </div>
-              <span className={`status-badge ${withinDeliveryArea ? 'reserved' : 'waiting'}`}>
+              <span className={`status-badge ${previewBand ? 'reserved' : 'waiting'}`}>
                 {previewAddress ? `${previewDistanceKm} km · ` : ''}
-                {withinDeliveryArea ? `Inom ${delivery.maxDistanceKm} km` : 'Utanför området'}
+                {previewBand ? `Upp till ${previewBand.upToKm} km` : 'Utanför området'}
               </span>
             </div>
           </section>
@@ -751,8 +846,7 @@ export default function CateringkalkylPage() {
 
                 <div className="catering-summary-line">
                   <span>
-                    Leverans, {previewDistanceKm} km{' '}
-                    {withinDeliveryArea ? `(inom ${delivery.maxDistanceKm} km)` : ''}
+                    Leverans, {previewDistanceKm} km
                   </span>
                   <span>{krWhole(deliveryPrice)}</span>
                 </div>

@@ -119,3 +119,46 @@ export function rangesOverlap(
   const bEnd = bTo ?? Infinity
   return aFrom <= bEnd && bFrom <= aEnd
 }
+
+/** Samma regler som servern (shared/catering.py): fel på svenska innan något skickas. */
+export function settingsProblem(s: {
+  deliveryBands: { upToKm: number; price: number }[]
+  leadTimeRules: { fromGuests: number; toGuests: number | null; days: number }[]
+  minGuests: number
+  requestExpiryHours: number
+  ownerReminderHours: number
+  offerValidDays: number
+  signReminderDaysBefore: number
+}): string | null {
+  if (s.minGuests < 1) return 'Minsta antal gäster måste vara minst 1.'
+  if (s.deliveryBands.length === 0) return 'Lägg till minst ett leveransintervall.'
+  for (const [i, b] of s.deliveryBands.entries()) {
+    if (b.upToKm < 1 || b.upToKm > 1000) return 'Avståndet i varje leveransintervall ska vara 1-1000 km.'
+    if (i > 0 && b.upToKm <= s.deliveryBands[i - 1].upToKm) return 'Leveransintervallen ska ha stigande avstånd.'
+  }
+  const rules = [...s.leadTimeRules].sort((a, b) => a.fromGuests - b.fromGuests)
+  for (const [i, r] of rules.entries()) {
+    if (r.fromGuests < 1) return 'Förberedelsetid: "Från" ska vara minst 1 gäst.'
+    if (r.toGuests !== null && r.toGuests < r.fromGuests) return 'Förberedelsetid: "Till" får inte vara mindre än "Från".'
+    if (r.days > 90) return 'Förberedelsetid: högst 90 dagar.'
+    const next = rules[i + 1]
+    if (next && (r.toGuests === null || next.fromGuests !== r.toGuests + 1)) {
+      return 'Förberedelsetid: intervallen får inte överlappa eller ha luckor (nästa ska börja direkt efter föregående).'
+    }
+  }
+  if (s.ownerReminderHours > 0 && s.ownerReminderHours >= s.requestExpiryHours) {
+    return 'Påminnelsen till restaurangen måste komma innan förfrågan går ut.'
+  }
+  if (s.signReminderDaysBefore > 0 && s.signReminderDaysBefore >= s.offerValidDays) {
+    return 'Påminnelsen om signering måste komma inom offertens giltighetstid.'
+  }
+  return null
+}
+
+/** Kronor från ett textfält ("145,50" går också); null om det inte är ett pris med högst två decimaler. */
+export function parseKronor(value: string): number | null {
+  const v = value.replace(/\s|kr/g, '').replace(',', '.')
+  if (!/^\d+(\.\d{1,2})?$/.test(v)) return null
+  const n = Number(v)
+  return n <= 10000 ? n : null
+}

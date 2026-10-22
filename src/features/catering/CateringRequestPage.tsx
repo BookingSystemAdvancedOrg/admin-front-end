@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useTenant } from '../../shared/tenant'
 import {
   EQUIPMENT_RETURN_LABEL,
   cancelRequest,
   declineRequest,
+  documentLink,
   errorText,
   formatDate,
   getRequest,
@@ -27,6 +28,7 @@ import type { CateringDish, CateringPackage, CateringRequest, EquipmentReturn, O
 import { MAX_ITEM_PRICE_KR } from '../meny/menuApi'
 import './catering.css'
 import { Loading } from '../../shared/Loading'
+import { RestaurantSigning } from './RestaurantSigning'
 
 const EDITABLE = ['requested', 'change_requested', 'offer_sent']
 
@@ -38,7 +40,13 @@ const ACTION_LABEL: Record<string, string> = {
   declined: 'Nekad',
   signing_started: 'Kunden startade BankID',
   signing_failed: 'BankID avbröts',
-  signed: 'Signerad med BankID',
+  signing_started_restaurant: 'Ni startade signeringen',
+  signing_failed_restaurant: 'Er signering avbröts',
+  signed_restaurant: 'Signerad av restaurangen',
+  signing_started_customer: 'Kunden startade signeringen',
+  signing_failed_customer: 'Kundens signering avbröts',
+  signing_webhook: 'Besked från signeringstjänsten',
+  signed: 'Signerad av kunden',
   checkout_started: 'Kunden gick till betalning',
   invoiced: 'Faktura skickad',
   invoice_marked_paid: 'Faktura markerad betald',
@@ -64,6 +72,7 @@ export default function CateringRequestPage() {
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState<'decline' | 'cancel' | null>(null)
   const [reason, setReason] = useState('')
+  const returnedFromSigning = new URLSearchParams(useLocation().search).get('signering') === 'klar'
   const [menu, setMenu] = useState<{ dishes: CateringDish[]; packages: CateringPackage[] }>({ dishes: [], packages: [] })
 
   const load = useCallback(async () => {
@@ -106,6 +115,23 @@ export default function CateringRequestPage() {
       active = false
     }
   }, [isOwner, locationId])
+
+  const signed = useCallback((r?: CateringRequest) => {
+    setNotice('Signerad. Offerten är skickad till kunden (mejl och sms).')
+    if (r) {
+      setRequest(r)
+      setOffer(offerFromRequest(r))
+    } else void load()
+  }, [load])
+
+  async function openDocument(docId: 'offer' | 'signed') {
+    setError(null)
+    try {
+      window.open((await documentLink(locationId, requestId, docId)).url, '_blank', 'noopener')
+    } catch (err) {
+      setError(errorText(err))
+    }
+  }
 
   async function run(action: () => Promise<CateringRequest | unknown>, done: string) {
     setBusy(true)
@@ -265,6 +291,11 @@ export default function CateringRequestPage() {
           <p className="catering-callout">Kunden avböjde offerten{request.rejectReason ? `: ”${request.rejectReason}”` : '.'}</p>
         )}
 
+        {isOwner && request.status === 'offer_sent' && request.signing && !request.signing.restaurant
+          && request.signing.offerVersion === request.currentOfferVersion && (
+          <RestaurantSigning request={request} onSigned={signed} returned={returnedFromSigning} />
+        )}
+
         {editable && (
           <section className="admin-card table-card">
             <div className="card-head">
@@ -389,7 +420,7 @@ export default function CateringRequestPage() {
             {notice && <p className="save-notice" role="status">{notice}</p>}
             <span className="row-actions">
               <button type="button" className="btn primary square" disabled={busy || !offerValid}
-                onClick={() => void run(() => sendOffer(locationId, requestId, offer), 'Offerten är skickad till kunden (mejl + sms).')}>
+                onClick={() => void run(() => sendOffer(locationId, requestId, offer), 'Offerten är klar. Signera den, sedan går den till kunden.')}>
                 {busy ? 'Skickar…' : `Skicka offert${request.currentOfferVersion ? ` v${nextVersion}` : ''}`}
               </button>
               <button type="button" className="btn outline square" disabled={busy || !offerValid}
@@ -420,7 +451,14 @@ export default function CateringRequestPage() {
 
         {request.offers.length > 0 && (
           <section className="admin-card table-card">
-            <h2 className="card-title">Skickade offerter</h2>
+            <div className="card-head">
+              <h2 className="card-title">Skickade offerter</h2>
+              {request.signing?.offerVersion === request.currentOfferVersion && (
+                <button type="button" className="btn outline square" onClick={() => void openDocument('offer')}>
+                  Offert v{request.currentOfferVersion} (PDF)
+                </button>
+              )}
+            </div>
             <ul className="catering-versions">
               {[...request.offers].reverse().map((o) => (
                 <li key={o.version}>
@@ -429,7 +467,8 @@ export default function CateringRequestPage() {
                   {' '}· giltig t.o.m. {o.validUntil}
                   {o.createdAt ? ` · skickad ${o.createdAt.slice(0, 16).replace('T', ' ')}` : ''}
                   {request.signature && request.offer?.version === o.version && request.status !== 'offer_sent'
-                    ? ' · signerad' : ''}
+                    ? ' · signerad'
+                    : request.signing?.offerVersion === o.version && request.signing.restaurant ? ' · signerad av er' : ''}
                 </li>
               ))}
             </ul>
@@ -438,11 +477,27 @@ export default function CateringRequestPage() {
 
         {request.signature && (
           <section className="admin-card table-card">
-            <h2 className="card-title">Signerad med BankID</h2>
+            <h2 className="card-title">
+              {request.signature.method === 'simple_acceptance' ? 'Godkänd av kunden (utan BankID)' : 'Signerad av båda parter'}
+            </h2>
             <dl className="catering-facts">
-              <div><dt>Signerad av</dt><dd>{request.signature.name} ({request.signature.personalNumberMasked})</dd></div>
+              {request.signing?.restaurant && (
+                <div>
+                  <dt>Restaurangen</dt>
+                  <dd>{request.signing.restaurant.name}{request.signing.restaurant.signedAt
+                    ? ` · ${request.signing.restaurant.signedAt.replace('T', ' ').slice(0, 16)}` : ''}</dd>
+                </div>
+              )}
+              <div>
+                <dt>Kunden</dt>
+                <dd>
+                  {request.signature.name}
+                  {request.signature.role ? `, ${request.signature.role}` : ''}
+                  {request.signature.personalNumberMasked ? ` (${request.signature.personalNumberMasked})` : ''}
+                </dd>
+              </div>
               <div><dt>Tid</dt><dd>{request.signature.signedAt.replace('T', ' ').slice(0, 16)}</dd></div>
-              <div><dt>Dokument-ID</dt><dd className="mono">{request.signature.documentHash}</dd></div>
+              <div><dt>Dokument-ID</dt><dd className="mono">{request.signature.pdfSha256 ?? request.signature.documentHash}</dd></div>
               <div>
                 <dt>Betalning</dt>
                 <dd>
@@ -456,6 +511,11 @@ export default function CateringRequestPage() {
               </div>
             </dl>
             <span className="row-actions">
+              {request.signedPdfKey && (
+                <button type="button" className="btn outline square" onClick={() => void openDocument('signed')}>
+                  Signerad offert (PDF)
+                </button>
+              )}
               <button type="button" className="btn outline square"
                 onClick={() => void signatureLink(locationId, requestId).then((l) => window.open(l.url, '_blank'))}>
                 Ladda ner signaturbevis

@@ -1,4 +1,5 @@
 import { apiFetch, ApiError } from '../../shared/api'
+import type { BookingTimeRules } from './bookingTime'
 
 /**
  * Klient mot backendens /locations-endpoints (create-location/get-location).
@@ -106,6 +107,8 @@ export interface Location
   specialDays?: SpecialDay[]
   tableRules?: Record<string, TableRule>
   tableCombinations?: TableCombination[]
+  /** Bokningstid per starttid; saknas = bookingDurationHours, ingen förlängning. */
+  bookingTimeRules?: BookingTimeRules
   locationId: string
   createdBy: string
   createdAt: string
@@ -216,7 +219,12 @@ function toFriendlyLocationError(err: unknown): Error {
 
   switch (err.status) {
     case 400:
-      return new ApiError(400, err.message)
+      return new ApiError(
+        400,
+        /^gracePeriodHours must be shorter/.test(err.message)
+          ? 'Grace period måste vara kortare än den kortaste bokningstiden (se Bokningstid).'
+          : err.message,
+      )
     case 401:
       return new ApiError(401, 'Du är inte inloggad längre. Logga in igen.')
     case 403:
@@ -286,6 +294,7 @@ export type LocationUpdate = Partial<LocationCreateRequest> & {
   specialDays?: SpecialDay[] | null
   tableRules?: Record<string, TableRule> | null
   tableCombinations?: TableCombination[] | null
+  bookingTimeRules?: BookingTimeRules | null
 }
 
 export function updateLocation(

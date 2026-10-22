@@ -453,3 +453,18 @@ describe('ReservationModal extend', () => {
     expect(updateReservation).toHaveBeenCalledWith('loc-1', 'r1', { endTime: '19:00' })
   })
 })
+
+describe('ReservationModal history', () => {
+  it('shows a shortened end neutrally', () => {
+    render(
+      <ReservationModal
+        today={TODAY}
+        reservation={booking({ history: [{ action: 'shortened', by: 'x', at: '2026-10-12T17:00:00Z', previous: '21:00', endTime: '20:30' }] })}
+        isOwner
+        onChanged={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    expect(screen.getByText(/Sluttid ändrad · 21:00 till 20:30/)).toBeInTheDocument()
+  })
+})

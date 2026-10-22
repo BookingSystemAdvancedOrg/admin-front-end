@@ -75,7 +75,7 @@ export interface Reservation {
   pendingExpiresAt?: string
   /** Bokningstidsregeln bokningen fick (äldre bokningar: egen längd, ej förlängbar). */
   bookingRule?: BookingRule
-  /** Minuter utöver (negativt: före) regelns längd efter personalens ändring. */
+  /** Minuter personalen förlängt utöver regelns längd (0 när den inte förlängts eller kortats). */
   extendedMinutes?: number
 }
 

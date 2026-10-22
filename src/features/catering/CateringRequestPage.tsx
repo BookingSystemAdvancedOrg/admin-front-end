@@ -4,23 +4,26 @@ import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useTenant } from '../../shared/tenant'
 import {
   EQUIPMENT_RETURN_LABEL,
-  STATUS_LABEL,
   cancelRequest,
   declineRequest,
   errorText,
   formatDate,
   getRequest,
   kronor,
+  listCateringDishes,
+  listCateringPackages,
   markDelivered,
   markInvoicePaid,
   offerFromRequest,
   offerTotals,
   saveDraft,
+  vatRateFor,
   sendOffer,
   signatureLink,
   statusClass,
+  statusLabel,
 } from './cateringApi'
-import type { CateringRequest, EquipmentReturn, OfferInput } from './cateringApi'
+import type { CateringDish, CateringPackage, CateringRequest, EquipmentReturn, OfferInput } from './cateringApi'
 import { MAX_ITEM_PRICE_KR } from '../meny/menuApi'
 import './catering.css'
 import { Loading } from '../../shared/Loading'
@@ -61,6 +64,7 @@ export default function CateringRequestPage() {
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState<'decline' | 'cancel' | null>(null)
   const [reason, setReason] = useState('')
+  const [menu, setMenu] = useState<{ dishes: CateringDish[]; packages: CateringPackage[] }>({ dishes: [], packages: [] })
 
   const load = useCallback(async () => {
     try {
@@ -90,6 +94,18 @@ export default function CateringRequestPage() {
       active = false
     }
   }, [locationId, requestId])
+
+  // Paket och rätter att lägga till i offerten (bara ägaren redigerar).
+  useEffect(() => {
+    if (!isOwner) return
+    let active = true
+    Promise.all([listCateringDishes(locationId), listCateringPackages(locationId)])
+      .then(([dishes, packages]) => active && setMenu({ dishes, packages }))
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [isOwner, locationId])
 
   async function run(action: () => Promise<CateringRequest | unknown>, done: string) {
     setBusy(true)
@@ -131,7 +147,16 @@ export default function CateringRequestPage() {
   }
 
   const editable = EDITABLE.includes(request.status) && isOwner
-  const totals = offerTotals(offer)
+  const totals = offerTotals(offer, request.deliveryDate)
+  const addFromMenu = (value: string) => {
+    const [kind, id] = value.split(':')
+    const qty = request.guests ?? 1
+    const pkg = kind === 'p' ? menu.packages.find((p) => p.packageId === id) : undefined
+    const dish = kind === 'd' ? menu.dishes.find((d) => d.dishId === id) : undefined
+    const line = pkg ? { packageId: pkg.packageId, name: pkg.name, unitPrice: Number(pkg.pricePerGuest), quantity: qty }
+      : dish ? { dishId: dish.dishId, name: dish.name, unitPrice: Number(dish.pricePerPortion), quantity: qty } : null
+    if (line) setOffer({ ...offer, lines: [...offer.lines, line] })
+  }
   const nextVersion = (request.currentOfferVersion ?? 0) + 1
   const setLine = (i: number, patch: Partial<OfferInput['lines'][number]>) =>
     setOffer({ ...offer, lines: offer.lines.map((l, n) => (n === i ? { ...l, ...patch } : l)) })
@@ -156,12 +181,21 @@ export default function CateringRequestPage() {
           <section className="admin-card table-card">
             <div className="card-head">
               <h2 className="card-title">Kund</h2>
-              <span className={`status-badge ${statusClass(request.status)}`}>{STATUS_LABEL[request.status]}</span>
+              <span className={`status-badge ${statusClass(request.status)}`}>{statusLabel(request)}</span>
             </div>
             <dl className="catering-facts">
               <div><dt>Namn</dt><dd>{request.customerName}</dd></div>
               {request.companyName && <div><dt>Företag</dt><dd>{request.companyName} ({request.orgNumber})</dd></div>}
               {request.invoiceReference && <div><dt>Referens</dt><dd>{request.invoiceReference}</dd></div>}
+              {request.signatory && (
+                <div>
+                  <dt>Signerar</dt>
+                  <dd>
+                    {request.signatory.name}, {request.signatory.role}
+                    {request.signatory.authorityConfirmed ? ' (intygad behörighet)' : ''}
+                  </dd>
+                </div>
+              )}
               <div><dt>E-post</dt><dd><a href={`mailto:${request.customerEmail}`}>{request.customerEmail}</a></dd></div>
               <div><dt>Telefon</dt><dd><a href={`tel:${request.customerPhone}`}>{request.customerPhone}</a></dd></div>
               {request.deliveryAddress && (
@@ -169,7 +203,9 @@ export default function CateringRequestPage() {
                   <dt>Adress</dt>
                   <dd>
                     {request.deliveryAddress.street}, {request.deliveryAddress.postalCode} {request.deliveryAddress.city}
-                    {request.deliveryZone === 'beyond' ? ' (utanför området)' : ''}
+                    {request.request.distanceKm != null
+                      ? ` (${String(request.request.distanceKm).replace('.', ',')} km)`
+                      : request.deliveryZone === 'beyond' ? ' (utanför området)' : ''}
                   </dd>
                 </div>
               )}
@@ -202,14 +238,23 @@ export default function CateringRequestPage() {
                 <li><span>Rabatt {request.request.discountPercent} %{request.request.tierName ? ` (${request.request.tierName})` : ''}</span>
                   <span>-{kronor(request.request.discount)}</span></li>
               )}
-              {request.request.deliveryFee > 0 && <li><span>Leverans</span><span>{kronor(request.request.deliveryFee)}</span></li>}
+              {request.request.deliveryFeeManual
+                ? <li><span>Leverans</span><span>Sätt priset i offerten</span></li>
+                : request.request.deliveryFee > 0 && <li><span>Leverans</span><span>{kronor(request.request.deliveryFee)}</span></li>}
               {(request.request.cleaningFee ?? 0) > 0 && (
                 <li><span>Rengöringsavgift</span><span>{kronor(request.request.cleaningFee)}</span></li>
               )}
               <li className="catering-lines-total"><span>Totalt inkl. moms</span><span>{kronor(request.request.total)}</span></li>
+              <li className="cell-muted"><span>varav moms {request.request.vatRate ?? 12} %</span><span>{kronor(request.request.vat)}</span></li>
             </ul>
           </section>
         </div>
+
+        {request.request.deliveryFeeManual && editable && (
+          <p className="catering-callout" role="status">
+            <strong>Leveransadressen hittades inte på kartan.</strong> Sätt leveranspriset i offerten.
+          </p>
+        )}
 
         {request.status === 'change_requested' && request.changeMessage && (
           <p className="catering-callout" role="status">
@@ -255,10 +300,32 @@ export default function CateringRequestPage() {
                 </tbody>
               </table>
             </div>
-            <button type="button" className="link-action"
-              onClick={() => setOffer({ ...offer, lines: [...offer.lines, { name: '', unitPrice: 0, quantity: 1 }] })}>
-              + Lägg till rad (t.ex. personal, dukning)
-            </button>
+            <div className="offer-add-row">
+              {(menu.packages.length > 0 || menu.dishes.length > 0) && (
+                <select aria-label="Lägg till från cateringmenyn" value=""
+                  onChange={(e) => addFromMenu(e.target.value)}>
+                  <option value="">+ Lägg till från cateringmenyn</option>
+                  {menu.packages.length > 0 && (
+                    <optgroup label="Paket (per gäst)">
+                      {menu.packages.map((p) => (
+                        <option key={p.packageId} value={`p:${p.packageId}`}>{p.name} · {p.pricePerGuest} kr</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {menu.dishes.length > 0 && (
+                    <optgroup label="Rätter (per portion)">
+                      {menu.dishes.map((d) => (
+                        <option key={d.dishId} value={`d:${d.dishId}`}>{d.name} · {d.pricePerPortion} kr</option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              )}
+              <button type="button" className="link-action"
+                onClick={() => setOffer({ ...offer, lines: [...offer.lines, { name: '', unitPrice: 0, quantity: 1 }] })}>
+                + Lägg till egen rad (t.ex. personal, dukning)
+              </button>
+            </div>
             <div style={{ height: 12 }} />
             <div className="form-grid">
               <div className="form-field">
@@ -287,6 +354,14 @@ export default function CateringRequestPage() {
                 </div>
               )}
               <div className="form-field">
+                <label htmlFor="offer-service">Moms</label>
+                <select id="offer-service" value={offer.serviceIncluded ? 'service' : 'food'}
+                  onChange={(e) => setOffer({ ...offer, serviceIncluded: e.target.value === 'service' })}>
+                  <option value="service">Med servering (12 %)</option>
+                  <option value="food">Bara mat, utan servering ({vatRateFor(false, request.deliveryDate)} %)</option>
+                </select>
+              </div>
+              <div className="form-field">
                 <label htmlFor="offer-valid">Giltig till och med</label>
                 <input id="offer-valid" type="date" value={offer.validUntil ?? ''} max={request.deliveryDate}
                   onChange={(e) => setOffer({ ...offer, validUntil: e.target.value || undefined })} />
@@ -303,7 +378,7 @@ export default function CateringRequestPage() {
               {totals.deliveryFee > 0 && <li><span>Leverans</span><span>{kronor(totals.deliveryFee)}</span></li>}
               {(totals.cleaningFee ?? 0) > 0 && <li><span>Rengöringsavgift</span><span>{kronor(totals.cleaningFee)}</span></li>}
               <li className="catering-lines-total"><span>Totalt inkl. moms</span><span>{kronor(totals.total)}</span></li>
-              <li className="cell-muted"><span>varav moms 12 %</span><span>{kronor(totals.vat)}</span></li>
+              <li className="cell-muted"><span>varav moms {totals.vatRate} %</span><span>{kronor(totals.vat)}</span></li>
             </ul>
             {overPriced && (
               <p className="form-error" role="alert">

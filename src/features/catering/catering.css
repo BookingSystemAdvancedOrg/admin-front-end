@@ -94,3 +94,17 @@
   color: var(--warning-ink);
   font-weight: 600;
 }
+
+/* Offerten: lägg till paket/rätt från cateringmenyn eller en egen rad. */
+.offer-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-top: 4px;
+}
+
+.offer-add-row select {
+  max-width: 100%;
+  min-width: 0;
+}

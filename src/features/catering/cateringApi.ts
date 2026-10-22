@@ -103,7 +103,7 @@ export const DEFAULT_SETTINGS: CateringSettings = {
   leadTimeRules: [],
   deliveryBands: [],
   maxDeliveryKm: null,
-  defaultServiceIncluded: false,
+  defaultServiceIncluded: true,
   ownerReminderHours: 24,
   signReminderDaysBefore: 2,
   dayBeforeReminder: true,

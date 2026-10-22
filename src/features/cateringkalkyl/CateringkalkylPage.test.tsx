@@ -142,7 +142,7 @@ describe('CateringkalkylPage', () => {
     await user.click(screen.getByRole('button', { name: 'Spara inställningar' }))
     expect(saveSettings).toHaveBeenCalledWith('loc-1', expect.objectContaining({
       deliveryBands: [{ upToKm: 25, price: 395 }], maxDeliveryKm: 25,
-      leadTimeRules: [{ fromGuests: 15, toGuests: null, days: 5 }] }))
+      leadTimeRules: [{ fromGuests: 15, toGuests: null, days: 5 }], defaultServiceIncluded: true }))
     saveSettings.mockClear()
     const from = screen.getByLabelText('Intervall 1, från antal gäster')
     await user.click(screen.getAllByRole('button', { name: '+ Lägg till intervall' })[1])

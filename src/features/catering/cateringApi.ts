@@ -162,8 +162,17 @@ export const STATUS_LABEL: Record<CateringStatus, string> = {
 /** Väntar på restaurangen. */
 export const NEEDS_OWNER: CateringStatus[] = ['requested', 'change_requested']
 
+/** Statusens etikett; en ny förfrågan som ägaren börjat på är "Under granskning". */
+export function statusLabel(r: { status: CateringStatus; reviewedAt?: string }): string {
+  return r.status === 'requested' && r.reviewedAt ? 'Under granskning' : STATUS_LABEL[r.status]
+}
+
 export interface Line {
   menuItemId?: string
+  dishId?: string
+  packageId?: string
+  kind?: 'package' | 'dish' | 'menu'
+  vatRate?: number
   name: string
   /** Öre. */
   unitPrice: number
@@ -180,6 +189,7 @@ export interface Totals {
   total: number
   vat: number
   vatRate: number
+  vatBreakdown?: { rate: number; gross: number; net: number; vat: number }[]
 }
 
 export interface Offer {
@@ -192,6 +202,7 @@ export interface Offer {
   documentHash?: string
   createdAt?: string
   portions?: number
+  serviceIncluded?: boolean
 }
 
 export interface RequestSummary {
@@ -210,6 +221,9 @@ export interface RequestSummary {
   invoiceStatus?: string
   /** Saknas på förfrågningar från innan valet fanns (= rengjord). */
   equipmentReturn?: EquipmentReturn
+  guests?: number
+  /** Ägaren har börjat på offerten ("Under granskning"). */
+  reviewedAt?: string
 }
 
 export interface CateringRequest extends RequestSummary {
@@ -221,9 +235,12 @@ export interface CateringRequest extends RequestSummary {
   invoiceReference?: string
   deliveryAddress?: { street: string; postalCode: string; city: string }
   deliveryZone?: 'within' | 'beyond'
-  guests?: number
   notes?: string
-  request: { lines: Line[]; portions: number; tierName?: string | null; equipmentReturn?: EquipmentReturn } & Totals
+  /** Företag: den som signerar, enligt kunden. */
+  signatory?: { name: string; role: string; authorityConfirmed: boolean }
+  serviceIncluded?: boolean
+  request: { lines: Line[]; portions: number; tierName?: string | null; equipmentReturn?: EquipmentReturn;
+    distanceKm?: number | null; deliveryFeeManual?: boolean } & Totals
   draft?: Omit<Offer, 'version'>
   offer?: Offer
   offers: Offer[]
@@ -246,7 +263,9 @@ export interface CateringRequest extends RequestSummary {
 
 /** Det ägaren skickar som offert - priser i kronor. */
 export interface OfferInput {
-  lines: { menuItemId?: string; name: string; unitPrice: number; quantity: number }[]
+  lines: { menuItemId?: string; dishId?: string; packageId?: string; name: string; unitPrice: number; quantity: number }[]
+  /** Servering ingår (12 % moms); annars mat utan servering. */
+  serviceIncluded: boolean
   discountPercent: number
   deliveryFee: number
   equipmentReturn: EquipmentReturn
@@ -462,10 +481,13 @@ export function offerFromRequest(r: CateringRequest): OfferInput {
   return {
     lines: lines.map((l) => ({
       ...(l.menuItemId ? { menuItemId: l.menuItemId } : {}),
+      ...(l.dishId ? { dishId: l.dishId } : {}),
+      ...(l.packageId ? { packageId: l.packageId } : {}),
       name: l.name,
       unitPrice: Number(l.unitPrice) / 100,
       quantity: Number(l.quantity),
     })),
+    serviceIncluded: source?.serviceIncluded ?? r.serviceIncluded ?? r.settings?.defaultServiceIncluded ?? true,
     discountPercent: Number(totals.discountPercent ?? 0),
     deliveryFee: Number(totals.deliveryFee ?? 0) / 100,
     equipmentReturn,
@@ -475,8 +497,19 @@ export function offerFromRequest(r: CateringRequest): OfferInput {
   }
 }
 
+/**
+ * Momssatsen för offerten, bara för visning (servern räknar om när offerten
+ * sparas): med servering 12 %; mat utan servering 6 % mellan 2026-04-01 och
+ * 2027-12-31 (leveransdagen), annars 12 % (shared/catering.py vat_rate_for).
+ */
+export function vatRateFor(serviceIncluded: boolean, deliveryDate: string): number {
+  if (serviceIncluded) return 12
+  return deliveryDate >= '2026-04-01' && deliveryDate <= '2027-12-31' ? 6 : 12
+}
+
 /** Samma räkning som servern (shared/catering.py totals), i öre. */
-export function offerTotals(offer: OfferInput): Totals {
+export function offerTotals(offer: OfferInput, deliveryDate: string): Totals {
+  const rate = vatRateFor(offer.serviceIncluded, deliveryDate)
   const subtotal = offer.lines.reduce((sum, l) => sum + Math.round(l.unitPrice * 100) * l.quantity, 0)
   const discount = Math.round((subtotal * offer.discountPercent) / 100)
   const cleaningFee = offer.equipmentReturn === 'not_cleaned' ? Math.round(offer.cleaningFee * 100) : 0
@@ -488,8 +521,8 @@ export function offerTotals(offer: OfferInput): Totals {
     deliveryFee: Math.round(offer.deliveryFee * 100),
     cleaningFee,
     total,
-    vat: Math.round((total * 12) / 112),
-    vatRate: 12,
+    vat: Math.round((total * rate) / (100 + rate)),
+    vatRate: rate,
   }
 }
 

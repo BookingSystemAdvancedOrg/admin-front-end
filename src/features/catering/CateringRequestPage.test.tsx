@@ -72,15 +72,22 @@ beforeEach(() => {
 describe('offerTotals', () => {
   it('matches the server: discount on dishes, 12 % VAT included', () => {
     const t = offerTotals({ lines: [{ name: 'A', unitPrice: 50, quantity: 20 }], discountPercent: 10, deliveryFee: 395,
-      equipmentReturn: 'cleaned', cleaningFee: 300, message: '' })
+      equipmentReturn: 'cleaned', cleaningFee: 300, message: '', serviceIncluded: true }, '2026-11-20')
     expect(t).toMatchObject({ subtotal: 100000, discount: 10000, deliveryFee: 39500, cleaningFee: 0, total: 129500, vat: 13875 })
   })
 
   it('adds the cleaning fee when the equipment comes back not cleaned, outside the discount', () => {
     const t = offerTotals({ lines: [{ name: 'A', unitPrice: 50, quantity: 20 }], discountPercent: 10, deliveryFee: 395,
-      equipmentReturn: 'not_cleaned', cleaningFee: 300, message: '' })
+      equipmentReturn: 'not_cleaned', cleaningFee: 300, message: '', serviceIncluded: true }, '2026-11-20')
     // same numbers as the server test: 1000 - 100 + 395 + 300 kr, VAT 12/112
     expect(t).toMatchObject({ discount: 10000, cleaningFee: 30000, total: 159500, vat: 17089 })
+  })
+
+  it('food without service takes 6 % in the reduced period, 12 % after it', () => {
+    const offer = { lines: [{ name: 'A', unitPrice: 106, quantity: 1 }], discountPercent: 0, deliveryFee: 0,
+      equipmentReturn: 'cleaned' as const, cleaningFee: 0, message: '', serviceIncluded: false }
+    expect(offerTotals(offer, '2026-11-20')).toMatchObject({ vatRate: 6, vat: 600 })
+    expect(offerTotals(offer, '2028-01-05').vatRate).toBe(12)
   })
 })
 
@@ -99,6 +106,30 @@ describe('CateringRequestPage', () => {
       lines: [{ menuItemId: 'm1', name: 'Lasagne', unitPrice: 55, quantity: 20 }],
     }))
     expect(await screen.findByRole('status')).toHaveTextContent('Offerten är skickad')
+  })
+
+  it('adds a catering package for the guests, switches to food only and shows the review label', async () => {
+    const user = userEvent.setup()
+    getRequest.mockResolvedValue(request({
+      guests: 40, reviewedAt: '2026-10-12T11:00:00Z', customerType: 'company', companyName: 'Acme AB',
+      signatory: { name: 'Karl Ek', role: 'VD', authorityConfirmed: true },
+      request: { lines: [], portions: 0, ...TOTALS, deliveryFeeManual: true },
+      fulfilment: 'delivery', deliveryAddress: { street: 'Storgatan 1', postalCode: '11122', city: 'Stockholm' },
+    }))
+    sendOffer.mockResolvedValue(request({ status: 'offer_sent' }))
+    renderAt()
+    expect(await screen.findByText('Under granskning')).toBeInTheDocument()
+    expect(screen.getByText('Karl Ek, VD (intygad behörighet)')).toBeInTheDocument()
+    expect(screen.getByText(/hittades inte på kartan/)).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('Lägg till från cateringmenyn'), 'p:p1')
+    expect(screen.getByLabelText('Rad 1 namn')).toHaveValue('Mingelpaket')
+    expect(screen.getByLabelText('Rad 1 antal')).toHaveValue('40')
+    await user.selectOptions(screen.getByLabelText('Moms'), 'food')
+    expect(screen.getByText('varav moms 6 %')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Skicka offert' }))
+    expect(sendOffer).toHaveBeenCalledWith('loc-1', 'req-1', expect.objectContaining({
+      serviceIncluded: false, lines: [{ packageId: 'p1', name: 'Mingelpaket', unitPrice: 245, quantity: 40 }],
+    }))
   })
 
   it('shows a not cleaned return and keeps its fee in the offer', async () => {

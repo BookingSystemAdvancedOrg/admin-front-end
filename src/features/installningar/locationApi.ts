@@ -101,6 +101,8 @@ export interface Location
   /** Beställningar pausade till (ISO, satt av personalen). */
   orderingPausedUntil?: string
   maxPartySizeOnline?: number
+  /** Statistik: timmen middagen börjar ("15:00" när den inte är satt). */
+  lunchUntil?: string
   specialDays?: SpecialDay[]
   tableRules?: Record<string, TableRule>
   tableCombinations?: TableCombination[]
@@ -278,6 +280,8 @@ export type LocationUpdate = Partial<LocationCreateRequest> & {
   guarantee?: GuaranteePolicy | null
   ordering?: OrderingPolicy | null
   maxPartySizeOnline?: number | null
+  /** null = standard (15:00). */
+  lunchUntil?: string | null
   /** null (eller []) tar bort dem. */
   specialDays?: SpecialDay[] | null
   tableRules?: Record<string, TableRule> | null

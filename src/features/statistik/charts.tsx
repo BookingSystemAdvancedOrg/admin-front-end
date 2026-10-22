@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode, RefObject } from 'react'
 import { reducedMotion } from '../../shared/motion/countUp'
-import { niceMax, tickLabel } from './chartScale'
+import { heatStep, niceMax, tickLabel } from './chartScale'
 import { fmtPct } from './stats'
 
 /**
@@ -195,7 +195,8 @@ export function BarChart({ rows, format, ariaLabel, tableHead, tableRows }: {
   if (rows.length === 0 || rows.every((r) => r.value === 0)) return <Empty text="Inget att visa i perioden." />
   const max = Math.max(...rows.map((r) => r.value), 1)
   const rowH = 26
-  const labelW = 44
+  // Etiketterna får plats ("Samma dag", "Större bord"); mono, ungefär 7,5 px per tecken.
+  const labelW = Math.min(120, Math.max(44, Math.max(...rows.map((r) => r.label.length)) * 7.5 + 10))
   const valueW = 56
   const h = rows.length * rowH + 6
   const innerW = Math.max(40, W - labelW - valueW - 8)
@@ -347,5 +348,109 @@ export function Delta({ pct, invert = false, pending = false, children }: { pct:
       {flat ? 'oförändrat' : `${sign}${fmtPct(Math.abs(pct))}`}
       <span className="sk-delta-label">{children ?? 'mot förra perioden'}</span>
     </span>
+  )
+}
+
+/* --- Värmekartan: veckodag x timme ------------------------------------------- */
+
+export interface HeatCell {
+  row: number
+  col: number
+  value: number | null
+  title: string
+}
+
+/**
+ * Beläggning per veckodag och timme. Varje ruta skriver ut sitt värde, så
+ * styrkan aldrig är enda signalen; tabellen ligger bakom "Visa som tabell".
+ */
+export function Heatmap({ rows, cols, cells, ariaLabel, tableHead, tableRows }: {
+  rows: string[]
+  cols: string[]
+  cells: HeatCell[]
+  ariaLabel: string
+  tableHead: string[]
+  tableRows: (string | number)[][]
+}) {
+  const id = useId()
+  const [ref, W] = useWidth()
+  if (cells.length === 0 || cols.length === 0) return <Empty text="Inga öppettider eller bord att räkna på i perioden." />
+  const labelW = 40
+  const top = 22
+  const gap = 2
+  const cellW = Math.max(18, Math.floor((W - labelW) / cols.length) - gap)
+  const cellH = 28
+  const width = labelW + cols.length * (cellW + gap)
+  const height = top + rows.length * (cellH + gap)
+  const byKey = new Map(cells.map((c) => [`${c.row}|${c.col}`, c]))
+  const showValues = cellW >= 26
+  const labelEvery = cellW >= 30 ? 1 : 2
+  return (
+    <figure className="sk-chart sk-heat" ref={ref as RefObject<HTMLElement>}>
+      <div className="sk-heat-scroll">
+        <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} role="img" aria-labelledby={`${id}-t`} className="sk-svg">
+          <title id={`${id}-t`}>{ariaLabel}</title>
+          {cols.map((c, j) =>
+            j % labelEvery === 0 ? (
+              <text key={c} x={labelW + j * (cellW + gap) + cellW / 2} y={14} textAnchor="middle" className="sk-tick">
+                {c}
+              </text>
+            ) : null,
+          )}
+          {rows.map((r, i) => (
+            <g key={r}>
+              <text x={labelW - 8} y={top + i * (cellH + gap) + cellH / 2 + 4} textAnchor="end" className="sk-tick">
+                {r}
+              </text>
+              {cols.map((c, j) => {
+                const cell = byKey.get(`${i}|${j}`)
+                const step = heatStep(cell?.value ?? null)
+                const x = labelW + j * (cellW + gap)
+                const y = top + i * (cellH + gap)
+                return (
+                  <g key={c}>
+                    <rect x={x} y={y} width={cellW} height={cellH} rx={2} className={`sk-heat-cell sk-heat-cell--${step < 0 ? 'none' : step}`}>
+                      <title>{cell?.title ?? `${r} ${c}: stängt`}</title>
+                    </rect>
+                    {showValues && cell && cell.value !== null && (
+                      <text x={x + cellW / 2} y={y + cellH / 2 + 4} textAnchor="middle" className={`sk-heat-value${step >= 3 ? ' sk-heat-value--on' : ''}`}>
+                        {Math.round(cell.value)}
+                      </text>
+                    )}
+                  </g>
+                )
+              })}
+            </g>
+          ))}
+        </svg>
+      </div>
+      <figcaption className="sk-legend sk-heat-legend">
+        <span className="sk-heat-legend-label">Beläggning</span>
+        {['0-19', '20-39', '40-59', '60-79', '80-100'].map((label, i) => (
+          <span key={label}>
+            <i className={`sk-swatch sk-heat-cell--${i}`} aria-hidden="true" />
+            {label}&nbsp;%
+          </span>
+        ))}
+      </figcaption>
+      <ChartTable caption={ariaLabel} head={tableHead} rows={tableRows} />
+    </figure>
+  )
+}
+
+/* --- Gnistlinjen i nyckeltalen ----------------------------------------------- */
+
+/** En liten linje över perioden, bara form (värdena står i kortet). */
+export function Sparkline({ values }: { values: number[] }) {
+  if (values.length < 2 || values.every((v) => v === 0)) return null
+  const w = 96
+  const h = 24
+  const max = Math.max(...values, 1)
+  const step = w / (values.length - 1)
+  const d = values.map((v, i) => `${i === 0 ? 'M' : 'L'}${(i * step).toFixed(1)},${(h - 2 - (v / max) * (h - 4)).toFixed(1)}`).join(' ')
+  return (
+    <svg className="sk-spark" viewBox={`0 0 ${w} ${h}`} width={w} height={h} aria-hidden="true" focusable="false">
+      <path d={d} />
+    </svg>
   )
 }

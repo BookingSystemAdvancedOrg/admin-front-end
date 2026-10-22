@@ -48,6 +48,11 @@ export interface TenantNotifications {
 
 export const REMINDER_HOURS = [0, 2, 3, 6, 12, 24, 48] as const
 
+/** Vad personalen ser på Statistik: driftsiffrorna utan belopp, eller inget. */
+export interface TenantInsightsSettings {
+  staffAccess: 'operations' | 'none'
+}
+
 export interface Tenant {
   tenantId: string
   name: string
@@ -64,6 +69,8 @@ export interface Tenant {
   senderName: string | null
   replyToEmail: string | null
   notifications: TenantNotifications
+  /** Saknas från äldre API-versioner: då gäller standard (driftsiffror). */
+  insights?: TenantInsightsSettings
   role: TenantRole
   locations: TenantLocation[]
 }
@@ -73,6 +80,7 @@ export interface TenantEdit {
   senderName?: string | null
   replyToEmail?: string | null
   notifications?: Partial<TenantNotifications>
+  insights?: TenantInsightsSettings
 }
 
 /** Var restaurangen är i Stripe-flödet. */
@@ -320,4 +328,10 @@ export function useTenant(): TenantState & {
 /** Den valda platsens sammanfattning (namn/adress/tidszon), eller null. */
 export function currentLocation(s: TenantState): TenantLocation | null {
   return s.tenant?.locations.find((l) => l.locationId === s.locationId) ?? null
+}
+
+/** Får den inloggade se Statistik? Ägaren alltid, personal om ägaren tillåter det. */
+export function canSeeInsights(tenant: Pick<Tenant, 'role' | 'insights'> | null | undefined): boolean {
+  if (!tenant) return false
+  return tenant.role === 'owner_user' || (tenant.insights?.staffAccess ?? 'operations') !== 'none'
 }

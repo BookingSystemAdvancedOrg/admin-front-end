@@ -353,7 +353,6 @@ export default function OversiktPage() {
           <MonthCard
             locationId={locationId}
             today={todayIn(timezoneSetting)}
-            catering={loading ? null : data.catering}
             sample={sample}
             showRevenue={hasOrdering || hasCatering}
           />

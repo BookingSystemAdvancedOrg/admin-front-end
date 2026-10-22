@@ -12,6 +12,7 @@ import {
 } from './data'
 import type { RestaurantProfile } from './data'
 import { CancellationPolicyCard } from './CancellationPolicyCard'
+import { InsightsSettingsCard } from './InsightsSettingsCard'
 import { NotificationsCard } from './NotificationsCard'
 import { OrderingCard } from './OrderingCard'
 import { PaymentsCard } from './PaymentsCard'
@@ -84,7 +85,7 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * andra användare - de rutterna är bara för ägare.
  */
 /** Flikarna - en sektion i taget i stället för en lång sida. */
-type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'dagar' | 'bord'
+type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'dagar' | 'bord' | 'statistik'
 
 const TAB_LABEL: Record<SettingsTab, string> = {
   profil: 'Restaurang',
@@ -95,6 +96,7 @@ const TAB_LABEL: Record<SettingsTab, string> = {
   bestallning: 'Beställning',
   dagar: 'Avvikande dagar',
   bord: 'Bord',
+  statistik: 'Statistik',
 }
 
 function initialTab(stripeReturn: string | null): SettingsTab {
@@ -413,7 +415,7 @@ export default function InstallningarPage() {
       <div className="admin-main">
         <nav className="settings-tabs" aria-label="Inställningar">
           {(Object.keys(TAB_LABEL) as SettingsTab[])
-            .filter((t) => (t === 'personal' ? isOwner : t === 'bestallning' ? Boolean(tenant?.entitlements.features.ordering) : true))
+            .filter((t) => (t === 'personal' || t === 'statistik' ? isOwner : t === 'bestallning' ? Boolean(tenant?.entitlements.features.ordering) : true))
             .map((t) => (
               <button
                 key={t}
@@ -713,6 +715,16 @@ export default function InstallningarPage() {
         <div className="settings-row" hidden={tab !== 'bord'}>
           <TableRulesCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
         </div>
+
+        {isOwner && tenant && (
+          <div className="settings-row" hidden={tab !== 'statistik'}>
+            <InsightsSettingsCard
+              key={`${locationId ?? 'none'}:${tenant.insights?.staffAccess ?? 'operations'}`}
+              tenant={tenant}
+              locationId={locationId}
+            />
+          </div>
+        )}
       </div>
 
       {modal && (

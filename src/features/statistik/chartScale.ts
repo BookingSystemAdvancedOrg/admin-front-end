@@ -16,3 +16,11 @@ export function tickLabel(v: number, unit: 'kr' | 'count'): string {
   if (kr >= 1000) return `${(kr / 1000).toLocaleString('sv-SE', { maximumFractionDigits: 1 })} tkr`
   return `${kr.toLocaleString('sv-SE', { maximumFractionDigits: 0 })} kr`
 }
+
+/** Fem steg, ljust till mörkt bläck: samma färg, bara styrkan ändras. */
+export const HEAT_STEPS = [20, 40, 60, 80, 101]
+
+export function heatStep(value: number | null): number {
+  if (value === null) return -1
+  return HEAT_STEPS.findIndex((limit) => Math.min(value, 100) < limit)
+}

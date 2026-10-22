@@ -277,7 +277,7 @@
 
 .sk-kpis {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
 }
 
@@ -573,7 +573,7 @@
 
 /* --- Responsivt -------------------------------------------------------------- */
 
-@media (max-width: 1280px) {
+@media (max-width: 1100px) {
   .sk-kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -592,7 +592,7 @@
 
 @media (max-width: 600px) {
   .sk-kpis {
-    grid-template-columns: 1fr;
+    gap: 12px;
   }
 
   .sk-rings {
@@ -613,4 +613,382 @@
   .sk-progress {
     margin-left: 0;
   }
+}
+
+/* --- Sidan: filter, block, Att göra ----------------------------------------- */
+
+.sk-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sk-filterbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  margin: -8px -8px 0;
+  padding: 8px;
+  background: var(--bg);
+}
+
+.sk-filter-toggle {
+  display: none;
+}
+
+.sk-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 12px;
+}
+
+.sk-dates {
+  display: flex;
+  gap: 10px;
+}
+
+.sk-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sk-field > span {
+  font: 500 11px/1.2 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sk-field select,
+.sk-field input {
+  min-height: 36px;
+  max-width: 100%;
+}
+
+.sk-export {
+  min-height: 36px;
+}
+
+.sk-period {
+  margin: -8px 0 0;
+}
+
+.sk-note {
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--accent-ink);
+  background: var(--surface);
+  border-radius: 3px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.sk-empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.sk-block {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scroll-margin-top: 80px;
+}
+
+.sk-block-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 20px;
+}
+
+.sk-block-title {
+  margin: 8px 0 0;
+  font: 800 13px/1.2 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sk-anchors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.sk-anchors a {
+  font: 600 13px/1.4 var(--font);
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+
+.sk-anchors a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.sk-section-title {
+  margin: 12px 0 -4px;
+  scroll-margin-top: 90px;
+  font: 780 22px/1.2 var(--font);
+  font-stretch: 112%;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.sk-charts > .sk-wide {
+  grid-column: 1 / -1;
+}
+
+.sk-tip {
+  margin: auto 0 0;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.sk-tip-label {
+  margin-right: 4px;
+  font: 700 10.5px/1 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+
+.sk-todo {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sk-todo-item {
+  display: flex;
+  gap: 14px;
+  padding: 20px;
+}
+
+.sk-todo-n {
+  font: 800 13px/1.6 var(--mono);
+  color: var(--accent-ink);
+}
+
+.sk-todo-title {
+  margin: 0 0 6px;
+  font: 760 17px/1.3 var(--font);
+  font-stretch: 110%;
+  color: var(--ink);
+}
+
+.sk-todo-text {
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.sk-todo-none {
+  margin: 0;
+  padding: 18px 20px;
+  color: var(--muted);
+}
+
+.sk-facts--row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 28px;
+}
+
+.sk-pairs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.sk-pairs li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.sk-pair-plus {
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+.sk-pair-n {
+  font: 500 12px/1.6 var(--mono);
+  color: var(--muted);
+}
+
+/* --- Gnistlinjen ------------------------------------------------------------ */
+
+.sk-spark {
+  display: block;
+  overflow: visible;
+}
+
+.sk-spark path {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* --- Värmekartan: ett bläck, fem styrkor ------------------------------------ */
+
+.sk-heat-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.sk-heat-cell--none {
+  fill: var(--fill);
+}
+
+.sk-heat-cell--0 {
+  fill: color-mix(in srgb, var(--ink) 7%, var(--surface));
+  background: color-mix(in srgb, var(--ink) 7%, var(--surface));
+}
+
+.sk-heat-cell--1 {
+  fill: color-mix(in srgb, var(--ink) 22%, var(--surface));
+  background: color-mix(in srgb, var(--ink) 22%, var(--surface));
+}
+
+.sk-heat-cell--2 {
+  fill: color-mix(in srgb, var(--ink) 42%, var(--surface));
+  background: color-mix(in srgb, var(--ink) 42%, var(--surface));
+}
+
+.sk-heat-cell--3 {
+  fill: color-mix(in srgb, var(--ink) 68%, var(--surface));
+  background: color-mix(in srgb, var(--ink) 68%, var(--surface));
+}
+
+.sk-heat-cell--4 {
+  fill: var(--ink);
+  background: var(--ink);
+}
+
+.sk-heat-value {
+  font: 500 10.5px/1 var(--mono);
+  fill: var(--ink);
+  pointer-events: none;
+}
+
+.sk-heat-value--on {
+  fill: var(--surface);
+}
+
+.sk-heat-legend {
+  flex-wrap: wrap;
+}
+
+.sk-heat-legend .sk-swatch {
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.sk-heat-legend-label {
+  font-weight: 600;
+}
+
+/* --- Responsivt för de nya delarna ------------------------------------------ */
+
+@media (max-width: 1000px) {
+  .sk-todo {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .sk-filterbar {
+    align-items: center;
+  }
+
+  .sk-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    width: 100%;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .sk-chip {
+    flex: none;
+  }
+
+  .sk-filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 3px;
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--border);
+    font: 600 13.5px/1 var(--font);
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .sk-filter-toggle[aria-expanded='true'] {
+    box-shadow: inset 0 0 0 1.5px var(--ink);
+  }
+
+  .sk-filters {
+    display: none;
+    width: 100%;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sk-filters.is-open {
+    display: grid;
+  }
+
+  .sk-dates {
+    grid-column: 1 / -1;
+  }
+
+  .sk-dates .sk-field {
+    flex: 1;
+  }
+
+  .sk-export {
+    grid-column: 1 / -1;
+  }
+
+  .sk-section-title {
+    font-size: 19px;
+  }
+}
+
+/* Breda tabeller (rätter, kanaler, "Visa som tabell") rullar i sidled i
+   stället för att göra sidan bredare på telefonen. */
+.sk-scroll,
+.sk-table {
+  max-width: 100%;
+  overflow-x: auto;
 }

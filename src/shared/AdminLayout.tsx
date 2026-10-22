@@ -3,7 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { BrandMark, BrandWordmark } from './BrandMark'
 import { useAuth } from '../features/auth/useAuth'
 import { primaryGroupLabel } from '../features/installningar/usersApi'
-import { selectLocation, useTenant } from './tenant'
+import { canSeeInsights, selectLocation, useTenant } from './tenant'
 import { GuideProvider } from '../features/guide/Guide'
 import { LogoutConfirm } from './LogoutConfirm'
 import type { TenantErrorCode } from './tenant'
@@ -20,7 +20,7 @@ import { ThemeToggle } from './ThemeToggle'
 // det som händer under passet, och det man ställer in mer sällan.
 // `end: true` gör att '/' bara markeras aktiv på exakt träff, annars skulle
 // den lysa upp på alla undersidor också.
-type NavItem = { to: string; label: string; tour: string; end?: boolean; feature?: string; ownerOnly?: boolean }
+type NavItem = { to: string; label: string; tour: string; end?: boolean; feature?: string; ownerOnly?: boolean; insights?: boolean }
 const NAV_GROUPS: { id: string; label: string | null; items: NavItem[] }[] = [
   {
     id: 'overblick',
@@ -28,7 +28,7 @@ const NAV_GROUPS: { id: string; label: string | null; items: NavItem[] }[] = [
     items: [
       { to: '/', label: 'Översikt', tour: 'nav-oversikt', end: true },
       // Restaurangens siffror över tid; bara ägare.
-      { to: '/statistik', label: 'Statistik', tour: 'nav-statistik', ownerOnly: true },
+      { to: '/statistik', label: 'Statistik', tour: 'nav-statistik', insights: true },
     ],
   },
   {
@@ -173,7 +173,8 @@ export function AdminLayout() {
             const items = group.items.filter(
               (item) =>
                 (!item.feature || Boolean(tenant?.entitlements.features[item.feature])) &&
-                (!item.ownerOnly || tenant?.role === 'owner_user'),
+                (!item.ownerOnly || tenant?.role === 'owner_user') &&
+                (!item.insights || canSeeInsights(tenant)),
             )
             if (items.length === 0) return null
             const headingId = `nav-group-${group.id}`

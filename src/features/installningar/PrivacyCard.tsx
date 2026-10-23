@@ -4,13 +4,25 @@ import { ApiError } from '../../shared/api'
 import { PhoneInput } from '../../shared/PhoneInput'
 import {
   NOTICE_MAX,
+  downloadJson,
+  eraseGuest,
+  eraseSummary,
+  exportGuest,
   getPrivacyNotice,
   lookupConsent,
   resetPrivacyNotice,
   savePrivacyNotice,
   withdrawConsent,
 } from './privacyApi'
-import type { ChannelConsent, ConsentChannel, ConsentLookup, ConsentRecord, PrivacyNotice } from './privacyApi'
+import type {
+  ChannelConsent,
+  ConsentChannel,
+  ConsentLookup,
+  ConsentRecord,
+  EraseResult,
+  KeptItem,
+  PrivacyNotice,
+} from './privacyApi'
 import './privacy.css'
 
 /**
@@ -23,6 +35,10 @@ import './privacy.css'
  *    telefon), se historiken och återkalla samtycket åt gästen. Påverkar
  *    bara erbjudanden, aldrig bekräftelser eller kvitton. Inget skrivs över:
  *    en återkallelse är en ny rad i loggen.
+ * 3. Gästens uppgifter: exportera allt som finns sparat (JSON) eller radera
+ *    det när gästen ber om det. Kvitton och påskrivna avtal finns kvar utan
+ *    kontaktuppgifter (bokföringslagen); pågående bokningar och beställningar
+ *    behålls tills de är avbokade.
  */
 
 const CHANNEL_LABEL: Record<ConsentChannel, string> = { email: 'E-post', sms: 'SMS' }
@@ -41,6 +57,22 @@ const SOURCE_LABEL: Record<string, string> = {
   admin: 'restaurangen',
   complaint: 'markerat som skräppost',
   legacy: 'före samtyckesloggen',
+  erasure: 'radering på gästens begäran',
+}
+
+const KEPT_KIND: Record<KeptItem['kind'], string> = { booking: 'Bokning', order: 'Beställning', catering: 'Catering' }
+// Det som behålls vid radering är alltid något som pågår (se guest-privacy).
+const KEPT_STATUS: Record<string, string> = {
+  reserved: 'bokad',
+  pending: 'väntar på kortgaranti',
+  pending_payment: 'väntar på betalning',
+  confirmed: 'bekräftad',
+  preparing: 'tillagas',
+  ready: 'klar att hämta',
+  requested: 'ny förfrågan',
+  offer_sent: 'offert skickad',
+  change_requested: 'ändring begärd',
+  signed: 'påskriven',
 }
 
 function when(iso: string | null): string {
@@ -59,6 +91,67 @@ function recordLabel(r: ConsentRecord): string {
   if (r.action === 'grant') return `Samtycke lämnat (${source})`
   if (r.action === 'withdraw') return `Återkallat (${source})`
   return 'Bara spärr kvar (uppgifterna raderade)'
+}
+
+/** Samtyckeshistoriken för en kanal, nyast först. */
+export function ConsentHistory({ history }: { history: ConsentRecord[] }) {
+  return (
+    <ol className="consent-history">
+      {history.map((r, i) => (
+        <li key={`${r.at}-${i}`}>
+          <span className="consent-when">{when(r.at)}</span>
+          <span>{recordLabel(r)}</span>
+          {r.text && (
+            <details>
+              <summary>Ordalydelse ({r.textVersion})</summary>
+              <p>{r.text}</p>
+            </details>
+          )}
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+export function KeptList({ items }: { items: KeptItem[] }) {
+  if (!items.length) return null
+  return (
+    <ul className="privacy-kept">
+      {items.map((k) => (
+        <li key={`${k.kind}-${k.id}`}>
+          {KEPT_KIND[k.kind]} {k.date ?? ''} <span className="cell-muted">({(k.status && KEPT_STATUS[k.status]) ?? k.status ?? 'okänd status'})</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** Bekräftelse innan en gästs uppgifter raderas. */
+export function EraseGuestDialog({ who, busy, onCancel, onConfirm }: {
+  who: string
+  busy: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && !busy && onCancel()}>
+      <div className="modal modal--confirm" role="dialog" aria-modal="true" aria-label="Radera gästens uppgifter">
+        <h2>Radera uppgifterna om {who}?</h2>
+        <p className="modal-text">
+          Gästen tas bort från mottagarlistan och samtycket till erbjudanden återkallas. Namn, e-post, telefon och
+          meddelanden tas bort från bokningar, beställningar och cateringförfrågningar. Kvitton och påskrivna avtal
+          finns kvar utan kontaktuppgifter (bokföringslagen). Kommande bokningar och pågående beställningar behålls
+          tills de är avbokade. Det går inte att ångra.
+        </p>
+        <div className="modal-actions">
+          <button type="button" className="btn outline square" autoFocus disabled={busy} onClick={onCancel}>Avbryt</button>
+          <button type="button" className="btn danger-outline square" disabled={busy} onClick={onConfirm}>
+            {busy ? 'Raderar…' : 'Radera'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function NoticeEditor() {
@@ -193,6 +286,8 @@ function ConsentTool() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [confirmErase, setConfirmErase] = useState(false)
+  const [erased, setErased] = useState<EraseResult | null>(null)
 
   async function search(e: FormEvent) {
     e.preventDefault()
@@ -204,6 +299,7 @@ function ConsentTool() {
       return
     }
     setBusy(true)
+    setErased(null)
     try {
       setResult(await lookupConsent(q.email, q.phone))
       setAsked(q)
@@ -233,13 +329,47 @@ function ConsentTool() {
     }
   }
 
+  async function doExport() {
+    if (!asked) return
+    setError(null)
+    setNotice(null)
+    setBusy(true)
+    try {
+      downloadJson(await exportGuest(asked.email, asked.phone), `gastdata-${new Date().toISOString().slice(0, 10)}.json`)
+      setNotice('Filen är nedladdad. Skicka den till gästen på ett säkert sätt.')
+    } catch (err) {
+      setError(errorText(err, 'Kunde inte exportera just nu. Försök igen om en stund.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function doErase() {
+    if (!asked) return
+    setError(null)
+    setNotice(null)
+    setBusy(true)
+    try {
+      const r = await eraseGuest(asked.email, asked.phone)
+      setConfirmErase(false)
+      setErased(r)
+      setResult(await lookupConsent(asked.email, asked.phone))
+    } catch (err) {
+      setConfirmErase(false)
+      setError(errorText(err, 'Kunde inte radera just nu. Försök igen om en stund.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const channels = (Object.keys(CHANNEL_LABEL) as ConsentChannel[]).filter((c) => result?.[c])
   return (
     <section className="admin-card table-card" aria-labelledby="privacy-consent-title">
-      <h2 className="card-title" id="privacy-consent-title">Samtycken till erbjudanden</h2>
+      <h2 className="card-title" id="privacy-consent-title">Gästens uppgifter och samtycken</h2>
       <p className="cell-muted privacy-lead">
         Om en gäst ber er sluta skicka erbjudanden: sök på e-post eller telefonnummer och återkalla
         samtycket här. Det gäller bara erbjudanden. Bekräftelser, påminnelser och kvitton skickas som vanligt.
+        Vill gästen veta vad ni har sparat, eller bli raderad, exporterar eller raderar ni det också här.
       </p>
       <form onSubmit={search} className="privacy-search">
         <div className="form-field">
@@ -270,6 +400,30 @@ function ConsentTool() {
           {notice}
         </p>
       )}
+      {erased && (
+        <div className="save-notice privacy-erased" role="status">
+          <p>{eraseSummary(erased)}</p>
+          <KeptList items={erased.kept} />
+        </div>
+      )}
+      {result && asked && (
+        <div className="privacy-guest-actions">
+          <button type="button" className="btn outline square" disabled={busy} onClick={() => void doExport()}>
+            Exportera (JSON)
+          </button>
+          <button type="button" className="btn danger-outline square" disabled={busy} onClick={() => setConfirmErase(true)}>
+            Radera gästens uppgifter
+          </button>
+        </div>
+      )}
+      {confirmErase && asked && (
+        <EraseGuestDialog
+          who={[asked.email, asked.phone].filter(Boolean).join(' / ')}
+          busy={busy}
+          onCancel={() => setConfirmErase(false)}
+          onConfirm={() => void doErase()}
+        />
+      )}
       {result && (
         <div className="consent-results">
           {channels.map((c) => {
@@ -288,20 +442,7 @@ function ConsentTool() {
                 {info.history.length === 0 ? (
                   <p className="cell-muted">Inga uppgifter om samtycke för {asked?.[c === 'email' ? 'email' : 'phone']}.</p>
                 ) : (
-                  <ol className="consent-history">
-                    {info.history.map((r, i) => (
-                      <li key={`${r.at}-${i}`}>
-                        <span className="consent-when">{when(r.at)}</span>
-                        <span>{recordLabel(r)}</span>
-                        {r.text && (
-                          <details>
-                            <summary>Ordalydelse ({r.textVersion})</summary>
-                            <p>{r.text}</p>
-                          </details>
-                        )}
-                      </li>
-                    ))}
-                  </ol>
+                  <ConsentHistory history={info.history} />
                 )}
               </article>
             )

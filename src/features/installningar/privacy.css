@@ -150,7 +150,33 @@
   background: var(--fill);
 }
 
+.privacy-guest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  margin-top: 16px;
+}
+
+.privacy-erased {
+  display: block;
+  margin-top: 16px;
+}
+
+.privacy-erased p {
+  margin: 0;
+}
+
+.privacy-kept {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+}
+
 @media (max-width: 720px) {
+  .privacy-guest-actions .btn {
+    flex: 1 1 100%;
+  }
+
   .privacy-search {
     grid-template-columns: minmax(0, 1fr);
   }

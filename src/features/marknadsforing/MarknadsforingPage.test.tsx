@@ -17,7 +17,7 @@ const api = vi.hoisted(() => ({
   sendCampaign: vi.fn(),
   sendTest: vi.fn(),
   listSubscribers: vi.fn(),
-  unsubscribe: vi.fn(),
+  findSubscriber: vi.fn(),
   getOfferSettings: vi.fn(),
   saveOfferSettings: vi.fn(),
 }))

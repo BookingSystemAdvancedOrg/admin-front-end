@@ -351,6 +351,8 @@ export function cancelCampaign(id: string): Promise<{ status: 'cancelled' }> {
 // --- mottagare --------------------------------------------------------------
 
 export type SubscriberStatus = 'subscribed' | 'pending' | 'unsubscribed' | 'bounced' | 'complained'
+/** Listans filter: "suppressed" = studsar + markerade som skräppost. */
+export type SubscriberFilter = SubscriberStatus | 'suppressed' | ''
 
 export const SUBSCRIBER_STATUS_LABEL: Record<SubscriberStatus, string> = {
   subscribed: 'Prenumererar',
@@ -370,7 +372,8 @@ export const SUBSCRIBER_STATUS_CLASS: Record<SubscriberStatus, string> = {
 
 export interface Subscriber {
   subscriberId: string
-  email: string
+  /** null när en spärrad adress har raderats (bara spärren finns kvar). */
+  email: string | null
   name: string | null
   status: SubscriberStatus
   consentAt: string | null
@@ -378,10 +381,11 @@ export interface Subscriber {
   lastVisit: string | null
   locations: string[]
   unsubscribedAt: string | null
+  suppressedAt?: string | null
 }
 
 export function listSubscribers(
-  status?: SubscriberStatus | '',
+  status?: SubscriberFilter,
   cursor?: string | null,
 ): Promise<{ subscribers: Subscriber[]; cursor: string | null }> {
   const q = new URLSearchParams()
@@ -391,13 +395,13 @@ export function listSubscribers(
   return apiFetch(`/marketing/subscribers${qs ? `?${qs}` : ''}`)
 }
 
-export function unsubscribe(id: string): Promise<void> {
-  return apiFetch<void>(`/marketing/subscribers/${encodeURIComponent(id)}/unsubscribe`, { method: 'POST' })
+/** En mottagare med exakt den adressen (oavsett versaler), eller ingen. */
+export function findSubscriber(email: string): Promise<{ subscribers: Subscriber[]; cursor: null }> {
+  return apiFetch(`/marketing/subscribers?${new URLSearchParams({ email }).toString()}`)
 }
 
-export function eraseSubscriber(id: string): Promise<void> {
-  return apiFetch<void>(`/marketing/subscribers/${encodeURIComponent(id)}`, { method: 'DELETE' })
-}
+// Avregistrera och radera går via gästintegriteten (installningar/privacyApi):
+// samtyckesloggen får en rad för varje återkallelse.
 
 /** Hämtar mottagarlistan som CSV (med inloggningen) och sparar den som fil. */
 export async function exportSubscribers(): Promise<void> {

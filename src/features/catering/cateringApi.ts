@@ -64,6 +64,8 @@ export interface CateringSettings {
   dayBeforeReminder: boolean
   /** Kunden får godkänna utan BankID (namn + kryssruta). */
   allowSimpleAcceptance: boolean
+  /** Varifrån leveranser utgår (vägavstånd); tom = restaurangens adress. */
+  originAddress: string
 }
 
 export interface LeadTimeRule {
@@ -108,6 +110,7 @@ export const DEFAULT_SETTINGS: CateringSettings = {
   signReminderDaysBefore: 2,
   dayBeforeReminder: true,
   allowSimpleAcceptance: false,
+  originAddress: '',
 }
 
 /** Sparade inställningar utan intervall (äldre platser): samma översättning som servern gör. */
@@ -159,8 +162,27 @@ export const STATUS_LABEL: Record<CateringStatus, string> = {
 /** Väntar på restaurangen. */
 export const NEEDS_OWNER: CateringStatus[] = ['requested', 'change_requested']
 
+/** Statusens etikett; en ny förfrågan som ägaren börjat på är "Under granskning". */
+export function statusLabel(r: { status: CateringStatus; reviewedAt?: string; restaurantSignedAt?: string }): string {
+  if (r.status === 'requested' && r.reviewedAt) return 'Under granskning'
+  if (r.status === 'offer_sent' && !r.restaurantSignedAt) return 'Väntar på er signatur'
+  return STATUS_LABEL[r.status]
+}
+
+/** Vem som har signerat den aktuella offertversionen. */
+export interface SignerState {
+  name?: string
+  role?: string
+  method?: string
+  signedAt?: string
+}
+
 export interface Line {
   menuItemId?: string
+  dishId?: string
+  packageId?: string
+  kind?: 'package' | 'dish' | 'menu'
+  vatRate?: number
   name: string
   /** Öre. */
   unitPrice: number
@@ -177,6 +199,7 @@ export interface Totals {
   total: number
   vat: number
   vatRate: number
+  vatBreakdown?: { rate: number; gross: number; net: number; vat: number }[]
 }
 
 export interface Offer {
@@ -189,6 +212,7 @@ export interface Offer {
   documentHash?: string
   createdAt?: string
   portions?: number
+  serviceIncluded?: boolean
 }
 
 export interface RequestSummary {
@@ -207,6 +231,11 @@ export interface RequestSummary {
   invoiceStatus?: string
   /** Saknas på förfrågningar från innan valet fanns (= rengjord). */
   equipmentReturn?: EquipmentReturn
+  guests?: number
+  /** Ägaren har börjat på offerten ("Under granskning"). */
+  reviewedAt?: string
+  /** Restaurangen har signerat den skickade versionen; först då får kunden den. */
+  restaurantSignedAt?: string
 }
 
 export interface CateringRequest extends RequestSummary {
@@ -218,9 +247,12 @@ export interface CateringRequest extends RequestSummary {
   invoiceReference?: string
   deliveryAddress?: { street: string; postalCode: string; city: string }
   deliveryZone?: 'within' | 'beyond'
-  guests?: number
   notes?: string
-  request: { lines: Line[]; portions: number; tierName?: string | null; equipmentReturn?: EquipmentReturn } & Totals
+  /** Företag: den som signerar, enligt kunden. */
+  signatory?: { name: string; role: string; authorityConfirmed: boolean }
+  serviceIncluded?: boolean
+  request: { lines: Line[]; portions: number; tierName?: string | null; equipmentReturn?: EquipmentReturn;
+    distanceKm?: number | null; deliveryFeeManual?: boolean } & Totals
   draft?: Omit<Offer, 'version'>
   offer?: Offer
   offers: Offer[]
@@ -231,7 +263,10 @@ export interface CateringRequest extends RequestSummary {
   rejectReason?: string
   cancelReason?: string
   refundNote?: string
-  signature?: { name: string; personalNumberMasked: string; signedAt: string; documentHash: string }
+  signature?: { name: string; personalNumberMasked?: string; signedAt: string; documentHash?: string; method?: string;
+    role?: string; pdfSha256?: string }
+  signing?: { offerVersion: number; pdfSha256?: string; restaurant?: SignerState; customer?: SignerState }
+  signedPdfKey?: string
   stripeInvoiceId?: string
   invoiceNumber?: string
   invoiceUrl?: string
@@ -243,7 +278,9 @@ export interface CateringRequest extends RequestSummary {
 
 /** Det ägaren skickar som offert - priser i kronor. */
 export interface OfferInput {
-  lines: { menuItemId?: string; name: string; unitPrice: number; quantity: number }[]
+  lines: { menuItemId?: string; dishId?: string; packageId?: string; name: string; unitPrice: number; quantity: number }[]
+  /** Servering ingår (12 % moms); annars mat utan servering. */
+  serviceIncluded: boolean
   discountPercent: number
   deliveryFee: number
   equipmentReturn: EquipmentReturn
@@ -257,8 +294,10 @@ const loc = (locationId: string) => `/locations/${encodeURIComponent(locationId)
 const req = (locationId: string, requestId: string) =>
   `${loc(locationId)}/requests/${encodeURIComponent(requestId)}`
 
-export function saveSettings(locationId: string, settings: Partial<CateringSettings>): Promise<CateringSettings> {
-  if (!isApiConfigured()) return withBusy(async () => ({ ...DEFAULT_SETTINGS, ...settings }))
+/** originFound: om leveransernas startadress hittas på kartan (null = leverans av eller tjänsten nere). */
+export function saveSettings(locationId: string, settings: Partial<CateringSettings>):
+  Promise<CateringSettings & { originFound?: boolean | null }> {
+  if (!isApiConfigured()) return withBusy(async () => ({ ...DEFAULT_SETTINGS, ...settings, originFound: true }))
   return apiFetch(`${loc(locationId)}/settings`, { method: 'PUT', body: JSON.stringify(settings) })
 }
 
@@ -446,6 +485,35 @@ export function signatureLink(locationId: string, requestId: string): Promise<{ 
   return apiFetch(`${req(locationId, requestId)}/documents/signature`)
 }
 
+/** En nedladdningslänk (5 minuter) till offerten, den signerade kopian eller signaturbeviset. */
+export function documentLink(locationId: string, requestId: string, docId: 'offer' | 'signed' | 'signature'):
+  Promise<{ url: string }> {
+  return apiFetch(`${req(locationId, requestId)}/documents/${docId}`)
+}
+
+export interface SignStart {
+  kind: 'bankid' | 'redirect'
+  url?: string
+  qrData?: string
+  autoStartToken?: string
+}
+
+export interface SignPoll {
+  state: 'pending' | 'failed' | 'signed'
+  hint?: string
+  qrData?: string
+  request?: CateringRequest
+}
+
+/** Restaurangen signerar offerten (först), med BankID här eller på signeringstjänstens sida. */
+export function restaurantSign(locationId: string, requestId: string): Promise<SignStart> {
+  return apiFetch(`${req(locationId, requestId)}/restaurant-sign`, { method: 'POST' })
+}
+
+export function restaurantSignStatus(locationId: string, requestId: string): Promise<SignPoll> {
+  return apiFetch(`${req(locationId, requestId)}/restaurant-sign/status`, { method: 'POST' })
+}
+
 /** Förfrågans rader som offertutkast (kronor). */
 export function offerFromRequest(r: CateringRequest): OfferInput {
   const source = r.draft ?? r.offer
@@ -457,10 +525,13 @@ export function offerFromRequest(r: CateringRequest): OfferInput {
   return {
     lines: lines.map((l) => ({
       ...(l.menuItemId ? { menuItemId: l.menuItemId } : {}),
+      ...(l.dishId ? { dishId: l.dishId } : {}),
+      ...(l.packageId ? { packageId: l.packageId } : {}),
       name: l.name,
       unitPrice: Number(l.unitPrice) / 100,
       quantity: Number(l.quantity),
     })),
+    serviceIncluded: source?.serviceIncluded ?? r.serviceIncluded ?? r.settings?.defaultServiceIncluded ?? true,
     discountPercent: Number(totals.discountPercent ?? 0),
     deliveryFee: Number(totals.deliveryFee ?? 0) / 100,
     equipmentReturn,
@@ -470,8 +541,19 @@ export function offerFromRequest(r: CateringRequest): OfferInput {
   }
 }
 
+/**
+ * Momssatsen för offerten, bara för visning (servern räknar om när offerten
+ * sparas): med servering 12 %; mat utan servering 6 % mellan 2026-04-01 och
+ * 2027-12-31 (leveransdagen), annars 12 % (shared/catering.py vat_rate_for).
+ */
+export function vatRateFor(serviceIncluded: boolean, deliveryDate: string): number {
+  if (serviceIncluded) return 12
+  return deliveryDate >= '2026-04-01' && deliveryDate <= '2027-12-31' ? 6 : 12
+}
+
 /** Samma räkning som servern (shared/catering.py totals), i öre. */
-export function offerTotals(offer: OfferInput): Totals {
+export function offerTotals(offer: OfferInput, deliveryDate: string): Totals {
+  const rate = vatRateFor(offer.serviceIncluded, deliveryDate)
   const subtotal = offer.lines.reduce((sum, l) => sum + Math.round(l.unitPrice * 100) * l.quantity, 0)
   const discount = Math.round((subtotal * offer.discountPercent) / 100)
   const cleaningFee = offer.equipmentReturn === 'not_cleaned' ? Math.round(offer.cleaningFee * 100) : 0
@@ -483,8 +565,8 @@ export function offerTotals(offer: OfferInput): Totals {
     deliveryFee: Math.round(offer.deliveryFee * 100),
     cleaningFee,
     total,
-    vat: Math.round((total * 12) / 112),
-    vatRate: 12,
+    vat: Math.round((total * rate) / (100 + rate)),
+    vatRate: rate,
   }
 }
 
@@ -503,6 +585,11 @@ const ERRORS: Record<string, string> = {
   not_confirmed: 'Bara bekräftade beställningar kan markeras som levererade.',
   payment_provider_rejected: 'Stripe nekade åtgärden. Kontrollera i Stripe och försök igen.',
   payment_unavailable: 'Stripe svarar inte just nu. Försök igen om en stund.',
+  signing_unavailable: 'Signeringstjänsten svarar inte just nu. Försök igen om en stund.',
+  document_unavailable: 'Offerten kunde inte skapas som PDF just nu. Försök igen om en stund.',
+  not_signable: 'Den här offertversionen kan inte signeras. Skicka offerten igen.',
+  already_signed: 'Offerten är redan signerad av restaurangen.',
+  signing_alreadyInProgress: 'En BankID-signering pågår redan. Avbryt den i appen och försök igen.',
 }
 
 export function errorText(err: unknown): string {

@@ -1,0 +1,113 @@
+/* Bokningstid (BookingTimeCard). Bygger på admin.css: form-grid, check-row,
+   special-day-add, link-btn. */
+
+.bt-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bt-extension {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+}
+
+.bt-extension-max {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.bt-extension-max select {
+  width: auto;
+}
+
+.bt-windows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bt-window {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.bt-window-summary {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bt-link {
+  margin-top: 0;
+  padding: 4px 0;
+  white-space: nowrap;
+}
+
+.bt-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bt-day {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: var(--r-pill, 999px);
+  background: var(--fill);
+  font: 500 14px/1 var(--font);
+  color: var(--ink);
+  cursor: pointer;
+  user-select: none;
+}
+
+.bt-day input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.bt-day.on {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.bt-day:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.bt-priority input {
+  max-width: 120px;
+}
+
+.bt-add {
+  align-self: flex-start;
+}
+
+.bt-warnings {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--warning-ink);
+}

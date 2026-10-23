@@ -168,8 +168,8 @@ export function validateBookingDuration(hours: number): string | null {
 }
 
 export function validateGracePeriod(hours: number): string | null {
-  if (!Number.isFinite(hours) || hours < 0) {
-    return 'Grace period kan inte vara negativ.'
+  if (!Number.isFinite(hours) || hours < 0.25 || hours > 1) {
+    return 'Grace period ska vara mellan 15 och 60 minuter.'
   }
   return null
 }

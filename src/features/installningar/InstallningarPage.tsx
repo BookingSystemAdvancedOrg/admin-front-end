@@ -113,6 +113,12 @@ function initialTab(stripeReturn: string | null): SettingsTab {
 /** Grace period i 5-minuterssteg. Bokningslängden ställs in i kortet Bokningstid. */
 const GRACE_MINUTES = [15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
 
+/** Ett äldre värde utanför 15-60 min (t.ex. 0) visas som närmaste val och sparas så vid nästa spara. */
+function clampGraceHours(hours: number): number {
+  const minutes = Math.round((Number.isFinite(hours) ? hours : 0) * 12) * 5
+  return Math.min(60, Math.max(15, minutes)) / 60
+}
+
 export default function InstallningarPage() {
   const { sub, groups } = useAuth()
   const { tenant, refresh: refreshTenant } = useTenant()
@@ -188,7 +194,7 @@ export default function InstallningarPage() {
         setTimezone(loc.timezone)
         setBusinessHours(loc.businessHours)
         setBookingDurationHours(loc.bookingDurationHours ?? DEFAULT_BOOKING_DURATION_HOURS)
-        setGracePeriodHours(loc.gracePeriodHours ?? DEFAULT_GRACE_PERIOD_HOURS)
+        setGracePeriodHours(clampGraceHours(loc.gracePeriodHours ?? DEFAULT_GRACE_PERIOD_HOURS))
         setSavedLocation({
           name: loc.name,
           address: loc.address,
@@ -498,9 +504,6 @@ export default function InstallningarPage() {
                   setGracePeriodHours(Number(e.target.value) / 60)
                 }}
               >
-                {!GRACE_MINUTES.includes(graceMinutes) && (
-                  <option value={graceMinutes}>{graceMinutes} min</option>
-                )}
                 {GRACE_MINUTES.map((m) => (
                   <option key={m} value={m}>
                     {m} min

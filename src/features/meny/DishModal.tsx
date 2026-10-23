@@ -4,6 +4,7 @@ import { CATEGORY_LABEL } from './data'
 import type { Dish, DishCategory } from './data'
 import { validateDishName, validateDishPrice } from './menuApi'
 import { utcToZonedInput, zonedInputToUtc } from './schedule'
+import { DateTimeInput } from '../../shared/DateInput'
 
 export interface DishFormValues {
   name: string
@@ -282,9 +283,8 @@ export function DishModal({
           <div className="form-grid">
             <div className="form-field">
               <label htmlFor="dish-available-from">Visas från</label>
-              <input
-                id="dish-available-from"
-                type="datetime-local"
+              <DateTimeInput
+                id="dish-available-from" timeLabel="Visas från, tid"
                 value={fromInput}
                 onChange={(e) => setFromInput(e.target.value)}
                 aria-invalid={availableFrom === undefined ? true : undefined}
@@ -296,9 +296,8 @@ export function DishModal({
             </div>
             <div className="form-field">
               <label htmlFor="dish-available-until">Visas till</label>
-              <input
-                id="dish-available-until"
-                type="datetime-local"
+              <DateTimeInput
+                id="dish-available-until" timeLabel="Visas till, tid"
                 value={untilInput}
                 onChange={(e) => setUntilInput(e.target.value)}
                 aria-invalid={availableUntil === undefined || orderError ? true : undefined}

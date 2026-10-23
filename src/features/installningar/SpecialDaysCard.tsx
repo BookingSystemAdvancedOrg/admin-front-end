@@ -17,6 +17,7 @@ import {
 } from './bookingRules'
 import type { Draft } from './bookingRules'
 import { Loading } from '../../shared/Loading'
+import { DateInput, TimeInput } from '../../shared/DateInput'
 
 /**
  * Avvikande öppettider för den valda platsen (backend shared/booking_rules.py):
@@ -239,9 +240,8 @@ export function SpecialDaysCard({
               <div className="form-grid">
                 <div className="form-field">
                   <label htmlFor="special-date">Datum</label>
-                  <input
+                  <DateInput
                     id="special-date"
-                    type="date"
                     min={today}
                     max={addDays(today, DAYS_AHEAD)}
                     value={draft.date}
@@ -267,15 +267,13 @@ export function SpecialDaysCard({
                 <div className="special-intervals">
                   {draft.intervals.map((iv, i) => (
                     <div key={i} className="special-interval">
-                      <input
-                        type="time"
+                      <TimeInput
                         aria-label={`Öppnar (tid ${i + 1})`}
                         value={iv.opensAt}
                         onChange={(e) => setInterval_(i, { opensAt: e.target.value })}
                       />
                       <span>-</span>
-                      <input
-                        type="time"
+                      <TimeInput
                         aria-label={`Stänger (tid ${i + 1})`}
                         value={iv.closesAt}
                         onChange={(e) => setInterval_(i, { closesAt: e.target.value })}

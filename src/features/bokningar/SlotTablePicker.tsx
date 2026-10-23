@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { addDays, dayNotice, errorMessage, getAvailability } from './bookingsApi'
 import type { AvailabilitySlot, DayStatus } from './bookingsApi'
 import { useTables } from '../../shared/tables'
+import { DateInput } from '../../shared/DateInput'
 
 /** Hur ofta listan med lediga tider hämtas om medan formuläret är öppet. */
 export const SLOT_REFRESH_MS = 60_000
@@ -165,9 +166,8 @@ export function SlotTablePicker({
       <div className="form-grid">
         <div className="form-field">
           <label htmlFor="slot-date">Datum</label>
-          <input
+          <DateInput
             id="slot-date"
-            type="date"
             value={date}
             min={today}
             max={addDays(today, HORIZON_DAYS)}

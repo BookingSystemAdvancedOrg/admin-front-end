@@ -23,6 +23,7 @@ import type { Reservation } from './bookingsApi'
 import { tableNames, useTables } from '../../shared/tables'
 import './bokningar.css'
 import { Loading } from '../../shared/Loading'
+import { DateInput } from '../../shared/DateInput'
 
 const REFRESH_MS = 60_000
 
@@ -190,8 +191,7 @@ export default function BokningarPage() {
                   Idag
                 </button>
               )}
-              <input
-                type="date"
+              <DateInput
                 aria-label="Välj datum"
                 value={date}
                 onChange={(e) => e.target.value && setDate(e.target.value)}

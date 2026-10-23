@@ -29,6 +29,7 @@ import { MAX_ITEM_PRICE_KR } from '../meny/menuApi'
 import './catering.css'
 import { Loading } from '../../shared/Loading'
 import { RestaurantSigning } from './RestaurantSigning'
+import { DateInput } from '../../shared/DateInput'
 
 const EDITABLE = ['requested', 'change_requested', 'offer_sent']
 
@@ -398,7 +399,7 @@ export default function CateringRequestPage() {
               </div>
               <div className="form-field">
                 <label htmlFor="offer-valid">Giltig till och med</label>
-                <input id="offer-valid" type="date" value={offer.validUntil ?? ''} max={request.deliveryDate}
+                <DateInput id="offer-valid" value={offer.validUntil ?? ''} max={request.deliveryDate}
                   onChange={(e) => setOffer({ ...offer, validUntil: e.target.value || undefined })} />
               </div>
             </div>

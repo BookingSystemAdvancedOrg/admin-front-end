@@ -990,7 +990,7 @@
   gap: 6px;
 }
 
-.hours-editor-interval input[type='time'] {
+.hours-editor-interval .time-input {
   padding: 4px 6px;
   border: 1px solid var(--border);
   border-radius: 6px;

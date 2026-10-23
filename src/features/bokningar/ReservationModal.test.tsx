@@ -6,6 +6,7 @@ import { ReservationModal } from './ReservationModal'
 import { NewReservationModal } from './NewReservationModal'
 import { SlotTablePicker, SLOT_REFRESH_MS } from './SlotTablePicker'
 import type { Reservation } from './bookingsApi'
+import { formatDate } from '../../shared/DateInput'
 
 const changeStatus = vi.fn()
 const paymentAction = vi.fn()
@@ -269,9 +270,9 @@ describe('time rules in the forms', () => {
     const user = userEvent.setup()
     getAvailability.mockResolvedValue(avail([]))
     render(<NewReservationModal locationId="loc-1" initialDate="2026-10-15" today={TODAY} onCreated={() => {}} onCancel={() => {}} />)
-    expect(screen.getByLabelText('Datum')).toHaveValue('2026-10-15')
+    expect(screen.getByLabelText('Datum')).toHaveValue(formatDate('2026-10-15'))
     await user.click(screen.getByRole('radio', { name: 'Drop-in' }))
-    expect(screen.getByLabelText('Datum')).toHaveValue(TODAY)
+    expect(screen.getByLabelText('Datum')).toHaveValue(formatDate(TODAY))
     expect(screen.getByLabelText('Datum')).toBeDisabled()
     expect(getAvailability).toHaveBeenLastCalledWith('loc-1', TODAY, { walkIn: true })
   })
@@ -279,8 +280,8 @@ describe('time rules in the forms', () => {
   it('a new booking never starts on a past day', () => {
     getAvailability.mockResolvedValue(avail([]))
     render(<NewReservationModal locationId="loc-1" initialDate="2026-10-01" today={TODAY} onCreated={() => {}} onCancel={() => {}} />)
-    expect(screen.getByLabelText('Datum')).toHaveValue(TODAY)
-    expect(screen.getByLabelText('Datum')).toHaveAttribute('min', TODAY)
+    expect(screen.getByLabelText('Datum')).toHaveValue(formatDate(TODAY))
+    expect(screen.getByLabelText('Datum')).toHaveAttribute('data-min', TODAY)
   })
 
   it('a time that went stale is explained in Swedish and the list is fetched again', async () => {

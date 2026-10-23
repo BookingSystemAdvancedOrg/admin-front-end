@@ -21,6 +21,7 @@ import {
 } from './bookingTime'
 import type { BookingExtension, BookingTimeRules, BookingTimeWindow } from './bookingTime'
 import './bookingTime.css'
+import { DateInput, TimeInput } from '../../shared/DateInput'
 
 /**
  * Bokningstid (backend shared/booking_rules.py): standardlängd, om
@@ -326,9 +327,8 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
                       <div className="form-grid">
                         <div className="form-field">
                           <label htmlFor={`bt-start-${w.id}`}>Starttider från</label>
-                          <input
+                          <TimeInput
                             id={`bt-start-${w.id}`}
-                            type="time"
                             step={900}
                             value={w.startTime}
                             onChange={(e) => setWindow(w.id, { startTime: e.target.value })}
@@ -336,9 +336,8 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
                         </div>
                         <div className="form-field">
                           <label htmlFor={`bt-end-${w.id}`}>till (inte med)</label>
-                          <input
+                          <TimeInput
                             id={`bt-end-${w.id}`}
-                            type="time"
                             step={900}
                             value={w.endTime}
                             onChange={(e) => setWindow(w.id, { endTime: e.target.value })}
@@ -346,18 +345,16 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
                         </div>
                         <div className="form-field">
                           <label htmlFor={`bt-from-${w.id}`}>Från datum (valfritt)</label>
-                          <input
+                          <DateInput
                             id={`bt-from-${w.id}`}
-                            type="date"
                             value={w.dateFrom ?? ''}
                             onChange={(e) => setWindow(w.id, { dateFrom: e.target.value || undefined })}
                           />
                         </div>
                         <div className="form-field">
                           <label htmlFor={`bt-to-${w.id}`}>Till datum (valfritt)</label>
-                          <input
+                          <DateInput
                             id={`bt-to-${w.id}`}
-                            type="date"
                             value={w.dateTo ?? ''}
                             onChange={(e) => setWindow(w.id, { dateTo: e.target.value || undefined })}
                           />

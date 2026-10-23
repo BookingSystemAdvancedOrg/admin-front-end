@@ -34,6 +34,7 @@ import { fetchInsights, insightsQuery } from './insightsApi'
 import { sampleInsights } from './insightsSample'
 import { addDays, daysBetween, deltaPct, fmtDecimal, fmtInt, fmtKr, fmtPct, insightTitle, rangeLabel, shortDate } from './stats'
 import './statistik.css'
+import { DateInput } from '../../shared/DateInput'
 
 /**
  * Statistik: restaurangens egna siffror för en period, i tre steg: vad som
@@ -267,8 +268,7 @@ export default function StatistikPage() {
               <div className="sk-dates">
                 <label className="sk-field">
                   <span>Från</span>
-                  <input
-                    type="date"
+                  <DateInput
                     value={f.from}
                     max={f.to}
                     min={addDays(f.to, -(MAX_DAYS - 1))}
@@ -277,8 +277,7 @@ export default function StatistikPage() {
                 </label>
                 <label className="sk-field">
                   <span>Till</span>
-                  <input
-                    type="date"
+                  <DateInput
                     value={f.to}
                     min={f.from}
                     max={today}

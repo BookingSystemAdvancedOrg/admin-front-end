@@ -87,7 +87,7 @@ describe('StatistikPage', () => {
     renderAt('/statistik?period=custom&from=2026-01-01&to=2026-06-30&loc=loc-2')
     await screen.findByRole('heading', { name: 'Så gick det' })
     expect(fetchInsights.mock.calls[0][0]).toMatchObject({ from: '2026-01-01', to: '2026-06-30', locationId: 'loc-2' })
-    expect(screen.getByLabelText('Från')).toHaveValue('2026-01-01')
+    expect(screen.getByLabelText('Från')).toHaveValue('01/01/2026')
   })
 
   it('shows staff the operations figures without amounts', async () => {

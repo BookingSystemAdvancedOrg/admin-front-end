@@ -54,6 +54,29 @@ describe('PrivacyCard', () => {
     expect(within(sms).getByText('Samtycke gäller')).toBeInTheDocument()
   })
 
+  it('exports the guest as JSON and erases after confirming', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const created = vi.fn(() => 'blob:x')
+    URL.createObjectURL = created
+    URL.revokeObjectURL = vi.fn()
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    render(<PrivacyCard />)
+    await user.type(screen.getByLabelText('E-post'), 'anna@example.se')
+    await user.click(screen.getByRole('button', { name: 'Sök' }))
+    await user.click(await screen.findByRole('button', { name: 'Exportera (JSON)' }))
+    expect(await screen.findByText(/Filen är nedladdad/)).toBeInTheDocument()
+    expect(created).toHaveBeenCalledOnce()
+    expect(click).toHaveBeenCalledOnce()
+    await user.click(screen.getByRole('button', { name: 'Radera gästens uppgifter' }))
+    const dialog = screen.getByRole('dialog', { name: 'Radera gästens uppgifter' })
+    expect(within(dialog).getByText(/Kvitton och påskrivna avtal finns kvar/)).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Radera' }))
+    expect(await screen.findByText(/Klart: 1 post anonymiserades/)).toBeInTheDocument()
+    const email = await screen.findByRole('article', { name: 'E-post' })
+    expect(within(email).getByText(/Återkallat \(radering på gästens begäran\)/)).toBeInTheDocument()
+  })
+
   it('asks for a contact detail before searching', async () => {
     const user = userEvent.setup()
     render(<PrivacyCard />)

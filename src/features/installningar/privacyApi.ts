@@ -134,3 +134,96 @@ export async function withdrawConsent(
     body: JSON.stringify({ channels, ...(email ? { email } : {}), ...(phone ? { phone } : {}) }),
   })
 }
+
+// --- export och radering (GDPR art. 15, 17, 20) ------------------------------
+
+export interface GuestExport {
+  email: string | null
+  phone: string | null
+  exportedAt: string
+  consents: ConsentLookup
+  subscriber: Record<string, unknown> | null
+  welcomeOfferCode: Record<string, unknown> | null
+  bookings: Record<string, unknown>[]
+  orders: Record<string, unknown>[]
+  cateringRequests: Record<string, unknown>[]
+}
+
+export interface KeptItem {
+  kind: 'booking' | 'order' | 'catering'
+  locationId: string
+  status: string | null
+  date: string | null
+  id: string | null
+}
+
+export interface EraseResult {
+  consentWithdrawn: ConsentChannel[]
+  marketingRowsDeleted: number
+  anonymised: number
+  kept: KeptItem[]
+}
+
+function guestQuery(email?: string, phone?: string): URLSearchParams {
+  const q = new URLSearchParams()
+  if (email) q.set('email', email)
+  if (phone) q.set('phone', phone)
+  return q
+}
+
+/** Allt som finns sparat om gästen hos restaurangen. */
+export async function exportGuest(email?: string, phone?: string): Promise<GuestExport> {
+  if (!isApiConfigured()) {
+    return {
+      email: email ?? null, phone: phone ?? null, exportedAt: new Date().toISOString(),
+      consents: mockLookup(email, phone), subscriber: null, welcomeOfferCode: null,
+      bookings: email === 'anna@example.se'
+        ? [{ reservationId: 'r1', date: '2026-09-20', time: '18:00', partySize: 2, customerName: 'Anna Andersson',
+             customerEmail: email, status: 'arrived' }]
+        : [],
+      orders: [], cateringRequests: [],
+    }
+  }
+  return apiFetch(`/privacy/guests?${guestQuery(email, phone).toString()}`)
+}
+
+/** Sparar exporten som en JSON-fil hos ägaren (inget lämnar webbläsaren). */
+export function downloadJson(data: unknown, filename: string): void {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+/** Raderar gästens uppgifter: kvitton och påskrivna avtal finns kvar utan kontaktuppgifter. */
+export async function eraseGuest(email?: string, phone?: string): Promise<EraseResult> {
+  if (!isApiConfigured()) {
+    const consentWithdrawn: ConsentChannel[] = []
+    for (const [channel, id] of [['email', email], ['sms', phone]] as const) {
+      const log = id ? mockLog[`${channel}:${id}`] : undefined
+      if (!log?.length) continue
+      log.push({ at: new Date().toISOString(), action: 'withdraw', channel, source: 'erasure', by: 'restaurant' })
+      consentWithdrawn.push(channel)
+    }
+    return { consentWithdrawn, marketingRowsDeleted: email ? 1 : 0, anonymised: email === 'anna@example.se' ? 1 : 0, kept: [] }
+  }
+  return apiFetch('/privacy/guests/erase', {
+    method: 'POST',
+    body: JSON.stringify({ ...(email ? { email } : {}), ...(phone ? { phone } : {}) }),
+  })
+}
+
+/** Vad en radering gjorde, i en mening (plus det som behölls). */
+export function eraseSummary(r: EraseResult): string {
+  const parts = [`${r.anonymised} ${r.anonymised === 1 ? 'post' : 'poster'} anonymiserades`]
+  if (r.marketingRowsDeleted) parts.push('gästen togs bort från mottagarlistan')
+  if (r.consentWithdrawn.length) parts.push('samtycket till erbjudanden återkallades')
+  const kept = r.kept.length
+    ? ` ${r.kept.length} pågående ${r.kept.length === 1 ? 'post' : 'poster'} finns kvar: avboka eller avsluta och radera igen.`
+    : ''
+  return `Klart: ${parts.join(', ')}.${kept}`
+}

@@ -2,11 +2,9 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useLocationId } from '../../shared/location'
-import type { Dish } from '../meny/data'
-import { getPublicMenu, listMenuItems, publicToDish, toDish } from '../meny/menuApi'
 import { DiscountTierModal } from './DiscountTierModal'
 import type { DiscountTierFormValues } from './DiscountTierModal'
-import { DISCOUNT_SCOPE_LABEL, nextTierAfter, settingsProblem, tierFor } from './data'
+import { DISCOUNT_SCOPE_LABEL, settingsProblem } from './data'
 import type { DiscountTier, OrderRules } from './data'
 import { CateringMenuCard } from './CateringMenuCard'
 import { isApiConfigured } from '../../shared/api'
@@ -52,29 +50,17 @@ function numberIn(value: string): number {
 
 type TierModalState = { mode: 'add' } | { mode: 'edit'; id: string } | null
 
-const kr0 = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0 })
-const kr2 = new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-
-function krWhole(n: number): string {
-  return `${kr0.format(Math.round(n))} kr`
-}
-
-function krPerUnit(n: number): string {
-  return `${kr2.format(n)} kr/st`
-}
-
 /**
  * Figma: admin-catering-page. Reglerna, leveranspriserna, offert- och
  * notisinställningarna sparas på platsen (PUT .../catering/settings, knappen
  * uppe till höger); rabattnivåerna sparas direkt när de ändras
- * (.../catering/discount-tiers). Förhandsvisningen räknar på den riktiga
- * menyn med samma regler som servern använder för gästens förfrågan.
+ * (.../catering/discount-tiers). Priserna räknas bara av servern (gästens
+ * kalkyl på webbplatsen och offerten), så här finns ingen egen prisräkning.
  */
 export default function CateringkalkylPage() {
   const { sub } = useAuth()
   const { locationId } = useLocationId(sub)
 
-  const [dishes, setDishes] = useState<Dish[]>([])
 
   const { tenant } = useTenant()
   const isOwner = tenant?.role === 'owner_user'
@@ -88,8 +74,6 @@ export default function CateringkalkylPage() {
   const [tierError, setTierError] = useState<string | null>(null)
 
   const [tierModal, setTierModal] = useState<TierModalState>(null)
-  const [quantities, setQuantities] = useState<Record<string, number>>({})
-  const [previewAddress, setPreviewAddress] = useState('Drottninggatan 52, Norrköping')
 
   // Sparade inställningar (platsens cateringSettings) och rabattnivåer.
   useEffect(() => {
@@ -112,37 +96,8 @@ export default function CateringkalkylPage() {
     }
   }, [locationId])
 
-  useEffect(() => {
-    if (!locationId) return
-    let cancelled = false
-    listMenuItems(locationId)
-      .then((items) => {
-        if (!cancelled) setDishes(items.map(toDish).filter((d) => d.active))
-      })
-      .catch(async () => {
-        // Adminrutten kanske inte är deployad - samma reservväg som MenyPage.
-        try {
-          const items = await getPublicMenu(locationId)
-          if (!cancelled) setDishes(items.map(publicToDish))
-        } catch {
-          if (!cancelled) setDishes([])
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [locationId])
-
   function updateOrderRules(patch: Partial<OrderRules>) {
     setOrderRules((prev) => ({ ...prev, ...patch }))
-  }
-
-  function qty(dishId: string): number {
-    return quantities[dishId] ?? 0
-  }
-
-  function setQty(dishId: string, n: number) {
-    setQuantities((prev) => ({ ...prev, [dishId]: Math.max(0, Math.round(n)) }))
   }
 
   function updateSettings(patch: Partial<CateringSettings>) {
@@ -188,9 +143,13 @@ export default function CateringkalkylPage() {
     setSaveError(null)
     setSaveNotice(null)
     try {
-      const saved = withBands({ ...DEFAULT_SETTINGS, ...(await saveSettings(locationId, next)) })
+      const { originFound, ...stored } = await saveSettings(locationId, next)
+      const saved = withBands({ ...DEFAULT_SETTINGS, ...stored })
       setSettings(saved)
       setSaveNotice(saved.enabled ? 'Sparat. Kalkylen visas på webbplatsen.' : 'Sparat. Kalkylen är dold för gäster.')
+      if (originFound === false) {
+        setSaveError('Leveransernas startadress hittades inte på kartan. Leveranspriset får då sättas för hand i varje offert. Kontrollera adressen.')
+      }
     } catch (err) {
       setSaveError(errorText(err))
     } finally {
@@ -232,26 +191,7 @@ export default function CateringkalkylPage() {
   const editingTier =
     tierModal?.mode === 'edit' ? tiers.find((t) => t.id === tierModal.id) ?? null : null
 
-  // --- Kalkylen -------------------------------------------------------
-
-  const totalPortions = Object.values(quantities).reduce((sum, n) => sum + n, 0)
-  const currentTier = tierFor(tiers, totalPortions)
-  const upcomingTier = nextTierAfter(tiers, currentTier)
-  const portionsToUpcoming = upcomingTier ? upcomingTier.fromPortions - totalPortions : 0
-
-  const subtotal = dishes.reduce((sum, d) => sum + d.price * qty(d.id), 0)
-  const discountPercent = currentTier?.discountPercent ?? 0
-  const discountAmount = (subtotal * discountPercent) / 100
-
-  // Illustrativt exempelavstånd - ingen riktig geokodning ännu, så
-  // förhandsvisningens "leveransadress" är bara en etikett. Skalat mot det
-  // första intervallet så exemplet alltid hamnar i ett intervall.
   const bands = settings.deliveryBands
-  const previewDistanceKm = Math.max(1, Math.round((bands[0]?.upToKm ?? 10) * 0.72))
-  const previewBand = bands.find((b) => previewDistanceKm <= b.upToKm) ?? null
-  const deliveryPrice = totalPortions === 0 ? 0 : previewBand?.price ?? 0
-
-  const total = subtotal - discountAmount + deliveryPrice
 
   return (
     <>
@@ -302,19 +242,6 @@ export default function CateringkalkylPage() {
             <p className="cell-muted">Minsta och högsta tillåtna beställning</p>
             <div style={{ height: 16 }} />
             <div className="form-grid">
-              <div className="form-field">
-                <label htmlFor="min-portions">Minsta antal portioner (totalt)</label>
-                <input
-                  id="min-portions"
-                  inputMode="numeric"
-                  value={`${orderRules.minPortions} st`}
-                  onChange={(e) =>
-                    updateOrderRules({
-                      minPortions: Number(e.target.value.replace(/[^\d]/g, '')) || 0,
-                    })
-                  }
-                />
-              </div>
               <div className="form-field">
                 <label htmlFor="max-portions">Högsta antal portioner (totalt)</label>
                 <input
@@ -367,7 +294,8 @@ export default function CateringkalkylPage() {
             </div>
             <div style={{ height: 16 }} />
             <p className="calc-hint">
-              Kunder kan inte skicka en beställning under minsta antal portioner.
+              Förfrågningar med färre gäster än minsta antal går inte att skicka. Rabatt och
+              förberedelsetid räknas på antal gäster.
             </p>
           </section>
 
@@ -375,6 +303,14 @@ export default function CateringkalkylPage() {
             <h2 className="card-title">Leveranspris per avstånd</h2>
             <p className="cell-muted">Avstånd från restaurangen till leveransadressen, längs vägen</p>
             <div style={{ height: 16 }} />
+            <div className="form-field">
+              <label htmlFor="delivery-origin">Leveranser utgår från</label>
+              <input id="delivery-origin" value={settings.originAddress} autoComplete="street-address"
+                placeholder="Restaurangens adress" aria-describedby="delivery-origin-hint"
+                onChange={(e) => updateSettings({ originAddress: e.target.value })} />
+              <p className="field-hint" id="delivery-origin-hint">Gata, postnummer och ort. Tomt = restaurangens adress.</p>
+            </div>
+            <div style={{ height: 12 }} />
             <div className="form-field">
               <label htmlFor="delivery-area">Leveransområde (visas för gästen)</label>
               <input id="delivery-area" value={settings.deliveryArea}
@@ -695,183 +631,6 @@ export default function CateringkalkylPage() {
           </div>
         </section>
 
-        <details className="admin-card catering-preview-details">
-          <summary>Förhandsvisning - så ser gästen kalkylen</summary>
-        <div className="catering-preview-row">
-          <section className="admin-card table-card catering-preview-card">
-            <h2 className="card-title">Förhandsvisning · så ser kunden kalkylen</h2>
-            <p className="cell-muted">
-              Kunden väljer antal portioner per rätt - rabatten gäller alla rätter när nivån nås
-            </p>
-            <div style={{ height: 16 }} />
-
-            <div className="catering-preview-head">
-              <div>
-                <p className="catering-total-portions">{totalPortions} portioner totalt</p>
-                <p className="cell-muted">
-                  Minst {orderRules.minPortions} - max {orderRules.maxPortions} portioner
-                </p>
-              </div>
-              {currentTier && currentTier.discountPercent > 0 && (
-                <span className="status-badge reserved">
-                  {currentTier.name} · -{currentTier.discountPercent} % på alla rätter
-                </span>
-              )}
-            </div>
-
-            {dishes.length === 0 ? (
-              <p className="cell-muted">Inga aktiva rätter i menyn ännu.</p>
-            ) : (
-              <ul className="catering-dish-list">
-                {dishes.map((d) => {
-                  const discounted = d.price * (1 - discountPercent / 100)
-                  const q = qty(d.id)
-                  return (
-                    <li key={d.id} className="catering-dish-row">
-                      <span className="catering-dish-swatch" aria-hidden="true">
-                        {d.image ? (
-                          <img src={d.image} alt="" />
-                        ) : (
-                          <span className="dish-placeholder">🍽</span>
-                        )}
-                      </span>
-                      <div className="catering-dish-info">
-                        <span className="cell-strong">{d.name}</span>
-                        <span className="cell-muted">
-                          {d.category === 'forratter'
-                            ? 'Förrätter'
-                            : d.category === 'varmratter'
-                              ? 'Varmrätter'
-                              : d.category === 'efterratter'
-                                ? 'Efterrätter'
-                                : 'Drycker'}
-                        </span>
-                      </div>
-                      <div className="catering-dish-price">
-                        {discountPercent > 0 ? (
-                          <>
-                            <span className="catering-price-original">
-                              {krWhole(d.price)}
-                            </span>
-                            <span className="cell-price">{krPerUnit(discounted)}</span>
-                          </>
-                        ) : (
-                          <span className="cell-price">{krPerUnit(d.price)}</span>
-                        )}
-                      </div>
-                      <div className="catering-stepper">
-                        <button
-                          type="button"
-                          className="catering-stepper-btn"
-                          aria-label={`Ta bort en portion ${d.name}`}
-                          disabled={q === 0}
-                          onClick={() => setQty(d.id, q - 1)}
-                        >
-                          −
-                        </button>
-                        <span className="catering-stepper-value">{q}</span>
-                        <button
-                          type="button"
-                          className="catering-stepper-btn"
-                          aria-label={`Lägg till en portion ${d.name}`}
-                          onClick={() => setQty(d.id, q + 1)}
-                        >
-                          +
-                        </button>
-                      </div>
-                      <span className="catering-dish-total">
-                        {q > 0 ? krWhole(discounted * q) : '-'}
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-
-            <div style={{ height: 8 }} />
-            <div className="catering-address-row">
-              <div className="form-field">
-                <label htmlFor="preview-address">Leveransadress</label>
-                <input
-                  id="preview-address"
-                  value={previewAddress}
-                  onChange={(e) => setPreviewAddress(e.target.value)}
-                />
-              </div>
-              <span className={`status-badge ${previewBand ? 'reserved' : 'waiting'}`}>
-                {previewAddress ? `${previewDistanceKm} km · ` : ''}
-                {previewBand ? `Upp till ${previewBand.upToKm} km` : 'Utanför området'}
-              </span>
-            </div>
-          </section>
-
-          <aside className="catering-summary-panel">
-            <p className="catering-summary-kicker">Kalkyl</p>
-            <h2 className="catering-summary-title">
-              Cateringbeställning · {totalPortions} portioner
-            </h2>
-
-            {totalPortions === 0 ? (
-              <p className="catering-summary-empty">
-                Lägg till portioner i förhandsvisningen för att se kalkylen.
-              </p>
-            ) : (
-              <>
-                <div className="catering-summary-lines">
-                  {dishes
-                    .filter((d) => qty(d.id) > 0)
-                    .map((d) => (
-                      <div key={d.id} className="catering-summary-line">
-                        <span>
-                          {d.name} ×{qty(d.id)}
-                        </span>
-                        <span>{krWhole(d.price * qty(d.id))}</span>
-                      </div>
-                    ))}
-                </div>
-
-                <div className="catering-summary-line catering-summary-subtotal">
-                  <span>Delsumma</span>
-                  <span>{krWhole(subtotal)}</span>
-                </div>
-
-                {discountAmount > 0 && currentTier && (
-                  <div className="catering-summary-line catering-summary-discount">
-                    <span>
-                      Rabatt {currentTier.name} · -{currentTier.discountPercent} % på alla rätter
-                    </span>
-                    <span>-{krWhole(discountAmount)}</span>
-                  </div>
-                )}
-
-                <div className="catering-summary-line">
-                  <span>
-                    Leverans, {previewDistanceKm} km
-                  </span>
-                  <span>{krWhole(deliveryPrice)}</span>
-                </div>
-
-                <div className="catering-summary-total">
-                  <span>Totalt</span>
-                  <span>{krWhole(total)}</span>
-                </div>
-                <p className="catering-summary-vat">Inkl. moms</p>
-
-                {upcomingTier && portionsToUpcoming > 0 && (
-                  <p className="catering-summary-upsell">
-                    {portionsToUpcoming} portioner till ger {upcomingTier.name} (-
-                    {upcomingTier.discountPercent} % på alla rätter)
-                  </p>
-                )}
-
-                <p className="catering-summary-empty">
-                  Förhandsvisning - gästerna skickar förfrågan från kalkylen på webbplatsen.
-                </p>
-              </>
-            )}
-          </aside>
-        </div>
-        </details>
       </main>
 
       {tierModal && (

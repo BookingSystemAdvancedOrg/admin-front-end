@@ -20,6 +20,7 @@ import { PrinterCard } from './PrinterCard'
 import { PaymentsCard } from './PaymentsCard'
 import { SpecialDaysCard } from './SpecialDaysCard'
 import { TableRulesCard } from './TableRulesCard'
+import { BookingTimeCard } from './BookingTimeCard'
 import { BusinessHoursEditor } from './BusinessHoursEditor'
 import {
   createLocation,
@@ -109,13 +110,8 @@ function initialTab(stripeReturn: string | null): SettingsTab {
   return fromHash in TAB_LABEL ? fromHash : 'profil'
 }
 
-/** Bokningslängd väljs i hela timmar; grace period i 5-minuterssteg. */
-const DURATION_HOURS = [1, 2, 3, 4]
+/** Grace period i 5-minuterssteg. Bokningslängden ställs in i kortet Bokningstid. */
 const GRACE_MINUTES = [15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
-
-function hoursLabel(h: number): string {
-  return h === 1 ? '1 timme' : `${h} timmar`
-}
 
 export default function InstallningarPage() {
   const { sub, groups } = useAuth()
@@ -488,33 +484,6 @@ export default function InstallningarPage() {
             </div>
             <div className="form-field">
               <span className="form-field-label-row">
-                <label htmlFor="rp-duration">Bokningslängd</label>
-                <InfoTooltip label="Bokningslängd">
-                  Hur länge ett bord är upptaget per bokning. Styr längden på
-                  varje ledig tid som visas för gästen - t.ex. ger 2 timmar
-                  bokningsbara pass som 18:00-20:00.
-                </InfoTooltip>
-              </span>
-              <select
-                id="rp-duration"
-                value={bookingDurationHours}
-                onChange={(e) => {
-                  setSaved(false)
-                  setBookingDurationHours(Number(e.target.value))
-                }}
-              >
-                {!DURATION_HOURS.includes(bookingDurationHours) && (
-                  <option value={bookingDurationHours}>{hoursLabel(bookingDurationHours)}</option>
-                )}
-                {DURATION_HOURS.map((h) => (
-                  <option key={h} value={h}>
-                    {hoursLabel(h)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="form-field">
-              <span className="form-field-label-row">
                 <label htmlFor="rp-grace">Grace period (minuter)</label>
                 <InfoTooltip label="Grace period (minuter)">
                   Hur länge bordet hålls om gästen är sen. Därefter blir bordet
@@ -551,6 +520,10 @@ export default function InstallningarPage() {
             }}
           />
         </section>
+
+        <div hidden={tab !== 'profil'}>
+          <BookingTimeCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+        </div>
 
         {isOwner && (
         <section className="admin-card table-card" hidden={tab !== 'personal'}>

@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useLocationId } from '../../shared/location'
 import { useAuth } from '../auth/useAuth'
-import { NEEDS_OWNER, STATUS_LABEL, formatDate, kronor, listRequests, statusClass } from './cateringApi'
+import { NEEDS_OWNER, formatDate, kronor, listRequests, statusClass, statusLabel } from './cateringApi'
 import type { CateringStatus, RequestSummary } from './cateringApi'
 import './catering.css'
 import { Loading } from '../../shared/Loading'
@@ -102,7 +102,7 @@ export default function CateringPage() {
                     <tr>
                       <th>Datum</th>
                       <th>Kund</th>
-                      <th>Portioner</th>
+                      <th>Gäster</th>
                       <th>Belopp</th>
                       <th>Status</th>
                       <th />
@@ -122,10 +122,10 @@ export default function CateringPage() {
                           {r.companyName ? `${r.companyName} · ` : ''}
                           {r.customerName}
                         </td>
-                        <td>{r.portions != null ? <Num>{r.portions}</Num> : '-'}</td>
+                        <td>{r.guests != null ? <Num>{r.guests}</Num> : r.portions != null ? <><Num>{r.portions}</Num> port</> : '-'}</td>
                         <td><Num>{kronor(r.total)}</Num></td>
                         <td>
-                          <span className={`status-badge ${statusClass(r.status)}`}>{STATUS_LABEL[r.status]}</span>
+                          <span className={`status-badge ${statusClass(r.status)}`}>{statusLabel(r)}</span>
                           {r.paid && <span className="cell-muted"> · betald</span>}
                         </td>
                         <td>

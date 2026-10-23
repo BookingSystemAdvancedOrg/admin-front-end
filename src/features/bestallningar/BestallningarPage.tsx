@@ -247,7 +247,7 @@ export default function BestallningarPage() {
               {order.mode === 'pickup' ? 'Hämtad' : 'Serverad'}
             </button>
           )}
-          {print?.printerConfigured && !confirming && (
+          {print?.printerConfigured && !confirming && order.status !== 'cancelled' && (
             <button type="button" className="btn outline square" disabled={isBusy}
               onClick={() => void reprint(order)}>
               Skriv ut igen

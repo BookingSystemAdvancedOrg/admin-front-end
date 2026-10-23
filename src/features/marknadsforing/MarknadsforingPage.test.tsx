@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiError } from '../../shared/api'
 import MarknadsforingPage from './MarknadsforingPage'
 import type { Campaign, Overview, Template } from './marketingApi'
 
@@ -195,6 +196,15 @@ describe('Välkomsterbjudande', () => {
       enabled: true, percent: 15, minOrderOre: 20000, frequency: 'page',
     }))
     expect(await screen.findByText('Sparat. Erbjudandet visas nu på er webbplats.')).toBeInTheDocument()
+  })
+
+  it('explains in Swedish when the legal sender is missing', async () => {
+    api.getOfferSettings.mockResolvedValue(view)
+    api.saveOfferSettings.mockRejectedValue(new ApiError(400, 'the restaurant has no legal name and address for the footer'))
+    renderAt('/marknadsforing?flik=erbjudande')
+    await userEvent.click(await screen.findByRole('switch', { name: 'Visa på webbplatsen' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    expect(await screen.findByText(/Företagsnamn och adress saknas för restaurangen/)).toBeInTheDocument()
   })
 
   it('refuses a headline that names another percent', async () => {

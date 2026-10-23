@@ -61,7 +61,9 @@ describe('SubscribersTab', () => {
     const dialog = screen.getByRole('dialog', { name: 'Radera gästens uppgifter' })
     await user.click(within(dialog).getByRole('button', { name: 'Radera' }))
     expect(api.eraseGuest).toHaveBeenCalledWith('anna@example.se')
-    expect(await screen.findByText(/2 poster anonymiserades/)).toBeInTheDocument()
+    expect(await screen.findByText(/2 poster anonymiserades/)).toHaveTextContent(
+      'Adressen tas bort ur samtyckesloggen vid nästa automatiska gallring',
+    )
     expect(screen.getByText(/Bokning 2026-12-24/)).toBeInTheDocument()
   })
 

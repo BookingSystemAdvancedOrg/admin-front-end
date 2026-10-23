@@ -222,8 +222,12 @@ export function eraseSummary(r: EraseResult): string {
   const parts = [`${r.anonymised} ${r.anonymised === 1 ? 'post' : 'poster'} anonymiserades`]
   if (r.marketingRowsDeleted) parts.push('gästen togs bort från mottagarlistan')
   if (r.consentWithdrawn.length) parts.push('samtycket till erbjudanden återkallades')
+  // Samtyckesloggen rensas av den nattliga gallringen (data-retention), inte direkt.
+  const log = r.consentWithdrawn.length
+    ? ' Adressen tas bort ur samtyckesloggen vid nästa automatiska gallring; bara en spärr finns kvar.'
+    : ''
   const kept = r.kept.length
     ? ` ${r.kept.length} pågående ${r.kept.length === 1 ? 'post' : 'poster'} finns kvar: avboka eller avsluta och radera igen.`
     : ''
-  return `Klart: ${parts.join(', ')}.${kept}`
+  return `Klart: ${parts.join(', ')}.${log}${kept}`
 }

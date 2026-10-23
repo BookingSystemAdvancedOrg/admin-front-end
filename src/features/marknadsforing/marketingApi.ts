@@ -523,6 +523,8 @@ export const ERROR_TEXT: Record<string, string> = {
   campaign_not_paused: 'Kampanjen är inte pausad.',
   'monthly limit reached': 'Månadens gräns för utskick är nådd. Fortsätt nästa månad.',
   'no subscribers in this audience': 'Ingen i målgruppen prenumererar ännu.',
+  'the restaurant has no legal name and address for the footer':
+    'Företagsnamn och adress saknas för restaurangen, och lagen kräver att de står i varje utskick. Be Booqy fylla i dem.',
   'the restaurant has no website address yet for the buttons':
     'Restaurangen har ingen webbadress än, så knapparna har ingenstans att leda.',
   "your account has no email address to send a test to": 'Ditt konto saknar e-postadress för testutskick.',

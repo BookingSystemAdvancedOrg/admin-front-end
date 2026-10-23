@@ -76,4 +76,20 @@ describe('BestallningarPage printing', () => {
     await screen.findByText('#7')
     expect(screen.queryByRole('button', { name: 'Skriv ut igen' })).toBeNull()
   })
+
+  it('never offers a reprint for a cancelled order', async () => {
+    listOrders.mockResolvedValue({ date: '2026-10-12', ordering: { open: true },
+      orders: [{ ...ORDER, status: 'cancelled', cancelledAt: '2026-10-12T16:10:00Z' }] })
+    render(<BestallningarPage />)
+    expect(await screen.findByText('Avslutade idag (1)')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Skriv ut igen' })).toBeNull()
+  })
+
+  it('explains a refused reprint of a cancelled order', async () => {
+    const user = userEvent.setup()
+    reprintOrder.mockRejectedValue(new ApiError(409, 'order_cancelled'))
+    render(<BestallningarPage />)
+    await user.click(await screen.findByRole('button', { name: 'Skriv ut igen' }))
+    expect(await screen.findByText('Beställningen är avbruten och skrivs inte ut igen.')).toBeInTheDocument()
+  })
 })

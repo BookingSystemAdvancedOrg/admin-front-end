@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { campaignSlug, change, cleanTemplate, percent, templateErrors, trackedLink } from './marketingApi'
+import { ApiError } from '../../shared/api'
+import { campaignSlug, change, cleanTemplate, errorText, percent, templateErrors, trackedLink } from './marketingApi'
 import type { TemplateInput } from './marketingApi'
 
 const base: TemplateInput = {
@@ -77,5 +78,12 @@ describe('format', () => {
     expect(change(0, 0)).toBeNull()
     expect(percent(1, 3)).toBe('33,3 %')
     expect(percent(1, 0)).toBe('-')
+  })
+})
+
+describe('errorText', () => {
+  it('explains a send refused for a missing legal sender in Swedish', () => {
+    const err = new ApiError(400, 'the restaurant has no legal name and address for the footer')
+    expect(errorText(err, 'Kunde inte skicka.')).toMatch(/^Företagsnamn och adress saknas/)
   })
 })

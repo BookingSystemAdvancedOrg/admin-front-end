@@ -6,7 +6,7 @@
   display: inline-flex;
   align-items: center;
   width: 100%;
-  min-width: 9.5em;
+  min-width: 0;
 }
 
 .date-input > input {
@@ -57,16 +57,21 @@
 
 .datetime-input {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   width: 100%;
+  min-width: 0;
 }
 
+/* Får inte plats bredvid varandra: tiden hamnar under datumet i stället för utanför kanten. */
 .datetime-input .date-input {
-  flex: 1 1 auto;
+  flex: 1 1 10em;
 }
 
 .datetime-input .time-input {
-  flex: 0 0 6.5em;
+  flex: 1 0 6em;
+  max-width: 9em;
+  min-width: 0;
 }
 
 /* --- Kalendern --------------------------------------------------------- */

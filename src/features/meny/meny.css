@@ -80,6 +80,8 @@
 
 .dish-schedule > .form-grid {
   align-self: stretch;
+  /* Datum + tid tar en hel rad var, så att inget går utanför modalen. */
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .dish-schedule legend {

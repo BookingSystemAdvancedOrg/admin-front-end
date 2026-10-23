@@ -130,7 +130,8 @@ export default function CateringRequestPage() {
   async function openDocument(docId: 'offer' | 'signed') {
     setError(null)
     try {
-      window.open((await documentLink(locationId, requestId, docId)).url, '_blank', 'noopener')
+      // Same tab: a window opened after an await is blocked by iOS Safari. The link lives 5 minutes.
+      window.location.assign((await documentLink(locationId, requestId, docId)).url)
     } catch (err) {
       setError(errorText(err))
     }
@@ -520,7 +521,7 @@ export default function CateringRequestPage() {
                 </button>
               )}
               <button type="button" className="btn outline square"
-                onClick={() => void signatureLink(locationId, requestId).then((l) => window.open(l.url, '_blank'))}>
+                onClick={() => void signatureLink(locationId, requestId).then((l) => window.location.assign(l.url))}>
                 Ladda ner signaturbevis
               </button>
               {isOwner && request.stripeInvoiceId && !request.paid && request.status !== 'cancelled' && (

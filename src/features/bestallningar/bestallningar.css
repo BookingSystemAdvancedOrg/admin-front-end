@@ -171,3 +171,8 @@
 .qr-tile-label {
   font: 700 16px/1.2 var(--sans);
 }
+
+/* Köksskrivaren: läget för en beställning som inte är utskriven än. */
+.order-print {
+  align-self: flex-start;
+}

@@ -25,8 +25,24 @@
 }
 
 .orders-banner.open {
-  background: var(--tint-green);
-  color: var(--accent-ink);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Tydligt grönt "öppet"-läge som syns mot den ljusa bakgrunden, i båda lägena. */
+  background: color-mix(in srgb, var(--success) 16%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--success) 45%, transparent);
+  border-left-width: 4px;
+  color: var(--success-ink);
+}
+
+.orders-banner.open::before {
+  content: '';
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--success) 25%, transparent);
 }
 
 .orders-banner.paused {

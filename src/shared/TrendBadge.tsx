@@ -11,7 +11,7 @@ export function TrendBadge({ trend, label, className = '' }: { trend: Trend; lab
   if (!trend.text) return null
   return (
     <span className={`trend trend--${trend.tone} ${className}`}>
-      {trend.direction === 'up' && trend.text !== 'ny' && <Icon name="trend-up" size={14} />}
+      {trend.direction === 'up' && (trend.text !== 'ny' || trend.tone !== 'neutral') && <Icon name="trend-up" size={14} />}
       {trend.direction === 'down' && <Icon name="trend-down" size={14} />}
       <span aria-hidden="true">{trend.text}</span>
       {label && (

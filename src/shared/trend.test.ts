@@ -39,7 +39,11 @@ describe('trendOf', () => {
 
   it('is neutral on zero: a reset or a day that has just started', () => {
     expect(trendOf(0, 12_000_00, 'revenue', 'samma tid förra veckan')).toEqual({ tone: 'neutral', direction: null, text: '', spoken: '' })
-    expect(trendOf(0, 4, 'noShows', 'förra perioden').tone).toBe('neutral')
+    expect(trendOf(0, 0, 'noShows', 'förra perioden').tone).toBe('neutral')
+  })
+
+  it('is green when something bad dropped to zero', () => {
+    expect(trendOf(0, 4, 'noShows', 'förra perioden')).toMatchObject({ tone: 'good', direction: 'down', text: '-100\u00a0%' })
   })
 
   it('is neutral without a comparison', () => {
@@ -49,13 +53,17 @@ describe('trendOf', () => {
     expect(trendOf(Number.NaN, 10, 'orders', 'x').tone).toBe('neutral')
   })
 
-  it('calls growth from nothing new, not green', () => {
+  it('calls growth from nothing new and green, and new bad things red', () => {
     expect(trendOf(5, 0, 'orders', 'förra perioden')).toEqual({
-      tone: 'neutral',
+      tone: 'good',
       direction: 'up',
       text: 'ny',
-      spoken: 'nytt mot förra perioden, inget att jämföra med',
+      spoken: 'upp från noll mot förra perioden',
     })
+    expect(trendOf(55_900, 0, 'revenue', 'samma tid förra veckan').tone).toBe('good')
+    expect(trendOf(3, 0, 'noShows', 'förra perioden').tone).toBe('bad')
+    // Under tröskeln är även en nystart brus.
+    expect(trendOf(50_00, 0, 'revenue', 'x').tone).toBe('neutral')
   })
 
   it('says unchanged when nothing moved', () => {

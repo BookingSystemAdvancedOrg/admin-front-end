@@ -446,7 +446,7 @@ export function Delta({ trend, pending = false, children }: { trend: Trend | nul
   if (!trend.text) return null
   return (
     <span className={`sk-delta sk-delta--${trend.tone === 'neutral' ? 'flat' : trend.tone}`}>
-      {trend.direction === 'up' && trend.text !== 'ny' && <Icon name="trend-up" size={13} className="sk-delta-icon" />}
+      {trend.direction === 'up' && (trend.text !== 'ny' || trend.tone !== 'neutral') && <Icon name="trend-up" size={13} className="sk-delta-icon" />}
       {trend.direction === 'down' && <Icon name="trend-down" size={13} className="sk-delta-icon" />}
       <span aria-hidden="true">{trend.text}</span>
       <span className="sk-delta-label" aria-hidden="true">

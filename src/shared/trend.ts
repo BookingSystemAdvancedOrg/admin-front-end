@@ -90,8 +90,13 @@ export function trendOf(
   const rule = RULES[metric]
   const versus = against ? ` mot ${against}` : ''
   // Noll är en nystart (dagen har just börjat, ingen data än), inget betyg.
-  if (current === 0) return NONE
-  if (previous === 0) return { tone: 'neutral', direction: 'up', text: 'ny', spoken: `nytt${versus}, inget att jämföra med` }
+  // Men noll av något dåligt (inga uteblivna) mot förra gången är ett framsteg.
+  if (current === 0 && (previous === 0 || rule.better === 'up')) return NONE
+  // Från ingenting till något: mer omsättning än noll är ett framsteg, uteblivna där det inte fanns några är det inte.
+  if (previous === 0) {
+    const tone: TrendTone = current < rule.minAbs ? 'neutral' : rule.better === 'up' ? 'good' : 'bad'
+    return { tone, direction: 'up', text: 'ny', spoken: `upp från noll${versus}` }
+  }
 
   const diff = current - previous
   const pct = (diff / Math.abs(previous)) * 100

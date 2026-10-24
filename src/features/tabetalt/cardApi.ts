@@ -222,6 +222,7 @@ const ERRORS: Record<string, string> = {
   payment_canceled: 'Betalningen är stängd i Stripe. Starta en ny betalning.',
   changed_retry: 'Betalningen ändrades precis. Visar läget nu.',
   refund_via_order: 'Betalningen gäller en beställning: återbetala genom att avbryta beställningen under Beställningar.',
+  refund_via_kassa: 'Betalningen gjordes i Kassan: gör en retur på kvittot under Kassa, Kvitton.',
   refund_failed: 'Stripe kunde inte återbetala just nu. Inget har ändrats, försök igen.',
   stripe_refused: 'Stripe tog inte emot betalningen. Försök igen eller kontakta support.',
   payment_unavailable: 'Stripe svarar inte just nu. Försök igen om en stund.',

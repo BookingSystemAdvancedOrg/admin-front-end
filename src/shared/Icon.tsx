@@ -35,6 +35,10 @@ export type IconName =
   | 'arrow-right'
   | 'trend-up'
   | 'trend-down'
+  | 'plus'
+  | 'minus'
+  | 'printer'
+  | 'mail'
 
 // Egna ikoner, 24x24 med 1.8 px linje.
 const DRAWN: Record<IconName, string> = {
@@ -66,6 +70,10 @@ const DRAWN: Record<IconName, string> = {
   'arrow-right': '<path d="M4.5 12H19M13.5 6.5L19 12l-5.5 5.5"/>',
   'trend-up': '<path d="M3.5 17.5l6-6 4 4 7-7.5M15 8h5.5v5.5"/>',
   'trend-down': '<path d="M3.5 6.5l6 6 4-4 7 7.5M15 16h5.5v-5.5"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  minus: '<path d="M5 12h14"/>',
+  printer: '<path d="M7 9V4h10v5M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9h14a1.5 1.5 0 0 1 1.5 1.5v5A1.5 1.5 0 0 1 19 17h-2M7 14h10v6H7z"/>',
+  mail: '<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 6 8-6"/>',
 }
 
 // Noun Project-filer som finns i repot (läses in vid bygget).

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { Num } from '../../shared/motion/Num'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { QuickLinkIcon } from './QuickLinkIcon'
@@ -26,6 +27,8 @@ import { kronor, listOrders } from '../bestallningar/ordersApi'
 import type { Order } from '../bestallningar/ordersApi'
 import { listRequests } from '../catering/cateringApi'
 import type { RequestSummary } from '../catering/cateringApi'
+import { getPrintStatus } from '../bestallningar/printApi'
+import type { PrintStatus } from '../bestallningar/printApi'
 import { tableNames, useTables } from '../../shared/tables'
 import {
   ACTIVE_STATUSES,
@@ -68,6 +71,8 @@ interface OverviewData {
   ordersLastWeek: Order[] | null
   /** Cateringförfrågningar; null = saknas i planen eller kunde inte hämtas. */
   catering: RequestSummary[] | null
+  /** Köksskrivarens läge; null = ingen beställning i planen eller kunde inte hämtas. */
+  print: PrintStatus | null
 }
 
 const EMPTY: OverviewData = {
@@ -80,6 +85,7 @@ const EMPTY: OverviewData = {
   orders: null,
   ordersLastWeek: null,
   catering: null,
+  print: null,
 }
 
 /** Ett anrop som misslyckas ger `null` (okänt) i stället för att fälla sidan. */
@@ -141,7 +147,8 @@ export default function OversiktPage() {
       hasOrdering ? orNull(listOrders(locationId)) : Promise.resolve(null),
       hasCatering ? orNull(listRequests(locationId)) : Promise.resolve(null),
       hasOrdering ? orNull(listOrders(locationId, addDays(todayIn(timezoneSetting), -7))) : Promise.resolve(null),
-    ]).then(([loc, menu, versions, users, today, orders, catering, lastWeek]) => {
+      hasOrdering ? orNull(getPrintStatus(locationId)) : Promise.resolve(null),
+    ]).then(([loc, menu, versions, users, today, orders, catering, lastWeek, print]) => {
       if (cancelled) return
       setFetched({
         forLocation: locationId,
@@ -153,6 +160,7 @@ export default function OversiktPage() {
         orders: orders ? orders.orders : null,
         ordersLastWeek: lastWeek ? lastWeek.orders : null,
         catering,
+        print,
       })
     })
     return () => {
@@ -172,12 +180,14 @@ export default function OversiktPage() {
     dpaAccepted: tenant?.dpa ? tenant.dpa.upToDate : undefined,
   })
   const remaining = steps.filter((s) => s.done === false).length
-  // Kom igång (bara ägaren): överst så länge något är kvar (eller inte gick
-  // att kontrollera), längst ned som liten bekräftelse när allt är klart.
+  // Kom igång (bara ägaren): direkt under nyckeltalen så länge något är kvar
+  // (eller inte gick att kontrollera), längst ned som liten bekräftelse när
+  // allt är klart. Nyckeltalen står alltid först: "hur går dagen, vad
+  // behöver mig nu" ska synas utan att scrolla, även på telefonen.
   const setupIncomplete = isOwner && !loading && steps.some((s) => s.done !== true)
   const setupComplete = isOwner && !loading && steps.every((s) => s.done === true)
 
-  const setupList = steps.map((step) => (
+  const stepItem = (step: (typeof steps)[number]) => (
     <Link key={step.id} to={step.to} className="activity-item setup-step">
       <span className="activity-text">
         <span className={`setup-check ${step.done ? 'done' : ''}`} aria-hidden="true">
@@ -189,20 +199,26 @@ export default function OversiktPage() {
         {step.done ? 'Klart' : step.done === null ? 'Kunde inte kontrolleras' : 'Att göra'}
       </span>
     </Link>
-  ))
+  )
+  const setupList = steps.map(stepItem)
+  // Medan något är kvar visas bara det som är kvar, så att dagens bokningar inte trycks ned.
+  const pendingList = steps.filter((s) => s.done !== true).map(stepItem)
+  const doneCount = steps.length - pendingList.length
 
   const todayActive = data.today
     ? data.today.filter((r) => ACTIVE_STATUSES.includes(r.status))
     : null
 
-  // De fyra nyckeltalen överst. Varje ruta är en länk dit man åtgärdar saken.
+  // Nyckeltalen överst, i den ordning restaurangen tittar (docs/DASHBOARD.md):
+  // det som väntar, dagens gäster, köket och sist pengarna. Varje ruta är en
+  // länk dit man åtgärdar saken. Utan beställning i planen visas bara de två
+  // första, i stället för två rutor med "ingår inte".
   const bookings = bookingsToday(data.today, clockIn(timezone))
   const revenue = revenueToday(data.orders)
   // Dagen hittills mot samma veckodag förra veckan fram till samma klockslag.
   const revenueBefore = sample ? SAMPLE_REVENUE_LAST_WEEK : revenueUntil(data.ordersLastWeek, clockIn(timezone), timezone)
   const inProgress = activeOrders(data.orders)
-  const todo = todoQueue(data.today, data.catering)
-  const notInPlan = 'Beställning ingår inte i er plan'
+  const todo = todoQueue(data.today, data.catering, sample ? null : data.print)
 
   const stats: {
     label: string
@@ -213,42 +229,6 @@ export default function OversiktPage() {
     tone?: 'attention'
     trend?: Trend
   }[] = [
-    {
-      label: 'Bokningar idag',
-      value: bookings ? String(bookings.count) : '-',
-      note: !bookings
-        ? 'Kunde inte hämtas'
-        : bookings.next
-          ? `${bookings.guests} gäster · nästa ${bookings.next.startTime}, ${bookings.next.customerName || 'gäst'} (${bookings.next.partySize} pers)`
-          : `${bookings.guests} gäster · inga fler gäster idag`,
-      action: 'Se dagens bokningar',
-      to: '/bokningar',
-    },
-    {
-      label: 'Dagens omsättning',
-      value: !hasOrdering ? '-' : revenue ? kronor(revenue.amount) : '-',
-      note: !hasOrdering
-        ? notInPlan
-        : revenue
-          ? `${revenue.count} betalda beställningar`
-          : 'Kunde inte hämtas',
-      action: 'Se försäljningen',
-      to: '/bestallningar',
-      trend: hasOrdering && revenue ? trendOf(revenue.amount, revenueBefore, 'revenue', 'samma tid förra veckan') : undefined,
-    },
-    {
-      label: 'Aktiva beställningar',
-      value: !hasOrdering ? '-' : inProgress ? String(inProgress.count) : '-',
-      note: !hasOrdering
-        ? notInPlan
-        : !inProgress
-          ? 'Kunde inte hämtas'
-          : inProgress.count === 0
-            ? 'Inga pågående just nu'
-            : `${inProgress.fresh} nya · ${inProgress.preparing} tillagas · ${inProgress.ready} klara`,
-      action: 'Öppna beställningar',
-      to: '/bestallningar',
-    },
     {
       label: 'Att hantera',
       value: todo ? String(todo.total) : '-',
@@ -262,6 +242,40 @@ export default function OversiktPage() {
       to: todo?.items[0]?.to ?? '/bokningar',
       tone: todo && todo.total > 0 ? 'attention' : undefined,
     },
+    {
+      label: 'Bokningar idag',
+      value: bookings ? String(bookings.count) : '-',
+      note: !bookings
+        ? 'Kunde inte hämtas'
+        : bookings.next
+          ? `${bookings.guests} gäster · nästa ${bookings.next.startTime}, ${bookings.next.customerName || 'gäst'} (${bookings.next.partySize} pers)`
+          : `${bookings.guests} gäster · inga fler gäster idag`,
+      action: 'Se dagens bokningar',
+      to: '/bokningar',
+    },
+    ...(hasOrdering
+      ? [
+        {
+          label: 'Aktiva beställningar',
+          value: inProgress ? String(inProgress.count) : '-',
+          note: !inProgress
+            ? 'Kunde inte hämtas'
+            : inProgress.count === 0
+              ? 'Inga pågående just nu'
+              : `${inProgress.fresh} nya · ${inProgress.preparing} tillagas · ${inProgress.ready} klara`,
+          action: 'Öppna beställningar',
+          to: '/bestallningar',
+        },
+        {
+          label: 'Dagens omsättning',
+          value: revenue ? kronor(revenue.amount) : '-',
+          note: revenue ? `${revenue.count} betalda beställningar` : 'Kunde inte hämtas',
+          action: 'Se försäljningen',
+          to: '/bestallningar',
+          trend: revenue ? trendOf(revenue.amount, revenueBefore, 'revenue', 'samma tid förra veckan') : undefined,
+        },
+        ]
+      : []),
   ]
 
   const acceptedNotice = accepted?.dpaAccepted ? (
@@ -321,6 +335,12 @@ export default function OversiktPage() {
           </div>
         )}
         {acceptedNotice}
+        <section className="stats-row" aria-label="Idag" style={{ '--stat-cols': stats.length } as CSSProperties}>
+          {stats.map((stat, i) => (
+            <StatTile key={stat.label} {...stat} loading={loading} index={i} />
+          ))}
+        </section>
+
         {setupIncomplete && (
           <section className="admin-card activity-card setup-card" aria-label="Kom igång" data-tour="getting-started">
             <div className="card-head">
@@ -329,18 +349,12 @@ export default function OversiktPage() {
                 <p className="cell-muted setup-lead">Gör klart de här stegen så att gästerna kan boka och beställa.</p>
               </div>
               <span className="cell-muted">
-                {remaining === 0 ? 'Kunde inte kontrollera allt' : <><Num>{remaining}</Num> kvar</>}
+                {remaining === 0 ? 'Kunde inte kontrollera allt' : <><Num>{doneCount}</Num> av {steps.length} klara</>}
               </span>
             </div>
-            {setupList}
+            {pendingList}
           </section>
         )}
-
-        <section className="stats-row" aria-label="Nyckeltal">
-          {stats.map((stat, i) => (
-            <StatTile key={stat.label} {...stat} loading={loading} index={i} />
-          ))}
-        </section>
 
         <div className="oversikt-row">
           <section className="admin-card bookings-card" aria-label="Dagens bokningar">

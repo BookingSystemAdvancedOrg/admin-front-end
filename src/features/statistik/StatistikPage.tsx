@@ -112,6 +112,7 @@ function Card({ title, label, children, wide }: { title: string; label: string; 
 }
 
 const SECTIONS = [
+  { id: 'omsattning', label: 'Omsättning' },
   { id: 'gaster', label: 'Gäster' },
   { id: 'belaggning', label: 'Beläggning' },
   { id: 'meny', label: 'Beställningar och meny' },
@@ -241,6 +242,89 @@ export default function StatistikPage() {
   const lowSize = sizeRows.reduce<(typeof sizeRows)[number] | null>((low, r) => (r.occupancy !== null && (!low || (low.occupancy ?? 101) > r.occupancy) ? r : low), null)
   const topDishes = s?.dishes.slice(0, 10) ?? []
   const bottomDishes = s && s.dishes.length > 12 ? [...s.dishes].slice(-5).reverse() : []
+
+  // Nyckeltalen överst. Ägaren ser pengarna först (omsättning, bokningar,
+  // snittorder, uteblivna), personalen driften; se docs/DASHBOARD.md.
+  const kpiTiles: Record<string, ReactNode> | null = s && {
+    revenue: (
+      <Tile
+        key="revenue"
+        label="Omsättning"
+        value={fmtKr(s.revenue)}
+        sub={`Beställningar ${fmtKr(s.orderRevenue)}, catering ${fmtKr(s.cateringRevenue)}${s.inPersonRevenue ? `, kort i kassan ${fmtKr(s.inPersonRevenue)}` : ''}`}
+        spark={spark((d) => d.revenue, (v) => fmtKr(v))}
+        {...versus(s.revenue, p?.revenue, 'revenue')}
+      />
+    ),
+    bookings: (
+      <Tile
+        key="bookings"
+        label="Bokningar"
+        value={fmtInt(s.bookings)}
+        sub={`${fmtInt(s.cancelled)} avbokade, ${fmtInt(s.lateCancels)} sent`}
+        spark={spark((d) => d.bookings)}
+        {...versus(s.bookings, p?.bookings, 'bookings')}
+      />
+    ),
+    guests: (
+      <Tile
+        key="guests"
+        label="Gäster"
+        value={fmtInt(s.guests)}
+        sub={s.avgParty ? `${fmtDecimal(s.avgParty)} per sällskap` : 'Inga bokningar'}
+        spark={spark((d) => d.guests)}
+        {...versus(s.guests, p?.guests, 'guests')}
+      />
+    ),
+    avgOrder: (
+      <Tile
+        key="avgOrder"
+        label="Snittorder"
+        value={fmtKr(s.avgOrder)}
+        sub={`${fmtInt(s.orders)} betalda beställningar`}
+        {...versus(s.avgOrder, p?.avgOrder, 'avgOrder')}
+      />
+    ),
+    noShows: (
+      <Tile
+        key="noShows"
+        label="Uteblivna"
+        value={fmtPct(s.noShowPct ?? 0)}
+        sub={
+          money && s.feeCount > 0
+            ? `${fmtInt(s.noShows)} bokningar, ${fmtKr(s.feesCharged)} i avgifter`
+            : `${fmtInt(s.noShows)} av ${fmtInt(s.bookings)} bokningar`
+        }
+        tone={s.noShowPct !== null && s.noShowPct >= 10 ? 'bad' : s.noShowPct !== null && s.noShowPct >= 5 ? 'warn' : undefined}
+        {...versus(s.noShowPct, p?.noShowPct, 'noShows')}
+      />
+    ),
+    occupancy: (
+      <Tile
+        key="occupancy"
+        label="Beläggning"
+        value={fmtPct(s.occupancy)}
+        sub={s.seatFill !== null ? `${fmtPct(s.seatFill)} av stolarna fyllda` : 'av bordstiden bokad'}
+        spark={spark((d) => d.occupancy, (v) => fmtPct(v))}
+        {...versus(s.occupancy, p?.occupancy, 'occupancy')}
+      />
+    ),
+    orders: (
+      <Tile key="orders" label="Beställningar" value={fmtInt(s.orders)} sub={`${fmtInt(s.tableOrders)} vid bordet`} spark={spark((d) => d.orders)} {...versus(s.orders, p?.orders, 'orders')} />
+    ),
+    prepTime: (
+      <Tile
+        key="prepTime"
+        label="Tillagningstid"
+        value={s.prepMinutes !== null ? `${fmtDecimal(s.prepMinutes)} min` : '-'}
+        sub={s.latePct !== null ? `${fmtPct(s.latePct)} blev klara sent` : 'Från påbörjad till klar'}
+        {...versus(s.prepMinutes, p?.prepMinutes, 'prepTime')}
+      />
+    ),
+  }
+  const kpiOrder = money
+    ? ['revenue', 'bookings', 'guests', 'avgOrder', 'noShows', 'occupancy']
+    : ['guests', 'bookings', 'occupancy', 'noShows', 'orders', 'prepTime']
 
   return (
     <>
@@ -409,65 +493,7 @@ export default function StatistikPage() {
                 Så gick det
               </h2>
               <div className="sk-kpis">
-                <Tile
-                  label="Gäster"
-                  value={fmtInt(s.guests)}
-                  sub={s.avgParty ? `${fmtDecimal(s.avgParty)} per sällskap` : 'Inga bokningar'}
-                  spark={spark((d) => d.guests)}
-                  {...versus(s.guests, p?.guests, 'guests')}
-                />
-                <Tile
-                  label="Bokningar"
-                  value={fmtInt(s.bookings)}
-                  sub={`${fmtInt(s.cancelled)} avbokade, ${fmtInt(s.lateCancels)} sent`}
-                  spark={spark((d) => d.bookings)}
-                  {...versus(s.bookings, p?.bookings, 'bookings')}
-                />
-                <Tile
-                  label="Beläggning"
-                  value={fmtPct(s.occupancy)}
-                  sub={s.seatFill !== null ? `${fmtPct(s.seatFill)} av stolarna fyllda` : 'av bordstiden bokad'}
-                  spark={spark((d) => d.occupancy, (v) => fmtPct(v))}
-                  {...versus(s.occupancy, p?.occupancy, 'occupancy')}
-                />
-                <Tile
-                  label="Uteblivna"
-                  value={fmtPct(s.noShowPct ?? 0)}
-                  sub={
-                    money && s.feeCount > 0
-                      ? `${fmtInt(s.noShows)} bokningar, ${fmtKr(s.feesCharged)} i avgifter`
-                      : `${fmtInt(s.noShows)} av ${fmtInt(s.bookings)} bokningar`
-                  }
-                  tone={s.noShowPct !== null && s.noShowPct >= 10 ? 'bad' : s.noShowPct !== null && s.noShowPct >= 5 ? 'warn' : undefined}
-                  {...versus(s.noShowPct, p?.noShowPct, 'noShows')}
-                />
-                {money ? (
-                  <>
-                    <Tile
-                      label="Omsättning"
-                      value={fmtKr(s.revenue)}
-                      sub={`Beställningar ${fmtKr(s.orderRevenue)}, catering ${fmtKr(s.cateringRevenue)}${s.inPersonRevenue ? `, kort i kassan ${fmtKr(s.inPersonRevenue)}` : ''}`}
-                      spark={spark((d) => d.revenue, (v) => fmtKr(v))}
-                      {...versus(s.revenue, p?.revenue, 'revenue')}
-                    />
-                    <Tile
-                      label="Snittorder"
-                      value={fmtKr(s.avgOrder)}
-                      sub={`${fmtInt(s.orders)} betalda beställningar`}
-                      {...versus(s.avgOrder, p?.avgOrder, 'avgOrder')}
-                    />
-                  </>
-                ) : (
-                  <>
-                    <Tile label="Beställningar" value={fmtInt(s.orders)} sub={`${fmtInt(s.tableOrders)} vid bordet`} spark={spark((d) => d.orders)} {...versus(s.orders, p?.orders, 'orders')} />
-                    <Tile
-                      label="Tillagningstid"
-                      value={s.prepMinutes !== null ? `${fmtDecimal(s.prepMinutes)} min` : '-'}
-                      sub={s.latePct !== null ? `${fmtPct(s.latePct)} blev klara sent` : 'Från påbörjad till klar'}
-                      {...versus(s.prepMinutes, p?.prepMinutes, 'prepTime')}
-                    />
-                  </>
-                )}
+                {kpiTiles && kpiOrder.map((k) => kpiTiles[k])}
               </div>
             </section>
 
@@ -503,7 +529,7 @@ export default function StatistikPage() {
                   Varför
                 </h2>
                 <nav className="sk-anchors" aria-label="Avsnitt">
-                  {SECTIONS.filter((x) => (x.id === 'meny' ? showOrders : x.id === 'catering' ? showCatering : x.id === 'hemsidan' ? showWeb : true)).map((x) => (
+                  {SECTIONS.filter((x) => (x.id === 'omsattning' ? money && showOrders : x.id === 'meny' ? showOrders : x.id === 'catering' ? showCatering : x.id === 'hemsidan' ? showWeb : true)).map((x) => (
                     <a key={x.id} href={`#${x.id}`} onClick={(e) => {
                       e.preventDefault()
                       document.getElementById(x.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -513,6 +539,38 @@ export default function StatistikPage() {
                   ))}
                 </nav>
               </div>
+
+              {/* Ägaren: pengarna över tid först, sedan gästerna (docs/DASHBOARD.md). */}
+              {money && showOrders && (
+                <>
+                  <h3 className="sk-section-title" id="omsattning">
+                    Omsättning
+                  </h3>
+                  <div className="sk-charts">
+                    <Card title={insightTitle('Omsättningen', deltaPct(s.revenue, p?.revenue))} label="Omsättning per dag" wide>
+                      <p className="sk-insight">Betalda beställningar och levererad catering per dag, inklusive moms.</p>
+                      <ColumnChart
+                        unit="kr"
+                        format={fmtKr}
+                        seriesLabel="Omsättning"
+                        previousLabel={p && prevByDay(0) ? (f.compare === 'year' ? 'Förra året' : 'Förra perioden') : undefined}
+                        ariaLabel="Omsättning per dag"
+                        points={s.byDay.map((d, i) => ({
+                          key: d.date,
+                          label: shortDate(d.date),
+                          value: d.revenue ?? 0,
+                          previous: prevByDay(i)?.revenue,
+                          detail: `${fmtInt(d.orders)} beställningar`,
+                          title: `${shortDate(d.date)}: ${fmtKr(d.revenue)} (${fmtInt(d.orders)} beställningar)${prevByDay(i) ? `, ${cmp} ${fmtKr(prevByDay(i)!.revenue)}` : ''}`,
+                        }))}
+                        tableHead={['Dag', 'Omsättning', 'Beställningar', 'Catering']}
+                        tableRows={s.byDay.map((d) => [shortDate(d.date), fmtKr(d.revenue), d.orders, fmtKr(d.cateringRevenue)])}
+                      />
+                      <Tip>Jämför med samma period förra året för att se säsongen, inte bara förra veckan.</Tip>
+                    </Card>
+                  </div>
+                </>
+              )}
 
               <h3 className="sk-section-title" id="gaster">
                 Gäster och bokningar
@@ -723,30 +781,6 @@ export default function StatistikPage() {
                     Beställningar och meny
                   </h3>
                   <div className="sk-charts">
-                    {money && (
-                      <Card title={insightTitle('Omsättningen', deltaPct(s.revenue, p?.revenue))} label="Omsättning per dag" wide>
-                        <p className="sk-insight">Betalda beställningar och levererad catering per dag, inklusive moms.</p>
-                        <ColumnChart
-                          unit="kr"
-                          format={fmtKr}
-                          seriesLabel="Omsättning"
-                          previousLabel={p && prevByDay(0) ? (f.compare === 'year' ? 'Förra året' : 'Förra perioden') : undefined}
-                          ariaLabel="Omsättning per dag"
-                          points={s.byDay.map((d, i) => ({
-                            key: d.date,
-                            label: shortDate(d.date),
-                            value: d.revenue ?? 0,
-                            previous: prevByDay(i)?.revenue,
-                            detail: `${fmtInt(d.orders)} beställningar`,
-                            title: `${shortDate(d.date)}: ${fmtKr(d.revenue)} (${fmtInt(d.orders)} beställningar)${prevByDay(i) ? `, ${cmp} ${fmtKr(prevByDay(i)!.revenue)}` : ''}`,
-                          }))}
-                          tableHead={['Dag', 'Omsättning', 'Beställningar', 'Catering']}
-                          tableRows={s.byDay.map((d) => [shortDate(d.date), fmtKr(d.revenue), d.orders, fmtKr(d.cateringRevenue)])}
-                        />
-                        <Tip>Jämför med samma period förra året för att se säsongen, inte bara förra veckan.</Tip>
-                      </Card>
-                    )}
-
                     <Card title={money ? `${fmtKr(s.avgOrder)} per beställning` : `${fmtInt(s.orders)} beställningar`} label="Beställningarna">
                       {money && (
                         <Ring

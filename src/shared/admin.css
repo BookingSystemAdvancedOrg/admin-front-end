@@ -268,7 +268,8 @@
 
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* Översikt sätter --stat-cols när raden har färre rutor (ingen beställning i planen). */
+  grid-template-columns: repeat(var(--stat-cols, 4), minmax(0, 1fr));
   gap: 20px;
 }
 
@@ -1148,7 +1149,12 @@
     padding-right: 20px;
   }
 
-  .stats-row,
+  /* Nyckeltalen stannar två och två: hela raden ska synas på en gång i telefonen. */
+  .stats-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
   .quick-links-row {
     grid-template-columns: 1fr;
   }
@@ -1176,8 +1182,7 @@
 
   .table-card,
   .bookings-card,
-  .activity-card,
-  .stat-tile {
+  .activity-card {
     padding: 16px;
   }
 
@@ -1185,8 +1190,28 @@
     font-size: 18px;
   }
 
+  .stat-tile {
+    gap: 6px;
+    padding: 14px;
+  }
+
   .stat-tile-value {
     font-size: 26px;
+  }
+
+  /* Två rutor i bredd: beloppet stannar på en rad. */
+  .stats-row .stat-tile-value {
+    font-size: clamp(20px, 6.4vw, 26px);
+    white-space: nowrap;
+  }
+
+  .stats-row .stat-tile-note {
+    min-height: 0;
+  }
+
+  /* Hela rutan är länken; texten under behövs inte på den smala skärmen. */
+  .stats-row .stat-tile-action {
+    display: none;
   }
 
   .modal-overlay {

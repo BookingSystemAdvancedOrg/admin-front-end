@@ -4,6 +4,7 @@ import type { StripeStage } from '../../shared/tenant'
 import type { Reservation } from '../bokningar/bookingsApi'
 import type { Order } from '../bestallningar/ordersApi'
 import type { RequestSummary } from '../catering/cateringApi'
+import type { PrintStatus } from '../bestallningar/printApi'
 
 /**
  * Ren logik för Översikten - utan React, så den går att testa direkt.
@@ -181,7 +182,7 @@ export function activeOrders(
 
 /** Det som väntar på personalen, i den ordning det bör tas. */
 export interface TodoItem {
-  id: 'payments' | 'catering' | 'unconfirmed'
+  id: 'prints' | 'payments' | 'catering' | 'unconfirmed'
   count: number
   label: string
   to: string
@@ -190,19 +191,24 @@ export interface TodoItem {
 const CATERING_WAITING = new Set(['requested', 'change_requested'])
 
 /**
- * Att hantera: misslyckade kortdragningar (avgifter), cateringförfrågningar
- * som väntar på svar och bokningar där gästen inte lagt in kortet än.
- * Det mest brådskande först. null = inget gick att hämta.
+ * Att hantera: köksnotor som inte kom ut (köket vet inte om beställningen),
+ * misslyckade kortdragningar (avgifter), cateringförfrågningar som väntar på
+ * svar och bokningar där gästen inte lagt in kortet än. Det mest brådskande
+ * först. Notor som väntar i kön räknas bara när skrivaren inte svarar; annars
+ * skrivs de ut inom några sekunder. null = inget gick att hämta.
  */
 export function todoQueue(
   today: Reservation[] | null,
   catering: RequestSummary[] | null,
+  print: PrintStatus | null = null,
 ): { total: number; items: TodoItem[] } | null {
   if (!today && !catering) return null
+  const notPrinted = print?.printerConfigured ? print.failed + (print.online ? 0 : print.unprinted) : 0
   const failed = (today ?? []).filter((r) => r.payment?.status === 'failed').length
   const waitingCatering = (catering ?? []).filter((c) => CATERING_WAITING.has(c.status)).length
   const unconfirmed = (today ?? []).filter((r) => r.status === 'pending').length
   const items: TodoItem[] = [
+    { id: 'prints' as const, count: notPrinted, label: notPrinted === 1 ? 'ej utskriven nota' : 'ej utskrivna notor', to: '/bestallningar' },
     { id: 'payments' as const, count: failed, label: failed === 1 ? 'misslyckad betalning' : 'misslyckade betalningar', to: '/bokningar' },
     { id: 'catering' as const, count: waitingCatering, label: waitingCatering === 1 ? 'cateringförfrågan' : 'cateringförfrågningar', to: '/catering' },
     { id: 'unconfirmed' as const, count: unconfirmed, label: unconfirmed === 1 ? 'obekräftad bokning' : 'obekräftade bokningar', to: '/bokningar' },

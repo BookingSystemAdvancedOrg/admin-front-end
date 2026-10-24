@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Tenant, TenantDpa } from '../../shared/tenant'
 import { ApiError } from '../../shared/api'
@@ -95,7 +95,18 @@ describe('AvtalPage', () => {
     current = tenant({ required: true })
     const accepted = tenant({ required: true, acceptedVersion: DPA_VERSION, acceptedAt: '2026-10-22T10:00:00.000Z', upToDate: true })
     acceptDpa.mockResolvedValue(accepted)
-    renderAt('/avtal', <AvtalPage />)
+    function Home() {
+      const { state } = useLocation()
+      return <p>Översikt {JSON.stringify(state)}</p>
+    }
+    render(
+      <MemoryRouter initialEntries={['/avtal']}>
+        <Routes>
+          <Route path="/avtal" element={<AvtalPage />} />
+          <Route path="/" element={<Home />} />
+        </Routes>
+      </MemoryRouter>,
+    )
 
     for (const section of DPA_SECTIONS) expect(screen.getByRole('heading', { name: section.title })).toBeInTheDocument()
     expect(screen.getByText(/publiceras när restaurangens ägare har godkänt/)).toBeInTheDocument()
@@ -106,6 +117,8 @@ describe('AvtalPage', () => {
 
     expect(acceptDpa).toHaveBeenCalledWith(current)
     expect(replaceTenant).toHaveBeenCalledWith(accepted)
+    // Vidare till Översikt, där Kom igång visar nästa steg.
+    expect(await screen.findByText('Översikt {"dpaAccepted":true,"sitePublished":true}')).toBeInTheDocument()
   })
 
   it('explains an outdated version', async () => {

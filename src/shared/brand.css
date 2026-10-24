@@ -494,9 +494,10 @@ button.stat-tile {
 
 @media (max-width: 900px) {
   /* Bandet följer inte med vid rullning på mobil (regeln ovan satte sticky
-     igen efter admin.css, så bandet låg kvar över innehållet). */
+     igen efter admin.css, så bandet låg kvar över innehållet). Relative, inte
+     static: vätskans canvas ska stanna inom bandet, annars täcker den sidan. */
   .admin-sidebar {
-    position: static;
+    position: relative;
   }
 
   .admin-nav-item {
@@ -546,6 +547,33 @@ button.stat-tile {
   text-transform: uppercase;
   color: var(--accent-ink);
   transform: rotate(-4deg);
+}
+
+.done-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 20px;
+  border: 1.5px solid var(--success-ink);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.done-notice .icon {
+  color: var(--success-ink);
+}
+
+.done-notice > span {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.done-notice .link-action {
+  margin-left: auto;
+  font-weight: 600;
 }
 
 .sample-notice .link-action {

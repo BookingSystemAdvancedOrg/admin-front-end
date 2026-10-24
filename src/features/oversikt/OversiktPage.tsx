@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Num } from '../../shared/motion/Num'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { QuickLinkIcon } from './QuickLinkIcon'
 import { MonthCard } from './MonthCard'
 import { StatTile } from './StatTile'
@@ -107,6 +107,10 @@ export default function OversiktPage() {
   const location = currentLocation(tenantState)
   const { labels } = useTables(locationId)
   const isOwner = tenant?.role === 'owner_user'
+  // Kommer man hit direkt efter att ha godkänt avtalet (AvtalPage) står en kvittens överst.
+  const { state: navState, pathname: here } = useLocation()
+  const navigate = useNavigate()
+  const accepted = (navState as { dpaAccepted?: boolean; sitePublished?: boolean } | null) ?? null
   const [fetched, setFetched] = useState<OverviewData>(EMPTY)
   const [sample, setSample] = useState(sampleModeOn)
   const chooseSample = (on: boolean) => {
@@ -260,11 +264,31 @@ export default function OversiktPage() {
     },
   ]
 
+  const acceptedNotice = accepted?.dpaAccepted ? (
+    <div className="done-notice" role="status">
+      <Icon name="check" size={18} />
+      <span>
+        Avtalet är godkänt{accepted.sitePublished ? ' och er webbplats kan nu publiceras' : ''}.
+        {!locationId
+          ? ' Fortsätt med restaurangens uppgifter nedan.'
+          : loading
+            ? ''
+            : setupIncomplete
+              ? ' Fortsätt med stegen nedan.'
+              : ' Allt är klart för gästerna.'}
+      </span>
+      <button type="button" className="link-action" onClick={() => navigate(here, { replace: true, state: null })}>
+        Stäng
+      </button>
+    </div>
+  ) : null
+
   if (!locationId) {
     return (
       <>
         <AdminTopbar title="Översikt" />
         <div className="admin-main">
+          {acceptedNotice}
           <section className="admin-card table-card">
             <h2 className="card-title">Välkommen{tenant ? `, ${tenant.name}` : ''}!</h2>
             <p className="cell-muted">
@@ -296,6 +320,7 @@ export default function OversiktPage() {
             </button>
           </div>
         )}
+        {acceptedNotice}
         {setupIncomplete && (
           <section className="admin-card activity-card setup-card" aria-label="Kom igång" data-tour="getting-started">
             <div className="card-head">

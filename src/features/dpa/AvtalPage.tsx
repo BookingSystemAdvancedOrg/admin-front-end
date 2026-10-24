@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { ApiError } from '../../shared/api'
 import { replaceTenant, useTenant } from '../../shared/tenant'
@@ -20,13 +21,16 @@ function formatDate(iso: string): string {
  * och vem som godkände (POST /tenant/dpa/accept). En ny restaurang
  * publiceras först när avtalet är godkänt; en restaurang som redan är live
  * påverkas aldrig, den får bara en påminnelse.
+ *
+ * Efter godkännandet går ägaren vidare till Översikt, där Kom igång visar
+ * nästa steg, så att ingen blir stående här med en knapp som försvann.
  */
 export default function AvtalPage() {
   const { tenant } = useTenant()
   const [checked, setChecked] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [justAccepted, setJustAccepted] = useState(false)
+  const navigate = useNavigate()
 
   const dpa = tenant?.dpa
   const isOwner = tenant?.role === 'owner_user'
@@ -38,8 +42,9 @@ export default function AvtalPage() {
     setBusy(true)
     setError(null)
     try {
-      replaceTenant(await acceptDpa(tenant))
-      setJustAccepted(true)
+      const updated = await acceptDpa(tenant)
+      replaceTenant(updated)
+      navigate('/', { state: { dpaAccepted: true, sitePublished: Boolean(updated.dpa?.required) } })
     } catch (err) {
       setError(
         err instanceof ApiError && err.status === 409
@@ -63,7 +68,6 @@ export default function AvtalPage() {
               <h2 className="card-title">Avtalet är godkänt</h2>
               <p className="cell-muted">
                 Version {dpa.acceptedVersion} godkändes {formatDate(dpa.acceptedAt)}.
-                {justAccepted && dpa.required ? ' Er webbplats kan nu publiceras.' : ''}
               </p>
             </>
           ) : (

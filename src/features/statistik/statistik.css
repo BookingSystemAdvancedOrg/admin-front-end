@@ -200,6 +200,14 @@
   background: var(--sk-steel);
 }
 
+.sk-ring-seg--muted {
+  stroke: var(--muted);
+}
+
+.sk-swatch--muted {
+  background: var(--muted);
+}
+
 .sk-bar {
   fill: var(--ink);
 }

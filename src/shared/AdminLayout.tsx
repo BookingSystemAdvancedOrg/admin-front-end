@@ -39,6 +39,8 @@ const NAV_GROUPS: { id: string; label: string | null; items: NavItem[] }[] = [
       { to: '/bokningar', label: 'Bokningar', tour: 'nav-bokningar' },
       // Bara för restauranger vars plan har matbeställning.
       { to: '/bestallningar', label: 'Beställningar', tour: 'nav-bestallningar', feature: 'ordering' },
+      // Kortbetalning på restaurangens kortläsare; bara med kortterminaler i planen.
+      { to: '/ta-betalt', label: 'Ta betalt', tour: 'nav-ta-betalt', feature: 'terminal' },
       // Förfrågningar; inställningar och rabatter nås därifrån (/cateringkalkyl).
       { to: '/catering', label: 'Catering', tour: 'nav-catering', feature: 'catering' },
     ],

@@ -81,6 +81,10 @@
   background: var(--sk-steel, #80868c);
 }
 
+.chart-tip-swatch--muted {
+  background: var(--muted);
+}
+
 .chart-tip-swatch--line {
   width: 12px;
   height: 2px;

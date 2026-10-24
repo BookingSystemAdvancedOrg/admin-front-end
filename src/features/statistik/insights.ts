@@ -73,6 +73,13 @@ export interface InsightsSummary {
   latePct: number | null
   cateringRevenue?: number
   revenue?: number
+  /** Kortköp i kassan (Ta betalt): antal och belopp, alla. */
+  cardPayments?: number
+  cardRevenue?: number
+  /** Den del av kortköpen som inte är en beställnings (ingår i revenue). */
+  inPersonRevenue?: number
+  cardRefunds?: number
+  cardRefunded?: number
   catering: {
     requests: number
     offers: number

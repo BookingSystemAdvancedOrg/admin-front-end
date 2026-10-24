@@ -440,7 +440,7 @@ export default function StatistikPage() {
                     <Tile
                       label="Omsättning"
                       value={fmtKr(s.revenue)}
-                      sub={`Beställningar ${fmtKr(s.orderRevenue)}, catering ${fmtKr(s.cateringRevenue)}`}
+                      sub={`Beställningar ${fmtKr(s.orderRevenue)}, catering ${fmtKr(s.cateringRevenue)}${s.inPersonRevenue ? `, kort i kassan ${fmtKr(s.inPersonRevenue)}` : ''}`}
                       spark={spark((d) => d.revenue, (v) => fmtKr(v))}
                       delta={delta(s.revenue, p?.revenue)}
                     />
@@ -754,6 +754,7 @@ export default function StatistikPage() {
                             { key: 'pickup', label: 'Avhämtning', value: s.pickupRevenue ?? 0, tone: 'ink' },
                             { key: 'table', label: 'Vid bordet', value: s.tableRevenue ?? 0, tone: 'red' },
                             { key: 'catering', label: 'Catering', value: s.cateringRevenue ?? 0, tone: 'steel' },
+                            ...(s.inPersonRevenue ? [{ key: 'card', label: 'Kort i kassan', value: s.inPersonRevenue, tone: 'muted' as const }] : []),
                           ]}
                         />
                       )}
@@ -768,6 +769,15 @@ export default function StatistikPage() {
                         <dd>{fmtPct(s.latePct)}</dd>
                         {money && (
                           <>
+                            {(s.cardPayments ?? 0) > 0 && (
+                              <>
+                                <dt>Kortköp i kassan</dt>
+                                <dd>
+                                  {fmtInt(s.cardPayments ?? 0)}, {fmtKr(s.cardRevenue)}
+                                  {(s.cardRefunds ?? 0) > 0 ? `, ${fmtKr(s.cardRefunded)} återbetalt` : ''}
+                                </dd>
+                              </>
+                            )}
                             <dt>Avgifter, uteblivna och sena</dt>
                             <dd>
                               {fmtKr(s.feesCharged)}

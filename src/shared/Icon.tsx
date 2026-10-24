@@ -11,6 +11,7 @@ export type IconName =
   | 'dish'
   | 'note'
   | 'card'
+  | 'receipt'
   | 'check'
   | 'close'
   | 'circle'
@@ -38,6 +39,7 @@ const DRAWN: Record<IconName, string> = {
   dish: '<path d="M3.5 17.5h17M5.5 17.5a6.5 6.5 0 0 1 13 0M12 11V8.5M10.4 8.5h3.2M7 20h10"/>',
   note: '<path d="M4 20h6M14.6 5.4l4 4L9.4 18.6H5.4v-4z"/>',
   card: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10.2h18M7 14.6h3.5"/>',
+  receipt: '<path d="M6 3.5h12v17l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4-2 1.4zM9 8h6M9 11.5h6M9 15h3.5"/>',
   check: '<path d="M5 12.6l4.3 4.2L19 7.2"/>',
   close: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
   circle: '<circle cx="12" cy="12" r="5.5"/>',

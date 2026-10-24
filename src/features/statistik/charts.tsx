@@ -298,7 +298,7 @@ export function BarChart({ rows, format, seriesLabel, ariaLabel, tableHead, tabl
 
 /* --- Ringen ---------------------------------------------------------------- */
 
-export type RingTone = 'ink' | 'red' | 'steel'
+export type RingTone = 'ink' | 'red' | 'steel' | 'muted'
 
 export interface RingSegment {
   key: string

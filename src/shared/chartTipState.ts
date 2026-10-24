@@ -8,7 +8,7 @@ import type { FocusEvent, KeyboardEvent, PointerEvent } from 'react'
  * träffytor och säger var tipset ska sitta, i SVG:ns egna koordinater.
  */
 
-export type TipTone = 'ink' | 'red' | 'steel' | 'line' | 'border'
+export type TipTone = 'ink' | 'red' | 'steel' | 'muted' | 'line' | 'border'
 
 export interface TipRow {
   /** Seriens namn; utelämnas när diagrammet bara har en serie. */

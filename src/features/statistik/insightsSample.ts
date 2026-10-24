@@ -301,7 +301,7 @@ export function sampleSummary(from: string, to: string, today: string, f: Pick<F
   return s
 }
 
-const MONEY = ['revenue', 'orderRevenue', 'cateringRevenue', 'tableRevenue', 'pickupRevenue', 'avgOrder', 'feesCharged', 'feesRefunded'] as const
+const MONEY = ['revenue', 'orderRevenue', 'cateringRevenue', 'tableRevenue', 'pickupRevenue', 'avgOrder', 'feesCharged', 'feesRefunded', 'cardRevenue', 'inPersonRevenue', 'cardRefunded'] as const
 
 /** Personalens vy av exemplet: samma siffror utan belopp, som servern gör. */
 function withoutMoney(s: InsightsSummary): InsightsSummary {

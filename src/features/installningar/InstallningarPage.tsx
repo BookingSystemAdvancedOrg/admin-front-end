@@ -22,6 +22,7 @@ import { SpecialDaysCard } from './SpecialDaysCard'
 import { TableRulesCard } from './TableRulesCard'
 import { BookingTimeCard } from './BookingTimeCard'
 import { BusinessHoursEditor } from './BusinessHoursEditor'
+import { BokforingCard } from './BokforingCard'
 import {
   createLocation,
   getLocation,
@@ -88,7 +89,7 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * andra användare - de rutterna är bara för ägare.
  */
 /** Flikarna - en sektion i taget i stället för en lång sida. */
-type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'skrivare' | 'dagar' | 'bord' | 'statistik' | 'integritet'
+type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'skrivare' | 'dagar' | 'bord' | 'statistik' | 'bokforing' | 'integritet'
 
 const TAB_LABEL: Record<SettingsTab, string> = {
   profil: 'Restaurang',
@@ -101,6 +102,7 @@ const TAB_LABEL: Record<SettingsTab, string> = {
   dagar: 'Avvikande dagar',
   bord: 'Bord',
   statistik: 'Statistik',
+  bokforing: 'Bokföring',
   integritet: 'Integritet',
 }
 
@@ -421,7 +423,7 @@ export default function InstallningarPage() {
       <div className="admin-main">
         <nav className="settings-tabs" aria-label="Inställningar">
           {(Object.keys(TAB_LABEL) as SettingsTab[])
-            .filter((t) => (t === 'personal' || t === 'statistik' || t === 'integritet' ? isOwner : t === 'bestallning' || t === 'skrivare' ? Boolean(tenant?.entitlements.features.ordering) : true))
+            .filter((t) => (t === 'personal' || t === 'statistik' || t === 'bokforing' || t === 'integritet' ? isOwner : t === 'bestallning' || t === 'skrivare' ? Boolean(tenant?.entitlements.features.ordering) : true))
             .map((t) => (
               <button
                 key={t}
@@ -709,6 +711,12 @@ export default function InstallningarPage() {
               tenant={tenant}
               locationId={locationId}
             />
+          </div>
+        )}
+
+        {isOwner && tab === 'bokforing' && (
+          <div className="settings-row">
+            <BokforingCard key={locationId ?? 'none'} locationId={locationId} />
           </div>
         )}
 

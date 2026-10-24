@@ -39,6 +39,7 @@ export type IconName =
   | 'minus'
   | 'printer'
   | 'mail'
+  | 'download'
 
 // Egna ikoner, 24x24 med 1.8 px linje.
 const DRAWN: Record<IconName, string> = {
@@ -74,6 +75,7 @@ const DRAWN: Record<IconName, string> = {
   minus: '<path d="M5 12h14"/>',
   printer: '<path d="M7 9V4h10v5M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9h14a1.5 1.5 0 0 1 1.5 1.5v5A1.5 1.5 0 0 1 19 17h-2M7 14h10v6H7z"/>',
   mail: '<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 6 8-6"/>',
+  download: '<path d="M12 4v11M7 10.5l5 5 5-5M5 19.5h14"/>',
 }
 
 // Noun Project-filer som finns i repot (läses in vid bygget).

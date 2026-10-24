@@ -5,8 +5,8 @@ import { StatTile } from '../../shared/motion/StatTile'
 import { Num } from '../../shared/motion/Num'
 import { Loading } from '../../shared/Loading'
 import { useTenant } from '../../shared/tenant'
+import { trendOf } from '../../shared/trend'
 import {
-  change,
   channelLabel,
   errorText,
   getOverview,
@@ -121,12 +121,13 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
 
   const t = data?.totals
   const p = data?.previous
+  const against = `de ${days} dagarna innan`
   const tiles = t && p
     ? [
-        { label: 'Besök', value: t.visits.toLocaleString('sv-SE'), delta: change(t.visits, p.visits), note: `${t.pageviews.toLocaleString('sv-SE')} sidvisningar` },
-        { label: 'Bokningar via webbplatsen', value: t.bookings.toLocaleString('sv-SE'), delta: change(t.bookings, p.bookings), note: `${t.guests} gäster · ${percent(t.bookings, t.visits)} av besöken` },
-        { label: 'Beställningar', value: t.orders.toLocaleString('sv-SE'), delta: change(t.orders, p.orders), note: `${kronorFromOre(t.revenueOre)} i omsättning` },
-        { label: 'Prenumeranter', value: data.subscribers.toLocaleString('sv-SE'), delta: null, note: `${data.emailsThisMonth} av ${data.monthlyLimit} utskick denna månad` },
+        { label: 'Besök', value: t.visits.toLocaleString('sv-SE'), trend: trendOf(t.visits, p.visits, 'visits', against), note: `${t.pageviews.toLocaleString('sv-SE')} sidvisningar` },
+        { label: 'Bokningar via webbplatsen', value: t.bookings.toLocaleString('sv-SE'), trend: trendOf(t.bookings, p.bookings, 'bookings', against), note: `${t.guests} gäster · ${percent(t.bookings, t.visits)} av besöken` },
+        { label: 'Beställningar', value: t.orders.toLocaleString('sv-SE'), trend: trendOf(t.orders, p.orders, 'orders', against), note: `${kronorFromOre(t.revenueOre)} i omsättning` },
+        { label: 'Prenumeranter', value: data.subscribers.toLocaleString('sv-SE'), trend: undefined, note: `${data.emailsThisMonth} av ${data.monthlyLimit} utskick denna månad` },
       ]
     : []
 
@@ -172,7 +173,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
                 value={tile.value}
                 note={tile.note}
                 index={i}
-                delta={tile.delta ?? undefined}
+                trend={tile.trend}
               />
             ))}
           </section>

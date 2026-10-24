@@ -33,6 +33,8 @@ export type IconName =
   | 'arrow-up'
   | 'arrow-down'
   | 'arrow-right'
+  | 'trend-up'
+  | 'trend-down'
 
 // Egna ikoner, 24x24 med 1.8 px linje.
 const DRAWN: Record<IconName, string> = {
@@ -62,6 +64,8 @@ const DRAWN: Record<IconName, string> = {
   'arrow-up': '<path d="M12 19.5V5M6.5 10.5L12 5l5.5 5.5"/>',
   'arrow-down': '<path d="M12 4.5V19M6.5 13.5L12 19l5.5-5.5"/>',
   'arrow-right': '<path d="M4.5 12H19M13.5 6.5L19 12l-5.5 5.5"/>',
+  'trend-up': '<path d="M3.5 17.5l6-6 4 4 7-7.5M15 8h5.5v5.5"/>',
+  'trend-down': '<path d="M3.5 6.5l6 6 4-4 7 7.5M15 16h5.5v-5.5"/>',
 }
 
 // Noun Project-filer som finns i repot (läses in vid bygget).

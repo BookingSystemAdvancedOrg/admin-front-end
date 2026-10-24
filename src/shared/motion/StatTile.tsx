@@ -4,6 +4,10 @@ import { Link } from 'react-router-dom'
 import { Num } from './Num'
 import { useLiquidFill } from './useLiquidFill'
 import { useMotionAllowed } from './MotionScope'
+import { TrendBadge } from '../TrendBadge'
+import { useTrendPop } from './useTrendPop'
+import { toneClass } from '../trend'
+import type { Trend } from '../trend'
 
 const STAGGER_MS = 140
 
@@ -21,8 +25,8 @@ export interface StatTileProps {
   loading?: boolean
   /** Ordningsnummer i raden: varje ruta börjar lite efter den förra. */
   index?: number
-  /** Liten text uppe till höger (t.ex. "+12 %"); börjar den med - blir den röd. */
-  delta?: string
+  /** Hur det går mot jämförelsen (shared/trend): talet blir grönt eller rött och förändringen står uppe till höger. */
+  trend?: Trend
   className?: string
 }
 
@@ -43,12 +47,15 @@ export function StatTile({
   tone,
   loading = false,
   index = 0,
-  delta,
+  trend,
   className = '',
 }: StatTileProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const tileRef = useRef<HTMLElement>(null)
   const allowed = useMotionAllowed()
+  const trendTone = !loading && trend ? trend.tone : 'neutral'
+  // Lyser upp när uppräkningen nästan landat.
+  const valueRef = useTrendPop<HTMLParagraphElement>(trendTone, index * STAGGER_MS + 500)
   const liquid = useLiquidFill(tileRef, canvasRef, { active: !loading, enabled: allowed, index, staggerMs: STAGGER_MS, reveal: true })
 
   const touch = (e: PointerEvent<HTMLElement>, force: number) => {
@@ -70,11 +77,9 @@ export function StatTile({
       <canvas ref={canvasRef} className="stat-tile-liquid" aria-hidden="true" />
       <p className="stat-tile-label">
         {label}
-        {delta && !loading && (
-          <span className={delta.startsWith('-') ? 'stat-tile-delta down' : 'stat-tile-delta'}>{delta}</span>
-        )}
+        {trend && !loading && <TrendBadge trend={trend} className="stat-tile-delta" />}
       </p>
-      <p className="stat-tile-value">
+      <p ref={valueRef} className={`stat-tile-value${toneClass(trendTone)}`}>
         {loading ? '…' : <Num delayMs={index * STAGGER_MS}>{value}</Num>}
       </p>
       {(note || loading) && <p className="stat-tile-note">{loading ? 'Hämtar…' : note}</p>}

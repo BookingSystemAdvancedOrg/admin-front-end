@@ -18,6 +18,7 @@ import {
   clockIn,
   hasAnyOpeningHours,
   revenueToday,
+  revenueUntil,
   setupSteps,
   todoQueue,
 } from './overview'
@@ -35,7 +36,10 @@ import {
 } from '../bokningar/bookingsApi'
 import type { Reservation } from '../bokningar/bookingsApi'
 import { Loading } from '../../shared/Loading'
-import { SAMPLE_TABLE_LABELS, sampleData, sampleModeOn, setSampleMode } from './sample'
+import { SAMPLE_REVENUE_LAST_WEEK, SAMPLE_TABLE_LABELS, sampleData, sampleModeOn, setSampleMode } from './sample'
+import { addDays } from '../statistik/stats'
+import { trendOf } from '../../shared/trend'
+import type { Trend } from '../../shared/trend'
 import { Icon } from '../../shared/Icon'
 
 // Genvägskorten längst ned som länkar till de andra sidorna. Ägaren får
@@ -60,6 +64,8 @@ interface OverviewData {
   today: Reservation[] | null
   /** Dagens beställningar; null = saknas i planen eller kunde inte hämtas. */
   orders: Order[] | null
+  /** Samma veckodag förra veckan, att jämföra dagens omsättning med. */
+  ordersLastWeek: Order[] | null
   /** Cateringförfrågningar; null = saknas i planen eller kunde inte hämtas. */
   catering: RequestSummary[] | null
 }
@@ -72,6 +78,7 @@ const EMPTY: OverviewData = {
   staffCount: null,
   today: null,
   orders: null,
+  ordersLastWeek: null,
   catering: null,
 }
 
@@ -129,7 +136,8 @@ export default function OversiktPage() {
       orNull(listReservations(locationId, todayIn(timezoneSetting))),
       hasOrdering ? orNull(listOrders(locationId)) : Promise.resolve(null),
       hasCatering ? orNull(listRequests(locationId)) : Promise.resolve(null),
-    ]).then(([loc, menu, versions, users, today, orders, catering]) => {
+      hasOrdering ? orNull(listOrders(locationId, addDays(todayIn(timezoneSetting), -7))) : Promise.resolve(null),
+    ]).then(([loc, menu, versions, users, today, orders, catering, lastWeek]) => {
       if (cancelled) return
       setFetched({
         forLocation: locationId,
@@ -139,6 +147,7 @@ export default function OversiktPage() {
         staffCount: users ? users.filter((u) => u.role === 'staff').length : null,
         today,
         orders: orders ? orders.orders : null,
+        ordersLastWeek: lastWeek ? lastWeek.orders : null,
         catering,
       })
     })
@@ -185,6 +194,8 @@ export default function OversiktPage() {
   // De fyra nyckeltalen överst. Varje ruta är en länk dit man åtgärdar saken.
   const bookings = bookingsToday(data.today, clockIn(timezone))
   const revenue = revenueToday(data.orders)
+  // Dagen hittills mot samma veckodag förra veckan fram till samma klockslag.
+  const revenueBefore = sample ? SAMPLE_REVENUE_LAST_WEEK : revenueUntil(data.ordersLastWeek, clockIn(timezone), timezone)
   const inProgress = activeOrders(data.orders)
   const todo = todoQueue(data.today, data.catering)
   const notInPlan = 'Beställning ingår inte i er plan'
@@ -196,6 +207,7 @@ export default function OversiktPage() {
     action: string
     to: string
     tone?: 'attention'
+    trend?: Trend
   }[] = [
     {
       label: 'Bokningar idag',
@@ -218,6 +230,7 @@ export default function OversiktPage() {
           : 'Kunde inte hämtas',
       action: 'Se försäljningen',
       to: '/bestallningar',
+      trend: hasOrdering && revenue ? trendOf(revenue.amount, revenueBefore, 'revenue', 'samma tid förra veckan') : undefined,
     },
     {
       label: 'Aktiva beställningar',

@@ -151,6 +151,18 @@ export function revenueToday(orders: Order[] | null): { amount: number; count: n
   return { amount: paid.reduce((sum, o) => sum + o.totalAmount, 0), count: paid.length }
 }
 
+/**
+ * Omsättningen i öre en annan dag fram till samma klockslag som nu (platsens
+ * tid), så att dagen hittills jämförs rättvist med samma veckodag förra
+ * veckan: klockan tolv mot klockan tolv, inte mot hela kvällen.
+ * Beställningar utan tid räknas inte.
+ */
+export function revenueUntil(orders: Order[] | null, nowClock: string, timezone: string | null): number | null {
+  if (!orders) return null
+  const before = orders.filter((o) => o.createdAt && clockIn(timezone, new Date(o.createdAt)) <= nowClock)
+  return revenueToday(before)?.amount ?? 0
+}
+
 const IN_PROGRESS = new Set(['confirmed', 'preparing', 'ready'])
 
 /** Aktiva beställningar: betalda men inte klara/hämtade. */

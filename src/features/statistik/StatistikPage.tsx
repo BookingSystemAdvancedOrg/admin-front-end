@@ -5,6 +5,10 @@ import { AdminTopbar } from '../../shared/AdminTopbar'
 import { isApiConfigured } from '../../shared/api'
 import { Loading } from '../../shared/Loading'
 import { Num } from '../../shared/motion/Num'
+import { TrendBadge } from '../../shared/TrendBadge'
+import { useTrendPop } from '../../shared/motion/useTrendPop'
+import { toneClass, trendOf } from '../../shared/trend'
+import type { Trend, TrendMetric } from '../../shared/trend'
 import { canSeeInsights, currentLocation, useTenant } from '../../shared/tenant'
 import { todayIn } from '../bokningar/bookingsApi'
 import { channelLabel } from '../marknadsforing/marketingApi'
@@ -59,26 +63,32 @@ function Tile({
   label,
   value,
   sub,
-  delta,
+  trend,
+  against,
   spark,
   tone,
 }: {
   label: string
   value: string
   sub?: string
-  delta?: ReactNode
+  /** Mot jämförelsen (shared/trend); null = ingen förra period, utelämnad = ingen jämförelse vald. */
+  trend?: Trend | null
+  against?: string
   spark?: { points: { label: string; value: number }[]; format: (v: number) => string }
   tone?: 'warn' | 'bad'
 }) {
+  // En egen varningsfärg (t.ex. många uteblivna) går före tonen mot förra perioden.
+  const trendTone = !tone && trend ? trend.tone : 'neutral'
+  const valueRef = useTrendPop<HTMLElement>(trendTone, 500)
   return (
     <div className={`admin-card sk-kpi${tone ? ` sk-kpi--${tone}` : ''}`}>
       <span className="sk-kpi-label">{label}</span>
-      <strong className="sk-kpi-value">
+      <strong ref={valueRef} className={`sk-kpi-value${toneClass(trendTone)}`}>
         <Num>{value}</Num>
       </strong>
       {spark && <Sparkline points={spark.points} format={spark.format} label={label} />}
       {sub && <span className="sk-kpi-sub">{sub}</span>}
-      {delta}
+      {trend !== undefined && <Delta trend={trend}>mot {against}</Delta>}
     </div>
   )
 }
@@ -208,12 +218,8 @@ export default function StatistikPage() {
   const money = ready?.money ?? isOwner
   const cmp = compareLabel(f.compare)
   const comparing = f.compare !== 'none'
-  const delta = (cur: number | null | undefined, prev: number | null | undefined, invert = false) =>
-    comparing ? (
-      <Delta pct={deltaPct(cur, prev)} invert={invert}>
-        mot {cmp}
-      </Delta>
-    ) : undefined
+  const versus = (cur: number | null | undefined, prev: number | null | undefined, metric: TrendMetric) =>
+    comparing ? { trend: prev == null ? null : trendOf(cur, prev, metric, cmp), against: cmp } : {}
   const days = daysBetween(f.from, f.to)
   const spark = (pick: (d: InsightsSummary['byDay'][number]) => number | null | undefined, format: (v: number) => string = fmtInt) =>
     s && s.byDay.length >= 7 ? { points: s.byDay.map((d) => ({ label: shortDate(d.date), value: pick(d) ?? 0 })), format } : undefined
@@ -408,21 +414,21 @@ export default function StatistikPage() {
                   value={fmtInt(s.guests)}
                   sub={s.avgParty ? `${fmtDecimal(s.avgParty)} per sällskap` : 'Inga bokningar'}
                   spark={spark((d) => d.guests)}
-                  delta={delta(s.guests, p?.guests)}
+                  {...versus(s.guests, p?.guests, 'guests')}
                 />
                 <Tile
                   label="Bokningar"
                   value={fmtInt(s.bookings)}
                   sub={`${fmtInt(s.cancelled)} avbokade, ${fmtInt(s.lateCancels)} sent`}
                   spark={spark((d) => d.bookings)}
-                  delta={delta(s.bookings, p?.bookings)}
+                  {...versus(s.bookings, p?.bookings, 'bookings')}
                 />
                 <Tile
                   label="Beläggning"
                   value={fmtPct(s.occupancy)}
                   sub={s.seatFill !== null ? `${fmtPct(s.seatFill)} av stolarna fyllda` : 'av bordstiden bokad'}
                   spark={spark((d) => d.occupancy, (v) => fmtPct(v))}
-                  delta={delta(s.occupancy, p?.occupancy)}
+                  {...versus(s.occupancy, p?.occupancy, 'occupancy')}
                 />
                 <Tile
                   label="Uteblivna"
@@ -433,7 +439,7 @@ export default function StatistikPage() {
                       : `${fmtInt(s.noShows)} av ${fmtInt(s.bookings)} bokningar`
                   }
                   tone={s.noShowPct !== null && s.noShowPct >= 10 ? 'bad' : s.noShowPct !== null && s.noShowPct >= 5 ? 'warn' : undefined}
-                  delta={delta(s.noShowPct, p?.noShowPct, true)}
+                  {...versus(s.noShowPct, p?.noShowPct, 'noShows')}
                 />
                 {money ? (
                   <>
@@ -442,23 +448,23 @@ export default function StatistikPage() {
                       value={fmtKr(s.revenue)}
                       sub={`Beställningar ${fmtKr(s.orderRevenue)}, catering ${fmtKr(s.cateringRevenue)}${s.inPersonRevenue ? `, kort i kassan ${fmtKr(s.inPersonRevenue)}` : ''}`}
                       spark={spark((d) => d.revenue, (v) => fmtKr(v))}
-                      delta={delta(s.revenue, p?.revenue)}
+                      {...versus(s.revenue, p?.revenue, 'revenue')}
                     />
                     <Tile
                       label="Snittorder"
                       value={fmtKr(s.avgOrder)}
                       sub={`${fmtInt(s.orders)} betalda beställningar`}
-                      delta={delta(s.avgOrder, p?.avgOrder)}
+                      {...versus(s.avgOrder, p?.avgOrder, 'avgOrder')}
                     />
                   </>
                 ) : (
                   <>
-                    <Tile label="Beställningar" value={fmtInt(s.orders)} sub={`${fmtInt(s.tableOrders)} vid bordet`} spark={spark((d) => d.orders)} delta={delta(s.orders, p?.orders)} />
+                    <Tile label="Beställningar" value={fmtInt(s.orders)} sub={`${fmtInt(s.tableOrders)} vid bordet`} spark={spark((d) => d.orders)} {...versus(s.orders, p?.orders, 'orders')} />
                     <Tile
                       label="Tillagningstid"
                       value={s.prepMinutes !== null ? `${fmtDecimal(s.prepMinutes)} min` : '-'}
                       sub={s.latePct !== null ? `${fmtPct(s.latePct)} blev klara sent` : 'Från påbörjad till klar'}
-                      delta={delta(s.prepMinutes, p?.prepMinutes, true)}
+                      {...versus(s.prepMinutes, p?.prepMinutes, 'prepTime')}
                     />
                   </>
                 )}
@@ -827,7 +833,11 @@ export default function StatistikPage() {
                                   <td>{d.name}</td>
                                   <td className="num">{fmtInt(d.quantity)}</td>
                                   {money && <td className="num">{fmtKr(d.revenue)}</td>}
-                                  {p && <td className="num">{d.previousQuantity ? `${d.quantity >= d.previousQuantity ? '+' : '-'}${fmtPct(Math.abs(deltaPct(d.quantity, d.previousQuantity) ?? 0))}` : 'ny'}</td>}
+                                  {p && (
+                                    <td className="num">
+                                      <TrendBadge trend={trendOf(d.quantity, d.previousQuantity ?? 0, 'dishQuantity', cmp)} />
+                                    </td>
+                                  )}
                                 </tr>
                               ))}
                             </tbody>

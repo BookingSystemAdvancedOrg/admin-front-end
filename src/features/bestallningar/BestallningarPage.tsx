@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { StatTile } from '../../shared/motion/StatTile'
 import { Num } from '../../shared/motion/Num'
-import { revenueToday } from '../oversikt/overview'
+import { clockIn, revenueToday, revenueUntil } from '../oversikt/overview'
+import { addDays } from '../statistik/stats'
+import { trendOf } from '../../shared/trend'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useLocationId } from '../../shared/location'
 import { useAuth } from '../auth/useAuth'
@@ -64,6 +66,9 @@ export default function BestallningarPage() {
   const [fresh, setFresh] = useState<Set<string>>(new Set())
   const seen = useRef<Set<string> | null>(null)
   const [print, setPrint] = useState<PrintStatus | null>(null)
+  /** Listans datum (platsens dag) och samma veckodag förra veckan, för omsättningens jämförelse. */
+  const [listDate, setListDate] = useState<string | null>(null)
+  const [lastWeek, setLastWeek] = useState<{ key: string; orders: Order[] } | null>(null)
   const [printNotice, setPrintNotice] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
@@ -78,6 +83,7 @@ export default function BestallningarPage() {
       seen.current = ids
       setOrders(list.orders)
       setOrdering(list.ordering)
+      setListDate(list.date)
       setLoadError(false)
     } catch {
       setLoadError(true)
@@ -92,6 +98,18 @@ export default function BestallningarPage() {
     const timer = window.setInterval(() => void refresh(), POLL_MS)
     return () => window.clearInterval(timer)
   }, [locationId, refresh])
+
+  // Förra veckans dag hämtas en gång per dag, inte var tionde sekund.
+  useEffect(() => {
+    if (!locationId || !listDate) return
+    let cancelled = false
+    listOrders(locationId, addDays(listDate, -7))
+      .then((l) => !cancelled && setLastWeek({ key: `${locationId}|${listDate}`, orders: l.orders }))
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [locationId, listDate])
 
   const newCount = (orders ?? []).filter((o) => o.status === 'confirmed').length
   useEffect(() => {
@@ -154,12 +172,20 @@ export default function BestallningarPage() {
   const done = (orders ?? []).filter((o) => o.status === 'completed' || o.status === 'cancelled')
   const paused = ordering?.reason === 'paused'
   const revenue = revenueToday(orders)
+  const lastWeekOrders = lastWeek?.key === `${locationId}|${listDate}` ? lastWeek.orders : null
+  // Restaurangerna ligger i Europe/Stockholm (clockIn faller tillbaka dit).
+  const revenueBefore = revenueUntil(lastWeekOrders, clockIn(null), null)
   const count = (status: string) => active.filter((o) => o.status === status).length
   const tiles = [
     { label: 'Nya', value: String(count('confirmed')), note: count('confirmed') ? 'Väntar på köket' : 'Inget nytt just nu', tone: count('confirmed') ? ('attention' as const) : undefined },
     { label: 'Tillagas', value: String(count('preparing')), note: 'I köket' },
     { label: 'Klara', value: String(count('ready')), note: 'Att hämta eller servera' },
-    { label: 'Omsättning idag', value: revenue ? kronor(revenue.amount) : '-', note: revenue ? `${revenue.count} betalda beställningar` : 'Kunde inte hämtas' },
+    {
+      label: 'Omsättning idag',
+      value: revenue ? kronor(revenue.amount) : '-',
+      note: revenue ? `${revenue.count} betalda beställningar` : 'Kunde inte hämtas',
+      trend: revenue ? trendOf(revenue.amount, revenueBefore, 'revenue', 'samma tid förra veckan') : undefined,
+    },
   ]
 
   const pauseControls = (

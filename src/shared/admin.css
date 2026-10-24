@@ -1527,12 +1527,18 @@
   font-variant-numeric: tabular-nums;
 }
 
-.month-kpi--hero dd {
+/* Rött betyder sämre än innan (shared/trend), så talen är bläck tills
+   jämförelsen säger grönt eller rött. Varningen (många uteblivna) står kvar. */
+.month-kpi--warn dd {
   color: var(--accent-ink);
 }
 
-.month-kpi--warn dd {
-  color: var(--accent-ink);
+.month-kpi dd.trend-value--good {
+  color: var(--trend-good);
+}
+
+.month-kpi dd.trend-value--bad {
+  color: var(--trend-bad);
 }
 
 .month-kpi-sub {

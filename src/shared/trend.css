@@ -1,0 +1,59 @@
+/* --- Hur det går: grönt, rött eller neutralt (shared/trend.ts) ------------ */
+
+.trend-value--good {
+  color: var(--trend-good);
+}
+
+.trend-value--bad {
+  color: var(--trend-bad);
+}
+
+.trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font: 600 12px/1.3 var(--mono);
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.trend .icon {
+  flex: none;
+}
+
+.trend--good {
+  color: var(--trend-good);
+}
+
+.trend--bad {
+  color: var(--trend-bad);
+}
+
+.trend-label {
+  margin-left: 3px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* Det gröna talet lyser upp en gång när det landar (useTrendPop). */
+.trend-pop {
+  animation: trend-pop 520ms var(--ease) both;
+}
+
+@keyframes trend-pop {
+  0% {
+    text-shadow: 0 0 0 transparent;
+  }
+  35% {
+    text-shadow: 0 0 16px color-mix(in srgb, var(--trend-good) 55%, transparent);
+  }
+  100% {
+    text-shadow: 0 0 0 transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trend-pop {
+    animation: none;
+  }
+}

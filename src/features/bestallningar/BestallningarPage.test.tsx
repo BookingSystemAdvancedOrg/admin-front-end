@@ -110,7 +110,8 @@ describe('BestallningarPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Avbryt' }))
     await user.click(screen.getByRole('button', { name: /Bekräfta/ }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Stripe kunde inte återbetala')
-    expect(listOrders).toHaveBeenCalledTimes(2)
+    // Dagens lista hämtas om; förra veckans dag (med datum) räknas inte.
+    expect(listOrders.mock.calls.filter((c) => c.length === 1)).toHaveLength(2)
   })
 
   it('pauses and resumes ordering', async () => {

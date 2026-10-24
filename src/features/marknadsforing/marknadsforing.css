@@ -116,15 +116,6 @@
   color: var(--ink);
 }
 
-.mk-delta {
-  font: 600 12px/1 var(--font);
-  color: var(--success-ink);
-}
-
-.mk-delta.down {
-  color: var(--danger-ink);
-}
-
 .mk-tile-note {
   font: 400 13px/1.4 var(--font);
   color: var(--muted);

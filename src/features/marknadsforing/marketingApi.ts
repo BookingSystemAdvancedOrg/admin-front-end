@@ -490,13 +490,6 @@ export function percent(part: number, whole: number): string {
   return `${Math.round((part / whole) * 1000) / 10} %`.replace('.', ',')
 }
 
-/** Förändring mot föregående period, t.ex. "+12 %". */
-export function change(now: number, before: number): string | null {
-  if (!before) return now ? 'ny' : null
-  const pct = Math.round(((now - before) / before) * 100)
-  return `${pct > 0 ? '+' : ''}${pct} %`
-}
-
 export function isoDay(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')

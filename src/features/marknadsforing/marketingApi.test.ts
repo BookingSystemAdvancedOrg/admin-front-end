@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from '../../shared/api'
-import { campaignSlug, change, cleanTemplate, errorText, percent, templateErrors, trackedLink } from './marketingApi'
+import { campaignSlug, cleanTemplate, errorText, percent, templateErrors, trackedLink } from './marketingApi'
 import type { TemplateInput } from './marketingApi'
 
 const base: TemplateInput = {
@@ -71,11 +71,7 @@ describe('tracked links', () => {
 })
 
 describe('format', () => {
-  it('formats change and percent', () => {
-    expect(change(12, 10)).toBe('+20 %')
-    expect(change(5, 10)).toBe('-50 %')
-    expect(change(3, 0)).toBe('ny')
-    expect(change(0, 0)).toBeNull()
+  it('formats percent', () => {
     expect(percent(1, 3)).toBe('33,3 %')
     expect(percent(1, 0)).toBe('-')
   })

@@ -3,6 +3,8 @@ import type { CSSProperties, ReactNode, RefObject } from 'react'
 import { ChartTip } from '../../shared/ChartTip'
 import { useChartTip } from '../../shared/chartTipState'
 import type { TipContent } from '../../shared/chartTipState'
+import { Icon } from '../../shared/Icon'
+import type { Trend } from '../../shared/trend'
 import { reducedMotion } from '../../shared/motion/countUp'
 import { heatStep, niceMax, tickLabel } from './chartScale'
 import { fmtPct } from './stats'
@@ -433,18 +435,24 @@ export function Ring({ title, segments, total, centerLabel, empty, format, value
 
 /* --- Förändringen mot förra perioden ---------------------------------------- */
 
-/** "+12 % mot förra perioden" som en stämpel; `invert` när lägre är bättre. */
-export function Delta({ pct, invert = false, pending = false, children }: { pct: number | null; invert?: boolean; pending?: boolean; children?: ReactNode }) {
+/**
+ * "+12 % mot förra perioden" som en stämpel, med tonen från den gemensamma
+ * regeln (shared/trend). `trend` null: det finns ingen förra period. På noll
+ * (inget än i perioden) står ingen stämpel alls.
+ */
+export function Delta({ trend, pending = false, children }: { trend: Trend | null; pending?: boolean; children?: ReactNode }) {
   if (pending) return <span className="sk-delta sk-delta--none">jämför med förra perioden…</span>
-  if (pct === null) return <span className="sk-delta sk-delta--none">ingen förra period att jämföra med</span>
-  const flat = Math.abs(pct) < 0.5
-  const good = invert ? pct < 0 : pct > 0
-  const tone = flat ? 'flat' : good ? 'good' : 'bad'
-  const sign = pct > 0 ? '+' : pct < 0 ? '-' : ''
+  if (trend === null) return <span className="sk-delta sk-delta--none">ingen förra period att jämföra med</span>
+  if (!trend.text) return null
   return (
-    <span className={`sk-delta sk-delta--${tone}`}>
-      {flat ? 'oförändrat' : `${sign}${fmtPct(Math.abs(pct))}`}
-      <span className="sk-delta-label">{children ?? 'mot förra perioden'}</span>
+    <span className={`sk-delta sk-delta--${trend.tone === 'neutral' ? 'flat' : trend.tone}`}>
+      {trend.direction === 'up' && trend.text !== 'ny' && <Icon name="trend-up" size={13} className="sk-delta-icon" />}
+      {trend.direction === 'down' && <Icon name="trend-down" size={13} className="sk-delta-icon" />}
+      <span aria-hidden="true">{trend.text}</span>
+      <span className="sk-delta-label" aria-hidden="true">
+        {children ?? 'mot förra perioden'}
+      </span>
+      <span className="sr-only">{trend.spoken}</span>
     </span>
   )
 }

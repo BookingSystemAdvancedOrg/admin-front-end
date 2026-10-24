@@ -27,7 +27,7 @@ import {
   sendReceipt,
   simulate,
 } from './cardApi'
-import type { CardPayment, CardReader, PayableOrder, Receipt } from './cardApi'
+import type { CardPayment, CardReader, PayableOrder, Receipt, VatRate } from './cardApi'
 import './tabetalt.css'
 
 /** Hur ofta en pågående betalning frågas om. */
@@ -82,6 +82,7 @@ export default function TaBetaltPage() {
   const [mode, setMode] = useState<'amount' | 'order'>('amount')
   const [amountText, setAmountText] = useState('')
   const [note, setNote] = useState('')
+  const [vatRate, setVatRate] = useState<VatRate>(12)
   const [orders, setOrders] = useState<PayableOrder[]>([])
   const [orderId, setOrderId] = useState('')
   const [current, setCurrent] = useState<CardPayment | null>(null)
@@ -172,7 +173,7 @@ export default function TaBetaltPage() {
       const payment = await createPayment(locationId, {
         checkoutId: checkoutId.current,
         readerId: reader.id,
-        ...(mode === 'order' ? { orderId } : { amount, note: note.trim() || undefined }),
+        ...(mode === 'order' ? { orderId } : { amount, vatRate, note: note.trim() || undefined }),
       })
       setCurrent(payment)
       void loadToday()
@@ -312,6 +313,13 @@ export default function TaBetaltPage() {
                           <span aria-hidden="true">kr</span>
                         </div>
                         {amountError && <p id="pay-amount-error" className="pay-field-error">{amountError}</p>}
+                      </div>
+                      <div className="form-field">
+                        <label htmlFor="pay-vat">Moms</label>
+                        <select id="pay-vat" value={vatRate} onChange={(e) => setVatRate(Number(e.target.value) as VatRate)}>
+                          <option value={12}>12 % (mat och dryck)</option>
+                          <option value={25}>25 % (alkohol)</option>
+                        </select>
                       </div>
                       <div className="form-field">
                         <label htmlFor="pay-note">Notering (valfritt)</label>

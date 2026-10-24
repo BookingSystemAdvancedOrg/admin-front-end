@@ -26,8 +26,8 @@ import './bokforing.css'
 const GROUPS: { title: string; roles: AccountRole[] }[] = [
   { title: 'Försäljning', roles: ['sales25', 'sales12', 'sales6'] },
   { title: 'Utgående moms', roles: ['vat25', 'vat12', 'vat6'] },
-  { title: 'Betalningar', roles: ['stripe', 'bank', 'receivables'] },
-  { title: 'Avgifter och övrigt', roles: ['cardFees', 'guaranteeFees', 'tips', 'refundsOwed', 'unclassified', 'rounding'] },
+  { title: 'Betalningar', roles: ['stripe', 'bank', 'receivables', 'advances'] },
+  { title: 'Avgifter och övrigt', roles: ['cardFees', 'tips', 'refundsOwed', 'unclassified', 'rounding'] },
 ]
 
 const LABEL: Record<AccountRole, string> = {
@@ -40,8 +40,8 @@ const LABEL: Record<AccountRole, string> = {
   stripe: 'Stripe-avräkning',
   bank: 'Bank',
   receivables: 'Kundfordringar (cateringfakturor)',
+  advances: 'Förskott från kunder (catering)',
   cardFees: 'Kortavgifter (Stripe)',
-  guaranteeFees: 'Avgifter uteblivna gäster',
   tips: 'Dricks',
   refundsOwed: 'Återbetalningar att göra',
   unclassified: 'Oklart (OBS-konto)',
@@ -99,6 +99,7 @@ export function BokforingCard({ locationId }: { locationId: string | null }) {
   const [accounts, setAccounts] = useState<Accounts | null>(null)
   const [series, setSeries] = useState('B')
   const [yearStart, setYearStart] = useState(1)
+  const [costCenter, setCostCenter] = useState('')
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -115,6 +116,7 @@ export function BokforingCard({ locationId }: { locationId: string | null }) {
         setAccounts(s.accounts)
         setSeries(s.series)
         setYearStart(s.fiscalYearStartMonth)
+        setCostCenter(s.costCenter)
       })
       .catch(() => !cancelled && setLoadError('Kunde inte hämta kontona just nu.'))
     return () => {
@@ -125,11 +127,12 @@ export function BokforingCard({ locationId }: { locationId: string | null }) {
   const errors = accounts
     ? Object.fromEntries(ACCOUNT_ROLES.map((r) => [r, accountError(accounts[r])]))
     : {}
-  const invalid = Object.values(errors).some(Boolean)
+  const costCenterError = /^[A-Z0-9]{1,10}$/.test(costCenter) ? null : 'Högst tio versaler eller siffror, t.ex. SODER.'
+  const invalid = Object.values(errors).some(Boolean) || Boolean(settings && costCenterError)
   const dirty = Boolean(
     settings && accounts &&
       (ACCOUNT_ROLES.some((r) => accounts[r] !== settings.accounts[r]) ||
-        series !== settings.series || yearStart !== settings.fiscalYearStartMonth),
+        series !== settings.series || yearStart !== settings.fiscalYearStartMonth || costCenter !== settings.costCenter),
   )
   const isDefault = Boolean(settings && accounts && ACCOUNT_ROLES.every((r) => accounts[r] === settings.defaults[r]))
   const rangeError = period === CUSTOM && (!from || !to || from > to) ? 'Välj ett från-datum före till-datumet.' : null
@@ -170,10 +173,11 @@ export function BokforingCard({ locationId }: { locationId: string | null }) {
     setNotice(null)
     try {
       const next = await saveAccounting(locationId, {
-        accounts, series, fiscalYearStartMonth: yearStart, version: settings.version,
+        accounts, series, fiscalYearStartMonth: yearStart, costCenter, version: settings.version,
       })
       setSettings(next)
       setAccounts(next.accounts)
+      setCostCenter(next.costCenter)
       setNotice('Sparat.')
     } catch (err) {
       setSaveError(message(err, 'Kunde inte spara just nu. Försök igen om en stund.'))
@@ -256,10 +260,17 @@ export function BokforingCard({ locationId }: { locationId: string | null }) {
             <p className="bokforing-result-title">
               <Icon name="check" size={16} /> {result.filename}
             </p>
+            {result.summary.locations.length > 1 && (
+              <p className="cell-muted">
+                Restaurangerna delar Stripe-konto, så filen gäller{' '}
+                {result.summary.locations.map((l) => l.name || l.locationId).join(' och ')}: en verifikation per
+                restaurang och dag med kostnadsställe, och en för Stripes avgifter och utbetalningar.
+              </p>
+            )}
             <dl className="bokforing-facts">
               <div>
                 <dt>Verifikationer</dt>
-                <dd>{result.summary.bookedDays} av {result.summary.days} dagar</dd>
+                <dd>{result.summary.verifications} ({result.summary.bookedDays} av {result.summary.days} dagar)</dd>
               </div>
               <div>
                 <dt>Försäljning exkl. moms</dt>
@@ -361,6 +372,15 @@ export function BokforingCard({ locationId }: { locationId: string | null }) {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="form-field">
+                <label htmlFor="bokforing-kst">Kostnadsställe</label>
+                <input id="bokforing-kst" value={costCenter} maxLength={10} autoComplete="off" disabled={saving}
+                  aria-invalid={Boolean(costCenterError)} aria-describedby="bokforing-kst-hint"
+                  onChange={(e) => { setCostCenter(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')); setNotice(null) }} />
+                <p id="bokforing-kst-hint" className={costCenterError ? 'form-error' : 'cell-muted'}>
+                  {costCenterError ?? 'Används när flera restauranger delar Stripe-konto: försäljningen märks med koden.'}
+                </p>
               </div>
             </div>
 

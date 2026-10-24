@@ -51,6 +51,16 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers())
 
 describe('TaBetaltPage', () => {
+  it('sends the chosen VAT rate with a free amount', async () => {
+    const user = userEvent.setup()
+    api.createPayment.mockResolvedValue(payment())
+    render(<TaBetaltPage />)
+    await user.type(await screen.findByLabelText('Belopp'), '89')
+    await user.selectOptions(screen.getByLabelText('Moms'), '25')
+    await user.click(screen.getByRole('button', { name: /^Ta betalt 89/ }))
+    expect(api.createPayment).toHaveBeenCalledWith('loc-1', expect.objectContaining({ amount: 8900, vatRate: 25 }))
+  })
+
   it('takes a payment in öre on the chosen reader, then shows Betalt', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
@@ -58,7 +68,7 @@ describe('TaBetaltPage', () => {
     render(<TaBetaltPage />)
     await user.type(await screen.findByLabelText('Belopp'), '125,50')
     await user.click(screen.getByRole('button', { name: 'Ta betalt 125,50 kr' }))
-    expect(api.createPayment).toHaveBeenCalledWith('loc-1', expect.objectContaining({ amount: 12550, readerId: 'tmr_a' }))
+    expect(api.createPayment).toHaveBeenCalledWith('loc-1', expect.objectContaining({ amount: 12550, readerId: 'tmr_a', vatRate: 12 }))
     expect(api.createPayment.mock.calls[0][1].checkoutId).toMatch(/^[0-9a-f]{32}$/)
     expect(await screen.findByRole('status')).toHaveTextContent('Väntar på kort')
     expect(localStorage.getItem('booqy-card-reader:loc-1')).toBe('tmr_a')

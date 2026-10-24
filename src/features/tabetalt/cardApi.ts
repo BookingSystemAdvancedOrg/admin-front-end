@@ -18,6 +18,9 @@ import { CARD_READER_KEY_PREFIX } from '../../shared/storageRegistry'
 
 export type CardStatus = 'processing' | 'succeeded' | 'failed' | 'canceled' | 'refunded'
 
+/** Momssatser för ett fritt belopp: 12 % mat och dryck, 25 % alkohol. */
+export type VatRate = 12 | 25
+
 export interface CardPayment {
   paymentId: string
   locationId: string
@@ -27,6 +30,8 @@ export interface CardPayment {
   orderId?: string
   orderNumber?: number
   note?: string
+  /** Ett fritt beloppets momssats, vald av personalen. */
+  vatRate?: VatRate
   readerId: string
   readerLabel?: string
   status: CardStatus
@@ -141,9 +146,14 @@ export function listPayableOrders(locationId: string): Promise<PayableOrder[]> {
   ).then((r) => r.orders.filter((o) => o.status === 'pending_payment'))
 }
 
+function mockVat(gross: number, rate: number) {
+  const vat = Math.round((gross * rate) / (100 + rate))
+  return { rate, vat, net: gross - vat }
+}
+
 export function createPayment(
   locationId: string,
-  input: { checkoutId: string; readerId: string; amount?: number; orderId?: string; note?: string },
+  input: { checkoutId: string; readerId: string; amount?: number; orderId?: string; note?: string; vatRate?: VatRate },
 ): Promise<CardPayment> {
   if (!isApiConfigured()) return mock.create(input)
   return apiFetch(base(locationId), { method: 'POST', body: JSON.stringify(input) })
@@ -265,14 +275,14 @@ const mock = (() => {
     orders: (): PayableOrder[] => [
       { orderId: 'f'.repeat(32), totalAmount: 28550, mode: 'table', tableLabel: '5', customerName: 'Anna Svensson' },
     ],
-    create(input: { checkoutId: string; readerId: string; amount?: number; orderId?: string; note?: string }) {
+    create(input: { checkoutId: string; readerId: string; amount?: number; orderId?: string; note?: string; vatRate?: VatRate }) {
       const existing = find(input.checkoutId)
       if (existing) return delay({ ...existing })
       const reader = readers.find((r) => r.id === input.readerId)
       const amount = input.orderId ? 28550 : input.amount ?? 0
       const p: CardPayment = {
         paymentId: input.checkoutId, locationId: 'mock', date: new Date().toISOString().slice(0, 10), amount,
-        orderId: input.orderId, note: input.note, readerId: input.readerId, readerLabel: reader?.label,
+        orderId: input.orderId, note: input.note, vatRate: input.vatRate, readerId: input.readerId, readerLabel: reader?.label,
         status: reader?.status === 'online' ? 'processing' : 'failed', attempt: 1,
         failure: reader?.status === 'online' ? undefined : { code: 'reader_offline' },
         simulated: reader?.simulated, createdAt: new Date().toISOString(),
@@ -312,7 +322,8 @@ const mock = (() => {
       const receipt: Receipt = {
         title: 'Kvitto', restaurant: 'Exempelrestaurangen', seller: { name: 'Exempel AB', org: '556000-0000', address: 'Götgatan 1, 118 21 Stockholm' },
         when: new Date(p.paidAt ?? p.createdAt ?? Date.now()).toLocaleString('sv-SE').slice(0, 16), reference: p.paymentId.slice(0, 12).toUpperCase(),
-        note: p.note, lines: [], vat: [], total: p.amount, vatOnRegister: !p.orderId,
+        note: p.note, lines: [], total: p.amount, vatOnRegister: !p.orderId && !p.vatRate,
+        vat: p.vatRate ? [mockVat(p.amount, p.vatRate)] : [],
         card: [{ label: 'Kort', value: 'Visa **** 4242' }, { label: 'Läst', value: 'Kontaktlös' },
           { label: 'AID', value: 'A0000000031010' }, { label: 'Godkännandekod', value: '123456' }],
         result: 'Godkänd', refunded: p.refund?.amount ?? null,

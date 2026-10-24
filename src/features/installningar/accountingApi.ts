@@ -8,8 +8,8 @@ import { apiFetch, isApiConfigured } from '../../shared/api'
 
 export const ACCOUNT_ROLES = [
   'sales25', 'sales12', 'sales6', 'vat25', 'vat12', 'vat6',
-  'stripe', 'bank', 'receivables',
-  'cardFees', 'guaranteeFees', 'tips', 'refundsOwed', 'unclassified', 'rounding',
+  'stripe', 'bank', 'receivables', 'advances',
+  'cardFees', 'tips', 'refundsOwed', 'unclassified', 'rounding',
 ] as const
 
 export type AccountRole = (typeof ACCOUNT_ROLES)[number]
@@ -22,6 +22,9 @@ export interface AccountingSettings {
   names: Accounts
   series: string
   fiscalYearStartMonth: number
+  /** Kostnadsställe när flera restauranger delar Stripe-konto. */
+  costCenter: string
+  defaultCostCenter: string
   version: number
 }
 
@@ -43,6 +46,9 @@ export interface ExportResult {
   summary: {
     days: number
     bookedDays: number
+    verifications: number
+    /** Restaurangerna i filen (fler än en när de delar Stripe-konto). */
+    locations: { locationId: string; name?: string | null }[]
     /** öre, exklusive moms */
     sales: number
     vat: number
@@ -63,7 +69,7 @@ export function accountError(value: string): string | null {
 
 const DEFAULTS: Accounts = {
   sales25: '3001', sales12: '3002', sales6: '3003', vat25: '2611', vat12: '2621', vat6: '2631',
-  stripe: '1580', bank: '1930', receivables: '1510', cardFees: '6570', guaranteeFees: '3990',
+  stripe: '1580', bank: '1930', receivables: '1510', advances: '2420', cardFees: '6570',
   tips: '2890', refundsOwed: '2890', unclassified: '2999', rounding: '3740',
 }
 
@@ -77,8 +83,8 @@ const NAMES: Accounts = {
   stripe: 'Fordringar för kontokort och kuponger',
   bank: 'Företagskonto/checkkonto/affärskonto',
   receivables: 'Kundfordringar',
+  advances: 'Förskott från kunder',
   cardFees: 'Bankkostnader',
-  guaranteeFees: 'Övriga ersättningar och intäkter',
   tips: 'Övriga kortfristiga skulder',
   refundsOwed: 'Övriga kortfristiga skulder',
   unclassified: 'OBS-konto',
@@ -86,7 +92,8 @@ const NAMES: Accounts = {
 }
 
 let mock: AccountingSettings = {
-  accounts: { ...DEFAULTS }, defaults: DEFAULTS, names: NAMES, series: 'B', fiscalYearStartMonth: 1, version: 0,
+  accounts: { ...DEFAULTS }, defaults: DEFAULTS, names: NAMES, series: 'B', fiscalYearStartMonth: 1,
+  costCenter: 'DEMO1', defaultCostCenter: 'DEMO1', version: 0,
 }
 
 function mockFile(from: string, to: string, format: ExportFormat): ExportResult {
@@ -100,8 +107,9 @@ function mockFile(from: string, to: string, format: ExportFormat): ExportResult 
     mediaType: format === 'sie' ? 'application/octet-stream' : 'text/csv; charset=utf-8',
     content: btoa(String.fromCharCode(...bytes)),
     summary: {
-      days: 30, bookedDays: 26, sales: 18_452_000, vat: 2_214_240, balanced: true,
-      warnings: [{ date: from, text: 'Kortbetalning med fritt belopp (Ta betalt) saknar moms: bokad på OBS-konto.' }],
+      days: 30, bookedDays: 26, verifications: 26, sales: 18_452_000, vat: 2_214_240, balanced: true,
+      locations: [{ locationId: 'demo-1', name: 'Demo' }],
+      warnings: [{ date: from, text: 'Stripe visar 1 250,00 kr i kortbetalningar, Booqy har bokat 1 200,00 kr: stäm av Stripe-avräkningen.' }],
     },
   }
 }
@@ -115,7 +123,7 @@ export async function getAccounting(locationId: string): Promise<AccountingSetti
 
 export async function saveAccounting(
   locationId: string,
-  body: { accounts: Accounts; series: string; fiscalYearStartMonth: number; version: number },
+  body: { accounts: Accounts; series: string; fiscalYearStartMonth: number; costCenter: string; version: number },
 ): Promise<AccountingSettings> {
   if (!isApiConfigured()) {
     mock = { ...mock, ...body, version: mock.version + 1 }

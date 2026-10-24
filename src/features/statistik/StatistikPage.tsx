@@ -79,7 +79,7 @@ function Tile({
 }) {
   // En egen varningsfärg (t.ex. många uteblivna) går före tonen mot förra perioden.
   const trendTone = !tone && trend ? trend.tone : 'neutral'
-  const valueRef = useTrendPop<HTMLElement>(trendTone, 500)
+  const valueRef = useTrendPop<HTMLElement>(trendTone, 700)
   return (
     <div className={`admin-card sk-kpi${tone ? ` sk-kpi--${tone}` : ''}`}>
       <span className="sk-kpi-label">{label}</span>

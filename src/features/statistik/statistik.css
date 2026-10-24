@@ -301,6 +301,15 @@
   color: var(--danger-ink);
 }
 
+/* Varningsfärgen växer fram med talet, som grönt och rött (shared/trend.css). */
+.sk-kpi--warn .sk-kpi-value .count-num {
+  color: color-mix(in srgb, var(--warning-ink) calc(var(--count, 1) * 100%), var(--ink));
+}
+
+.sk-kpi--bad .sk-kpi-value .count-num {
+  color: color-mix(in srgb, var(--danger-ink) calc(var(--count, 1) * 100%), var(--ink));
+}
+
 /* --- Förändringen: en stämpel ----------------------------------------------- */
 
 .sk-delta {

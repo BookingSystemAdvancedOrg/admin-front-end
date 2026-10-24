@@ -8,6 +8,16 @@
   color: var(--trend-bad);
 }
 
+/* Under uppräkningen (Num sätter --count) börjar talet i vanlig textfärg och
+   blir grönt eller rött i takt med att det växer. Utan --count: full färg. */
+.trend-value--good .count-num {
+  color: color-mix(in srgb, var(--trend-good) calc(var(--count, 1) * 100%), var(--ink));
+}
+
+.trend-value--bad .count-num {
+  color: color-mix(in srgb, var(--trend-bad) calc(var(--count, 1) * 100%), var(--ink));
+}
+
 .trend {
   display: inline-flex;
   align-items: center;

@@ -1533,6 +1533,11 @@
   color: var(--accent-ink);
 }
 
+/* Även varningen börjar i vanlig textfärg medan talet räknas upp (Num sätter --count). */
+.month-kpi--warn dd .count-num {
+  color: color-mix(in srgb, var(--accent-ink) calc(var(--count, 1) * 100%), var(--ink));
+}
+
 .month-kpi dd.trend-value--good {
   color: var(--trend-good);
 }

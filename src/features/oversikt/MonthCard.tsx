@@ -180,7 +180,7 @@ export function MonthCard({
 function KpiValue({ trend, index, warn = false, children }: { trend: Trend; index: number; warn?: boolean; children: string }) {
   // Varningen (många uteblivna) går före tonen.
   const tone = warn ? 'neutral' : trend.tone
-  const ref = useTrendPop<HTMLElement>(tone, 500 + index * 90)
+  const ref = useTrendPop<HTMLElement>(tone, 700 + index * 60)
   return (
     <>
       <dd ref={ref} className={toneClass(tone).trim() || undefined}>

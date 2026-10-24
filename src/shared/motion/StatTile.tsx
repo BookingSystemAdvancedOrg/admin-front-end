@@ -54,8 +54,8 @@ export function StatTile({
   const tileRef = useRef<HTMLElement>(null)
   const allowed = useMotionAllowed()
   const trendTone = !loading && trend ? trend.tone : 'neutral'
-  // Lyser upp när uppräkningen nästan landat.
-  const valueRef = useTrendPop<HTMLParagraphElement>(trendTone, index * STAGGER_MS + 500)
+  // Lyser upp när talet nästan landat och blivit grönt.
+  const valueRef = useTrendPop<HTMLParagraphElement>(trendTone, index * STAGGER_MS + 700)
   const liquid = useLiquidFill(tileRef, canvasRef, { active: !loading, enabled: allowed, index, staggerMs: STAGGER_MS, reveal: true })
 
   const touch = (e: PointerEvent<HTMLElement>, force: number) => {

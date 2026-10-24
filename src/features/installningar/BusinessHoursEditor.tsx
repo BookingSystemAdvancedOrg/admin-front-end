@@ -1,6 +1,7 @@
 import { WEEKDAYS } from './locationApi'
 import type { BusinessHours, BusinessHoursInterval, Weekday } from './locationApi'
 import { TimeInput } from '../../shared/DateInput'
+import { Icon } from '../../shared/Icon'
 
 const DAY_LABEL: Record<Weekday, string> = {
   monday: 'Måndag',
@@ -89,7 +90,7 @@ export function BusinessHoursEditor({
                     aria-label={`Ta bort tid för ${DAY_LABEL[day]}`}
                     onClick={() => removeInterval(day, index)}
                   >
-                    ✕
+                    <Icon name="close" size={14} />
                   </button>
                 )}
               </span>

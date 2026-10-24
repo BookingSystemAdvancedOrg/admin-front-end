@@ -5,6 +5,7 @@ import type { Dish, DishCategory } from './data'
 import { validateDishName, validateDishPrice } from './menuApi'
 import { utcToZonedInput, zonedInputToUtc } from './schedule'
 import { DateTimeInput } from '../../shared/DateInput'
+import { Icon } from '../../shared/Icon'
 
 export interface DishFormValues {
   name: string
@@ -171,7 +172,7 @@ export function DishModal({
               />
             ) : (
               <span className="dish-placeholder large" aria-hidden="true">
-                🍽
+                <Icon name="dish" size={30} />
               </span>
             )}
             <div className="dish-upload-actions">

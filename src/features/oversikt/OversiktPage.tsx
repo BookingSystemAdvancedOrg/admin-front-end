@@ -36,6 +36,7 @@ import {
 import type { Reservation } from '../bokningar/bookingsApi'
 import { Loading } from '../../shared/Loading'
 import { SAMPLE_TABLE_LABELS, sampleData, sampleModeOn, setSampleMode } from './sample'
+import { Icon } from '../../shared/Icon'
 
 // Genvägskorten längst ned som länkar till de andra sidorna. Ägaren får
 // Statistik i stället för "Se alla bokningar" (dagens bokningar har redan
@@ -167,7 +168,7 @@ export default function OversiktPage() {
     <Link key={step.id} to={step.to} className="activity-item setup-step">
       <span className="activity-text">
         <span className={`setup-check ${step.done ? 'done' : ''}`} aria-hidden="true">
-          {step.done ? '✓' : step.done === null ? '?' : ''}
+          {step.done ? <Icon name="check" size={14} /> : step.done === null ? '?' : ''}
         </span>
         {step.label}
       </span>
@@ -378,7 +379,7 @@ export default function OversiktPage() {
         {setupComplete && (
           <details className="admin-card setup-card setup-card--done" data-tour="getting-started">
             <summary className="setup-done-summary">
-              <span className="setup-check done" aria-hidden="true">✓</span>
+              <span className="setup-check done" aria-hidden="true"><Icon name="check" size={14} /></span>
               <span>Kom igång: allt är klart</span>
               <span className="cell-muted setup-done-toggle">Visa stegen</span>
             </summary>

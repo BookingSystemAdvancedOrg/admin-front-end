@@ -29,6 +29,7 @@ import { dishStatus, dishStatusLabel, matchesStatus } from './schedule'
 import type { DishStatus, StatusFilter } from './schedule'
 import './meny.css'
 import { Loading } from '../../shared/Loading'
+import { Icon } from '../../shared/Icon'
 
 type ModalState = { mode: 'add' } | { mode: 'edit'; id: string } | null
 
@@ -52,7 +53,7 @@ function DishImage({ src, alt }: { src: string | null; alt: string }) {
   if (!src || failed) {
     return (
       <span className="dish-placeholder" aria-hidden="true">
-        🍽
+        <Icon name="dish" size={22} />
       </span>
     )
   }

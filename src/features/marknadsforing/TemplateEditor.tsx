@@ -12,6 +12,7 @@ import {
   templateErrors,
 } from './marketingApi'
 import type { Block, BlockType, Destination, TemplateInput } from './marketingApi'
+import { Icon } from '../../shared/Icon'
 
 const ADDABLE: BlockType[] = ['heading', 'text', 'button', 'image', 'dish', 'divider', 'spacer']
 const PREVIEW_DELAY_MS = 600
@@ -238,9 +239,9 @@ export function TemplateEditor({
                 <div className="mk-block-head">
                   <span className="mk-block-type">{BLOCK_LABEL[b.type]}</span>
                   <span className="mk-block-tools">
-                    <button type="button" className="mk-icon-btn" aria-label={`Flytta block ${i + 1} upp`} disabled={i === 0} onClick={() => move(i, -1)}>↑</button>
-                    <button type="button" className="mk-icon-btn" aria-label={`Flytta block ${i + 1} ned`} disabled={i === draft.blocks.length - 1} onClick={() => move(i, 1)}>↓</button>
-                    <button type="button" className="mk-icon-btn danger" aria-label={`Ta bort block ${i + 1}`} onClick={() => remove(i)}>×</button>
+                    <button type="button" className="mk-icon-btn" aria-label={`Flytta block ${i + 1} upp`} disabled={i === 0} onClick={() => move(i, -1)}><Icon name="arrow-up" size={16} /></button>
+                    <button type="button" className="mk-icon-btn" aria-label={`Flytta block ${i + 1} ned`} disabled={i === draft.blocks.length - 1} onClick={() => move(i, 1)}><Icon name="arrow-down" size={16} /></button>
+                    <button type="button" className="mk-icon-btn danger" aria-label={`Ta bort block ${i + 1}`} onClick={() => remove(i)}><Icon name="close" size={16} /></button>
                   </span>
                 </div>
                 <BlockFields block={b} index={i} dishes={dishes} onChange={(nb) => setBlock(i, nb)} />

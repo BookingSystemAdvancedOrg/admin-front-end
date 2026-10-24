@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 import './dateInput.css'
+import { Icon } from './Icon'
 
 /**
  * Datum och tid i svenskt format oavsett webbläsarens språk: DD/MM/ÅÅÅÅ och
@@ -148,10 +149,7 @@ export function DateInput({ value, onChange, min, max, ...rest }: Common & { min
         disabled={rest.disabled}
         onClick={() => setOpen((o) => !o)}
       >
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <rect x="3.5" y="5" width="17" height="15" rx="2" />
-          <path d="M3.5 10h17M8 3v4M16 3v4" />
-        </svg>
+        <Icon name="calendar" size={18} />
       </button>
       {open && (
         <Calendar

@@ -24,6 +24,7 @@ import { tableNames, useTables } from '../../shared/tables'
 import './bokningar.css'
 import { Loading } from '../../shared/Loading'
 import { DateInput } from '../../shared/DateInput'
+import { Icon } from '../../shared/Icon'
 
 const REFRESH_MS = 60_000
 
@@ -240,7 +241,7 @@ export default function BokningarPage() {
                     <td className="cell-strong">{r.startTime}</td>
                     <td>
                       <span className="cell-strong">{r.customerName || 'Gäst'}</span>
-                      {r.notes && <span className="note-dot" title={r.notes}> ✎</span>}
+                      {r.notes && <span className="note-dot" title={r.notes}> <Icon name="note" size={14} /></span>}
                       {r.customerPhone && <div className="cell-muted">{r.customerPhone}</div>}
                       {r.source && r.source !== 'online' && (
                         <div className="cell-muted">{SOURCE_LABEL[r.source]}</div>
@@ -253,7 +254,7 @@ export default function BokningarPage() {
                         {STATUS_LABEL[r.status]}
                       </span>
                       {r.cardOnFile && r.status === 'reserved' && (
-                        <span className="cell-muted" title="Kort sparat (kortgaranti)"> 💳</span>
+                        <span className="cell-muted" title="Kort sparat (kortgaranti)"> <Icon name="card" size={15} /></span>
                       )}
                       {feeSummary(r) && <div className="cell-muted">{feeSummary(r)}</div>}
                     </td>

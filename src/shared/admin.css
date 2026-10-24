@@ -1571,3 +1571,22 @@
     font-size: 22px;
   }
 }
+
+/* --- Ikoner (shared/Icon.tsx): följer textfärgen, aldrig emojis ---------- */
+
+.icon {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: -0.2em;
+}
+
+.view-toggle button .icon,
+.mk-icon-btn .icon {
+  display: block;
+  margin: auto;
+}
+
+.view-toggle button:has(> .icon:only-child) {
+  display: inline-grid;
+  place-items: center;
+}

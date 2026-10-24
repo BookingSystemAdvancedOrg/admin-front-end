@@ -8,7 +8,8 @@ import {
   GRID,
   MIN_TABLE_SIZE,
   OPENING_LABEL,
-  SEAT_SIZE,
+  SEAT_D,
+  SEAT_W,
   WORKSPACE,
   ZONES,
   defaultTableSize,
@@ -2355,18 +2356,24 @@ export default function LayoutEditorPage() {
                       }}
                       onPointerDown={(e) => onElementPointerDown(e, 'table', t.id, t.x, t.y)}
                     >
-                      {/* En stol per plats - antalet syns direkt i planen. */}
+                      {/* En stol per plats, inskjuten under bordet med ryggstödet
+                          utåt - antalet syns direkt i planen. Bara bild: inte klickbar. */}
                       {seatPositions(t).map((s, i) => (
                         <div
                           key={i}
                           className="table-seat"
+                          aria-hidden="true"
                           style={{
-                            left: size.w / 2 + s.x - SEAT_SIZE / 2,
-                            top: size.h / 2 + s.y - SEAT_SIZE / 2,
-                            width: SEAT_SIZE,
-                            height: SEAT_SIZE,
+                            left: size.w / 2 + s.x - SEAT_W / 2,
+                            top: size.h / 2 + s.y - SEAT_D / 2,
+                            width: SEAT_W,
+                            height: SEAT_D,
+                            transform: `rotate(${s.rot}deg)`,
                           }}
-                        />
+                        >
+                          <div className="table-seat-top" />
+                          <div className="table-seat-back" />
+                        </div>
                       ))}
                       <div className="table-base" />
                       <div className="table-body">

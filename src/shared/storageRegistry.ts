@@ -36,6 +36,7 @@ export const LOGOUT_PENDING_KEY = 'booqy-logout-pending'
 export const MOTION_SEEN_KEY = 'booqy-motion-seen'
 export const THEME_KEY = 'booqy-theme'
 export const SAMPLE_DATA_KEY = 'booqy-sample-data'
+export const CARD_READER_KEY_PREFIX = 'booqy-card-reader:'
 
 export const STORAGE_REGISTRY: readonly StorageEntry[] = [
   {
@@ -94,6 +95,14 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     setBy: 'Booqy',
     purpose: 'Att du valt att se Översikten med exempeldata i stället för restaurangens riktiga siffror. Inga personuppgifter.',
     lifetime: 'Tills du stänger av det eller rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: `${CARD_READER_KEY_PREFIX}{plats}`,
+    kind: 'localStorage',
+    setBy: 'Booqy',
+    purpose: 'Vilken kortläsare du senast valde under Ta betalt på den här enheten, så att den är förvald nästa gång. Inga personuppgifter.',
+    lifetime: 'Tills du rensar webbläsaren',
     category: 'nödvändig',
   },
 ]

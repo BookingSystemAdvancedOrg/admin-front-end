@@ -12,12 +12,17 @@ import {
 } from './data'
 import type { RestaurantProfile } from './data'
 import { CancellationPolicyCard } from './CancellationPolicyCard'
+import { InsightsSettingsCard } from './InsightsSettingsCard'
 import { NotificationsCard } from './NotificationsCard'
 import { OrderingCard } from './OrderingCard'
+import { PrivacyCard } from './PrivacyCard'
+import { PrinterCard } from './PrinterCard'
 import { PaymentsCard } from './PaymentsCard'
 import { SpecialDaysCard } from './SpecialDaysCard'
 import { TableRulesCard } from './TableRulesCard'
+import { BookingTimeCard } from './BookingTimeCard'
 import { BusinessHoursEditor } from './BusinessHoursEditor'
+import { BokforingCard } from './BokforingCard'
 import {
   createLocation,
   getLocation,
@@ -84,7 +89,7 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * andra användare - de rutterna är bara för ägare.
  */
 /** Flikarna - en sektion i taget i stället för en lång sida. */
-type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'dagar' | 'bord'
+type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'skrivare' | 'dagar' | 'bord' | 'statistik' | 'bokforing' | 'integritet'
 
 const TAB_LABEL: Record<SettingsTab, string> = {
   profil: 'Restaurang',
@@ -93,8 +98,12 @@ const TAB_LABEL: Record<SettingsTab, string> = {
   notiser: 'Notiser',
   avbokning: 'Avbokning',
   bestallning: 'Beställning',
+  skrivare: 'Skrivare',
   dagar: 'Avvikande dagar',
   bord: 'Bord',
+  statistik: 'Statistik',
+  bokforing: 'Bokföring',
+  integritet: 'Integritet',
 }
 
 function initialTab(stripeReturn: string | null): SettingsTab {
@@ -103,12 +112,13 @@ function initialTab(stripeReturn: string | null): SettingsTab {
   return fromHash in TAB_LABEL ? fromHash : 'profil'
 }
 
-/** Bokningslängd väljs i hela timmar; grace period i 5-minuterssteg. */
-const DURATION_HOURS = [1, 2, 3, 4]
+/** Grace period i 5-minuterssteg. Bokningslängden ställs in i kortet Bokningstid. */
 const GRACE_MINUTES = [15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
 
-function hoursLabel(h: number): string {
-  return h === 1 ? '1 timme' : `${h} timmar`
+/** Ett äldre värde utanför 15-60 min (t.ex. 0) visas som närmaste val och sparas så vid nästa spara. */
+function clampGraceHours(hours: number): number {
+  const minutes = Math.round((Number.isFinite(hours) ? hours : 0) * 12) * 5
+  return Math.min(60, Math.max(15, minutes)) / 60
 }
 
 export default function InstallningarPage() {
@@ -186,7 +196,7 @@ export default function InstallningarPage() {
         setTimezone(loc.timezone)
         setBusinessHours(loc.businessHours)
         setBookingDurationHours(loc.bookingDurationHours ?? DEFAULT_BOOKING_DURATION_HOURS)
-        setGracePeriodHours(loc.gracePeriodHours ?? DEFAULT_GRACE_PERIOD_HOURS)
+        setGracePeriodHours(clampGraceHours(loc.gracePeriodHours ?? DEFAULT_GRACE_PERIOD_HOURS))
         setSavedLocation({
           name: loc.name,
           address: loc.address,
@@ -413,7 +423,7 @@ export default function InstallningarPage() {
       <div className="admin-main">
         <nav className="settings-tabs" aria-label="Inställningar">
           {(Object.keys(TAB_LABEL) as SettingsTab[])
-            .filter((t) => (t === 'personal' ? isOwner : t === 'bestallning' ? Boolean(tenant?.entitlements.features.ordering) : true))
+            .filter((t) => (t === 'personal' || t === 'statistik' || t === 'bokforing' || t === 'integritet' ? isOwner : t === 'bestallning' || t === 'skrivare' ? Boolean(tenant?.entitlements.features.ordering) : true))
             .map((t) => (
               <button
                 key={t}
@@ -482,33 +492,6 @@ export default function InstallningarPage() {
             </div>
             <div className="form-field">
               <span className="form-field-label-row">
-                <label htmlFor="rp-duration">Bokningslängd</label>
-                <InfoTooltip label="Bokningslängd">
-                  Hur länge ett bord är upptaget per bokning. Styr längden på
-                  varje ledig tid som visas för gästen - t.ex. ger 2 timmar
-                  bokningsbara pass som 18:00-20:00.
-                </InfoTooltip>
-              </span>
-              <select
-                id="rp-duration"
-                value={bookingDurationHours}
-                onChange={(e) => {
-                  setSaved(false)
-                  setBookingDurationHours(Number(e.target.value))
-                }}
-              >
-                {!DURATION_HOURS.includes(bookingDurationHours) && (
-                  <option value={bookingDurationHours}>{hoursLabel(bookingDurationHours)}</option>
-                )}
-                {DURATION_HOURS.map((h) => (
-                  <option key={h} value={h}>
-                    {hoursLabel(h)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="form-field">
-              <span className="form-field-label-row">
                 <label htmlFor="rp-grace">Grace period (minuter)</label>
                 <InfoTooltip label="Grace period (minuter)">
                   Hur länge bordet hålls om gästen är sen. Därefter blir bordet
@@ -523,9 +506,6 @@ export default function InstallningarPage() {
                   setGracePeriodHours(Number(e.target.value) / 60)
                 }}
               >
-                {!GRACE_MINUTES.includes(graceMinutes) && (
-                  <option value={graceMinutes}>{graceMinutes} min</option>
-                )}
                 {GRACE_MINUTES.map((m) => (
                   <option key={m} value={m}>
                     {m} min
@@ -545,6 +525,10 @@ export default function InstallningarPage() {
             }}
           />
         </section>
+
+        <div hidden={tab !== 'profil'}>
+          <BookingTimeCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+        </div>
 
         {isOwner && (
         <section className="admin-card table-card" hidden={tab !== 'personal'}>
@@ -706,6 +690,12 @@ export default function InstallningarPage() {
           </div>
         )}
 
+        {tenant?.entitlements.features.ordering && tab === 'skrivare' && (
+          <div className="settings-row">
+            <PrinterCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+          </div>
+        )}
+
         <div className="settings-row" hidden={tab !== 'dagar'}>
           <SpecialDaysCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
         </div>
@@ -713,6 +703,28 @@ export default function InstallningarPage() {
         <div className="settings-row" hidden={tab !== 'bord'}>
           <TableRulesCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
         </div>
+
+        {isOwner && tenant && (
+          <div className="settings-row" hidden={tab !== 'statistik'}>
+            <InsightsSettingsCard
+              key={`${locationId ?? 'none'}:${tenant.insights?.staffAccess ?? 'operations'}`}
+              tenant={tenant}
+              locationId={locationId}
+            />
+          </div>
+        )}
+
+        {isOwner && tab === 'bokforing' && (
+          <div className="settings-row">
+            <BokforingCard key={locationId ?? 'none'} locationId={locationId} />
+          </div>
+        )}
+
+        {isOwner && tab === 'integritet' && (
+          <div className="settings-row">
+            <PrivacyCard />
+          </div>
+        )}
       </div>
 
       {modal && (

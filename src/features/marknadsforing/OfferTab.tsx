@@ -7,6 +7,7 @@ import { listMenuItems, menuImageUrl } from '../meny/menuApi'
 import type { MenuItem } from '../meny/menuApi'
 import { errorText, getOfferSettings, kronorFromOre, offerErrors, percent, saveOfferSettings, withPercent } from './marketingApi'
 import type { OfferSettings, OfferView } from './marketingApi'
+import { DateInput } from '../../shared/DateInput'
 
 const PERCENTS = [5, 10, 15, 20, 25, 30, 40, 50]
 const VALID_DAYS = [7, 14, 30, 60, 90]
@@ -279,11 +280,11 @@ export function OfferTab() {
             <div className="mk-field-row">
               <div className="form-field">
                 <label htmlFor="mk-o-from">Från (valfritt)</label>
-                <input id="mk-o-from" type="date" value={draft.activeFrom ?? ''} onChange={(e) => set('activeFrom', e.target.value || null)} />
+                <DateInput id="mk-o-from" value={draft.activeFrom ?? ''} onChange={(e) => set('activeFrom', e.target.value || null)} />
               </div>
               <div className="form-field">
                 <label htmlFor="mk-o-to">Till (valfritt)</label>
-                <input id="mk-o-to" type="date" value={draft.activeTo ?? ''} onChange={(e) => set('activeTo', e.target.value || null)} />
+                <DateInput id="mk-o-to" value={draft.activeTo ?? ''} onChange={(e) => set('activeTo', e.target.value || null)} />
               </div>
             </div>
             <p className="field-hint">

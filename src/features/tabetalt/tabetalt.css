@@ -1,0 +1,441 @@
+/* Ta betalt - kortbetalning i kassan (TaBetaltPage). */
+
+.pay-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.pay-panel {
+  padding: 32px;
+}
+
+/* --- formuläret ------------------------------------------------------------ */
+
+.pay-form {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.pay-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--r-lg);
+  background: var(--fill);
+}
+
+.pay-mode button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--muted);
+  font: 500 15px/1.2 var(--font);
+  cursor: pointer;
+  transition: background 200ms var(--ease), color 200ms var(--ease);
+}
+
+.pay-mode button.active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.pay-mode button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+.pay-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 20px;
+  border-radius: var(--r-md);
+  background: var(--fill);
+  transition: box-shadow 200ms var(--ease);
+}
+
+.pay-amount:focus-within {
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+.form-field .pay-amount input {
+  min-height: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  font: 600 44px/1.15 var(--font);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.form-field .pay-amount input:focus {
+  box-shadow: none;
+}
+
+.pay-amount span {
+  font: 500 22px/1 var(--font);
+  color: var(--muted);
+}
+
+.pay-field-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger-ink);
+}
+
+.btn.pay-send {
+  min-height: 64px;
+  font-size: 19px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- läget: väntar / betald / nekad ------------------------------------------ */
+
+.pay-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 0 8px;
+  text-align: center;
+}
+
+.pay-stage-mark {
+  display: grid;
+  place-items: center;
+  width: 104px;
+  height: 104px;
+  margin-bottom: 12px;
+  border-radius: 50%;
+  background: var(--fill);
+  color: var(--ink);
+}
+
+.pay-stage.waiting .pay-stage-mark {
+  animation: pay-wait 1.8s var(--ease) infinite;
+}
+
+.pay-stage.paid .pay-stage-mark {
+  background: color-mix(in srgb, var(--success) 18%, var(--surface));
+  color: var(--success-ink);
+  animation: pay-land 520ms var(--ease) both;
+}
+
+.pay-stage.declined .pay-stage-mark {
+  background: var(--tint-red);
+  color: var(--danger-ink);
+}
+
+@keyframes pay-wait {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ink) 18%, transparent); }
+  70% { box-shadow: 0 0 0 22px color-mix(in srgb, var(--ink) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+@keyframes pay-land {
+  from { transform: scale(0.82); }
+  to { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pay-stage .pay-stage-mark {
+    animation: none;
+  }
+}
+
+.pay-stage-amount {
+  margin: 0;
+  font: 600 22px/1.2 var(--font);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.pay-stage-title {
+  margin: 0;
+  font: 700 clamp(40px, 6vw, 60px)/1.05 var(--font);
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.pay-stage.paid .pay-stage-title {
+  color: var(--success-ink);
+}
+
+.pay-stage.declined .pay-stage-title {
+  color: var(--danger-ink);
+}
+
+.pay-stage-detail {
+  max-width: 46ch;
+  margin: 0;
+  font-size: 16px;
+  color: var(--muted);
+}
+
+.pay-stage-hint {
+  max-width: 46ch;
+  margin: 4px 0 0;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--tint-orange);
+  color: var(--warning-ink);
+  font-size: 14px;
+}
+
+.pay-stage .form-error {
+  max-width: 46ch;
+}
+
+.pay-stage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 12px;
+  width: 100%;
+  margin-top: 20px;
+}
+
+.btn.pay-big {
+  min-width: 180px;
+  min-height: 60px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.pay-other {
+  min-width: 180px;
+  text-align: left;
+}
+
+.pay-simulate {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.pay-simulate span {
+  flex-basis: 100%;
+}
+
+.pay-simulate .btn {
+  min-height: 38px;
+  font-size: 14px;
+}
+
+.pay-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--ink);
+}
+
+.pay-empty h2 {
+  margin: 0;
+  font: 600 20px/1.3 var(--font);
+}
+
+.pay-empty p {
+  max-width: 60ch;
+  margin: 0;
+}
+
+/* --- dagens köp ---------------------------------------------------------------- */
+
+.pay-today {
+  padding: 24px;
+}
+
+.pay-today h2 {
+  margin: 0 0 12px;
+  font: 600 17px/1.3 var(--font);
+}
+
+.pay-today ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pay-today li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+
+.pay-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pay-row-amount {
+  font: 600 17px/1.2 var(--font);
+  font-variant-numeric: tabular-nums;
+}
+
+.pay-row-meta {
+  margin: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.pay-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.pay-row-actions .btn {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+/* --- kvittot ---------------------------------------------------------------------- */
+
+.pay-receipt {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+
+.receipt-slip {
+  padding: 22px 20px;
+  border-radius: var(--r-md);
+  background: var(--slip);
+  color: var(--on-slip);
+  box-shadow: var(--shadow);
+  font: 400 13px/1.45 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt-slip p {
+  margin: 0;
+}
+
+.receipt-name {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.receipt-title {
+  margin-top: 14px !important;
+  font-weight: 700;
+}
+
+.receipt-lines {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.receipt-lines li,
+.receipt-row,
+.receipt-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.receipt-total {
+  margin-top: 10px !important;
+  padding-top: 8px;
+  border-top: 1px dashed color-mix(in srgb, var(--on-slip) 45%, transparent);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.receipt-small {
+  margin-top: 6px !important;
+  font-size: 12px;
+}
+
+.pay-receipt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pay-receipt-mail {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.pay-receipt-mail .form-field {
+  flex: 1;
+}
+
+@media (max-width: 1024px) {
+  .pay-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .pay-panel {
+    padding: 20px;
+  }
+
+  .form-field .pay-amount input {
+    font-size: 36px;
+  }
+
+  .pay-stage-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn.pay-big,
+  .pay-other {
+    width: 100%;
+  }
+
+  .pay-receipt-mail {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* Utskrift: bara kvittolappen, 80 mm bred. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .receipt-slip,
+  .receipt-slip * {
+    visibility: visible;
+  }
+
+  .receipt-slip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 80mm;
+    box-shadow: none;
+    background: #ffffff;
+  }
+}

@@ -25,6 +25,9 @@ export const SAMPLE_TABLE_LABELS: ReadonlyMap<string, string> = new Map([
   ['sample-12', '12'],
 ])
 
+/** Omsättningen samma tid förra veckan i exemplet (öre): dagens 9 405 kr är lite bättre. */
+export const SAMPLE_REVENUE_LAST_WEEK = 812_000
+
 export interface SampleData {
   today: Reservation[]
   orders: Order[]

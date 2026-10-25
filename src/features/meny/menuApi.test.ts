@@ -153,6 +153,16 @@ describe('dishChanges', () => {
     }
   }
 
+  it('sends a changed or cleared schedule and skips an unchanged one', () => {
+    const scheduled: Dish = { ...original, availableFrom: '2026-11-01T10:00:00Z', availableUntil: null }
+    const keep = { ...desired(), availableFrom: '2026-11-01T10:00:00Z', availableUntil: null }
+    expect(dishChanges(scheduled, keep)).toEqual({})
+    expect(dishChanges(scheduled, { ...keep, availableFrom: null })).toEqual({ availableFrom: null })
+    expect(dishChanges(scheduled, { ...keep, availableUntil: '2026-11-02T10:00:00Z' })).toEqual({
+      availableUntil: '2026-11-02T10:00:00Z',
+    })
+  })
+
   it('returns an empty diff when nothing changed', () => {
     expect(dishChanges(original, desired())).toEqual({})
   })

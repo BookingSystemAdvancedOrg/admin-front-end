@@ -1,5 +1,7 @@
 import { WEEKDAYS } from './locationApi'
 import type { BusinessHours, BusinessHoursInterval, Weekday } from './locationApi'
+import { TimeInput } from '../../shared/DateInput'
+import { Icon } from '../../shared/Icon'
 
 const DAY_LABEL: Record<Weekday, string> = {
   monday: 'Måndag',
@@ -64,8 +66,7 @@ export function BusinessHoursEditor({
             )}
             {value[day].map((interval, index) => (
               <span key={index} className="hours-editor-interval">
-                <input
-                  type="time"
+                <TimeInput
                   aria-label={`${DAY_LABEL[day]} öppnar`}
                   value={interval.opensAt}
                   disabled={disabled}
@@ -73,9 +74,8 @@ export function BusinessHoursEditor({
                     updateInterval(day, index, 'opensAt', e.target.value)
                   }
                 />
-                <span aria-hidden="true">–</span>
-                <input
-                  type="time"
+                <span aria-hidden="true">-</span>
+                <TimeInput
                   aria-label={`${DAY_LABEL[day]} stänger`}
                   value={interval.closesAt}
                   disabled={disabled}
@@ -90,7 +90,7 @@ export function BusinessHoursEditor({
                     aria-label={`Ta bort tid för ${DAY_LABEL[day]}`}
                     onClick={() => removeInterval(day, index)}
                   >
-                    ✕
+                    <Icon name="close" size={14} />
                   </button>
                 )}
               </span>

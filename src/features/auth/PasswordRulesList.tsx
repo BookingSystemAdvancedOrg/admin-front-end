@@ -1,4 +1,5 @@
 import { PASSWORD_RULES } from './passwordRules'
+import { Icon } from '../../shared/Icon'
 
 /** Checklistan under lösenordsfälten: bockas av medan man skriver. */
 export function PasswordRulesList({ password }: { password: string }) {
@@ -8,7 +9,7 @@ export function PasswordRulesList({ password }: { password: string }) {
         const met = rule.test(password)
         return (
           <li key={rule.id} className={met ? 'auth-rule met' : 'auth-rule'}>
-            <span aria-hidden="true">{met ? '✓' : '○'}</span>
+            <Icon name={met ? 'check' : 'circle'} size={14} />
             {rule.label}
           </li>
         )

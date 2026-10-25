@@ -73,11 +73,26 @@ export interface Reservation {
   guarantee?: GuaranteeSnapshot
   payment?: ReservationPayment
   pendingExpiresAt?: string
+  /** Bokningstidsregeln bokningen fick (äldre bokningar: egen längd, ej förlängbar). */
+  bookingRule?: BookingRule
+  /** Minuter personalen förlängt utöver regelns längd (0 när den inte förlängts eller kortats). */
+  extendedMinutes?: number
+}
+
+export interface BookingRule {
+  windowId?: string
+  name?: string
+  durationMinutes: number
+  extensionAllowed: boolean
+  maxExtensionMinutes: number
 }
 
 export interface AvailabilitySlot {
   startTime: string
   endTime: string
+  durationMinutes?: number
+  extendable?: boolean
+  ruleName?: string | null
   layoutVersion: number
   tables: { tableId: string; seats: number }[]
 }
@@ -106,6 +121,10 @@ export interface ReservationEdit {
   phone?: string | null
   notes?: string | null
   notifyGuest?: boolean
+  /** Förläng/korta (skickas ensamt). */
+  endTime?: string
+  /** Personalen förlänger utöver regeln (loggas). */
+  overrideRule?: boolean
 }
 
 export type StatusAction = 'arrived' | 'reserved' | 'no_show' | 'cancelled'
@@ -198,6 +217,7 @@ export function availableActions(r: Reservation, isOwner: boolean) {
     noShow: r.status === 'reserved',
     cancel: r.status === 'reserved',
     edit: r.status === 'reserved' || r.status === 'arrived',
+    extend: r.status === 'reserved' || r.status === 'arrived',
     retryCharge:
       r.status === 'no_show_charge_failed' ||
       r.status === 'cancelled_charge_failed' ||
@@ -256,7 +276,14 @@ const ERROR_TEXT: Record<string, string> = {
     'Gästens bank kräver att gästen godkänner betalningen. Kontakta gästen och lös avgiften direkt.',
   insufficient_funds: 'Det finns inte tillräckligt med pengar på kortet.',
   expired_card: 'Kortet har gått ut.',
+  not_extendable: 'Bokningens regel tillåter inte förlängning.',
+  extension_too_long: 'Längre än regeln tillåter.',
+  window_not_extendable: 'Förlängningen går in i en tid som inte får förlängas (t.ex. buffé).',
+  after_closing: 'Bokningen kan inte sluta efter stängning.',
 }
+
+/** Svar där personalen kan välja att förlänga ändå (loggas). */
+export const OVERRIDABLE = ['not_extendable', 'extension_too_long', 'window_not_extendable']
 
 /** Valideringsfel (400) från servern, i den ordning de ska matchas. */
 const VALIDATION_TEXT: [RegExp, string][] = [
@@ -280,6 +307,8 @@ const VALIDATION_TEXT: [RegExp, string][] = [
   [/^tableIds must be a non-empty list/, 'Välj minst ett bord.'],
   [/^tableIds must /, 'Välj bord i listan igen.'],
   [/^at most \d+ tables per booking/, 'Välj högst 6 bord per bokning.'],
+  [/^endTime falls on a clock change/, 'Sluttiden hamnar i omställningen till sommar-/vintertid.'],
+  [/^endTime must be/, 'Välj en sluttid i kvartssteg, minst 15 minuter efter start.'],
 ]
 
 export function errorMessage(err: unknown): string {
@@ -402,7 +431,7 @@ export function dayNotice(day: DayStatus | null): string | null {
   const note = day.note ? ` (${day.note})` : ''
   if (day.kind === 'closed') return `Restaurangen är stängd den dagen${note}.`
   if (day.kind === 'hours') {
-    const hours = (day.intervals ?? []).map((i) => `${i.opensAt}–${i.closesAt}`).join(', ')
+    const hours = (day.intervals ?? []).map((i) => `${i.opensAt}-${i.closesAt}`).join(', ')
     return `Avvikande öppettider den dagen: ${hours}${note}.`
   }
   return `Onlinebokningen är stängd den dagen${note} - här kan du ändå boka.`

@@ -13,7 +13,7 @@ export interface DiscountTierFormValues {
 /**
  * Popup för att lägga till eller redigera en rabattnivå - samma formulär
  * används för "+ Ny rabattnivå" (initial: null) och "Redigera" (initial satt).
- * Rent lokal validering (ingen server att fråga): två nivåers portionsintervall
+ * Rent lokal validering (ingen server att fråga): två nivåers gästintervall
  * får aldrig överlappa, annars vore det odefinierat vilken rabatt som gäller.
  */
 export function DiscountTierModal({
@@ -57,7 +57,7 @@ export function DiscountTierModal({
   const from = Number(fromPortions.replace(/[^\d]/g, ''))
   const fromError =
     fromPortions.trim() === '' || Number.isNaN(from) || from < 1
-      ? 'Ange minst 1 portion.'
+      ? 'Ange minst 1 gäst.'
       : null
 
   const to = toPortions.trim() === '' ? null : Number(toPortions.replace(/[^\d]/g, ''))
@@ -69,7 +69,7 @@ export function DiscountTierModal({
   const discount = Number(discountPercent.replace(/[^\d]/g, ''))
   const discountError =
     discountPercent.trim() === '' || Number.isNaN(discount) || discount < 0 || discount > 100
-      ? 'Ange 0–100.'
+      ? 'Ange 0-100.'
       : null
 
   const overlap =
@@ -111,7 +111,7 @@ export function DiscountTierModal({
 
         <div className="form-grid">
           <div className="form-field">
-            <label htmlFor="tier-from">Från antal portioner</label>
+            <label htmlFor="tier-from">Från antal gäster</label>
             <input
               id="tier-from"
               inputMode="numeric"
@@ -120,7 +120,7 @@ export function DiscountTierModal({
             />
           </div>
           <div className="form-field">
-            <label htmlFor="tier-to">Till antal portioner</label>
+            <label htmlFor="tier-to">Till antal gäster</label>
             <input
               id="tier-to"
               inputMode="numeric"
@@ -156,8 +156,8 @@ export function DiscountTierModal({
 
         {overlap ? (
           <p className="form-error" role="alert">
-            Överlappar {overlap.name} ({overlap.fromPortions}–
-            {overlap.toPortions ?? 'och uppåt'} portioner). Intervallen får inte
+            Överlappar {overlap.name} ({overlap.fromPortions}-
+            {overlap.toPortions ?? 'och uppåt'} gäster). Intervallen får inte
             överlappa andra nivåer.
           </p>
         ) : (

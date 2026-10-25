@@ -106,7 +106,7 @@ export function TableRulesCard({
     const max = whole(draft.max)
     const seats = seatsOf(ids)
     if (ids.length < MIN_COMBINATION || ids.length > MAX_COMBINATION) {
-      return setError(`Välj ${MIN_COMBINATION}–${MAX_COMBINATION} bord för en kombination.`)
+      return setError(`Välj ${MIN_COMBINATION}-${MAX_COMBINATION} bord för en kombination.`)
     }
     if (min === null || max === null || min < 1 || max > MAX_PARTY || min > max) {
       return setError('Kombinationen: ange antal personer från och till (heltal, från ≤ till).')
@@ -230,7 +230,7 @@ export function TableRulesCard({
 
           <p className="form-section-label">Kombinationer</p>
           <p className="cell-muted">
-            Bord som gästerna får boka tillsammans, t.ex. två fyrabord för 5–8 personer. Utan
+            Bord som gästerna får boka tillsammans, t.ex. två fyrabord för 5-8 personer. Utan
             kombinationer bokar gästerna ett bord per bokning.
           </p>
           {combos.length > 0 && (
@@ -243,7 +243,7 @@ export function TableRulesCard({
                       <span className="cell-strong">Bord {c.tableIds.map(name).join(' + ')}</span>
                       <span className="cell-muted">
                         {' '}
-                        · {seatsOf(c.tableIds)} pl · {c.minParty}–{c.maxParty} pers
+                        · {seatsOf(c.tableIds)} pl · {c.minParty}-{c.maxParty} pers
                       </span>
                       {missing && (
                         <span className="form-error">

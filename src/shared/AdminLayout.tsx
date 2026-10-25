@@ -3,7 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { BrandMark, BrandWordmark } from './BrandMark'
 import { useAuth } from '../features/auth/useAuth'
 import { primaryGroupLabel } from '../features/installningar/usersApi'
-import { selectLocation, useTenant } from './tenant'
+import { canSeeInsights, selectLocation, useTenant } from './tenant'
 import { GuideProvider } from '../features/guide/Guide'
 import { LogoutConfirm } from './LogoutConfirm'
 import type { TenantErrorCode } from './tenant'
@@ -15,12 +15,13 @@ import { useLiquidFill } from './motion/useLiquidFill'
 import { MotionScope, sidebarPourDone, sidebarShouldPour } from './motion/MotionScope'
 import { BusyBar } from './motion/BusyBar'
 import { ThemeToggle } from './ThemeToggle'
+import { DpaBanner } from '../features/dpa/DpaBanner'
 
 // Sidebar-länkarna, i grupper efter när man behöver dem: överblicken,
 // det som händer under passet, och det man ställer in mer sällan.
 // `end: true` gör att '/' bara markeras aktiv på exakt träff, annars skulle
 // den lysa upp på alla undersidor också.
-type NavItem = { to: string; label: string; tour: string; end?: boolean; feature?: string; ownerOnly?: boolean }
+type NavItem = { to: string; label: string; tour: string; end?: boolean; feature?: string; ownerOnly?: boolean; insights?: boolean }
 const NAV_GROUPS: { id: string; label: string | null; items: NavItem[] }[] = [
   {
     id: 'overblick',
@@ -28,7 +29,7 @@ const NAV_GROUPS: { id: string; label: string | null; items: NavItem[] }[] = [
     items: [
       { to: '/', label: 'Översikt', tour: 'nav-oversikt', end: true },
       // Restaurangens siffror över tid; bara ägare.
-      { to: '/statistik', label: 'Statistik', tour: 'nav-statistik', ownerOnly: true },
+      { to: '/statistik', label: 'Statistik', tour: 'nav-statistik', insights: true },
     ],
   },
   {
@@ -38,6 +39,10 @@ const NAV_GROUPS: { id: string; label: string | null; items: NavItem[] }[] = [
       { to: '/bokningar', label: 'Bokningar', tour: 'nav-bokningar' },
       // Bara för restauranger vars plan har matbeställning.
       { to: '/bestallningar', label: 'Beställningar', tour: 'nav-bestallningar', feature: 'ordering' },
+      // Kortbetalning på restaurangens kortläsare; bara med kortterminaler i planen.
+      { to: '/ta-betalt', label: 'Ta betalt', tour: 'nav-ta-betalt', feature: 'terminal' },
+      // Kassaregistret; av tills Booqy slår på det per restaurang.
+      { to: '/kassa', label: 'Kassa', tour: 'nav-kassa', feature: 'kassa' },
       // Förfrågningar; inställningar och rabatter nås därifrån (/cateringkalkyl).
       { to: '/catering', label: 'Catering', tour: 'nav-catering', feature: 'catering' },
     ],
@@ -173,7 +178,8 @@ export function AdminLayout() {
             const items = group.items.filter(
               (item) =>
                 (!item.feature || Boolean(tenant?.entitlements.features[item.feature])) &&
-                (!item.ownerOnly || tenant?.role === 'owner_user'),
+                (!item.ownerOnly || tenant?.role === 'owner_user') &&
+                (!item.insights || canSeeInsights(tenant)),
             )
             if (items.length === 0) return null
             const headingId = `nav-group-${group.id}`
@@ -267,6 +273,7 @@ export function AdminLayout() {
           </div>
         ) : status === 'ready' ? (
           <MotionScope>
+            <DpaBanner />
             <Outlet key={locationId ?? 'no-location'} />
           </MotionScope>
         ) : (

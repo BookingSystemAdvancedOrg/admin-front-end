@@ -27,7 +27,7 @@ describe('todaysHours', () => {
       ],
     }
     expect(todaysHours(hours, 'Europe/Stockholm', FRIDAY_NIGHT_UTC)).toBe(
-      '11:00–14:00, 17:00–22:00',
+      '11:00-14:00, 17:00-22:00',
     )
   })
 
@@ -90,5 +90,13 @@ describe('setupSteps', () => {
 
   it('gives staff no Kom igång steps at all (owner only)', () => {
     expect(setupSteps({ ...owner, isOwner: false })).toEqual([])
+  })
+
+  it('puts the DPA first when the API has it, and leaves it out otherwise', () => {
+    expect(setupSteps({ ...owner, dpaAccepted: false })[0]).toEqual({
+      id: 'dpa', label: 'Godkänn personuppgiftsbiträdesavtalet', done: false, to: '/avtal',
+    })
+    expect(setupSteps({ ...owner, dpaAccepted: true })[0].done).toBe(true)
+    expect(setupSteps({ ...owner, isOwner: false, dpaAccepted: false })).toEqual([])
   })
 })

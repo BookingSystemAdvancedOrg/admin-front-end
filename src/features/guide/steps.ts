@@ -15,7 +15,7 @@ export interface GuideStep {
   title: string
   text: string
   ownerOnly?: boolean
-  feature?: 'ordering' | 'catering' | 'marketing'
+  feature?: 'ordering' | 'catering' | 'marketing' | 'terminal'
   /** Bara när restaurangen har flera platser (platsväljaren). */
   multiLocation?: boolean
   /** Rubrik i Hjälp-sidans lista (bara på stegen som beskriver en hel del). */
@@ -237,6 +237,17 @@ export const GUIDE_STEPS: GuideStep[] = [
     feature: 'ordering',
     title: 'Pausa vid rusning',
     text: 'Hinner köket inte med? Pausa nya beställningar en stund - de som redan kommit in påverkas inte.',
+  },
+
+  // --- Ta betalt -------------------------------------------------------------
+  {
+    id: 'ta-betalt',
+    route: '/ta-betalt',
+    target: 'nav-ta-betalt',
+    feature: 'terminal',
+    section: 'Ta betalt',
+    title: 'Ta betalt med kort',
+    text: 'Skriv beloppet, välj kortläsare och tryck Ta betalt. Gästen blippar kortet på läsaren och du ser direkt om det är Betalt eller Nekat.',
   },
 
   // --- Catering --------------------------------------------------------------

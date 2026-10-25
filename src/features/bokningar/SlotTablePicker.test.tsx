@@ -69,7 +69,7 @@ describe('dayNotice', () => {
     expect(dayNotice(null)).toBeNull()
     expect(dayNotice({ kind: 'hours', intervals: [{ opensAt: '11:00', closesAt: '14:00' },
       { opensAt: '17:00', closesAt: '22:00' }] })).toBe(
-      'Avvikande öppettider den dagen: 11:00–14:00, 17:00–22:00.',
+      'Avvikande öppettider den dagen: 11:00-14:00, 17:00-22:00.',
     )
   })
 })

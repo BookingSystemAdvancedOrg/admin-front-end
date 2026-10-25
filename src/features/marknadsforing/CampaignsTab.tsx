@@ -26,6 +26,7 @@ import {
 import type { Audience, AudienceType, Campaign, CampaignInput, Template } from './marketingApi'
 import type { TabId } from './MarknadsforingPage'
 import { useEscape } from './useEscape'
+import { DateTimeInput } from '../../shared/DateInput'
 
 const DAY_CHOICES = [30, 60, 90, 180, 365]
 
@@ -223,7 +224,7 @@ function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone:
         {when === 'later' && (
           <div className="form-field">
             <label htmlFor="mk-send-at">Datum och tid</label>
-            <input id="mk-send-at" type="datetime-local" value={at} min={toLocalInput(new Date())} onChange={(e) => setAt(e.target.value)} />
+            <DateTimeInput id="mk-send-at" timeLabel="Tid" value={at} min={toLocalInput(new Date())} onChange={(e) => setAt(e.target.value)} />
           </div>
         )}
         {error && <p className="form-error" role="alert">{error}</p>}

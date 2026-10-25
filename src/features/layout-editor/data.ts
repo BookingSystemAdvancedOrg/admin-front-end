@@ -144,52 +144,61 @@ export function tableSize(t: Pick<TableElement, 'w' | 'h'>): {
 /** Minsta tillåtna bordsmått vid manuell storleksändring. */
 export const MIN_TABLE_SIZE = 24
 
-/** Stolens storlek i golvenheter. */
-export const SEAT_SIZE = 13
+/** Stolens storlek i golvenheter: bredd längs bordskanten, djup ut från bordet. */
+export const SEAT_W = 20
+export const SEAT_D = 17
 
-/** Hur långt ut från bordskanten stolen ställs. */
-const SEAT_GAP = 4
+/** Så långt stolen är inskjuten under bordsskivan (golvenheter). */
+export const SEAT_TUCK = 8
+
+/** Stolens mitt räknat från bordskanten: inskjuten, så den syns "intryckt". */
+const SEAT_OUT = SEAT_D / 2 - SEAT_TUCK
 
 /**
- * Stolarnas mittpunkter, relativt bordets mitt, en per plats. Runda bord får
- * dem jämnt fördelade i en cirkel; fyrkantiga längs kanterna, med start mitt
- * på ovansidan så att ett fyrsitsigt bord får två mitt emot varandra istället
- * för fyra i hörnen.
+ * Stolarnas mittpunkter, relativt bordets mitt, en per plats, och vridningen
+ * (0 = ryggstödet uppåt). Runda bord får dem jämnt fördelade i en cirkel;
+ * fyrkantiga längs långsidorna, så att ett fyrsitsigt bord får två mitt emot
+ * två, och på kortsidorna bara när långsidorna inte räcker.
  */
 export function seatPositions(
   t: Pick<TableElement, 'shape' | 'seats' | 'w' | 'h'>,
-): { x: number; y: number }[] {
+): { x: number; y: number; rot: number }[] {
   const n = Math.max(0, Math.round(t.seats))
   if (n === 0) return []
   const size = tableSize(t)
-  const out: { x: number; y: number }[] = []
+  const out: { x: number; y: number; rot: number }[] = []
 
   if (t.shape === 'round') {
-    const r = size.w / 2 + SEAT_GAP + SEAT_SIZE / 2
+    const r = size.w / 2 + SEAT_OUT
     for (let i = 0; i < n; i++) {
-      // Börja rakt uppåt och gå medurs.
+      // Börja rakt uppåt och gå medurs. Ryggstödet vänder bort från bordet.
       const a = (i / n) * 2 * Math.PI - Math.PI / 2
-      out.push({ x: Math.cos(a) * r, y: Math.sin(a) * r })
+      out.push({ x: Math.cos(a) * r, y: Math.sin(a) * r, rot: (a * 180) / Math.PI + 90 })
     }
     return out
   }
 
-  const halfW = size.w / 2 + SEAT_GAP + SEAT_SIZE / 2
-  const halfH = size.h / 2 + SEAT_GAP + SEAT_SIZE / 2
-  const perimeter = 2 * (size.w + size.h)
-  for (let i = 0; i < n; i++) {
-    // Gå runt bordets omkrets, med en halv lucka i början så att stolarna
-    // hamnar mitt på kanterna och inte i hörnen.
-    const d = ((i + 0.5) / n) * perimeter
-    if (d < size.w) {
-      out.push({ x: d - size.w / 2, y: -halfH })
-    } else if (d < size.w + size.h) {
-      out.push({ x: halfW, y: d - size.w - size.h / 2 })
-    } else if (d < 2 * size.w + size.h) {
-      out.push({ x: size.w / 2 - (d - size.w - size.h), y: halfH })
-    } else {
-      out.push({ x: -halfW, y: size.h / 2 - (d - 2 * size.w - size.h) })
+  // Längs långsidorna (lika många på varje sida), och en på varje kortsida
+  // bara när de inte får plats - samma regel som gästens planritning.
+  const long = size.w >= size.h
+  const along = long ? size.w : size.h
+  const across = long ? size.h : size.w
+  const ends = Math.ceil(n / 2) * (SEAT_W + 4) > along && n >= 4 ? 2 : 0
+  const top = Math.ceil((n - ends) / 2)
+  const bottom = n - ends - top
+  const place = (count: number, sign: number) => {
+    for (let i = 0; i < count; i++) {
+      const u = ((i + 0.5) / count - 0.5) * along
+      const v = sign * (across / 2 + SEAT_OUT)
+      out.push(long ? { x: u, y: v, rot: sign > 0 ? 180 : 0 } : { x: v, y: u, rot: sign > 0 ? 90 : 270 })
     }
+  }
+  place(top, -1)
+  place(bottom, 1)
+  for (let i = 0; i < ends; i++) {
+    const sign = i === 0 ? -1 : 1
+    const u = sign * (along / 2 + SEAT_OUT)
+    out.push(long ? { x: u, y: 0, rot: sign > 0 ? 90 : 270 } : { x: 0, y: u, rot: sign > 0 ? 180 : 0 })
   }
   return out
 }

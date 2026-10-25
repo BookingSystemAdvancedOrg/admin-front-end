@@ -43,7 +43,7 @@ export const EMPTY_PROFILE: RestaurantProfile = {
  * Neutrala startvärden - inte mockdata, utan rimliga utgångspunkter som ändå
  * måste bekräftas av användaren. Tidszonen är den enda svenska restauranger
  * rimligen har, och API:t kräver ett giltigt IANA-namn. Bokningslängden och
- * grace-perioden måste vara giltiga (> 0 respektive ≥ 0) för att formuläret
+ * grace-perioden måste vara giltiga (> 0 respektive 15-60 min) för att formuläret
  * ska gå att skicka - noll hade bara gett ett valideringsfel direkt.
  */
 export const DEFAULT_TIMEZONE = 'Europe/Stockholm'

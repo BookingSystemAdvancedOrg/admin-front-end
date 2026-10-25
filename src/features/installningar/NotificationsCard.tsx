@@ -50,7 +50,7 @@ export function NotificationsCard({ tenant, isOwner }: { tenant: Tenant; isOwner
     setError(null)
     setNotice(null)
     if (senderTrimmed && !SENDER_NAME.test(senderTrimmed)) {
-      setError('Avsändarnamnet får vara högst 11 tecken: bokstäver a–z, siffror och mellanslag.')
+      setError('Avsändarnamnet får vara högst 11 tecken: bokstäver a-z, siffror och mellanslag.')
       return
     }
     if (values.sms && !/[A-Za-z]/.test(senderTrimmed)) {

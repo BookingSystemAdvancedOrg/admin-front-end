@@ -73,11 +73,11 @@ describe('BestallningarPage', () => {
     moveOrder.mockResolvedValue(order({ status: 'preparing' }))
     render(<BestallningarPage />)
     const nya = await screen.findByRole('region', { name: 'Nya' })
-    expect(within(nya).queryByRole('button', { name: 'Klar – skicka sms' })).toBeNull()
-    await user.click(within(nya).getByRole('button', { name: 'Påbörja – skicka sms' }))
+    expect(within(nya).queryByRole('button', { name: 'Klar - skicka sms' })).toBeNull()
+    await user.click(within(nya).getByRole('button', { name: 'Påbörja - skicka sms' }))
     expect(moveOrder).toHaveBeenCalledWith('loc-1', expect.objectContaining({ status: 'confirmed' }), 'preparing')
     const tillagas = screen.getByRole('region', { name: 'Tillagas' })
-    expect(within(tillagas).getByRole('button', { name: 'Klar – skicka sms' })).toBeInTheDocument()
+    expect(within(tillagas).getByRole('button', { name: 'Klar - skicka sms' })).toBeInTheDocument()
   })
 
   it('marks a pickup order ready (sends the SMS) and moves it', async () => {
@@ -85,7 +85,7 @@ describe('BestallningarPage', () => {
     listOrders.mockResolvedValue(list([order({ status: 'preparing' })]))
     moveOrder.mockResolvedValue(order({ status: 'ready' }))
     render(<BestallningarPage />)
-    await user.click(await screen.findByRole('button', { name: 'Klar – skicka sms' }))
+    await user.click(await screen.findByRole('button', { name: 'Klar - skicka sms' }))
     expect(moveOrder).toHaveBeenCalledWith('loc-1', expect.objectContaining({ status: 'preparing' }), 'ready')
     const klara = screen.getByRole('region', { name: 'Klara' })
     expect(within(klara).getByRole('button', { name: 'Hämtad' })).toBeInTheDocument()
@@ -110,7 +110,8 @@ describe('BestallningarPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Avbryt' }))
     await user.click(screen.getByRole('button', { name: /Bekräfta/ }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Stripe kunde inte återbetala')
-    expect(listOrders).toHaveBeenCalledTimes(2)
+    // Dagens lista hämtas om; förra veckans dag (med datum) räknas inte.
+    expect(listOrders.mock.calls.filter((c) => c.length === 1)).toHaveLength(2)
   })
 
   it('pauses and resumes ordering', async () => {

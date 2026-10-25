@@ -1,0 +1,134 @@
+/* Inställningar > Skrivare (PrinterCard.tsx). Färger från temats variabler: ljust och mörkt. */
+
+.printer-card,
+.printer-guide {
+  min-width: 0;
+}
+
+.printer-lead {
+  margin: 8px 0 16px;
+  max-width: 68ch;
+}
+
+.printer-stack {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.printer-subtitle {
+  margin: 0;
+  font: 600 14px/1.3 var(--font);
+  color: var(--ink);
+}
+
+.printer-credentials {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--tint-orange);
+}
+
+.printer-credentials .cell-muted {
+  margin: 0;
+  color: var(--warning-ink);
+}
+
+.printer-copy {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.printer-copy input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+
+.printer-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+
+.printer-row {
+  display: grid;
+  gap: 8px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.printer-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  justify-content: space-between;
+}
+
+.printer-meta {
+  margin: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.printer-add {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.printer-add .form-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.printer-settings {
+  padding-top: 4px;
+}
+
+.printer-steps {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 20px;
+  padding-left: 22px;
+  max-width: 68ch;
+  line-height: 1.55;
+}
+
+.printer-steps li::marker {
+  font-weight: 600;
+  color: var(--accent-ink);
+}
+
+.printer-tips {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.printer-tips code {
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--fill);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+@media (max-width: 560px) {
+  .printer-add {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

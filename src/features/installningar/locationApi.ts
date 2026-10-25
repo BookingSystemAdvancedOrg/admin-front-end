@@ -1,4 +1,5 @@
 import { apiFetch, ApiError } from '../../shared/api'
+import type { BookingTimeRules } from './bookingTime'
 
 /**
  * Klient mot backendens /locations-endpoints (create-location/get-location).
@@ -62,9 +63,9 @@ export interface OrderingPolicy {
   pickup: boolean
   /** Beställ via QR-koden på bordet, serveras vid bordet. */
   table: boolean
-  /** Beräknad tillagningstid som gästen ser (5–180 min). */
+  /** Beräknad tillagningstid som gästen ser (5-180 min). */
   prepMinutes: number
-  /** Sista beställning så här många minuter före stängning (0–120). */
+  /** Sista beställning så här många minuter före stängning (0-120). */
   lastOrderMinutes: number
 }
 
@@ -101,9 +102,13 @@ export interface Location
   /** Beställningar pausade till (ISO, satt av personalen). */
   orderingPausedUntil?: string
   maxPartySizeOnline?: number
+  /** Statistik: timmen middagen börjar ("15:00" när den inte är satt). */
+  lunchUntil?: string
   specialDays?: SpecialDay[]
   tableRules?: Record<string, TableRule>
   tableCombinations?: TableCombination[]
+  /** Bokningstid per starttid; saknas = bookingDurationHours, ingen förlängning. */
+  bookingTimeRules?: BookingTimeRules
   locationId: string
   createdBy: string
   createdAt: string
@@ -163,8 +168,8 @@ export function validateBookingDuration(hours: number): string | null {
 }
 
 export function validateGracePeriod(hours: number): string | null {
-  if (!Number.isFinite(hours) || hours < 0) {
-    return 'Grace period kan inte vara negativ.'
+  if (!Number.isFinite(hours) || hours < 0.25 || hours > 1) {
+    return 'Grace period ska vara mellan 15 och 60 minuter.'
   }
   return null
 }
@@ -214,7 +219,12 @@ function toFriendlyLocationError(err: unknown): Error {
 
   switch (err.status) {
     case 400:
-      return new ApiError(400, err.message)
+      return new ApiError(
+        400,
+        /^gracePeriodHours must be shorter/.test(err.message)
+          ? 'Grace period måste vara kortare än den kortaste bokningstiden (se Bokningstid).'
+          : err.message,
+      )
     case 401:
       return new ApiError(401, 'Du är inte inloggad längre. Logga in igen.')
     case 403:
@@ -278,10 +288,13 @@ export type LocationUpdate = Partial<LocationCreateRequest> & {
   guarantee?: GuaranteePolicy | null
   ordering?: OrderingPolicy | null
   maxPartySizeOnline?: number | null
+  /** null = standard (15:00). */
+  lunchUntil?: string | null
   /** null (eller []) tar bort dem. */
   specialDays?: SpecialDay[] | null
   tableRules?: Record<string, TableRule> | null
   tableCombinations?: TableCombination[] | null
+  bookingTimeRules?: BookingTimeRules | null
 }
 
 export function updateLocation(

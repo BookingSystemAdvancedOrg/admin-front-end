@@ -6,6 +6,7 @@ import { ReservationModal } from './ReservationModal'
 import { NewReservationModal } from './NewReservationModal'
 import { SlotTablePicker, SLOT_REFRESH_MS } from './SlotTablePicker'
 import type { Reservation } from './bookingsApi'
+import { formatDate } from '../../shared/DateInput'
 
 const changeStatus = vi.fn()
 const paymentAction = vi.fn()
@@ -269,9 +270,9 @@ describe('time rules in the forms', () => {
     const user = userEvent.setup()
     getAvailability.mockResolvedValue(avail([]))
     render(<NewReservationModal locationId="loc-1" initialDate="2026-10-15" today={TODAY} onCreated={() => {}} onCancel={() => {}} />)
-    expect(screen.getByLabelText('Datum')).toHaveValue('2026-10-15')
+    expect(screen.getByLabelText('Datum')).toHaveValue(formatDate('2026-10-15'))
     await user.click(screen.getByRole('radio', { name: 'Drop-in' }))
-    expect(screen.getByLabelText('Datum')).toHaveValue(TODAY)
+    expect(screen.getByLabelText('Datum')).toHaveValue(formatDate(TODAY))
     expect(screen.getByLabelText('Datum')).toBeDisabled()
     expect(getAvailability).toHaveBeenLastCalledWith('loc-1', TODAY, { walkIn: true })
   })
@@ -279,8 +280,8 @@ describe('time rules in the forms', () => {
   it('a new booking never starts on a past day', () => {
     getAvailability.mockResolvedValue(avail([]))
     render(<NewReservationModal locationId="loc-1" initialDate="2026-10-01" today={TODAY} onCreated={() => {}} onCancel={() => {}} />)
-    expect(screen.getByLabelText('Datum')).toHaveValue(TODAY)
-    expect(screen.getByLabelText('Datum')).toHaveAttribute('min', TODAY)
+    expect(screen.getByLabelText('Datum')).toHaveValue(formatDate(TODAY))
+    expect(screen.getByLabelText('Datum')).toHaveAttribute('data-min', TODAY)
   })
 
   it('a time that went stale is explained in Swedish and the list is fetched again', async () => {
@@ -396,5 +397,75 @@ describe('SlotTablePicker refresh', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('ReservationModal extend', () => {
+  const ruled = (over: Partial<Reservation> = {}) =>
+    booking({
+      startTime: '18:00',
+      endTime: '19:30',
+      bookingRule: { durationMinutes: 90, extensionAllowed: true, maxExtensionMinutes: 30 },
+      ...over,
+    })
+
+  it('extends within the rule', async () => {
+    const user = userEvent.setup()
+    updateReservation.mockResolvedValue(ruled({ endTime: '20:00' }))
+    render(<ReservationModal today={TODAY} reservation={ruled()} isOwner onChanged={() => {}} onClose={() => {}} />)
+    expect(screen.getByText(/1 tim 30 min · kan förlängas 30 min/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Förläng' }))
+    expect(screen.getByLabelText('Ny sluttid')).toHaveValue(String(20 * 60))
+    await user.click(screen.getByRole('button', { name: 'Förläng' }))
+    expect(updateReservation).toHaveBeenCalledWith('loc-1', 'r1', { endTime: '20:00' })
+  })
+
+  it('needs an explicit override beyond the rule', async () => {
+    const user = userEvent.setup()
+    updateReservation.mockResolvedValue(ruled({ endTime: '20:30' }))
+    render(<ReservationModal today={TODAY} reservation={ruled()} isOwner onChanged={() => {}} onClose={() => {}} />)
+    await user.click(screen.getByRole('button', { name: 'Förläng' }))
+    await user.selectOptions(screen.getByLabelText('Ny sluttid'), String(20 * 60 + 30))
+    await user.click(screen.getByRole('button', { name: 'Förläng' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Bekräfta')
+    expect(updateReservation).not.toHaveBeenCalled()
+    await user.click(screen.getByLabelText(/Förläng ändå/))
+    await user.click(screen.getByRole('button', { name: 'Förläng' }))
+    expect(updateReservation).toHaveBeenCalledWith('loc-1', 'r1', { endTime: '20:30', overrideRule: true })
+  })
+
+  it('offers the override when the server says a window blocks it', async () => {
+    const user = userEvent.setup()
+    updateReservation.mockRejectedValueOnce(new ApiError(409, 'window_not_extendable'))
+    render(<ReservationModal today={TODAY} reservation={ruled()} isOwner onChanged={() => {}} onClose={() => {}} />)
+    await user.click(screen.getByRole('button', { name: 'Förläng' }))
+    await user.click(screen.getByRole('button', { name: 'Förläng' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('buffé')
+    expect(screen.getByLabelText(/Förläng ändå/)).toBeInTheDocument()
+  })
+
+  it('shortens a booking', async () => {
+    const user = userEvent.setup()
+    updateReservation.mockResolvedValue(ruled({ endTime: '19:00' }))
+    render(<ReservationModal today={TODAY} reservation={ruled()} isOwner onChanged={() => {}} onClose={() => {}} />)
+    await user.click(screen.getByRole('button', { name: 'Förläng' }))
+    await user.selectOptions(screen.getByLabelText('Ny sluttid'), String(19 * 60))
+    await user.click(screen.getByRole('button', { name: 'Korta bokningen' }))
+    expect(updateReservation).toHaveBeenCalledWith('loc-1', 'r1', { endTime: '19:00' })
+  })
+})
+
+describe('ReservationModal history', () => {
+  it('shows a shortened end neutrally', () => {
+    render(
+      <ReservationModal
+        today={TODAY}
+        reservation={booking({ history: [{ action: 'shortened', by: 'x', at: '2026-10-12T17:00:00Z', previous: '21:00', endTime: '20:30' }] })}
+        isOwner
+        onChanged={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    expect(screen.getByText(/Sluttid ändrad · 21:00 till 20:30/)).toBeInTheDocument()
   })
 })

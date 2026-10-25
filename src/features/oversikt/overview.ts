@@ -4,6 +4,7 @@ import type { StripeStage } from '../../shared/tenant'
 import type { Reservation } from '../bokningar/bookingsApi'
 import type { Order } from '../bestallningar/ordersApi'
 import type { RequestSummary } from '../catering/cateringApi'
+import type { PrintStatus } from '../bestallningar/printApi'
 
 /**
  * Ren logik för Översikten - utan React, så den går att testa direkt.
@@ -29,7 +30,7 @@ export function weekdayIn(timezone: string | null, now: Date = new Date()): Week
   return WEEKDAYS.includes(day) ? day : 'monday'
 }
 
-/** Dagens öppettider som text, t.ex. "11:00–14:00, 17:00–22:00" eller "Stängt". */
+/** Dagens öppettider som text, t.ex. "11:00-14:00, 17:00-22:00" eller "Stängt". */
 export function todaysHours(
   hours: BusinessHours | undefined,
   timezone: string | null,
@@ -37,7 +38,7 @@ export function todaysHours(
 ): string {
   const intervals = hours?.[weekdayIn(timezone, now)] ?? []
   if (intervals.length === 0) return 'Stängt'
-  return intervals.map((i) => `${i.opensAt}–${i.closesAt}`).join(', ')
+  return intervals.map((i) => `${i.opensAt}-${i.closesAt}`).join(', ')
 }
 
 export function hasAnyOpeningHours(hours: BusinessHours | undefined): boolean {
@@ -45,7 +46,7 @@ export function hasAnyOpeningHours(hours: BusinessHours | undefined): boolean {
 }
 
 export interface SetupStep {
-  id: 'hours' | 'menu' | 'layout' | 'stripe' | 'staff'
+  id: 'dpa' | 'hours' | 'menu' | 'layout' | 'stripe' | 'staff'
   label: string
   /** null = okänt (data kunde inte hämtas) - visas varken som klart eller ej. */
   done: boolean | null
@@ -59,6 +60,8 @@ export interface SetupInput {
   hasLiveLayout: boolean | null
   stripeStage: StripeStage
   staffCount: number | null
+  /** Personuppgiftsbiträdesavtalet: undefined = API:t saknar det (inget steg). */
+  dpaAccepted?: boolean
 }
 
 /**
@@ -68,6 +71,10 @@ export interface SetupInput {
 export function setupSteps(input: SetupInput): SetupStep[] {
   if (!input.isOwner) return []
   const steps: SetupStep[] = [
+    // Först: en ny restaurang publiceras inte förrän avtalet är godkänt.
+    ...(input.dpaAccepted === undefined
+      ? []
+      : [{ id: 'dpa' as const, label: 'Godkänn personuppgiftsbiträdesavtalet', done: input.dpaAccepted, to: '/avtal' }]),
     {
       id: 'hours',
       label: 'Lägg in öppettider',
@@ -145,6 +152,18 @@ export function revenueToday(orders: Order[] | null): { amount: number; count: n
   return { amount: paid.reduce((sum, o) => sum + o.totalAmount, 0), count: paid.length }
 }
 
+/**
+ * Omsättningen i öre en annan dag fram till samma klockslag som nu (platsens
+ * tid), så att dagen hittills jämförs rättvist med samma veckodag förra
+ * veckan: klockan tolv mot klockan tolv, inte mot hela kvällen.
+ * Beställningar utan tid räknas inte.
+ */
+export function revenueUntil(orders: Order[] | null, nowClock: string, timezone: string | null): number | null {
+  if (!orders) return null
+  const before = orders.filter((o) => o.createdAt && clockIn(timezone, new Date(o.createdAt)) <= nowClock)
+  return revenueToday(before)?.amount ?? 0
+}
+
 const IN_PROGRESS = new Set(['confirmed', 'preparing', 'ready'])
 
 /** Aktiva beställningar: betalda men inte klara/hämtade. */
@@ -163,7 +182,7 @@ export function activeOrders(
 
 /** Det som väntar på personalen, i den ordning det bör tas. */
 export interface TodoItem {
-  id: 'payments' | 'catering' | 'unconfirmed'
+  id: 'prints' | 'payments' | 'catering' | 'unconfirmed'
   count: number
   label: string
   to: string
@@ -172,19 +191,24 @@ export interface TodoItem {
 const CATERING_WAITING = new Set(['requested', 'change_requested'])
 
 /**
- * Att hantera: misslyckade kortdragningar (avgifter), cateringförfrågningar
- * som väntar på svar och bokningar där gästen inte lagt in kortet än.
- * Det mest brådskande först. null = inget gick att hämta.
+ * Att hantera: köksnotor som inte kom ut (köket vet inte om beställningen),
+ * misslyckade kortdragningar (avgifter), cateringförfrågningar som väntar på
+ * svar och bokningar där gästen inte lagt in kortet än. Det mest brådskande
+ * först. Notor som väntar i kön räknas bara när skrivaren inte svarar; annars
+ * skrivs de ut inom några sekunder. null = inget gick att hämta.
  */
 export function todoQueue(
   today: Reservation[] | null,
   catering: RequestSummary[] | null,
+  print: PrintStatus | null = null,
 ): { total: number; items: TodoItem[] } | null {
   if (!today && !catering) return null
+  const notPrinted = print?.printerConfigured ? print.failed + (print.online ? 0 : print.unprinted) : 0
   const failed = (today ?? []).filter((r) => r.payment?.status === 'failed').length
   const waitingCatering = (catering ?? []).filter((c) => CATERING_WAITING.has(c.status)).length
   const unconfirmed = (today ?? []).filter((r) => r.status === 'pending').length
   const items: TodoItem[] = [
+    { id: 'prints' as const, count: notPrinted, label: notPrinted === 1 ? 'ej utskriven nota' : 'ej utskrivna notor', to: '/bestallningar' },
     { id: 'payments' as const, count: failed, label: failed === 1 ? 'misslyckad betalning' : 'misslyckade betalningar', to: '/bokningar' },
     { id: 'catering' as const, count: waitingCatering, label: waitingCatering === 1 ? 'cateringförfrågan' : 'cateringförfrågningar', to: '/catering' },
     { id: 'unconfirmed' as const, count: unconfirmed, label: unconfirmed === 1 ? 'obekräftad bokning' : 'obekräftade bokningar', to: '/bokningar' },

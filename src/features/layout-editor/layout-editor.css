@@ -646,18 +646,60 @@
   filter: blur(2px);
 }
 
-/* En stol per plats, liggande på golvet runt bordet. */
+/* En stol per plats: en sits och ett ryggstöd mot utsidan, inskjuten under
+   bordet. Samma enkla form i 2D (sett ovanifrån) och 3D. Bara bild - pekaren
+   går igenom, stolen går inte att klicka på. */
 .table-seat {
   position: absolute;
-  border-radius: 4px;
-  background: #b9ab95;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  transform-style: preserve-3d;
+  pointer-events: none;
 }
 
-.table-el.selected .table-seat {
+.table-seat-top {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  background: #d9cdb8;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14);
+  transform: translateZ(10px);
+}
+
+.table-seat-back {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 22px;
+  border-radius: 3px 3px 0 0;
+  background: #b9ab95;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14);
+  transform-origin: top center;
+  transform: rotateX(90deg);
+}
+
+/* Ovanifrån (2D) står ryggstödet på högkant och syns inte - därför en
+   mörkare kant mot utsidan på själva sitsen. */
+.table-seat-top::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 28%;
+  border-radius: 3px 3px 0 0;
+  background: #b9ab95;
+}
+
+.table-el.selected .table-seat-top::before {
   background: var(--accent);
-  border-color: var(--accent);
+}
+
+.table-el.selected .table-seat-top {
+  background: color-mix(in srgb, var(--accent) 30%, #ffffff);
+}
+
+.table-el.selected .table-seat-back {
+  background: var(--accent);
 }
 
 /* Resize-handtag: dra en sida (bredd) eller ände (djup) för att ändra

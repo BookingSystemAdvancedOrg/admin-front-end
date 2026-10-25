@@ -65,8 +65,11 @@ describe('field validation (mirrors create-location Lambda rules)', () => {
     expect(validateBookingDuration(2)).toBeNull()
   })
 
-  it('allows gracePeriodHours to be zero but not negative', () => {
-    expect(validateGracePeriod(0)).toBeNull()
+  it('allows a grace period of 15 to 60 minutes only', () => {
+    expect(validateGracePeriod(0.25)).toBeNull()
+    expect(validateGracePeriod(1)).toBeNull()
+    expect(validateGracePeriod(0)).not.toBeNull()
+    expect(validateGracePeriod(1.25)).not.toBeNull()
     expect(validateGracePeriod(-0.5)).not.toBeNull()
   })
 

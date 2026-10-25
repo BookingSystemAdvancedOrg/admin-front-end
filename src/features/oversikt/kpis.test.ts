@@ -67,6 +67,15 @@ describe('Översiktens nyckeltal', () => {
     expect(todoQueue(null, null)).toBeNull()
   })
 
+  it('Att hantera: notor som inte kom ut överst; väntande notor bara när skrivaren inte svarar', () => {
+    const print = (online: boolean) => ({ autoPrint: true, printerConfigured: true, online, unprinted: 2, failed: 1, orders: {} })
+    const q = todoQueue([res({ status: 'pending' })], [], print(true))!
+    expect(q.items.map((i) => [i.id, i.count])).toEqual([['prints', 1], ['unconfirmed', 1]])
+    expect(q.items[0].to).toBe('/bestallningar')
+    expect(todoQueue([], [], print(false))!.items).toEqual([expect.objectContaining({ id: 'prints', count: 3, label: 'ej utskrivna notor' })])
+    expect(todoQueue([], [], { ...print(false), printerConfigured: false })!.total).toBe(0)
+  })
+
   it('klockan räknas i restaurangens tidszon', () => {
     expect(clockIn('Europe/Stockholm', new Date('2026-10-15T15:05:00Z'))).toBe('17:05')
     expect(clockIn('Not/AZone', new Date('2026-10-15T15:05:00Z'))).toBe('17:05')

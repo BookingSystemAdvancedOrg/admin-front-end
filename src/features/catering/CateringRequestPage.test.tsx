@@ -15,6 +15,8 @@ const declineRequest = vi.fn()
 const cancelRequest = vi.fn()
 const markDelivered = vi.fn()
 const listRequests = vi.fn()
+const restaurantSign = vi.fn()
+const restaurantSignStatus = vi.fn()
 vi.mock('./cateringApi', async (orig) => ({
   ...(await orig<typeof import('./cateringApi')>()),
   getRequest: (...a: unknown[]) => getRequest(...a),
@@ -24,7 +26,10 @@ vi.mock('./cateringApi', async (orig) => ({
   cancelRequest: (...a: unknown[]) => cancelRequest(...a),
   markDelivered: (...a: unknown[]) => markDelivered(...a),
   listRequests: (...a: unknown[]) => listRequests(...a),
+  restaurantSign: (...a: unknown[]) => restaurantSign(...a),
+  restaurantSignStatus: (...a: unknown[]) => restaurantSignStatus(...a),
 }))
+vi.mock('qrcode', () => ({ default: { toDataURL: (d: string) => Promise.resolve(`data:qr,${d}`) } }))
 vi.mock('../../shared/AdminTopbar', () => ({
   AdminTopbar: ({ title, subtitle }: { title: string; subtitle?: string }) => (
     <header>
@@ -71,8 +76,23 @@ beforeEach(() => {
 
 describe('offerTotals', () => {
   it('matches the server: discount on dishes, 12 % VAT included', () => {
-    const t = offerTotals({ lines: [{ name: 'A', unitPrice: 50, quantity: 20 }], discountPercent: 10, deliveryFee: 395, message: '' })
-    expect(t).toMatchObject({ subtotal: 100000, discount: 10000, deliveryFee: 39500, total: 129500, vat: 13875 })
+    const t = offerTotals({ lines: [{ name: 'A', unitPrice: 50, quantity: 20 }], discountPercent: 10, deliveryFee: 395,
+      equipmentReturn: 'cleaned', cleaningFee: 300, message: '', serviceIncluded: true }, '2026-11-20')
+    expect(t).toMatchObject({ subtotal: 100000, discount: 10000, deliveryFee: 39500, cleaningFee: 0, total: 129500, vat: 13875 })
+  })
+
+  it('adds the cleaning fee when the equipment comes back not cleaned, outside the discount', () => {
+    const t = offerTotals({ lines: [{ name: 'A', unitPrice: 50, quantity: 20 }], discountPercent: 10, deliveryFee: 395,
+      equipmentReturn: 'not_cleaned', cleaningFee: 300, message: '', serviceIncluded: true }, '2026-11-20')
+    // same numbers as the server test: 1000 - 100 + 395 + 300 kr, VAT 12/112
+    expect(t).toMatchObject({ discount: 10000, cleaningFee: 30000, total: 159500, vat: 17089 })
+  })
+
+  it('food without service takes 6 % in the reduced period, 12 % after it', () => {
+    const offer = { lines: [{ name: 'A', unitPrice: 106, quantity: 1 }], discountPercent: 0, deliveryFee: 0,
+      equipmentReturn: 'cleaned' as const, cleaningFee: 0, message: '', serviceIncluded: false }
+    expect(offerTotals(offer, '2026-11-20')).toMatchObject({ vatRate: 6, vat: 600 })
+    expect(offerTotals(offer, '2028-01-05').vatRate).toBe(12)
   })
 })
 
@@ -90,7 +110,81 @@ describe('CateringRequestPage', () => {
     expect(sendOffer).toHaveBeenCalledWith('loc-1', 'req-1', expect.objectContaining({
       lines: [{ menuItemId: 'm1', name: 'Lasagne', unitPrice: 55, quantity: 20 }],
     }))
-    expect(await screen.findByRole('status')).toHaveTextContent('Offerten är skickad')
+    expect(await screen.findByRole('status')).toHaveTextContent('Offerten är klar. Signera den')
+  })
+
+  it('adds a catering package for the guests, switches to food only and shows the review label', async () => {
+    const user = userEvent.setup()
+    getRequest.mockResolvedValue(request({
+      guests: 40, reviewedAt: '2026-10-12T11:00:00Z', customerType: 'company', companyName: 'Acme AB',
+      signatory: { name: 'Karl Ek', role: 'VD', authorityConfirmed: true },
+      request: { lines: [], portions: 0, ...TOTALS, deliveryFeeManual: true },
+      fulfilment: 'delivery', deliveryAddress: { street: 'Storgatan 1', postalCode: '11122', city: 'Stockholm' },
+    }))
+    sendOffer.mockResolvedValue(request({ status: 'offer_sent' }))
+    renderAt()
+    expect(await screen.findByText('Under granskning')).toBeInTheDocument()
+    expect(screen.getByText('Karl Ek, VD (intygad behörighet)')).toBeInTheDocument()
+    expect(screen.getByText(/hittades inte på kartan/)).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('Lägg till från cateringmenyn'), 'p:p1')
+    expect(screen.getByLabelText('Rad 1 namn')).toHaveValue('Mingelpaket')
+    expect(screen.getByLabelText('Rad 1 antal')).toHaveValue('40')
+    await user.selectOptions(screen.getByLabelText('Moms'), 'food')
+    expect(screen.getByText('varav moms 6 %')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Skicka offert' }))
+    expect(sendOffer).toHaveBeenCalledWith('loc-1', 'req-1', expect.objectContaining({
+      serviceIncluded: false, lines: [{ packageId: 'p1', name: 'Mingelpaket', unitPrice: 245, quantity: 40 }],
+    }))
+  })
+
+  it('the restaurant signs the sent offer with BankID before the customer gets it', async () => {
+    const user = userEvent.setup()
+    const sent = request({ status: 'offer_sent', currentOfferVersion: 1, signing: { offerVersion: 1, pdfSha256: 'a'.repeat(64) },
+      offers: [{ version: 1, lines: [], totals: TOTALS, validUntil: '2026-11-01' }] })
+    getRequest.mockResolvedValue(sent)
+    restaurantSign.mockResolvedValue({ kind: 'bankid', qrData: 'bankid.a.0.b', autoStartToken: 'ast' })
+    restaurantSignStatus.mockResolvedValueOnce({ state: 'pending', hint: 'userSign', qrData: 'bankid.a.1.c' })
+      .mockResolvedValueOnce({ state: 'signed', request: { ...sent, restaurantSignedAt: '2026-10-12T12:00:00Z',
+        signing: { offerVersion: 1, restaurant: { name: 'Roma AB', method: 'bankid', signedAt: '2026-10-12T12:00:00Z' } } } })
+    renderAt()
+    expect(await screen.findByText('Väntar på er signatur')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Signera med BankID' }))
+    expect(await screen.findByAltText('QR-kod för BankID')).toHaveAttribute('src', 'data:qr,bankid.a.0.b')
+    expect(await screen.findByText(/Skriv in din säkerhetskod/, {}, { timeout: 3000 })).toBeInTheDocument()
+    expect(await screen.findByText(/Signerad. Offerten är skickad till kunden/, {}, { timeout: 3000 })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Signera offerten' })).not.toBeInTheDocument()
+    expect(screen.getByText('Offert skickad')).toBeInTheDocument()
+  })
+
+  it('shows a not cleaned return and keeps its fee in the offer', async () => {
+    const user = userEvent.setup()
+    getRequest.mockResolvedValue(request({
+      equipmentReturn: 'not_cleaned',
+      request: { lines: [{ menuItemId: 'm1', name: 'Lasagne', unitPrice: 5000, quantity: 20 }], portions: 20,
+        equipmentReturn: 'not_cleaned', ...TOTALS, cleaningFee: 35000, total: 135000 },
+      settings: { cleaningFee: 500 },
+    }))
+    sendOffer.mockResolvedValue(request({ status: 'offer_sent' }))
+    renderAt()
+    expect(await screen.findByText('Ej rengjord: vi diskar och rengör')).toBeInTheDocument()
+    expect(screen.getByLabelText('Retur av utrustning')).toHaveValue('not_cleaned')
+    // the fee the guest saw, not the location's newer one
+    expect(screen.getByLabelText('Rengöringsavgift (kr)')).toHaveValue('350')
+    expect(screen.getAllByText('Rengöringsavgift')).toHaveLength(2)
+    await user.click(screen.getByRole('button', { name: 'Skicka offert' }))
+    expect(sendOffer).toHaveBeenCalledWith('loc-1', 'req-1', expect.objectContaining({
+      equipmentReturn: 'not_cleaned', cleaningFee: 350,
+    }))
+  })
+
+  it('switches an offer to cleaned and drops the fee', async () => {
+    const user = userEvent.setup()
+    getRequest.mockResolvedValue(request({ equipmentReturn: 'not_cleaned', settings: { cleaningFee: 500 } }))
+    renderAt()
+    expect(await screen.findByLabelText('Rengöringsavgift (kr)')).toHaveValue('500')
+    await user.selectOptions(screen.getByLabelText('Retur av utrustning'), 'cleaned')
+    expect(screen.queryByLabelText('Rengöringsavgift (kr)')).not.toBeInTheDocument()
+    expect(screen.queryByText('Rengöringsavgift')).not.toBeInTheDocument()
   })
 
   it('will not send an offer line priced above 10 000 kr', async () => {
@@ -142,7 +236,7 @@ describe('CateringRequestPage', () => {
     }))
     markDelivered.mockResolvedValue(request({ status: 'closed' }))
     renderAt()
-    expect(await screen.findByText('Signerad med BankID')).toBeInTheDocument()
+    expect(await screen.findByText('Signerad av båda parter')).toBeInTheDocument()
     expect(screen.getByText('Anna Andersson (19800101-****)')).toBeInTheDocument()
     expect(screen.getByText('Betald online')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Markera levererad' }))
@@ -170,7 +264,7 @@ describe('CateringRequestPage', () => {
 describe('CateringPage', () => {
   it('lists requests waiting for the owner first', async () => {
     listRequests.mockResolvedValue([
-      { ...request({ requestId: 'r-sent', status: 'offer_sent', customerName: 'Bo' }) },
+      { ...request({ requestId: 'r-sent', status: 'offer_sent', customerName: 'Bo', restaurantSignedAt: '2026-10-12T12:00:00Z' }) },
       { ...request({ requestId: 'r-new', status: 'requested', customerName: 'Cia' }) },
     ])
     render(<MemoryRouter><CateringPage /></MemoryRouter>)
@@ -180,5 +274,18 @@ describe('CateringPage', () => {
     expect(rows[2]).toHaveTextContent('Offert skickad')
     expect(screen.getByText('1 väntar på dig')).toBeInTheDocument()
     expect(within(rows[1]).getByRole('link', { name: 'Öppna' })).toHaveAttribute('href', '/catering/loc-1/r-new')
+  })
+
+  it('flags requests whose equipment comes back not cleaned', async () => {
+    listRequests.mockResolvedValue([
+      request({ requestId: 'r-dirty', customerName: 'Bo', equipmentReturn: 'not_cleaned' }),
+      request({ requestId: 'r-clean', customerName: 'Cia', equipmentReturn: 'cleaned', createdAt: '2026-10-11T10:00:00Z' }),
+    ])
+    render(<MemoryRouter><CateringPage /></MemoryRouter>)
+    const rows = await screen.findAllByRole('row')
+    const dirty = rows.find((r) => r.textContent?.includes('Bo'))!
+    const clean = rows.find((r) => r.textContent?.includes('Cia'))!
+    expect(dirty).toHaveTextContent('ej rengjord retur')
+    expect(clean).not.toHaveTextContent('ej rengjord retur')
   })
 })

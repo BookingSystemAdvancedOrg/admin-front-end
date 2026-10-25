@@ -10,10 +10,24 @@ const DURATION_MS = 1100
  * inloggning: på första sidan efter inloggningen, inom sidans avslöjande
  * (MotionScope). Därefter, och när ett värde ändras senare, står talet bara där.
  *
+ * Medan talet räknas upp sätts `--count` (0 till 1, hur långt det kommit)
+ * på elementet, så att ett grönt eller rött tal (shared/trend.css) börjar
+ * i vanlig textfärg och får sin färg i takt med att siffran växer.
+ *
  * `children` är den färdigformaterade texten ("1 250 kr", "12,50 kr",
  * "6,9 %"); prefix och suffix följer med och den sista bildrutan är exakt
  * den strängen, så inget ser annorlunda ut när rörelsen är klar.
  */
+/**
+ * Hur långt uppräkningen kommit, 0 till 1, mjukt i båda ändar. Färgen följer
+ * tiden och inte värdet: värdet rusar till nästan slutet direkt, och då
+ * skulle färgen bara blinka till i stället för att växa fram med talet.
+ */
+function growth(u: number): string {
+  const t = Math.min(1, Math.max(0, u))
+  return ((1 - Math.cos(Math.PI * t)) / 2).toFixed(3)
+}
+
 export function Num({ children, className, delayMs = 0 }: { children: string | number; className?: string; delayMs?: number }) {
   const text = String(children)
   const ref = useRef<HTMLSpanElement>(null)
@@ -43,9 +57,11 @@ export function Num({ children, className, delayMs = 0 }: { children: string | n
     let finished = false
     let current = from
     const frame = (now: number) => {
-      const p = easeOutExpo((now - start) / DURATION_MS)
+      const u = (now - start) / DURATION_MS
+      const p = easeOutExpo(u)
       if (p >= 1) {
         el.textContent = text
+        el.style.removeProperty('--count')
         shown.current = to
         finished = true
         raf = 0
@@ -53,12 +69,15 @@ export function Num({ children, className, delayMs = 0 }: { children: string | n
       }
       current = from + (to - from) * p
       el.textContent = formatStatValue(parsed, current)
+      el.style.setProperty('--count', growth(u))
       raf = requestAnimationFrame(frame)
     }
     el.textContent = formatStatValue(parsed, from)
+    el.style.setProperty('--count', growth(0))
     raf = requestAnimationFrame(frame)
     return () => {
       if (raf) cancelAnimationFrame(raf)
+      el.style.removeProperty('--count')
       // Avbruten innan målet (React StrictMode kör effekten två gånger i
       // utveckling): nästa körning får räkna klart från där den var.
       if (finished) {
@@ -72,7 +91,7 @@ export function Num({ children, className, delayMs = 0 }: { children: string | n
 
   // Tal har alltid samma bredd per siffra, så raden inte hoppar medan det räknas.
   return (
-    <span ref={ref} className={className} style={{ fontVariantNumeric: 'tabular-nums' }}>
+    <span ref={ref} className={`count-num${className ? ` ${className}` : ''}`} style={{ fontVariantNumeric: 'tabular-nums' }}>
       {text}
     </span>
   )

@@ -50,6 +50,9 @@
   --danger-ink: #9e1d26;
   --success: #2c6a3f;
   --success-ink: #2c6a3f;
+  /* Hur det går (shared/trend): bättre eller sämre än jämförelsen. */
+  --trend-good: var(--success-ink);
+  --trend-bad: var(--danger-ink);
   --warning: #8a5a00;
   --warning-ink: #8a5a00;
   --purple: #5b3f7a;
@@ -116,6 +119,9 @@
   --danger-ink: #ee8a90;
   --success: #7cc695;
   --success-ink: #7cc695;
+  /* Ljusare än success/danger: minst 5:1 även på vätskan i rutorna. */
+  --trend-good: #a3dcb4;
+  --trend-bad: #f6b0b5;
   --warning: #e0b35a;
   --warning-ink: #e0b35a;
   --purple: #c9b3e0;

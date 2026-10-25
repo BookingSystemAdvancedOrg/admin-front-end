@@ -1,49 +1,53 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { isApiConfigured } from '../../shared/api'
 import { Loading } from '../../shared/Loading'
 import { Num } from '../../shared/motion/Num'
-import type { RequestSummary } from '../catering/cateringApi'
+import { TrendBadge } from '../../shared/TrendBadge'
+import { useTrendPop } from '../../shared/motion/useTrendPop'
+import { toneClass, trendOf } from '../../shared/trend'
+import type { Trend, TrendMetric } from '../../shared/trend'
 import { Ring } from '../statistik/charts'
-import { sampleCatering, sampleDays } from '../statistik/sample'
-import { datesIn, fmtInt, fmtKr, fmtPct, presetRange, previousRange, shortDate, summarize } from '../statistik/stats'
-import type { Summary } from '../statistik/stats'
-import { loadDays } from '../statistik/statsApi'
+import { presetRange } from '../statistik/insights'
+import type { Filters, InsightsSummary } from '../statistik/insights'
+import { fetchInsights } from '../statistik/insightsApi'
+import { sampleInsights } from '../statistik/insightsSample'
+import { daysBetween, fmtInt, fmtKr, fmtPct, shortDate } from '../statistik/stats'
 import '../statistik/statistik.css'
 
 /**
- * "Den här månaden" på Översikt (bara ägaren): månaden hittills i fyra
- * siffror och en ring, med en länk till Statistik för jämförelser och
- * diagram. Underlaget är samma dagslistor som Statistik hämtar, och de
- * delar cache i fliken, så Statistik öppnas direkt efteråt.
+ * "Den här månaden" på Översikt: månaden hittills i fyra siffror och en
+ * ring, med en länk till Statistik för diagrammen. Varje siffra jämförs
+ * med lika många dagar innan (grön när det går bättre, röd när det går
+ * sämre, shared/trend). Samma anrop som Statistik (GET /insights med
+ * förra perioden, ett för hela månaden) och samma cache i fliken, så
+ * Statistik öppnas direkt efteråt.
  *
- * Månaden hämtas först när kortet syns (upp till 31 dagar, några i taget),
- * så den som bara tittar på dagens bokningar inte belastar API:t. Jämförelsen
- * med förra perioden görs på Statistik, inte här: den skulle dubbla anropen
- * vid varje inloggning.
+ * Månaden hämtas först när kortet syns, så den som bara tittar på dagens
+ * bokningar inte belastar API:t. Omsättningen visas bara när svaret har
+ * belopp (ägaren).
  */
 export function MonthCard({
   locationId,
   today,
-  catering,
   sample,
   showRevenue,
 }: {
   locationId: string
   /** Platsens datum idag, YYYY-MM-DD. */
   today: string
-  /** Cateringförfrågningarna Översikt redan hämtat; null = inga eller okända. */
-  catering: RequestSummary[] | null
   sample: boolean
   /** Restaurangen har beställning eller catering, så omsättning finns att visa. */
   showRevenue: boolean
 }) {
   const range = presetRange('month', today)
-  const key = `${locationId}|${range.from}|${range.to}|${sample ? 'sample' : 'live'}`
+  const filters: Filters = { preset: 'month', ...range, locationId, service: 'all', channel: 'all', compare: 'previous' }
+  const offline = !isApiConfigured()
+  const key = `${locationId}|${range.from}|${range.to}|${sample || offline ? 'sample' : 'live'}`
   const ref = useRef<HTMLElement>(null)
   // Utan IntersectionObserver (äldre webbläsare, tester) hämtas månaden direkt.
   const [visible, setVisible] = useState(() => typeof IntersectionObserver === 'undefined')
-  const [loaded, setLoaded] = useState<{ key: string; summary: Summary; failed: number } | null>(null)
-  const [progress, setProgress] = useState<{ key: string; done: number; total: number } | null>(null)
+  const [loaded, setLoaded] = useState<{ key: string; summary: InsightsSummary; previous: InsightsSummary | null; money: boolean } | null>(null)
   const [errorKey, setErrorKey] = useState<string | null>(null)
 
   useEffect(() => {
@@ -63,38 +67,32 @@ export function MonthCard({
   }, [visible])
 
   const { from, to } = range
-  // Exempelläget räknas direkt ur exempeldagarna; inget hämtas.
-  // Samma exempelcatering som Statistik väljer för perioden (den räknar från
-  // jämförelseperiodens start), så att siffrorna stämmer mellan sidorna.
-  const sampleSummary = sample
-    ? summarize(sampleDays(from, to, today), sampleCatering(previousRange(from, to).from, to), { from, to })
-    : null
+  const useSample = sample || offline
+  // Exemplet räknas direkt; bara riktiga siffror hämtas.
+  const sampleResponse = useSample ? sampleInsights({ ...filters, from, to }, today, true) : null
+  const sampleSummary = sampleResponse?.current ?? null
 
   useEffect(() => {
-    if (!visible || sample) return
+    if (!visible || useSample) return
     let cancelled = false
-    loadDays(locationId, datesIn(from, to), {
-      today,
-      concurrency: 3,
-      onProgress: (done, total) => !cancelled && setProgress({ key, done, total }),
-    })
-      .then((result) => {
-        if (!cancelled) setLoaded({ key, summary: summarize(result.days, catering ?? [], { from, to }), failed: result.failed })
-      })
-      .catch(() => {
-        if (!cancelled) setErrorKey(key)
-      })
+    fetchInsights({ from, to, locationId, service: 'all', channel: 'all', compare: 'previous' })
+      .then((r) => !cancelled && setLoaded({ key, summary: r.current, previous: r.previous, money: r.money }))
+      .catch(() => !cancelled && setErrorKey(key))
     return () => {
       cancelled = true
     }
-  }, [visible, key, locationId, from, to, today, sample, catering])
+  }, [visible, useSample, key, from, to, locationId])
 
-  const s = sample ? sampleSummary : loaded?.key === key ? loaded.summary : null
-  const error = !sample && errorKey === key && !s
-  const failed = !sample && loaded?.key === key ? loaded.failed : 0
-  const step = progress?.key === key ? progress : null
+  const s = sampleSummary ?? (loaded?.key === key ? loaded.summary : null)
+  const p = sampleResponse ? sampleResponse.previous : loaded?.key === key ? loaded.previous : null
+  const days = daysBetween(from, to)
+  const against = days === 1 ? 'dagen innan' : `de ${days} dagarna innan`
+  const versus = (cur: number | null | undefined, prev: number | null | undefined, metric: TrendMetric) =>
+    trendOf(cur, prev, metric, against)
+  const money = sampleSummary ? true : loaded?.key === key ? loaded.money : false
+  const error = errorKey === key && !s
   const monthName = new Intl.DateTimeFormat('sv-SE', { month: 'long' }).format(new Date(`${today}T12:00:00`))
-  const empty = s !== null && s.bookings + s.cancelled === 0 && s.revenue === 0
+  const empty = s !== null && s.bookings + s.cancelled === 0 && (s.revenue ?? 0) === 0 && s.orders === 0
 
   return (
     <section ref={ref} className="admin-card month-card" aria-labelledby="month-card-title">
@@ -116,7 +114,7 @@ export function MonthCard({
         <p className="admin-empty">Kunde inte hämta månadens siffror. Försök igen om en stund, eller öppna Statistik.</p>
       ) : !s ? (
         <div className="month-card-loading" role="status">
-          <Loading variant="inline" label={step && step.total > 0 ? `Räknar ihop ${step.done} av ${step.total} dagar` : 'Räknar ihop månaden'} />
+          <Loading variant="inline" label="Räknar ihop månaden" />
         </div>
       ) : empty ? (
         <p className="admin-empty">
@@ -131,54 +129,64 @@ export function MonthCard({
             empty="Inga bokningar"
             format={fmtInt}
             segments={[
-              { key: 'completed', label: 'Genomförda', value: s.completed, tone: 'ink' },
+              { key: 'completed', label: 'Genomförda', value: s.bookings - s.noShows, tone: 'ink' },
               { key: 'noshow', label: 'Uteblivna', value: s.noShows, tone: 'red' },
               { key: 'cancelled', label: 'Avbokade', value: s.cancelled, tone: 'steel' },
             ]}
           />
           <dl className="month-card-kpis">
-            {showRevenue && (
+            {showRevenue && money && (
               <div className="month-kpi month-kpi--hero">
                 <dt>Omsättning</dt>
-                <dd>
-                  <Num>{fmtKr(s.revenue)}</Num>
-                </dd>
+                <KpiValue trend={versus(s.revenue, p?.revenue, 'revenue')} index={0}>
+                  {fmtKr(s.revenue)}
+                </KpiValue>
                 <span className="month-kpi-sub">
-                  {fmtInt(s.orders)} beställningar{s.cateringRevenue > 0 ? ' och catering' : ''}
+                  {fmtInt(s.orders)} beställningar{(s.cateringRevenue ?? 0) > 0 ? ' och catering' : ''}
                 </span>
               </div>
             )}
             <div className="month-kpi">
               <dt>Bokningar</dt>
-              <dd>
-                <Num>{fmtInt(s.bookings)}</Num>
-              </dd>
+              <KpiValue trend={versus(s.bookings, p?.bookings, 'bookings')} index={1}>
+                {fmtInt(s.bookings)}
+              </KpiValue>
               <span className="month-kpi-sub">{fmtInt(s.cancelled)} avbokade</span>
             </div>
             <div className="month-kpi">
               <dt>Gäster</dt>
-              <dd>
-                <Num>{fmtInt(s.guests)}</Num>
-              </dd>
+              <KpiValue trend={versus(s.guests, p?.guests, 'guests')} index={2}>
+                {fmtInt(s.guests)}
+              </KpiValue>
               <span className="month-kpi-sub">
                 {s.avgParty ? `${s.avgParty.toLocaleString('sv-SE', { maximumFractionDigits: 1 })} per bokning` : 'Inga bokningar än'}
               </span>
             </div>
             <div className={`month-kpi${s.noShowPct !== null && s.noShowPct >= 5 ? ' month-kpi--warn' : ''}`}>
               <dt>Uteblivna</dt>
-              <dd>
-                <Num>{fmtPct(s.noShowPct)}</Num>
-              </dd>
+              <KpiValue trend={versus(s.noShowPct, p?.noShowPct, 'noShows')} index={3} warn={s.noShowPct !== null && s.noShowPct >= 5}>
+                {fmtPct(s.noShowPct)}
+              </KpiValue>
               <span className="month-kpi-sub">{fmtInt(s.noShows)} bokningar kom inte</span>
             </div>
           </dl>
         </div>
       )}
-      {s && failed > 0 && (
-        <p className="month-card-note">
-          {failed === 1 ? 'En dag' : `${failed} dagar`} kunde inte hämtas, så siffrorna kan vara för låga.
-        </p>
-      )}
     </section>
+  )
+}
+
+/** Ett av månadens tal: grönt eller rött mot dagarna innan, med förändringen under. */
+function KpiValue({ trend, index, warn = false, children }: { trend: Trend; index: number; warn?: boolean; children: string }) {
+  // Varningen (många uteblivna) går före tonen.
+  const tone = warn ? 'neutral' : trend.tone
+  const ref = useTrendPop<HTMLElement>(tone, 700 + index * 60)
+  return (
+    <>
+      <dd ref={ref} className={toneClass(tone).trim() || undefined}>
+        <Num>{children}</Num>
+      </dd>
+      <TrendBadge trend={trend} className="month-kpi-trend" />
+    </>
   )
 }

@@ -48,6 +48,21 @@ export interface TenantNotifications {
 
 export const REMINDER_HOURS = [0, 2, 3, 6, 12, 24, 48] as const
 
+/** Vad personalen ser på Statistik: driftsiffrorna utan belopp, eller inget. */
+export interface TenantInsightsSettings {
+  staffAccess: 'operations' | 'none'
+}
+
+/** Personuppgiftsbiträdesavtalet (features/dpa). */
+export interface TenantDpa {
+  currentVersion: string
+  acceptedVersion: string | null
+  acceptedAt: string | null
+  /** Ny restaurang: webbplatsen publiceras först när avtalet är godkänt. */
+  required: boolean
+  upToDate: boolean
+}
+
 export interface Tenant {
   tenantId: string
   name: string
@@ -64,6 +79,10 @@ export interface Tenant {
   senderName: string | null
   replyToEmail: string | null
   notifications: TenantNotifications
+  /** Saknas från äldre API-versioner: då gäller standard (driftsiffror). */
+  insights?: TenantInsightsSettings
+  /** Saknas från äldre API-versioner: då visas ingen avtalsruta. */
+  dpa?: TenantDpa
   role: TenantRole
   locations: TenantLocation[]
 }
@@ -73,6 +92,7 @@ export interface TenantEdit {
   senderName?: string | null
   replyToEmail?: string | null
   notifications?: Partial<TenantNotifications>
+  insights?: TenantInsightsSettings
 }
 
 /** Var restaurangen är i Stripe-flödet. */
@@ -129,6 +149,7 @@ const LOCAL_DEMO_TENANT: Tenant = {
   senderName: null,
   replyToEmail: null,
   notifications: { sms: false, staffEmails: true, reminderHours: 24 },
+  dpa: { currentVersion: '2026-10-v1', acceptedVersion: null, acceptedAt: null, required: false, upToDate: false },
   role: 'owner_user',
   locations: [],
 }
@@ -320,4 +341,10 @@ export function useTenant(): TenantState & {
 /** Den valda platsens sammanfattning (namn/adress/tidszon), eller null. */
 export function currentLocation(s: TenantState): TenantLocation | null {
   return s.tenant?.locations.find((l) => l.locationId === s.locationId) ?? null
+}
+
+/** Får den inloggade se Statistik? Ägaren alltid, personal om ägaren tillåter det. */
+export function canSeeInsights(tenant: Pick<Tenant, 'role' | 'insights'> | null | undefined): boolean {
+  if (!tenant) return false
+  return tenant.role === 'owner_user' || (tenant.insights?.staffAccess ?? 'operations') !== 'none'
 }

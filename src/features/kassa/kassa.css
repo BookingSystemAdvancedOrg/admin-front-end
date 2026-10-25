@@ -1,0 +1,686 @@
+/* Kassa - kassaregistret (KassaPage). Pekskärm först: inga mål under 48 px. */
+
+.kassa {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.kassa-test {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--tint-orange);
+  color: var(--warning-ink);
+  font: 600 14px/1.35 var(--font);
+  text-align: center;
+}
+
+.kassa-alert {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  font: 500 14px/1.45 var(--font);
+}
+
+.kassa-alert.danger {
+  background: var(--tint-red);
+  color: var(--danger-ink);
+}
+
+.kassa-alert.warn {
+  background: var(--tint-orange);
+  color: var(--warning-ink);
+}
+
+/* --- raden överst ----------------------------------------------------------- */
+
+.kassa-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+.kassa-bar-id {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font: 600 17px/1.2 var(--font);
+  color: var(--ink);
+}
+
+.kassa-bar-id select {
+  min-height: 44px;
+}
+
+.kassa-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.kassa-bar-actions .btn {
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.kassa-bar-actions .btn.kassa-quiet {
+  border-style: dashed;
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.kassa-bar-actions .btn.on {
+  background: var(--tint-purple);
+  color: var(--purple-ink);
+  box-shadow: none;
+}
+
+.kassa-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--r-pill);
+  background: var(--fill);
+  color: var(--muted);
+  font: 500 13px/1.2 var(--font);
+}
+
+.kassa-pill .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.kassa-pill.ok {
+  background: var(--tint-green);
+  color: var(--success-ink);
+}
+
+.kassa-pill.bad {
+  background: var(--tint-red);
+  color: var(--danger-ink);
+}
+
+.kassa-pill.training {
+  background: var(--tint-purple);
+  color: var(--purple-ink);
+}
+
+/* --- meny | nota ----------------------------------------------------------- */
+
+.kassa-switch {
+  display: none;
+}
+
+.kassa-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(340px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.kassa-cats {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.kassa-cats button,
+.kassa-switch button {
+  flex: none;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--fill);
+  color: var(--muted);
+  font: 500 15px/1 var(--font);
+  cursor: pointer;
+}
+
+.kassa-cats button.active,
+.kassa-switch button.active {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.kassa-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.kassa-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 96px;
+  padding: 14px 14px 12px;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 120ms var(--ease), box-shadow 200ms var(--ease);
+}
+
+.kassa-tile .name {
+  font: 600 15px/1.25 var(--font);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.kassa-tile .price {
+  font: 500 14px/1 var(--font);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.kassa-tile:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.kassa-tile:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+.kassa-tile:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* --- notan ------------------------------------------------------------------ */
+
+.kassa-bill {
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100svh - 120px);
+  padding: 16px;
+  overflow: hidden;
+}
+
+.kassa-bills {
+  display: flex;
+  gap: 6px;
+  padding-bottom: 4px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.kassa-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kassa-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--ink);
+  font: 500 14px/1 var(--font);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.kassa-chip small {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.kassa-chip.on {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.kassa-chip.on small {
+  color: inherit;
+  opacity: 0.75;
+}
+
+.kassa-chip.add {
+  border-style: dashed;
+  color: var(--muted);
+}
+
+.kassa-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+.kassa-bill-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.kassa-bill-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.kassa-bill-head h2 {
+  font: 600 20px/1.25 var(--font);
+  color: var(--ink);
+}
+
+.kassa-lines {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin: 0 -4px;
+  padding: 0 4px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.kassa-lines li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.kassa-lines li.kassa-hint {
+  display: block;
+  border: 0;
+  padding: 16px 0;
+}
+
+.kassa-lines .what {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.kassa-lines .name {
+  font: 500 15px/1.3 var(--font);
+  color: var(--ink);
+  overflow-wrap: break-word;
+}
+
+.kassa-lines .meta {
+  font: 400 13px/1.3 var(--font);
+  color: var(--muted);
+}
+
+.kassa-lines .meta em {
+  font-style: normal;
+  color: var(--ink);
+}
+
+.kassa-lines .sum {
+  min-width: 72px;
+  font: 600 15px/1 var(--font);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.kassa-stepper {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--r-pill);
+  background: var(--fill);
+}
+
+.kassa-stepper button {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.kassa-stepper button:active:not(:disabled) {
+  background: var(--border);
+}
+
+.kassa-stepper button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.kassa-stepper output {
+  min-width: 24px;
+  font: 600 16px/1 var(--font);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.kassa-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.kassa-icon-btn:hover {
+  background: var(--fill);
+  color: var(--ink);
+}
+
+.kassa-sum {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kassa-sum .row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font: 400 15px/1.4 var(--font);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.kassa-sum .row.total {
+  padding-top: 6px;
+  font: 600 24px/1.2 var(--font);
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.kassa-actions,
+.kassa-pay-panel,
+.kassa-deliver,
+.kassa-delivery,
+.kassa-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.kassa-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.kassa-row > * {
+  flex: 1 1 0;
+}
+
+.kassa-row .btn {
+  min-height: 48px;
+  white-space: nowrap;
+}
+
+.btn.kassa-big {
+  min-height: 56px;
+  font-size: 17px;
+  gap: 10px;
+}
+
+.btn.kassa-pay {
+  min-height: 68px;
+  gap: 10px;
+  font: 600 20px/1.2 var(--font);
+  font-variant-numeric: tabular-nums;
+}
+
+.kassa-big-amount {
+  margin: 0;
+  font: 600 34px/1.1 var(--font);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.kassa-pay-panel .pay-amount input,
+.kassa-form .pay-amount input {
+  min-height: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  font: 600 36px/1.15 var(--font);
+  font-variant-numeric: tabular-nums;
+}
+
+.kassa-about {
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
+.kassa-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 520px;
+  margin: 24px auto;
+  padding: 32px;
+  text-align: center;
+}
+
+/* --- dialoger --------------------------------------------------------------- */
+
+.kassa-modal.wide {
+  width: 620px;
+}
+
+.kassa-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kassa-paper {
+  align-self: center;
+  width: 100%;
+  max-width: 380px;
+  padding: 20px 18px;
+  border-radius: var(--r-md);
+  background: #fffdf8;
+  color: #1b1b1b;
+  box-shadow: var(--shadow);
+  font: 400 13px/1.45 var(--font);
+  font-variant-numeric: tabular-nums;
+}
+
+.kassa-paper p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.kassa-paper hr {
+  margin: 8px 0;
+  border: 0;
+  border-top: 1px dashed #b9b4aa;
+}
+
+.kassa-paper .pair {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kassa-paper .pair span:last-child {
+  white-space: nowrap;
+}
+
+.kassa-paper .b {
+  font-weight: 700;
+}
+
+.kassa-paper .big {
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.kassa-paper .c {
+  text-align: center;
+}
+
+.kassa-journal,
+.kassa-return {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kassa-journal li > *,
+.kassa-return li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 6px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: none;
+  color: var(--ink);
+  font: 400 15px/1.3 var(--font);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+
+.kassa-return li {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.kassa-journal button {
+  cursor: pointer;
+}
+
+.kassa-journal button:hover {
+  background: var(--fill);
+}
+
+.kassa-date {
+  max-width: 220px;
+}
+
+/* --- surfplatta på höjden och mobil -------------------------------------------- */
+
+@media (max-width: 1100px) {
+  .kassa-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 0.95fr);
+  }
+
+  .kassa-tiles {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+}
+
+/* Smal nota (surfplatta på höjden, mobil): namnet på egen rad, knapparna under. */
+@media (max-width: 1100px) and (min-width: 701px), (max-width: 480px) {
+  .kassa-lines li {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'what what what' 'step sum note';
+    row-gap: 6px;
+  }
+
+  .kassa-lines .what { grid-area: what; }
+  .kassa-lines .kassa-stepper { grid-area: step; }
+  .kassa-lines .sum { grid-area: sum; }
+  .kassa-lines .kassa-icon-btn { grid-area: note; }
+}
+
+@media (max-width: 860px) {
+  .kassa-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.95fr);
+  }
+
+  .kassa-tiles {
+    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  }
+
+  .kassa-bar-actions {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .kassa-bar-actions .btn {
+    flex: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .kassa-switch {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 6px;
+    border-radius: var(--r-pill);
+    background: var(--bg);
+  }
+
+  .kassa-switch button {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .kassa-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kassa-layout.show-menu .kassa-bill,
+  .kassa-layout.show-bill .kassa-menu {
+    display: none;
+  }
+
+  .kassa-bill {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 480px) {
+  .kassa-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -1,0 +1,163 @@
+/* Bokföring: export och kontoplan (BokforingCard). */
+
+.bokforing-result {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: var(--r-md);
+  background: var(--fill);
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.bokforing-result-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font: 500 14px/1.3 var(--mono);
+  color: var(--success-ink);
+  overflow-wrap: anywhere;
+}
+
+.bokforing-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.bokforing-facts dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.bokforing-facts dd {
+  margin: 4px 0 0;
+  font: 500 16px/1.3 var(--font);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.bokforing-warn-title {
+  margin: 4px 0 0;
+  font: 500 13px/1.3 var(--font);
+  color: var(--warning-ink);
+}
+
+.bokforing-warnings {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.bokforing-warnings li {
+  padding-left: 12px;
+  border-left: 2px solid var(--warning);
+}
+
+.bokforing-warn-date {
+  margin-right: 8px;
+  font-family: var(--mono);
+  color: var(--muted);
+}
+
+.bokforing-group {
+  margin: 0 0 8px;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.bokforing-group legend {
+  padding: 0;
+  margin-bottom: 4px;
+  font: 600 12px/1.3 var(--font);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.bokforing-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  gap: 16px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.bokforing-row:last-child {
+  border-bottom: 0;
+}
+
+.bokforing-row label {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bokforing-row-label {
+  font: 500 14px/1.3 var(--font);
+  color: var(--ink);
+}
+
+.bokforing-row-hint {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.bokforing-input {
+  display: grid;
+  gap: 4px;
+}
+
+.bokforing-input input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--fill);
+  font: 500 16px/1.2 var(--mono);
+  letter-spacing: 0.08em;
+  text-align: center;
+  color: var(--ink);
+}
+
+.bokforing-input input:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+.bokforing-input input[aria-invalid='true'] {
+  box-shadow: 0 0 0 2px var(--danger);
+}
+
+.bokforing-input-error {
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--danger-ink);
+}
+
+@media (max-width: 600px) {
+  .bokforing-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .bokforing-row {
+    grid-template-columns: minmax(0, 1fr) 96px;
+    gap: 12px;
+  }
+}
+
+.bokforing-card {
+  align-self: start;
+  min-width: 0;
+}

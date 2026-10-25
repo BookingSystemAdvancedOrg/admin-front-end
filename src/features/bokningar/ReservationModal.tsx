@@ -6,6 +6,7 @@ import {
   EMAIL_MAX,
   NAME_MAX,
   NOTES_MAX,
+  OVERRIDABLE,
   SOURCE_LABEL,
   STATUS_CLASS,
   STATUS_LABEL,
@@ -24,8 +25,10 @@ import {
 import type { HistoryEntry, Reservation, ReservationEdit } from './bookingsApi'
 import { tableNames, useTables } from '../../shared/tables'
 import { PhoneInput } from '../../shared/PhoneInput'
+import { ApiError } from '../../shared/api'
+import { minutesLabel } from '../installningar/bookingTime'
 
-type Panel = null | 'no_show' | 'cancel' | 'refund' | 'edit'
+type Panel = null | 'no_show' | 'cancel' | 'refund' | 'edit' | 'extend'
 
 const HISTORY_ACTION: Record<string, string> = {
   created: 'Bokad',
@@ -36,6 +39,8 @@ const HISTORY_ACTION: Record<string, string> = {
   expired: 'Kortet lades aldrig in - bordet släpptes',
   fee: 'Avgift',
   refund: 'Återbetalning',
+  extended: 'Sluttid ändrad',
+  shortened: 'Sluttid ändrad',
 }
 
 function who(by: string | undefined): string {
@@ -54,6 +59,10 @@ function historyText(h: HistoryEntry): string {
   if (h.action === 'status' && status) parts[0] = status
   if (h.action === 'fee' && status) parts.push(`${status.toLowerCase()} ${amount}`.trim())
   if (h.action === 'refund' && amount) parts.push(amount)
+  if (h.action === 'extended' || h.action === 'shortened') {
+    parts.push(`${String(h.previous ?? '')} till ${String(h.endTime ?? '')}`)
+    if (h.override) parts.push('utanför regeln')
+  }
   if (h.action === 'edited' && Array.isArray(h.fields)) parts.push((h.fields as string[]).join(', '))
   if (typeof h.reason === 'string' && h.reason) parts.push(`"${h.reason}"`)
   return parts.filter(Boolean).join(' · ')
@@ -130,7 +139,7 @@ export function ReservationModal({
           <div>
             <h2>{r.customerName || 'Gäst'}</h2>
             <p className="cell-muted">
-              {dayLabel(r.date)} · {r.startTime}–{r.endTime} · {r.partySize} pers · {tableNames(r.tableIds, labels)}
+              {dayLabel(r.date)} · {r.startTime}-{r.endTime} · {r.partySize} pers · {tableNames(r.tableIds, labels)}
             </p>
           </div>
           <span className={`status-badge ${STATUS_CLASS[r.status]}`}>{STATUS_LABEL[r.status]}</span>
@@ -155,6 +164,12 @@ export function ReservationModal({
               <dd>{r.customerEmail ? <a href={`mailto:${r.customerEmail}`}>{r.customerEmail}</a> : '-'}</dd>
               <dt>Källa</dt>
               <dd>{r.source ? SOURCE_LABEL[r.source] : '-'}</dd>
+              {r.bookingRule && (
+                <>
+                  <dt>Bokningstid</dt>
+                  <dd>{ruleText(r)}</dd>
+                </>
+              )}
               {r.notes && (
                 <>
                   <dt>Meddelande</dt>
@@ -214,6 +229,11 @@ export function ReservationModal({
                     Ändra
                   </button>
                 )}
+                {actions.extend && (
+                  <button type="button" className="btn outline square" disabled={busy} onClick={() => open('extend')}>
+                    Förläng
+                  </button>
+                )}
                 {actions.noShow && (
                   <button type="button" className="btn outline square" disabled={busy} onClick={() => open('no_show')}>
                     Uteblev
@@ -265,6 +285,17 @@ export function ReservationModal({
                   }
                 />
               </div>
+            )}
+
+            {panel === 'extend' && (
+              <ExtendPanel
+                reservation={r}
+                onSaved={(u) => {
+                  onChanged(u)
+                  setPanel(null)
+                }}
+                onCancel={() => setPanel(null)}
+              />
             )}
 
             {panel === 'cancel' && (
@@ -345,6 +376,126 @@ export function ReservationModal({
         )}
       </div>
     </div>
+  )
+}
+
+const toMinute = (clock: string) => Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3, 5))
+const toClock = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+
+/** "1 tim 30 min (Lunchbuffé) · kan förlängas 30 min" */
+function ruleText(r: Reservation): string {
+  const rule = r.bookingRule
+  if (!rule) return ''
+  const own = toMinute(r.endTime) - toMinute(r.startTime)
+  const name = rule.name ? ` (${rule.name})` : ''
+  const ext = rule.extensionAllowed ? `kan förlängas ${minutesLabel(rule.maxExtensionMinutes)}` : 'kan inte förlängas'
+  const changed = own !== rule.durationMinutes ? ` · nu ${minutesLabel(own)}` : ''
+  return `${minutesLabel(rule.durationMinutes)}${name} · ${ext}${changed}`
+}
+
+/**
+ * Personalen ändrar sluttiden (förlänger eller kortar) i kvartssteg. Längre
+ * än regeln tillåter kräver ett aktivt "förläng ändå" (loggas). Servern
+ * kontrollerar borden, stängningstiden och regeln igen.
+ */
+function ExtendPanel({
+  reservation: r,
+  onSaved,
+  onCancel,
+}: {
+  reservation: Reservation
+  onSaved: (r: Reservation) => void
+  onCancel: () => void
+}) {
+  const rule = r.bookingRule ?? { durationMinutes: toMinute(r.endTime) - toMinute(r.startTime), extensionAllowed: false, maxExtensionMinutes: 0 }
+  const start = toMinute(r.startTime)
+  const current = toMinute(r.endTime)
+  const allowedEnd = start + rule.durationMinutes + (rule.extensionAllowed ? rule.maxExtensionMinutes : 0)
+  const last = Math.min(23 * 60 + 45, Math.max(current, allowedEnd) + 120)
+  const options: number[] = []
+  for (let m = start + 15; m <= last; m += 15) options.push(m)
+  if (!options.includes(current)) options.push(current)
+  options.sort((a, b) => a - b)
+  const [end, setEnd] = useState(() => Math.min(Math.max(current, allowedEnd), last))
+  const [override, setOverride] = useState(false)
+  const [serverSaysOverride, setServerSaysOverride] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const beyondRule = end > current && end > allowedEnd
+  const needsOverride = beyondRule || serverSaysOverride
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (busy || end === current) return
+    if (needsOverride && !override) {
+      setError('Bekräfta att du förlänger utöver regeln.')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      onSaved(
+        await updateReservation(r.locationId, r.reservationId, {
+          endTime: toClock(end),
+          ...(needsOverride ? { overrideRule: true } : {}),
+        }),
+      )
+    } catch (err) {
+      setError(errorMessage(err))
+      if (err instanceof ApiError && OVERRIDABLE.includes(err.message)) setServerSaysOverride(true)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form className="booking-panel" onSubmit={submit}>
+      <p className="form-section-label">Ändra sluttid</p>
+      <p className="cell-muted">
+        Nu {r.startTime}-{r.endTime}. {rule.extensionAllowed
+          ? `Regeln tillåter till ${toClock(allowedEnd)}.`
+          : 'Regeln tillåter ingen förlängning.'}
+      </p>
+      <div className="form-field">
+        <label htmlFor="extend-end">Ny sluttid</label>
+        <select
+          id="extend-end"
+          value={end}
+          onChange={(e) => {
+            setEnd(Number(e.target.value))
+            setServerSaysOverride(false)
+            setOverride(false)
+            setError(null)
+          }}
+        >
+          {options.map((m) => (
+            <option key={m} value={m}>
+              {toClock(m)}
+              {m === current ? ', nu' : m > current && m > allowedEnd ? ', över regeln' : `, ${minutesLabel(m - start)}`}
+            </option>
+          ))}
+        </select>
+      </div>
+      {needsOverride && (
+        <label className="check-row">
+          <input type="checkbox" checked={override} onChange={(e) => setOverride(e.target.checked)} />
+          Förläng ändå, utöver bokningens regel (sparas i historiken)
+        </label>
+      )}
+      <p className="cell-muted">Borden kontrolleras igen; nästa bokning på samma bord stoppar förlängningen.</p>
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="modal-actions">
+        <button type="button" className="btn outline square" onClick={onCancel}>
+          Tillbaka
+        </button>
+        <button type="submit" className="btn primary square" disabled={busy || end === current}>
+          {busy ? 'Sparar…' : end < current ? 'Korta bokningen' : 'Förläng'}
+        </button>
+      </div>
+    </form>
   )
 }
 

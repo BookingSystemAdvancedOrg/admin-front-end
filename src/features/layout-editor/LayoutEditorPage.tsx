@@ -8,7 +8,8 @@ import {
   GRID,
   MIN_TABLE_SIZE,
   OPENING_LABEL,
-  SEAT_SIZE,
+  SEAT_D,
+  SEAT_W,
   WORKSPACE,
   ZONES,
   defaultTableSize,
@@ -56,6 +57,7 @@ import {
 } from './editorTools'
 import type { Clip, EditorAction, Guide, History, ShortcutTool } from './editorTools'
 import './layout-editor.css'
+import { Icon, type IconName } from '../../shared/Icon'
 
 const TILT_DEG = 55
 const PERSPECTIVE = 1600
@@ -2096,17 +2098,17 @@ export default function LayoutEditorPage() {
         )}
         <div className="editor-row">
           <div className="admin-card editor-toolbar" data-tour="layout-tools">
-            <ToolButton glyph="↖" caption="Välj" title="Välj, flytta och ändra storlek" shortcut={keyForTool('select')} active={tool === 'select' && !handMode} onClick={() => chooseTool('select')} />
-            <ToolButton glyph="✋" caption="Hand" title="Hand - dra för att panorera (eller håll inne mellanslag)" shortcut={keyForTool('hand')} active={handMode} onClick={() => (handMode ? chooseTool('select') : chooseTool('hand'))} />
-            <ToolButton glyph="▦" caption="Mark" title="Rita mark - väggar skapas runt om automatiskt" shortcut={keyForTool('ground')} active={tool === 'ground'} disabled={readOnly} onClick={() => chooseTool('ground')} />
-            <ToolButton glyph="▬" caption="Vägg" title="Rita väggar - klicka per hörn (dubbelklick avslutar), eller dra för en enskild vägg" shortcut={keyForTool('wall')} active={tool === 'wall'} disabled={readOnly} onClick={() => chooseTool('wall')} />
-            <ToolButton glyph="▭" caption="Fönster" title="Fönster - placeras på en vägg" shortcut={keyForTool('window')} active={tool === 'window'} disabled={readOnly} onClick={() => chooseTool('window')} />
-            <ToolButton glyph="◐" caption="Entré" title="Entré - placeras på en vägg" shortcut={keyForTool('entrance')} active={tool === 'entrance'} disabled={readOnly} onClick={() => chooseTool('entrance')} />
-            <ToolButton glyph="◑" caption="Kök" title="Kökets ingång - placeras på en vägg" shortcut={keyForTool('kitchen')} active={tool === 'kitchen'} disabled={readOnly} onClick={() => chooseTool('kitchen')} />
-            <ToolButton glyph="▣" caption="Kassa" title="Placera kassan - klicka" shortcut={keyForTool('counter')} active={tool === 'counter'} disabled={readOnly} onClick={() => chooseTool('counter')} />
-            <ToolButton glyph="■" caption="Fyrkant" title="Fyrkantigt bord - klicka, eller dra ut det på planen" shortcut={keyForTool('add-square')} active={placing?.shape === 'square'} disabled={readOnly} onPointerDown={(e) => onTableToolPointerDown(e, 'square')} onClick={() => !suppressToolClick.current && chooseTool('add-square')} />
-            <ToolButton glyph="●" caption="Runt" title="Runt bord - klicka, eller dra ut det på planen" shortcut={keyForTool('add-round')} active={placing?.shape === 'round'} disabled={readOnly} onPointerDown={(e) => onTableToolPointerDown(e, 'round')} onClick={() => !suppressToolClick.current && chooseTool('add-round')} />
-            <ToolButton glyph="✕" caption="Radera" title="Radera - klicka på ett element (eller välj och tryck Delete)" active={tool === 'erase'} disabled={readOnly} onClick={() => { setHandMode(false); setTool((t) => (t === 'erase' ? 'select' : 'erase')) }} />
+            <ToolButton icon="tool-select" caption="Välj" title="Välj, flytta och ändra storlek" shortcut={keyForTool('select')} active={tool === 'select' && !handMode} onClick={() => chooseTool('select')} />
+            <ToolButton icon="tool-hand" caption="Hand" title="Hand - dra för att panorera (eller håll inne mellanslag)" shortcut={keyForTool('hand')} active={handMode} onClick={() => (handMode ? chooseTool('select') : chooseTool('hand'))} />
+            <ToolButton icon="tool-floor" caption="Mark" title="Rita mark - väggar skapas runt om automatiskt" shortcut={keyForTool('ground')} active={tool === 'ground'} disabled={readOnly} onClick={() => chooseTool('ground')} />
+            <ToolButton icon="tool-wall" caption="Vägg" title="Rita väggar - klicka per hörn (dubbelklick avslutar), eller dra för en enskild vägg" shortcut={keyForTool('wall')} active={tool === 'wall'} disabled={readOnly} onClick={() => chooseTool('wall')} />
+            <ToolButton icon="tool-window" caption="Fönster" title="Fönster - placeras på en vägg" shortcut={keyForTool('window')} active={tool === 'window'} disabled={readOnly} onClick={() => chooseTool('window')} />
+            <ToolButton icon="tool-entrance" caption="Entré" title="Entré - placeras på en vägg" shortcut={keyForTool('entrance')} active={tool === 'entrance'} disabled={readOnly} onClick={() => chooseTool('entrance')} />
+            <ToolButton icon="tool-kitchen" caption="Kök" title="Kökets ingång - placeras på en vägg" shortcut={keyForTool('kitchen')} active={tool === 'kitchen'} disabled={readOnly} onClick={() => chooseTool('kitchen')} />
+            <ToolButton icon="tool-checkout" caption="Kassa" title="Placera kassan - klicka" shortcut={keyForTool('counter')} active={tool === 'counter'} disabled={readOnly} onClick={() => chooseTool('counter')} />
+            <ToolButton icon="table-square" caption="Fyrkant" title="Fyrkantigt bord - klicka, eller dra ut det på planen" shortcut={keyForTool('add-square')} active={placing?.shape === 'square'} disabled={readOnly} onPointerDown={(e) => onTableToolPointerDown(e, 'square')} onClick={() => !suppressToolClick.current && chooseTool('add-square')} />
+            <ToolButton icon="table-round" caption="Runt" title="Runt bord - klicka, eller dra ut det på planen" shortcut={keyForTool('add-round')} active={placing?.shape === 'round'} disabled={readOnly} onPointerDown={(e) => onTableToolPointerDown(e, 'round')} onClick={() => !suppressToolClick.current && chooseTool('add-round')} />
+            <ToolButton icon="trash" caption="Radera" title="Radera - klicka på ett element (eller välj och tryck Delete)" active={tool === 'erase'} disabled={readOnly} onClick={() => { setHandMode(false); setTool((t) => (t === 'erase' ? 'select' : 'erase')) }} />
           </div>
 
           <div
@@ -2144,10 +2146,10 @@ export default function LayoutEditorPage() {
               {!readOnly && (
                 <div className="view-toggle">
                   <button type="button" title="Ångra (Cmd/Ctrl+Z)" aria-label="Ångra" disabled={!canUndo} onClick={() => applyHistory(undo(history.current))}>
-                    ↶
+                    <Icon name="undo" size={18} />
                   </button>
                   <button type="button" title="Gör om (Cmd/Ctrl+Shift+Z)" aria-label="Gör om" disabled={!canRedo} onClick={() => applyHistory(redo(history.current))}>
-                    ↷
+                    <Icon name="redo" size={18} />
                   </button>
                 </div>
               )}
@@ -2354,18 +2356,24 @@ export default function LayoutEditorPage() {
                       }}
                       onPointerDown={(e) => onElementPointerDown(e, 'table', t.id, t.x, t.y)}
                     >
-                      {/* En stol per plats - antalet syns direkt i planen. */}
+                      {/* En stol per plats, inskjuten under bordet med ryggstödet
+                          utåt - antalet syns direkt i planen. Bara bild: inte klickbar. */}
                       {seatPositions(t).map((s, i) => (
                         <div
                           key={i}
                           className="table-seat"
+                          aria-hidden="true"
                           style={{
-                            left: size.w / 2 + s.x - SEAT_SIZE / 2,
-                            top: size.h / 2 + s.y - SEAT_SIZE / 2,
-                            width: SEAT_SIZE,
-                            height: SEAT_SIZE,
+                            left: size.w / 2 + s.x - SEAT_W / 2,
+                            top: size.h / 2 + s.y - SEAT_D / 2,
+                            width: SEAT_W,
+                            height: SEAT_D,
+                            transform: `rotate(${s.rot}deg)`,
                           }}
-                        />
+                        >
+                          <div className="table-seat-top" />
+                          <div className="table-seat-back" />
+                        </div>
                       ))}
                       <div className="table-base" />
                       <div className="table-body">
@@ -2618,7 +2626,7 @@ export default function LayoutEditorPage() {
                   <p className="props-label">PLATSER</p>
                   <div className="seats-stepper">
                     <button type="button" className="step-btn" disabled={selectedTable.seats <= 1} onClick={() => updateTable({ seats: selectedTable.seats - 1 })}>
-                      –
+                      -
                     </button>
                     <span>{selectedTable.seats}</span>
                     <button type="button" className="step-btn" disabled={selectedTable.seats >= 12} onClick={() => updateTable({ seats: selectedTable.seats + 1 })}>
@@ -2645,7 +2653,7 @@ export default function LayoutEditorPage() {
                   <p className="props-pos">{`x: ${Math.round(selectedTable.x)}   y: ${Math.round(selectedTable.y)}`}</p>
                   {selectedTable.shape === 'square' && (
                     <button type="button" className="btn outline" onClick={turnSelectedTables}>
-                      ↻ Vrid 90° (Shift+R)
+                      <Icon name="rotate" size={16} /> Vrid 90° (Shift+R)
                     </button>
                   )}
                 </div>
@@ -2653,7 +2661,7 @@ export default function LayoutEditorPage() {
                   <p className="props-label">UPPREPA I RAD</p>
                   <div className="seats-stepper">
                     <button type="button" className="step-btn" aria-label="Färre bord" disabled={rowCount <= 1} onClick={() => setRowCount((c) => c - 1)}>
-                      –
+                      -
                     </button>
                     <span>{rowCount}</span>
                     <button type="button" className="step-btn" aria-label="Fler bord" disabled={rowCount >= 12} onClick={() => setRowCount((c) => c + 1)}>
@@ -2662,10 +2670,10 @@ export default function LayoutEditorPage() {
                   </div>
                   <div className="props-actions">
                     <button type="button" className="btn outline" onClick={() => addRow('right')}>
-                      → Åt höger
+                      <Icon name="arrow-right" size={16} /> Åt höger
                     </button>
                     <button type="button" className="btn outline" onClick={() => addRow('down')}>
-                      ↓ Nedåt
+                      <Icon name="arrow-down" size={16} /> Nedåt
                     </button>
                   </div>
                   <p className="props-empty">
@@ -2686,7 +2694,7 @@ export default function LayoutEditorPage() {
                   <p className="props-label">LÄNGD</p>
                   <div className="seats-stepper">
                     <button type="button" className="step-btn" disabled={selectedWall.length <= GRID} onClick={() => updateWallLength(-GRID)}>
-                      –
+                      -
                     </button>
                     <span>{formatMetres(selectedWall.length)}</span>
                     <button type="button" className="step-btn" onClick={() => updateWallLength(GRID)}>
@@ -2720,7 +2728,7 @@ export default function LayoutEditorPage() {
                   <p className="props-label">LÄNGD</p>
                   <div className="seats-stepper">
                     <button type="button" className="step-btn" disabled={selectedOpening.length <= GRID} onClick={() => updateOpeningLength(-GRID)}>
-                      –
+                      -
                     </button>
                     <span>{formatMetres(selectedOpening.length)}</span>
                     <button type="button" className="step-btn" onClick={() => updateOpeningLength(GRID)}>
@@ -3097,7 +3105,7 @@ function OpeningEl({
 }
 
 function ToolButton({
-  glyph,
+  icon,
   caption,
   title,
   shortcut,
@@ -3106,7 +3114,7 @@ function ToolButton({
   onClick,
   onPointerDown,
 }: {
-  glyph: string
+  icon: IconName
   caption: string
   title: string
   /** Bokstaven som väljer verktyget - visas i hörnet och i tooltipen. */
@@ -3129,7 +3137,7 @@ function ToolButton({
       onClick={onClick}
       onPointerDown={onPointerDown}
     >
-      {glyph}
+      <Icon name={icon} size={20} />
       <small>{caption}</small>
       {shortcut && <kbd className="tool-key" aria-hidden="true">{shortcut}</kbd>}
     </button>
@@ -3192,7 +3200,7 @@ function ShortcutSheet({ onClose }: { onClose: () => void }) {
       <div className="shortcut-head">
         <p className="props-kicker">KORTKOMMANDON</p>
         <button type="button" className="shortcut-close" aria-label="Stäng" onClick={onClose}>
-          ✕
+          <Icon name="close" size={16} />
         </button>
       </div>
       <div className="shortcut-groups">

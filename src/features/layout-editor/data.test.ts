@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SEAT_SIZE, defaultTableSize, seatPositions } from './data'
+import { SEAT_D, SEAT_TUCK, defaultTableSize, seatPositions } from './data'
 import type { TableShape } from './data'
 
 /** Bygger ett minimalt bord med ett standardförslag på storlek. */
@@ -19,11 +19,11 @@ describe('seatPositions', () => {
     expect(seatPositions(table('square', 0))).toEqual([])
   })
 
-  it('spaces round seats evenly on a circle outside the table', () => {
+  it('spaces round seats evenly on a circle, tucked under the table edge', () => {
     const seats = 4
     const t = table('round', seats)
     const positions = seatPositions(t)
-    const expected = t.w / 2 + 4 + SEAT_SIZE / 2
+    const expected = t.w / 2 + SEAT_D / 2 - SEAT_TUCK
     for (const p of positions) {
       expect(Math.hypot(p.x, p.y)).toBeCloseTo(expected, 5)
     }
@@ -36,6 +36,11 @@ describe('seatPositions', () => {
     const below = positions.filter((p) => p.y > 0)
     expect(above).toHaveLength(2)
     expect(below).toHaveLength(2)
+  })
+
+  it('turns every backrest away from the table', () => {
+    const positions = seatPositions(table('square', 4))
+    for (const p of positions) expect(p.rot).toBe(p.y < 0 ? 0 : 180)
   })
 
   it('keeps every seat clear of the table top', () => {

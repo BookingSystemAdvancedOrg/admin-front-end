@@ -113,7 +113,8 @@
 
 .sk-facts {
   display: grid;
-  grid-template-columns: max-content 1fr;
+  /* the label column may shrink and wrap on narrow phones, so the numbers stay in view */
+  grid-template-columns: minmax(0, max-content) minmax(max-content, 1fr);
   gap: 3px 14px;
   margin: 8px 0 0;
   padding-top: 12px;
@@ -1010,6 +1011,9 @@
    stället för att göra sidan bredare på telefonen. */
 .sk-scroll,
 .sk-table {
+  /* positioned, so the hidden screen reader labels (.sr-only, absolute) stay
+     inside the scroller instead of widening the page */
+  position: relative;
   max-width: 100%;
   overflow-x: auto;
 }

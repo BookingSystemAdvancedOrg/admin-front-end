@@ -963,8 +963,9 @@
 
 .hours-editor-row {
   display: flex;
+  flex-wrap: wrap; /* narrow phones: the times move under the day instead of off screen */
   align-items: center;
-  gap: 16px;
+  gap: 8px 16px;
   padding: 10px 0;
   font-size: 13px;
 }
@@ -979,6 +980,7 @@
 }
 
 .hours-editor-intervals {
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;

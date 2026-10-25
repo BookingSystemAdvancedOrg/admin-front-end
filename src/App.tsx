@@ -15,6 +15,7 @@ import StatistikPage from './features/statistik/StatistikPage'
 import AvtalPage from './features/dpa/AvtalPage'
 import TaBetaltPage from './features/tabetalt/TaBetaltPage'
 import KassaPage from './features/kassa/KassaPage'
+import { KassaManualPage, KassaPrintPage } from './features/kassa/KassaGuide'
 
 /**
  * Stripe skickar tillbaka ägaren hit efter onboardingen (return/refresh-URL:er
@@ -41,6 +42,8 @@ function App() {
         <Route path="bestallningar" element={<BestallningarPage />} />
         <Route path="ta-betalt" element={<TaBetaltPage />} />
         <Route path="kassa" element={<KassaPage />} />
+        <Route path="kassa/bruksanvisning" element={<KassaManualPage />} />
+        <Route path="kassa/utskrift/:kind" element={<KassaPrintPage />} />
         <Route path="meny" element={<MenyPage />} />
         <Route path="cateringkalkyl" element={<CateringkalkylPage />} />
         <Route path="catering" element={<CateringPage />} />

@@ -28,6 +28,20 @@ export function clockSv(iso?: string): string {
   return Number.isNaN(d.getTime()) ? '' : new Intl.DateTimeFormat('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' }).format(d)
 }
 
+/** "ÅÅÅÅ-MM-DD" i svensk tid, `days` dagar senare. */
+export function dateSv(iso?: string, days = 0): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  d.setUTCDate(d.getUTCDate() + days)
+  return new Intl.DateTimeFormat('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Europe/Stockholm' }).format(d)
+}
+
+/** Kassabeteckningen: tillverkningsnumret från kontrollsystemet, annars kassans namn. */
+export function designationOf(register?: Register): string {
+  return register ? register.designation || register.label : ''
+}
+
 // --- Markdown för bruksanvisningen ---------------------------------------------
 
 /** **fet**, `kod` och [länk](url); övrig text som den är. */
@@ -182,7 +196,7 @@ function ManualSalesSheet({ company, register, date }: { company?: Company | nul
         <Field label="Restaurang" value={company?.restaurant || company?.name} />
         <Field label="Företag" value={company?.name} />
         <Field label="Organisationsnummer" value={company?.orgText || company?.org} />
-        <Field label="Kassabeteckning" value={register?.label} />
+        <Field label="Kassabeteckning" value={designationOf(register)} />
         <Field label="Datum" value={date} />
         <Field label="Kontrollsystemet nere sedan" value={register?.csDownSince ? clockSv(register.csDownSince) : ''} />
       </div>
@@ -215,7 +229,8 @@ function RegisterInfoSheet({ company, register }: { company?: Company | null; re
         <Field label="Verksamhet" value={company?.restaurant || company?.name} />
         <Field label="Företag och organisationsnummer" value={company ? `${company.name}, ${company.orgText || company.org}` : ''} />
         <Field label="Adress där kassan används" value={company?.address} />
-        <Field label="Kassabeteckning" value={register?.label} />
+        <Field label="Kassabeteckning" value={designationOf(register)} />
+        {register?.designation && register.designation !== register.label && <Field label="Kassans namn" value={register.label} />}
       </div>
       <h2>Kassaregister (registreringsenhet)</h2>
       <div className="kassa-print-grid">
@@ -228,14 +243,21 @@ function RegisterInfoSheet({ company, register }: { company?: Company | null; re
       </div>
       <h2>Kontrollsystem</h2>
       <div className="kassa-print-grid">
-        <Field label="Tillverkningsnummer" value={register?.controlSystem.serial} />
+        {register?.controlSystem.unit ? (
+          <>
+            <Field label="Kontrollsystem" value={register.controlSystem.name} />
+            <Field label="Tillverkare och modell" value={`${register.controlSystem.unit.manufacturer}, ${register.controlSystem.unit.model}`} />
+            <Field label="Adress" value={register.controlSystem.unit.address} />
+            <Field label="Kontrollserverns id" value={register.controlSystem.unit.serverId} />
+          </>
+        ) : <Field label="Tillverkningsnummer" value={register?.controlSystem.serial} />}
         <Field label="Id-nummer från Skatteverket" />
       </div>
       <h2>Övriga delar</h2>
       <p>Surfplattor eller datorer där kassan används, kortläsare och skrivare:</p>
       <table className="kassa-print-table short">
         <thead><tr><th>Del</th><th>Modell</th><th>Placering</th></tr></thead>
-        <tbody>{Array.from({ length: 6 }, (_, i) => <tr key={i}><td /><td /><td /></tr>)}</tbody>
+        <tbody>{Array.from({ length: 4 }, (_, i) => <tr key={i}><td /><td /><td /></tr>)}</tbody>
       </table>
       <div className="kassa-print-sign"><Field label="Datum" /><Field label="Underskrift" /></div>
     </div>
@@ -348,17 +370,35 @@ export function SetupDialog({
               </label>
               {key === 'anmalan' && (
                 <div className="kassa-setup-more">
+                  {register.csEnrolledAt && !register.controlSystem.simulated && (
+                    <p className="kassa-alert warn">Anmäl senast {dateSv(register.csEnrolledAt, 14)} (14 dagar efter att kassan kopplades till kontrollsystemet {dateSv(register.csEnrolledAt)}).</p>
+                  )}
+                  {register.controlSystem.unit && (
+                    <>
+                      <h3 className="kassa-subhead">1. Kontrollenheten</h3>
+                      <dl className="kassa-facts">
+                        <dt>Tillverkare</dt><dd>{register.controlSystem.unit.manufacturer}</dd>
+                        <dt>Modell</dt><dd>{register.controlSystem.unit.model}</dd>
+                        <dt>Adress</dt><dd>{register.controlSystem.unit.address}</dd>
+                        <dt>Kontrollserverns id</dt><dd>{register.controlSystem.unit.serverId}</dd>
+                      </dl>
+                      <h3 className="kassa-subhead">2. Kassaregistret</h3>
+                    </>
+                  )}
                   <dl className="kassa-facts">
                     <dt>Verksamhet</dt><dd>{c?.restaurant || c?.name || 'Saknas'}</dd>
                     <dt>Adress där kassan används</dt><dd>{c?.address || 'Saknas'}</dd>
-                    <dt>Kassaregistrets beteckning</dt><dd>{register.label}</dd>
+                    <dt>Kassabeteckning</dt><dd>{designationOf(register)}</dd>
                     <dt>Modell eller program</dt><dd>{register.model}, {register.program}</dd>
-                    <dt>Tillverkningsnummer</dt><dd>{register.serialNumber}</dd>
+                    <dt>Tillverkningsnummer (Booqy)</dt><dd>{register.serialNumber}</dd>
                     <dt>Kontrollremsa eller journalminne</dt><dd>Journalminne</dd>
-                    <dt>Kontrollsystemets tillverkningsnummer</dt><dd>{register.controlSystem.serial}</dd>
+                    <dt>{register.controlSystem.unit ? 'Kontrollserverns id' : 'Kontrollsystemets tillverkningsnummer'}</dt><dd>{register.controlSystem.serial}</dd>
                   </dl>
                   {register.controlSystem.simulated && (
                     <p className="kassa-alert warn">Kassan är i testläge. Anmäl den först när ett certifierat kontrollsystem är kopplat.</p>
+                  )}
+                  {register.controlSystem.connected === false && (
+                    <p className="kassa-alert danger">Kassan är inte kopplad till kontrollsystemet {register.controlSystem.name}. Skapa en ny kassa med Ny kassa.</p>
                   )}
                   <a className="btn outline" href={SKV_ETJANST_URL} target="_blank" rel="noreferrer">Till Skatteverkets e-tjänst</a>
                 </div>
@@ -394,9 +434,12 @@ export function AboutDialog({ register, onClose }: { register: Register; onClose
         <dt>Modell</dt><dd>{register.model}</dd>
         <dt>Program</dt><dd>{register.program}</dd>
         <dt>Version</dt><dd>{register.version}</dd>
-        <dt>Kassabeteckning</dt><dd>{register.label}</dd>
-        <dt>Tillverkningsnummer</dt><dd>{register.serialNumber}</dd>
-        <dt>Kontrollsystem</dt><dd>{register.controlSystem.serial}{register.controlSystem.simulated ? ' (testläge)' : ''}</dd>
+        <dt>Kassans namn</dt><dd>{register.label}</dd>
+        <dt>Kassabeteckning</dt><dd>{designationOf(register)}</dd>
+        <dt>Tillverkningsnummer (Booqy)</dt><dd>{register.serialNumber}</dd>
+        <dt>Kontrollsystem</dt><dd>{register.controlSystem.name || register.controlSystem.provider}{register.controlSystem.simulated ? '' : register.controlSystem.connected === false ? ' (inte kopplad)' : ''}</dd>
+        <dt>{register.controlSystem.unit ? 'Kontrollserverns id' : 'Kontrollsystemets tillverkningsnummer'}</dt><dd>{register.controlSystem.serial}</dd>
+        {register.csEnrolledAt && <><dt>Kopplad till kontrollsystemet</dt><dd>{dateSv(register.csEnrolledAt)}</dd></>}
         <dt>Registrering</dt><dd>Journalminne</dd>
       </dl>
       <h3 className="kassa-subhead">Inställningar</h3>

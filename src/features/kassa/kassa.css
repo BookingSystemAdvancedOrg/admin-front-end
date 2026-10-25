@@ -556,6 +556,12 @@
   text-align: center;
 }
 
+/* Kontrollkoden: hela koden, en rad per del, aldrig avkortad. */
+.kassa-paper .code {
+  font: 400 12px/1.4 var(--mono);
+  letter-spacing: 0.02em;
+}
+
 .kassa-journal,
 .kassa-return {
   display: flex;

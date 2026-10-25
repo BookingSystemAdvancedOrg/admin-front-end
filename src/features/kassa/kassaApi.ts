@@ -26,6 +26,8 @@ export interface DocRow {
   bold?: boolean
   big?: boolean
   center?: boolean
+  /** En del av kontrollkoden (hela koden står på flera rader). */
+  code?: boolean
 }
 
 export interface KassaDocument {
@@ -36,9 +38,20 @@ export interface KassaDocument {
   rows: DocRow[]
 }
 
+/** Kontrollenheten som anmäls till Skatteverket (samma för alla som använder kontrollsystemet). */
+export interface ControlUnit {
+  manufacturer: string
+  model: string
+  address: string
+  serverId: string
+}
+
 export interface Register {
   registerId: string
+  /** Kassans namn, till exempel "Kassa 1". */
   label: string
+  /** Kassabeteckningen: tillverkningsnumret från kontrollsystemet, annars namnet. */
+  designation?: string
   serialNumber: string
   receiptSeq: number
   zSeq: number
@@ -52,7 +65,19 @@ export interface Register {
   version: string
   today: string
   manufacturer?: string
-  controlSystem: { ok: boolean; code: string; provider: string; serial: string; simulated: boolean }
+  controlSystem: {
+    ok: boolean
+    code: string
+    provider: string
+    name?: string
+    serial: string
+    simulated: boolean
+    /** Kassan är kopplad till det kontrollsystem som används nu. */
+    connected?: boolean
+    unit?: ControlUnit
+  }
+  /** När kassan kopplades till kontrollsystemet (de 14 dagarna för anmälan börjar). */
+  csEnrolledAt?: string
   simulateDown?: boolean
   /** När kontrollsystemet slutade svara (UTC), om det inte svarar nu. */
   csDownSince?: string
@@ -380,6 +405,7 @@ export function kr(ore: number): string {
 
 const ERRORS: Record<string, string> = {
   control_system_unreachable: 'Kontrollsystemet svarar inte. Kvitto kan inte skapas just nu. Försök igen om en stund.',
+  control_system_rejected: 'Kontrollsystemet tog inte emot uppgifterna, så inget kvitto skapades. Kontrollera organisationsnummer och adress (gata med nummer, postnummer och ort) och kontakta Booqy om det inte hjälper.',
   not_fully_paid: 'Notan är inte fullt betald än.',
   payment_in_progress: 'En kortbetalning pågår. Vänta tills den är klar.',
   bill_has_payments: 'Notan har en kortbetalning och kan inte ändras.',
@@ -481,7 +507,7 @@ const mock = (() => {
       { rule: true },
       { pair: [title, `Nr ${seq}`], bold: true },
       { pair: ['Datum', new Date().toLocaleString('sv-SE').slice(0, 16)] },
-      { pair: ['Kassa', registers[0]?.label ?? 'Kassa 1'] },
+      { pair: ['Kassabeteckning', registers[0]?.designation ?? registers[0]?.label ?? 'Kassa 1'] },
       { rule: true },
       ...b.lines.map((l) => ({ pair: [`${l.quantity} x ${l.name}`, kr(l.gross)] as [string, string] })),
       { rule: true },
@@ -491,7 +517,8 @@ const mock = (() => {
       { pair: ['Betalt, Kort Visa **** 4242', kr(b.total)] },
       { rule: true },
       { text: 'Kontrollkod:' },
-      { text: '9F3A1C77E0B2D4A6C8E19F3A1C77E0B2D4A6C8E19F3A1C77E0B2D4A6C8E' },
+      { text: '9F3A1C77E0B2D4A6C8E19F3A1C77E0', code: true },
+      { text: 'B2D4A6C8E19F3A1C77E0B2D4A6C8E', code: true },
       { text: 'Kontrollsystem: BOOQYSIMULATOR001' },
       { text: 'Tack för besöket!', center: true },
     ]
@@ -520,7 +547,8 @@ const mock = (() => {
       const r: Register = {
         registerId: id(), label, serialNumber: 'BQ1A2B3C4D5E6F7A8', receiptSeq: 0, zSeq: 0, training: false, float: 0,
         model: 'Booqy Kassa SE', program: 'Booqy Kassa', version: '1.0.0+demo', today, manufacturer: 'Booqy',
-        controlSystem: { ok: true, code: 'STATUS_OK', provider: 'simulator', serial: 'BOOQYSIMULATOR001', simulated: true },
+        designation: label,
+        controlSystem: { ok: true, code: 'STATUS_OK', provider: 'simulator', name: 'Simulator (testläge)', serial: 'BOOQYSIMULATOR001', simulated: true, connected: true },
       }
       registers.push(r)
       return delay({ register: r })

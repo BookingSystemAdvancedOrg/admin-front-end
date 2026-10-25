@@ -42,7 +42,7 @@ export function DocumentView({ document }: { document: KassaDocument }) {
     <div className="kassa-paper" aria-label={document.title}>
       {document.rows.map((row, i) => {
         if (row.rule) return <hr key={i} />
-        const cls = `${row.bold ? 'b' : ''} ${row.big ? 'big' : ''} ${row.center ? 'c' : ''}`.trim()
+        const cls = `${row.bold ? 'b' : ''} ${row.big ? 'big' : ''} ${row.center ? 'c' : ''} ${row.code ? 'code' : ''}`.replace(/\s+/g, ' ').trim()
         if (row.pair) {
           return (
             <div key={i} className={`pair ${cls}`}>

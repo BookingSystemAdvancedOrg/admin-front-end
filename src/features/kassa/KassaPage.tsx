@@ -189,7 +189,8 @@ export default function KassaPage() {
     return () => window.clearInterval(t)
   }, [down, loadState])
 
-  const banner = register?.felanmal && register.csDownSince && dismissed !== register.csDownSince ? register : null
+  const banner = register?.felanmal && register.csDownSince && dismissed !== register.csDownSince
+    && register.controlSystem.connected !== false ? register : null
   useEffect(() => {
     if (!locationId || !banner?.csDownSince || shownFor.current === banner.csDownSince) return
     shownFor.current = banner.csDownSince
@@ -605,7 +606,7 @@ export default function KassaPage() {
                 {state.registers.map((r) => <option key={r.registerId} value={r.registerId}>{r.label}</option>)}
               </select>
             ) : <strong>{register.label}</strong>}
-            <span className={`kassa-pill ${csOk ? 'ok' : 'bad'}`} title={`Kontrollsystem ${register.controlSystem.serial}`}>
+            <span className={`kassa-pill ${csOk ? 'ok' : 'bad'}`} title={`${register.controlSystem.name || 'Kontrollsystem'} ${register.controlSystem.serial}`}>
               <span className="dot" aria-hidden="true" />
               {csOk ? 'Kontrollsystem anslutet' : 'Kontrollsystemet svarar inte'}
             </span>
@@ -656,7 +657,12 @@ export default function KassaPage() {
           </p>
         )}
         {banner && <OutageBanner register={banner} onDismiss={dismissBanner} onRetry={() => void loadState()} />}
-        {!csOk && !banner && (
+        {register.controlSystem.connected === false && (
+          <p className="kassa-alert danger" role="alert">
+            Kassan är inte kopplad till kontrollsystemet {register.controlSystem.name}. Ägaren skapar en ny kassa med Ny kassa under Mer.
+          </p>
+        )}
+        {!csOk && !banner && register.controlSystem.connected !== false && (
           <div className="kassa-alert danger kassa-down" role="alert">
             <p>
               Kontrollsystemet svarar inte{register.csDownSince ? ` sedan ${new Intl.DateTimeFormat('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' }).format(new Date(register.csDownSince))}` : ''}, så inga kvitton kan skapas och inga kort dras.
@@ -878,7 +884,7 @@ export default function KassaPage() {
         </div>
 
         <p className="kassa-about cell-muted">
-          {register.model} · {register.program} {register.version} · Tillverkningsnummer {register.serialNumber}
+          {register.model} · {register.program} {register.version} · Kassabeteckning {register.designation || register.label}
           {' '}· Kontrollsystem {register.controlSystem.serial}
         </p>
       </div>

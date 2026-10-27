@@ -451,6 +451,7 @@ export const PROBLEMS: Record<string, string> = {
   email_failed: 'Kvittot är sparat men mejlet kunde inte skickas. Skriv ut en kopia under Kvitton.',
   kitchen_print_failed: 'Köksnotan kunde inte skickas till skrivaren.',
   no_printer: 'Ingen skrivare är kopplad, rapporten skrevs inte ut.',
+  control_system_closing_failed: 'Z-rapporten är klar, men kontrollsystemet fick inte veta att dagen stängdes. Det rättar sig när du öppnar dagen nästa gång.',
 }
 
 // --- kassa i minnet utan API ------------------------------------------------

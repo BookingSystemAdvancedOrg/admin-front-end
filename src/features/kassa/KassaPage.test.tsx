@@ -49,4 +49,24 @@ describe('KassaPage', () => {
     expect(screen.getByText(/Skriv upp försäljningen på den manuella listan/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /Starta kontrollsystemet/ }))
   })
+
+  it('removes an unwanted bill with "Ta bort nota"', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<MemoryRouter><KassaPage /></MemoryRouter>)
+    await user.click(await screen.findByRole('button', { name: /Toast Skagen/ }))
+    const remove = await screen.findByRole('button', { name: 'Ta bort nota' })
+    await waitFor(() => expect(remove).toBeEnabled())
+    await user.click(remove)
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Ta bort nota' })).not.toBeInTheDocument())
+  })
+
+  it('picks the receipts day as DD/MM/YYYY', async () => {
+    const user = userEvent.setup()
+    render(<MemoryRouter><KassaPage /></MemoryRouter>)
+    await user.click(await screen.findByRole('button', { name: /Kvitton/ }))
+    const day = await screen.findByLabelText('Dag')
+    await waitFor(() => expect((day as HTMLInputElement).value).toMatch(/^\d{2}\/\d{2}\/\d{4}$/))
+    expect(day).toHaveAttribute('type', 'text')
+  })
 })

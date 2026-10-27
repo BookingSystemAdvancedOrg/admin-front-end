@@ -782,8 +782,9 @@ export default function KassaPage() {
                           title={!state.printer ? 'Ingen skrivare kopplad' : undefined}
                           onClick={() => void bill_action('send')}><Icon name="tool-kitchen" size={18} /> Till köket</button>
                         <button type="button" className="btn outline danger-outline" disabled={busy || bill.locked}
-                          onClick={() => { if (window.confirm('Makulera notan? Det som skickats till köket registreras.')) void bill_action('void') }}>
-                          Makulera
+                          title={bill.locked ? 'Notan har en kortbetalning. Återbetala den först.' : undefined}
+                          onClick={() => { if (window.confirm('Ta bort notan? Det som redan skickats till köket registreras i journalen.')) void bill_action('void') }}>
+                          <Icon name="trash" size={18} /> Ta bort nota
                         </button>
                       </div>
                       <button type="button" className="btn primary kassa-pay" disabled={payDisabled} onClick={() => void toPay()}>
@@ -875,7 +876,12 @@ export default function KassaPage() {
                     <p className="cell-muted">Kvittot skapas med kontrollkod och skrivs ut eller mejlas. Gästen får välja att inte ta det.</p>
                     <DeliveryPicker testMode={state.testMode} printer={state.printer} busy={busy || !csOk}
                       label={bill.training ? 'Övningskvitto' : 'Kvitto'} onPick={(d, e) => void close(d, e)} />
-                    {!csOk && <PaidParts bill={bill} busy={busy} onUndo={(p) => void undo(p)} />}
+                    {!csOk ? <PaidParts bill={bill} busy={busy} onUndo={(p) => void undo(p)} /> : (
+                      <details className="kassa-undo">
+                        <summary>Ångrade sig gästen? Återbetala</summary>
+                        <PaidParts bill={bill} busy={busy} onUndo={(p) => void undo(p)} />
+                      </details>
+                    )}
                   </div>
                 )}
               </>

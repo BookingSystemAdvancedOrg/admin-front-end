@@ -772,6 +772,20 @@
   min-height: 44px;
 }
 
+/* "Ångrade sig gästen?": the refund stays one deliberate tap away from the receipt. */
+.kassa-undo summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--muted);
+  font: 500 14px/1.3 var(--font);
+}
+
+.kassa-undo[open] summary {
+  color: var(--ink);
+}
+
 .kassa-facts {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);

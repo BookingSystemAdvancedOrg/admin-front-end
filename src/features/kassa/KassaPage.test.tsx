@@ -10,6 +10,13 @@ vi.mock('../../shared/location', () => ({
   useLocationId: () => ({ locationId: 'loc-1', resolving: false, setLocationId: () => {} }),
 }))
 
+async function openDay(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole('button', { name: 'Öppna dagen' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Öppna dagen' })
+  await user.click(within(dialog).getByRole('button', { name: 'Öppna dagen' }))
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Öppna dagen' })).not.toBeInTheDocument())
+}
+
 // Utan API kör kassan och kortläsaren i minnet (kassaApi och cardApi), så
 // hela försäljningen går att köra här.
 describe('KassaPage', () => {
@@ -18,6 +25,7 @@ describe('KassaPage', () => {
     render(<MemoryRouter><KassaPage /></MemoryRouter>)
     expect(await screen.findByText('Testläge - inte ett certifierat kassaregister än')).toBeInTheDocument()
     await user.click(await screen.findByRole('button', { name: 'Skapa Kassa 1' }))
+    await openDay(user)
     await user.click(await screen.findByRole('button', { name: /Pasta carbonara/ }))
     await user.click(screen.getByRole('button', { name: /Pasta carbonara/ }))
     await user.click(screen.getByRole('button', { name: /Kaffe/ }))
@@ -59,6 +67,20 @@ describe('KassaPage', () => {
     await waitFor(() => expect(remove).toBeEnabled())
     await user.click(remove)
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Ta bort nota' })).not.toBeInTheDocument())
+  })
+
+  it('needs Öppna dagen before taking money after a Z', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<MemoryRouter><KassaPage /></MemoryRouter>)
+    await user.click(await screen.findByRole('button', { name: 'Z-rapport' }))
+    await user.click(await screen.findByRole('button', { name: 'Klar' }))
+    await user.click(await screen.findByRole('button', { name: /Toast Skagen/ }))
+    expect(await screen.findByText(/Öppna dagen först/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Ta betalt/ })).toBeDisabled()
+    await openDay(user)
+    await waitFor(() => expect(screen.getByRole('button', { name: /Ta betalt/ })).toBeEnabled())
+    expect(screen.queryByText(/Öppna dagen först/)).not.toBeInTheDocument()
   })
 
   it('picks the receipts day as DD/MM/YYYY', async () => {

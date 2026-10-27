@@ -591,7 +591,9 @@ export default function KassaPage() {
     )
   }
 
-  const payDisabled = !bill || saving || draft.length === 0 || (!bill.training && !csOk) || totals.total <= 0
+  // ANV 4 kap. 2 §: the float is registered at the start of every sales day; the Z ends the day.
+  const dayClosed = !register?.dayOpen
+  const payDisabled = !bill || saving || draft.length === 0 || (!bill.training && (!csOk || dayClosed)) || totals.total <= 0
 
   return (
     <>
@@ -790,6 +792,9 @@ export default function KassaPage() {
                       <button type="button" className="btn primary kassa-pay" disabled={payDisabled} onClick={() => void toPay()}>
                         {bill.training ? 'Skapa övningskvitto' : bill.paid > 0 ? `Betala resten ${kr(totals.total - bill.paid)} kr` : `Ta betalt ${kr(totals.total)} kr`}
                       </button>
+                      {!bill.training && dayClosed && (
+                        <p className="cell-muted">Öppna dagen först. Växelkassan registreras när försäljningsdagen börjar.</p>
+                      )}
                       {!bill.training && !state.cardReaders && <p className="cell-muted">Kortläsare är inte kopplade för platsen ännu.</p>}
                     </div>
                   </>

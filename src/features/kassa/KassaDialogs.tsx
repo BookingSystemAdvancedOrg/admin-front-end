@@ -258,7 +258,7 @@ export function ReceiptsDialog({
 }
 
 export function ExportDialog({ locationId, registerId, onClose }: { locationId: string; registerId: string; onClose: () => void }) {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm' }).format(new Date())   // YYYY-MM-DD
   const [from, setFrom] = useState(today)
   const [to, setTo] = useState(today)
   const [busy, setBusy] = useState(false)

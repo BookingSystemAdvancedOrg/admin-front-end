@@ -405,6 +405,7 @@ export function kr(ore: number): string {
 
 const ERRORS: Record<string, string> = {
   control_system_unreachable: 'Kontrollsystemet svarar inte. Kvitto kan inte skapas just nu. Försök igen om en stund.',
+  day_not_open: 'Öppna dagen först. Växelkassan registreras när försäljningsdagen börjar, och Z-rapporten avslutar dagen.',
   control_system_rejected: 'Kontrollsystemet tog inte emot uppgifterna, så inget kvitto skapades. Kontrollera organisationsnummer och adress (gata med nummer, postnummer och ort) och kontakta Booqy om det inte hjälper.',
   not_fully_paid: 'Notan är inte fullt betald än.',
   payment_in_progress: 'En kortbetalning pågår. Vänta tills den är klar.',
@@ -459,7 +460,7 @@ export const PROBLEMS: Record<string, string> = {
 const mock = (() => {
   const delay = <T,>(value: T) => new Promise<T>((resolve) => setTimeout(() => resolve(structuredClone(value)), 120))
   const fail = (code: string) => Promise.reject(new ApiError(409, code))
-  const today = new Date().toISOString().slice(0, 10)
+  const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm' }).format(new Date())
   const menu: MenuChoice[] = [
     { menuItemId: 'm1', name: 'Toast Skagen', price: 14500, category: 'starters' },
     { menuItemId: 'm2', name: 'Dagens soppa', price: 8950, category: 'starters' },
@@ -576,7 +577,7 @@ const mock = (() => {
     },
     report(kind: 'x' | 'z') {
       const total = receipts.reduce((s, r) => s + r.bill.total, 0)
-      if (kind === 'z' && registers[0]) registers[0].zSeq += 1
+      if (kind === 'z' && registers[0]) Object.assign(registers[0], { zSeq: registers[0].zSeq + 1, dayOpen: undefined })
       const rows: DocRow[] = [
         { text: kind === 'z' ? 'Z-dagrapport' : 'X-dagrapport', bold: true, big: true, center: true },
         { text: 'Exempel AB', bold: true, center: true }, { rule: true },

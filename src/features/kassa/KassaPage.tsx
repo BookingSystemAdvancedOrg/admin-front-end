@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { ApiError } from '../../shared/api'
 import { Icon } from '../../shared/Icon'
@@ -27,6 +28,7 @@ import {
   ReceiptsDialog,
   TextDialog,
 } from './KassaDialogs'
+import { AboutDialog, OutageBanner, SetupDialog } from './KassaGuide'
 import {
   CATEGORY_LABEL,
   billAction,
@@ -41,9 +43,11 @@ import {
   kr,
   localTotals,
   mockPaymentSettled,
+  outageNotice,
   registerAction,
   report,
   startPayment,
+  undoPayment,
   updateBill,
 } from './kassaApi'
 import type { Bill, BillKind, DayStatus, Delivery, Discount, Done, KassaState, MenuChoice, Register } from './kassaApi'
@@ -67,7 +71,9 @@ type DraftLine = {
   sent?: boolean
 }
 type Stage = 'bill' | 'pay' | 'waiting' | 'deliver'
-type DialogName = 'table' | 'note' | 'discount' | 'openDay' | 'receipts' | 'export' | 'newRegister' | null
+type DialogName = 'table' | 'note' | 'discount' | 'openDay' | 'receipts' | 'export' | 'newRegister' | 'setup' | 'about' | null
+/** Hur ofta kassan frågar om kontrollsystemet medan det inte svarar. */
+const OUTAGE_POLL_MS = 60_000
 
 let keys = 0
 const nextKey = () => `k${++keys}`
@@ -127,6 +133,10 @@ export default function KassaPage() {
   const [done, setDone] = useState<{ done: Done; title: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [more, setMore] = useState(false)
+  /** Avbrott (csDownSince) där meddelandet om felanmälan redan stängts på den här skärmen. */
+  const [dismissed, setDismissed] = useState<string | null>(null)
+  const shownFor = useRef<string | null>(null)
 
   const register: Register | undefined = state?.registers.find((r) => r.registerId === registerId)
   const csOk = register?.controlSystem.ok ?? false
@@ -169,6 +179,29 @@ export default function KassaPage() {
   }, [locationId, registerId])
 
   useEffect(() => { void loadDay() }, [loadDay])
+
+  // Medan kontrollsystemet inte svarar frågar kassan om det varje minut,
+  // så att den märker när det är tillbaka och när det är dags att felanmäla.
+  const down = Boolean(register && !csOk)
+  useEffect(() => {
+    if (!down) return
+    const t = window.setInterval(() => void loadState(), OUTAGE_POLL_MS)
+    return () => window.clearInterval(t)
+  }, [down, loadState])
+
+  const banner = register?.felanmal && register.csDownSince && dismissed !== register.csDownSince
+    && register.controlSystem.connected !== false ? register : null
+  useEffect(() => {
+    if (!locationId || !banner?.csDownSince || shownFor.current === banner.csDownSince) return
+    shownFor.current = banner.csDownSince
+    void outageNotice(locationId, banner.registerId, 'shown').catch(() => undefined)
+  }, [locationId, banner])
+
+  function dismissBanner() {
+    if (!locationId || !banner?.csDownSince) return
+    setDismissed(banner.csDownSince)
+    void outageNotice(locationId, banner.registerId, 'dismissed').catch(() => undefined)
+  }
 
   // --- notan --------------------------------------------------------------
 
@@ -411,6 +444,24 @@ export default function KassaPage() {
     }
   }
 
+  async function undo(p: CardPayment) {
+    if (!locationId || !bill) return
+    if (!window.confirm(`Återbetala ${kr(p.amount)} kr till kortet?`)) return
+    setBusy(true)
+    setError(null)
+    try {
+      await undoPayment(locationId, bill.billId, p.paymentId)
+      const fresh = await getBill(locationId, bill.billId)
+      show(fresh)
+      setAmountText(kr(fresh.remaining))
+      setStage(fresh.locked ? 'pay' : 'bill')
+    } catch (err) {
+      setError(errorText(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function close(delivery: Delivery, email?: string) {
     if (!locationId || !bill) return
     setBusy(true)
@@ -540,7 +591,9 @@ export default function KassaPage() {
     )
   }
 
-  const payDisabled = !bill || saving || draft.length === 0 || (!bill.training && !csOk) || totals.total <= 0
+  // ANV 4 kap. 2 §: the float is registered at the start of every sales day; the Z ends the day.
+  const dayClosed = !register?.dayOpen
+  const payDisabled = !bill || saving || draft.length === 0 || (!bill.training && (!csOk || dayClosed)) || totals.total <= 0
 
   return (
     <>
@@ -555,7 +608,7 @@ export default function KassaPage() {
                 {state.registers.map((r) => <option key={r.registerId} value={r.registerId}>{r.label}</option>)}
               </select>
             ) : <strong>{register.label}</strong>}
-            <span className={`kassa-pill ${csOk ? 'ok' : 'bad'}`} title={`Kontrollsystem ${register.controlSystem.serial}`}>
+            <span className={`kassa-pill ${csOk ? 'ok' : 'bad'}`} title={`${register.controlSystem.name || 'Kontrollsystem'} ${register.controlSystem.serial}`}>
               <span className="dot" aria-hidden="true" />
               {csOk ? 'Kontrollsystem anslutet' : 'Kontrollsystemet svarar inte'}
             </span>
@@ -572,6 +625,21 @@ export default function KassaPage() {
               aria-pressed={Boolean(register.training)} onClick={() => void registerDo('training', { on: !register.training })}>
               Övningsläge
             </button>
+            <button type="button" className={`btn outline${more ? ' on-more' : ''}`} aria-expanded={more}
+              aria-controls="kassa-more" onClick={() => setMore(!more)}>
+              {more ? 'Mindre' : 'Mer'}
+            </button>
+          </div>
+        </div>
+
+        {more && (
+          <div className="kassa-bar-actions kassa-more" id="kassa-more">
+            <button type="button" className="btn outline" onClick={() => setDialog('setup')}>Kom igång</button>
+            <Link className="btn outline" to={`/kassa/utskrift/manuell-lista?kassa=${register.registerId}`}>
+              <Icon name="printer" size={18} /> Manuell försäljningslista
+            </Link>
+            <Link className="btn outline" to="/kassa/bruksanvisning">Bruksanvisning</Link>
+            <button type="button" className="btn outline" onClick={() => setDialog('about')}>Om kassan</button>
             {state.isOwner && <button type="button" className="btn outline" onClick={() => setDialog('export')}>Exportera</button>}
             {state.isOwner && state.registers.length < 5 && (
               <button type="button" className="btn outline" onClick={() => setDialog('newRegister')}>Ny kassa</button>
@@ -583,18 +651,32 @@ export default function KassaPage() {
               </button>
             )}
           </div>
-        </div>
+        )}
 
         {day && day.unclosedDays.length > 0 && (
           <p className="kassa-alert warn" role="alert">
             Z-rapport saknas för {day.unclosedDays.join(', ')}. Ta en Z-rapport för att stänga dagen.
           </p>
         )}
-        {!csOk && (
+        {banner && <OutageBanner register={banner} onDismiss={dismissBanner} onRetry={() => void loadState()} />}
+        {register.controlSystem.connected === false && (
           <p className="kassa-alert danger" role="alert">
-            Kontrollsystemet svarar inte, så inga kvitton kan skapas och inga kort dras. Försök igen om en stund.
-            Vid längre avbrott: anteckna försäljningen för hand och felanmäl kassan till Skatteverket.
+            Kassan är inte kopplad till kontrollsystemet {register.controlSystem.name}. Ägaren skapar en ny kassa med Ny kassa under Mer.
           </p>
+        )}
+        {!csOk && !banner && register.controlSystem.connected !== false && (
+          <div className="kassa-alert danger kassa-down" role="alert">
+            <p>
+              Kontrollsystemet svarar inte{register.csDownSince ? ` sedan ${new Intl.DateTimeFormat('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' }).format(new Date(register.csDownSince))}` : ''}, så inga kvitton kan skapas och inga kort dras.
+              Skriv upp försäljningen på den manuella listan tills det fungerar igen.
+            </p>
+            <div className="kassa-row">
+              <Link className="btn outline" to={`/kassa/utskrift/manuell-lista?kassa=${register.registerId}`}>
+                <Icon name="printer" size={18} /> Manuell försäljningslista
+              </Link>
+              <button type="button" className="btn outline" disabled={busy} onClick={() => void loadState()}>Försök igen</button>
+            </div>
+          </div>
         )}
         {error && <p className="kassa-alert danger" role="alert">{error}</p>}
 
@@ -702,13 +784,17 @@ export default function KassaPage() {
                           title={!state.printer ? 'Ingen skrivare kopplad' : undefined}
                           onClick={() => void bill_action('send')}><Icon name="tool-kitchen" size={18} /> Till köket</button>
                         <button type="button" className="btn outline danger-outline" disabled={busy || bill.locked}
-                          onClick={() => { if (window.confirm('Makulera notan? Det som skickats till köket registreras.')) void bill_action('void') }}>
-                          Makulera
+                          title={bill.locked ? 'Notan har en kortbetalning. Återbetala den först.' : undefined}
+                          onClick={() => { if (window.confirm('Ta bort notan? Det som redan skickats till köket registreras i journalen.')) void bill_action('void') }}>
+                          <Icon name="trash" size={18} /> Ta bort nota
                         </button>
                       </div>
                       <button type="button" className="btn primary kassa-pay" disabled={payDisabled} onClick={() => void toPay()}>
                         {bill.training ? 'Skapa övningskvitto' : bill.paid > 0 ? `Betala resten ${kr(totals.total - bill.paid)} kr` : `Ta betalt ${kr(totals.total)} kr`}
                       </button>
+                      {!bill.training && dayClosed && (
+                        <p className="cell-muted">Öppna dagen först. Växelkassan registreras när försäljningsdagen börjar.</p>
+                      )}
                       {!bill.training && !state.cardReaders && <p className="cell-muted">Kortläsare är inte kopplade för platsen ännu.</p>}
                     </div>
                   </>
@@ -749,6 +835,7 @@ export default function KassaPage() {
                     <button type="button" className="btn primary kassa-pay" disabled={busy || !amountOk || !readerId || !csOk} onClick={() => void charge()}>
                       <Icon name="card" size={22} /> Skicka {amount !== null ? kr(amount) : ''} kr till läsaren
                     </button>
+                    <PaidParts bill={bill} busy={busy} onUndo={(p) => void undo(p)} />
                     {bill.paid === 0 && (
                       <button type="button" className="btn outline" onClick={() => setStage('bill')}>Tillbaka till notan</button>
                     )}
@@ -794,6 +881,12 @@ export default function KassaPage() {
                     <p className="cell-muted">Kvittot skapas med kontrollkod och skrivs ut eller mejlas. Gästen får välja att inte ta det.</p>
                     <DeliveryPicker testMode={state.testMode} printer={state.printer} busy={busy || !csOk}
                       label={bill.training ? 'Övningskvitto' : 'Kvitto'} onPick={(d, e) => void close(d, e)} />
+                    {!csOk ? <PaidParts bill={bill} busy={busy} onUndo={(p) => void undo(p)} /> : (
+                      <details className="kassa-undo">
+                        <summary>Ångrade sig gästen? Återbetala</summary>
+                        <PaidParts bill={bill} busy={busy} onUndo={(p) => void undo(p)} />
+                      </details>
+                    )}
                   </div>
                 )}
               </>
@@ -802,7 +895,7 @@ export default function KassaPage() {
         </div>
 
         <p className="kassa-about cell-muted">
-          {register.model} · {register.program} {register.version} · Tillverkningsnummer {register.serialNumber}
+          {register.model} · {register.program} {register.version} · Kassabeteckning {register.designation || register.label}
           {' '}· Kontrollsystem {register.controlSystem.serial}
         </p>
       </div>
@@ -828,11 +921,29 @@ export default function KassaPage() {
         <ReceiptsDialog locationId={locationId} registerId={registerId} testMode={state.testMode} printer={state.printer}
           onClose={() => setDialog(null)} onChanged={() => void loadState()} />
       )}
+      {dialog === 'setup' && <SetupDialog locationId={locationId} state={state} register={register} onClose={() => setDialog(null)} />}
+      {dialog === 'about' && <AboutDialog register={register} onClose={() => setDialog(null)} />}
       {dialog === 'export' && <ExportDialog locationId={locationId} registerId={registerId} onClose={() => setDialog(null)} />}
       {dialog === 'newRegister' && (
         <TextDialog title="Ny kassa" label="Namn (står på kvitton, kan inte ändras)" initial={`Kassa ${state.registers.length + 1}`}
           max={16} submit="Skapa kassa" onSubmit={(t) => void addRegister(t)} onClose={() => setDialog(null)} />
       )}
     </>
+  )
+}
+
+/** Betalda delar före kvittot; kan återbetalas om gästen ångrar sig. */
+function PaidParts({ bill, busy, onUndo }: { bill: Bill; busy: boolean; onUndo: (p: CardPayment) => void }) {
+  const paid = bill.payments.filter((p) => p.status === 'succeeded')
+  if (!paid.length) return null
+  return (
+    <ul className="kassa-paid">
+      {paid.map((p) => (
+        <li key={p.paymentId}>
+          <span>Betalt {kr(p.amount)} kr{p.card?.last4 ? `, kort **** ${p.card.last4}` : ''}</span>
+          <button type="button" className="btn outline" disabled={busy} onClick={() => onUndo(p)}>Återbetala</button>
+        </li>
+      ))}
+    </ul>
   )
 }

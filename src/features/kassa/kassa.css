@@ -556,6 +556,12 @@
   text-align: center;
 }
 
+/* Kontrollkoden: hela koden, en rad per del, aldrig avkortad. */
+.kassa-paper .code {
+  font: 400 12px/1.4 var(--mono);
+  letter-spacing: 0.02em;
+}
+
 .kassa-journal,
 .kassa-return {
   display: flex;
@@ -682,5 +688,457 @@
 @media (max-width: 480px) {
   .kassa-tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* --- mer, avbrott, kom igång, om kassan ------------------------------------------ */
+
+.kassa-more {
+  margin-top: -4px;
+}
+
+.kassa-bar-actions .btn.on-more {
+  background: var(--fill);
+  box-shadow: none;
+}
+
+.kassa a.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.kassa-down {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kassa-down p,
+.kassa-outage p {
+  margin: 0;
+}
+
+.kassa-down .kassa-row > *,
+.kassa-outage .kassa-row > * {
+  flex: 0 1 auto;
+}
+
+.kassa-outage {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: var(--r-md);
+  background: var(--danger);
+  color: var(--on-accent);
+  font: 500 16px/1.45 var(--font);
+}
+
+.kassa-outage .btn.primary {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.kassa-outage .btn.outline {
+  border-color: color-mix(in srgb, var(--on-accent) 55%, transparent);
+  background: transparent;
+  color: var(--on-accent);
+}
+
+.kassa-paid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kassa-paid li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+  font: 400 14px/1.3 var(--font);
+  font-variant-numeric: tabular-nums;
+}
+
+.kassa-paid .btn {
+  min-height: 44px;
+}
+
+/* "Ångrade sig gästen?": the refund stays one deliberate tap away from the receipt. */
+.kassa-undo summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--muted);
+  font: 500 14px/1.3 var(--font);
+}
+
+.kassa-undo[open] summary {
+  color: var(--ink);
+}
+
+.kassa-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 6px 16px;
+  margin: 0;
+  font: 400 14px/1.4 var(--font);
+}
+
+.kassa-facts dt {
+  color: var(--muted);
+}
+
+.kassa-facts dd {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.kassa-subhead {
+  font: 600 15px/1.3 var(--font);
+  color: var(--ink);
+}
+
+.kassa-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kassa-setup li {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.kassa-setup-check {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  cursor: pointer;
+}
+
+.kassa-setup-check input {
+  width: 24px;
+  height: 24px;
+  margin: 2px 0 0;
+  accent-color: var(--success);
+}
+
+.kassa-setup-check > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font: 400 14px/1.45 var(--font);
+}
+
+.kassa-setup-check strong {
+  font: 600 15px/1.35 var(--font);
+  color: var(--ink);
+}
+
+.kassa-setup li.done strong {
+  color: var(--success-ink);
+}
+
+.kassa-setup-more {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-left: 40px;
+}
+
+.kassa-setup-more .btn {
+  align-self: flex-start;
+  min-height: 44px;
+}
+
+.kassa-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: 44px;
+  color: var(--muted);
+  font: 500 14px/1 var(--font);
+  text-decoration: none;
+}
+
+.kassa-back .flip {
+  transform: scaleX(-1);
+}
+
+/* --- bruksanvisningen ---------------------------------------------------------- */
+
+.kassa-manual {
+  max-width: 78ch;
+  padding: 28px 32px;
+}
+
+.kassa-md {
+  color: var(--ink);
+  font: 400 16px/1.6 var(--font);
+}
+
+.kassa-md h1 {
+  margin: 0 0 12px;
+  font: 600 28px/1.2 var(--font);
+  letter-spacing: -0.01em;
+}
+
+.kassa-md h2 {
+  margin: 32px 0 8px;
+  font: 600 21px/1.3 var(--font);
+}
+
+.kassa-md h3 {
+  margin: 20px 0 6px;
+  font: 600 17px/1.35 var(--font);
+}
+
+.kassa-md p,
+.kassa-md ol,
+.kassa-md ul {
+  margin: 0 0 12px;
+}
+
+.kassa-md ol,
+.kassa-md ul {
+  padding-left: 1.4em;
+}
+
+.kassa-md li {
+  margin: 4px 0;
+}
+
+.kassa-md li > ol,
+.kassa-md li > ul {
+  margin: 4px 0;
+}
+
+.kassa-md code,
+.kassa-md pre {
+  font-family: var(--mono);
+  font-size: 14px;
+}
+
+.kassa-md pre {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: var(--fill);
+  overflow-x: auto;
+}
+
+.kassa-md-table {
+  margin: 0 0 16px;
+  overflow-x: auto;
+}
+
+.kassa-md table {
+  border-collapse: collapse;
+  min-width: 100%;
+  font-size: 15px;
+}
+
+.kassa-md th,
+.kassa-md td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.kassa-md a {
+  color: var(--ink);
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .kassa-manual {
+    padding: 20px 16px;
+  }
+
+  .kassa-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0 0;
+  }
+
+  .kassa-facts dd {
+    margin-bottom: 8px;
+  }
+
+  .kassa-setup-more {
+    margin-left: 0;
+  }
+}
+
+/* --- utskrifter (A4) ----------------------------------------------------------- */
+
+.kassa-print-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kassa-sheet {
+  overflow-x: auto;
+  padding: 4px;
+}
+
+/* Papperet är vitt och svart i båda lägena: det ska se ut som utskriften. */
+.kassa-print {
+  width: 210mm;
+  max-width: 100%;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 16mm 14mm;
+  box-sizing: border-box;
+  background: #fff;
+  color: #111;
+  box-shadow: var(--shadow-lg);
+  font: 400 11pt/1.4 var(--font);
+}
+
+.kassa-print h1 {
+  margin: 0 0 4px;
+  font: 700 20pt/1.2 var(--font);
+}
+
+.kassa-print h2 {
+  margin: 18px 0 6px;
+  font: 600 12pt/1.3 var(--font);
+}
+
+.kassa-print p {
+  margin: 0 0 8px;
+}
+
+.kassa-print-lead,
+.kassa-print-foot {
+  color: #333;
+  font-size: 10pt;
+}
+
+.kassa-print-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 18px;
+  margin: 12px 0;
+}
+
+.kassa-print-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #888;
+}
+
+.kassa-print-field span {
+  color: #444;
+  font-size: 8.5pt;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kassa-print-field strong {
+  min-height: 1.4em;
+  font-weight: 600;
+}
+
+.kassa-print-table {
+  width: 100%;
+  margin: 10px 0 14px;
+  border-collapse: collapse;
+}
+
+.kassa-print-table th,
+.kassa-print-table td {
+  height: 8.2mm;
+  padding: 2px 6px;
+  border: 1px solid #777;
+  font-size: 9.5pt;
+  text-align: left;
+}
+
+.kassa-print-table th {
+  background: #f1f1f1;
+  font-weight: 600;
+}
+
+.kassa-print-table th:nth-child(1) { width: 14%; }
+.kassa-print-table th:nth-child(3) { width: 18%; }
+.kassa-print-table th:nth-child(4) { width: 12%; }
+.kassa-print-table th:nth-child(5) { width: 16%; }
+.kassa-print-table.short th { width: auto; }
+
+.kassa-print-table tfoot td {
+  font-weight: 600;
+}
+
+.kassa-print-sign {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin: 18px 0 10px;
+}
+
+.kassa-print-sign .kassa-print-field strong {
+  min-height: 10mm;
+}
+
+.kassa-print-root {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  body > *:not(.kassa-print-root) {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  /* Ta betalts utskriftsregel döljer allt med visibility; arket ska synas. */
+  .kassa-print-root,
+  .kassa-print-root * {
+    visibility: visible !important;
+  }
+
+  .kassa-print-root {
+    display: block;
+  }
+
+  .kassa-print-root .kassa-print {
+    width: 210mm;
+    min-height: 0;
+    box-shadow: none;
   }
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
+import { DateInput } from '../../shared/DateInput'
 import { Icon } from '../../shared/Icon'
 import { Loading } from '../../shared/Loading'
 import { parseKronor } from '../tabetalt/cardApi'
@@ -42,7 +43,7 @@ export function DocumentView({ document }: { document: KassaDocument }) {
     <div className="kassa-paper" aria-label={document.title}>
       {document.rows.map((row, i) => {
         if (row.rule) return <hr key={i} />
-        const cls = `${row.bold ? 'b' : ''} ${row.big ? 'big' : ''} ${row.center ? 'c' : ''}`.trim()
+        const cls = `${row.bold ? 'b' : ''} ${row.big ? 'big' : ''} ${row.center ? 'c' : ''} ${row.code ? 'code' : ''}`.replace(/\s+/g, ' ').trim()
         if (row.pair) {
           return (
             <div key={i} className={`pair ${cls}`}>
@@ -178,7 +179,7 @@ export function ReceiptsDialog({
         <>
           <div className="form-field kassa-date">
             <label htmlFor="kassa-day">Dag</label>
-            <input id="kassa-day" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <DateInput id="kassa-day" value={date} onChange={(e) => { if (e.target.value) setDate(e.target.value) }} />
           </div>
           {items === null ? <Loading label="Hämtar kvitton" /> : items.length === 0 ? (
             <p className="cell-muted">Inga kvitton eller rapporter den dagen.</p>
@@ -257,7 +258,7 @@ export function ReceiptsDialog({
 }
 
 export function ExportDialog({ locationId, registerId, onClose }: { locationId: string; registerId: string; onClose: () => void }) {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm' }).format(new Date())   // YYYY-MM-DD
   const [from, setFrom] = useState(today)
   const [to, setTo] = useState(today)
   const [busy, setBusy] = useState(false)
@@ -290,9 +291,9 @@ export function ExportDialog({ locationId, registerId, onClose }: { locationId: 
         {error && <p className="kassa-alert danger" role="alert">{error}</p>}
         <div className="kassa-row">
           <div className="form-field"><label htmlFor="exp-from">Från</label>
-            <input id="exp-from" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></div>
+            <DateInput id="exp-from" value={from} max={to} onChange={(e) => { if (e.target.value) setFrom(e.target.value) }} /></div>
           <div className="form-field"><label htmlFor="exp-to">Till</label>
-            <input id="exp-to" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} /></div>
+            <DateInput id="exp-to" value={to} min={from} onChange={(e) => { if (e.target.value) setTo(e.target.value) }} /></div>
         </div>
         <div className="modal-actions">
           <button type="submit" className="btn primary kassa-big" disabled={busy || !from || !to}>Ladda ner</button>

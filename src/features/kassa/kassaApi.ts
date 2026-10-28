@@ -26,6 +26,8 @@ export interface DocRow {
   bold?: boolean
   big?: boolean
   center?: boolean
+  /** En del av kontrollkoden (hela koden står på flera rader). */
+  code?: boolean
 }
 
 export interface KassaDocument {
@@ -36,9 +38,20 @@ export interface KassaDocument {
   rows: DocRow[]
 }
 
+/** Kontrollenheten som anmäls till Skatteverket (samma för alla som använder kontrollsystemet). */
+export interface ControlUnit {
+  manufacturer: string
+  model: string
+  address: string
+  serverId: string
+}
+
 export interface Register {
   registerId: string
+  /** Kassans namn, till exempel "Kassa 1". */
   label: string
+  /** Kassabeteckningen: tillverkningsnumret från kontrollsystemet, annars namnet. */
+  designation?: string
   serialNumber: string
   receiptSeq: number
   zSeq: number
@@ -51,9 +64,37 @@ export interface Register {
   program: string
   version: string
   today: string
-  controlSystem: { ok: boolean; code: string; provider: string; serial: string; simulated: boolean }
+  manufacturer?: string
+  controlSystem: {
+    ok: boolean
+    code: string
+    provider: string
+    name?: string
+    serial: string
+    simulated: boolean
+    /** Kassan är kopplad till det kontrollsystem som används nu. */
+    connected?: boolean
+    unit?: ControlUnit
+  }
+  /** När kassan kopplades till kontrollsystemet (de 14 dagarna för anmälan börjar). */
+  csEnrolledAt?: string
   simulateDown?: boolean
+  /** När kontrollsystemet slutade svara (UTC), om det inte svarar nu. */
+  csDownSince?: string
+  /** Dags att felanmäla till Skatteverket (30 min, eller kontrollsystemet säger det). */
+  felanmal?: boolean
 }
+
+export interface Company {
+  name: string
+  org: string
+  orgText?: string
+  address: string
+  restaurant?: string
+}
+
+export type SetupItem = 'anmalan' | 'skylt' | 'zrapport' | 'journal' | 'avbrott'
+export type Setup = Record<SetupItem, { done: boolean; by?: string; at?: string }>
 
 export interface BillSummary {
   billId: string
@@ -112,6 +153,8 @@ export interface Bill {
 export interface KassaState {
   testMode: boolean
   testNotice: string
+  company?: Company | null
+  felanmalAfterMinutes?: number
   registers: Register[]
   openBills: BillSummary[]
   printer: boolean
@@ -282,6 +325,34 @@ export function finalize(locationId: string, billId: string, delivery: Delivery,
   return apiFetch(`${base(locationId)}/bills/${billId}/finalize`, post({ delivery, email }))
 }
 
+export function getManual(locationId: string): Promise<{ markdown: string }> {
+  if (!isApiConfigured()) return mock.manual()
+  return apiFetch(`${base(locationId)}/manual`)
+}
+
+export function getSetup(locationId: string): Promise<{ items: Setup }> {
+  if (!isApiConfigured()) return mock.setup()
+  return apiFetch(`${base(locationId)}/setup`)
+}
+
+export function setSetup(locationId: string, item: SetupItem, done: boolean): Promise<{ items: Setup }> {
+  if (!isApiConfigured()) return mock.setSetup(item, done)
+  return apiFetch(`${base(locationId)}/setup`, { method: 'PUT', body: JSON.stringify({ item, done }) })
+}
+
+/** Loggar att meddelandet om felanmälan visades eller stängdes. */
+export function outageNotice(locationId: string, registerId: string, action: 'shown' | 'dismissed'): Promise<unknown> {
+  if (!isApiConfigured()) return Promise.resolve({})
+  return apiFetch(`${base(locationId)}/registers/${registerId}/outage-notice`, post({ action }))
+}
+
+/** Skatteverkets e-tjänst "Anmäl, ändra, felanmäl och avanmäl kassaregister". */
+export const SKV_ETJANST_URL =
+  'https://www.skatteverket.se/foretag/etjansterochblanketter/allaetjanster/tjanster/anmalandrafelanmalochavanmalkassaregister.4.309a41aa1672ad0c837fd5d.html'
+/** Skatteverket: "Använd kassaregister även vid driftsavbrott". */
+export const SKV_DRIFTSAVBROTT_URL =
+  'https://www.skatteverket.se/foretag/drivaforetag/kassaregister/saharanvanderdukassaregister.4.69ef368911e1304a625800013725.html'
+
 /** Journalen som XML-fil (SKVFS 2021:16); bara ägaren. */
 export async function downloadExport(locationId: string, registerId: string, from: string, to: string): Promise<{ name: string; blob: Blob }> {
   if (!API_BASE_URL) {
@@ -334,6 +405,8 @@ export function kr(ore: number): string {
 
 const ERRORS: Record<string, string> = {
   control_system_unreachable: 'Kontrollsystemet svarar inte. Kvitto kan inte skapas just nu. Försök igen om en stund.',
+  day_not_open: 'Öppna dagen först. Växelkassan registreras när försäljningsdagen börjar, och Z-rapporten avslutar dagen.',
+  control_system_rejected: 'Kontrollsystemet tog inte emot uppgifterna, så inget kvitto skapades. Kontrollera organisationsnummer och adress (gata med nummer, postnummer och ort) och kontakta Booqy om det inte hjälper.',
   not_fully_paid: 'Notan är inte fullt betald än.',
   payment_in_progress: 'En kortbetalning pågår. Vänta tills den är klar.',
   bill_has_payments: 'Notan har en kortbetalning och kan inte ändras.',
@@ -379,6 +452,7 @@ export const PROBLEMS: Record<string, string> = {
   email_failed: 'Kvittot är sparat men mejlet kunde inte skickas. Skriv ut en kopia under Kvitton.',
   kitchen_print_failed: 'Köksnotan kunde inte skickas till skrivaren.',
   no_printer: 'Ingen skrivare är kopplad, rapporten skrevs inte ut.',
+  control_system_closing_failed: 'Z-rapporten är klar, men kontrollsystemet fick inte veta att dagen stängdes. Det rättar sig när du öppnar dagen nästa gång.',
 }
 
 // --- kassa i minnet utan API ------------------------------------------------
@@ -386,7 +460,7 @@ export const PROBLEMS: Record<string, string> = {
 const mock = (() => {
   const delay = <T,>(value: T) => new Promise<T>((resolve) => setTimeout(() => resolve(structuredClone(value)), 120))
   const fail = (code: string) => Promise.reject(new ApiError(409, code))
-  const today = new Date().toISOString().slice(0, 10)
+  const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm' }).format(new Date())
   const menu: MenuChoice[] = [
     { menuItemId: 'm1', name: 'Toast Skagen', price: 14500, category: 'starters' },
     { menuItemId: 'm2', name: 'Dagens soppa', price: 8950, category: 'starters' },
@@ -400,6 +474,8 @@ const mock = (() => {
     { menuItemId: 'm10', name: 'Lättöl', price: 4500, category: 'drinks' },
   ]
   const registers: Register[] = []
+  const setupItems: Setup = { anmalan: { done: false }, skylt: { done: false }, zrapport: { done: false },
+    journal: { done: false }, avbrott: { done: false } }
   const bills = new Map<string, Bill & { _payments: string[] }>()
   const receipts: { seq: number; bill: Bill; doc: KassaDocument; copy: boolean }[] = []
   let ids = 0
@@ -433,7 +509,7 @@ const mock = (() => {
       { rule: true },
       { pair: [title, `Nr ${seq}`], bold: true },
       { pair: ['Datum', new Date().toLocaleString('sv-SE').slice(0, 16)] },
-      { pair: ['Kassa', registers[0]?.label ?? 'Kassa 1'] },
+      { pair: ['Kassabeteckning', registers[0]?.designation ?? registers[0]?.label ?? 'Kassa 1'] },
       { rule: true },
       ...b.lines.map((l) => ({ pair: [`${l.quantity} x ${l.name}`, kr(l.gross)] as [string, string] })),
       { rule: true },
@@ -443,7 +519,8 @@ const mock = (() => {
       { pair: ['Betalt, Kort Visa **** 4242', kr(b.total)] },
       { rule: true },
       { text: 'Kontrollkod:' },
-      { text: '9F3A1C77E0B2D4A6C8E19F3A1C77E0B2D4A6C8E19F3A1C77E0B2D4A6C8E' },
+      { text: '9F3A1C77E0B2D4A6C8E19F3A1C77E0', code: true },
+      { text: 'B2D4A6C8E19F3A1C77E0B2D4A6C8E', code: true },
       { text: 'Kontrollsystem: BOOQYSIMULATOR001' },
       { text: 'Tack för besöket!', center: true },
     ]
@@ -452,8 +529,16 @@ const mock = (() => {
 
   return {
     menu: () => delay(menu),
+    manual: () => delay({ markdown: '# Bruksanvisning för Booqy Kassa\n\nDen här bruksanvisningen beskriver alla funktioner i Booqy Kassa.\n\n## 3. Öppna dagen\n\n1. Tryck **Öppna dagen** i raden överst.\n2. Skriv växelkassan.\n3. Tryck **Öppna dagen**.\n\n| Funktion | Personal | Ägare |\n|---|---|---|\n| Sälja | Ja | Ja |\n' }),
+    setup: () => delay({ items: setupItems }),
+    setSetup(item: SetupItem, done: boolean) {
+      setupItems[item] = { done, by: 'test@test.se', at: new Date().toISOString() }
+      return delay({ items: setupItems })
+    },
     state: (): Promise<KassaState> => delay({
       testMode: true, testNotice: 'Testläge - inte ett certifierat kassaregister än', registers,
+      company: { name: 'Bistro Lindqvist AB', org: '5566778899', orgText: '556677-8899', address: 'Storgatan 12, Stockholm', restaurant: 'Bistro Lindqvist' },
+      felanmalAfterMinutes: 30,
       openBills: [...bills.values()].filter((b) => b.status === 'open').map((b) => ({
         billId: b.billId, registerId: b.registerId, kind: b.kind, tableLabel: b.tableLabel, training: Boolean(b.training),
         lines: b.lines.reduce((s, l) => s + l.quantity, 0), total: b.total,
@@ -463,8 +548,9 @@ const mock = (() => {
     createRegister(label: string) {
       const r: Register = {
         registerId: id(), label, serialNumber: 'BQ1A2B3C4D5E6F7A8', receiptSeq: 0, zSeq: 0, training: false, float: 0,
-        model: 'Booqy Kassa SE', program: 'Booqy Kassa', version: '1.0.0+demo', today,
-        controlSystem: { ok: true, code: 'STATUS_OK', provider: 'simulator', serial: 'BOOQYSIMULATOR001', simulated: true },
+        model: 'Booqy Kassa SE', program: 'Booqy Kassa', version: '1.0.0+demo', today, manufacturer: 'Booqy',
+        designation: label,
+        controlSystem: { ok: true, code: 'STATUS_OK', provider: 'simulator', name: 'Simulator (testläge)', serial: 'BOOQYSIMULATOR001', simulated: true, connected: true },
       }
       registers.push(r)
       return delay({ register: r })
@@ -483,12 +569,15 @@ const mock = (() => {
       if (action === 'simulate') {
         r.simulateDown = Boolean(b.down)
         r.controlSystem = { ...r.controlSystem, ok: !b.down, code: b.down ? 'EJ_KONTAKT_MED_KS' : 'STATUS_OK' }
+        // I demon har kontrollsystemet "varit nere" i 40 minuter, så meddelandet om felanmälan syns.
+        r.csDownSince = b.down ? new Date(Date.now() - 40 * 60_000).toISOString() : undefined
+        r.felanmal = Boolean(b.down)
       }
       return delay({ register: r })
     },
     report(kind: 'x' | 'z') {
       const total = receipts.reduce((s, r) => s + r.bill.total, 0)
-      if (kind === 'z' && registers[0]) registers[0].zSeq += 1
+      if (kind === 'z' && registers[0]) Object.assign(registers[0], { zSeq: registers[0].zSeq + 1, dayOpen: undefined })
       const rows: DocRow[] = [
         { text: kind === 'z' ? 'Z-dagrapport' : 'X-dagrapport', bold: true, big: true, center: true },
         { text: 'Exempel AB', bold: true, center: true }, { rule: true },

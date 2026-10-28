@@ -606,6 +606,9 @@ export function errorText(err: unknown): string {
     if (err.status === 400) return `Kontrollera uppgifterna: ${err.message}`
     if (err.status === 403) return 'Bara restaurangens ägare kan göra det.'
     if (err.status === 404) return 'Förfrågan finns inte.'
+    if (err.status === 409 && err.message.startsWith('signing_')) {
+      return 'Signeringstjänsten tog inte emot offerten. Försök igen om en stund eller kontakta Booqy.'
+    }
   }
   return 'Kunde inte spara just nu. Försök igen om en stund.'
 }

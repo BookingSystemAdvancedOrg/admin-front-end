@@ -1,0 +1,45 @@
+/* Knappen för ljust/mörkt läge (ThemeToggle.tsx): laddas med knappen, så den
+   ser likadan ut i sidomenyn och på inloggningssidorna. */
+
+.theme-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.theme-toggle-icon {
+  position: relative;
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+.theme-toggle-icon svg {
+  grid-area: 1 / 1;
+  width: 20px;
+  height: 20px;
+  transition: opacity 320ms var(--ease), rotate 360ms var(--ease), scale 360ms var(--ease);
+}
+
+/* Den ikon som inte gäller är borta: tonad och bortvriden. Vid byte tonar
+   solen bort åt ena hållet medan månen vrids in från det andra. */
+.theme-toggle[aria-pressed='false'] .theme-toggle-moon {
+  opacity: 0;
+  rotate: -90deg;
+  scale: 0.6;
+}
+
+.theme-toggle[aria-pressed='true'] .theme-toggle-sun {
+  opacity: 0;
+  rotate: 90deg;
+  scale: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle-icon svg {
+    transition: none;
+  }
+}

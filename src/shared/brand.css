@@ -107,15 +107,7 @@
   box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.45);
 }
 
-/* --- Ljust/mörkt läge: knappen under Hjälp ------------------------------- */
-
-.theme-toggle {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-}
+/* --- Ljust/mörkt läge: knappen under Hjälp (grunden i ThemeToggle.css) -- */
 
 .admin-theme-toggle {
   width: 100%;
@@ -126,41 +118,6 @@
 
 .admin-theme-toggle[aria-pressed='true'] {
   color: var(--on-ox);
-}
-
-.theme-toggle-icon {
-  position: relative;
-  display: inline-grid;
-  width: 20px;
-  height: 20px;
-  flex: none;
-}
-
-.theme-toggle-icon svg {
-  grid-area: 1 / 1;
-  width: 20px;
-  height: 20px;
-  transition: opacity 320ms var(--ease), rotate 360ms var(--ease), scale 360ms var(--ease);
-}
-
-/* Den ikon som inte gäller är borta: tonad och bortvriden. Vid byte tonar
-   solen bort åt ena hållet medan månen vrids in från det andra. */
-.theme-toggle[aria-pressed='false'] .theme-toggle-moon {
-  opacity: 0;
-  rotate: -90deg;
-  scale: 0.6;
-}
-
-.theme-toggle[aria-pressed='true'] .theme-toggle-sun {
-  opacity: 0;
-  rotate: 90deg;
-  scale: 0.6;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .theme-toggle-icon svg {
-    transition: none;
-  }
 }
 
 .admin-nav--bottom {

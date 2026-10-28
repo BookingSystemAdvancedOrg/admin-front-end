@@ -124,3 +124,29 @@
   border-radius: 6px;
   background: #fff;
 }
+
+/* Väntan på signeringstjänsten: tre punkter som fylls på. */
+.checking-dots::after {
+  content: '…';
+  display: inline-block;
+  width: 1.2em;
+  text-align: left;
+  animation: checking-dots 1.2s steps(4, end) infinite;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+
+@keyframes checking-dots {
+  from {
+    width: 0;
+  }
+  to {
+    width: 1.2em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checking-dots::after {
+    animation: none;
+  }
+}

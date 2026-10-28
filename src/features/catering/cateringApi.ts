@@ -590,6 +590,12 @@ const ERRORS: Record<string, string> = {
   not_signable: 'Den här offertversionen kan inte signeras. Skicka offerten igen.',
   already_signed: 'Offerten är redan signerad av restaurangen.',
   signing_alreadyInProgress: 'En BankID-signering pågår redan. Avbryt den i appen och försök igen.',
+  signing_document_timedout: 'Tiden för att signera har gått ut. Skicka offerten igen.',
+  signing_document_canceled: 'Den här offertversionen går inte längre att signera. Skicka offerten igen.',
+  signing_document_rejected: 'Signeringen avbröts hos signeringstjänsten. Skicka offerten igen.',
+  signing_document_closed: 'Offerten är redan färdigsignerad. Ladda om sidan.',
+  no_signing_started: 'Ingen signering pågår. Tryck på Signera med BankID.',
+  offer_expired: 'Offerten har gått ut. Ändra giltighetstiden och skicka den igen.',
 }
 
 export function errorText(err: unknown): string {

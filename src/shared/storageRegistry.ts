@@ -85,7 +85,7 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     name: THEME_KEY,
     kind: 'localStorage',
     setBy: 'Booqy',
-    purpose: 'Ditt val av ljust eller mörkt läge (knappen i sidomenyn). Samma nyckel på booqy.se och i Booqy Console. Inga personuppgifter.',
+    purpose: 'Ditt val av ljust eller mörkt läge (knappen i sidomenyn och på inloggningssidan). Samma nyckel på booqy.se och i Booqy Console. Inga personuppgifter.',
     lifetime: 'Tills du rensar webbläsaren',
     category: 'nödvändig',
   },

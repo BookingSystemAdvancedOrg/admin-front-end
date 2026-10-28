@@ -7,7 +7,28 @@
 }
 
 .auth-screen {
+  position: relative;
   background: var(--ox);
+}
+
+.auth-theme-toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--on-ox-2);
+  transition: background-color 160ms var(--ease), color 160ms var(--ease);
+}
+
+.auth-theme-toggle:hover {
+  color: var(--on-ox);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .auth-logo-badge {
@@ -34,7 +55,7 @@
     linear-gradient(#000 0 0) top / 100% calc(100% - 5px) no-repeat;
 }
 
-/* Lappen är alltid papper, även i mörkt läge. */
+/* Lappen är papper i ljust läge och sotat papper i mörkt (som i admin). */
 .auth-screen .auth-card {
   --auth-ink: #1c1918;
   --auth-muted: #57504d;
@@ -49,6 +70,35 @@
   --focus: rgba(158, 29, 38, 0.32);
   --success-ink: #2c6a3f;
   color-scheme: light;
+}
+
+:root[data-theme='dark'] .auth-card {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+:root[data-theme='dark'] .auth-screen .auth-card {
+  --auth-ink: #f6ece9;
+  --auth-muted: #b8aca6;
+  --auth-bg: #332e2b;
+  --auth-error: #ee8a90;
+  --auth-error-bg: #432326;
+  --fill: #332e2b;
+  --accent: #f6ece9;
+  --accent-hover: #ffffff;
+  --on-accent: #1c1918;
+  --accent-ink: #ee8a90;
+  --focus: rgba(238, 138, 144, 0.4);
+  --success-ink: #7cc695;
+  color-scheme: dark;
+}
+
+:root[data-theme='dark'] .auth-field input {
+  box-shadow: inset 0 0 0 1.5px #463f3b;
+}
+
+:root[data-theme='dark'] .auth-link--quiet {
+  color: #b8aca6;
 }
 
 .auth-heading h1 {

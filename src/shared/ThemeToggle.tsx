@@ -1,5 +1,6 @@
 import { MoonIcon, SunIcon } from './ThemeIcons'
 import { useTheme } from './theme'
+import './ThemeToggle.css'
 
 /**
  * Knappen som byter mellan ljust och mörkt läge. En tryckknapp

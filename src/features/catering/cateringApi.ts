@@ -593,6 +593,7 @@ const ERRORS: Record<string, string> = {
   signing_document_timedout: 'Tiden för att signera har gått ut. Skicka offerten igen.',
   signing_document_canceled: 'Den här offertversionen går inte längre att signera. Skicka offerten igen.',
   signing_document_rejected: 'Signeringen avbröts hos signeringstjänsten. Skicka offerten igen.',
+  signing_authentication_to_sign_method_disabled: 'BankID-signering är inte påslagen hos signeringstjänsten ännu. Kontakta Booqy.',
   signing_document_closed: 'Offerten är redan färdigsignerad. Ladda om sidan.',
   no_signing_started: 'Ingen signering pågår. Tryck på Signera med BankID.',
   offer_expired: 'Offerten har gått ut. Ändra giltighetstiden och skicka den igen.',

@@ -1,6 +1,6 @@
+import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ApiError } from '../../shared/api'
 import { useTables } from '../../shared/tables'
 import { getLocation, updateLocation } from './locationApi'
 import type { TableCombination, TableRule } from './locationApi'
@@ -59,7 +59,7 @@ export function TableRulesCard({
         setSaved({ rules: loc.tableRules ?? {}, combos: loc.tableCombinations ?? [] })
         setCombos(loc.tableCombinations ?? [])
       })
-      .catch(() => !cancelled && setError('Kunde inte hämta platsens bordsregler.'))
+      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Kunde inte hämta platsens bordsregler.')))
     return () => {
       cancelled = true
     }
@@ -141,13 +141,7 @@ export function TableRulesCard({
       setCombos(updated.tableCombinations ?? [])
       setNotice('Sparat. Gäller bokningssidan direkt.')
     } catch (err) {
-      setError(
-        err instanceof ApiError && err.status === 403
-          ? 'Bara restaurangens ägare kan ändra bordsreglerna.'
-          : err instanceof ApiError && err.status === 400
-            ? `Kunde inte spara: ${err.message}`
-            : 'Kunde inte spara just nu. Försök igen om en stund.',
-      )
+      setError(errorText(err, 'Kunde inte spara.', { owner_only: 'Bara restaurangens ägare kan ändra bordsreglerna.', forbidden: 'Bara restaurangens ägare kan ändra bordsreglerna.' }))
     } finally {
       setBusy(false)
     }

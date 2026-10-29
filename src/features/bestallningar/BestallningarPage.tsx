@@ -1,3 +1,4 @@
+import { errorText } from '../../shared/errors'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { StatTile } from '../../shared/motion/StatTile'
 import { Num } from '../../shared/motion/Num'
@@ -163,8 +164,8 @@ export default function BestallningarPage() {
     try {
       const result = await pauseOrdering(locationId, minutes)
       setOrdering(result.ordering)
-    } catch {
-      setActionError('Kunde inte ändra pausen just nu.')
+    } catch (err) {
+      setActionError(errorText(err, 'Kunde inte ändra pausen just nu.'))
     }
   }
 

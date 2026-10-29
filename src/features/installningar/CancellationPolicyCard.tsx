@@ -1,6 +1,6 @@
+import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ApiError } from '../../shared/api'
 import { getLocation, updateLocation } from './locationApi'
 import type { GuaranteePolicy } from './locationApi'
 
@@ -72,7 +72,7 @@ export function CancellationPolicyCard({
         setSaved(loc.guarantee ?? null)
         setForm(toForm(loc.guarantee ?? DEFAULTS))
       })
-      .catch(() => !cancelled && setError('Kunde inte hämta platsens policy.'))
+      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Kunde inte hämta platsens policy.')))
       .finally(() => !cancelled && setLoading(false))
     return () => {
       cancelled = true
@@ -114,13 +114,7 @@ export function CancellationPolicyCard({
       setSaved(updated.guarantee ?? policy)
       setNotice(policy.enabled ? 'Sparat. Gäller nya bokningar.' : 'Sparat - kortgarantin är avstängd.')
     } catch (err) {
-      setError(
-        err instanceof ApiError && err.status === 400
-          ? err.message
-          : err instanceof ApiError && err.status === 403
-            ? 'Bara restaurangens ägare kan ändra policyn.'
-            : 'Kunde inte spara just nu. Försök igen om en stund.',
-      )
+      setError(errorText(err, 'Kunde inte spara.', { owner_only: 'Bara restaurangens ägare kan ändra policyn.', forbidden: 'Bara restaurangens ägare kan ändra policyn.' }))
     } finally {
       setBusy(false)
     }

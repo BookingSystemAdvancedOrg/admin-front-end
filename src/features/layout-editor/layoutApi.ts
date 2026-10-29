@@ -1,3 +1,4 @@
+import { errorText as commonError } from '../../shared/errors'
 import { apiFetch, ApiError } from '../../shared/api'
 import { WORKSPACE, tableSize } from './data'
 import type {
@@ -443,10 +444,14 @@ function toFriendlyLayoutError(err: unknown): Error {
     return err instanceof Error ? err : new Error('Ett okänt fel inträffade.')
   }
   console.error(`[Layout] ${err.status}: ${err.message}`)
+  // offline, utloggad, pausat konto, för många försök: samma text överallt
+  if (err.status === 0 || err.status === 429 || (err.status === 403 && err.code !== 'forbidden')) {
+    return new ApiError(err.status, commonError(err), { code: err.code })
+  }
 
   switch (err.status) {
     case 400:
-      return new ApiError(400, `Layouten avvisades av servern: ${err.message}`)
+      return new ApiError(400, 'Layouten godtogs inte: något bord eller element har ett ogiltigt värde. Kontrollera storlek, platser och namn och försök igen.', { code: err.code, field: err.field })
     case 401:
       return new ApiError(401, 'Du är inte inloggad längre. Logga in igen.')
     case 403:
@@ -464,7 +469,7 @@ function toFriendlyLayoutError(err: unknown): Error {
         'Layouttjänsten är tillfälligt otillgänglig. Försök igen.',
       )
     default:
-      return new ApiError(err.status, err.message || `Serverfel (${err.status}).`)
+      return new ApiError(err.status, commonError(err, 'Kunde inte spara layouten.'), { code: err.code })
   }
 }
 

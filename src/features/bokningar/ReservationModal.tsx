@@ -630,9 +630,15 @@ function EditForm({
       <div className="form-grid">
         <div className="form-field">
           <label htmlFor="ed-phone">Telefon{contactRequired ? '' : ' (valfritt)'}</label>
-          <PhoneInput id="ed-phone" value={phone} onChange={setPhone} />
+          <PhoneInput
+            id="ed-phone"
+            value={phone}
+            onChange={setPhone}
+            aria-invalid={!phoneOk || undefined}
+            aria-describedby={phoneOk ? undefined : 'ed-phone-error'}
+          />
           {!phoneOk && (
-            <p className="field-hint error">
+            <p id="ed-phone-error" className="field-hint error">
               {phone.trim() ? 'Skriv ett giltigt nummer, t.ex. 070-123 45 67.' : 'En onlinebokning måste ha telefon.'}
             </p>
           )}
@@ -645,9 +651,11 @@ function EditForm({
             maxLength={EMAIL_MAX}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            aria-invalid={!emailOk || undefined}
+            aria-describedby={emailOk ? undefined : 'ed-email-error'}
           />
           {!emailOk && (
-            <p className="field-hint error">
+            <p id="ed-email-error" className="field-hint error">
               {email.trim() ? 'Ange en giltig e-postadress.' : 'En onlinebokning måste ha e-post.'}
             </p>
           )}
@@ -655,9 +663,16 @@ function EditForm({
       </div>
       <div className="form-field">
         <label htmlFor="ed-size">Antal personer</label>
-        <input id="ed-size" inputMode="numeric" value={partySize} onChange={(e) => setPartySize(e.target.value)} />
+        <input
+          id="ed-size"
+          inputMode="numeric"
+          value={partySize}
+          onChange={(e) => setPartySize(e.target.value)}
+          aria-invalid={overSeats || undefined}
+          aria-describedby={overSeats ? 'ed-size-error' : undefined}
+        />
         {overSeats && (
-          <p className="field-hint error">
+          <p id="ed-size-error" className="field-hint error">
             Borden rymmer {r.seats} - ångra Anlänt först för att byta till större bord.
           </p>
         )}

@@ -83,8 +83,12 @@ describe('bookingsApi', () => {
   it('maps server codes to Swedish messages', () => {
     expect(errorMessage(new ApiError(409, 'grace_period_not_over'))).toMatch(/grace period/)
     expect(errorMessage(new ApiError(402, 'authentication_required'))).toMatch(/godkänner/)
-    expect(errorMessage(new ApiError(402, 'weird'))).toBe('Betalningen gick inte igenom (weird).')
-    expect(errorMessage(new Error('x'))).toMatch(/Något gick fel/)
+    expect(errorMessage(new ApiError(402, 'weird', { fromServer: true }))).toMatch(/^Betalningen gick inte igenom\. /)
+    expect(errorMessage(new ApiError(402, 'weird', { fromServer: true }))).not.toMatch(/weird/)
+    expect(errorMessage(new Error('x'))).toBe('Det gick inte att spara bokningen. Försök igen om en stund.')
+    expect(errorMessage(new ApiError(400, 'name must be at most 80 characters', { fromServer: true }))).toMatch(/högst/)
+    expect(errorMessage(new ApiError(400, 'tags must be a list', { fromServer: true, code: 'invalid_value', field: 'tags' })))
+      .toBe('Det gick inte att spara bokningen. Något av fälten har ett värde som inte godtas. Kontrollera uppgifterna och försök igen.')
   })
 
   it('asks for walk-in times only for drop-ins', async () => {
@@ -146,7 +150,7 @@ describe('guest fields (same rules as the server)', () => {
     expect(errorMessage(new ApiError(400, 'a walk-in stays on its day'))).toBe(
       'En drop-in kan inte flyttas till en annan dag.',
     )
-    expect(errorMessage(new ApiError(400, 'something new'))).toMatch(/something new/)
+    expect(errorMessage(new ApiError(400, 'something new', { fromServer: true }))).not.toMatch(/something new/)
   })
 
   it('knows which errors mean the chosen time or table went away', () => {

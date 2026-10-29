@@ -1,3 +1,4 @@
+import { errorText as commonError } from '../../shared/errors'
 import { apiFetch, ApiError } from '../../shared/api'
 
 /**
@@ -114,7 +115,7 @@ export function validateLocationId(
   locationId: string,
 ): string | null {
   if (group === 'staff_user' && !locationId.trim()) {
-    return 'Plats-ID krävs för personal.'
+    return 'Välj vilken plats personalen ska jobba på.'
   }
   if (group !== 'staff_user' && locationId.trim()) {
     return 'Ägare kopplas inte till en enskild plats.'
@@ -157,25 +158,27 @@ function toFriendlyUserError(err: unknown): Error {
   }
 
   console.error(`[Users] ${err.status}: ${err.message}`)
+  if (err.status === 0 || (err.status === 403 && err.code !== 'forbidden')) return new Error(commonError(err))
 
+  const withField = (e: Error) => Object.assign(e, { field: err.field })
   switch (err.status) {
     case 400:
       if (err.message.includes('locationId is required')) {
-        return new Error('Plats-ID krävs för personal.')
+        return withField(new Error('Välj vilken plats personalen ska jobba på.'))
       }
       if (err.message.includes('locationId must be empty')) {
-        return new Error('Ägare kopplas inte till en enskild plats.')
+        return withField(new Error('Ägare kopplas inte till en enskild plats.'))
       }
       if (err.message.includes('email must be valid')) {
-        return new Error('E-postadressen ser inte korrekt ut.')
+        return withField(new Error('E-postadressen ser inte korrekt ut.'))
       }
       if (err.message.includes('phone must use E.164')) {
-        return new Error('Telefonnummer måste vara i E.164-format.')
+        return withField(new Error('Telefonnumret ser inte korrekt ut. Skriv det med landsnummer, t.ex. +46 70 123 45 67.'))
       }
       if (err.message.includes('at least one editable field')) {
-        return new Error('Inget ändrades.')
+        return withField(new Error('Inget ändrades.'))
       }
-      return new Error(err.message)
+      return withField(new Error(commonError(err, 'Användaren kunde inte sparas.', {}, { name: 'namnet', email: 'e-postadressen', phone: 'telefonnumret', role: 'rollen', locationId: 'platsen' })))
     case 401:
       return new Error('Du är inte inloggad längre. Logga in igen.')
     case 403:
@@ -198,7 +201,7 @@ function toFriendlyUserError(err: unknown): Error {
     case 503:
       return new Error('Tjänsten är tillfälligt otillgänglig. Försök igen om en stund.')
     default:
-      return new Error(err.message || `Serverfel (${err.status}).`)
+      return new Error(commonError(err, 'Kunde inte spara användaren.'))
   }
 }
 

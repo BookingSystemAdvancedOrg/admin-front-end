@@ -1,3 +1,4 @@
+import { errorText as commonError } from '../../shared/errors'
 import { apiFetch, ApiError } from '../../shared/api'
 import { withBusy } from '../../shared/motion/busy'
 import type { Dish, DishCategory } from './data'
@@ -204,6 +205,10 @@ function toFriendlyMenuError(err: unknown): Error {
   }
 
   console.error(`[Menu] ${err.status}: ${err.message}`)
+  // offline, utloggad, pausat konto, för många försök: samma text överallt
+  if (err.status === 0 || err.status === 429 || (err.status === 403 && err.code !== 'forbidden')) {
+    return new ApiError(err.status, commonError(err), { code: err.code })
+  }
 
   switch (err.status) {
     case 400:
@@ -213,7 +218,7 @@ function toFriendlyMenuError(err: unknown): Error {
       if (err.message === 'availableUntil must be after availableFrom') {
         return new ApiError(400, 'Slutet på schemat måste vara efter starten.')
       }
-      return new ApiError(400, `Rätten avvisades av servern: ${err.message}`)
+      return new ApiError(400, commonError(err, 'Rätten kunde inte sparas.', {}, MENU_FIELDS), { code: err.code, field: err.field })
     case 401:
       return new ApiError(401, 'Du är inte inloggad längre. Logga in igen.')
     case 403:
@@ -230,8 +235,14 @@ function toFriendlyMenuError(err: unknown): Error {
     case 503:
       return new ApiError(503, 'Menytjänsten är tillfälligt otillgänglig. Försök igen.')
     default:
-      return new ApiError(err.status, err.message || `Serverfel (${err.status}).`)
+      return new ApiError(err.status, commonError(err, 'Kunde inte spara menyn.'), { code: err.code })
   }
+}
+
+const MENU_FIELDS: Record<string, string> = {
+  name: 'namnet', description: 'beskrivningen', price: 'priset', category: 'kategorin',
+  allergens: 'allergenerna', imageUrl: 'bilden', availableFrom: 'schemats start', availableUntil: 'schemats slut',
+  schedule: 'schemat', vatRate: 'momsen', options: 'tillvalen', sortOrder: 'ordningen',
 }
 
 async function call<T>(fn: () => Promise<T>): Promise<T> {

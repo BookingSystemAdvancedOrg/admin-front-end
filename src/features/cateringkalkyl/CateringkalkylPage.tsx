@@ -90,7 +90,7 @@ export default function CateringkalkylPage() {
         setTiers(loadedTiers.map(tierOf))
         setLoaded(true)
       })
-      .catch(() => !cancelled && setSaveError('Kunde inte hämta cateringinställningarna.'))
+      .catch((err: unknown) => !cancelled && setSaveError(errorText(err, 'Kunde inte hämta cateringinställningarna.')))
     return () => {
       cancelled = true
     }

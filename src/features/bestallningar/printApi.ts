@@ -1,3 +1,4 @@
+import { errorText as commonError } from '../../shared/errors'
 import { ApiError, apiFetch, isApiConfigured } from '../../shared/api'
 
 /**
@@ -177,5 +178,5 @@ export function printErrorText(err: unknown): string {
     if (err.status === 403) return 'Bara restaurangens ägare kan ändra skrivarna.'
     if (err.status === 404) return 'Hittades inte längre. Ladda om sidan.'
   }
-  return 'Kunde inte nå skrivartjänsten just nu. Försök igen om en stund.'
+  return commonError(err, 'Kunde inte nå skrivartjänsten.')
 }

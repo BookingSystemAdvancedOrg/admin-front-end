@@ -1,3 +1,4 @@
+import { errorText as commonError } from '../../shared/errors'
 import { API_BASE_URL, ApiError, apiFetch } from '../../shared/api'
 import { getAccessToken } from '../auth/cognito'
 
@@ -528,9 +529,14 @@ export function errorText(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
     if (ERROR_TEXT[err.message]) return ERROR_TEXT[err.message]
     if (err.status === 403) return 'Marknadsföring ingår inte i er plan, eller så är du inte ägare.'
-    if (err.status === 400 && err.message) return `${fallback} (${err.message})`
   }
-  return fallback
+  return commonError(err, fallback, {}, MARKETING_FIELDS)
+}
+
+const MARKETING_FIELDS: Record<string, string> = {
+  name: 'namnet', subject: 'ämnesraden', body: 'texten', templateId: 'mallen', audience: 'målgruppen',
+  sendAt: 'tiden för utskicket', percent: 'rabatten', validDays: 'giltighetstiden', email: 'e-postadressen',
+  heading: 'rubriken', buttonText: 'knapptexten', buttonUrl: 'knappens länk', imageUrl: 'bilden',
 }
 
 // --- välkomsterbjudande ---------------------------------------------------

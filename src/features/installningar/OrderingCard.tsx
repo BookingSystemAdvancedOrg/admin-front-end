@@ -1,7 +1,7 @@
+import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import QRCode from 'qrcode'
-import { ApiError } from '../../shared/api'
 import { useTables } from '../../shared/tables'
 import { tableCodes } from '../bestallningar/ordersApi'
 import { getLocation, updateLocation } from './locationApi'
@@ -99,7 +99,7 @@ export function OrderingCard({
         setSaved(loc.ordering ?? null)
         setForm(toForm(loc.ordering ?? DEFAULTS))
       })
-      .catch(() => !cancelled && setError('Kunde inte hämta platsens inställningar.'))
+      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Kunde inte hämta platsens inställningar.')))
       .finally(() => !cancelled && setLoading(false))
     return () => {
       cancelled = true
@@ -136,13 +136,7 @@ export function OrderingCard({
       setSaved(updated.ordering ?? policy)
       setNotice(policy.enabled ? 'Sparat. Gästerna kan beställa.' : 'Sparat - beställning är avstängd.')
     } catch (err) {
-      setError(
-        err instanceof ApiError && err.status === 400
-          ? err.message
-          : err instanceof ApiError && err.status === 403
-            ? 'Bara restaurangens ägare kan ändra inställningen.'
-            : 'Kunde inte spara just nu. Försök igen om en stund.',
-      )
+      setError(errorText(err, 'Kunde inte spara.', { owner_only: 'Bara restaurangens ägare kan ändra inställningen.', forbidden: 'Bara restaurangens ägare kan ändra inställningen.' }))
     } finally {
       setBusy(false)
     }
@@ -170,8 +164,8 @@ export function OrderingCard({
         })),
       )
       setQr(tiles)
-    } catch {
-      setQrError('Kunde inte skapa QR-koderna just nu. Försök igen om en stund.')
+    } catch (err) {
+      setQrError(errorText(err, 'Kunde inte skapa QR-koderna just nu. Försök igen om en stund.'))
     } finally {
       setQrBusy(false)
     }
@@ -294,7 +288,7 @@ export function OrderingCard({
         <div className="qr-section">
           <div style={{ height: 20 }} />
           <h3 className="card-title">QR-koder för borden</h3>
-          {tablesError && <p className="form-error">Kunde inte hämta borden.</p>}
+          {tablesError && <p className="form-error" role="alert">Kunde inte hämta borden.</p>}
           {tables && tables.length === 0 && (
             <p className="cell-muted">Publicera en planritning med bord först (Layout).</p>
           )}

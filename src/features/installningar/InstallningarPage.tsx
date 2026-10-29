@@ -1,3 +1,4 @@
+import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
@@ -211,7 +212,7 @@ export default function InstallningarPage() {
       .catch((err) => {
         if (!cancelled) {
           setLocationError(
-            err instanceof Error ? err.message : 'Kunde inte hämta platsen.',
+            errorText(err, 'Kunde inte hämta platsen.'),
           )
         }
       })
@@ -231,7 +232,7 @@ export default function InstallningarPage() {
       .catch((err) => {
         if (!cancelled) {
           setStaffError(
-            err instanceof Error ? err.message : 'Kunde inte hämta användarna.',
+            errorText(err, 'Kunde inte hämta användarna.'),
           )
         }
       })
@@ -323,7 +324,7 @@ export default function InstallningarPage() {
       clearLocationSummaryCache()
       setSaved(true)
     } catch (err) {
-      setLocationError(err instanceof Error ? err.message : 'Kunde inte spara platsen.')
+      setLocationError(errorText(err, 'Kunde inte spara platsen.'))
     } finally {
       setSavingLocation(false)
     }
@@ -380,7 +381,7 @@ export default function InstallningarPage() {
           : await reactivateUser(user.cognitoSub)
       replaceStaff(updated)
     } catch (err) {
-      setRowError(err instanceof Error ? err.message : 'Kunde inte ändra status.')
+      setRowError(errorText(err, 'Kunde inte ändra status.'))
     } finally {
       setBusySub(null)
     }
@@ -394,7 +395,7 @@ export default function InstallningarPage() {
       await deleteUser(user.cognitoSub)
       setStaff((prev) => prev.filter((s) => s.cognitoSub !== user.cognitoSub))
     } catch (err) {
-      setRowError(err instanceof Error ? err.message : 'Kunde inte ta bort användaren.')
+      setRowError(errorText(err, 'Kunde inte ta bort användaren.'))
     } finally {
       setBusySub(null)
     }

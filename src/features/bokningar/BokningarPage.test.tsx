@@ -138,7 +138,7 @@ describe('BokningarPage', () => {
     await act(async () => {
       vi.advanceTimersByTime(60_000)
     })
-    expect(await screen.findByRole('alert')).toHaveTextContent('Något gick fel')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Kunde inte hämta bokningarna.')
     expect(screen.getByText('Lamo')).toBeInTheDocument()
   })
 

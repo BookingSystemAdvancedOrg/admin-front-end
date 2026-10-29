@@ -28,25 +28,67 @@ export function isApiConfigured(): boolean {
 /**
  * Ett API-fel med statuskoden bevarad, så anropare kan skilja t.ex. 404
  * (finns inte) från 409 (redan finns) istället för att bara läsa text.
- * `message` är API:ts { error: string }-fält när det finns, annars råtext.
+ * `message` är API:ts { error: string }-fält när det finns, annars råtext;
+ * `code` är API:ts stabila kod (`code`, annars `error` när det är en kod,
+ * annars en kod för statusen) och `field` fältet ett valideringsfel gäller.
+ * `fromServer` skiljer API:ts råa svar från fel som features redan har
+ * översatt till svenska (new ApiError(409, 'Bordet är upptaget.')).
+ * Visa aldrig `message` från servern direkt: använd errorText (errors.ts).
  */
 export class ApiError extends Error {
   status: number
+  code: string
+  field?: string
+  fromServer: boolean
 
-  constructor(status: number, message: string) {
+  constructor(
+    status: number,
+    message: string,
+    opts: { code?: string; field?: string; fromServer?: boolean } = {},
+  ) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.code = opts.code ?? (CODE.test(message) ? message : statusCode(status))
+    this.field = opts.field
+    this.fromServer = opts.fromServer ?? false
   }
+}
+
+/** Ingen kontakt med API:t (offline, DNS, CORS, avbruten anslutning). */
+export class NetworkError extends ApiError {
+  constructor() {
+    super(0, 'Ingen kontakt med servern. Kontrollera internetanslutningen och försök igen.', { code: 'network' })
+    this.name = 'NetworkError'
+  }
+}
+
+const CODE = /^[a-z][a-z0-9_]*$/
+
+function statusCode(status: number): string {
+  if (status === 0) return 'network'
+  if (status === 401) return 'unauthorized'
+  if (status === 403) return 'forbidden'
+  if (status === 404) return 'not_found'
+  if (status === 409) return 'conflict'
+  if (status === 413) return 'too_large'
+  if (status === 429) return 'too_many_requests'
+  if (status >= 500) return 'internal_error'
+  return 'invalid_request'
 }
 
 async function toApiError(res: Response): Promise<ApiError> {
   const text = await res.text().catch(() => '')
   try {
-    const body = JSON.parse(text) as { error?: string; message?: string }
-    return new ApiError(res.status, body.error ?? body.message ?? text)
+    const body = JSON.parse(text) as { error?: string; message?: string; code?: string; field?: string }
+    const message = body.error ?? body.message ?? text
+    const code = typeof body.code === 'string' && CODE.test(body.code) ? body.code
+      : typeof body.error === 'string' && CODE.test(body.error) ? body.error
+        : statusCode(res.status)
+    return new ApiError(res.status, message, { code, field: body.field, fromServer: true })
   } catch {
-    return new ApiError(res.status, text || res.statusText)
+    // CloudFront/API Gateway kan svara med HTML eller tom text (502/504).
+    return new ApiError(res.status, text || res.statusText, { code: statusCode(res.status), fromServer: true })
   }
 }
 
@@ -128,6 +170,10 @@ export async function apiFetch<T>(
         ...options.headers,
       },
     }))
+  } catch (err) {
+    // fetch() avvisar bara när svaret aldrig kom (offline, tappad anslutning).
+    if (err instanceof TypeError) throw new NetworkError()
+    throw err
   } finally {
     if (writing) busyEnd()
   }

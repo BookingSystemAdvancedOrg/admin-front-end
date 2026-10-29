@@ -1,6 +1,6 @@
+import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ApiError } from '../../shared/api'
 import { Loading } from '../../shared/Loading'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { WEEKDAYS, getLocation, updateLocation } from './locationApi'
@@ -114,7 +114,7 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
         setLegacy(!loc.bookingTimeRules)
         setGraceMinutes(Math.round((loc.gracePeriodHours ?? 0) * 60))
       })
-      .catch(() => !cancelled && setError('Kunde inte hämta platsens bokningstid.'))
+      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Kunde inte hämta platsens bokningstid.')))
     return () => {
       cancelled = true
     }
@@ -165,15 +165,7 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
       setOpen(null)
       setNotice('Sparat. Gäller nya bokningar; befintliga behåller sin tid.')
     } catch (err) {
-      setError(
-        err instanceof ApiError && err.status === 403
-          ? 'Bara restaurangens ägare kan ändra bokningstiden.'
-          : err instanceof ApiError && err.status === 400
-            ? /gracePeriodHours/.test(err.message)
-              ? 'Grace period måste vara kortare än den kortaste bokningen.'
-              : `Kunde inte spara: ${err.message}`
-            : 'Kunde inte spara just nu. Försök igen om en stund.',
-      )
+      setError(errorText(err, 'Kunde inte spara.', { owner_only: 'Bara restaurangens ägare kan ändra bokningstiden.', forbidden: 'Bara restaurangens ägare kan ändra bokningstiden.' }))
     } finally {
       setBusy(false)
     }

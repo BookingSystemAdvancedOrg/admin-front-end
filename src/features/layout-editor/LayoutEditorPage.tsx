@@ -1,3 +1,4 @@
+import { errorText } from '../../shared/errors'
 import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useAuth } from '../auth/useAuth'
@@ -345,7 +346,7 @@ export default function LayoutEditorPage() {
       .catch((err) => {
         if (!cancelled) {
           setLayoutError(
-            err instanceof Error ? err.message : 'Kunde inte hämta layouten.',
+            errorText(err, 'Kunde inte hämta layouten.'),
           )
         }
       })
@@ -1859,9 +1860,7 @@ export default function LayoutEditorPage() {
       setViewMode('live')
     } catch (err) {
       setLiveError(
-        err instanceof Error
-          ? err.message
-          : 'Kunde inte hämta den publicerade versionen.',
+        errorText(err, 'Kunde inte hämta den publicerade versionen.'),
       )
     } finally {
       setLiveLoading(false)
@@ -1926,7 +1925,7 @@ export default function LayoutEditorPage() {
       return true
     } catch (err) {
       setLayoutError(
-        err instanceof Error ? err.message : 'Kunde inte spara utkastet.',
+        errorText(err, 'Kunde inte spara utkastet.'),
       )
       return false
     } finally {
@@ -1973,7 +1972,7 @@ export default function LayoutEditorPage() {
         // fortfarande aktiveras manuellt. Felmeddelandet för "redan
         // inbokat" (409) ger redan sin egen vägledning - dubblera den inte.
         const detail =
-          activateErr instanceof Error ? activateErr.message : 'Okänt fel.'
+          errorText(activateErr, 'Okänt fel.')
         const guidance = /aktivera/i.test(detail)
           ? ''
           : ' Aktivera den manuellt under Versioner.'
@@ -1984,9 +1983,7 @@ export default function LayoutEditorPage() {
       }
     } catch (err) {
       setLayoutError(
-        err instanceof Error
-          ? `Utkastet sparades, men publiceringen misslyckades: ${err.message}`
-          : 'Kunde inte publicera layouten.',
+        `Utkastet sparades, men publiceringen misslyckades: ${errorText(err, 'Kunde inte publicera layouten.')}`,
       )
     } finally {
       setPublishing(false)

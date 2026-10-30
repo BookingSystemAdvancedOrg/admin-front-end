@@ -230,9 +230,11 @@ describe('error mapping', () => {
     await expect(getLocation('loc-1')).rejects.toThrow(/inte behörighet/)
   })
 
-  it('passes 400 validation messages through as-is', async () => {
+  it('names the refused field in Swedish, never the server text', async () => {
     mockedApiFetch.mockRejectedValue(
-      new ApiError(400, 'bookingDurationHours must be greater than zero'),
+      new ApiError(400, 'bookingDurationHours must be greater than zero', {
+        fromServer: true, code: 'invalid_value', field: 'bookingDurationHours',
+      }),
     )
     await expect(
       createLocation({
@@ -245,6 +247,6 @@ describe('error mapping', () => {
         bookingDurationHours: 0,
         gracePeriodHours: 0,
       }),
-    ).rejects.toThrow('bookingDurationHours must be greater than zero')
+    ).rejects.toThrow('Platsen kunde inte sparas. Kontrollera bokningstiden och försök igen.')
   })
 })

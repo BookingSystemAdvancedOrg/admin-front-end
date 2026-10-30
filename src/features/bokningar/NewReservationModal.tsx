@@ -175,8 +175,10 @@ export function NewReservationModal({
                 placeholder="070-123 45 67"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
+                aria-invalid={!phoneOk || undefined}
+                aria-describedby={phoneOk ? undefined : 'nb-phone-error'}
               />
-              {!phoneOk && <p className="field-hint error">Skriv ett giltigt nummer, t.ex. 070-123 45 67.</p>}
+              {!phoneOk && <p id="nb-phone-error" className="field-hint error">Skriv ett giltigt nummer, t.ex. 070-123 45 67.</p>}
             </div>
             <div className="form-field">
               <label htmlFor="nb-email">E-post (valfritt)</label>
@@ -186,8 +188,10 @@ export function NewReservationModal({
                 maxLength={EMAIL_MAX}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                aria-invalid={!emailOk || undefined}
+                aria-describedby={emailOk ? undefined : 'nb-email-error'}
               />
-              {!emailOk && <p className="field-hint error">Ange en giltig e-postadress.</p>}
+              {!emailOk && <p id="nb-email-error" className="field-hint error">Ange en giltig e-postadress.</p>}
             </div>
           </div>
           <div className="form-field">

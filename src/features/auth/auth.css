@@ -179,6 +179,7 @@
   color: var(--auth-error);
   border-radius: 3px;
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .auth-submit {

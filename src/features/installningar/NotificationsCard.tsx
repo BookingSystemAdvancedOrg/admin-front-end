@@ -1,6 +1,6 @@
+import { errorText } from '../../shared/errors'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { ApiError } from '../../shared/api'
 import { REMINDER_HOURS, replaceTenant, updateTenant } from '../../shared/tenant'
 import type { Tenant, TenantNotifications } from '../../shared/tenant'
 
@@ -68,13 +68,7 @@ export function NotificationsCard({ tenant, isOwner }: { tenant: Tenant; isOwner
       setSenderName(updated.senderName ?? '')
       setNotice('Sparat.')
     } catch (err) {
-      setError(
-        err instanceof ApiError && err.status === 400
-          ? err.message
-          : err instanceof ApiError && err.status === 403
-            ? 'Bara restaurangens ägare kan ändra notiser.'
-            : 'Kunde inte spara just nu. Försök igen om en stund.',
-      )
+      setError(errorText(err, 'Kunde inte spara.', { owner_only: 'Bara restaurangens ägare kan ändra notiser.', forbidden: 'Bara restaurangens ägare kan ändra notiser.' }))
     } finally {
       setBusy(false)
     }

@@ -1,3 +1,4 @@
+import { errorText } from '../../shared/errors'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
@@ -37,7 +38,7 @@ export default function NewPasswordPage() {
       navigate('/', { replace: true })
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Det gick inte att byta lösenord.',
+        errorText(err, 'Det gick inte att byta lösenord.'),
       )
     } finally {
       setBusy(false)

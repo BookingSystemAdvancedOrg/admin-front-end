@@ -76,7 +76,7 @@ export default function BokningarPage() {
           setLoaded((prev) => ({
             key,
             items: prev?.key === key ? prev.items : [],
-            error: errorMessage(err),
+            error: errorMessage(err, 'Kunde inte hämta bokningarna.'),
           }))
         },
       )

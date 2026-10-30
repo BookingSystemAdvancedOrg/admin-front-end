@@ -1,3 +1,4 @@
+import { errorText as commonError } from '../../shared/errors'
 import { apiFetch, ApiError } from '../../shared/api'
 import type { BookingTimeRules } from './bookingTime'
 
@@ -216,6 +217,10 @@ function toFriendlyLocationError(err: unknown): Error {
   }
 
   console.error(`[Locations] ${err.status}: ${err.message}`)
+  // offline, utloggad, pausat konto, för många försök: samma text överallt
+  if (err.status === 0 || err.status === 429 || (err.status === 403 && err.code !== 'forbidden')) {
+    return new ApiError(err.status, commonError(err), { code: err.code })
+  }
 
   switch (err.status) {
     case 400:
@@ -223,7 +228,8 @@ function toFriendlyLocationError(err: unknown): Error {
         400,
         /^gracePeriodHours must be shorter/.test(err.message)
           ? 'Grace period måste vara kortare än den kortaste bokningstiden (se Bokningstid).'
-          : err.message,
+          : commonError(err, 'Platsen kunde inte sparas.', {}, LOCATION_FIELDS),
+        { code: err.code, field: err.field },
       )
     case 401:
       return new ApiError(401, 'Du är inte inloggad längre. Logga in igen.')
@@ -241,8 +247,16 @@ function toFriendlyLocationError(err: unknown): Error {
         'Tjänsten är tillfälligt otillgänglig. Försök igen om en stund.',
       )
     default:
-      return new ApiError(err.status, err.message || `Serverfel (${err.status}).`)
+      return new ApiError(err.status, commonError(err, 'Kunde inte spara platsen.'), { code: err.code })
   }
+}
+
+const LOCATION_FIELDS: Record<string, string> = {
+  name: 'namnet', address: 'adressen', bookingDurationHours: 'bokningstiden', street: 'gatuadressen', postalCode: 'postnumret', city: 'orten',
+  phoneNumber: 'telefonnumret', email: 'e-postadressen', businessHours: 'öppettiderna',
+  specialDays: 'avvikande dagar', gracePeriodHours: 'grace period', bookingRules: 'bokningsreglerna',
+  tableRules: 'bordsreglerna', notifications: 'aviseringarna', cancellationPolicy: 'avbokningsreglerna',
+  ordering: 'beställningsinställningarna', timezone: 'tidszonen', website: 'webbadressen',
 }
 
 async function call<T>(fn: () => Promise<T>): Promise<T> {

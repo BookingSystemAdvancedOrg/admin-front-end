@@ -1,3 +1,4 @@
+import { errorText as commonError } from '../../shared/errors'
 import { ApiError, apiFetch, isApiConfigured } from '../../shared/api'
 import { CARD_READER_KEY_PREFIX } from '../../shared/storageRegistry'
 
@@ -245,9 +246,10 @@ export function errorText(err: unknown): string {
   if (err instanceof ApiError) {
     if (ERRORS[err.message]) return ERRORS[err.message]
     if (err.status === 404) return 'Läsaren eller betalningen finns inte här. Uppdatera sidan.'
-    if (err.status === 400) return 'Kontrollera beloppet och försök igen.'
+    if (err.status === 400) return 'Beloppet godtogs inte. Kontrollera beloppet och försök igen.'
+    if (err.status >= 400 && err.status < 500) return commonError(err, 'Det gick inte.')
   }
-  return 'Något gick fel. Kontrollera betalningen i listan innan du försöker igen.'
+  return `${commonError(err, 'Det gick inte att slutföra.')} Kontrollera betalningen i listan innan du försöker igen.`
 }
 
 // --- simulerad läsare utan API ----------------------------------------------

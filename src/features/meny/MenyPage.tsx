@@ -1,3 +1,4 @@
+import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import { StatTile } from '../../shared/motion/StatTile'
 import { Num } from '../../shared/motion/Num'
@@ -124,15 +125,13 @@ export default function MenyPage() {
           } catch (fallbackErr) {
             if (!cancelled) {
               setLoadError(
-                fallbackErr instanceof Error
-                  ? fallbackErr.message
-                  : 'Kunde inte hämta menyn.',
+                errorText(fallbackErr, 'Kunde inte hämta menyn.'),
               )
             }
           }
         } else {
           setLoadError(
-            err instanceof Error ? err.message : 'Kunde inte hämta menyn.',
+            errorText(err, 'Kunde inte hämta menyn.'),
           )
         }
       })
@@ -212,7 +211,7 @@ export default function MenyPage() {
       })
       replaceDish(toDish(saved))
     } catch (err) {
-      setRowError(err instanceof Error ? err.message : 'Kunde inte spara.')
+      setRowError(errorText(err, 'Kunde inte spara.'))
     } finally {
       setBusyId(null)
     }
@@ -227,7 +226,7 @@ export default function MenyPage() {
       await deleteMenuItem(locationId, dish.id)
       setDishes((prev) => prev.filter((d) => d.id !== dish.id))
     } catch (err) {
-      setRowError(err instanceof Error ? err.message : 'Kunde inte ta bort rätten.')
+      setRowError(errorText(err, 'Kunde inte ta bort rätten.'))
     } finally {
       setBusyId(null)
     }

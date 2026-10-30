@@ -1,3 +1,4 @@
+import { errorText } from '../../shared/errors'
 import { apiFetch, ApiError } from '../../shared/api'
 
 /**
@@ -311,20 +312,18 @@ const VALIDATION_TEXT: [RegExp, string][] = [
   [/^endTime must be/, 'Välj en sluttid i kvartssteg, minst 15 minuter efter start.'],
 ]
 
-export function errorMessage(err: unknown): string {
+export function errorMessage(err: unknown, action = 'Det gick inte att spara bokningen.'): string {
   if (err instanceof ApiError) {
     const known = ERROR_TEXT[err.message]
     if (known) return known
-    if (err.status === 402) return `Betalningen gick inte igenom (${err.message}).`
+    if (err.status === 402) return 'Betalningen gick inte igenom. Be gästen använda ett annat kort, eller lös avgiften direkt med gästen.'
     if (err.status === 400) {
       const match = VALIDATION_TEXT.find(([pattern]) => pattern.test(err.message))
-      return match ? match[1] : err.message
+      if (match) return match[1]
     }
-    if (err.status === 403) return 'Du har inte behörighet att göra detta.'
-    if (err.status === 404) return 'Bokningen hittades inte - den kan ha tagits bort.'
-    if (err.status === 401) return 'Du är inte inloggad längre. Logga in igen.'
+    if (err.status === 404) return 'Bokningen hittades inte. Den kan ha tagits bort; ladda om listan.'
   }
-  return 'Något gick fel. Försök igen om en stund.'
+  return errorText(err, action)
 }
 
 /** Tiden eller bordet gick inte längre (tiden passerade 30-minutersgränsen

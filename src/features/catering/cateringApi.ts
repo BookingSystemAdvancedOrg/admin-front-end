@@ -1,3 +1,4 @@
+import { errorText as commonError } from '../../shared/errors'
 import { ApiError, apiFetch, isApiConfigured } from '../../shared/api'
 import { withBusy } from '../../shared/motion/busy'
 
@@ -590,18 +591,34 @@ const ERRORS: Record<string, string> = {
   not_signable: 'Den här offertversionen kan inte signeras. Skicka offerten igen.',
   already_signed: 'Offerten är redan signerad av restaurangen.',
   signing_alreadyInProgress: 'En BankID-signering pågår redan. Avbryt den i appen och försök igen.',
+  signing_document_timedout: 'Tiden för att signera har gått ut. Skicka offerten igen.',
+  signing_document_canceled: 'Den här offertversionen går inte längre att signera. Skicka offerten igen.',
+  signing_document_rejected: 'Signeringen avbröts hos signeringstjänsten. Skicka offerten igen.',
+  signing_authentication_to_sign_method_disabled: 'BankID-signering är inte påslagen hos signeringstjänsten ännu. Kontakta Booqy.',
+  signing_document_closed: 'Offerten är redan färdigsignerad. Ladda om sidan.',
+  no_signing_started: 'Ingen signering pågår. Tryck på Signera med BankID.',
+  offer_expired: 'Offerten har gått ut. Ändra giltighetstiden och skicka den igen.',
 }
 
-export function errorText(err: unknown): string {
+export function errorText(err: unknown, action = 'Kunde inte spara.'): string {
   if (err instanceof ApiError) {
     if (ERRORS[err.message]) return ERRORS[err.message]
     if (/^price may be at most/.test(err.message)) return 'Pris per rad får vara högst 10 000 kr.'
     if (/^offer total may be at most/.test(err.message)) return 'Offerten är för stor (högst 500 000 kr totalt).'
-    if (err.status === 400) return `Kontrollera uppgifterna: ${err.message}`
-    if (err.status === 403) return 'Bara restaurangens ägare kan göra det.'
-    if (err.status === 404) return 'Förfrågan finns inte.'
+    if (err.status === 403 && err.code === 'forbidden') return 'Bara restaurangens ägare kan göra det.'
+    if (err.status === 404) return 'Förfrågan finns inte längre. Gå tillbaka till listan och ladda om.'
+    if (err.status === 409 && err.message.startsWith('signing_')) {
+      return 'Signeringstjänsten tog inte emot offerten. Försök igen om en stund eller kontakta Booqy.'
+    }
   }
-  return 'Kunde inte spara just nu. Försök igen om en stund.'
+  return commonError(err, action, {}, CATERING_FIELDS)
+}
+
+const CATERING_FIELDS: Record<string, string> = {
+  lines: 'raderna i offerten', discountPercent: 'rabatten', deliveryFee: 'leveransavgiften',
+  cleaningFee: 'städavgiften', equipmentReturn: 'returen av utrustning', validUntil: 'giltighetstiden',
+  message: 'meddelandet', portions: 'antalet portioner', reason: 'anledningen', price: 'priset',
+  signatoryAuthority: 'rutan om firmateckning', name: 'namnet', email: 'e-postadressen', phone: 'telefonnumret',
 }
 
 export function formatDate(day: string): string {

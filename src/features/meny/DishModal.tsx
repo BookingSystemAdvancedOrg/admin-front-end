@@ -1,3 +1,4 @@
+import { errorText, focusErrorField } from '../../shared/errors'
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { CATEGORY_LABEL } from './data'
@@ -147,7 +148,10 @@ export function DishModal({
         availableUntil,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Kunde inte spara.')
+      setError(errorText(err, 'Kunde inte spara.'))
+      focusErrorField(err, {
+        name: 'dish-name', description: 'dish-description', category: 'dish-category', price: 'dish-price',
+      })
     } finally {
       setBusy(false)
     }

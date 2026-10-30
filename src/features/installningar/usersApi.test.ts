@@ -275,7 +275,7 @@ describe('error mapping', () => {
         group: 'staff_user',
         locationId: '',
       }),
-    ).rejects.toThrow('Plats-ID krävs för personal.')
+    ).rejects.toThrow('Välj vilken plats personalen ska jobba på.')
   })
 
   it('passes non-ApiError failures through unchanged', async () => {

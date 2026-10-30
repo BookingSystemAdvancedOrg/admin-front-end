@@ -918,6 +918,20 @@
   font-size: 13px;
 }
 
+/* Felmeddelanden radbryts alltid: en lång adress, ett id eller ett ord utan
+   mellanslag får aldrig spräcka kortet eller skapa horisontell scroll. */
+.form-error,
+.auth-error,
+.kassa-alert,
+.pay-field-error,
+.field-hint.error,
+.mk-errors {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .form-section-label {
   font: 600 14px/1.3 var(--sans);
   color: var(--ink);

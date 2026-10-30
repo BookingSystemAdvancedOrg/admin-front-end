@@ -1,3 +1,4 @@
+import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -62,7 +63,7 @@ export default function ResetPasswordPage() {
       await confirmPasswordReset(address, digits, password)
     } catch (err) {
       setError({
-        text: err instanceof Error ? err.message : 'Det gick inte att byta lösenord.',
+        text: errorText(err, 'Det gick inte att byta lösenord.'),
         newLink: err instanceof PasswordResetError && err.needsNewLink,
       })
       setBusy(false)

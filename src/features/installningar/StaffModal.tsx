@@ -1,3 +1,4 @@
+import { errorText, focusErrorField } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { CognitoGroup, User } from './usersApi'
@@ -107,7 +108,10 @@ export function StaffModal({
         locationId: effectiveLocationId,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Kunde inte spara.')
+      setError(errorText(err, 'Kunde inte spara.'))
+      focusErrorField(err, {
+        name: 'staff-name', email: 'staff-email', phone: 'staff-phone', role: 'staff-role', locationId: 'staff-location',
+      })
     } finally {
       setBusy(false)
     }

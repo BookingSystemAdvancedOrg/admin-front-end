@@ -1,6 +1,6 @@
+import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ApiError } from '../../shared/api'
 import { replaceTenant, updateTenant } from '../../shared/tenant'
 import type { Tenant, TenantInsightsSettings } from '../../shared/tenant'
 import { clearInsightsCache } from '../statistik/insightsApi'
@@ -68,9 +68,7 @@ export function InsightsSettingsCard({ tenant, locationId }: { tenant: Tenant; l
       clearInsightsCache()
       setNotice('Sparat.')
     } catch (err) {
-      setError(
-        err instanceof ApiError && err.status === 400 ? err.message : 'Kunde inte spara just nu. Försök igen om en stund.',
-      )
+      setError(errorText(err, 'Kunde inte spara.'))
     } finally {
       setBusy(false)
     }

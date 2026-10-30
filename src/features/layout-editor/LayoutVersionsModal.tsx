@@ -1,3 +1,4 @@
+import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import {
   activateLayoutVersion,
@@ -85,7 +86,7 @@ export function LayoutVersionsModal({
       .catch((err) => {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : 'Kunde inte hämta versionerna.',
+            errorText(err, 'Kunde inte hämta versionerna.'),
           )
           setVersions([])
         }
@@ -107,7 +108,7 @@ export function LayoutVersionsModal({
       setVersions(await listLayoutVersions(locationId))
       onActivated()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Kunde inte aktivera versionen.')
+      setError(errorText(err, 'Kunde inte aktivera versionen.'))
     } finally {
       setBusyVersion(null)
     }
@@ -128,7 +129,7 @@ export function LayoutVersionsModal({
       await archiveLayoutVersion(locationId, version)
       setVersions((prev) => prev?.filter((v) => v.version !== version) ?? prev)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Kunde inte arkivera versionen.')
+      setError(errorText(err, 'Kunde inte arkivera versionen.'))
     } finally {
       setArchivingVersion(null)
     }
@@ -151,7 +152,7 @@ export function LayoutVersionsModal({
       await cancelPendingLayoutActivation(locationId)
       setVersions(await listLayoutVersions(locationId))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Kunde inte avbryta bytet.')
+      setError(errorText(err, 'Kunde inte avbryta bytet.'))
     } finally {
       setCancelling(false)
     }

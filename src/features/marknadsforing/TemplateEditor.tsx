@@ -283,7 +283,7 @@ export function TemplateEditor({
               {previewError ?? (errors.length > 0 ? 'Fyll i det som saknas, så visas mejlet här.' : 'Ritar mejlet…')}
             </p>
           )}
-          {preview && previewError && <p className="field-hint error">{previewError}</p>}
+          {preview && previewError && <p className="field-hint error" role="alert">{previewError}</p>}
           <p className="field-hint">
             Varje utskick får automatiskt restaurangens namn och logga, adress och en länk för att avsluta
             prenumerationen.

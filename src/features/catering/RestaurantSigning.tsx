@@ -5,6 +5,9 @@ import type { CateringRequest } from './cateringApi'
 
 /** BankID: status en gång i sekunden (QR-koden byts varje sekund). */
 export const SIGN_POLL_MS = 1_000
+/** Tillbaka från signeringstjänsten: så många statusfrågor, med så långt mellanrum. */
+export const RETURN_CHECKS = 5
+export const RETURN_CHECK_MS = 2_000
 
 const HINT: Record<string, string> = {
   outstandingTransaction: 'Starta BankID-appen och skanna QR-koden.',
@@ -15,6 +18,10 @@ const HINT: Record<string, string> = {
   expiredTransaction: 'BankID-appen svarade inte. Försök igen.',
   certificateErr: 'BankID:t är för gammalt eller spärrat. Använd ett annat.',
   startFailed: 'BankID-appen hittades inte. Installera den och försök igen.',
+  checking: 'Kontrollerar signeringen',
+  rejected: 'Signeringen avbröts hos signeringstjänsten. Skicka offerten igen för att börja om.',
+  canceled: 'Den här offertversionen går inte längre att signera. Skicka offerten igen.',
+  timedout: 'Tiden för att signera har gått ut. Skicka offerten igen.',
 }
 
 const isMobile = () => /android|iphone|ipad|ipod/i.test(navigator.userAgent)
@@ -39,14 +46,31 @@ export function RestaurantSigning({ request, onSigned, returned }: {
 
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
-  // Tillbaka från tjänstens sida: fråga en gång hur det gick.
+  // Tillbaka från tjänstens sida: fråga hur det gick, några gånger om
+  // tjänsten inte hunnit registrera signaturen.
   useEffect(() => {
     if (!returned || asked.current) return
     asked.current = true
-    restaurantSignStatus(request.locationId, request.requestId).then(
-      (r) => r.state === 'signed' && onSigned(r.request),
-      () => {},
-    )
+    let tries = 0
+    setBankid({ hint: 'checking' })
+    const check = async () => {
+      try {
+        const r = await restaurantSignStatus(request.locationId, request.requestId)
+        if (r.state === 'pending' && ++tries < RETURN_CHECKS) {
+          timer.current = window.setTimeout(() => void check(), RETURN_CHECK_MS)
+          return
+        }
+        setBankid(null)
+        if (r.state === 'signed') onSigned(r.request)
+        else if (r.state === 'failed') setError(HINT[r.hint ?? ''] ?? 'Signeringen avbröts. Försök igen.')
+        else setError('Signeringen är inte klar än. Ladda om sidan om en liten stund.')
+      } catch (err) {
+        setBankid(null)
+        // no_signing_started: ingen signering väntar (t.ex. sidan laddades om), knappen räcker
+        if (!(err instanceof Error && err.message === 'no_signing_started')) setError(errorText(err))
+      }
+    }
+    void check()
   }, [returned, request.locationId, request.requestId, onSigned])
 
   const qr = async (data?: string) => (data ? QRCode.toDataURL(data, { margin: 1, width: 240 }).catch(() => undefined) : undefined)
@@ -99,7 +123,10 @@ export function RestaurantSigning({ request, onSigned, returned }: {
       </p>
       {bankid ? (
         <div className="bankid-box" role="status" aria-live="polite">
-          <p>{HINT[bankid.hint ?? ''] ?? 'Signera med BankID.'}</p>
+          <p>
+            {HINT[bankid.hint ?? ''] ?? 'Signera med BankID.'}
+            {bankid.hint === 'checking' && <span className="checking-dots" aria-hidden="true" />}
+          </p>
           {bankid.qr && !isMobile() && <img className="bankid-qr" src={bankid.qr} alt="QR-kod för BankID" />}
           {bankid.autoStartToken && (
             <a className="btn outline square"

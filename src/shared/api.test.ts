@@ -41,3 +41,34 @@ describe('apiFetch omförsök', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('apiFetch fel', () => {
+  it('bär API:ts kod och fält, och servern markeras som källa', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      json(400, { error: 'partySize must be at most 50', code: 'invalid_value', field: 'partySize' })))
+    const { apiFetch } = await loadApi()
+    await expect(apiFetch('/x', { method: 'POST', body: '{}' })).rejects.toMatchObject({
+      status: 400, code: 'invalid_value', field: 'partySize', fromServer: true, message: 'partySize must be at most 50',
+    })
+  })
+
+  it('en kod i error-fältet är koden; gatewayens text och HTML får statusens kod', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(json(409, { error: 'table_taken' }))
+      .mockResolvedValueOnce(json(500, { message: 'Internal Server Error' }))
+      .mockResolvedValueOnce(new Response('<html>502</html>', { status: 502 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { apiFetch } = await loadApi()
+    await expect(apiFetch('/x', { method: 'POST' })).rejects.toMatchObject({ code: 'table_taken' })
+    await expect(apiFetch('/x', { method: 'POST' })).rejects.toMatchObject({ code: 'internal_error' })
+    await expect(apiFetch('/x', { method: 'POST' })).rejects.toMatchObject({ code: 'internal_error', status: 502 })
+  })
+
+  it('ingen anslutning blir ett NetworkError med svensk text', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+    const { apiFetch } = await loadApi()
+    await expect(apiFetch('/x', { method: 'POST' })).rejects.toMatchObject({
+      name: 'NetworkError', code: 'network', message: expect.stringMatching(/^Ingen kontakt med servern/),
+    })
+  })
+})

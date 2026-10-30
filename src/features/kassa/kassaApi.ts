@@ -1,3 +1,4 @@
+import { errorText as commonError } from '../../shared/errors'
 import { ApiError, API_BASE_URL, apiFetch, isApiConfigured } from '../../shared/api'
 import { getAccessToken } from '../auth/cognito'
 import { busyEnd, busyStart } from '../../shared/motion/busy'
@@ -442,9 +443,9 @@ export function errorText(err: unknown): string {
   if (err instanceof ApiError) {
     if (ERRORS[err.message]) return ERRORS[err.message]
     if (err.status === 404) return 'Hittades inte. Uppdatera sidan.'
-    if (err.status === 400) return 'Kontrollera uppgifterna och försök igen.'
+    if (err.status >= 400 && err.status < 500) return commonError(err, 'Det gick inte.')
   }
-  return 'Något gick fel. Kontrollera notan innan du försöker igen.'
+  return `${commonError(err, 'Det gick inte att slutföra.')} Kontrollera notan innan du försöker igen.`
 }
 
 export const PROBLEMS: Record<string, string> = {

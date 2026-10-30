@@ -1,3 +1,4 @@
+import { errorText as commonError } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiError } from '../../shared/api'
@@ -80,9 +81,17 @@ const ERRORS: Record<string, string> = {
   changed_retry: 'Någon annan sparade samtidigt. Ladda om sidan och försök igen.',
 }
 
+const FIELDS: Record<string, string> = {
+  accounts: 'kontonumren (fyra siffror, 1000-8999)', series: 'verifikationsserien (en bokstav A-Z)',
+  fiscalYearStartMonth: 'räkenskapsårets första månad', costCenter: 'kostnadsstället (1-10 versaler eller siffror)',
+  from: 'perioden', to: 'perioden', format: 'formatet',
+}
+
 function message(err: unknown, fallback: string): string {
-  if (err instanceof ApiError) return ERRORS[err.message] ?? (err.status === 400 ? err.message : fallback)
-  return fallback
+  if (err instanceof ApiError && err.status === 400 && /^(from must not be after|the period is at most)/.test(err.message)) {
+    return 'Perioden är ogiltig: välj ett slutdatum efter startdatumet, högst ett år bort.'
+  }
+  return commonError(err, fallback, ERRORS, FIELDS)
 }
 
 export function BokforingCard({ locationId }: { locationId: string | null }) {
@@ -118,7 +127,7 @@ export function BokforingCard({ locationId }: { locationId: string | null }) {
         setYearStart(s.fiscalYearStartMonth)
         setCostCenter(s.costCenter)
       })
-      .catch(() => !cancelled && setLoadError('Kunde inte hämta kontona just nu.'))
+      .catch((err: unknown) => !cancelled && setLoadError(commonError(err, 'Kunde inte hämta kontona just nu.')))
     return () => {
       cancelled = true
     }

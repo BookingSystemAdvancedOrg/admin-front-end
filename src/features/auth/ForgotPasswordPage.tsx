@@ -1,3 +1,4 @@
+import { errorText } from '../../shared/errors'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation } from 'react-router-dom'
@@ -34,7 +35,7 @@ export default function ForgotPasswordPage() {
       await requestPasswordReset(address)
       setSentTo(address)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Det gick inte att skicka mejlet.')
+      setError(errorText(err, 'Det gick inte att skicka mejlet.'))
     } finally {
       setBusy(false)
     }

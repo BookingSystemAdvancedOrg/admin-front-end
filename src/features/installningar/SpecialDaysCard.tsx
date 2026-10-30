@@ -1,6 +1,6 @@
+import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ApiError } from '../../shared/api'
 import { currentLocation, useTenant } from '../../shared/tenant'
 import { ACTIVE_STATUSES, addDays, dayLabel, listReservations, todayIn } from '../bokningar/bookingsApi'
 import { getLocation, updateLocation } from './locationApi'
@@ -82,7 +82,7 @@ export function SpecialDaysCard({
         setSaved(loc.specialDays ?? [])
         setDays(loc.specialDays ?? [])
       })
-      .catch(() => !cancelled && setError('Kunde inte hämta platsens avvikande dagar.'))
+      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Kunde inte hämta platsens avvikande dagar.')))
     return () => {
       cancelled = true
     }
@@ -153,13 +153,7 @@ export function SpecialDaysCard({
       setDays(updated.specialDays ?? [])
       setNotice('Sparat. Bokningssidan visar det inom några minuter.')
     } catch (err) {
-      setError(
-        err instanceof ApiError && err.status === 403
-          ? 'Bara restaurangens ägare kan ändra öppettiderna.'
-          : err instanceof ApiError && err.status === 400
-            ? `Kunde inte spara: ${err.message}`
-            : 'Kunde inte spara just nu. Försök igen om en stund.',
-      )
+      setError(errorText(err, 'Kunde inte spara.', { owner_only: 'Bara restaurangens ägare kan ändra öppettiderna.', forbidden: 'Bara restaurangens ägare kan ändra öppettiderna.' }))
     } finally {
       setBusy(false)
     }

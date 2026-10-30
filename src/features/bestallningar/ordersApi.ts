@@ -1,3 +1,4 @@
+import { errorText as commonError } from '../../shared/errors'
 import { ApiError, apiFetch } from '../../shared/api'
 
 /**
@@ -145,7 +146,7 @@ export function moveErrorText(err: unknown): string {
     if (err.message.startsWith('cannot_move_')) return 'Beställningen kan inte flyttas dit. Listan är uppdaterad.'
     if (err.status === 404) return 'Beställningen finns inte längre.'
   }
-  return 'Kunde inte spara just nu. Försök igen om en stund.'
+  return commonError(err, 'Kunde inte spara beställningen.')
 }
 
 export function closedText(state: OrderingState): string {

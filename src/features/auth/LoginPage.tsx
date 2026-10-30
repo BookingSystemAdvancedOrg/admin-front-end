@@ -1,3 +1,4 @@
+import { errorText } from '../../shared/errors'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
@@ -41,7 +42,7 @@ export default function LoginPage() {
         navigate(from, { replace: true })
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Inloggningen misslyckades.')
+      setError(errorText(err, 'Inloggningen misslyckades.'))
     } finally {
       setBusy(false)
     }

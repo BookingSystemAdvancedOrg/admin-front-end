@@ -72,7 +72,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
   }, [locationId, isOwner])
 
   useEffect(() => {
-    reload().catch(() => setError('Kunde inte hämta cateringmenyn.'))
+    reload().catch((err: unknown) => setError(errorText(err, 'Kunde inte hämta cateringmenyn.')))
   }, [reload])
 
   async function run(action: () => Promise<unknown>): Promise<boolean> {

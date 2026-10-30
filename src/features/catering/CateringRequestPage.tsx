@@ -30,6 +30,13 @@ import './catering.css'
 import { Loading } from '../../shared/Loading'
 import { RestaurantSigning } from './RestaurantSigning'
 import { DateInput } from '../../shared/DateInput'
+import { focusErrorField } from '../../shared/errors'
+
+/** API:ts fältnamn i offerten -> fältets id, så ett fel flyttar fokus dit. */
+const OFFER_FIELD_IDS: Record<string, string> = {
+  discountPercent: 'offer-discount', deliveryFee: 'offer-delivery', equipmentReturn: 'offer-return',
+  cleaningFee: 'offer-cleaning', serviceIncluded: 'offer-service', validUntil: 'offer-valid', message: 'offer-message',
+}
 
 const EDITABLE = ['requested', 'change_requested', 'offer_sent']
 
@@ -142,6 +149,7 @@ export default function CateringRequestPage() {
     setBusy(true)
     setError(null)
     setNotice(null)
+    let onField = false
     try {
       await action()
       setNotice(done)
@@ -149,8 +157,10 @@ export default function CateringRequestPage() {
       setReason('')
     } catch (err) {
       setError(errorText(err))
+      // Ett fel i ett fält: behåll det som skrivits, markera fältet och ge det fokus.
+      onField = focusErrorField(err, OFFER_FIELD_IDS)
     } finally {
-      await load()
+      if (!onField) await load()
       setBusy(false)
     }
   }

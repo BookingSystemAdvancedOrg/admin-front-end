@@ -219,6 +219,21 @@ describe('CateringRequestPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('fullbokad')
   })
 
+  it('prefills the validity date and puts focus on it when the server refuses it', async () => {
+    const user = userEvent.setup()
+    getRequest.mockResolvedValue(request({ deliveryDate: '2026-11-03' }))
+    sendOffer.mockRejectedValue(new ApiError(400, 'validUntil must not be after the delivery date',
+      { field: 'validUntil', fromServer: true }))
+    renderAt()
+    const valid = await screen.findByLabelText('Giltig till och med')
+    expect(valid).not.toHaveValue('')
+    await user.click(screen.getByRole('button', { name: 'Skicka offert' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('efter leveransdagen')
+    expect(valid).toHaveFocus()
+    expect(valid).toHaveAttribute('aria-invalid', 'true')
+    expect(getRequest).toHaveBeenCalledTimes(1)
+  })
+
   it('staff cannot edit the offer', async () => {
     role = 'staff_user'
     getRequest.mockResolvedValue(request())

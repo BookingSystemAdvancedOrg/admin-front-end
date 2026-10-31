@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { SOUND_KEY } from './storageRegistry'
+import { SOUND_KEY, SOUND_VOLUME_KEY } from './storageRegistry'
 
 /**
  * Tryckkänsla, samma som booqy.se och Booqy Console: ett modernt, tyst
@@ -39,6 +39,21 @@ function storedSound(): boolean {
 }
 
 let on = storedSound()
+
+/** Volymen 0-100. 70 är standardnivån; 100 är lite högre, 0 är tyst. */
+export const DEFAULT_VOLUME = 70
+
+function storedVolume(): number {
+  try {
+    const raw = localStorage.getItem(SOUND_VOLUME_KEY)
+    const v = Number(raw)
+    return raw !== null && Number.isFinite(v) ? Math.min(100, Math.max(0, Math.round(v))) : DEFAULT_VOLUME
+  } catch {
+    return DEFAULT_VOLUME
+  }
+}
+
+let volume = storedVolume()
 let ctx: AudioContext | null = null
 const listeners = new Set<() => void>()
 
@@ -69,8 +84,35 @@ export function useSound(): [boolean, () => void] {
   return [value, () => setSound(!value)]
 }
 
+export function soundVolume(): number {
+  return volume
+}
+
+/** Sparar volymen. Ett klick hörs när reglaget släpps (preview), inte medan man drar. */
+export function setSoundVolume(next: number, preview = false) {
+  volume = Math.min(100, Math.max(0, Math.round(next)))
+  try {
+    localStorage.setItem(SOUND_VOLUME_KEY, String(volume))
+  } catch {
+    /* privat läge utan lagring: valet gäller tills sidan laddas om */
+  }
+  for (const listener of listeners) listener()
+  if (preview) play('press')
+}
+
+export function useSoundVolume(): number {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    soundVolume,
+    () => DEFAULT_VOLUME,
+  )
+}
+
 function play(kind: keyof typeof VOICES) {
-  if (!on) return
+  if (!on || volume <= 0) return
   try {
     if (!ctx) {
       const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
@@ -96,7 +138,11 @@ function play(kind: keyof typeof VOICES) {
     limit.ratio.value = 20
     limit.attack.value = 0.001
     limit.release.value = 0.05
-    limit.connect(c.destination)
+    // volymen läggs på sist, efter begränsaren: 70 = standardnivån
+    const master = c.createGain()
+    master.gain.value = volume / DEFAULT_VOLUME
+    limit.connect(master)
+    master.connect(c.destination)
     const out = c.createBiquadFilter()
     out.type = 'lowpass'
     out.frequency.value = 6000

@@ -36,6 +36,7 @@ export const LOGOUT_PENDING_KEY = 'booqy-logout-pending'
 export const MOTION_SEEN_KEY = 'booqy-motion-seen'
 export const THEME_KEY = 'booqy-theme'
 export const SOUND_KEY = 'booqy-sound'
+export const SOUND_VOLUME_KEY = 'booqy-sound-volume'
 export const SAMPLE_DATA_KEY = 'booqy-sample-data'
 export const CARD_READER_KEY_PREFIX = 'booqy-card-reader:'
 
@@ -95,6 +96,14 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     kind: 'localStorage',
     setBy: 'Booqy',
     purpose: 'Ditt val av klickljud på eller av (Inställningar, Utseende och ljud). Sparas bara när du trycker på den. Samma nyckel på booqy.se och i Booqy Console. Inga personuppgifter.',
+    lifetime: 'Tills du rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: SOUND_VOLUME_KEY,
+    kind: 'localStorage',
+    setBy: 'Booqy',
+    purpose: 'Hur högt klickljudet är, 0-100 (Inställningar, Utseende och ljud). Sparas bara när du ändrar den. Inga personuppgifter.',
     lifetime: 'Tills du rensar webbläsaren',
     category: 'nödvändig',
   },

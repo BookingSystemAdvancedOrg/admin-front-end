@@ -44,8 +44,8 @@ describe('KassaPage', () => {
   it('stops card payments while the control system is down and asks for a felanmälan', async () => {
     const user = userEvent.setup()
     render(<MemoryRouter><KassaPage /></MemoryRouter>)
-    await user.click(await screen.findByRole('button', { name: 'Mer' }))
-    await user.click(await screen.findByRole('button', { name: /Stäng kontrollsystemet/ }))
+    await user.click(await screen.findByRole('button', { name: 'Kassan' }))
+    await user.click(await screen.findByRole('menuitem', { name: /Stäng kontrollsystemet/ }))
     // Demon har varit nere i 40 minuter: meddelandet om felanmälan visas med länk till e-tjänsten och listan.
     expect(await screen.findByText(/Kontrollsystemet har varit nere sedan/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Felanmäl i Skatteverkets e-tjänst' })).toHaveAttribute('href', expect.stringContaining('skatteverket.se'))
@@ -55,7 +55,8 @@ describe('KassaPage', () => {
     await user.click(screen.getByRole('button', { name: 'Stäng' }))
     expect(screen.queryByText(/Kontrollsystemet har varit nere sedan/)).not.toBeInTheDocument()
     expect(screen.getByText(/Skriv upp försäljningen på den manuella listan/)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /Starta kontrollsystemet/ }))
+    await user.click(screen.getByRole('button', { name: 'Kassan' }))
+    await user.click(screen.getByRole('menuitem', { name: /Starta kontrollsystemet/ }))
   })
 
   it('removes an unwanted bill with "Ta bort nota"', async () => {
@@ -73,7 +74,8 @@ describe('KassaPage', () => {
     const user = userEvent.setup()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     render(<MemoryRouter><KassaPage /></MemoryRouter>)
-    await user.click(await screen.findByRole('button', { name: 'Z-rapport' }))
+    await user.click(await screen.findByRole('button', { name: 'Rapporter' }))
+    await user.click(await screen.findByRole('menuitem', { name: /Z-rapport/ }))
     await user.click(await screen.findByRole('button', { name: 'Klar' }))
     await user.click(await screen.findByRole('button', { name: /Toast Skagen/ }))
     expect(await screen.findByText(/Öppna dagen först/)).toBeInTheDocument()
@@ -86,7 +88,8 @@ describe('KassaPage', () => {
   it('picks the receipts day as DD/MM/YYYY', async () => {
     const user = userEvent.setup()
     render(<MemoryRouter><KassaPage /></MemoryRouter>)
-    await user.click(await screen.findByRole('button', { name: /Kvitton/ }))
+    await user.click(await screen.findByRole('button', { name: 'Rapporter' }))
+    await user.click(await screen.findByRole('menuitem', { name: /Kvitton/ }))
     const day = await screen.findByLabelText('Dag')
     await waitFor(() => expect((day as HTMLInputElement).value).toMatch(/^\d{2}\/\d{2}\/\d{4}$/))
     expect(day).toHaveAttribute('type', 'text')

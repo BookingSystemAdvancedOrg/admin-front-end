@@ -1150,3 +1150,27 @@
     box-shadow: none;
   }
 }
+
+/* Rätterna svarar enkelt på musen: kortet lyfter lite och skuggan blir
+   djupare. Bara med mus (ingen fast hovring på kassans pekskärm), inte på
+   avstängda rätter, utan lyft vid minska rörelse. */
+.kassa-tile {
+  transition: translate 180ms var(--ease), box-shadow 180ms var(--ease), transform 120ms var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .kassa-tile:hover:not(:disabled) {
+    translate: 0 -2px;
+    box-shadow: 0 14px 28px -16px rgba(58, 36, 24, 0.45);
+  }
+
+  :root[data-theme='dark'] .kassa-tile:hover:not(:disabled) {
+    box-shadow: 0 14px 28px -16px rgba(0, 0, 0, 0.7);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kassa-tile:hover:not(:disabled) {
+    translate: none;
+  }
+}

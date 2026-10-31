@@ -317,6 +317,8 @@
   color: var(--danger);
 }
 
+/* Vridning och lutning: exponentiell inbromsning, snabb start och mjuk
+   landning. Etiketterna som vänder sig mot kameran har samma tid och kurva. */
 .floor-world {
   position: absolute;
   left: 50%;
@@ -325,7 +327,7 @@
   /* --pan-x/--pan-y: panorering i skärmpixlar (scroll, hand, mellanslag). */
   transform: translate(calc(-50% + var(--pan-x, 0px)), calc(-50% + var(--pan-y, 0px)))
     scale(var(--zoom, 1)) rotateX(var(--tilt, 0deg)) rotateZ(var(--spin, 0deg));
-  transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Under fri dragrotation (handverktyget) stängs övergången av - annars
@@ -339,7 +341,7 @@
   position: relative;
   border: 1px dashed rgba(0, 0, 0, 0.18);
   transform-style: preserve-3d;
-  transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /*
@@ -606,7 +608,7 @@
   top: 50%;
   transform-style: preserve-3d;
   transform: translateZ(calc(var(--tagz, var(--wh, 90px)) + 6px));
-  transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
 }
 
@@ -614,7 +616,7 @@
   display: inline-block;
   transform: translate(-50%, -50%)
     rotateZ(calc(-1 * var(--spin, 0deg))) rotateX(calc(-1 * var(--tilt, 0deg)));
-  transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
   font: 700 10px/1 var(--sans);
   letter-spacing: 0.08em;
   color: var(--muted);
@@ -825,7 +827,7 @@
   transform-origin: bottom center;
   transform: translateZ(1px) rotateZ(calc(-1 * var(--spin, 0deg)))
     rotateX(calc(-1 * var(--tilt, 0deg)));
-  transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .table-el.round .table-top,

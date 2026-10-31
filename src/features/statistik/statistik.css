@@ -4,7 +4,7 @@
    src/index.css, så mörkt läge följer med. */
 
 :root {
-  --sk-steel: #80868c;
+  --sk-steel: #a88462;
 }
 
 :root[data-theme='dark'] {
@@ -35,7 +35,7 @@
   box-shadow: inset 0 0 0 1px var(--border);
   font: 600 13.5px/1 var(--font);
   color: var(--ink);
-  cursor: pointer;
+  cursor: default;
   transition: box-shadow 140ms var(--ease), background-color 140ms var(--ease);
 }
 
@@ -457,7 +457,7 @@
 
 /* Tabellen bakom diagrammet. */
 .sk-table summary {
-  cursor: pointer;
+  cursor: default;
   font: 500 12px/1.4 var(--mono);
   color: var(--muted);
   text-decoration: underline;
@@ -973,7 +973,7 @@
     box-shadow: inset 0 0 0 1px var(--border);
     font: 600 13.5px/1 var(--font);
     color: var(--ink);
-    cursor: pointer;
+    cursor: default;
   }
 
   .sk-filter-toggle[aria-expanded='true'] {

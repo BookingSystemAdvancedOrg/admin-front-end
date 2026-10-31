@@ -35,6 +35,7 @@ export const MOCK_SESSION_KEY = 'admin-mock-session'
 export const LOGOUT_PENDING_KEY = 'booqy-logout-pending'
 export const MOTION_SEEN_KEY = 'booqy-motion-seen'
 export const THEME_KEY = 'booqy-theme'
+export const SOUND_KEY = 'booqy-sound'
 export const SAMPLE_DATA_KEY = 'booqy-sample-data'
 export const CARD_READER_KEY_PREFIX = 'booqy-card-reader:'
 
@@ -86,6 +87,14 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     kind: 'localStorage',
     setBy: 'Booqy',
     purpose: 'Ditt val av ljust eller mörkt läge (knappen i sidomenyn och på inloggningssidan). Samma nyckel på booqy.se och i Booqy Console. Inga personuppgifter.',
+    lifetime: 'Tills du rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: SOUND_KEY,
+    kind: 'localStorage',
+    setBy: 'Booqy',
+    purpose: 'Ditt val av klickljud på eller av (knappen i sidomenyn och på inloggningssidan). Sparas bara när du trycker på den. Samma nyckel på booqy.se och i Booqy Console. Inga personuppgifter.',
     lifetime: 'Tills du rensar webbläsaren',
     category: 'nödvändig',
   },

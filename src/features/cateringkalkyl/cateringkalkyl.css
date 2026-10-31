@@ -112,7 +112,7 @@
   min-height: 24px;
   font-size: 14px;
   color: var(--ink);
-  cursor: pointer;
+  cursor: default;
 }
 
 .cm-check input {

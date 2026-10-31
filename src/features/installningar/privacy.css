@@ -138,7 +138,7 @@
 }
 
 .consent-history summary {
-  cursor: pointer;
+  cursor: default;
   color: var(--muted);
   font-size: 12.5px;
 }

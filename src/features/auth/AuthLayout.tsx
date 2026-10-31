@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { BrandMark, BrandWordmark } from '../../shared/BrandMark'
 import { ThemeToggle } from '../../shared/ThemeToggle'
+import { SoundToggle } from '../../shared/SoundToggle'
 import './auth.css'
 import './auth-brand.css'
 
@@ -12,7 +13,10 @@ export function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="auth-screen">
       {/* Ljust/mörkt läge går att välja redan innan inloggning. */}
-      <ThemeToggle className="auth-theme-toggle" />
+      <div className="auth-theme-toggle auth-toggles">
+        <SoundToggle />
+        <ThemeToggle />
+      </div>
       <div className="auth-inner">
         <div className="auth-logo">
           {/* Ingen restaurang namnges: inloggningsskärmen visas utloggad, så
@@ -25,7 +29,11 @@ export function AuthLayout({ children }: { children: ReactNode }) {
             <span>Admin</span>
           </span>
         </div>
-        <section className="auth-card">{children}</section>
+        {/* Lappen hänger under en brun skena, som kvittona på booqy.se. */}
+        <div className="auth-hang">
+          <div className="auth-rail" aria-hidden="true" />
+          <section className="auth-card">{children}</section>
+        </div>
       </div>
     </div>
   )

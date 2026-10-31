@@ -142,7 +142,7 @@
 }
 
 .orders-done summary {
-  cursor: pointer;
+  cursor: default;
   font-weight: 600;
 }
 

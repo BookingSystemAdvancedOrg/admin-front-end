@@ -227,7 +227,7 @@
 .stat-tile--link:hover {
   transform: translateY(-3px);
   border-color: var(--ink);
-  box-shadow: 0 2px 4px rgba(28, 25, 24, 0.06), 0 18px 32px -14px rgba(28, 25, 24, 0.35);
+  box-shadow: 0 2px 4px rgba(26, 18, 14, 0.06), 0 18px 32px -14px rgba(26, 18, 14, 0.35);
 }
 
 .stat-tile--link:active {
@@ -246,7 +246,7 @@ button.stat-tile {
   border: 1px solid var(--border);
   text-align: left;
   font: inherit;
-  cursor: pointer;
+  cursor: default;
 }
 
 .stat-tile-delta {
@@ -548,7 +548,7 @@ button.stat-tile {
   font: inherit;
   font-weight: 600;
   color: var(--accent-ink);
-  cursor: pointer;
+  cursor: default;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -700,5 +700,284 @@ html.is-saving .btn:disabled {
 
   .admin-nav-heading {
     display: none;
+  }
+}
+
+/* ============================================================================
+   Glasrummet (samma som booqy.se, 2026-10-31). Allt nedanför klär om
+   reglerna ovan; ligg kvar sist i filen. Ett varmt, ljust rum bakom allt,
+   sidomenyn och sidhuvudet är svävande glasytor, arbetet ligger på en stor
+   klar glasyta, kort är vitt papper. Muspekaren byter aldrig form; det är
+   elementet under den som svarar.
+   ========================================================================== */
+.admin-shell {
+  background: transparent;
+  gap: 14px;
+  padding: 12px;
+}
+.admin-right {
+  background: transparent;
+  gap: 14px;
+}
+
+/* Sidomenyn: en svävande glasyta */
+.admin-sidebar,
+.admin-sidebar.liquid--full {
+  top: 12px;
+  min-height: calc(100svh - 24px);
+  border-radius: var(--r-panel);
+  background: var(--glass-hi);
+  box-shadow: var(--rim), var(--shadow-lg);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  backdrop-filter: blur(16px) saturate(1.6);
+}
+.admin-sidebar--pouring {
+  background: var(--glass);
+  --liquid: 255, 255, 255;
+  --liquid-alpha: 0.5;
+  --liquid-edge: 213, 196, 174;
+}
+:root[data-theme='dark'] .admin-sidebar--pouring {
+  --liquid: 26, 18, 14;
+  --liquid-alpha: 0.6;
+}
+.admin-logo-tag {
+  border-radius: 999px;
+  color: var(--on-ox-3);
+}
+.admin-location-picker select {
+  border-radius: 12px;
+  background: var(--wall-tint);
+  box-shadow: none;
+  color-scheme: light;
+}
+:root[data-theme='dark'] .admin-location-picker select {
+  color-scheme: dark;
+}
+.admin-nav-heading {
+  font: 400 15px/1.2 var(--serif-face);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--on-ox-3);
+}
+.admin-nav-item {
+  border-radius: 999px;
+  font: 500 15px/1.3 var(--font);
+  font-stretch: 100%;
+  color: var(--on-ox);
+  transition: background-color 200ms var(--ease), color 300ms var(--ease);
+}
+.admin-nav-item:hover {
+  background: var(--wall-tint);
+  color: var(--on-ox);
+}
+.admin-nav-item.active,
+.admin-nav-item.active:hover {
+  background: var(--slip);
+  color: var(--on-slip);
+  box-shadow: 0 10px 24px -14px rgba(26, 18, 14, 0.7);
+}
+.admin-nav--bottom {
+  border-top-color: var(--wall-tint-2);
+}
+.admin-avatar {
+  border-radius: 999px;
+  background: var(--slip);
+  color: var(--on-slip);
+}
+
+/* Sidhuvudet: en svävande glasyta överst i arbetsytan */
+.admin-topbar {
+  top: 12px;
+  border: 0;
+  border-radius: var(--r-panel);
+  background: var(--glass-hi);
+  box-shadow: var(--rim), var(--shadow);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  backdrop-filter: blur(16px) saturate(1.6);
+}
+.admin-topbar-titles h1 {
+  font: 800 32px/1.05 var(--display);
+  font-stretch: 100%;
+  letter-spacing: -0.03em;
+}
+.stat-tile-value {
+  font-family: var(--display);
+  font-weight: 800;
+  font-stretch: 100%;
+  letter-spacing: -0.03em;
+}
+
+/* Arbetet: en stor klar glasyta, korten är vitt papper på den */
+.admin-main {
+  border-radius: var(--r-panel);
+  background: var(--glass-hi);
+  box-shadow: var(--rim), var(--shadow-lg);
+}
+@media (min-width: 768px) {
+  .admin-main {
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(18px) saturate(1.5);
+    backdrop-filter: blur(18px) saturate(1.5);
+  }
+}
+.admin-card,
+.modal {
+  border: 0;
+  border-radius: var(--r-lg);
+  box-shadow: var(--rim), var(--shadow);
+}
+.stat-tile--link:hover {
+  border-color: transparent;
+  box-shadow: var(--rim), var(--shadow-lg);
+}
+
+/* Knappar: piller; huvudknappen är mörk espresso */
+.btn,
+.btn.square {
+  border-radius: 999px;
+  font-weight: 600;
+  transition: background-color 180ms var(--ease), color 180ms var(--ease), translate 180ms var(--ease), box-shadow 180ms var(--ease), filter 180ms var(--ease);
+}
+.btn.primary {
+  box-shadow: 0 10px 24px -14px rgba(26, 18, 14, 0.7);
+}
+.btn.primary:hover:not(:disabled) {
+  translate: 0 -2px;
+  box-shadow: 0 16px 30px -14px rgba(26, 18, 14, 0.75);
+}
+.btn.outline,
+.btn.danger-outline {
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.btn.outline:hover:not(:disabled),
+.btn.danger-outline:hover:not(:disabled) {
+  filter: none;
+  translate: 0 -2px;
+  box-shadow: inset 0 0 0 1px var(--accent-ink), 0 10px 22px -16px rgba(58, 36, 24, 0.6);
+}
+.btn:disabled {
+  translate: none;
+  box-shadow: none;
+}
+
+/* Laddningsstrimman: brunt ljus längs kanten */
+.busy-bar-fill {
+  background: #a88462;
+  box-shadow: 0 1px 8px rgba(168, 132, 98, 0.5);
+}
+.busy-bar-wave {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.6) 45%, transparent 90%);
+}
+
+/* Muspekaren byter aldrig form, inte heller på länkar och knappar */
+a[href],
+button,
+summary,
+label,
+select,
+[role='tab'],
+[role='button'],
+input[type='checkbox'],
+input[type='radio'] {
+  cursor: default;
+}
+html.is-busy,
+html.is-busy * {
+  cursor: progress;
+}
+
+/* Tryckkänsla (shared/press.ts): en snabb klämning och en mjuk brun krusning
+   från trycket, aldrig vid hovring. Minska rörelse: bara en kort blinkning. */
+.is-pressed {
+  scale: 0.97;
+  transition: scale 90ms var(--ease);
+}
+.is-pressed-text {
+  opacity: 0.6;
+  transition: opacity 90ms var(--ease);
+}
+.press-ripple {
+  position: fixed;
+  z-index: 200;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(168, 132, 98, 0.45), rgba(168, 132, 98, 0) 70%);
+  pointer-events: none;
+  animation: press-ripple 180ms var(--ease) forwards;
+}
+:root[data-theme='dark'] .press-ripple {
+  background: radial-gradient(circle, rgba(213, 196, 174, 0.4), rgba(213, 196, 174, 0) 70%);
+}
+@keyframes press-ripple {
+  from {
+    scale: 0.3;
+    opacity: 1;
+  }
+  to {
+    scale: 1.6;
+    opacity: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .admin-shell {
+    padding: 10px;
+    gap: 10px;
+  }
+  .admin-sidebar,
+  .admin-sidebar.liquid--full {
+    min-height: 0;
+  }
+  .admin-nav-item.active {
+    border-bottom-color: transparent;
+  }
+  .admin-theme-toggle {
+    width: auto;
+  }
+  .admin-nav--bottom {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-top: 0;
+    margin-top: 0;
+    padding-top: 0;
+  }
+}
+
+/* Utan backdrop-filter eller med minskad genomskinlighet: hela ytor */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .admin-sidebar,
+  .admin-topbar,
+  .admin-main {
+    background: var(--bg);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  body::before {
+    background: var(--bg);
+  }
+  .admin-sidebar,
+  .admin-topbar,
+  .admin-main {
+    background: var(--bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .is-pressed {
+    scale: none;
+    opacity: 0.75;
+    transition: opacity 90ms linear;
+  }
+  .press-ripple {
+    display: none;
+  }
+  .btn.primary:hover:not(:disabled),
+  .btn.outline:hover:not(:disabled),
+  .btn.danger-outline:hover:not(:disabled) {
+    translate: none;
   }
 }

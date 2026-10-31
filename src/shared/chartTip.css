@@ -78,7 +78,7 @@
 }
 
 .chart-tip-swatch--steel {
-  background: var(--sk-steel, #80868c);
+  background: var(--sk-steel, #a88462);
 }
 
 .chart-tip-swatch--muted {
@@ -88,7 +88,7 @@
 .chart-tip-swatch--line {
   width: 12px;
   height: 2px;
-  background: var(--sk-steel, #80868c);
+  background: var(--sk-steel, #a88462);
 }
 
 .chart-tip-swatch--border {

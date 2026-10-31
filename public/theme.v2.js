@@ -16,5 +16,5 @@
   root.setAttribute('data-theme', theme)
   // Webbläsarens egen ram (meta theme-color) följer skrivbordet.
   var meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.setAttribute('content', theme === 'dark' ? '#1c1918' : '#f1eee6')
+  if (meta) meta.setAttribute('content', theme === 'dark' ? '#1a120e' : '#f6f1ea')
 })(document.documentElement)

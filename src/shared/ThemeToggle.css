@@ -6,7 +6,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  cursor: pointer;
+  cursor: default;
 }
 
 .theme-toggle-icon {

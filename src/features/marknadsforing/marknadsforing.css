@@ -19,7 +19,7 @@
   background: transparent;
   font: 600 14px/1.2 var(--font);
   color: var(--muted);
-  cursor: pointer;
+  cursor: default;
   transition: background 180ms var(--ease), color 180ms var(--ease), box-shadow 180ms var(--ease);
 }
 
@@ -74,7 +74,7 @@
   background: var(--surface);
   font: 600 13px/1.2 var(--font);
   color: var(--muted);
-  cursor: pointer;
+  cursor: default;
 }
 
 .mk-segment button:last-child {
@@ -258,7 +258,7 @@
   background: var(--surface);
   text-align: left;
   font: 400 13px/1.4 var(--font);
-  cursor: pointer;
+  cursor: default;
   transition: border-color 160ms var(--ease), transform 160ms var(--ease), box-shadow 160ms var(--ease);
 }
 
@@ -333,7 +333,7 @@
   background: var(--surface);
   font: 600 14px/1 var(--font);
   color: var(--ink);
-  cursor: pointer;
+  cursor: default;
 }
 
 .mk-icon-btn:hover:not(:disabled) {
@@ -465,7 +465,7 @@
   /* Förhandsvisningen av gästens kupong: alltid vitt papper med Booqys röda,
      oavsett läge (så ser den ut i gästens e-post). */
   --accent-ink: #9e1d26;
-  color: #1c1918;
+  color: #1a120e;
   color-scheme: light;
   display: grid;
   grid-template-columns: 84px 1fr;
@@ -473,7 +473,7 @@
   margin-left: auto;
   border-radius: 14px;
   background: #fff;
-  filter: drop-shadow(0 14px 22px rgba(28, 25, 24, 0.22));
+  filter: drop-shadow(0 14px 22px rgba(26, 18, 14, 0.22));
   -webkit-mask:
     radial-gradient(circle 10px at 84px 0, transparent 98%, #000) top / 100% 51% no-repeat,
     radial-gradient(circle 10px at 84px 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
@@ -489,7 +489,7 @@
   justify-content: center;
   gap: 2px;
   border-radius: 14px 0 0 14px;
-  border-right: 2px dashed rgba(28, 25, 24, 0.2);
+  border-right: 2px dashed rgba(26, 18, 14, 0.2);
   background: var(--accent-ink);
   color: #fff;
 }

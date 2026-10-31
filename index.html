@@ -5,13 +5,13 @@
     <!-- Ikonerna ligger i src/assets så att Vite ger dem hashade filnamn:
          deployen cachar allt utom index.html i ett år, så en ikon med fast
          namn (public/favicon.svg) byts aldrig ut i webbläsaren. -->
-    <link rel="icon" href="/src/assets/favicon.ico" sizes="32x32" />
-    <link rel="icon" type="image/svg+xml" href="/src/assets/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/src/assets/favicon.svg" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/svg+xml" href="/src/assets/favicon-dark.svg" media="(prefers-color-scheme: dark)" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="apple-touch-icon" href="/src/assets/apple-touch-icon.png" />
-    <meta name="theme-color" content="#f1eee6" />
-    <!-- Ljust eller mörkt läge innan första bildrutan (public/theme.v1.js). -->
-    <script src="/theme.v1.js"></script>
+    <meta name="theme-color" content="#f6f1ea" />
+    <!-- Ljust eller mörkt läge innan första bildrutan (public/theme.v2.js). -->
+    <script src="/theme.v2.js"></script>
     <title>Booqy Admin</title>
   </head>
   <body>

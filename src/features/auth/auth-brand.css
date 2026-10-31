@@ -44,8 +44,8 @@
 .auth-card {
   border-radius: 0;
   padding-bottom: 46px;
-  background: #fbfaf6;
-  color: #1c1918;
+  background: #ffffff;
+  color: #1a120e;
   box-shadow: none;
   filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.28)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.18));
   -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 12px 6px
@@ -57,17 +57,17 @@
 
 /* Lappen är papper i ljust läge och sotat papper i mörkt (som i admin). */
 .auth-screen .auth-card {
-  --auth-ink: #1c1918;
-  --auth-muted: #57504d;
-  --auth-bg: #f1eee6;
+  --auth-ink: #1a120e;
+  --auth-muted: #4a4a46;
+  --auth-bg: #f6f1ea;
   --auth-error: #9e1d26;
   --auth-error-bg: #f6e6e4;
-  --fill: #f1eee6;
-  --accent: #1c1918;
-  --accent-hover: #000000;
-  --on-accent: #fbfaf6;
-  --accent-ink: #9e1d26;
-  --focus: rgba(158, 29, 38, 0.32);
+  --fill: #f6f1ea;
+  --accent: #1a120e;
+  --accent-hover: #3a2418;
+  --on-accent: #ffffff;
+  --accent-ink: #6b4a2e;
+  --focus: rgba(168, 132, 98, 0.45);
   --success-ink: #2c6a3f;
   color-scheme: light;
 }
@@ -86,7 +86,7 @@
   --fill: #332e2b;
   --accent: #f6ece9;
   --accent-hover: #ffffff;
-  --on-accent: #1c1918;
+  --on-accent: #1a120e;
   --accent-ink: #ee8a90;
   --focus: rgba(238, 138, 144, 0.4);
   --success-ink: #7cc695;
@@ -108,7 +108,7 @@
 
 .auth-field input {
   border-radius: 3px;
-  box-shadow: inset 0 0 0 1.5px #d9d4c8;
+  box-shadow: inset 0 0 0 1.5px #e3d6c4;
 }
 
 .auth-field input:focus {
@@ -130,5 +130,108 @@
 .auth-link--quiet {
   font-weight: 500;
   font-size: 12.5px;
-  color: #57504d;
+  color: #4a4a46;
+}
+
+/* Glasrummet (samma som booqy.se): rummet syns bakom, lappen hänger på en
+   glasyta, knapparna för ljud och läge sitter i ett litet glaspiller. */
+.auth-screen {
+  background: transparent;
+}
+.auth-toggles {
+  display: flex;
+  gap: 4px;
+  width: auto;
+  height: auto;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--glass-hi);
+  box-shadow: var(--rim), var(--shadow);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  backdrop-filter: blur(16px) saturate(1.6);
+}
+.auth-toggles:hover {
+  background: var(--glass-hi);
+}
+.auth-toggles .theme-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--on-ox-2);
+}
+.auth-toggles .theme-toggle:hover {
+  color: var(--on-ox);
+  background: var(--wall-tint);
+}
+.auth-card {
+  filter: drop-shadow(0 14px 18px rgba(58, 36, 24, 0.22)) drop-shadow(0 2px 3px rgba(58, 36, 24, 0.16));
+}
+.auth-card .btn {
+  border-radius: 999px;
+}
+.auth-submit {
+  border-radius: 999px;
+  box-shadow: 0 10px 24px -14px rgba(26, 18, 14, 0.7);
+  transition: background-color 180ms var(--ease), translate 180ms var(--ease), box-shadow 180ms var(--ease);
+}
+.auth-submit:hover:not(:disabled) {
+  translate: 0 -2px;
+  box-shadow: 0 16px 30px -14px rgba(26, 18, 14, 0.75);
+}
+.auth-field input {
+  border-radius: 12px;
+}
+.auth-heading h1 {
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-submit:hover:not(:disabled) {
+    translate: none;
+  }
+}
+
+/* Skenan lappen hänger från (samma som kvittona på booqy.se): brun, lite
+   bredare än lappen, med springan som en mörkare linje nedtill. */
+.auth-hang {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 440px;
+  max-width: 100%;
+}
+.auth-hang .auth-card {
+  width: 100%;
+}
+.auth-rail {
+  position: relative;
+  z-index: 1;
+  width: calc(100% + 32px);
+  max-width: calc(100vw - 16px);
+  height: 26px;
+  border-radius: 4px;
+  background: #a88462;
+  box-shadow: 0 8px 16px -8px rgba(58, 36, 24, 0.55);
+}
+.auth-rail::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 6px;
+  height: 2px;
+  background: #6b4a2e;
+}
+:root[data-theme='dark'] .auth-rail {
+  background: #6b4a2e;
+  box-shadow: 0 8px 16px -8px rgba(0, 0, 0, 0.7);
+}
+:root[data-theme='dark'] .auth-rail::after {
+  background: #3a2418;
 }

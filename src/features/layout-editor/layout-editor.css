@@ -64,7 +64,7 @@
   background: var(--surface);
   color: var(--ink);
   font: 600 15px/1 var(--sans);
-  cursor: pointer;
+  cursor: default;
   transition: border-color 120ms ease, background 120ms ease;
 }
 
@@ -165,7 +165,7 @@
   background: var(--surface);
   font: 600 13px/1.2 var(--sans);
   color: var(--muted);
-  cursor: pointer;
+  cursor: default;
 }
 
 .floor-tabs button.active {
@@ -197,7 +197,7 @@
   background: transparent;
   font: 600 13px/1.2 var(--sans);
   color: var(--muted);
-  cursor: pointer;
+  cursor: default;
 }
 
 .view-toggle button.active {
@@ -226,7 +226,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 6px;
-  box-shadow: 0 12px 32px -12px rgba(28, 20, 18, 0.35);
+  box-shadow: 0 12px 32px -12px rgba(26, 18, 14, 0.35);
   cursor: default;
 }
 
@@ -242,7 +242,7 @@
   background: transparent;
   color: var(--muted);
   font-size: 14px;
-  cursor: pointer;
+  cursor: default;
 }
 
 .shortcut-groups {
@@ -385,7 +385,7 @@
     linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
   background-size: 20px 20px;
-  cursor: pointer;
+  cursor: default;
 }
 
 .ground.selected {
@@ -436,7 +436,7 @@
 .seg {
   position: absolute;
   transform-style: preserve-3d;
-  cursor: pointer;
+  cursor: default;
 }
 
 .seg-face {
@@ -1071,7 +1071,7 @@
   background: var(--surface);
   font: 400 13px/1.2 var(--sans);
   color: var(--muted);
-  cursor: pointer;
+  cursor: default;
 }
 
 .shape-toggle button.active {
@@ -1108,7 +1108,7 @@
   background: var(--green);
   color: var(--on-accent);
   font: 700 13px/1 var(--sans);
-  cursor: pointer;
+  cursor: default;
 }
 
 .step-btn:disabled {
@@ -1124,7 +1124,7 @@
   background: var(--green);
   color: var(--on-accent);
   font: 600 13px/1.2 var(--sans);
-  cursor: pointer;
+  cursor: default;
 }
 
 .props-pos {
@@ -1157,7 +1157,7 @@
   background: var(--surface);
   font: 600 13px/1.2 var(--sans);
   color: var(--muted);
-  cursor: pointer;
+  cursor: default;
 }
 
 .floor-pill.active {
@@ -1401,7 +1401,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 6px;
-  box-shadow: 0 14px 36px -12px rgba(28, 20, 18, 0.4);
+  box-shadow: 0 14px 36px -12px rgba(26, 18, 14, 0.4);
 }
 
 .context-menu-group + .context-menu-group {
@@ -1423,7 +1423,7 @@
   color: var(--ink);
   font: 500 13px/1.2 var(--sans);
   text-align: left;
-  cursor: pointer;
+  cursor: default;
 }
 
 .context-menu-item:hover:not(:disabled),

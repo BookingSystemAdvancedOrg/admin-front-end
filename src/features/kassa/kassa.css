@@ -144,7 +144,7 @@
   background: var(--fill);
   color: var(--muted);
   font: 500 15px/1 var(--font);
-  cursor: pointer;
+  cursor: default;
 }
 
 .kassa-cats button.active,
@@ -172,7 +172,7 @@
   box-shadow: var(--shadow);
   color: var(--ink);
   text-align: left;
-  cursor: pointer;
+  cursor: default;
   -webkit-tap-highlight-color: transparent;
   transition: transform 120ms var(--ease), box-shadow 200ms var(--ease);
 }
@@ -245,7 +245,7 @@
   color: var(--ink);
   font: 500 14px/1 var(--font);
   white-space: nowrap;
-  cursor: pointer;
+  cursor: default;
 }
 
 .kassa-chip small {
@@ -367,7 +367,7 @@
   border-radius: 50%;
   background: transparent;
   color: var(--ink);
-  cursor: pointer;
+  cursor: default;
 }
 
 .kassa-stepper button:active:not(:disabled) {
@@ -395,7 +395,7 @@
   border-radius: 50%;
   background: transparent;
   color: var(--muted);
-  cursor: pointer;
+  cursor: default;
 }
 
 .kassa-icon-btn:hover {
@@ -594,7 +594,7 @@
 }
 
 .kassa-journal button {
-  cursor: pointer;
+  cursor: default;
 }
 
 .kassa-journal button:hover {
@@ -777,7 +777,7 @@
   min-height: 44px;
   display: flex;
   align-items: center;
-  cursor: pointer;
+  cursor: default;
   color: var(--muted);
   font: 500 14px/1.3 var(--font);
 }
@@ -833,7 +833,7 @@
   grid-template-columns: 28px minmax(0, 1fr);
   gap: 12px;
   align-items: start;
-  cursor: pointer;
+  cursor: default;
 }
 
 .kassa-setup-check input {

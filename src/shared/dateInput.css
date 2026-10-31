@@ -26,7 +26,7 @@
   border-radius: var(--r-md);
   background: transparent;
   color: var(--muted);
-  cursor: pointer;
+  cursor: default;
 }
 
 .date-input-btn:hover:not(:disabled),
@@ -106,7 +106,7 @@
   border: 0;
   background: transparent;
   color: inherit;
-  cursor: pointer;
+  cursor: default;
   font: 500 14px/1 var(--font);
 }
 

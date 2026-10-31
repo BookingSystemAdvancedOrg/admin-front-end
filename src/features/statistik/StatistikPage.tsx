@@ -429,13 +429,20 @@ export default function StatistikPage() {
             </button>
           </div>
         </div>
-        <p className="sk-period">
-          {f.from === f.to ? shortDate(f.from) : rangeLabel(f.from, f.to)}
-          {days > 1 ? `, ${fmtInt(days)} dagar` : ''}
-          {ready?.compare.from && ready.compare.to ? ` · jämförs med ${rangeLabel(ready.compare.from, ready.compare.to)}` : ''}
-          {locationName ? ` · ${locationName}` : multi ? ' · alla platser' : ''}
-          {f.service !== 'all' ? ` · ${f.service === 'lunch' ? 'lunch' : 'middag'}` : ''}
-        </p>
+        {/* Bara perioden syns; resten (antal dagar, jämförelse, plats, pass)
+            fälls ut för den som vill läsa. */}
+        <details className="sk-period">
+          <summary>
+            {f.from === f.to ? shortDate(f.from) : rangeLabel(f.from, f.to)}
+            <span className="sk-period-more">Detaljer</span>
+          </summary>
+          <p>
+            {days > 1 ? `${fmtInt(days)} dagar` : '1 dag'}
+            {ready?.compare.from && ready.compare.to ? ` · jämförs med ${rangeLabel(ready.compare.from, ready.compare.to)}` : ''}
+            {locationName ? ` · ${locationName}` : multi ? ' · alla platser' : ''}
+            {f.service !== 'all' ? ` · ${f.service === 'lunch' ? 'lunch' : 'middag'}` : ''}
+          </p>
+        </details>
 
         {showSample && (
           <div className="sample-notice" role="status">

@@ -1,5 +1,5 @@
 import { errorText } from '../../shared/errors'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
@@ -109,14 +109,36 @@ const TAB_LABEL: Record<SettingsTab, string> = {
   utseende: 'Utseende och ljud',
 }
 
-/** Flikarna i fem grupper: på datorn en meny till vänster, på mobil och surfplatta en rad med grupper och sedan gruppens flikar. */
-const GROUPS: { id: string; label: string; short: string; tabs: SettingsTab[] }[] = [
-  { id: 'verksamhet', label: 'Verksamheten', short: 'Verksamhet', tabs: ['profil', 'dagar', 'bord', 'personal'] },
-  { id: 'gaster', label: 'Gäster', short: 'Gäster', tabs: ['notiser', 'avbokning', 'bestallning', 'skrivare'] },
-  { id: 'ekonomi', label: 'Ekonomi', short: 'Ekonomi', tabs: ['betalningar', 'bokforing'] },
-  { id: 'data', label: 'Data och integritet', short: 'Data', tabs: ['statistik', 'integritet'] },
-  { id: 'enhet', label: 'Den här enheten', short: 'Enheten', tabs: ['utseende'] },
+/**
+ * Inställningarna i fem grupper. Menyn visar först grupperna under varandra,
+ * var och en med en rad om vad som finns där; ett klick öppnar gruppen och
+ * dess delar, och "Alla inställningar" leder tillbaka. Texterna ska gå att
+ * förstå utan att kunna systemet.
+ */
+const GROUPS: { id: string; label: string; hint: string; tabs: SettingsTab[] }[] = [
+  { id: 'verksamhet', label: 'Verksamheten', hint: 'Namn, adress, öppettider, bord och personal', tabs: ['profil', 'dagar', 'bord', 'personal'] },
+  { id: 'gaster', label: 'Gäster', hint: 'Sms och mejl till gästerna, avbokning och beställning', tabs: ['notiser', 'avbokning', 'bestallning', 'skrivare'] },
+  { id: 'ekonomi', label: 'Ekonomi', hint: 'Ta betalt online och underlag till bokföringen', tabs: ['betalningar', 'bokforing'] },
+  { id: 'data', label: 'Data och integritet', hint: 'Vad personalen ser i Statistik och gästernas uppgifter', tabs: ['statistik', 'integritet'] },
+  { id: 'enhet', label: 'Den här enheten', hint: 'Mörkt läge och klickljud på just den här skärmen', tabs: ['utseende'] },
 ]
+
+/** En rad under varje del som säger vad man ställer in där. */
+const TAB_HINT: Record<SettingsTab, string> = {
+  profil: 'Namn, adress, telefon, e-post och öppettider',
+  dagar: 'Helgdagar, stängt eller andra tider en viss dag',
+  bord: 'Hur många gäster varje bord tar och vilka bord som kan ställas ihop',
+  personal: 'Bjud in medarbetare och välj vad de får göra',
+  notiser: 'Sms och mejl till gästerna, och mejl till er',
+  avbokning: 'Kortgaranti och avgift om gästen inte kommer',
+  bestallning: 'Avhämtning, beställning vid bordet och QR-koder',
+  skrivare: 'Skrivaren i köket som skriver ut beställningarna',
+  betalningar: 'Koppla Stripe så att gästerna kan betala online',
+  bokforing: 'Exportera försäljningen till bokföringsprogrammet',
+  statistik: 'Vad personalen får se och när lunchen slutar',
+  integritet: 'Integritetspolicyn och gästernas uppgifter',
+  utseende: 'Mörkt läge och klickljud, bara på den här skärmen',
+}
 
 function initialTab(stripeReturn: string | null): SettingsTab {
   if (stripeReturn) return 'betalningar'
@@ -145,16 +167,14 @@ export default function InstallningarPage() {
     const fromHash = hash.replace(/^#/, '') as SettingsTab
     if (fromHash in TAB_LABEL) setTab(fromHash)
   }, [hash])
-  // Grupperna ryms inte alltid på en telefon: rulla raden så att den valda syns.
-  const groupRow = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const row = groupRow.current
-    const active = row?.querySelector<HTMLElement>('button.active')
-    if (!row || !active) return
-    if (active.offsetLeft < row.scrollLeft || active.offsetLeft + active.offsetWidth > row.scrollLeft + row.clientWidth) {
-      row.scrollLeft = active.offsetLeft - 8
-    }
-  }, [tab])
+  // Menyn: grupplistan eller den öppna gruppens delar. Grupplistan hör till
+  // fliken den öppnades vid, så byts fliken (ett klick, en länk eller guiden
+  // via #flik) visas gruppen igen. Sidan börjar på grupplistan, utom när en
+  // länk pekar på en viss del.
+  const [menuAt, setMenuAt] = useState<SettingsTab | null>(() =>
+    stripeReturn || window.location.hash ? null : initialTab(stripeReturn),
+  )
+  const menuOpen = menuAt === tab
   function openTab(next: SettingsTab) {
     setTab(next)
     window.history.replaceState(null, '', `#${next}`)
@@ -430,6 +450,7 @@ export default function InstallningarPage() {
         : true
   const tabGroups = GROUPS.map((g) => ({ ...g, tabs: g.tabs.filter(showTab) })).filter((g) => g.tabs.length > 0)
   const activeGroup = tabGroups.find((g) => g.tabs.includes(tab))?.id ?? tabGroups[0]?.id
+  const openGroup = tabGroups.find((g) => g.id === activeGroup)
 
   return (
     <>
@@ -453,24 +474,35 @@ export default function InstallningarPage() {
       />
       <div className="admin-main settings-main">
         <nav className="settings-nav" aria-label="Inställningar">
-          <div className="settings-groups" ref={groupRow}>
-            {tabGroups.map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                className={g.id === activeGroup ? 'active' : ''}
-                aria-pressed={g.id === activeGroup}
-                onClick={() => openTab(g.tabs[0])}
-              >
-                {g.short}
+          {menuOpen || !openGroup ? (
+            <ul className="settings-menu">
+              {tabGroups.map((g) => (
+                <li key={g.id}>
+                  <button
+                    type="button"
+                    className={g.id === activeGroup ? 'settings-menu-item current' : 'settings-menu-item'}
+                    onClick={() => {
+                      setMenuAt(null)
+                      if (g.id !== activeGroup) openTab(g.tabs[0])
+                    }}
+                  >
+                    <span className="settings-menu-text">
+                      <span className="settings-menu-title">{g.label}</span>
+                      <span className="settings-menu-hint">{g.hint}</span>
+                    </span>
+                    <span className="settings-menu-arrow" aria-hidden="true">›</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="settings-group-view">
+              <button type="button" className="settings-back" onClick={() => setMenuAt(tab)}>
+                <span aria-hidden="true">‹</span> Alla inställningar
               </button>
-            ))}
-          </div>
-          {tabGroups.map((g) => (
-            <div key={g.id} className={g.id === activeGroup ? 'settings-group open' : 'settings-group'}>
-              <p className="settings-group-title">{g.label}</p>
+              <p className="settings-group-name">{openGroup.label}</p>
               <div className="settings-tabs">
-                {g.tabs.map((t) => (
+                {openGroup.tabs.map((t) => (
                   <button
                     key={t}
                     type="button"
@@ -479,12 +511,13 @@ export default function InstallningarPage() {
                     aria-current={tab === t ? 'page' : undefined}
                     onClick={() => openTab(t)}
                   >
-                    {TAB_LABEL[t]}
+                    <span className="settings-tab-title">{TAB_LABEL[t]}</span>
+                    <span className="settings-tab-hint">{TAB_HINT[t]}</span>
                   </button>
                 ))}
               </div>
             </div>
-          ))}
+          )}
         </nav>
         <div className="settings-body">
           {/* Flikar döljs (hidden) i stället för att tas bort - osparade ändringar ligger kvar. */}

@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import './index.css'
 import { installPress } from './shared/press'
 import { installGlide } from './shared/glide'
+import { installGlassFilter } from './shared/glassFilter'
 import App from './App.tsx'
 import { AuthProvider } from './features/auth/AuthContext.tsx'
 import { RequireAuth } from './features/auth/RequireAuth.tsx'
@@ -20,6 +21,7 @@ import CookiesPage from './features/cookies/CookiesPage.tsx'
 // /logga-in.
 installPress()
 installGlide()
+installGlassFilter()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

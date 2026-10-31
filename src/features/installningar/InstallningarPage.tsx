@@ -1,5 +1,5 @@
 import { errorText } from '../../shared/errors'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
@@ -109,6 +109,15 @@ const TAB_LABEL: Record<SettingsTab, string> = {
   utseende: 'Utseende och ljud',
 }
 
+/** Flikarna i fem grupper: på datorn en meny till vänster, på mobil och surfplatta en rad med grupper och sedan gruppens flikar. */
+const GROUPS: { id: string; label: string; short: string; tabs: SettingsTab[] }[] = [
+  { id: 'verksamhet', label: 'Verksamheten', short: 'Verksamhet', tabs: ['profil', 'dagar', 'bord', 'personal'] },
+  { id: 'gaster', label: 'Gäster', short: 'Gäster', tabs: ['notiser', 'avbokning', 'bestallning', 'skrivare'] },
+  { id: 'ekonomi', label: 'Ekonomi', short: 'Ekonomi', tabs: ['betalningar', 'bokforing'] },
+  { id: 'data', label: 'Data och integritet', short: 'Data', tabs: ['statistik', 'integritet'] },
+  { id: 'enhet', label: 'Den här enheten', short: 'Enheten', tabs: ['utseende'] },
+]
+
 function initialTab(stripeReturn: string | null): SettingsTab {
   if (stripeReturn) return 'betalningar'
   const fromHash = window.location.hash.replace(/^#/, '') as SettingsTab
@@ -136,6 +145,16 @@ export default function InstallningarPage() {
     const fromHash = hash.replace(/^#/, '') as SettingsTab
     if (fromHash in TAB_LABEL) setTab(fromHash)
   }, [hash])
+  // Grupperna ryms inte alltid på en telefon: rulla raden så att den valda syns.
+  const groupRow = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const row = groupRow.current
+    const active = row?.querySelector<HTMLElement>('button.active')
+    if (!row || !active) return
+    if (active.offsetLeft < row.scrollLeft || active.offsetLeft + active.offsetWidth > row.scrollLeft + row.clientWidth) {
+      row.scrollLeft = active.offsetLeft - 8
+    }
+  }, [tab])
   function openTab(next: SettingsTab) {
     setTab(next)
     window.history.replaceState(null, '', `#${next}`)
@@ -403,6 +422,15 @@ export default function InstallningarPage() {
     }
   }
 
+  const showTab = (t: SettingsTab) =>
+    t === 'personal' || t === 'statistik' || t === 'bokforing' || t === 'integritet'
+      ? isOwner
+      : t === 'bestallning' || t === 'skrivare'
+        ? Boolean(tenant?.entitlements.features.ordering)
+        : true
+  const tabGroups = GROUPS.map((g) => ({ ...g, tabs: g.tabs.filter(showTab) })).filter((g) => g.tabs.length > 0)
+  const activeGroup = tabGroups.find((g) => g.tabs.includes(tab))?.id ?? tabGroups[0]?.id
+
   return (
     <>
       <AdminTopbar
@@ -423,317 +451,337 @@ export default function InstallningarPage() {
           </span>
         }
       />
-      <div className="admin-main">
-        <nav className="settings-tabs" aria-label="Inställningar">
-          {(Object.keys(TAB_LABEL) as SettingsTab[])
-            .filter((t) => (t === 'personal' || t === 'statistik' || t === 'bokforing' || t === 'integritet' ? isOwner : t === 'bestallning' || t === 'skrivare' ? Boolean(tenant?.entitlements.features.ordering) : true))
-            .map((t) => (
+      <div className="admin-main settings-main">
+        <nav className="settings-nav" aria-label="Inställningar">
+          <div className="settings-groups" ref={groupRow}>
+            {tabGroups.map((g) => (
               <button
-                key={t}
+                key={g.id}
                 type="button"
-                className={tab === t ? 'active' : ''}
-                data-tour={`settings-tab-${t}`}
-                aria-current={tab === t ? 'page' : undefined}
-                onClick={() => openTab(t)}
+                className={g.id === activeGroup ? 'active' : ''}
+                aria-pressed={g.id === activeGroup}
+                onClick={() => openTab(g.tabs[0])}
               >
-                {TAB_LABEL[t]}
+                {g.short}
               </button>
             ))}
-        </nav>
-        {/* Flikar döljs (hidden) i stället för att tas bort - osparade ändringar ligger kvar. */}
-        <section className="admin-card table-card" hidden={tab !== 'profil'}>
-          <div className="card-head">
-            <div>
-              <h2 className="card-title">Restaurangprofil</h2>
-              <p className="cell-muted">
-                {resolvingLocation
-                  ? 'Letar efter restaurangens plats…'
-                  : locationId
-                    ? isOwner
-                      ? 'Namn, kontakt och öppettider. Spara med knappen uppe till höger.'
-                      : 'Uppgifter för din plats. Bara ägaren kan ändra dem.'
-                    : isOwner
-                      ? 'Restaurangen har ingen plats än. Fyll i uppgifterna och spara för att skapa den första.'
-                      : 'Du är inte kopplad till någon plats än. Be ägaren att koppla dig till en plats.'}
-              </p>
-            </div>
           </div>
-          {locationError && (
-            <p className="form-error" role="alert">
-              {locationError}
-            </p>
-          )}
-          <div className="form-grid">
-            <div className="form-field">
-              <label htmlFor="rp-name">Namn</label>
-              <input
-                id="rp-name"
-                value={profile.name}
-                onChange={(e) => updateProfile('name', e.target.value)}
-              />
-            </div>
-            <div className="form-field">
-              <label htmlFor="rp-phone">Telefon</label>
-              <PhoneInput id="rp-phone" value={profile.phone} onChange={(v) => updateProfile('phone', v)} />
-            </div>
-            <div className="form-field">
-              <label htmlFor="rp-address">Adress</label>
-              <input
-                id="rp-address"
-                value={profile.address}
-                onChange={(e) => updateProfile('address', e.target.value)}
-              />
-            </div>
-            <div className="form-field">
-              <label htmlFor="rp-email">E-post</label>
-              <input
-                id="rp-email"
-                type="email"
-                value={profile.email}
-                onChange={(e) => updateProfile('email', e.target.value)}
-              />
-            </div>
-            <div className="form-field">
-              <span className="form-field-label-row">
-                <label htmlFor="rp-grace">Grace period (minuter)</label>
-                <InfoTooltip label="Grace period (minuter)">
-                  Hur länge bordet hålls om gästen är sen. Därefter blir bordet
-                  ledigt igen.
-                </InfoTooltip>
-              </span>
-              <select
-                id="rp-grace"
-                value={graceMinutes}
-                onChange={(e) => {
-                  setSaved(false)
-                  setGracePeriodHours(Number(e.target.value) / 60)
-                }}
-              >
-                {GRACE_MINUTES.map((m) => (
-                  <option key={m} value={m}>
-                    {m} min
-                  </option>
+          {tabGroups.map((g) => (
+            <div key={g.id} className={g.id === activeGroup ? 'settings-group open' : 'settings-group'}>
+              <p className="settings-group-title">{g.label}</p>
+              <div className="settings-tabs">
+                {g.tabs.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    className={tab === t ? 'active' : ''}
+                    data-tour={`settings-tab-${t}`}
+                    aria-current={tab === t ? 'page' : undefined}
+                    onClick={() => openTab(t)}
+                  >
+                    {TAB_LABEL[t]}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
-          </div>
-          <div style={{ height: 20 }} />
-          <p className="form-section-label">Öppettider</p>
-          <div style={{ height: 8 }} />
-          <BusinessHoursEditor
-            value={businessHours}
-            onChange={(next) => {
-              setSaved(false)
-              setBusinessHours(next)
-            }}
-          />
-        </section>
-
-        <div hidden={tab !== 'profil'}>
-          <BookingTimeCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
-        </div>
-
-        {isOwner && (
-        <section className="admin-card table-card" hidden={tab !== 'personal'}>
-          <div className="card-head">
-            <div>
-              <h2 className="card-title">Personal &amp; behörigheter</h2>
-              <p className="cell-muted">
-                {staffLoading
-                  ? <Loading variant="inline" label="Hämtar användare" />
-                  : `${staff.length} användare, varav ${
-                      staff.filter((s) => s.status === 'active').length
-                    } aktiva`}
+          ))}
+        </nav>
+        <div className="settings-body">
+          {/* Flikar döljs (hidden) i stället för att tas bort - osparade ändringar ligger kvar. */}
+          <section className="admin-card table-card" hidden={tab !== 'profil'}>
+            <div className="card-head">
+              <div>
+                <h2 className="card-title">Restaurangprofil</h2>
+                <p className="cell-muted">
+                  {resolvingLocation
+                    ? 'Letar efter restaurangens plats…'
+                    : locationId
+                      ? isOwner
+                        ? 'Namn, kontakt och öppettider. Spara med knappen uppe till höger.'
+                        : 'Uppgifter för din plats. Bara ägaren kan ändra dem.'
+                      : isOwner
+                        ? 'Restaurangen har ingen plats än. Fyll i uppgifterna och spara för att skapa den första.'
+                        : 'Du är inte kopplad till någon plats än. Be ägaren att koppla dig till en plats.'}
+                </p>
+              </div>
+            </div>
+            {locationError && (
+              <p className="form-error" role="alert">
+                {locationError}
               </p>
-            </div>
-            {canManageStaff && (
-              <button
-                type="button"
-                className="btn primary square"
-                onClick={() => setModal({ mode: 'invite' })}
-              >
-                + Bjud in personal
-              </button>
             )}
+            <div className="form-grid">
+              <div className="form-field">
+                <label htmlFor="rp-name">Namn</label>
+                <input
+                  id="rp-name"
+                  value={profile.name}
+                  onChange={(e) => updateProfile('name', e.target.value)}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="rp-phone">Telefon</label>
+                <PhoneInput id="rp-phone" value={profile.phone} onChange={(v) => updateProfile('phone', v)} />
+              </div>
+              <div className="form-field">
+                <label htmlFor="rp-address">Adress</label>
+                <input
+                  id="rp-address"
+                  value={profile.address}
+                  onChange={(e) => updateProfile('address', e.target.value)}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="rp-email">E-post</label>
+                <input
+                  id="rp-email"
+                  type="email"
+                  value={profile.email}
+                  onChange={(e) => updateProfile('email', e.target.value)}
+                />
+              </div>
+              <div className="form-field">
+                <span className="form-field-label-row">
+                  <label htmlFor="rp-grace">Grace period (minuter)</label>
+                  <InfoTooltip label="Grace period (minuter)">
+                    Hur länge bordet hålls om gästen är sen. Därefter blir bordet
+                    ledigt igen.
+                  </InfoTooltip>
+                </span>
+                <select
+                  id="rp-grace"
+                  value={graceMinutes}
+                  onChange={(e) => {
+                    setSaved(false)
+                    setGracePeriodHours(Number(e.target.value) / 60)
+                  }}
+                >
+                  {GRACE_MINUTES.map((m) => (
+                    <option key={m} value={m}>
+                      {m} min
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div style={{ height: 20 }} />
+            <p className="form-section-label">Öppettider</p>
+            <div style={{ height: 8 }} />
+            <BusinessHoursEditor
+              value={businessHours}
+              onChange={(next) => {
+                setSaved(false)
+                setBusinessHours(next)
+              }}
+            />
+          </section>
+
+          <div hidden={tab !== 'profil'}>
+            <BookingTimeCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
           </div>
-          {(staffError ?? rowError) && (
-            <p className="form-error" role="alert">
-              {staffError ?? rowError}
-            </p>
-          )}
-          <div className="table-scroll">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Namn</th>
-                  <th>Roll</th>
-                  <th>E-post</th>
-                  <th>Status</th>
-                  <th>Åtgärder</th>
-                </tr>
-              </thead>
-              <tbody>
-                {!staffLoading && staff.length === 0 && !staffError && (
+
+          {isOwner && (
+          <section className="admin-card table-card" hidden={tab !== 'personal'}>
+            <div className="card-head">
+              <div>
+                <h2 className="card-title">Personal &amp; behörigheter</h2>
+                <p className="cell-muted">
+                  {staffLoading
+                    ? <Loading variant="inline" label="Hämtar användare" />
+                    : `${staff.length} användare, varav ${
+                        staff.filter((s) => s.status === 'active').length
+                      } aktiva`}
+                </p>
+              </div>
+              {canManageStaff && (
+                <button
+                  type="button"
+                  className="btn primary square"
+                  onClick={() => setModal({ mode: 'invite' })}
+                >
+                  + Bjud in personal
+                </button>
+              )}
+            </div>
+            {(staffError ?? rowError) && (
+              <p className="form-error" role="alert">
+                {staffError ?? rowError}
+              </p>
+            )}
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
                   <tr>
-                    <td colSpan={5} className="cell-muted">
-                      Inga användare att visa än.
-                    </td>
+                    <th>Namn</th>
+                    <th>Roll</th>
+                    <th>E-post</th>
+                    <th>Status</th>
+                    <th>Åtgärder</th>
                   </tr>
-                )}
-                {staff.map((s) => {
-                  const canEdit = canManageTarget(caller, s, 'profile')
-                  const statusAction = s.status === 'active' ? 'deactivate' : 'reactivate'
-                  const canToggleStatus = canManageTarget(caller, s, statusAction)
-                  const canDelete = canManageTarget(caller, s, 'delete')
-                  const busy = busySub === s.cognitoSub
-                  return (
-                    <tr key={s.cognitoSub}>
-                      <td className="cell-strong">{s.name}</td>
-                      <td>
-                        {ROLE_LABEL[s.role] ?? s.role}
-                        {s.role === 'staff' && (
-                          <span className="cell-muted">
-                            {' · '}
-                            {locationOptions.find((l) => l.locationId === s.locationId)
-                              ?.name ?? 'Ingen plats'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="cell-muted">{s.email}</td>
-                      <td>
-                        <span
-                          className={`status-badge ${
-                            s.status === 'active' ? 'reserved' : 'cancelled'
-                          }`}
-                        >
-                          {s.status === 'active' ? 'Aktiv' : 'Inaktiv'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="row-actions">
-                          {canEdit && (
-                            <button
-                              type="button"
-                              className="link-action"
-                              disabled={busy}
-                              onClick={() => setModal({ mode: 'edit', user: s })}
-                            >
-                              Redigera
-                            </button>
-                          )}
-                          {canToggleStatus && (
-                            <button
-                              type="button"
-                              className="link-action"
-                              disabled={busy}
-                              onClick={() => handleToggleStatus(s)}
-                            >
-                              {s.status === 'active' ? 'Inaktivera' : 'Aktivera'}
-                            </button>
-                          )}
-                          {canDelete && (
-                            <button
-                              type="button"
-                              className="link-action danger"
-                              disabled={busy}
-                              onClick={() => handleDelete(s)}
-                            >
-                              Ta bort
-                            </button>
-                          )}
-                        </span>
+                </thead>
+                <tbody>
+                  {!staffLoading && staff.length === 0 && !staffError && (
+                    <tr>
+                      <td colSpan={5} className="cell-muted">
+                        Inga användare att visa än.
                       </td>
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                  )}
+                  {staff.map((s) => {
+                    const canEdit = canManageTarget(caller, s, 'profile')
+                    const statusAction = s.status === 'active' ? 'deactivate' : 'reactivate'
+                    const canToggleStatus = canManageTarget(caller, s, statusAction)
+                    const canDelete = canManageTarget(caller, s, 'delete')
+                    const busy = busySub === s.cognitoSub
+                    return (
+                      <tr key={s.cognitoSub}>
+                        <td className="cell-strong">{s.name}</td>
+                        <td>
+                          {ROLE_LABEL[s.role] ?? s.role}
+                          {s.role === 'staff' && (
+                            <span className="cell-muted">
+                              {' · '}
+                              {locationOptions.find((l) => l.locationId === s.locationId)
+                                ?.name ?? 'Ingen plats'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="cell-muted">{s.email}</td>
+                        <td>
+                          <span
+                            className={`status-badge ${
+                              s.status === 'active' ? 'reserved' : 'cancelled'
+                            }`}
+                          >
+                            {s.status === 'active' ? 'Aktiv' : 'Inaktiv'}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="row-actions">
+                            {canEdit && (
+                              <button
+                                type="button"
+                                className="link-action"
+                                disabled={busy}
+                                onClick={() => setModal({ mode: 'edit', user: s })}
+                              >
+                                Redigera
+                              </button>
+                            )}
+                            {canToggleStatus && (
+                              <button
+                                type="button"
+                                className="link-action"
+                                disabled={busy}
+                                onClick={() => handleToggleStatus(s)}
+                              >
+                                {s.status === 'active' ? 'Inaktivera' : 'Aktivera'}
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button
+                                type="button"
+                                className="link-action danger"
+                                disabled={busy}
+                                onClick={() => handleDelete(s)}
+                              >
+                                Ta bort
+                              </button>
+                            )}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          )}
+
+          <div className="settings-row" hidden={tab !== 'betalningar'}>
+            {tenant && (
+              <PaymentsCard
+                tenant={tenant}
+                isOwner={isOwner}
+                stripeReturn={stripeReturn}
+                onRefresh={refreshTenant}
+              />
+            )}
           </div>
-        </section>
-        )}
 
-        <div className="settings-row" hidden={tab !== 'betalningar'}>
-          {tenant && (
-            <PaymentsCard
-              tenant={tenant}
-              isOwner={isOwner}
-              stripeReturn={stripeReturn}
-              onRefresh={refreshTenant}
-            />
-          )}
-        </div>
+          <div className="settings-row" hidden={tab !== 'notiser'}>
+            {tenant && (
+              <NotificationsCard
+                key={`${tenant.tenantId}:${JSON.stringify(tenant.notifications)}:${tenant.senderName ?? ''}`}
+                tenant={tenant}
+                isOwner={isOwner}
+              />
+            )}
+          </div>
 
-        <div className="settings-row" hidden={tab !== 'notiser'}>
-          {tenant && (
-            <NotificationsCard
-              key={`${tenant.tenantId}:${JSON.stringify(tenant.notifications)}:${tenant.senderName ?? ''}`}
-              tenant={tenant}
-              isOwner={isOwner}
-            />
-          )}
-        </div>
-
-        <div className="settings-row" hidden={tab !== 'avbokning'}>
-          <CancellationPolicyCard
-            key={locationId ?? 'none'}
-            locationId={locationId}
-            isOwner={isOwner}
-            stripeReady={Boolean(tenant?.stripe.chargesEnabled)}
-          />
-        </div>
-
-        {tenant?.entitlements.features.ordering && (
-          <div className="settings-row" hidden={tab !== 'bestallning'}>
-            <OrderingCard
+          <div className="settings-row" hidden={tab !== 'avbokning'}>
+            <CancellationPolicyCard
               key={locationId ?? 'none'}
               locationId={locationId}
               isOwner={isOwner}
               stripeReady={Boolean(tenant?.stripe.chargesEnabled)}
             />
           </div>
-        )}
 
-        {tenant?.entitlements.features.ordering && tab === 'skrivare' && (
-          <div className="settings-row">
-            <PrinterCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+          {tenant?.entitlements.features.ordering && (
+            <div className="settings-row" hidden={tab !== 'bestallning'}>
+              <OrderingCard
+                key={locationId ?? 'none'}
+                locationId={locationId}
+                isOwner={isOwner}
+                stripeReady={Boolean(tenant?.stripe.chargesEnabled)}
+              />
+            </div>
+          )}
+
+          {tenant?.entitlements.features.ordering && tab === 'skrivare' && (
+            <div className="settings-row">
+              <PrinterCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+            </div>
+          )}
+
+          <div className="settings-row" hidden={tab !== 'dagar'}>
+            <SpecialDaysCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
           </div>
-        )}
 
-        <div className="settings-row" hidden={tab !== 'dagar'}>
-          <SpecialDaysCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+          <div className="settings-row" hidden={tab !== 'bord'}>
+            <TableRulesCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+          </div>
+
+          {isOwner && tenant && (
+            <div className="settings-row" hidden={tab !== 'statistik'}>
+              <InsightsSettingsCard
+                key={`${locationId ?? 'none'}:${tenant.insights?.staffAccess ?? 'operations'}`}
+                tenant={tenant}
+                locationId={locationId}
+              />
+            </div>
+          )}
+
+          {isOwner && tab === 'bokforing' && (
+            <div className="settings-row">
+              <BokforingCard key={locationId ?? 'none'} locationId={locationId} />
+            </div>
+          )}
+
+          {isOwner && tab === 'integritet' && (
+            <div className="settings-row">
+              <PrivacyCard />
+            </div>
+          )}
+
+          {tab === 'utseende' && (
+            <div className="settings-row">
+              <AppearanceCard />
+            </div>
+          )}
         </div>
-
-        <div className="settings-row" hidden={tab !== 'bord'}>
-          <TableRulesCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
-        </div>
-
-        {isOwner && tenant && (
-          <div className="settings-row" hidden={tab !== 'statistik'}>
-            <InsightsSettingsCard
-              key={`${locationId ?? 'none'}:${tenant.insights?.staffAccess ?? 'operations'}`}
-              tenant={tenant}
-              locationId={locationId}
-            />
-          </div>
-        )}
-
-        {isOwner && tab === 'bokforing' && (
-          <div className="settings-row">
-            <BokforingCard key={locationId ?? 'none'} locationId={locationId} />
-          </div>
-        )}
-
-        {isOwner && tab === 'integritet' && (
-          <div className="settings-row">
-            <PrivacyCard />
-          </div>
-        )}
-
-        {tab === 'utseende' && (
-          <div className="settings-row">
-            <AppearanceCard />
-          </div>
-        )}
       </div>
 
       {modal && (

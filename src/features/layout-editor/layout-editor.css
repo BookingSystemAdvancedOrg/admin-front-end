@@ -1446,3 +1446,98 @@
   font: 500 10px/1 var(--mono, ui-monospace, monospace);
   color: var(--muted);
 }
+
+/* --- Medan layouten hämtas: frostat glas och en lokal som dukas fram ----- */
+
+.layout-prep {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--bg) 42%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(14px) saturate(1.3);
+  opacity: 1;
+  transition: opacity 520ms var(--ease), visibility 0s linear 0s;
+}
+.layout-prep.is-done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 520ms var(--ease), visibility 0s linear 520ms;
+}
+.layout-prep-card {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 26px 30px 22px;
+  border-radius: 22px;
+  background: var(--glass-hi, color-mix(in srgb, var(--surface) 70%, transparent));
+  box-shadow: var(--rim, none), var(--shadow, 0 20px 40px -24px rgba(26, 18, 14, 0.4));
+  transition: translate 520ms var(--ease), scale 520ms var(--ease);
+}
+.layout-prep.is-done .layout-prep-card {
+  translate: 0 -6px;
+  scale: 0.98;
+}
+.layout-prep-card p {
+  margin: 0;
+  font: 400 17px/1.2 var(--serif-face);
+  color: var(--muted);
+}
+.layout-prep-plan {
+  width: min(240px, 56vw);
+  height: auto;
+  overflow: visible;
+}
+.layout-prep-wall {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0.75;
+  animation: layout-prep-draw 2.8s var(--ease) infinite;
+}
+.layout-prep-wall--inner {
+  animation-delay: 0.25s;
+}
+.layout-prep-table {
+  fill: color-mix(in srgb, #a88462 38%, transparent);
+  stroke: #a88462;
+  stroke-width: 1.5;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: layout-prep-set 2.8s var(--ease) infinite;
+}
+.layout-prep-door {
+  fill: #6b4a2e;
+  opacity: 0.55;
+}
+@keyframes layout-prep-draw {
+  0% { stroke-dashoffset: 1; }
+  35%, 85% { stroke-dashoffset: 0; opacity: 0.75; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes layout-prep-set {
+  0% { opacity: 0; scale: 0.6; }
+  18%, 70% { opacity: 1; scale: 1; }
+  92%, 100% { opacity: 0; scale: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .layout-prep-wall,
+  .layout-prep-table {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .layout-prep {
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+  }
+}

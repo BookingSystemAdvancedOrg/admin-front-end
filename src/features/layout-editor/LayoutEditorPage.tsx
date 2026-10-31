@@ -1,5 +1,6 @@
 import { errorText } from '../../shared/errors'
 import { useEffect, useRef, useState } from 'react'
+import { LayoutPrep } from './LayoutPrep'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
@@ -260,6 +261,8 @@ export default function LayoutEditorPage() {
   const [saving, setSaving] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
   const [layoutError, setLayoutError] = useState<string | null>(null)
+  // Vilken plats vars sparade layout är inläst; tills dess ligger planen bakom glaset (LayoutPrep).
+  const [loadedFor, setLoadedFor] = useState<string | null>(null)
   // "Se live": byter tillfälligt ut `floors`/`currentFloorId` mot den
   // aktiva publicerade versionens innehåll, skrivskyddat. `draftBackup`
   // minns utkastet så det går att växla tillbaka utan att förlora något.
@@ -332,6 +335,7 @@ export default function LayoutEditorPage() {
         setSelection(null)
         resetHistory(loaded)
         fitTo(loaded[0])
+        setLoadedFor(locationId)
         const drawn = elements.filter((e) => e.type !== 'floor').length
         setStatusText(
           drawn === 0
@@ -2123,6 +2127,7 @@ export default function LayoutEditorPage() {
             onPointerLeave={onScenePointerUp}
             onContextMenu={onSceneContextMenu}
           >
+            <LayoutPrep done={!resolvingLocation && (!locationId || loadedFor === locationId || Boolean(layoutError))} />
             <div className="floor-tabs" onPointerDown={(e) => e.stopPropagation()}>
               {floors.map((f) => (
                 <button

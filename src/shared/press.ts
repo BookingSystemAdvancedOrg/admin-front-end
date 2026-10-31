@@ -2,8 +2,8 @@ import { useSyncExternalStore } from 'react'
 import { SOUND_KEY } from './storageRegistry'
 
 /**
- * Tryckkänsla, samma som booqy.se och Booqy Console: ett djupt, mjukt
- * klocktick (Web Audio, skapat i stunden, inga filer) och en klämning plus
+ * Tryckkänsla, samma som booqy.se och Booqy Console: ett modernt, tyst
+ * klick som i Windows (Web Audio, skapat i stunden, inga filer) och en klämning plus
  * en brun krusning, vid tryck och vid Enter eller mellanslag. Aldrig vid
  * hovring. Ljudet är på från början och startar vid första trycket
  * (webbläsarnas regler för ljud); Inställningar, Utseende och ljud stänger av det
@@ -18,13 +18,12 @@ const CTA = ".btn.primary, button[type='submit']"
 // Guiden (Hoppa över, Tillbaka, Nästa) klickar man igenom många gånger i rad: där är det tyst.
 const SILENT = '.guide-layer'
 
-// Ett djupt, mjukt tick som från en klocka av trä: ett kort anslag och en
-// rund ton som klingar ut. Ljusast för länkar, djupare för knappar och
-// djupast för huvudknapparna. [ton Hz, volym]
+// Ett modernt, tyst klick som i Windows: ett kort, rent "tk" med lite kropp.
+// Ljusast för länkar, lite djupare för knappar och huvudknapparna. [ton Hz, volym]
 const VOICES: Record<'tick' | 'press' | 'cta', [number, number]> = {
-  tick: [1700, 0.34],
-  press: [1450, 0.42],
-  cta: [1250, 0.48],
+  tick: [2400, 0.34],
+  press: [2150, 0.42],
+  cta: [1900, 0.48],
 }
 
 function reducedMotion(): boolean {
@@ -100,38 +99,37 @@ function play(kind: keyof typeof VOICES) {
     limit.connect(c.destination)
     const out = c.createBiquadFilter()
     out.type = 'lowpass'
-    out.frequency.value = 4000
+    out.frequency.value = 6000
     out.connect(limit)
-    // anslaget: 3 ms mjukt brus, som när träet träffas
-    const buf = c.createBuffer(1, Math.ceil(sr * 0.003), sr)
+    // anslaget: 2 ms mjukt brus som ger klicket dess skärpa
+    const buf = c.createBuffer(1, Math.ceil(sr * 0.002), sr)
     const d = buf.getChannelData(0)
     let seed = 7
-    for (let i = 0; i < d.length; i++) d[i] = ((seed = (seed * 16807) % 2147483647) / 1073741823.5 - 1) * Math.min(1, i / (sr * 0.0004)) * Math.pow(1 - i / d.length, 2)
+    for (let i = 0; i < d.length; i++) d[i] = ((seed = (seed * 16807) % 2147483647) / 1073741823.5 - 1) * Math.min(1, i / (sr * 0.0002)) * Math.pow(1 - i / d.length, 2)
     const src = c.createBufferSource()
     src.buffer = buf
     const band = c.createBiquadFilter()
     band.type = 'bandpass'
-    band.frequency.value = pitch * 2
-    band.Q.value = 1.5
+    band.frequency.value = pitch * 1.3
+    band.Q.value = 2
     const g = c.createGain()
-    g.gain.value = vol * 4.5
+    g.gain.value = vol * 5
     src.connect(band).connect(g).connect(out)
     src.start(t)
-    // kroppen: en rund ton som klingar ut, och en svag överton som ger träkänslan
+    // tonen: ett kort, rent pling och en liten kropp under, som Windows klick
     const tone = (hz: number, gain: number, decay: number) => {
       const osc = c.createOscillator()
-      osc.frequency.setValueAtTime(hz * 1.04, t)
-      osc.frequency.exponentialRampToValueAtTime(hz, t + 0.01)
+      osc.frequency.value = hz
       const og = c.createGain()
       og.gain.setValueAtTime(0, t)
-      og.gain.linearRampToValueAtTime(gain, t + 0.0015)
+      og.gain.linearRampToValueAtTime(gain, t + 0.0008)
       og.gain.exponentialRampToValueAtTime(0.0001, t + decay)
       osc.connect(og).connect(out)
       osc.start(t)
-      osc.stop(t + decay + 0.005)
+      osc.stop(t + decay + 0.003)
     }
-    tone(pitch, vol * 1.8, 0.05)
-    tone(pitch * 2.76, vol * 0.45, 0.02)
+    tone(pitch, vol * 1.8, 0.014)
+    tone(pitch * 0.45, vol * 0.8, 0.009)
   } catch {
     /* inget ljud: det synliga räcker */
   }

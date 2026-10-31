@@ -571,26 +571,26 @@
 }
 
 .seg-handle.h-a {
-  left: -11px;
+  left: calc(var(--half-t, 0px) - 11px);
   top: 50%;
   margin-top: -11px;
 }
 
 .seg-handle.h-b {
-  right: -11px;
+  right: calc(var(--half-t, 0px) - 11px);
   top: 50%;
   margin-top: -11px;
 }
 
 .seg-handle.v-a {
-  top: -11px;
+  top: calc(var(--half-t, 0px) - 11px);
   left: 50%;
   margin-left: -11px;
   cursor: ns-resize;
 }
 
 .seg-handle.v-b {
-  bottom: -11px;
+  bottom: calc(var(--half-t, 0px) - 11px);
   left: 50%;
   margin-left: -11px;
   cursor: ns-resize;

@@ -2976,15 +2976,23 @@ function WallEl({
 }) {
   const t = WALL_THICKNESS
   const horizontal = wall.dir === 'h'
+  // Väggen ritas en halv tjocklek längre i båda ändar, så att två väggar som
+  // möts i ett hörn täcker hela hörnet (annars syns golvet som en vit skåra).
+  // Bara ritningen; väggens sparade läge och längd är oförändrade.
   const style = {
-    left: (horizontal ? wall.x : wall.x - t / 2) + HALF_W,
-    top: (horizontal ? wall.y - t / 2 : wall.y) + HALF_H,
-    width: horizontal ? Math.max(wall.length, 2) : t,
-    height: horizontal ? t : Math.max(wall.length, 2),
+    left: wall.x - t / 2 + HALF_W,
+    top: wall.y - t / 2 + HALF_H,
+    width: horizontal ? Math.max(wall.length, 2) + t : t,
+    height: horizontal ? t : Math.max(wall.length, 2) + t,
     ['--wh' as string]: `${lowered ? WALL_LOW : WALL_HEIGHT}px`,
+    // handtagen sitter kvar på väggens riktiga ändpunkter
+    ['--half-t' as string]: `${t / 2}px`,
   }
   const faceA = horizontal ? 'h-n' : 'v-w'
   const faceB = horizontal ? 'h-s' : 'v-e'
+  // Gavlarna: väggen är en hel låda, så man aldrig ser in i den från änden.
+  const endA = horizontal ? 'v-w' : 'h-n'
+  const endB = horizontal ? 'v-e' : 'h-s'
 
   return (
     <div
@@ -3002,6 +3010,8 @@ function WallEl({
     >
       <div className={`seg-face full ${faceA}`} />
       <div className={`seg-face full ${faceB}`} />
+      <div className={`seg-face end ${endA}`} />
+      <div className={`seg-face end ${endB}`} />
       <div className="seg-cap" />
       {showHandles && (
         <>

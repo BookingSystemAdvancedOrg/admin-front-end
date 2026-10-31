@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { BrandMark, BrandWordmark } from './BrandMark'
 import { useAuth } from '../features/auth/useAuth'
 import { primaryGroupLabel } from '../features/installningar/usersApi'
@@ -15,6 +15,7 @@ import { MotionScope, sidebarPourDone, sidebarShouldPour } from './motion/Motion
 import { BusyBar } from './motion/BusyBar'
 import { DpaBanner } from '../features/dpa/DpaBanner'
 import { SkelCard, SkelPage, SkelTiles } from './Skeleton'
+import { NAV_CLOSED_KEY } from './storageRegistry'
 
 // Sidebar-länkarna, i grupper efter när man behöver dem: överblicken,
 // det som händer under passet, och det man ställer in mer sällan.
@@ -59,6 +60,21 @@ const NAV_GROUPS: { id: string; label: string | null; items: NavItem[] }[] = [
   },
 ]
 
+/** Grupperna i sidomenyn som användaren har fällt ihop (sparas i webbläsaren). */
+function storedClosedGroups(): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(NAV_CLOSED_KEY) ?? '[]') as unknown
+    return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+/** Är sidan en av gruppens? */
+function onItem(pathname: string, item: NavItem): boolean {
+  return item.end ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`)
+}
+
 const TENANT_ERROR: Record<TenantErrorCode, { title: string; text: string }> = {
   tenant_inactive: {
     title: 'Kontot är inte aktivt',
@@ -90,6 +106,29 @@ const TENANT_ERROR: Record<TenantErrorCode, { title: string; text: string }> = {
 export function AdminLayout() {
   const { email, sub, groups, logout } = useAuth()
   const { tenant, status, error, locationId, refresh } = useTenant()
+  const { pathname } = useLocation()
+  // Sidomenyns grupper är öppna från början; en grupp man fäller ihop förblir
+  // hopfälld i den här webbläsaren.
+  const [closedGroups, setClosedGroups] = useState<string[]>(storedClosedGroups)
+  // Går man till en sida i en hopfälld grupp (en länk, eller guiden) öppnas
+  // gruppen igen, så att sidan man står på alltid syns i menyn.
+  useEffect(() => {
+    const group = NAV_GROUPS.find((g) => g.label && g.items.some((item) => onItem(pathname, item)))
+    if (group && closedGroups.includes(group.id)) toggleGroup(group.id, false)
+    // bara när sidan byts, inte när användaren fäller ihop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
+  function toggleGroup(id: string, open: boolean) {
+    setClosedGroups((prev) => {
+      const next = open ? [...prev.filter((x) => x !== id), id] : prev.filter((x) => x !== id)
+      try {
+        localStorage.setItem(NAV_CLOSED_KEY, JSON.stringify(next))
+      } catch {
+        /* privat läge utan lagring: valet gäller tills sidan laddas om */
+      }
+      return next
+    })
+  }
   // Visningsnamn = det som står innan '@' i e-posten, t.ex. "anna@..." -> "anna".
   const displayName = email ? email.split('@')[0] : 'Personal'
   const initial = (displayName[0] ?? 'K').toUpperCase()
@@ -182,29 +221,47 @@ export function AdminLayout() {
             )
             if (items.length === 0) return null
             const headingId = `nav-group-${group.id}`
+            const listId = `nav-list-${group.id}`
+            // Öppen från början; hopfälld bara om användaren har fällt ihop den.
+            const open = !group.label || !closedGroups.includes(group.id)
+            const links = items.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                data-tour={item.tour}
+                className={({ isActive }) => (isActive ? 'admin-nav-item active' : 'admin-nav-item')}
+              >
+                {item.label}
+              </NavLink>
+            ))
             return (
               <div
                 key={group.id}
-                className="admin-nav-group"
+                className={open ? 'admin-nav-group' : 'admin-nav-group closed'}
                 role={group.label ? 'group' : undefined}
                 aria-labelledby={group.label ? headingId : undefined}
               >
-                {group.label && (
-                  <span className="admin-nav-heading" id={headingId}>
-                    {group.label}
-                  </span>
+                {group.label ? (
+                  <>
+                    <button
+                      type="button"
+                      className="admin-nav-heading admin-nav-toggle"
+                      id={headingId}
+                      aria-expanded={open}
+                      aria-controls={listId}
+                      onClick={() => toggleGroup(group.id, open)}
+                    >
+                      {group.label}
+                      <span className="admin-nav-chevron" aria-hidden="true" />
+                    </button>
+                    <div className="admin-nav-items" id={listId}>
+                      <div>{links}</div>
+                    </div>
+                  </>
+                ) : (
+                  links
                 )}
-                {items.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.end}
-                    data-tour={item.tour}
-                    className={({ isActive }) => (isActive ? 'admin-nav-item active' : 'admin-nav-item')}
-                  >
-                    {item.label}
-                  </NavLink>
-                ))}
               </div>
             )
           })}

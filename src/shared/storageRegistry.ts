@@ -37,6 +37,7 @@ export const MOTION_SEEN_KEY = 'booqy-motion-seen'
 export const THEME_KEY = 'booqy-theme'
 export const SOUND_KEY = 'booqy-sound'
 export const SOUND_VOLUME_KEY = 'booqy-sound-volume'
+export const NAV_CLOSED_KEY = 'booqy-nav-closed'
 export const SAMPLE_DATA_KEY = 'booqy-sample-data'
 export const CARD_READER_KEY_PREFIX = 'booqy-card-reader:'
 
@@ -104,6 +105,14 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     kind: 'localStorage',
     setBy: 'Booqy',
     purpose: 'Hur högt klickljudet är, 0-100 (Inställningar, Utseende och ljud). Sparas bara när du ändrar den. Inga personuppgifter.',
+    lifetime: 'Tills du rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: NAV_CLOSED_KEY,
+    kind: 'localStorage',
+    setBy: 'Booqy',
+    purpose: 'Vilka grupper i sidomenyn (Under passet, Restaurangen) du har fällt ihop. Sparas bara när du fäller ihop eller öppnar en grupp. Inga personuppgifter.',
     lifetime: 'Tills du rensar webbläsaren',
     category: 'nödvändig',
   },

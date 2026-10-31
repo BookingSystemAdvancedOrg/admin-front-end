@@ -1485,3 +1485,96 @@ html.is-busy * {
   flex: 1;
   width: auto;
 }
+
+/* Sidomenyns grupper går att fälla ihop (AdminLayout): rubriken är en knapp
+   med en liten pil, gruppen är öppen från början. På datorn glider länkarna
+   ihop; en hopfälld grupps länkar går inte att tabba till. På mobil, där
+   menyn är ett band utan rubriker, ändras ingenting. */
+.admin-nav-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  cursor: default;
+  transition: background-color 160ms var(--ease), color 160ms var(--ease);
+}
+
+.admin-nav-chevron {
+  width: 7px;
+  height: 7px;
+  margin: 0 6px 3px 0;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  rotate: 45deg;
+  opacity: 0.7;
+  transition: rotate 220ms var(--ease), margin 220ms var(--ease);
+}
+
+.admin-nav-group.closed .admin-nav-chevron {
+  margin-bottom: -2px;
+  rotate: -45deg;
+}
+
+@media (hover: hover) {
+  .admin-nav-toggle:hover {
+    color: var(--on-ox);
+  }
+}
+
+.admin-nav-toggle:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.admin-nav-items {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition:
+    grid-template-rows 260ms var(--ease),
+    opacity 200ms var(--ease),
+    visibility 0s;
+}
+
+.admin-nav-items > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (min-width: 901px) {
+  .admin-nav-group.closed .admin-nav-items {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      grid-template-rows 260ms var(--ease),
+      opacity 160ms var(--ease),
+      visibility 0s 260ms;
+  }
+}
+
+@media (max-width: 900px) {
+  .admin-nav-toggle {
+    display: none;
+  }
+
+  .admin-nav-items,
+  .admin-nav-items > div {
+    display: contents;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-nav-items,
+  .admin-nav-chevron {
+    transition: none;
+  }
+}

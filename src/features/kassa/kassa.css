@@ -220,12 +220,18 @@
   overflow: hidden;
 }
 
+/* Öppna notor: radbryts i stället för att rulla i sidled, så ingen nota
+   klipps vid kanten och knapparna för ny nota alltid syns. */
 .kassa-bills {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   padding-bottom: 4px;
-  overflow-x: auto;
-  scrollbar-width: thin;
+}
+
+.kassa-bills .kassa-chip {
+  flex: none;
+  max-width: 100%;
 }
 
 .kassa-chips {

@@ -1234,7 +1234,8 @@ html.is-busy * {
   scrollbar-width: none;
   border: 0 !important;
   border-radius: 999px !important;
-  background: rgba(255, 255, 255, 0.42) !important;
+  /* nästan vit, så att skenan ser likadan ut på papper och på glas */
+  background: rgba(255, 255, 255, 0.9) !important;
   -webkit-backdrop-filter: blur(10px) saturate(1.5);
   backdrop-filter: blur(10px) saturate(1.5);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 0 0 1px rgba(58, 36, 24, 0.12), 0 6px 16px -12px rgba(58, 36, 24, 0.35) !important;

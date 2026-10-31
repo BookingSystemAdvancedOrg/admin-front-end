@@ -102,8 +102,8 @@
   --slip: #1a120e;
   --on-slip: #ffffff;
   /* Vätskan i nyckeltalsrutorna (rgb-tripel och täthet, se brand.css). */
-  --liquid-tile: 213, 196, 174;
-  --liquid-tile-alpha: 0.38;
+  --liquid-tile: 255, 255, 255;
+  --liquid-tile-alpha: 0.9;
   --liquid-attention: 158, 29, 38;
   --liquid-attention-alpha: 0.14;
   --font: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;

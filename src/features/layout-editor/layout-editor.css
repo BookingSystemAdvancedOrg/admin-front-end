@@ -1541,3 +1541,17 @@
     background: color-mix(in srgb, var(--bg) 92%, transparent);
   }
 }
+
+/* Våningsflikarna och verktygsraden delar överkanten. När planen är för smal
+   för båda (mindre bärbara, surfplattor) lägger sig våningarna på en egen rad
+   under verktygen i stället för att hamna under dem. */
+.floor-scene {
+  container-type: inline-size;
+}
+
+@container (max-width: 860px) {
+  .floor-tabs {
+    top: 72px;
+    max-width: calc(100% - 32px);
+  }
+}

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import './index.css'
 import { installPress } from './shared/press'
+import { installGlide } from './shared/glide'
 import App from './App.tsx'
 import { AuthProvider } from './features/auth/AuthContext.tsx'
 import { RequireAuth } from './features/auth/RequireAuth.tsx'
@@ -18,6 +19,7 @@ import CookiesPage from './features/cookies/CookiesPage.tsx'
 // and is gated by RequireAuth, which redirects signed-out visitors to
 // /logga-in.
 installPress()
+installGlide()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

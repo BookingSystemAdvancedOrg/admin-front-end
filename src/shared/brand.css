@@ -731,6 +731,23 @@ html.is-saving .btn:disabled {
   -webkit-backdrop-filter: blur(16px) saturate(1.6);
   backdrop-filter: blur(16px) saturate(1.6);
 }
+/* Datorer: sidomenyn är exakt skärmhög och rullar för sig. Med pekaren över
+   den rullar bara menyn tills den är i botten; därefter tar sidan över
+   (webbläsarens vanliga kedja). Över sidan rullar bara sidan. */
+@media (min-width: 901px) {
+  .admin-sidebar,
+  .admin-sidebar.liquid--full {
+    height: calc(100svh - 24px);
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(58, 36, 24, 0.22) transparent;
+  }
+  :root[data-theme='dark'] .admin-sidebar {
+    scrollbar-color: rgba(213, 196, 174, 0.22) transparent;
+  }
+}
 .admin-sidebar--pouring {
   background: var(--glass);
   --liquid: 255, 255, 255;

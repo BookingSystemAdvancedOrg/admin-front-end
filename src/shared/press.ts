@@ -135,6 +135,50 @@ function clickSamples(sr: number, pitch: number, peak: number): Float32Array {
   return out
 }
 
+let unlocked = false
+
+// Safari kan lämna ljudmotorn fast: efter viloläge, byte av ljudutgång (AirPods,
+// samtal, en annan app) eller en lång stund i bakgrunden säger den ofta "running"
+// men klockan står still och inget hörs, eller så vaknar den aldrig. Då byts den
+// mot en ny vid nästa tryck i stället för att klicket tystnar tills sidan laddas om.
+let seen = { time: -1, at: 0 }
+let wokeAt = 0
+
+function stuck(c: AudioContext): boolean {
+  if (c.state === 'closed') return true
+  const now = performance.now()
+  if (c.state === 'running') {
+    wokeAt = 0
+    if (c.currentTime !== seen.time) {
+      seen = { time: c.currentTime, at: now }
+      return false
+    }
+    return now - seen.at > 250
+  }
+  return wokeAt > 0 && now - wokeAt > 1000
+}
+
+function audio(): AudioContext | null {
+  if (ctx && stuck(ctx)) {
+    ctx.close().catch(() => {})
+    ctx = null
+    unlocked = false
+  }
+  if (!ctx) {
+    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!AC) return null
+    ctx = new AC()
+    seen = { time: -1, at: 0 }
+    wokeAt = 0
+  }
+  return ctx
+}
+
+function wake(c: AudioContext): Promise<void> {
+  if (!wokeAt) wokeAt = performance.now()
+  return c.resume()
+}
+
 const buffers = new Map<string, AudioBuffer>()
 
 /** Rösten som ljudbuffert, byggd en gång per ljudmotor och samplingsfrekvens. */
@@ -154,20 +198,15 @@ function clickBuffer(c: AudioContext, kind: keyof typeof VOICES): AudioBuffer {
 function play(kind: keyof typeof VOICES) {
   if (!on || volume <= 0) return
   try {
-    if (!ctx) {
-      const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-      if (!AC) return
-      ctx = new AC()
-    }
+    const c = audio()
+    if (!c) return
     // Safari starts the audio asleep: wake it, then play once it is running
-    if (ctx.state !== 'running') {
-      const c = ctx
-      c.resume().then(() => {
+    if (c.state !== 'running') {
+      wake(c).then(() => {
         if (c.state === 'running') play(kind)
       }, () => {})
       return
     }
-    const c = ctx
     const src = c.createBufferSource()
     src.buffer = clickBuffer(c, kind)
     const gain = c.createGain()
@@ -200,7 +239,6 @@ function visual(el: Element, x: number | null, y: number | null) {
 }
 
 let installed = false
-let unlocked = false
 
 /** Lyssnar en gång på dokumentet; varje tryck i appen får känslan. */
 export function installPress() {
@@ -211,16 +249,13 @@ export function installPress() {
   const unlock = () => {
     if (!on) return
     try {
-      if (!ctx) {
-        const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-        if (!AC) return
-        ctx = new AC()
-      }
-      if (ctx.state !== 'running') void ctx.resume()
+      const c = audio()
+      if (!c) return
+      if (c.state !== 'running') void wake(c)
       if (!unlocked) {
-        const silent = ctx.createBufferSource()
-        silent.buffer = ctx.createBuffer(1, 1, ctx.sampleRate)
-        silent.connect(ctx.destination)
+        const silent = c.createBufferSource()
+        silent.buffer = c.createBuffer(1, 1, c.sampleRate)
+        silent.connect(c.destination)
         silent.start(0)
         unlocked = true
       }
@@ -229,6 +264,10 @@ export function installPress() {
     }
   }
   for (const type of ['pointerup', 'click', 'touchend', 'keydown']) document.addEventListener(type, unlock, { capture: true, passive: true })
+  // tillbaka till fliken: läs av ljudklockan, så att nästa tryck ser om den står still
+  document.addEventListener('visibilitychange', () => {
+    if (ctx && document.visibilityState === 'visible') stuck(ctx)
+  })
   document.addEventListener(
     'pointerdown',
     (e) => {

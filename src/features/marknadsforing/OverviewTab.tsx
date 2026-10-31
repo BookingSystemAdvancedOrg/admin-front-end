@@ -3,7 +3,7 @@ import { ChartTip } from '../../shared/ChartTip'
 import { useChartTip } from '../../shared/chartTipState'
 import { StatTile } from '../../shared/motion/StatTile'
 import { Num } from '../../shared/motion/Num'
-import { Loading } from '../../shared/Loading'
+import { OverviewSkeleton } from './OverviewSkeleton'
 import { useTenant } from '../../shared/tenant'
 import { trendOf } from '../../shared/trend'
 import {
@@ -161,7 +161,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
       </div>
 
       {error && <p className="form-error" role="alert">{error}</p>}
-      {!data && !error && <Loading label="Hämtar statistiken" />}
+      {!data && !error && <OverviewSkeleton />}
 
       {data && (
         <>

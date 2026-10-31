@@ -611,3 +611,82 @@
     transition: none;
   }
 }
+
+/* --- Medan statistiken hämtas (OverviewSkeleton) ------------------------
+   Samma kort som sidan; i dem suddiga, mjukt andande glasrutor där siffror,
+   staplar och rader kommer. */
+.sk {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.sk-block {
+  display: block;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink) 11%, transparent);
+  filter: blur(4px);
+  animation: sk-breathe 1.8s ease-in-out infinite;
+}
+.sk-tile {
+  gap: 14px;
+  min-height: 170px;
+  animation: none;
+}
+.sk-tile .sk-block {
+  border: 0;
+  animation-delay: inherit;
+}
+.sk-label { width: 46%; height: 12px; }
+.sk-value { width: 34%; height: 40px; border-radius: 12px; }
+.sk-note { width: 70%; height: 12px; margin-top: auto; }
+.sk-title { width: 180px; max-width: 50%; height: 22px; }
+.sk-aside { width: 220px; max-width: 34%; height: 14px; }
+.sk-aside--short { width: 130px; }
+.sk-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 230px;
+  padding: 8px 0 4px;
+}
+.sk-bar {
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: 6px 6px 3px 3px;
+  background: color-mix(in srgb, #a88462 34%, transparent);
+}
+.sk-legend {
+  display: flex;
+  gap: 18px;
+  margin-top: 14px;
+}
+.sk-legend .sk-block { height: 12px; }
+.sk-lines {
+  display: flex;
+  flex-direction: column;
+}
+.sk-line-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 0;
+  border-top: 1px dashed var(--border);
+}
+.sk-line-row .sk-block { height: 14px; }
+.sk-w-12 { width: 12%; }
+.sk-w-15 { width: 15%; }
+.sk-w-18 { width: 18%; }
+.sk-w-25 { width: 25%; }
+.sk-w-40 { width: 40%; }
+@keyframes sk-breathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@media (max-width: 760px) {
+  .sk-chart { height: 160px; gap: 3px; }
+  .sk-title { width: 140px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk-block { animation: none; opacity: 0.8; }
+}

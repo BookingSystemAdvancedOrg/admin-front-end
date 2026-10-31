@@ -1,6 +1,6 @@
 /* Rullistor (alla <select> i admin): samma material som resten av märket.
-   Stängd: termopapper med tryckt pil. Öppen: en lapp med tryckta rader,
-   vinrött stråk under raden man pekar på och en bock vid det valda.
+   Stängd: termopapper med tryckt pil. Öppen: ett rundat papper med rader,
+   en mjuk sandfärgad ruta under raden man pekar på och en bock vid det valda.
 
    Byggs på webbläsarens egen rullista (appearance: base-select), så
    tangentbord, skärmläsare och mobilens väljare fungerar som vanligt. Där
@@ -107,7 +107,7 @@ select:disabled {
     min-width: anchor-size(width);
     max-height: min(340px, 60svh);
     margin-block: 6px;
-    padding: 5px;
+    padding: 6px;
     overflow-y: auto;
     border: 1px solid var(--border);
     border-radius: var(--r-lg);
@@ -142,8 +142,8 @@ select:disabled {
     align-items: center;
     gap: 12px;
     min-height: 38px;
-    padding: 8px 12px;
-    border-radius: 2px;
+    padding: 8px 14px;
+    border-radius: 16px;
     background: transparent;
     color: var(--ink);
     font: 500 14px/1.3 var(--font);
@@ -151,18 +151,24 @@ select:disabled {
     transition: background-color 120ms var(--ease);
   }
 
+  /* Raden man pekar på: en mjuk sandruta i märkets bruna, rundad som listan. */
   select option:hover,
   select option:focus-visible {
-    background: var(--tint-red);
+    background: rgba(168, 132, 98, 0.16);
     color: var(--ink);
     outline: none;
+  }
+
+  :root[data-theme='dark'] select option:hover,
+  :root[data-theme='dark'] select option:focus-visible {
+    background: rgba(213, 196, 174, 0.14);
   }
 
   select option:checked {
     font-weight: 650;
   }
 
-  /* Bocken vid det valda: tryckt i skrivarens röda, längst till höger. */
+  /* Bocken vid det valda: i märkets bruna bläck, längst till höger. */
   select option::checkmark {
     content: '';
     order: 1;
@@ -195,12 +201,12 @@ select:disabled {
 
   /* Sidomenyns platsväljare: knappen i menyns ton, listan är papper. */
   .admin-location-picker select:hover {
-    box-shadow: inset 0 0 0 1px rgba(246, 236, 233, 0.45);
+    box-shadow: inset 0 0 0 1px rgba(168, 132, 98, 0.45);
   }
 
   .admin-location-picker select:open {
-    background: rgba(246, 236, 233, 0.16);
-    box-shadow: inset 0 0 0 1px rgba(246, 236, 233, 0.6);
+    background: rgba(168, 132, 98, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(168, 132, 98, 0.6);
   }
 
   .admin-location-picker select::picker(select) {

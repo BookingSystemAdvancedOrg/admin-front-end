@@ -648,13 +648,8 @@
     grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
   }
 
-  .kassa-bar-actions {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding-bottom: 2px;
-    scrollbar-width: none;
-  }
-
+  /* Bara dagens knapp och två menyer: de får plats och radbryts vid behov.
+     Ingen sidrullning, som annars skulle klippa menyernas listor. */
   .kassa-bar-actions .btn {
     flex: none;
   }
@@ -700,15 +695,6 @@
 }
 
 /* --- mer, avbrott, kom igång, om kassan ------------------------------------------ */
-
-.kassa-more {
-  margin-top: -4px;
-}
-
-.kassa-bar-actions .btn.on-more {
-  background: var(--fill);
-  box-shadow: none;
-}
 
 .kassa a.btn {
   display: inline-flex;
@@ -1172,5 +1158,145 @@
 @media (prefers-reduced-motion: reduce) {
   .kassa-tile:hover:not(:disabled) {
     translate: none;
+  }
+}
+
+/* Kassans huvudrad: dagens huvudknapp och två menyer (KassaMenu), Rapporter
+   och Kassan, i stället för en rad knappar och en "Mer" som fällde ut en till.
+   Varje val i menyn har en rad om vad det gör. */
+.kassa-menu-wrap {
+  position: relative;
+}
+
+.kassa-menu-button {
+  gap: 8px;
+}
+
+.kassa-menu-chevron {
+  width: 8px;
+  height: 8px;
+  margin: -3px 0 0 2px;
+  border-right: 1.75px solid currentColor;
+  border-bottom: 1.75px solid currentColor;
+  rotate: 45deg;
+  transition: rotate 200ms var(--ease), margin 200ms var(--ease);
+}
+
+.kassa-menu-button.open .kassa-menu-chevron {
+  margin-top: 4px;
+  rotate: 225deg;
+}
+
+.kassa-menu-panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: min(340px, calc(100vw - 32px));
+  padding: 6px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.86);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(18px) saturate(1.5);
+  box-shadow: inset 0 1px 0 #ffffff, inset 0 0 0 1px rgba(58, 36, 24, 0.1), 0 24px 48px -24px rgba(58, 36, 24, 0.45);
+  animation: kassa-menu-in 160ms var(--ease);
+}
+
+.kassa-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  text-decoration: none;
+  cursor: default;
+  transition: background-color 160ms var(--ease);
+}
+
+.kassa-menu-item:hover:not(:disabled),
+.kassa-menu-item:focus-visible {
+  background: rgba(58, 36, 24, 0.07);
+  outline: none;
+}
+
+.kassa-menu-item:disabled {
+  opacity: 0.45;
+}
+
+.kassa-menu-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.kassa-menu-label {
+  font: 600 15px/1.25 var(--font);
+}
+
+.kassa-menu-hint {
+  font: 400 13px/1.35 var(--font);
+  color: var(--muted);
+}
+
+.kassa-menu-item.quiet .kassa-menu-label {
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.kassa-menu-state {
+  flex: none;
+  min-width: 34px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(58, 36, 24, 0.08);
+  font: 650 12px/1.2 var(--font);
+  color: var(--muted);
+  text-align: center;
+}
+
+.kassa-menu-state.on {
+  background: #1a120e;
+  color: #ffffff;
+}
+
+:root[data-theme='dark'] .kassa-menu-panel {
+  background: rgba(34, 24, 18, 0.92);
+  box-shadow: inset 0 1px 0 rgba(213, 196, 174, 0.2), inset 0 0 0 1px rgba(213, 196, 174, 0.12), 0 24px 48px -24px rgba(0, 0, 0, 0.8);
+}
+
+:root[data-theme='dark'] .kassa-menu-item:hover:not(:disabled),
+:root[data-theme='dark'] .kassa-menu-item:focus-visible {
+  background: rgba(213, 196, 174, 0.1);
+}
+
+:root[data-theme='dark'] .kassa-menu-state {
+  background: rgba(213, 196, 174, 0.12);
+}
+
+:root[data-theme='dark'] .kassa-menu-state.on {
+  background: #f6f1ea;
+  color: #1a120e;
+}
+
+@keyframes kassa-menu-in {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kassa-menu-panel {
+    animation: none;
   }
 }

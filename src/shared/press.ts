@@ -15,6 +15,8 @@ const TARGETS =
   "a[href], button, summary, [role='tab'], [role='button'], label[for], select, input[type='checkbox'], input[type='radio']"
 const BLOCK = "button, summary, [role='tab'], [role='button'], .btn, .admin-nav-item, .stat-tile--link"
 const CTA = ".btn.primary, button[type='submit']"
+// Guiden (Hoppa över, Tillbaka, Nästa) klickar man igenom många gånger i rad: där är det tyst.
+const SILENT = '.guide-layer'
 
 // Ett traditionellt mekaniskt klick: ett fast klick när knappen går ner och
 // ett lättare tick när den fjädrar tillbaka. Ljusast för länkar, lite djupare
@@ -191,7 +193,7 @@ export function installPress() {
       if (e.button !== 0) return
       const el = (e.target as Element | null)?.closest?.(TARGETS)
       if (!el || (el as HTMLButtonElement).disabled) return
-      play(kindOf(el))
+      if (!el.closest(SILENT)) play(kindOf(el))
       visual(el, e.clientX, e.clientY)
     },
     { passive: true },
@@ -202,7 +204,7 @@ export function installPress() {
     if (!el || !el.matches(TARGETS) || el.matches("input[type='text'], input[type='email'], input[type='tel'], input[type='search'], input[type='password'], textarea")) return
     if (e.key === ' ' && el.matches('a[href]')) return
     const r = el.getBoundingClientRect()
-    play(kindOf(el))
+    if (!el.closest(SILENT)) play(kindOf(el))
     visual(el, r.left + r.width / 2, r.top + r.height / 2)
   })
 }

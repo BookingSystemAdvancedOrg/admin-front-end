@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { KassaMenu } from './KassaMenu'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { ApiError } from '../../shared/api'
 import { Icon } from '../../shared/Icon'
@@ -133,7 +134,6 @@ export default function KassaPage() {
   const [done, setDone] = useState<{ done: Done; title: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [more, setMore] = useState(false)
   /** Avbrott (csDownSince) där meddelandet om felanmälan redan stängts på den här skärmen. */
   const [dismissed, setDismissed] = useState<string | null>(null)
   const shownFor = useRef<string | null>(null)
@@ -618,40 +618,47 @@ export default function KassaPage() {
             {day && !day.dayOpen && (
               <button type="button" className="btn primary" onClick={() => setDialog('openDay')}>Öppna dagen</button>
             )}
-            <button type="button" className="btn outline" onClick={() => setDialog('receipts')}>Kvitton</button>
-            <button type="button" className="btn outline" disabled={busy} onClick={() => void runReport('x')}>X-rapport</button>
-            <button type="button" className="btn outline" disabled={busy} onClick={() => void runReport('z')}>Z-rapport</button>
-            <button type="button" className={`btn outline${register.training ? ' on' : ''}`} disabled={busy}
-              aria-pressed={Boolean(register.training)} onClick={() => void registerDo('training', { on: !register.training })}>
-              Övningsläge
-            </button>
-            <button type="button" className={`btn outline${more ? ' on-more' : ''}`} aria-expanded={more}
-              aria-controls="kassa-more" onClick={() => setMore(!more)}>
-              {more ? 'Mindre' : 'Mer'}
-            </button>
+            <KassaMenu
+              label="Rapporter"
+              items={[
+                { label: 'Kvitton', hint: 'Se och skriv ut kvitton och rapporter för en dag', onSelect: () => setDialog('receipts') },
+                { label: 'X-rapport', hint: 'Dagens försäljning hittills. Stänger inte dagen', disabled: busy, onSelect: () => void runReport('x') },
+                { label: 'Z-rapport', hint: 'Stänger dagen. Görs när ni stänger för kvällen', disabled: busy, onSelect: () => void runReport('z') },
+                { label: 'Manuell försäljningslista', hint: 'Lista att skriva på om kassan inte fungerar', to: `/kassa/utskrift/manuell-lista?kassa=${register.registerId}` },
+                ...(state.isOwner
+                  ? [{ label: 'Exportera', hint: 'Kassans uppgifter till revisorn eller Skatteverket', onSelect: () => setDialog('export') }]
+                  : []),
+              ]}
+            />
+            <KassaMenu
+              label="Kassan"
+              items={[
+                {
+                  label: 'Övningsläge',
+                  hint: 'Öva utan att något räknas som riktig försäljning',
+                  on: Boolean(register.training),
+                  disabled: busy,
+                  onSelect: () => void registerDo('training', { on: !register.training }),
+                },
+                { label: 'Kom igång', hint: 'Det som ska vara klart innan kassan används', onSelect: () => setDialog('setup') },
+                { label: 'Bruksanvisning', hint: 'Så använder ni kassan, steg för steg', to: '/kassa/bruksanvisning' },
+                { label: 'Om kassan', hint: 'Kassans beteckning, version och kontrollsystem', onSelect: () => setDialog('about') },
+                ...(state.isOwner && state.registers.length < 5
+                  ? [{ label: 'Ny kassa', hint: 'Lägg till en kassa till på platsen (högst fem)', onSelect: () => setDialog('newRegister') }]
+                  : []),
+                ...(state.canSimulate
+                  ? [{
+                      label: register.simulateDown ? 'Starta kontrollsystemet (test)' : 'Stäng kontrollsystemet (test)',
+                      hint: 'Bara i testmiljön: prova vad som händer när kontrollsystemet inte svarar',
+                      quiet: true,
+                      disabled: busy,
+                      onSelect: () => void registerDo('simulate', { down: !register.simulateDown }),
+                    }]
+                  : []),
+              ]}
+            />
           </div>
         </div>
-
-        {more && (
-          <div className="kassa-bar-actions kassa-more" id="kassa-more">
-            <button type="button" className="btn outline" onClick={() => setDialog('setup')}>Kom igång</button>
-            <Link className="btn outline" to={`/kassa/utskrift/manuell-lista?kassa=${register.registerId}`}>
-              <Icon name="printer" size={18} /> Manuell försäljningslista
-            </Link>
-            <Link className="btn outline" to="/kassa/bruksanvisning">Bruksanvisning</Link>
-            <button type="button" className="btn outline" onClick={() => setDialog('about')}>Om kassan</button>
-            {state.isOwner && <button type="button" className="btn outline" onClick={() => setDialog('export')}>Exportera</button>}
-            {state.isOwner && state.registers.length < 5 && (
-              <button type="button" className="btn outline" onClick={() => setDialog('newRegister')}>Ny kassa</button>
-            )}
-            {state.canSimulate && (
-              <button type="button" className="btn outline kassa-quiet" disabled={busy}
-                onClick={() => void registerDo('simulate', { down: !register.simulateDown })}>
-                {register.simulateDown ? 'Starta kontrollsystemet (test)' : 'Stäng kontrollsystemet (test)'}
-              </button>
-            )}
-          </div>
-        )}
 
         {day && day.unclosedDays.length > 0 && (
           <p className="kassa-alert warn" role="alert">
@@ -661,7 +668,7 @@ export default function KassaPage() {
         {banner && <OutageBanner register={banner} onDismiss={dismissBanner} onRetry={() => void loadState()} />}
         {register.controlSystem.connected === false && (
           <p className="kassa-alert danger" role="alert">
-            Kassan är inte kopplad till kontrollsystemet {register.controlSystem.name}. Ägaren skapar en ny kassa med Ny kassa under Mer.
+            Kassan är inte kopplad till kontrollsystemet {register.controlSystem.name}. Ägaren skapar en ny kassa med Ny kassa under Kassan.
           </p>
         )}
         {!csOk && !banner && register.controlSystem.connected !== false && (

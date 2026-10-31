@@ -386,6 +386,9 @@
     linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
   background-size: 20px 20px;
   cursor: default;
+  /* En pixel under väggarnas fot: annars delar golvet kant med väggarna och
+     Safaris 3D-sortering skär upp det i kilar som ritas ovanpå väggen. */
+  transform: translateZ(-1px);
 }
 
 .ground.selected {

@@ -1,7 +1,6 @@
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Loading } from '../../shared/Loading'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { WEEKDAYS, getLocation, updateLocation } from './locationApi'
 import {
@@ -22,6 +21,7 @@ import {
 import type { BookingExtension, BookingTimeRules, BookingTimeWindow } from './bookingTime'
 import './bookingTime.css'
 import { DateInput, TimeInput } from '../../shared/DateInput'
+import { SkelRows } from '../../shared/Skeleton'
 
 /**
  * Bokningstid (backend shared/booking_rules.py): standardlängd, om
@@ -188,7 +188,7 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
             {error}
           </p>
         ) : (
-          <Loading />
+          <SkelRows n={3} cols={3} />
         )
       ) : (
         <form onSubmit={save} className="notifications-form">

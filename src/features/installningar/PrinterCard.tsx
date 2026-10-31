@@ -11,8 +11,8 @@ import {
 } from '../bestallningar/printApi'
 import type { PaperWidth, PrintOverview, Printer, PrinterCredentials } from '../bestallningar/printApi'
 import { clock } from '../bestallningar/ordersApi'
-import { Loading } from '../../shared/Loading'
 import './printer.css'
+import { SkelLines } from '../../shared/Skeleton'
 
 /**
  * Inställningar > Skrivare: köksskrivaren för matbeställningar.
@@ -191,7 +191,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
         ) : loadError && !data ? (
           <p className="form-error" role="alert">Kunde inte hämta skrivarna. Ladda om sidan om en stund.</p>
         ) : !data ? (
-          <Loading label="Hämtar skrivarna" />
+          <SkelLines n={3} />
         ) : (
           <div className="printer-stack">
             {credentials && (

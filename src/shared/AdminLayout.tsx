@@ -10,11 +10,11 @@ import type { TenantErrorCode } from './tenant'
 import './admin.css'
 import './brand.css'
 import './select.css'
-import { Loading } from './Loading'
 import { useLiquidFill } from './motion/useLiquidFill'
 import { MotionScope, sidebarPourDone, sidebarShouldPour } from './motion/MotionScope'
 import { BusyBar } from './motion/BusyBar'
 import { DpaBanner } from '../features/dpa/DpaBanner'
+import { SkelCard, SkelPage, SkelTiles } from './Skeleton'
 
 // Sidebar-länkarna, i grupper efter när man behöver dem: överblicken,
 // det som händer under passet, och det man ställer in mer sällan.
@@ -276,7 +276,10 @@ export function AdminLayout() {
           </MotionScope>
         ) : (
           <div className="admin-main">
-            <Loading variant="screen" label="Hämtar restaurangen" />
+            <SkelPage label="Hämtar restaurangen">
+              <SkelTiles />
+              <SkelCard rows={5} />
+            </SkelPage>
           </div>
         )}
       </div>

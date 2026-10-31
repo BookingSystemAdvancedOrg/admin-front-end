@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { ApiError } from '../../shared/api'
 import { Icon } from '../../shared/Icon'
-import { Loading } from '../../shared/Loading'
 import { useLocationId } from '../../shared/location'
 import { useAuth } from '../auth/useAuth'
 import {
@@ -53,6 +52,7 @@ import {
 import type { Bill, BillKind, DayStatus, Delivery, Discount, Done, KassaState, MenuChoice, Register } from './kassaApi'
 import '../tabetalt/tabetalt.css'
 import './kassa.css'
+import { SkelBlock, SkelBox, SkelCard, SkelPage } from '../../shared/Skeleton'
 
 /** Hur ofta en pågående kortbetalning frågas om. */
 export const POLL_MS = 2_000
@@ -547,7 +547,7 @@ export default function KassaPage() {
     return (
       <>
         <AdminTopbar title="Kassa" />
-        <div className="admin-main">{resolving ? <Loading label="Hämtar platsen" /> : <p className="cell-muted">Ingen plats är vald.</p>}</div>
+        <div className="admin-main">{resolving ? <KassaSkeleton label="Hämtar platsen" /> : <p className="cell-muted">Ingen plats är vald.</p>}</div>
       </>
     )
   }
@@ -561,7 +561,7 @@ export default function KassaPage() {
               <p className="kassa-alert danger" role="alert">{loadError}</p>
               <button type="button" className="btn outline" onClick={() => void loadState()}>Försök igen</button>
             </div>
-          ) : <Loading label="Öppnar kassan" />}
+          ) : <KassaSkeleton label="Öppnar kassan" />}
         </div>
       </>
     )
@@ -945,5 +945,27 @@ function PaidParts({ bill, busy, onUndo }: { bill: Bill; busy: boolean; onUndo: 
         </li>
       ))}
     </ul>
+  )
+}
+
+/** Medan kassan öppnas: kategorier, rätter och notan, som suddigt glas. */
+function KassaSkeleton({ label }: { label: string }) {
+  return (
+    <SkelPage label={label}>
+      <div className="kassa-layout show-menu" aria-hidden="true">
+        <section className="kassa-menu">
+          <SkelBlock w="70%" h={46} round />
+          <div className="kassa-tiles">
+            {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+              <SkelBox key={i} className="admin-card kassa-tile" h={96}>
+                <SkelBlock w="70%" />
+                <SkelBlock w="36%" style={{ marginTop: 'auto' }} />
+              </SkelBox>
+            ))}
+          </div>
+        </section>
+        <SkelCard className="kassa-bill" aside={false} lines={6} />
+      </div>
+    </SkelPage>
   )
 }

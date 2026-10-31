@@ -38,12 +38,12 @@ import {
   todayIn,
 } from '../bokningar/bookingsApi'
 import type { Reservation } from '../bokningar/bookingsApi'
-import { Loading } from '../../shared/Loading'
 import { SAMPLE_REVENUE_LAST_WEEK, SAMPLE_TABLE_LABELS, sampleData, sampleModeOn, setSampleMode } from './sample'
 import { addDays } from '../statistik/stats'
 import { trendOf } from '../../shared/trend'
 import type { Trend } from '../../shared/trend'
 import { Icon } from '../../shared/Icon'
+import { SkelRows } from '../../shared/Skeleton'
 
 // Genvägskorten längst ned som länkar till de andra sidorna. Ägaren får
 // Statistik i stället för "Se alla bokningar" (dagens bokningar har redan
@@ -378,11 +378,11 @@ export default function OversiktPage() {
                   </li>
                 ))}
               </ul>
+            ) : loading ? (
+              <SkelRows n={3} cols={3} />
             ) : (
               <p className="admin-empty">
-                {loading
-                  ? <Loading variant="inline" />
-                  : todayActive === null
+                {todayActive === null
                     ? 'Kunde inte hämta dagens bokningar.'
                     : (
                       <>

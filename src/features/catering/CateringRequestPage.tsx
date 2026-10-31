@@ -27,10 +27,10 @@ import {
 import type { CateringDish, CateringPackage, CateringRequest, EquipmentReturn, OfferInput } from './cateringApi'
 import { MAX_ITEM_PRICE_KR } from '../meny/menuApi'
 import './catering.css'
-import { Loading } from '../../shared/Loading'
 import { RestaurantSigning } from './RestaurantSigning'
 import { DateInput } from '../../shared/DateInput'
 import { focusErrorField } from '../../shared/errors'
+import { SkelCard, SkelPage } from '../../shared/Skeleton'
 
 /** API:ts fältnamn i offerten -> fältets id, så ett fel flyttar fokus dit. */
 const OFFER_FIELD_IDS: Record<string, string> = {
@@ -181,7 +181,13 @@ export default function CateringRequestPage() {
       <>
         <AdminTopbar title="Catering" />
         <main className="admin-main">
-          <Loading label="Hämtar förfrågan" />
+          <SkelPage label="Hämtar förfrågan">
+            <div className="settings-row" aria-hidden="true">
+              <SkelCard aside={false} lines={5} />
+              <SkelCard aside={false} rows={4} cols={2} />
+            </div>
+            <SkelCard rows={4} cols={4} />
+          </SkelPage>
         </main>
       </>
     )

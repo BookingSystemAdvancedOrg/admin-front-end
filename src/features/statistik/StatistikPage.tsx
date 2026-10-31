@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { isApiConfigured } from '../../shared/api'
-import { Loading } from '../../shared/Loading'
 import { Num } from '../../shared/motion/Num'
 import { TrendBadge } from '../../shared/TrendBadge'
 import { useTrendPop } from '../../shared/motion/useTrendPop'
@@ -39,6 +38,7 @@ import { sampleInsights } from './insightsSample'
 import { addDays, daysBetween, deltaPct, fmtDecimal, fmtInt, fmtKr, fmtPct, insightTitle, rangeLabel, shortDate } from './stats'
 import './statistik.css'
 import { DateInput } from '../../shared/DateInput'
+import { SkelBlock, SkelBox, SkelCard, SkelPage } from '../../shared/Skeleton'
 
 /**
  * Statistik: restaurangens egna siffror för en period, i tre steg: vad som
@@ -466,9 +466,24 @@ export default function StatistikPage() {
         )}
 
         {!s && !error && (
-          <div className="admin-card table-card">
-            <Loading variant="block" label="Räknar ihop perioden" />
-          </div>
+          <SkelPage label="Räknar ihop perioden">
+            <section className="sk-block" aria-hidden="true">
+              <SkelBlock w={160} h={22} />
+              <div className="sk-kpis">
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <SkelBox key={i} className="admin-card sk-kpi">
+                    <SkelBlock w="44%" h={12} />
+                    <SkelBlock w="36%" h={36} style={{ borderRadius: 12 }} />
+                    <SkelBlock w="62%" h={12} />
+                  </SkelBox>
+                ))}
+              </div>
+            </section>
+            <section className="sk-block" aria-hidden="true">
+              <SkelBlock w={200} h={22} />
+              <SkelCard chart aside={false} />
+            </section>
+          </SkelPage>
         )}
 
         {s && nothing && (

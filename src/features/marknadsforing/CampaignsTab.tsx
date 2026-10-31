@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Num } from '../../shared/motion/Num'
 import type { FormEvent } from 'react'
-import { Loading } from '../../shared/Loading'
 import { useTenant } from '../../shared/tenant'
 import {
   AUDIENCE_LABEL,
@@ -27,6 +26,7 @@ import type { Audience, AudienceType, Campaign, CampaignInput, Template } from '
 import type { TabId } from './MarknadsforingPage'
 import { useEscape } from './useEscape'
 import { DateTimeInput } from '../../shared/DateInput'
+import { SkelRows } from '../../shared/Skeleton'
 
 const DAY_CHOICES = [30, 60, 90, 180, 365]
 
@@ -313,7 +313,7 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
             <button type="button" className="link-btn" onClick={() => onOpen('mallar')}>Till mallarna →</button>
           </p>
         )}
-        {campaigns === null && !error && <Loading />}
+        {campaigns === null && !error && <SkelRows n={4} cols={4} />}
         {campaigns !== null && campaigns.length === 0 && !noTemplates && (
           <p className="cell-muted">Inga kampanjer än. Skapa en, skicka ett test till dig själv och sedan till gästerna.</p>
         )}

@@ -22,9 +22,9 @@ import {
 import type { Reservation } from './bookingsApi'
 import { tableNames, useTables } from '../../shared/tables'
 import './bokningar.css'
-import { Loading } from '../../shared/Loading'
 import { DateInput } from '../../shared/DateInput'
 import { Icon } from '../../shared/Icon'
+import { SkelBlock, SkelTableRows } from '../../shared/Skeleton'
 
 const REFRESH_MS = 60_000
 
@@ -170,7 +170,7 @@ export default function BokningarPage() {
               <div className="day-nav-label">
                 <h2 className="card-title">{date === today ? `Idag · ${dayLabel(date)}` : dayLabel(date)}</h2>
                 {loading ? (
-                  <Loading variant="inline" />
+                  <SkelBlock w={150} h={14} />
                 ) : (
                   <span className="cell-muted">
                     <Num>{active.length}</Num> {active.length === 1 ? 'bokning' : 'bokningar'} · <Num>{guests}</Num> gäster
@@ -218,6 +218,7 @@ export default function BokningarPage() {
                 </tr>
               </thead>
               <tbody>
+                {loading && <SkelTableRows n={5} cols={5} />}
                 {!loading && visible.length === 0 && (
                   <tr>
                     <td colSpan={5} className="cell-muted">

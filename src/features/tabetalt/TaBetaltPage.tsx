@@ -3,7 +3,6 @@ import type { FormEvent } from 'react'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { ApiError } from '../../shared/api'
 import { Icon } from '../../shared/Icon'
-import { Loading } from '../../shared/Loading'
 import { useLocationId } from '../../shared/location'
 import { useTenant } from '../../shared/tenant'
 import { useAuth } from '../auth/useAuth'
@@ -29,6 +28,7 @@ import {
 } from './cardApi'
 import type { CardPayment, CardReader, PayableOrder, Receipt, VatRate } from './cardApi'
 import './tabetalt.css'
+import { SkelCard, SkelPage } from '../../shared/Skeleton'
 
 /** Hur ofta en pågående betalning frågas om. */
 export const POLL_MS = 2_000
@@ -246,9 +246,9 @@ export default function TaBetaltPage() {
       <AdminTopbar title="Ta betalt" />
       <div className="admin-main">
         {!locationId ? (
-          resolving ? <Loading label="Hämtar platsen" /> : <p className="cell-muted">Ingen plats är vald.</p>
+          resolving ? <PaySkeleton label="Hämtar platsen" /> : <p className="cell-muted">Ingen plats är vald.</p>
         ) : readers === null ? (
-          <Loading label="Hämtar kortläsare" />
+          <PaySkeleton label="Hämtar kortläsare" />
         ) : (
           <div className="pay-layout">
             <section className="admin-card pay-panel" aria-label="Kortbetalning">
@@ -622,5 +622,17 @@ function ReceiptSlip({
         <p className={state === 'error' ? 'form-error' : 'save-notice'} role="status">{message}</p>
       )}
     </section>
+  )
+}
+
+/** Medan kortläsarna hämtas: kortbetalningen och dagens köp, som suddigt glas. */
+function PaySkeleton({ label }: { label: string }) {
+  return (
+    <SkelPage label={label}>
+      <div className="pay-layout" aria-hidden="true">
+        <SkelCard className="pay-panel" aside={false} lines={5} />
+        <SkelCard className="pay-today" aside={false} rows={3} cols={3} />
+      </div>
+    </SkelPage>
   )
 }

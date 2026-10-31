@@ -135,3 +135,15 @@
     display: none;
   }
 }
+
+/* Sidomenyn i SkelShell: länkarna som suddiga rader med luft emellan. */
+.skel-sidebar .admin-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 8px 20px;
+}
+
+.skel-sidebar .skel-nav-head {
+  margin-top: 10px;
+}

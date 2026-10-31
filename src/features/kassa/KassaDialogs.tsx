@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { DateInput } from '../../shared/DateInput'
 import { Icon } from '../../shared/Icon'
-import { Loading } from '../../shared/Loading'
 import { parseKronor } from '../tabetalt/cardApi'
 import {
   PROBLEMS,
@@ -15,6 +14,7 @@ import {
   returnReceipt,
 } from './kassaApi'
 import type { Delivery, Discount, Done, JournalItem, KassaDocument, ReceiptInfo } from './kassaApi'
+import { SkelRows } from '../../shared/Skeleton'
 
 export function Dialog({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
   useEffect(() => {
@@ -181,7 +181,7 @@ export function ReceiptsDialog({
             <label htmlFor="kassa-day">Dag</label>
             <DateInput id="kassa-day" value={date} onChange={(e) => { if (e.target.value) setDate(e.target.value) }} />
           </div>
-          {items === null ? <Loading label="Hämtar kvitton" /> : items.length === 0 ? (
+          {items === null ? <SkelRows n={4} cols={3} /> : items.length === 0 ? (
             <p className="cell-muted">Inga kvitton eller rapporter den dagen.</p>
           ) : (
             <ul className="kassa-journal">

@@ -61,6 +61,23 @@ export function SkelRows({ n = 4, cols = 3 }: { n?: number; cols?: number }) {
   )
 }
 
+const CELL_WIDTHS = ['70%', '55%', '40%', '62%', '48%', '58%']
+
+/** Rader i en riktig tabell, under dess egna rubriker, så kolumnerna stämmer. */
+export function SkelTableRows({ n = 5, cols }: { n?: number; cols: number }) {
+  return (
+    <>
+      {Array.from({ length: n }, (_, i) => (
+        <tr key={i} className="skel-tr" aria-hidden="true">
+          {Array.from({ length: cols }, (_, j) => (
+            <td key={j}><SkelBlock w={CELL_WIDTHS[(i + j) % CELL_WIDTHS.length]} /></td>
+          ))}
+        </tr>
+      ))}
+    </>
+  )
+}
+
 const LINE_WIDTHS = ['94%', '86%', '72%', '90%', '64%', '80%']
 
 /** Textrader, som ett stycke. */
@@ -132,6 +149,35 @@ export function SkelBox({ className = '', h, children }: { className?: string; h
     <div className={`skel-box${className ? ` ${className}` : ''}`} aria-hidden="true" style={h !== undefined ? { minHeight: h } : undefined}>
       <Sheen />
       {children}
+    </div>
+  )
+}
+
+/** Hela adminramen medan inloggningen kontrolleras: sidomeny, sidhuvud och innehåll. */
+export function SkelShell({ label }: { label: string }) {
+  return (
+    <div className="admin-shell" role="status" aria-label={label} aria-busy="true">
+      <aside className="admin-sidebar admin-sidebar--full skel-sidebar" aria-hidden="true">
+        <div className="admin-logo">
+          <SkelBlock w={120} h={26} />
+        </div>
+        <nav className="admin-nav">
+          {[70, 60, 0, 80, 90, 0, 56, 64, 82].map((w, i) =>
+            w ? <SkelBlock key={i} className="skel-nav" w={`${w}%`} h={16} /> : <SkelBlock key={i} className="skel-nav-head" w="40%" h={12} />,
+          )}
+        </nav>
+      </aside>
+      <div className="admin-right">
+        <header className="admin-topbar" aria-hidden="true">
+          <SkelBlock w={220} h={30} />
+        </header>
+        <div className="admin-main">
+          <div className="skel">
+            <SkelTiles />
+            <SkelCard rows={5} />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

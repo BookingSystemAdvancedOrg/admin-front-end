@@ -60,8 +60,8 @@ import {
   useLocationId,
 } from '../../shared/location'
 import { useTenant } from '../../shared/tenant'
-import { Loading } from '../../shared/Loading'
 import { PhoneInput } from '../../shared/PhoneInput'
+import { SkelBlock } from '../../shared/Skeleton'
 
 const ROLE_LABEL: Record<User['role'], string> = {
   staff: 'Personal',
@@ -587,7 +587,7 @@ export default function InstallningarPage() {
                 <h2 className="card-title">Personal &amp; behörigheter</h2>
                 <p className="cell-muted">
                   {staffLoading
-                    ? <Loading variant="inline" label="Hämtar användare" />
+                    ? <SkelBlock w={200} h={14} />
                     : `${staff.length} användare, varav ${
                         staff.filter((s) => s.status === 'active').length
                       } aktiva`}

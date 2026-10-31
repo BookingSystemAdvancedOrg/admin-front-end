@@ -4,7 +4,6 @@ import { createPortal } from 'react-dom'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { Icon } from '../../shared/Icon'
-import { Loading } from '../../shared/Loading'
 import { useLocationId } from '../../shared/location'
 import { useAuth } from '../auth/useAuth'
 import { Dialog } from './KassaDialogs'
@@ -20,6 +19,7 @@ import {
 } from './kassaApi'
 import type { Company, KassaState, Register, Setup, SetupItem } from './kassaApi'
 import './kassa.css'
+import { SkelCard, SkelRows } from '../../shared/Skeleton'
 
 /** "HH:MM" i svensk tid. */
 export function clockSv(iso?: string): string {
@@ -169,7 +169,7 @@ export function KassaManualPage() {
       <div className="admin-main kassa">
         <Link to="/kassa" className="kassa-back"><Icon name="arrow-right" size={16} className="flip" /> Till kassan</Link>
         {error ? <p className="kassa-alert danger" role="alert">{error}</p>
-          : markdown === null ? <Loading label="Hämtar bruksanvisningen" />
+          : markdown === null ? <SkelCard className="kassa-manual" head={false} lines={8} />
             : <article className="admin-card kassa-manual"><Markdown source={markdown} /></article>}
       </div>
     </>
@@ -290,7 +290,7 @@ export function KassaPrintPage() {
           </button>
         </div>
         {error && <p className="kassa-alert danger" role="alert">{error}</p>}
-        {!state ? !error && <Loading label="Hämtar kassan" /> : (() => {
+        {!state ? !error && <SkelCard aside={false} lines={6} /> : (() => {
           const sheet = kind === 'kassans-uppgifter'
             ? <RegisterInfoSheet company={state.company} register={register} />
             : <ManualSalesSheet company={state.company} register={register} date={date} />
@@ -356,7 +356,7 @@ export function SetupDialog({
     <Dialog title="Kom igång med kassan" onClose={onClose} wide>
       <p className="modal-text">{done} av 5 klart. {state.isOwner ? 'Bocka av när det är gjort.' : 'Ägaren bockar av listan.'}</p>
       {error && <p className="kassa-alert danger" role="alert">{error}</p>}
-      {!items ? <Loading label="Hämtar listan" /> : (
+      {!items ? <SkelRows n={5} cols={2} /> : (
         <ol className="kassa-setup">
           {(Object.keys(SETUP_TEXT) as SetupItem[]).map((key) => (
             <li key={key} className={items[key].done ? 'done' : ''}>

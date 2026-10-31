@@ -29,8 +29,8 @@ import type { MenuItemCreate } from './menuApi'
 import { dishStatus, dishStatusLabel, matchesStatus } from './schedule'
 import type { DishStatus, StatusFilter } from './schedule'
 import './meny.css'
-import { Loading } from '../../shared/Loading'
 import { Icon } from '../../shared/Icon'
+import { SkelBlock, SkelTableRows } from '../../shared/Skeleton'
 
 type ModalState = { mode: 'add' } | { mode: 'edit'; id: string } | null
 
@@ -310,7 +310,7 @@ export default function MenyPage() {
             <h2 className="card-title">Menyrätter</h2>
             <span className="cell-muted">
               {fetching
-                ? <Loading variant="inline" label="Hämtar meny" />
+                ? <SkelBlock w={150} h={14} />
                 : hasActiveFilters
                   ? `${filteredDishes.length} av ${dishes.length} rätter · ${activeCount} aktiva totalt`
                   : `${dishes.length} rätter · ${activeCount} aktiva`}
@@ -384,6 +384,7 @@ export default function MenyPage() {
                 </tr>
               </thead>
               <tbody>
+                {fetching && <SkelTableRows n={5} cols={6} />}
                 {Boolean(locationId) && !fetching && dishes.length === 0 && !loadError && (
                   <tr>
                     <td colSpan={6} className="cell-muted">

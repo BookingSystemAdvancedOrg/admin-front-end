@@ -24,6 +24,7 @@ import { TableRulesCard } from './TableRulesCard'
 import { BookingTimeCard } from './BookingTimeCard'
 import { BusinessHoursEditor } from './BusinessHoursEditor'
 import { BokforingCard } from './BokforingCard'
+import { AppearanceCard } from './AppearanceCard'
 import {
   createLocation,
   getLocation,
@@ -90,7 +91,7 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * andra användare - de rutterna är bara för ägare.
  */
 /** Flikarna - en sektion i taget i stället för en lång sida. */
-type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'skrivare' | 'dagar' | 'bord' | 'statistik' | 'bokforing' | 'integritet'
+type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'skrivare' | 'dagar' | 'bord' | 'statistik' | 'bokforing' | 'integritet' | 'utseende'
 
 const TAB_LABEL: Record<SettingsTab, string> = {
   profil: 'Restaurang',
@@ -105,6 +106,7 @@ const TAB_LABEL: Record<SettingsTab, string> = {
   statistik: 'Statistik',
   bokforing: 'Bokföring',
   integritet: 'Integritet',
+  utseende: 'Utseende och ljud',
 }
 
 function initialTab(stripeReturn: string | null): SettingsTab {
@@ -724,6 +726,12 @@ export default function InstallningarPage() {
         {isOwner && tab === 'integritet' && (
           <div className="settings-row">
             <PrivacyCard />
+          </div>
+        )}
+
+        {tab === 'utseende' && (
+          <div className="settings-row">
+            <AppearanceCard />
           </div>
         )}
       </div>

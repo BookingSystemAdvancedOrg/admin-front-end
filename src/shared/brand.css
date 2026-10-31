@@ -981,3 +981,67 @@ html.is-busy * {
     translate: none;
   }
 }
+
+/* Inställningar > Utseende och ljud: en rad per val, knappen som ett piller */
+.appearance-rows {
+  display: grid;
+  gap: 0;
+  margin-top: 16px;
+}
+.appearance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  border-top: 1.5px dashed var(--border);
+}
+.appearance-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+.appearance-toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--ink);
+  font: 600 14px/1 var(--font);
+  transition: background-color 180ms var(--ease), color 180ms var(--ease), translate 180ms var(--ease);
+}
+.appearance-toggle:hover {
+  translate: 0 -2px;
+}
+.appearance-toggle[aria-pressed='true'] {
+  background: var(--slip);
+  color: var(--on-slip);
+  box-shadow: 0 10px 24px -14px rgba(26, 18, 14, 0.7);
+}
+@media (max-width: 600px) {
+  .appearance-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Inställningsflikarna: piller, vald flik mörk espresso (även under musen) */
+.settings-tabs button {
+  border-radius: 999px;
+  transition: background-color 200ms var(--ease), color 300ms var(--ease), box-shadow 200ms var(--ease);
+}
+.settings-tabs button:hover {
+  background: var(--fill);
+  box-shadow: inset 0 0 0 1px var(--accent-ink);
+}
+.settings-tabs button.active,
+.settings-tabs button.active:hover {
+  background: var(--slip);
+  color: var(--on-slip);
+  box-shadow: 0 10px 24px -14px rgba(26, 18, 14, 0.7);
+}

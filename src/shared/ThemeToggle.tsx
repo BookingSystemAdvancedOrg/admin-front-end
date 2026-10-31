@@ -7,7 +7,7 @@ import './ThemeToggle.css'
  * (aria-pressed): nedtryckt = mörkt läge. Ikonen visar läget som gäller
  * (sol = ljust, måne = mörkt) och tonar över till den andra vid byte;
  * med "minska rörelse" byts den direkt. `label` visar texten bredvid
- * ikonen (sidomenyn); utan den är knappen bara ikonen, med samma namn
+ * ikonen (Inställningar, Utseende och ljud); utan den är knappen bara ikonen, med samma namn
  * för skärmläsare och som verktygstips.
  */
 export function ThemeToggle({ label = false, className = '' }: { label?: boolean; className?: string }) {

@@ -2,11 +2,11 @@ import { useSyncExternalStore } from 'react'
 import { SOUND_KEY } from './storageRegistry'
 
 /**
- * Tryckkänsla, samma som booqy.se och Booqy Console: ett mjukt, runt
+ * Tryckkänsla, samma som booqy.se och Booqy Console: ett varmt, klassiskt
  * klickljud (Web Audio, skapat i stunden, inga filer) och en klämning plus
  * en brun krusning, vid tryck och vid Enter eller mellanslag. Aldrig vid
  * hovring. Ljudet är på från början och startar vid första trycket
- * (webbläsarnas regler för ljud); knappen i sidomenyn stänger av det
+ * (webbläsarnas regler för ljud); Inställningar, Utseende och ljud stänger av det
  * ("booqy-sound" i localStorage). Minska rörelse: krusningen blir en kort
  * blinkning, ljudet är kvar.
  */
@@ -16,12 +16,14 @@ const TARGETS =
 const BLOCK = "button, summary, [role='tab'], [role='button'], .btn, .admin-nav-item, .stat-tile--link"
 const CTA = ".btn.primary, button[type='submit']"
 
-// Tre röster, alla mjuka trätoner: ett lätt tick för länkar, ett fylligare
-// tryck för knappar och ett djupare för huvudknapparna. [grundton Hz, längd s, volym]
+// Ett klassiskt klick, som en bra strömbrytare, men varmt: en mycket kort
+// brusstöt som klingar på en ton, med en mjuk låg duns under. Ett lätt tick för
+// länkar, ett fylligare klick för knappar och ett djupare för huvudknapparna.
+// [ton Hz, längd s, volym]
 const VOICES: Record<'tick' | 'press' | 'cta', [number, number, number]> = {
-  tick: [1100, 0.05, 0.035],
-  press: [720, 0.07, 0.05],
-  cta: [520, 0.09, 0.06],
+  tick: [3400, 0.028, 0.32],
+  press: [2600, 0.034, 0.42],
+  cta: [1900, 0.04, 0.5],
 }
 
 function reducedMotion(): boolean {
@@ -75,31 +77,47 @@ function play(kind: keyof typeof VOICES) {
       if (!AC) return
       ctx = new AC()
     }
-    if (ctx.state === 'suspended') void ctx.resume()
-    const [f0, len, vol] = VOICES[kind]
+    // Safari starts the audio asleep: wake it, then play once it is running
+    if (ctx.state !== 'running') {
+      const c = ctx
+      c.resume().then(() => {
+        if (c.state === 'running') play(kind)
+      }, () => {})
+      return
+    }
+    const [pitch, len, vol] = VOICES[kind]
     const t = ctx.currentTime
-    // allt går genom ett lågpassfilter som tar bort det vassa
     const soft = ctx.createBiquadFilter()
     soft.type = 'lowpass'
-    soft.frequency.value = 3200
+    soft.frequency.value = 6000
     soft.connect(ctx.destination)
-    // grundtonen glider nedåt som ett mjukt "tok", med en svag övton ovanpå
-    for (const [mult, gain, decay] of [
-      [1, vol, len],
-      [2.4, vol * 0.22, len * 0.45],
-    ] as const) {
-      const osc = ctx.createOscillator()
-      osc.type = 'sine'
-      osc.frequency.setValueAtTime(f0 * mult, t)
-      osc.frequency.exponentialRampToValueAtTime(f0 * mult * 0.6, t + decay)
-      const g = ctx.createGain()
-      g.gain.setValueAtTime(0.0001, t)
-      g.gain.exponentialRampToValueAtTime(gain, t + 0.004)
-      g.gain.exponentialRampToValueAtTime(0.0001, t + decay)
-      osc.connect(g).connect(soft)
-      osc.start(t)
-      osc.stop(t + decay + 0.01)
-    }
+    // the click: noise that dies away fast, ringing at one pitch
+    const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * len), ctx.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 6)
+    const src = ctx.createBufferSource()
+    src.buffer = buf
+    const ring = ctx.createBiquadFilter()
+    ring.type = 'bandpass'
+    ring.frequency.value = pitch
+    ring.Q.value = 4
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(vol, t)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len)
+    src.connect(ring).connect(g).connect(soft)
+    src.start(t)
+    src.stop(t + len)
+    // the warmth: a soft low thump under it
+    const osc = ctx.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(pitch / 8, t)
+    osc.frequency.exponentialRampToValueAtTime(pitch / 14, t + 0.02)
+    const og = ctx.createGain()
+    og.gain.setValueAtTime(vol * 0.35, t)
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 0.02)
+    osc.connect(og).connect(soft)
+    osc.start(t)
+    osc.stop(t + 0.025)
   } catch {
     /* inget ljud: det synliga räcker */
   }
@@ -130,6 +148,22 @@ let installed = false
 export function installPress() {
   if (installed || typeof document === 'undefined') return
   installed = true
+  // Safari only lets audio start inside a click or key press, so the first
+  // one also wakes the audio up for the presses that follow
+  const unlock = () => {
+    if (!on) return
+    try {
+      if (!ctx) {
+        const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+        if (!AC) return
+        ctx = new AC()
+      }
+      if (ctx.state !== 'running') void ctx.resume()
+    } catch {
+      /* no audio */
+    }
+  }
+  for (const type of ['click', 'touchend', 'keydown']) document.addEventListener(type, unlock, { capture: true, passive: true })
   document.addEventListener(
     'pointerdown',
     (e) => {

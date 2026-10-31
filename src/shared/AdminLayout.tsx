@@ -14,8 +14,6 @@ import { Loading } from './Loading'
 import { useLiquidFill } from './motion/useLiquidFill'
 import { MotionScope, sidebarPourDone, sidebarShouldPour } from './motion/MotionScope'
 import { BusyBar } from './motion/BusyBar'
-import { ThemeToggle } from './ThemeToggle'
-import { SoundToggle } from './SoundToggle'
 import { DpaBanner } from '../features/dpa/DpaBanner'
 
 // Sidebar-länkarna, i grupper efter när man behöver dem: överblicken,
@@ -222,8 +220,6 @@ export function AdminLayout() {
           >
             Hjälp
           </NavLink>
-          <SoundToggle label className="admin-nav-item admin-theme-toggle" />
-          <ThemeToggle label className="admin-nav-item admin-theme-toggle" />
         </nav>
 
         <div className="admin-user">

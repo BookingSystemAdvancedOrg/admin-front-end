@@ -11,7 +11,7 @@
    för allt annat och Martian Mono för det skrivaren trycker (tider,
    belopp, status). --accent är fyllnadsfärgen (knappar, valt läge) =
    espresso; --accent-ink är text/länkar = mörk valnöt. Två lägen: ljust
-   (standard) och mörkt, valt med knappen i sidomenyn och satt som
+   (standard) och mörkt, valt under Inställningar och satt som
    <html data-theme> (shared/theme.ts). Mörkt läge är samma rum på kvällen:
    rökt glas och sotat papper. Glaslagret ligger sist i shared/brand.css.
    Gamla namn (--green, --serif, ...) pekar på de nya värdena. */

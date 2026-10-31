@@ -11,25 +11,7 @@
   background: var(--ox);
 }
 
-.auth-theme-toggle {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--on-ox-2);
-  transition: background-color 160ms var(--ease), color 160ms var(--ease);
-}
 
-.auth-theme-toggle:hover {
-  color: var(--on-ox);
-  background: rgba(255, 255, 255, 0.08);
-}
 
 .auth-logo-badge {
   display: none;
@@ -134,39 +116,9 @@
 }
 
 /* Glasrummet (samma som booqy.se): rummet syns bakom, lappen hänger på en
-   glasyta, knapparna för ljud och läge sitter i ett litet glaspiller. */
+   glasyta under en brun skena. */
 .auth-screen {
   background: transparent;
-}
-.auth-toggles {
-  display: flex;
-  gap: 4px;
-  width: auto;
-  height: auto;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--glass-hi);
-  box-shadow: var(--rim), var(--shadow);
-  -webkit-backdrop-filter: blur(16px) saturate(1.6);
-  backdrop-filter: blur(16px) saturate(1.6);
-}
-.auth-toggles:hover {
-  background: var(--glass-hi);
-}
-.auth-toggles .theme-toggle {
-  display: inline-grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--on-ox-2);
-}
-.auth-toggles .theme-toggle:hover {
-  color: var(--on-ox);
-  background: var(--wall-tint);
 }
 .auth-card {
   filter: drop-shadow(0 14px 18px rgba(58, 36, 24, 0.22)) drop-shadow(0 2px 3px rgba(58, 36, 24, 0.16));

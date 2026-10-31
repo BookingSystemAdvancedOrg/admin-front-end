@@ -1,7 +1,5 @@
 import type { ReactNode } from 'react'
 import { BrandMark, BrandWordmark } from '../../shared/BrandMark'
-import { ThemeToggle } from '../../shared/ThemeToggle'
-import { SoundToggle } from '../../shared/SoundToggle'
 import './auth.css'
 import './auth-brand.css'
 
@@ -12,11 +10,6 @@ import './auth-brand.css'
 export function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="auth-screen">
-      {/* Ljust/mörkt läge går att välja redan innan inloggning. */}
-      <div className="auth-theme-toggle auth-toggles">
-        <SoundToggle />
-        <ThemeToggle />
-      </div>
       <div className="auth-inner">
         <div className="auth-logo">
           {/* Ingen restaurang namnges: inloggningsskärmen visas utloggad, så

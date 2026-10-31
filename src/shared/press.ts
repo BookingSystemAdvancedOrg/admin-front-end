@@ -19,11 +19,11 @@ const CTA = ".btn.primary, button[type='submit']"
 const SILENT = '.guide-layer'
 
 // Ett modernt, tyst klick som i Windows: ett kort, rent "tk" med lite kropp.
-// Ljusast för länkar, lite djupare för knappar och huvudknapparna. [ton Hz, volym]
+// Ljusast för länkar, lite djupare för knappar och huvudknapparna. [ton Hz, topp]
 const VOICES: Record<'tick' | 'press' | 'cta', [number, number]> = {
-  tick: [2400, 0.34],
-  press: [2150, 0.42],
-  cta: [1900, 0.48],
+  tick: [2400, 0.425],
+  press: [2150, 0.5],
+  cta: [1900, 0.56],
 }
 
 function reducedMotion(): boolean {
@@ -111,6 +111,46 @@ export function useSoundVolume(): number {
   )
 }
 
+/**
+ * Klicket som färdiga ljudprover: en kort brusig kant, ett rent pling och en
+ * liten kropp, som Windows klick. Räknas ut en gång per röst i vanlig
+ * JavaScript och spelas sedan bara upp. Inga filter eller oscillatorer när man
+ * klickar, så det låter likadant och fungerar även i Safari.
+ */
+function clickSamples(sr: number, pitch: number, peak: number): Float32Array {
+  const n = Math.ceil(sr * 0.045)
+  const out = new Float32Array(n)
+  let seed = 7
+  let max = 0
+  for (let i = 0; i < n; i++) {
+    const t = i / sr
+    const ping = Math.sin(2 * Math.PI * pitch * t) * Math.exp(-t / 0.007)
+    const body = 0.5 * Math.sin(2 * Math.PI * pitch * 0.45 * t) * Math.exp(-t / 0.005)
+    seed = (seed * 16807) % 2147483647
+    const edge = 0.35 * (seed / 1073741823.5 - 1) * Math.exp(-t / 0.0007)
+    out[i] = Math.min(1, t / 0.0006) * (ping + body + edge)
+    max = Math.max(max, Math.abs(out[i]))
+  }
+  for (let i = 0; i < n; i++) out[i] *= peak / max
+  return out
+}
+
+const buffers = new Map<string, AudioBuffer>()
+
+/** Rösten som ljudbuffert, byggd en gång per ljudmotor och samplingsfrekvens. */
+function clickBuffer(c: AudioContext, kind: keyof typeof VOICES): AudioBuffer {
+  const key = `${kind}@${c.sampleRate}`
+  let buf = buffers.get(key)
+  if (!buf) {
+    const [pitch, peak] = VOICES[kind]
+    const samples = clickSamples(c.sampleRate, pitch, peak)
+    buf = c.createBuffer(1, samples.length, c.sampleRate)
+    buf.getChannelData(0).set(samples)
+    buffers.set(key, buf)
+  }
+  return buf
+}
+
 function play(kind: keyof typeof VOICES) {
   if (!on || volume <= 0) return
   try {
@@ -127,55 +167,14 @@ function play(kind: keyof typeof VOICES) {
       }, () => {})
       return
     }
-    const [pitch, vol] = VOICES[kind]
     const c = ctx
-    const t = c.currentTime + 0.003
-    const sr = c.sampleRate
-    // en begränsare håller topparna nere, så ljudet aldrig sprakar
-    const limit = c.createDynamicsCompressor()
-    limit.threshold.value = -6
-    limit.knee.value = 0
-    limit.ratio.value = 20
-    limit.attack.value = 0.001
-    limit.release.value = 0.05
-    // volymen läggs på sist, efter begränsaren: 70 = standardnivån
-    const master = c.createGain()
-    master.gain.value = volume / DEFAULT_VOLUME
-    limit.connect(master)
-    master.connect(c.destination)
-    const out = c.createBiquadFilter()
-    out.type = 'lowpass'
-    out.frequency.value = 6000
-    out.connect(limit)
-    // anslaget: 2 ms mjukt brus som ger klicket dess skärpa
-    const buf = c.createBuffer(1, Math.ceil(sr * 0.002), sr)
-    const d = buf.getChannelData(0)
-    let seed = 7
-    for (let i = 0; i < d.length; i++) d[i] = ((seed = (seed * 16807) % 2147483647) / 1073741823.5 - 1) * Math.min(1, i / (sr * 0.0002)) * Math.pow(1 - i / d.length, 2)
     const src = c.createBufferSource()
-    src.buffer = buf
-    const band = c.createBiquadFilter()
-    band.type = 'bandpass'
-    band.frequency.value = pitch * 1.3
-    band.Q.value = 2
-    const g = c.createGain()
-    g.gain.value = vol * 6
-    src.connect(band).connect(g).connect(out)
-    src.start(t)
-    // tonen: ett kort, rent pling och en liten kropp under, som Windows klick
-    const tone = (hz: number, gain: number, decay: number) => {
-      const osc = c.createOscillator()
-      osc.frequency.value = hz
-      const og = c.createGain()
-      og.gain.setValueAtTime(0, t)
-      og.gain.linearRampToValueAtTime(gain, t + 0.0008)
-      og.gain.exponentialRampToValueAtTime(0.0001, t + decay)
-      osc.connect(og).connect(out)
-      osc.start(t)
-      osc.stop(t + decay + 0.003)
-    }
-    tone(pitch, vol * 2.6, 0.025)
-    tone(pitch * 0.45, vol * 1.1, 0.015)
+    src.buffer = clickBuffer(c, kind)
+    const gain = c.createGain()
+    gain.gain.value = volume / DEFAULT_VOLUME
+    src.connect(gain)
+    gain.connect(c.destination)
+    src.start(0)
   } catch {
     /* inget ljud: det synliga räcker */
   }

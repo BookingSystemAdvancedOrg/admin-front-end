@@ -176,8 +176,9 @@
   --on-ox-2: #d5c4ae;
   --on-ox-3: #a88462;
   --on-slip: #1a120e;
-  --liquid-tile: 107, 74, 46;
-  --liquid-tile-alpha: 0.45;
+  /* mörkt: en svag ljus hinna på espressokortet i stället för brun vätska */
+  --liquid-tile: 213, 196, 174;
+  --liquid-tile-alpha: 0.05;
   --liquid-attention: 238, 138, 144;
   --liquid-attention-alpha: 0.16;
   color-scheme: dark;

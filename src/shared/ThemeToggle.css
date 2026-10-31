@@ -26,13 +26,13 @@
 
 /* Den ikon som inte gäller är borta: tonad och bortvriden. Vid byte tonar
    solen bort åt ena hållet medan månen vrids in från det andra. */
-.theme-toggle[aria-pressed='false'] .theme-toggle-moon {
+.theme-toggle[data-mode='light'] .theme-toggle-moon {
   opacity: 0;
   rotate: -90deg;
   scale: 0.6;
 }
 
-.theme-toggle[aria-pressed='true'] .theme-toggle-sun {
+.theme-toggle[data-mode='dark'] .theme-toggle-sun {
   opacity: 0;
   rotate: 90deg;
   scale: 0.6;
@@ -42,4 +42,12 @@
   .theme-toggle-icon svg {
     transition: none;
   }
+}
+
+/* Light/dark switch: the new colours sweep over the page in a circle from
+   the button (switchTheme in theme.ts animates the clip); no cross-fade. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }

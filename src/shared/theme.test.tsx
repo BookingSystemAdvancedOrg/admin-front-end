@@ -32,22 +32,23 @@ describe('theme', () => {
     expect(currentTheme()).toBe('dark')
   })
 
-  it('the toggle is a pressed button for dark mode with Swedish labels', () => {
+  it('the toggle names the mode in effect and what a press does', () => {
     render(<ThemeToggle label />)
-    const button = screen.getByRole('button', { name: 'Mörkt läge' })
-    expect(button).toHaveAttribute('aria-pressed', 'false')
-    expect(button).not.toHaveAttribute('title')
+    const button = screen.getByRole('button', { name: 'Ljust läge, byt till mörkt' })
+    expect(button).toHaveTextContent('Ljust läge')
     fireEvent.click(button)
-    expect(button).toHaveAttribute('aria-pressed', 'true')
+    expect(button).toHaveAccessibleName('Mörkt läge, byt till ljust')
+    expect(button).toHaveTextContent('Mörkt läge')
+    expect(button).toHaveAttribute('data-mode', 'dark')
     expect(localStorage.getItem(THEME_KEY)).toBe('dark')
     fireEvent.click(button)
-    expect(button).toHaveAttribute('aria-pressed', 'false')
+    expect(button).toHaveAttribute('data-mode', 'light')
     expect(localStorage.getItem(THEME_KEY)).toBe('light')
   })
 
   it('the icon-only toggle still has a name', () => {
     render(<ThemeToggle />)
-    const button = screen.getByRole('button', { name: 'Mörkt läge' })
-    expect(button).toHaveAttribute('title', 'Mörkt läge')
+    const button = screen.getByRole('button', { name: 'Ljust läge, byt till mörkt' })
+    expect(button).toHaveAttribute('title', 'Ljust läge, byt till mörkt')
   })
 })

@@ -4,7 +4,7 @@
  * Två former: ordmärket "booqy" (tunna, rundade linjer, för ytor där hela
  * namnet får plats) och b-märket (det vita b:et på vinröd botten, för små
  * ytor som ikoner och brickor där namnet inte får plats). Samma teckning som
- * assets/favicon.svg, apple-touch-icon.png och Booqy Console.
+ * Booqy Console. Flikikonen (assets/favicon.svg) är bara b:et, utan botten.
  */
 
 export const BRAND_RED = '#350001'

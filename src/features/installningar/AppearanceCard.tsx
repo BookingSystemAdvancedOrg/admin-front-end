@@ -16,8 +16,8 @@ export function AppearanceCard() {
       <div className="appearance-rows">
         <div className="appearance-row">
           <div>
-            <p className="appearance-title">Mörkt läge</p>
-            <p className="cell-muted">Mörka ytor i stället för ljusa, till exempel i en mörk lokal på kvällen.</p>
+            <p className="appearance-title">Ljust eller mörkt</p>
+            <p className="cell-muted">Tryck för att byta. Mörka ytor passar till exempel en mörk lokal på kvällen.</p>
           </div>
           <ThemeToggle label className="appearance-toggle" />
         </div>

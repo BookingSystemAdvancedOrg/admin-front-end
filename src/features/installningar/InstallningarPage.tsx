@@ -120,7 +120,7 @@ const GROUPS: { id: string; label: string; hint: string; tabs: SettingsTab[] }[]
   { id: 'gaster', label: 'Gäster', hint: 'Sms och mejl till gästerna, avbokning och beställning', tabs: ['notiser', 'avbokning', 'bestallning', 'skrivare'] },
   { id: 'ekonomi', label: 'Ekonomi', hint: 'Ta betalt online och underlag till bokföringen', tabs: ['betalningar', 'bokforing'] },
   { id: 'data', label: 'Data och integritet', hint: 'Vad personalen ser i Statistik och gästernas uppgifter', tabs: ['statistik', 'integritet'] },
-  { id: 'enhet', label: 'Den här enheten', hint: 'Mörkt läge och klickljud på just den här skärmen', tabs: ['utseende'] },
+  { id: 'enhet', label: 'Den här enheten', hint: 'Ljust eller mörkt läge och klickljud på just den här skärmen', tabs: ['utseende'] },
 ]
 
 /** En rad under varje del som säger vad man ställer in där. */
@@ -137,7 +137,7 @@ const TAB_HINT: Record<SettingsTab, string> = {
   bokforing: 'Exportera försäljningen till bokföringsprogrammet',
   statistik: 'Vad personalen får se och när lunchen slutar',
   integritet: 'Integritetspolicyn och gästernas uppgifter',
-  utseende: 'Mörkt läge och klickljud, bara på den här skärmen',
+  utseende: 'Ljust eller mörkt läge och klickljud, bara på den här skärmen',
 }
 
 function initialTab(stripeReturn: string | null): SettingsTab {

@@ -72,10 +72,21 @@
   align-items: flex-start;
   gap: 12px;
   min-width: 0;
-  margin: 0;
-  padding: 16px 0 0;
+  margin: -4px 0 0;
+  padding: 14px 16px 16px;
   border: 0;
-  border-top: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  animation: dish-schedule-in 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* fälls ut under reglaget när schemat slås på */
+@keyframes dish-schedule-in {
+  from { opacity: 0; translate: 0 -6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dish-schedule { animation: none; }
 }
 
 .dish-schedule > .form-grid {

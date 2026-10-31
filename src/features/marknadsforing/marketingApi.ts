@@ -85,12 +85,43 @@ export type Block =
 
 export type BlockType = Block['type']
 
+/** Mejlets egna färger: huvudfärgen (sidhuvud, knappar) och bakgrunden runt
+ * mejlet, "#rrggbb". Saknas en används restaurangens färg och ljus bakgrund. */
+export interface TemplateTheme {
+  color?: string | null
+  background?: string | null
+}
+
 export interface TemplateInput {
   name: string
   subject: string
   preheader: string
   blocks: Block[]
+  theme?: TemplateTheme | null
 }
+
+const HEX = /^#[0-9a-fA-F]{6}$/
+
+/** Färdiga huvudfärger. null = restaurangens egen färg. */
+export const THEME_COLORS: { label: string; value: string | null }[] = [
+  { label: 'Restaurangens färg', value: null },
+  { label: 'Espresso', value: '#1a120e' },
+  { label: 'Vinröd', value: '#6b1d24' },
+  { label: 'Skog', value: '#1f3a2b' },
+  { label: 'Hav', value: '#1d3a4f' },
+  { label: 'Terrakotta', value: '#b0532c' },
+  { label: 'Senap', value: '#c08a2e' },
+  { label: 'Sand', value: '#a88462' },
+]
+
+/** Färdiga bakgrunder runt mejlet. null = ljus (standard). */
+export const THEME_BACKGROUNDS: { label: string; value: string | null }[] = [
+  { label: 'Ljus', value: null },
+  { label: 'Vit', value: '#ffffff' },
+  { label: 'Sand', value: '#efe7dc' },
+  { label: 'Grå', value: '#eceef0' },
+  { label: 'Mörk', value: '#1a120e' },
+]
 
 export interface Template extends TemplateInput {
   templateId: string
@@ -151,6 +182,8 @@ export function templateErrors(t: TemplateInput): string[] {
   if (!t.subject.trim()) errors.push('Ämnesraden får inte vara tom.')
   if (t.subject.trim().length > 120) errors.push('Ämnesraden får vara högst 120 tecken.')
   if (t.preheader.trim().length > 140) errors.push('Förhandstexten får vara högst 140 tecken.')
+  if (t.theme?.color && !HEX.test(t.theme.color)) errors.push('Välj en giltig huvudfärg.')
+  if (t.theme?.background && !HEX.test(t.theme.background)) errors.push('Välj en giltig bakgrundsfärg.')
   if (t.blocks.length === 0) errors.push('Lägg till minst ett block.')
   if (t.blocks.length > MAX_BLOCKS) errors.push(`Högst ${MAX_BLOCKS} block.`)
   t.blocks.forEach((b, i) => {
@@ -177,6 +210,7 @@ export function cleanTemplate(t: TemplateInput): TemplateInput {
     name: t.name.trim(),
     subject: t.subject.trim(),
     preheader: t.preheader.trim(),
+    theme: t.theme?.color || t.theme?.background ? { color: t.theme.color || null, background: t.theme.background || null } : null,
     blocks: t.blocks.map((b) => {
       if (b.type === 'button' && b.destination !== 'custom') return { type: b.type, label: b.label.trim(), destination: b.destination }
       if (b.type === 'button') return { ...b, label: b.label.trim(), url: (b.url ?? '').trim() }

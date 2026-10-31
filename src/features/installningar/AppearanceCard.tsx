@@ -5,7 +5,7 @@ import { ThemeToggle } from '../../shared/ThemeToggle'
 /**
  * Utseende och ljud: ljust eller mörkt läge och klickljudet. Valen gäller den
  * här webbläsaren (localStorage, se shared/storageRegistry) och samma nycklar
- * används på booqy.se och i Booqy Console. Ljust, ljud på och volym 70 % är standard.
+ * används på booqy.se och i Booqy Console. Ljust, ljud på och volym 40 % är standard.
  */
 export function AppearanceCard() {
   return (
@@ -31,7 +31,7 @@ export function AppearanceCard() {
         <div className="appearance-row">
           <div>
             <label className="appearance-title" htmlFor="sound-volume">Volym</label>
-            <p className="cell-muted">Hur högt klicket låter. 70 % är standard, 0 % är tyst.</p>
+            <p className="cell-muted">Hur högt klicket låter. 40 % är standard, 0 % är tyst.</p>
           </div>
           <SoundVolume id="sound-volume" />
         </div>

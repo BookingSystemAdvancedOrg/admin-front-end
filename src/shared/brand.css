@@ -786,9 +786,9 @@ html.is-saving .btn:disabled {
   color: var(--on-slip);
 }
 
-/* Sidhuvudet: en svävande glasyta överst i arbetsytan */
+/* Sidhuvudet: en glasyta överst i arbetsytan som rullar bort med sidan */
 .admin-topbar {
-  top: 12px;
+  position: relative;
   border: 0;
   border-radius: var(--r-panel);
   background: var(--glass-hi);

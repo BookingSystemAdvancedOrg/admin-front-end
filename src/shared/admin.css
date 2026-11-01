@@ -1159,6 +1159,10 @@
     padding: 0;
   }
 
+  .admin-logout {
+    align-self: center;
+  }
+
   .admin-topbar,
   .admin-main {
     padding-left: 20px;

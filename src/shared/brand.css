@@ -719,6 +719,13 @@ html.is-saving .btn:disabled {
   background: transparent;
   gap: 14px;
 }
+/* Breda skärmar: arbetsytan växer inte längre än 1640 px utan står mitt i
+   ytan bredvid sidomenyn, så tabeller och rutor förblir lätta att läsa. */
+.admin-right > * {
+  width: 100%;
+  max-width: 1640px;
+  margin-inline: auto;
+}
 
 /* Sidomenyn: en svävande glasyta */
 .admin-sidebar,

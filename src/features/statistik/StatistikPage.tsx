@@ -409,7 +409,7 @@ export default function StatistikPage() {
                 ))}
               </select>
             </label>
-            <label className="sk-field">
+            <label className="sk-field sk-wide">
               <span>Jämför med</span>
               <select value={f.compare} onChange={(e) => setFilters({ compare: e.target.value as Filters['compare'] })}>
                 {COMPARES.map((o) => (

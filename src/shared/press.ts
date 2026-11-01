@@ -3,7 +3,7 @@ import { SOUND_KEY, SOUND_VOLUME_KEY } from './storageRegistry'
 
 /**
  * Tryckkänsla, samma som booqy.se och Booqy Console: ett modernt, tyst
- * mjukt "pop", som en droppe (Web Audio, uträknat i förväg, inga filer) och en klämning plus
+ * ett krispigt musklick som på en gamingmus (Web Audio, uträknat i förväg, inga filer) och en klämning plus
  * en brun krusning, vid tryck och vid Enter eller mellanslag. Aldrig vid
  * hovring. Ljudet är på från början och startar vid första trycket
  * (webbläsarnas regler för ljud); Inställningar, Utseende och ljud stänger av det
@@ -18,12 +18,12 @@ const CTA = ".btn.primary, button[type='submit']"
 // Guiden (Hoppa över, Tillbaka, Nästa) klickar man igenom många gånger i rad: där är det tyst.
 const SILENT = '.guide-layer'
 
-// Ett mjukt, runt "pop" som faller lite i ton, som en droppe.
+// Ett krispigt, tätt musklick som på en gamingmus: tryck och ett snabbt släpp.
 // Ljusast för länkar, lite djupare för knappar och huvudknapparna. [ton Hz, topp]
 const VOICES: Record<'tick' | 'press' | 'cta', [number, number]> = {
-  tick: [900, 0.425],
-  press: [780, 0.5],
-  cta: [660, 0.56],
+  tick: [4536, 0.425],
+  press: [4200, 0.5],
+  cta: [3864, 0.56],
 }
 
 function reducedMotion(): boolean {
@@ -114,23 +114,32 @@ export function useSoundVolume(): number {
 }
 
 /**
- * Klicket som färdiga ljudprover: en rund ton som faller lite (ett
- * mjukt pop). Räknas ut en gång per röst i vanlig
+ * Klicket som färdiga ljudprover: ett tätt musklick (tryck och
+ * släpp). Räknas ut en gång per röst i vanlig
  * JavaScript och spelas sedan bara upp. Inga filter eller oscillatorer när man
  * klickar, så det låter likadant och fungerar även i Safari.
  */
 function clickSamples(sr: number, pitch: number, peak: number): Float32Array {
-  const n = Math.ceil(sr * 0.09)
+  const n = Math.ceil(sr * 0.08)
   const out = new Float32Array(n)
-  let phase = 0
+  // en ringande resonator (bandpass) ger det höga, krispiga plastljudet
+  const w = (2 * Math.PI * pitch) / sr
+  const rr = Math.exp(-w / 24)
+  let seed = 7
+  let y1 = 0
+  let y2 = 0
   let max = 0
   for (let i = 0; i < n; i++) {
     const t = i / sr
-    // en rund ton som faller lite, som en droppe: ingen vass kant
-    const f = pitch * (1 + 0.9 * Math.exp(-t / 0.008))
-    phase += (2 * Math.PI * f) / sr
-    const tone = Math.sin(phase) + 0.15 * Math.sin(2 * phase)
-    out[i] = Math.min(1, t / 0.0015) * Math.exp(-t / 0.022) * tone
+    seed = (seed * 16807) % 2147483647
+    const noise = seed / 1073741823.5 - 1
+    // trycket och, 55 ms senare, släppet med halv styrka
+    const hit = noise * (Math.exp(-t / 0.0004) + (t >= 0.055 ? 0.5 * Math.exp(-(t - 0.055) / 0.0004) : 0))
+    const y = hit * (1 - rr) + 2 * rr * Math.cos(w) * y1 - rr * rr * y2
+    y2 = y1
+    y1 = y
+    const body = 0.25 * Math.sin(2 * Math.PI * pitch * 0.31 * t) * Math.exp(-t / 0.002)
+    out[i] = Math.min(1, t / 0.0004) * (1.7 * y + body)
     max = Math.max(max, Math.abs(out[i]))
   }
   for (let i = 0; i < n; i++) out[i] *= peak / max

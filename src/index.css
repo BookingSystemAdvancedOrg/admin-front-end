@@ -103,9 +103,9 @@
   --on-slip: #ffffff;
   /* Vätskan i nyckeltalsrutorna (rgb-tripel och täthet, se brand.css). */
   --liquid-tile: 255, 255, 255;
-  --liquid-tile-alpha: 0.9;
-  --liquid-attention: 158, 29, 38;
-  --liquid-attention-alpha: 0.14;
+  --liquid-tile-alpha: 0.4;
+  --liquid-attention: 168, 132, 98;
+  --liquid-attention-alpha: 0.16;
   --font: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --display: 'Bricolage Grotesque', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
   --serif-face: Athelas, Newsreader, Georgia, serif;
@@ -179,8 +179,8 @@
   /* mörkt: en svag ljus hinna på espressokortet i stället för brun vätska */
   --liquid-tile: 213, 196, 174;
   --liquid-tile-alpha: 0.05;
-  --liquid-attention: 238, 138, 144;
-  --liquid-attention-alpha: 0.16;
+  --liquid-attention: 213, 196, 174;
+  --liquid-attention-alpha: 0.12;
   color-scheme: dark;
 }
 

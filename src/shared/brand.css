@@ -849,11 +849,58 @@ html.is-saving .btn:disabled {
   box-shadow: var(--rim), var(--shadow-lg);
 }
 
-/* Nyckeltalen: vitt papper i ljust läge (vätskan är vit), i mörkt läge djup
-   espresso med en varm, tänd överkant, som Booqy Console */
-:root[data-theme='dark'] .stat-tile:not(.stat-tile--attention) {
-  background: linear-gradient(180deg, #2a1d16, #22170f);
-  box-shadow: inset 0 1px 0 rgba(213, 196, 174, 0.24), inset 0 0 0 1px rgba(213, 196, 174, 0.1), 0 1px 2px rgba(0, 0, 0, 0.3), 0 14px 34px -22px rgba(0, 0, 0, 0.8);
+/* Nyckeltalen som brytande glas (samma glas som skenorna och booqy.se): en
+   varm, halvklar yta som böjer det som ligger bakom på Chromium (filtret
+   "booqy-glass") och frostar i andra webbläsare. Kanten är en tunn, tänd
+   linje: vit i överkant, som tonar till sand nedåt, så rutan får tjocklek
+   utan en hård ram. Rutan som kräver något ("att hantera") tonas i Booqys
+   bruna i stället för rött. */
+.admin-card.stat-tile,
+.stat-tile.stat-tile--full,
+.stat-tile.liquid--full {
+  --tile-glass: linear-gradient(165deg, rgba(255, 255, 255, 0.78), rgba(255, 252, 247, 0.56) 55%, rgba(246, 241, 234, 0.5));
+  --tile-edge: linear-gradient(170deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.35) 38%, rgba(168, 132, 98, 0.32));
+  background: var(--tile-glass);
+  -webkit-backdrop-filter: blur(14px) saturate(1.6);
+  backdrop-filter: blur(14px) saturate(1.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(58, 36, 24, 0.06), 0 18px 36px -24px rgba(58, 36, 24, 0.45);
+}
+.glass-refract .stat-tile {
+  backdrop-filter: url(#booqy-glass) blur(14px) saturate(1.6);
+}
+.stat-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--tile-edge);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+}
+.admin-card.stat-tile.stat-tile--attention {
+  --tile-glass: linear-gradient(165deg, rgba(255, 250, 244, 0.8), rgba(232, 214, 192, 0.52) 60%, rgba(213, 196, 174, 0.46));
+  --tile-edge: linear-gradient(170deg, rgba(255, 255, 255, 0.95), rgba(168, 132, 98, 0.4) 45%, rgba(107, 74, 46, 0.36));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 1px 2px rgba(58, 36, 24, 0.08), 0 18px 36px -22px rgba(107, 74, 46, 0.5);
+}
+.admin-card.stat-tile--link:hover,
+.admin-card.stat-tile.stat-tile--attention.stat-tile--link:hover {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 2px 6px -2px rgba(58, 36, 24, 0.12), 0 26px 44px -24px rgba(58, 36, 24, 0.55);
+}
+:root[data-theme='dark'] .admin-card.stat-tile,
+:root[data-theme='dark'] .stat-tile.stat-tile--full,
+:root[data-theme='dark'] .stat-tile.liquid--full {
+  --tile-glass: linear-gradient(165deg, rgba(58, 36, 24, 0.78), rgba(42, 29, 22, 0.66) 55%, rgba(26, 18, 14, 0.62));
+  --tile-edge: linear-gradient(170deg, rgba(246, 241, 234, 0.4), rgba(213, 196, 174, 0.12) 40%, rgba(213, 196, 174, 0.22));
+  background: var(--tile-glass);
+  box-shadow: inset 0 1px 0 rgba(213, 196, 174, 0.2), 0 1px 2px rgba(0, 0, 0, 0.3), 0 18px 36px -22px rgba(0, 0, 0, 0.8);
+}
+:root[data-theme='dark'] .admin-card.stat-tile.stat-tile--attention {
+  --tile-glass: linear-gradient(165deg, rgba(107, 74, 46, 0.62), rgba(58, 36, 24, 0.7) 60%, rgba(42, 29, 22, 0.68));
+  --tile-edge: linear-gradient(170deg, rgba(246, 241, 234, 0.45), rgba(213, 196, 174, 0.2) 45%, rgba(213, 196, 174, 0.35));
 }
 
 /* Knappar: piller; huvudknappen är mörk espresso */
@@ -1007,6 +1054,12 @@ html.is-busy * {
   .admin-main {
     background: var(--bg);
   }
+  .admin-card.stat-tile,
+  .stat-tile.stat-tile--full,
+  .stat-tile.liquid--full,
+  :root[data-theme='dark'] .admin-card.stat-tile {
+    background: var(--surface);
+  }
 }
 @media (prefers-reduced-transparency: reduce) {
   body::before {
@@ -1016,6 +1069,14 @@ html.is-busy * {
   .admin-topbar,
   .admin-main {
     background: var(--bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .admin-card.stat-tile,
+  .stat-tile.stat-tile--full,
+  .stat-tile.liquid--full,
+  :root[data-theme='dark'] .admin-card.stat-tile {
+    background: var(--surface);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }

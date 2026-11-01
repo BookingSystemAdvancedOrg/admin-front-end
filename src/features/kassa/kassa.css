@@ -937,7 +937,7 @@
 .kassa-md pre {
   margin: 0 0 12px;
   padding: 10px 12px;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   background: var(--fill);
   overflow-x: auto;
 }
@@ -1197,7 +1197,7 @@
   gap: 2px;
   width: min(340px, calc(100vw - 32px));
   padding: 6px;
-  border-radius: 22px;
+  border-radius: var(--r-lg);
   background: rgba(255, 255, 255, 0.86);
   -webkit-backdrop-filter: blur(18px) saturate(1.5);
   backdrop-filter: blur(18px) saturate(1.5);
@@ -1212,7 +1212,7 @@
   width: 100%;
   padding: 10px 12px;
   border: 0;
-  border-radius: 16px;
+  border-radius: var(--r-md);
   background: transparent;
   color: var(--ink);
   text-align: left;
@@ -1257,7 +1257,7 @@
   flex: none;
   min-width: 34px;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: rgba(58, 36, 24, 0.08);
   font: 650 12px/1.2 var(--font);
   color: var(--muted);

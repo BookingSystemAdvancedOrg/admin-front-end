@@ -39,7 +39,7 @@
   display: inline-flex;
   padding: 3px 7px 2px;
   border: 1.5px solid currentColor;
-  border-radius: 3px;
+  border-radius: var(--r-md);
   font: 700 10px/1.2 var(--mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;

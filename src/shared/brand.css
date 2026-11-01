@@ -61,7 +61,7 @@
 .admin-logo-tag {
   padding: 3px 6px 2px;
   border: 1.5px solid currentColor;
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: transparent;
   font: 700 9.5px/1.2 var(--mono);
   letter-spacing: 0.1em;
@@ -81,7 +81,7 @@
 }
 
 .admin-location-picker select {
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: rgba(246, 236, 233, 0.1);
   box-shadow: inset 0 0 0 1px rgba(246, 236, 233, 0.22);
   color: var(--on-ox);
@@ -89,7 +89,7 @@
 }
 
 .admin-nav-item {
-  border-radius: 3px;
+  border-radius: var(--r-md);
   font: 600 15px/1.3 var(--font);
   font-stretch: 106%;
   color: var(--on-ox-2);
@@ -127,7 +127,7 @@
 }
 
 .admin-avatar {
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: var(--on-ox);
   color: var(--ox);
   font: 700 13px/1 var(--mono);
@@ -174,7 +174,7 @@
 .admin-card,
 .modal {
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-lg);
 }
 
 .card-title,
@@ -303,7 +303,7 @@ button.stat-tile {
 
 .quick-link {
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-md);
   transition: border-color 140ms var(--ease), transform 140ms var(--ease);
 }
 
@@ -312,7 +312,7 @@ button.stat-tile {
 }
 
 .quick-link-icon {
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: var(--fill);
   color: var(--ink);
 }
@@ -322,7 +322,7 @@ button.stat-tile {
 .status-badge[class] {
   padding: 3px 7px 2px;
   border: 1.5px solid currentColor;
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: transparent;
   font: 700 10.5px/1.2 var(--mono);
   letter-spacing: 0.08em;
@@ -337,7 +337,7 @@ button.stat-tile {
 /* --- Knappar: det omvända trycket ---------------------------------------- */
 
 .btn {
-  border-radius: 3px;
+  border-radius: var(--r-md);
   font: 650 15px/1.2 var(--font);
   font-stretch: 106%;
   transition: background-color 140ms var(--ease), border-color 140ms var(--ease),
@@ -375,7 +375,7 @@ button.stat-tile {
 }
 
 .btn.square {
-  border-radius: 3px;
+  border-radius: var(--r-md);
 }
 
 .link-action:hover {
@@ -410,7 +410,7 @@ button.stat-tile {
 .form-field input,
 .form-field textarea,
 .form-field select {
-  border-radius: 3px;
+  border-radius: var(--r-md);
   box-shadow: inset 0 0 0 1.5px var(--border);
 }
 
@@ -428,7 +428,7 @@ button.stat-tile {
 
 /* Inställningsflikar: tryckta lappar, vald flik i omvänt tryck. */
 .settings-tabs button {
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: var(--surface);
   box-shadow: inset 0 0 0 1px var(--border);
   font-weight: 600;
@@ -488,7 +488,7 @@ button.stat-tile {
   gap: 8px 14px;
   padding: 12px 20px;
   border: 1.5px dashed var(--accent-ink);
-  border-radius: 6px;
+  border-radius: var(--r-md);
   background: var(--surface);
   font-size: 14px;
   color: var(--ink);
@@ -498,7 +498,7 @@ button.stat-tile {
   display: inline-block;
   padding: 3px 7px 2px;
   border: 2px solid currentColor;
-  border-radius: 3px;
+  border-radius: var(--r-md);
   font: 800 10.5px/1.2 var(--mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -513,7 +513,7 @@ button.stat-tile {
   gap: 8px 12px;
   padding: 12px 20px;
   border: 1.5px solid var(--success-ink);
-  border-radius: 6px;
+  border-radius: var(--r-md);
   background: var(--surface);
   font-size: 14px;
   color: var(--ink);
@@ -585,7 +585,7 @@ button.stat-tile {
   overflow: hidden;
   background: var(--accent-ink);
   opacity: 0;
-  border-radius: 0 3px 3px 0;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
   box-shadow: 0 1px 6px rgba(158, 29, 38, 0.35);
 }
 
@@ -759,11 +759,11 @@ html.is-saving .btn:disabled {
   --liquid-alpha: 0.6;
 }
 .admin-logo-tag {
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   color: var(--on-ox-3);
 }
 .admin-location-picker select {
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--wall-tint);
   box-shadow: none;
   color-scheme: light;
@@ -778,7 +778,7 @@ html.is-saving .btn:disabled {
   color: var(--on-ox-3);
 }
 .admin-nav-item {
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   font: 500 15px/1.3 var(--font);
   font-stretch: 100%;
   color: var(--on-ox);
@@ -798,7 +798,7 @@ html.is-saving .btn:disabled {
   border-top-color: var(--wall-tint-2);
 }
 .admin-avatar {
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--slip);
   color: var(--on-slip);
 }
@@ -906,7 +906,7 @@ html.is-saving .btn:disabled {
 /* Knappar: piller; huvudknappen är mörk espresso */
 .btn,
 .btn.square {
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   font-weight: 600;
   transition: background-color 180ms var(--ease), color 180ms var(--ease), translate 180ms var(--ease), box-shadow 180ms var(--ease), filter 180ms var(--ease);
 }
@@ -1123,7 +1123,7 @@ html.is-busy * {
   min-height: 44px;
   padding: 0 18px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--fill);
   box-shadow: inset 0 0 0 1px var(--border);
   color: var(--ink);
@@ -1147,7 +1147,7 @@ html.is-busy * {
 
 /* Inställningsflikarna: piller, vald flik mörk espresso (även under musen) */
 .settings-tabs button {
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   transition: background-color 200ms var(--ease), color 300ms var(--ease), box-shadow 200ms var(--ease);
 }
 .settings-tabs button:hover {
@@ -1198,7 +1198,7 @@ html.is-busy * {
   width: 100%;
   padding: 14px 14px 14px 16px;
   border: 0;
-  border-radius: 18px;
+  border-radius: var(--r-md);
   background: rgba(255, 255, 255, 0.5);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 0 0 1px rgba(58, 36, 24, 0.1);
   color: var(--ink);
@@ -1240,7 +1240,7 @@ html.is-busy * {
   margin: 0 0 8px -6px;
   padding: 0 12px 0 8px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: transparent;
   font: 600 14px/1 var(--font);
   color: var(--accent-ink);
@@ -1274,7 +1274,7 @@ html.is-busy * {
   min-height: 0;
   padding: 11px 14px;
   border: 0;
-  border-radius: 16px;
+  border-radius: var(--r-md);
   background: transparent;
   box-shadow: none;
   text-align: left;
@@ -1348,7 +1348,7 @@ html.is-busy * {
   overflow-x: auto;
   scrollbar-width: none;
   border: 0 !important;
-  border-radius: 999px !important;
+  border-radius: var(--r-pill) !important;
   /* nästan vit, så att skenan ser likadan ut på papper och på glas */
   background: rgba(255, 255, 255, 0.9) !important;
   -webkit-backdrop-filter: blur(10px) saturate(1.5);
@@ -1368,7 +1368,7 @@ html.is-busy * {
   position: relative;
   flex: none;
   border-color: transparent !important;
-  border-radius: 999px !important;
+  border-radius: var(--r-pill) !important;
   background: transparent !important;
   box-shadow: none !important;
   translate: none !important;
@@ -1394,12 +1394,12 @@ html.is-busy * {
 
 [data-glide='bare'] > :is(button, a) {
   padding-inline: 14px !important;
-  border-radius: 16px !important;
+  border-radius: var(--r-md) !important;
 }
 
 /* en lista med flera rader per val: pillen följer radernas hörn */
 [data-glide='bare']::before {
-  border-radius: 16px !important;
+  border-radius: var(--r-md) !important;
 }
 
 @media (hover: hover) {
@@ -1418,7 +1418,7 @@ html.is-busy * {
   width: var(--glide-w, 0);
   height: var(--glide-h, 0);
   translate: var(--glide-x, 0) var(--glide-y, 0);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: linear-gradient(180deg, #3a2418, #1a120e);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 10px -6px rgba(26, 18, 14, 0.6);
   opacity: 0;
@@ -1508,7 +1508,7 @@ html.is-busy * {
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: linear-gradient(90deg, #1a120e var(--fill, 70%), rgba(58, 36, 24, 0.16) var(--fill, 70%));
   box-shadow: none;
   cursor: default;
@@ -1613,7 +1613,7 @@ html.is-busy * {
   width: 100%;
   margin: 0;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-md);
   background: transparent;
   text-align: left;
   cursor: default;
@@ -1699,7 +1699,7 @@ html.is-busy * {
    glaspiller som skenan, så att de syns på glaset. Mörkt: mörkt glas. */
 .compact-select {
   min-height: 38px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background-color: rgba(255, 255, 255, 0.9);
   -webkit-backdrop-filter: blur(10px) saturate(1.5);
   backdrop-filter: blur(10px) saturate(1.5);

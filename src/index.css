@@ -110,7 +110,9 @@
   --display: 'Bricolage Grotesque', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
   --serif-face: Athelas, Newsreader, Georgia, serif;
   --mono: 'Martian Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  --r-sm: 10px;
+  /* Hörnen: en skala i alla Booqys appar. Glasytor 28, kort och dialoger 22,
+     rutor i ett kort 14, knappar, flikar och chips som piller, runt är runt. */
+  --r-sm: var(--r-md);
   --r-md: 14px;
   --r-lg: 22px;
   --r-pill: 9999px;
@@ -245,7 +247,7 @@ a {
   --glass: rgba(255, 255, 255, 0.62);
   --glass-hi: rgba(255, 255, 255, 0.74);
   --rim: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.55);
-  --r-panel: clamp(22px, 2.6vw, 32px);
+  --r-panel: 28px;
   --backdrop-veil: rgba(246, 241, 234, 0);
   --wall-tint: rgba(58, 36, 24, 0.08);
   --wall-tint-2: rgba(58, 36, 24, 0.14);

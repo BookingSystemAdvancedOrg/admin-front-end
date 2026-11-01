@@ -160,7 +160,7 @@
   width: 9px;
   height: 9px;
   margin-right: 6px;
-  border-radius: 2px;
+  border-radius: var(--r-md);
   background: var(--border);
   vertical-align: -1px;
 }
@@ -471,7 +471,7 @@
   grid-template-columns: 84px 1fr;
   max-width: 380px;
   margin-left: auto;
-  border-radius: 14px;
+  border-radius: var(--r-md);
   background: #fff;
   filter: drop-shadow(0 14px 22px rgba(26, 18, 14, 0.22));
   -webkit-mask:
@@ -488,7 +488,7 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
-  border-radius: 14px 0 0 14px;
+  border-radius: var(--r-md) 0 0 var(--r-md);
   border-right: 2px dashed rgba(26, 18, 14, 0.2);
   background: var(--accent-ink);
   color: #fff;
@@ -541,7 +541,7 @@
 .mk-offer-input {
   padding: 9px 10px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--r-md);
   background: var(--fill);
   font: 400 13px/1.2 var(--font);
   color: var(--muted);
@@ -565,7 +565,7 @@
 
 .mk-offer-button {
   padding: 11px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--accent-ink);
   color: #fff;
   font: 700 14px/1 var(--font);
@@ -655,7 +655,7 @@
   width: 76px;
   padding: 8px 4px 6px;
   border: 0;
-  border-radius: 14px;
+  border-radius: var(--r-md);
   background: transparent;
   color: var(--ink);
   cursor: default;

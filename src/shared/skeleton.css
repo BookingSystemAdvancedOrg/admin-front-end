@@ -13,14 +13,14 @@
   flex: none;
   max-width: 100%;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-md);
   background: color-mix(in srgb, var(--ink) 10%, transparent);
   filter: blur(4px);
   animation: skel-breathe 1.8s ease-in-out infinite;
 }
 
 .skel-round {
-  border-radius: 999px;
+  border-radius: var(--r-pill);
 }
 
 /* Glasskimret: ett ljusstråk som långsamt drar över kortet. */
@@ -81,7 +81,7 @@
 .skel-bar {
   flex: 1 1 0;
   min-width: 0;
-  border-radius: 6px 6px 3px 3px;
+  border-radius: var(--r-md);
   background: color-mix(in srgb, #a88462 34%, transparent);
 }
 

@@ -89,7 +89,7 @@
 }
 
 .auth-field input {
-  border-radius: 3px;
+  border-radius: var(--r-md);
   box-shadow: inset 0 0 0 1.5px #e3d6c4;
 }
 
@@ -99,11 +99,11 @@
 
 .auth-rules,
 .auth-error {
-  border-radius: 3px;
+  border-radius: var(--r-md);
 }
 
 .auth-submit {
-  border-radius: 3px;
+  border-radius: var(--r-md);
   font: 650 16px/1.2 var(--font);
   font-stretch: 106%;
   box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.35);
@@ -124,10 +124,10 @@
   filter: drop-shadow(0 14px 18px rgba(58, 36, 24, 0.22)) drop-shadow(0 2px 3px rgba(58, 36, 24, 0.16));
 }
 .auth-card .btn {
-  border-radius: 999px;
+  border-radius: var(--r-pill);
 }
 .auth-submit {
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   box-shadow: 0 10px 24px -14px rgba(26, 18, 14, 0.7);
   transition: background-color 180ms var(--ease), translate 180ms var(--ease), box-shadow 180ms var(--ease);
 }
@@ -136,7 +136,7 @@
   box-shadow: 0 16px 30px -14px rgba(26, 18, 14, 0.75);
 }
 .auth-field input {
-  border-radius: 12px;
+  border-radius: var(--r-md);
 }
 .auth-heading h1 {
   font-family: var(--display);

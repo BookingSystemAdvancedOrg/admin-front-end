@@ -480,7 +480,7 @@ export default function StatistikPage() {
                 {[0, 1, 2, 3, 4, 5].map((i) => (
                   <SkelBox key={i} className="admin-card sk-kpi">
                     <SkelBlock w="44%" h={12} />
-                    <SkelBlock w="36%" h={36} style={{ borderRadius: 12 }} />
+                    <SkelBlock w="36%" h={36} style={{ borderRadius: 'var(--r-md)' }} />
                     <SkelBlock w="62%" h={12} />
                   </SkelBox>
                 ))}

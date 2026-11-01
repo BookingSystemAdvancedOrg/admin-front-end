@@ -1,4 +1,5 @@
 import { channelLabel } from '../marknadsforing/marketingApi'
+import { dishMarginSignals } from '../dish-margin/signals'
 import { addDays, daysBetween, fmtDecimal, fmtInt, fmtPct, isoDay, parseDay } from './stats'
 
 /**
@@ -421,6 +422,8 @@ export function signals(
       linkLabel: 'Till marknadsföringen',
     })
   }
+  // Marginal per rätt (dishMargin): servern skickar bara underlaget till ägaren.
+  out.push(...dishMarginSignals(s))
   return out.sort((a, b) => b.weight - a.weight).slice(0, 3)
 }
 

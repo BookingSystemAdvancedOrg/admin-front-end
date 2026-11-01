@@ -7,6 +7,7 @@ import { validateDishName, validateDishPrice } from './menuApi'
 import { utcToZonedInput, zonedInputToUtc } from './schedule'
 import { DateTimeInput } from '../../shared/DateInput'
 import { Icon } from '../../shared/Icon'
+import { Slot } from '../../shared/slots'
 
 export interface DishFormValues {
   name: string
@@ -59,6 +60,7 @@ export function DishModal({
   title,
   initial,
   timeZone,
+  locationId = null,
   onSave,
   onCancel,
 }: {
@@ -66,6 +68,8 @@ export function DishModal({
   initial: Dish | null
   /** Platsens tidszon (IANA); schemat matas in och visas i den. */
   timeZone: string
+  /** Platsen rätten hör till; behövs för planfunktionernas fält (Slot). */
+  locationId?: string | null
   onSave: (values: DishFormValues) => Promise<void>
   onCancel: () => void
 }) {
@@ -251,6 +255,12 @@ export function DishModal({
             )}
           </div>
         </div>
+        {locationId && initial && (
+          <Slot
+            id="meny.dish.cost"
+            props={{ locationId, menuItemId: initial.id, priceSek: parsedPrice, alcohol }}
+          />
+        )}
 
         <div className="toggle-row">
           <span className="toggle-row-label">

@@ -3,7 +3,8 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { BrandMark, BrandWordmark } from './BrandMark'
 import { useAuth } from '../features/auth/useAuth'
 import { primaryGroupLabel } from '../features/installningar/usersApi'
-import { canSeeInsights, selectLocation, useTenant } from './tenant'
+import { canSeeInsights, hasFeature, selectLocation, useTenant } from './tenant'
+import type { FeatureKey } from './contracts'
 import { GuideProvider } from '../features/guide/Guide'
 import { LogoutConfirm } from './LogoutConfirm'
 import type { TenantErrorCode } from './tenant'
@@ -22,7 +23,8 @@ import { preloadPages } from '../pages'
 // det som händer under passet, och det man ställer in mer sällan.
 // `end: true` gör att '/' bara markeras aktiv på exakt träff, annars skulle
 // den lysa upp på alla undersidor också.
-type NavItem = { to: string; label: string; tour: string; end?: boolean; feature?: string; ownerOnly?: boolean; insights?: boolean }
+// `feature` som lista = minst en av dem ingår i planen.
+type NavItem = { to: string; label: string; tour: string; end?: boolean; feature?: FeatureKey | FeatureKey[]; ownerOnly?: boolean; insights?: boolean }
 const NAV_GROUPS: { id: string; label: string | null; items: NavItem[] }[] = [
   {
     id: 'overblick',
@@ -46,6 +48,8 @@ const NAV_GROUPS: { id: string; label: string | null; items: NavItem[] }[] = [
       { to: '/kassa', label: 'Kassa', tour: 'nav-kassa', feature: 'kassa' },
       // Förfrågningar; inställningar och rabatter nås därifrån (/cateringkalkyl).
       { to: '/catering', label: 'Catering', tour: 'nav-catering', feature: 'catering' },
+      // In- och utcheckning för personalen (personalliggaren).
+      { to: '/personalliggare', label: 'Personalliggare', tour: 'nav-personalliggare', feature: 'personalliggare' },
     ],
   },
   {
@@ -54,8 +58,17 @@ const NAV_GROUPS: { id: string; label: string | null; items: NavItem[] }[] = [
     items: [
       { to: '/meny', label: 'Meny', tour: 'nav-meny' },
       { to: '/layout', label: 'Layout', tour: 'nav-layout' },
-      // E-postutskick; bara ägare, och bara med marknadsföring i planen.
-      { to: '/marknadsforing', label: 'Marknadsföring', tour: 'nav-marknadsforing', feature: 'marketing', ownerOnly: true },
+      { to: '/gaster', label: 'Gäster', tour: 'nav-gaster', feature: 'guestCrm' },
+      { to: '/presentkort', label: 'Presentkort', tour: 'nav-presentkort', feature: 'giftCards', ownerOnly: true },
+      { to: '/webbplats', label: 'Webbplats', tour: 'nav-webbplats', feature: 'siteBuilder', ownerOnly: true },
+      // Utskick, annonser, omdömen och inlägg; bara ägare, när minst en av dem ingår i planen.
+      {
+        to: '/marknadsforing',
+        label: 'Marknadsföring',
+        tour: 'nav-marknadsforing',
+        feature: ['marketing', 'metaAds', 'googleBusiness', 'socialPosting'],
+        ownerOnly: true,
+      },
       { to: '/installningar', label: 'Inställningar', tour: 'nav-installningar' },
     ],
   },
@@ -221,7 +234,7 @@ export function AdminLayout() {
           {NAV_GROUPS.map((group) => {
             const items = group.items.filter(
               (item) =>
-                (!item.feature || Boolean(tenant?.entitlements.features[item.feature])) &&
+                (!item.feature || hasFeature(tenant, item.feature)) &&
                 (!item.ownerOnly || tenant?.role === 'owner_user') &&
                 (!item.insights || canSeeInsights(tenant)),
             )

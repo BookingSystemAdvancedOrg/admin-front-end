@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { useAuth } from '../features/auth/useAuth'
 import { ApiError, apiFetch, isApiConfigured } from './api'
+import type { FeatureKey, LimitKey } from './contracts'
 import { LEGACY_LOCATION_KEY, LOCATION_KEY_PREFIX } from './storageRegistry'
 
 /**
@@ -72,6 +73,8 @@ export interface Tenant {
   entitlements: {
     maxLocations: number | null
     features: Record<string, boolean>
+    /** Saknas en gräns gäller dess standardvärde (LIMITS i contracts.ts). */
+    limits?: Partial<Record<LimitKey, number>>
   }
   locationCount: number
   stripe: TenantStripeStatus
@@ -85,6 +88,15 @@ export interface Tenant {
   dpa?: TenantDpa
   role: TenantRole
   locations: TenantLocation[]
+}
+
+/** Har restaurangens plan funktionen? En lista betyder minst en av dem. */
+export function hasFeature(
+  tenant: Pick<Tenant, 'entitlements'> | null | undefined,
+  key: FeatureKey | FeatureKey[],
+): boolean {
+  const features = tenant?.entitlements.features ?? {}
+  return (Array.isArray(key) ? key : [key]).some((k) => Boolean(features[k]))
 }
 
 /** Det ägaren själv får ändra (PATCH /tenant). Tom sträng tar bort värdet. */

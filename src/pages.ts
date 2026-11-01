@@ -20,6 +20,10 @@ export const pages = {
   tabetalt: () => import('./features/tabetalt/TaBetaltPage'),
   kassa: () => import('./features/kassa/KassaPage'),
   kassaGuide: () => import('./features/kassa/KassaGuide'),
+  personalliggare: () => import('./features/personalliggare/PersonalliggarePage'),
+  gaster: () => import('./features/guest-crm/GasterPage'),
+  presentkort: () => import('./features/gift-cards/PresentkortPage'),
+  webbplats: () => import('./features/site-builder/WebbplatsPage'),
 }
 
 let preloaded = false

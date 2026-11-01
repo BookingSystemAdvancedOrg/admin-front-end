@@ -31,6 +31,9 @@ const GROUPS: { title: string; roles: AccountRole[] }[] = [
   { title: 'Avgifter och övrigt', roles: ['cardFees', 'tips', 'refundsOwed', 'unclassified', 'rounding'] },
 ]
 
+/** Visas bara när presentkort ingår i planen (giftCards). */
+const GIFT_CARD_GROUP = { title: 'Presentkort', roles: ['giftCardLiability', 'giftCardBreakage'] as AccountRole[] }
+
 const LABEL: Record<AccountRole, string> = {
   sales25: '25 % (alkohol)',
   sales12: '12 % (mat på plats)',
@@ -47,6 +50,8 @@ const LABEL: Record<AccountRole, string> = {
   refundsOwed: 'Återbetalningar att göra',
   unclassified: 'Oklart (OBS-konto)',
   rounding: 'Öresavrundning',
+  giftCardLiability: 'Ej inlösta presentkort',
+  giftCardBreakage: 'Övriga ersättningar och intäkter',
 }
 
 const MONTHS = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober',
@@ -94,7 +99,10 @@ function message(err: unknown, fallback: string): string {
   return commonError(err, fallback, ERRORS, FIELDS)
 }
 
-export function BokforingCard({ locationId }: { locationId: string | null }) {
+export function BokforingCard({ locationId, giftCards = false }: { locationId: string | null; giftCards?: boolean }) {
+  const groups = giftCards ? [...GROUPS, GIFT_CARD_GROUP] : GROUPS
+  // Bara kontona som visas kontrolleras; en dold grupp får inte stoppa Spara.
+  const shown = groups.flatMap((g) => g.roles)
   const months = monthOptions()
   const [period, setPeriod] = useState(months[1].value)
   const [from, setFrom] = useState(monthRange(months[1].value)[0])
@@ -134,7 +142,7 @@ export function BokforingCard({ locationId }: { locationId: string | null }) {
   }, [locationId])
 
   const errors = accounts
-    ? Object.fromEntries(ACCOUNT_ROLES.map((r) => [r, accountError(accounts[r])]))
+    ? Object.fromEntries(shown.map((r) => [r, accountError(accounts[r] ?? '')]))
     : {}
   const costCenterError = /^[A-Z0-9]{1,10}$/.test(costCenter) ? null : 'Högst tio versaler eller siffror, t.ex. SODER.'
   const invalid = Object.values(errors).some(Boolean) || Boolean(settings && costCenterError)
@@ -319,11 +327,11 @@ export function BokforingCard({ locationId }: { locationId: string | null }) {
         {!accounts && !loadError && <p className="cell-muted">Hämtar kontona…</p>}
         {accounts && settings && (
           <form onSubmit={save} className="notifications-form" noValidate>
-            {GROUPS.map((group) => (
+            {groups.map((group) => (
               <fieldset key={group.title} className="bokforing-group">
                 <legend>{group.title}</legend>
                 {group.roles.map((role) => {
-                  const error = touched || accounts[role].length === 4 ? errors[role] : null
+                  const error = touched || (accounts[role] ?? '').length === 4 ? errors[role] : null
                   return (
                     <div key={role} className="bokforing-row">
                       <label htmlFor={`konto-${role}`}>
@@ -340,7 +348,7 @@ export function BokforingCard({ locationId }: { locationId: string | null }) {
                           inputMode="numeric"
                           autoComplete="off"
                           maxLength={4}
-                          value={accounts[role]}
+                          value={accounts[role] ?? ''}
                           aria-invalid={Boolean(error)}
                           aria-describedby={error ? `konto-${role}-fel` : undefined}
                           onChange={(e) => setAccount(role, e.target.value)}

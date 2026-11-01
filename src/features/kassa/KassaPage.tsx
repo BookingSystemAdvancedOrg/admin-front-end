@@ -964,7 +964,7 @@ function KassaSkeleton({ label }: { label: string }) {
           <SkelBlock w="70%" h={46} round />
           <div className="kassa-tiles">
             {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-              <SkelBox key={i} className="admin-card kassa-tile" h={96}>
+              <SkelBox key={i} className="admin-card kassa-tile" h={80}>
                 <SkelBlock w="70%" />
                 <SkelBlock w="36%" style={{ marginTop: 'auto' }} />
               </SkelBox>

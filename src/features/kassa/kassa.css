@@ -162,10 +162,10 @@
 .kassa-tile {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 108px;
-  padding: 18px 20px 16px;
+  justify-content: flex-start;
+  gap: 6px;
+  min-height: 80px;
+  padding: 16px 20px;
   text-align: left;
   border: 0;
   border-radius: var(--r-lg);

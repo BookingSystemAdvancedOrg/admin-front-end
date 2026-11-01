@@ -2017,6 +2017,28 @@ export default function LayoutEditorPage() {
 
   const loweredById = new Map(drawnWalls.map((w) => [w.id, isLowered(w)]))
 
+  // Raden under ritytan: en kort hjälp medan något pågår, annars inget
+  const sceneHint =
+    drawWarning
+    ? drawWarning
+    : tool === 'ground'
+      ? 'Klicka och dra för att rita mark - väggar skapas runt om automatiskt'
+      : openingTool
+        ? 'Klicka på en vägg och dra längs den - öppningen sitter kvar på väggen'
+        : tool === 'wall'
+          ? wallChain
+            ? 'Klicka för nästa hörn · klicka på startpunkten för att sluta rummet · dubbelklick, Enter eller Esc avslutar'
+            : 'Klicka för att börja en sammanhängande vägg (klick per hörn) - eller dra för en enskild vägg'
+          : tool === 'counter'
+            ? 'Klicka för att placera kassan'
+            : handMode || spaceDown
+              ? 'Dra för att panorera · Esc lämnar handverktyget'
+              : guides.length > 0
+                ? 'Snappar mot andra bord och väggar · håll Cmd/Ctrl för att dra fritt'
+                : selected.length > 1
+                  ? `${selected.length} valda · dra för att flytta alla · Delete tar bort · Cmd/Ctrl+D duplicerar`
+                  : null
+
   return (
     <>
       <AdminTopbar
@@ -2512,27 +2534,9 @@ export default function LayoutEditorPage() {
 
             {showHelp && <ShortcutSheet onClose={() => setShowHelp(false)} />}
 
-            <p className={drawWarning ? 'scene-hint warning' : 'scene-hint'}>
-              {drawWarning
-                ? drawWarning
-                : tool === 'ground'
-                  ? 'Klicka och dra för att rita mark - väggar skapas runt om automatiskt'
-                  : openingTool
-                    ? 'Klicka på en vägg och dra längs den - öppningen sitter kvar på väggen'
-                    : tool === 'wall'
-                      ? wallChain
-                        ? 'Klicka för nästa hörn · klicka på startpunkten för att sluta rummet · dubbelklick, Enter eller Esc avslutar'
-                        : 'Klicka för att börja en sammanhängande vägg (klick per hörn) - eller dra för en enskild vägg'
-                      : tool === 'counter'
-                        ? 'Klicka för att placera kassan'
-                        : handMode || spaceDown
-                          ? 'Dra för att panorera · Esc lämnar handverktyget'
-                          : guides.length > 0
-                            ? 'Snappar mot andra bord och väggar · håll Cmd/Ctrl för att dra fritt'
-                            : selected.length > 1
-                              ? `${selected.length} valda · dra för att flytta alla · Delete tar bort · Cmd/Ctrl+D duplicerar`
-                              : 'Dra på tom yta för att markera flera · Scrolla panorerar · Cmd/Ctrl + scroll zoomar · Alt + dra roterar · ? alla kortkommandon'}
-            </p>
+            {/* Bara när något pågår (ett verktyg, en dragning, flera valda);
+                i vila står inget här: kortkommandona finns under ?. */}
+            {sceneHint && <p className={drawWarning ? 'scene-hint warning' : 'scene-hint'}>{sceneHint}</p>}
           </div>
 
           <aside className="admin-card props-panel">
@@ -2807,13 +2811,19 @@ export default function LayoutEditorPage() {
                 <button type="button" className="btn outline" onClick={addFloor}>
                   + Lägg till våning
                 </button>
-                <p className="props-empty">
-                  Rita mark så skapas väggar runt om automatiskt. Väggar som
-                  vetter mot kameran sänks så att borden alltid syns - rotera
-                  vyn med Alt + dra eller ⟲ ⟳. Fönster, entré och kök sitter
-                  på väggarna och följer med när väggen flyttas eller
-                  förlängs. Tryck ? för alla kortkommandon.
-                </p>
+                {/* En rad räcker; resten fälls ut för den som vill läsa */}
+                <details className="props-tip">
+                  <summary>
+                    Rita mark, så kommer väggarna av sig själva.
+                    <span className="props-tip-more">Mer</span>
+                  </summary>
+                  <p>
+                    Väggar som vetter mot kameran sänks så att borden alltid
+                    syns. Rotera vyn med Alt + dra eller ⟲ ⟳. Fönster, entré och
+                    kök sitter på väggarna och följer med när väggen flyttas
+                    eller förlängs. Tryck ? för alla kortkommandon.
+                  </p>
+                </details>
                 {floors.length > 1 && (
                   <>
                     <div className="props-divider" />

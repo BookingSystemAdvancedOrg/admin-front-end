@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Bar } from '@booqy/brand'
 import { useBusy } from './busy'
 
 const DONE_MS = 900
@@ -8,7 +9,8 @@ const DONE_MS = 900
  * en liten vågig yta som rör sig så länge anropet pågår, och fyller ut
  * hela bredden och tonar bort när det är klart. Syns vid varje skrivning
  * (spara, publicera, skicka, bjuda in ...) så ingen tror att sidan hängt
- * sig. Skärmläsare får "Sparar" och "Sparat".
+ * sig. Skärmläsare får "Sparar" och "Sparat". Själva strimman är busy-varianten
+ * av Bar i @booqy/brand (pilot för det gemensamma märket); fasen räknas här.
  */
 export function BusyBar() {
   const { active, finishedAt } = useBusy()
@@ -30,14 +32,6 @@ export function BusyBar() {
     return () => document.documentElement.classList.remove('is-saving')
   }, [phase])
 
-  return (
-    <div className={`busy-bar busy-bar--${phase}`} aria-hidden={phase === 'idle'}>
-      <div className="busy-bar-fill">
-        <span className="busy-bar-wave" />
-      </div>
-      <span className="sr-only" role="status" aria-live="polite">
-        {phase === 'busy' ? 'Sparar…' : phase === 'done' ? 'Sparat' : ''}
-      </span>
-    </div>
-  )
+  // busy-bar och busy-bar--<fas> finns kvar som krokar för testerna; utseendet kommer från Bar
+  return <Bar variant="busy" phase={phase} className={`busy-bar busy-bar--${phase}`} busyLabel="Sparar…" doneLabel="Sparat" />
 }

@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import '@booqy/brand/styles.css'
 import './index.css'
 import { installPress } from './shared/press'
 import { installGlide } from './shared/glide'

@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "brand-lint": "node node_modules/@booqy/brand/scripts/brand-lint.mjs --config brand-lint.config.json"
   },
   "dependencies": {
     "@booqy/brand": "file:vendor/booqy-brand-0.1.0.tgz",

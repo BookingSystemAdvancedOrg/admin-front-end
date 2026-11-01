@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { BrandMark, BrandWordmark } from './BrandMark'
 import { useAuth } from '../features/auth/useAuth'
@@ -16,6 +16,7 @@ import { BusyBar } from './motion/BusyBar'
 import { DpaBanner } from '../features/dpa/DpaBanner'
 import { SkelCard, SkelPage, SkelTiles } from './Skeleton'
 import { NAV_CLOSED_KEY } from './storageRegistry'
+import { preloadPages } from '../pages'
 
 // Sidebar-länkarna, i grupper efter när man behöver dem: överblicken,
 // det som händer under passet, och det man ställer in mer sällan.
@@ -110,6 +111,11 @@ export function AdminLayout() {
   // Sidomenyns grupper är öppna från början; en grupp man fäller ihop förblir
   // hopfälld i den här webbläsaren.
   const [closedGroups, setClosedGroups] = useState<string[]>(storedClosedGroups)
+  // Skalet och första sidan är uppe: resten av sidorna hämtas i bakgrunden.
+  useEffect(() => {
+    if (status === 'ready') preloadPages()
+  }, [status])
+
   // Går man till en sida i en hopfälld grupp (en länk, eller guiden) öppnas
   // gruppen igen, så att sidan man står på alltid syns i menyn.
   useEffect(() => {
@@ -329,7 +335,10 @@ export function AdminLayout() {
         ) : status === 'ready' ? (
           <MotionScope>
             <DpaBanner />
-            <Outlet key={locationId ?? 'no-location'} />
+            {/* Sidans kod hämtas när den öppnas (App.tsx); under tiden samma skelett som när restaurangen hämtas. */}
+            <Suspense fallback={<div className="admin-main"><SkelPage label="Hämtar sidan"><SkelTiles /><SkelCard rows={5} /></SkelPage></div>}>
+              <Outlet key={locationId ?? 'no-location'} />
+            </Suspense>
           </MotionScope>
         ) : (
           <div className="admin-main">

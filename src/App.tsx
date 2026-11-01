@@ -1,21 +1,26 @@
+import { lazy } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AdminLayout } from './shared/AdminLayout'
-import OversiktPage from './features/oversikt/OversiktPage'
-import BokningarPage from './features/bokningar/BokningarPage'
-import BestallningarPage from './features/bestallningar/BestallningarPage'
-import MenyPage from './features/meny/MenyPage'
-import CateringkalkylPage from './features/cateringkalkyl/CateringkalkylPage'
-import CateringPage from './features/catering/CateringPage'
-import CateringRequestPage from './features/catering/CateringRequestPage'
-import LayoutEditorPage from './features/layout-editor/LayoutEditorPage'
-import InstallningarPage from './features/installningar/InstallningarPage'
-import HjalpPage from './features/guide/HjalpPage'
-import MarknadsforingPage from './features/marknadsforing/MarknadsforingPage'
-import StatistikPage from './features/statistik/StatistikPage'
-import AvtalPage from './features/dpa/AvtalPage'
-import TaBetaltPage from './features/tabetalt/TaBetaltPage'
-import KassaPage from './features/kassa/KassaPage'
-import { KassaManualPage, KassaPrintPage } from './features/kassa/KassaGuide'
+import { pages } from './pages'
+
+const OversiktPage = lazy(pages.oversikt)
+const BokningarPage = lazy(pages.bokningar)
+const BestallningarPage = lazy(pages.bestallningar)
+const MenyPage = lazy(pages.meny)
+const CateringkalkylPage = lazy(pages.cateringkalkyl)
+const CateringPage = lazy(pages.catering)
+const CateringRequestPage = lazy(pages.cateringRequest)
+const LayoutEditorPage = lazy(pages.layout)
+const InstallningarPage = lazy(pages.installningar)
+const HjalpPage = lazy(pages.hjalp)
+const MarknadsforingPage = lazy(pages.marknadsforing)
+const StatistikPage = lazy(pages.statistik)
+const AvtalPage = lazy(pages.avtal)
+const TaBetaltPage = lazy(pages.tabetalt)
+const KassaPage = lazy(pages.kassa)
+const KassaManualPage = lazy(() => pages.kassaGuide().then((m) => ({ default: m.KassaManualPage })))
+const KassaPrintPage = lazy(() => pages.kassaGuide().then((m) => ({ default: m.KassaPrintPage })))
+
 
 /**
  * Stripe skickar tillbaka ägaren hit efter onboardingen (return/refresh-URL:er

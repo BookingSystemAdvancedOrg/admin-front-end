@@ -9,7 +9,9 @@ import { MOTION_SEEN_KEY } from '../storageRegistry'
  * loggat in. Därefter står allt stilla, på alla sidor, tills man loggar ut
  * och in igen. Flaggan ligger i localStorage (se registret), så en
  * omladdning eller en ny flik inte spelar om den; utloggningen tar bort den.
- * Laddningsindikatorn (Loading) och sparindikatorn (BusyBar) rör sig alltid.
+ * Laddningsindikatorn (Loading) och sparindikatorn (BusyBar) rör sig alltid,
+ * och talen räknas upp varje gång en sida visas (claimNumberReveal), som i
+ * Booqy Console.
  */
 let decision: boolean | null = null
 let sidebarDecision: boolean | null = null
@@ -59,6 +61,8 @@ export function resetMotion(): void {
   sidebarDecision = null
   firstKey = null
   revealStart = null
+  visitKey = null
+  visitStart = null
   try {
     localStorage.removeItem(MOTION_SEEN_KEY)
   } catch {
@@ -76,6 +80,21 @@ export function claimReveal(): boolean {
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
   if (revealStart === null) revealStart = now
   return now - revealStart < REVEAL_WINDOW_MS
+}
+
+/** Sidan (sökväg + flik) som visas nu, och när dess första tal började räknas. */
+let visitKey: string | null = null
+let visitStart: number | null = null
+
+/**
+ * Som claimReveal, men för talen och deras gröna puls: fönstret börjar om
+ * varje gång man byter sida eller flik. Så räknas talen upp på varje sida man
+ * öppnar, men inte igen när sidan hämtar om eller ritar om rutorna.
+ */
+export function claimNumberReveal(): boolean {
+  const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
+  if (visitStart === null) visitStart = now
+  return now - visitStart < REVEAL_WINDOW_MS
 }
 
 /** Sidomenyn fylls bara på den första sidan efter inloggningen. Svaret hålls
@@ -105,6 +124,10 @@ export function MotionScope({ children }: { children: ReactNode }) {
   // eller skalet monteras om. Beslutet ligger på modulnivå, inte i komponenten.
   if (firstKey === null) firstKey = motionThisLogin() ? key : ''
   else if (firstKey !== key) firstKey = ''
+  if (visitKey !== key) {
+    visitKey = key
+    visitStart = null
+  }
   return <MotionContext.Provider value={firstKey !== '' && firstKey === key}>{children}</MotionContext.Provider>
 }
 

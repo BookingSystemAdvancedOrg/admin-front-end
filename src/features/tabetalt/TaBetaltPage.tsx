@@ -29,6 +29,7 @@ import {
 import type { CardPayment, CardReader, PayableOrder, Receipt, VatRate } from './cardApi'
 import './tabetalt.css'
 import { SkelCard, SkelPage } from '../../shared/Skeleton'
+import { Num } from '../../shared/motion/Num'
 
 /** Hur ofta en pågående betalning frågas om. */
 export const POLL_MS = 2_000
@@ -390,7 +391,7 @@ export default function TaBetaltPage() {
                       {today.map((p) => (
                         <li key={p.paymentId}>
                           <div className="pay-row">
-                            <span className="pay-row-amount">{kronor(p.amount)}</span>
+                            <span className="pay-row-amount"><Num>{kronor(p.amount)}</Num></span>
                             <span className={`status-badge ${STATUS_BADGE[p.status]}`}>{STATUS_TEXT[p.status]}</span>
                           </div>
                           <p className="cell-muted pay-row-meta">
@@ -476,7 +477,7 @@ function PaymentStage({
       <div className="pay-stage-mark" aria-hidden="true">
         <Icon name={icon} size={44} />
       </div>
-      <p className="pay-stage-amount">{kronor(payment.amount)}</p>
+      <p className="pay-stage-amount"><Num>{kronor(payment.amount)}</Num></p>
       <h2 className="pay-stage-title" role="status" aria-live="polite">{title}</h2>
       <p className="pay-stage-detail">
         {state === 'waiting' && `Gästen blippar, sätter i eller håller mobilen mot ${payment.readerLabel ?? 'läsaren'}.`}
@@ -584,16 +585,16 @@ function ReceiptSlip({
         {r.lines.length > 0 && (
           <ul className="receipt-lines">
             {r.lines.map((line, i) => (
-              <li key={i}><span>{line.quantity} x {line.name}</span><span>{kronor(line.total)}</span></li>
+              <li key={i}><span>{line.quantity} x {line.name}</span><span><Num>{kronor(line.total)}</Num></span></li>
             ))}
           </ul>
         )}
-        <p className="receipt-total"><span>Totalt</span><span>{kronor(r.total)}</span></p>
+        <p className="receipt-total"><span>Totalt</span><span><Num>{kronor(r.total)}</Num></span></p>
         {r.vat.map((v) => (
-          <p key={v.rate} className="receipt-row"><span>Moms {v.rate} % (netto {kronor(v.net)})</span><span>{kronor(v.vat)}</span></p>
+          <p key={v.rate} className="receipt-row"><span>Moms {v.rate} % (netto {kronor(v.net)})</span><span><Num>{kronor(v.vat)}</Num></span></p>
         ))}
         {r.vatOnRegister && <p className="receipt-small">Momsen redovisas på restaurangens kassakvitto.</p>}
-        {r.refunded ? <p className="receipt-row"><span>Återbetalt</span><span>{kronor(r.refunded)}</span></p> : null}
+        {r.refunded ? <p className="receipt-row"><span>Återbetalt</span><span><Num>{kronor(r.refunded)}</Num></span></p> : null}
         <p className="receipt-title">Kortbetalning, köp</p>
         {r.card.map((row) => (
           <p key={row.label} className="receipt-row"><span>{row.label}</span><span>{row.value}</span></p>

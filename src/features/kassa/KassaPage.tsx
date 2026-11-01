@@ -54,6 +54,7 @@ import type { Bill, BillKind, DayStatus, Delivery, Discount, Done, KassaState, M
 import '../tabetalt/tabetalt.css'
 import './kassa.css'
 import { SkelBlock, SkelBox, SkelCard, SkelPage } from '../../shared/Skeleton'
+import { Num } from '../../shared/motion/Num'
 
 /** Hur ofta en pågående kortbetalning frågas om. */
 export const POLL_MS = 2_000
@@ -711,7 +712,7 @@ export default function KassaPage() {
                     disabled={Boolean(bill?.locked) || stage !== 'bill' || (m.alcohol && bill?.kind === 'takeaway')}
                     onClick={() => void add(m)}>
                     <span className="name">{m.name}</span>
-                    <span className="price">{kr(m.price)}</span>
+                    <span className="price"><Num>{kr(m.price)}</Num></span>
                   </button>
                 ))}
               </div>
@@ -723,7 +724,7 @@ export default function KassaPage() {
               {myBills.map((b) => (
                 <button key={b.billId} type="button" className={`kassa-chip${bill?.billId === b.billId ? ' on' : ''}`}
                   onClick={() => void openBill(b.billId)}>
-                  {billName(b)} <small>{kr(bill?.billId === b.billId ? totals.total : b.total)}</small>
+                  {billName(b)} <small><Num>{kr(bill?.billId === b.billId ? totals.total : b.total)}</Num></small>
                 </button>
               ))}
               <button type="button" className="kassa-chip add" onClick={() => setDialog('table')}><Icon name="plus" size={16} /> Bord</button>
@@ -764,7 +765,7 @@ export default function KassaPage() {
                               <Icon name="plus" size={20} />
                             </button>
                           </div>
-                          <span className="sum">{kr(l.unitPrice * l.quantity)}</span>
+                          <span className="sum"><Num>{kr(l.unitPrice * l.quantity)}</Num></span>
                           {!l.sent && !bill.locked && (
                             <button type="button" className="kassa-icon-btn" aria-label={`Notering för ${l.name}`}
                               onClick={() => { setNoteKey(l.key); setDialog('note') }}>
@@ -777,10 +778,10 @@ export default function KassaPage() {
 
                     <div className="kassa-sum">
                       {totals.discount > 0 && (
-                        <div className="row"><span>Rabatt ({discount?.label})</span><span>-{kr(totals.discount)}</span></div>
+                        <div className="row"><span>Rabatt ({discount?.label})</span><span><Num>{`-${kr(totals.discount)}`}</Num></span></div>
                       )}
-                      {bill.paid > 0 && <div className="row"><span>Betalt med kort</span><span>{kr(bill.paid)}</span></div>}
-                      <div className="row total"><span>Att betala</span><span>{kr(totals.total - bill.paid)}</span></div>
+                      {bill.paid > 0 && <div className="row"><span>Betalt med kort</span><span><Num>{kr(bill.paid)}</Num></span></div>}
+                      <div className="row total"><span>Att betala</span><span><Num>{kr(totals.total - bill.paid)}</Num></span></div>
                     </div>
 
                     <div className="kassa-actions">
@@ -810,7 +811,7 @@ export default function KassaPage() {
                 {stage === 'pay' && (
                   <div className="kassa-pay-panel">
                     <div className="kassa-sum">
-                      <div className="row total"><span>Kvar att betala</span><span>{kr(bill.remaining)}</span></div>
+                      <div className="row total"><span>Kvar att betala</span><span><Num>{kr(bill.remaining)}</Num></span></div>
                     </div>
                     <div className="kassa-chips" aria-label="Dela notan">
                       <button type="button" className={`kassa-chip${amount === bill.remaining ? ' on' : ''}`} onClick={() => setAmountText(kr(bill.remaining))}>Hela</button>
@@ -852,7 +853,7 @@ export default function KassaPage() {
                 {stage === 'waiting' && payment && (
                   <div className={`pay-stage ${payment.status === 'processing' ? 'waiting' : payment.status === 'succeeded' ? 'paid' : 'declined'}`}>
                     <div className="pay-stage-mark"><Icon name={payment.status === 'processing' ? 'card' : payment.status === 'succeeded' ? 'check' : 'close'} size={44} /></div>
-                    <p className="kassa-big-amount">{kr(payment.amount)} kr</p>
+                    <p className="kassa-big-amount"><Num>{`${kr(payment.amount)} kr`}</Num></p>
                     <h2>{payment.status === 'processing' ? 'Väntar på kort' : payment.status === 'succeeded' ? 'Betald' : 'Inte betald'}</h2>
                     {payment.status === 'processing' ? (
                       <>
@@ -882,7 +883,7 @@ export default function KassaPage() {
                     {!bill.training && (
                       <div className="pay-stage paid">
                         <div className="pay-stage-mark"><Icon name="check" size={44} /></div>
-                        <h2>Betalt {kr(bill.paid)} kr</h2>
+                        <h2>Betalt <Num>{`${kr(bill.paid)} kr`}</Num></h2>
                       </div>
                     )}
                     <p className="cell-muted">Kvittot skapas med kontrollkod och skrivs ut eller mejlas. Gästen får välja att inte ta det.</p>

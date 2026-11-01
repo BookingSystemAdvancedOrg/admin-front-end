@@ -1,7 +1,7 @@
 import { fireEvent, render } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { MotionScope, REVEAL_WINDOW_MS, claimReveal, motionThisLogin, resetMotion, resetMotionForTests, sidebarShouldPour, useMotionAllowed } from './MotionScope'
+import { MotionScope, REVEAL_WINDOW_MS, claimNumberReveal, claimReveal, motionThisLogin, resetMotion, resetMotionForTests, sidebarShouldPour, useMotionAllowed } from './MotionScope'
 
 function Probe() {
   return <span data-testid="probe">{useMotionAllowed() ? 'moves' : 'still'}</span>
@@ -85,5 +85,19 @@ describe('MotionScope', () => {
     expect(claimReveal()).toBe(false)
     resetMotion()
     expect(claimReveal()).toBe(true)
+  })
+
+  it('lets numbers count again on every page visit, but not on a refetch', () => {
+    let now = 1000
+    vi.spyOn(performance, 'now').mockImplementation(() => now)
+    session('/oversikt')
+    expect(claimNumberReveal()).toBe(true)
+    now += REVEAL_WINDOW_MS + 1
+    // The same page refetches: the numbers stand still.
+    session('/oversikt')
+    expect(claimNumberReveal()).toBe(false)
+    // Another page, long after the login: its numbers count up again.
+    expect(session('/meny')).toBe('still')
+    expect(claimNumberReveal()).toBe(true)
   })
 })

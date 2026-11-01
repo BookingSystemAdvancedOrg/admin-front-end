@@ -9,6 +9,7 @@ import { useTrendPop } from '../../shared/motion/useTrendPop'
 import { toneClass, trendOf } from '../../shared/trend'
 import type { Trend, TrendMetric } from '../../shared/trend'
 import { canSeeInsights, currentLocation, useTenant } from '../../shared/tenant'
+import { Slot } from '../../shared/slots'
 import { todayIn } from '../bokningar/bookingsApi'
 import { channelLabel } from '../marknadsforing/marketingApi'
 import { sampleModeOn, setSampleMode } from '../oversikt/sample'
@@ -933,6 +934,13 @@ export default function StatistikPage() {
                         </div>
                         <Tip>En rätt som säljer dåligt i 30 dagar: byt plats i menyn, ändra pris eller ta bort den.</Tip>
                       </Card>
+                    )}
+
+                    {ready && (
+                      <Slot
+                        id="statistik.dishes.margin"
+                        props={{ insights: ready, locationId: f.locationId, from: f.from, to: f.to }}
+                      />
                     )}
 
                     {s.pairs.length > 0 && (

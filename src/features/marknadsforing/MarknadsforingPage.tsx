@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useTenant } from '../../shared/tenant'
+import { Slot, slotVisible } from '../../shared/slots'
 import { OverviewTab } from './OverviewTab'
 import { TemplatesTab } from './TemplatesTab'
 import { CampaignsTab } from './CampaignsTab'
@@ -18,7 +19,14 @@ const TABS = [
   { id: 'lankar', label: 'Länkar och QR' },
 ] as const
 
-type TabId = (typeof TABS)[number]['id']
+/** Flikar från planfunktionerna (CONTRACTS.md 8.2), var och en bara när den ingår. */
+const SLOT_TABS = [
+  { id: 'annonser', label: 'Annonser', slot: 'marketing.tab.annonser' },
+  { id: 'omdomen', label: 'Omdömen', slot: 'marketing.tab.omdomen' },
+  { id: 'inlagg', label: 'Inlägg', slot: 'marketing.tab.inlagg' },
+] as const
+
+type TabId = (typeof TABS)[number]['id'] | (typeof SLOT_TABS)[number]['id']
 
 /**
  * Marknadsföring (planfunktionen "marketing", bara ägare).
@@ -38,14 +46,24 @@ type TabId = (typeof TABS)[number]['id']
 export default function MarknadsforingPage() {
   const { tenant } = useTenant()
   const [params, setParams] = useSearchParams()
+  const marketing = Boolean(tenant?.entitlements?.features?.marketing)
+  // De sex vanliga flikarna kräver "marketing"; de övriga sin egen funktion.
+  const tabs: { id: TabId; label: string }[] = [
+    ...(marketing ? TABS : []),
+    ...SLOT_TABS.filter((t) => slotVisible(tenant, t.slot)),
+  ]
   const requested = params.get('flik') as TabId | null
-  const tab: TabId = TABS.some((t) => t.id === requested) ? (requested as TabId) : 'oversikt'
-  const enabled = Boolean(tenant?.entitlements.features.marketing)
+  const fallback: TabId = tabs[0]?.id ?? 'oversikt'
+  const tab: TabId = tabs.some((t) => t.id === requested) ? (requested as TabId) : fallback
+  // Samma "någon av" som menyn (AdminLayout): sidan finns när minst en ingår.
+  const enabled = (['marketing', 'metaAds', 'googleBusiness', 'socialPosting'] as const).some((k) =>
+    Boolean(tenant?.entitlements?.features?.[k]),
+  )
   const isOwner = tenant?.role === 'owner_user'
 
   const select = (id: TabId) => {
     const next = new URLSearchParams(params)
-    if (id === 'oversikt') next.delete('flik')
+    if (id === fallback) next.delete('flik')
     else next.set('flik', id)
     setParams(next, { replace: true })
   }
@@ -73,7 +91,7 @@ export default function MarknadsforingPage() {
       <AdminTopbar title="Marknadsföring" />
       <main className="admin-main">
         <nav className="mk-tabs" role="tablist" aria-label="Marknadsföring">
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <button
               key={t.id}
               type="button"
@@ -93,8 +111,11 @@ export default function MarknadsforingPage() {
           {tab === 'kampanjer' && <CampaignsTab onOpen={select} />}
           {tab === 'mallar' && <TemplatesTab />}
           {tab === 'erbjudande' && <OfferTab />}
+          {/* Överst i Mottagare; ligger här eftersom SubscribersTab inte läser restaurangen själv. */}
+          {tab === 'mottagare' && <Slot id="marketing.mottagare.segments" props={{}} />}
           {tab === 'mottagare' && <SubscribersTab />}
           {tab === 'lankar' && <LinksTab primaryDomain={tenant?.primaryDomain ?? null} />}
+          {SLOT_TABS.map((t) => tab === t.id && <Slot key={t.id} id={t.slot} props={{}} />)}
         </div>
       </main>
     </>

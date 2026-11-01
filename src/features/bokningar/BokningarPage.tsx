@@ -4,6 +4,7 @@ import { Num } from '../../shared/motion/Num'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { isApiConfigured } from '../../shared/api'
 import { currentLocation, useTenant } from '../../shared/tenant'
+import { Slot } from '../../shared/slots'
 import { NewReservationModal } from './NewReservationModal'
 import { ReservationModal } from './ReservationModal'
 import {
@@ -242,6 +243,12 @@ export default function BokningarPage() {
                     <td className="cell-strong">{r.startTime}</td>
                     <td>
                       <span className="cell-strong">{r.customerName || 'Gäst'}</span>
+                      {locationId && (
+                        <Slot
+                          id="bokningar.reservation.badge"
+                          props={{ locationId, reservationId: r.reservationId, email: r.customerEmail, phone: r.customerPhone }}
+                        />
+                      )}
                       {r.notes && <span className="note-dot" title={r.notes}> <Icon name="note" size={14} /></span>}
                       {r.customerPhone && <div className="cell-muted">{r.customerPhone}</div>}
                       {r.source && r.source !== 'online' && (
@@ -270,6 +277,7 @@ export default function BokningarPage() {
             </button>
           )}
         </section>
+        {locationId && <Slot id="bokningar.panel.waitlist" props={{ locationId, date }} />}
       </div>
 
       {open && (

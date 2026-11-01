@@ -59,7 +59,8 @@ import {
   resolveLocationId,
   useLocationId,
 } from '../../shared/location'
-import { useTenant } from '../../shared/tenant'
+import { hasFeature, useTenant } from '../../shared/tenant'
+import { Slot } from '../../shared/slots'
 import { PhoneInput } from '../../shared/PhoneInput'
 import { SkelBlock } from '../../shared/Skeleton'
 
@@ -609,6 +610,10 @@ export default function InstallningarPage() {
             />
           </section>
 
+          {locationId && tab === 'profil' && (
+            <Slot id="installningar.verksamhet.google" props={{ locationId }} />
+          )}
+
           <div hidden={tab !== 'profil'}>
             <BookingTimeCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
           </div>
@@ -787,6 +792,10 @@ export default function InstallningarPage() {
             <TableRulesCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
           </div>
 
+          {locationId && tab === 'bord' && (
+            <Slot id="installningar.verksamhet.waitlist" props={{ locationId }} />
+          )}
+
           {isOwner && tenant && (
             <div className="settings-row" hidden={tab !== 'statistik'}>
               <InsightsSettingsCard
@@ -799,7 +808,12 @@ export default function InstallningarPage() {
 
           {isOwner && tab === 'bokforing' && (
             <div className="settings-row">
-              <BokforingCard key={locationId ?? 'none'} locationId={locationId} />
+              <Slot id="installningar.bokforing.sync" props={{}} />
+              <BokforingCard
+                key={locationId ?? 'none'}
+                locationId={locationId}
+                giftCards={hasFeature(tenant, 'giftCards')}
+              />
             </div>
           )}
 

@@ -23,6 +23,7 @@ import {
   updateCampaign,
 } from './marketingApi'
 import type { Audience, AudienceType, Campaign, CampaignInput, Template } from './marketingApi'
+import { Slot } from '../../shared/slots'
 import type { TabId } from './MarknadsforingPage'
 import { useEscape } from './useEscape'
 import { DateTimeInput } from '../../shared/DateInput'
@@ -50,6 +51,8 @@ function CampaignForm({
   const [days, setDays] = useState<number>(campaign?.audience.days ?? 90)
   const [loc, setLoc] = useState<string>(campaign?.audience.locationId ?? '')
   const [counted, setCounted] = useState<{ key: string; n: number } | null>(null)
+  // Ett gästsegment från Gäster (guestCrm) ersätter målgruppen ovan när det är valt.
+  const [segment, setSegment] = useState<{ type: 'segment'; exportId: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -80,7 +83,7 @@ function CampaignForm({
     if (!templateId) return setError('Välj en mall.')
     setSaving(true)
     setError(null)
-    const input: CampaignInput = { name, templateId, subject, audience }
+    const input: CampaignInput = { name, templateId, subject, audience: segment ?? audience }
     try {
       onSaved(campaign ? await updateCampaign(campaign.campaignId, input) : await createCampaign(input))
     } catch (err) {
@@ -140,7 +143,8 @@ function CampaignForm({
             </select>
           </div>
         )}
-        <p className="mk-audience-count" aria-live="polite">
+        <Slot id="marketing.kampanjer.audience" props={{ value: segment, onChange: setSegment }} />
+        <p className="mk-audience-count" aria-live="polite" hidden={segment !== null}>
           {count === null ? 'Räknar mottagare…' : count < 0 ? 'Kunde inte räkna mottagarna.' : `${count} mottagare just nu`}
         </p>
         <p className="field-hint">

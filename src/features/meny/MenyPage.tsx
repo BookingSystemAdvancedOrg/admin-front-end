@@ -10,6 +10,7 @@ import { DEFAULT_TIMEZONE } from '../installningar/data'
 import { CATEGORY_LABEL } from './data'
 import type { Dish, DishCategory } from './data'
 import { DishModal } from './DishModal'
+import { Slot } from '../../shared/slots'
 import type { DishFormValues } from './DishModal'
 import {
   CATEGORY_TO_API,
@@ -455,6 +456,7 @@ export default function MenyPage() {
                         >
                           Radera
                         </button>
+                        {locationId && <Slot id="meny.dish.share" props={{ locationId, menuItemId: d.id }} />}
                       </span>
                     </td>
                   </tr>
@@ -470,6 +472,7 @@ export default function MenyPage() {
           title={modal.mode === 'add' ? 'Lägg till rätt' : 'Redigera rätt'}
           initial={editingDish}
           timeZone={timeZone}
+          locationId={locationId}
           onSave={handleSave}
           onCancel={() => setModal(null)}
         />

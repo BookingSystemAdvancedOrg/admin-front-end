@@ -4,6 +4,7 @@ import { KassaMenu } from './KassaMenu'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { ApiError } from '../../shared/api'
 import { Icon } from '../../shared/Icon'
+import { Slot } from '../../shared/slots'
 import { useLocationId } from '../../shared/location'
 import { useAuth } from '../auth/useAuth'
 import {
@@ -411,6 +412,20 @@ export default function KassaPage() {
       setStage(fresh.remaining <= 0 ? 'deliver' : 'pay')
     }
   }, [locationId])
+
+  // Presentkort (giftCards) drogs på notan: hämta den igen, som efter en kortbetalning.
+  async function giftCardPaid() {
+    if (!locationId || !billIdRef.current) return
+    try {
+      const fresh = await getBill(locationId, billIdRef.current)
+      show(fresh)
+      checkoutId.current = newCheckoutId()
+      setAmountText(kr(fresh.remaining))
+      setStage(fresh.remaining <= 0 ? 'deliver' : 'pay')
+    } catch (err) {
+      setError(errorText(err))
+    }
+  }
 
   const pollId = payment?.status === 'processing' ? `${payment.paymentId}:${payment.attempt ?? 1}` : null
   useEffect(() => {
@@ -843,6 +858,12 @@ export default function KassaPage() {
                     <button type="button" className="btn primary kassa-pay" disabled={busy || !amountOk || !readerId || !csOk} onClick={() => void charge()}>
                       <Icon name="card" size={22} /> Skicka {amount !== null ? kr(amount) : ''} kr till läsaren
                     </button>
+                    {locationId && (
+                      <Slot
+                        id="kassa.payment.giftcard"
+                        props={{ locationId, billId: bill.billId, remainingOre: bill.remaining, onPaid: () => void giftCardPaid() }}
+                      />
+                    )}
                     <PaidParts bill={bill} busy={busy} onUndo={(p) => void undo(p)} />
                     {bill.paid === 0 && (
                       <button type="button" className="btn outline" onClick={() => setStage('bill')}>Tillbaka till notan</button>

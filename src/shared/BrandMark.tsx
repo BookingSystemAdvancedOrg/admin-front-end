@@ -2,12 +2,13 @@
  * Booqys logotyp, ritad som geometri efter originalen.
  *
  * Två former: ordmärket "booqy" (tunna, rundade linjer, för ytor där hela
- * namnet får plats) och b-märket (det vita b:et på vinröd botten, för små
+ * namnet får plats) och b-märket (det vita b:et på espressobrun botten, för små
  * ytor som ikoner och brickor där namnet inte får plats). Samma teckning som
  * Booqy Console. Flikikonen (assets/favicon.svg) är bara b:et, utan botten.
  */
 
-export const BRAND_RED = '#350001'
+/** Brickans färg: samma espresso som Booqy Console och piller i alla appar. */
+export const BRAND_TILE = '#1a120e'
 
 /** b-märket, nonzero-fyllning i en 2000-ruta. */
 export const MARK_PATH =
@@ -21,7 +22,7 @@ export const MARK_PATH =
 const ICON = { x: 300, y: 115, s: 1400 }
 
 /**
- * b-märket. `tone="red"` (standard) är den vinröda brickan med vitt b,
+ * b-märket. `tone="red"` (standard) är den mörkbruna brickan med vitt b,
  * `tone="mono"` bara b:et i currentColor (på egen färgad botten).
  * Dekorativt om ingen `title` ges; namnet står då bredvid.
  */
@@ -41,7 +42,7 @@ export function BrandMark({
     <svg width={size} height={size} viewBox={`${ICON.x} ${ICON.y} ${ICON.s} ${ICON.s}`} focusable="false" {...aria}>
       {title && <title>{title}</title>}
       {tone === 'red' && (
-        <rect x={ICON.x} y={ICON.y} width={ICON.s} height={ICON.s} rx={rounded ? Math.round(ICON.s * 0.22) : 0} fill={BRAND_RED} />
+        <rect x={ICON.x} y={ICON.y} width={ICON.s} height={ICON.s} rx={rounded ? Math.round(ICON.s * 0.22) : 0} fill={BRAND_TILE} />
       )}
       <path d={MARK_PATH} fill={tone === 'red' ? '#fff' : 'currentColor'} />
     </svg>

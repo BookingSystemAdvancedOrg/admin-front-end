@@ -1313,13 +1313,12 @@
     padding: 16px;
   }
 
-  /* Scene-controls får en egen rad UNDER floor-tabs (båda kvar upptill)
-     istället för att dela top:16px-raden - annars får de inte plats
-     bredvid varandra på en smal scen. Håll dem till EN rad var (skrollbar
-     i sidled vid behov) så höjden är förutsägbar och de aldrig krockar med
-     scene-hint-texten som bor längst ner. */
+  /* Verktygsraden överst och våningsflikarna på raden under (container-
+     regeln för smala planer längre ner lägger flikarna på 72 px); båda på
+     EN rad var (skrollbar i sidled vid behov) så höjden är förutsägbar och
+     de aldrig krockar med varandra eller scene-hint-texten längst ner. */
   .scene-controls {
-    top: 58px;
+    top: 12px;
     left: 12px;
     right: 12px;
     flex-wrap: nowrap;
@@ -1332,7 +1331,6 @@
   }
 
   .floor-tabs {
-    top: 12px;
     left: 12px;
     max-width: calc(100% - 24px);
   }

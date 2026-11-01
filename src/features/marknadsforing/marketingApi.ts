@@ -323,7 +323,8 @@ export interface CampaignInput {
   name: string
   templateId: string
   subject?: string | null
-  audience: Audience
+  /** Ett exporterat gästsegment (guestCrm) går också att välja som målgrupp. */
+  audience: Audience | { type: 'segment'; exportId: string }
 }
 
 export interface Campaign {

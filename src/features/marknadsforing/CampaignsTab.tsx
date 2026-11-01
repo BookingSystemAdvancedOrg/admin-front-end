@@ -83,8 +83,7 @@ function CampaignForm({
     if (!templateId) return setError('Välj en mall.')
     setSaving(true)
     setError(null)
-    // shortcut: Audience i marketingApi saknar segment-varianten; backend tar emot den (AP15).
-    const input: CampaignInput = { name, templateId, subject, audience: (segment ?? audience) as Audience }
+    const input: CampaignInput = { name, templateId, subject, audience: segment ?? audience }
     try {
       onSaved(campaign ? await updateCampaign(campaign.campaignId, input) : await createCampaign(input))
     } catch (err) {

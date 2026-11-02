@@ -962,6 +962,10 @@ export default function StatistikPage() {
                 </>
               )}
 
+              {ready && (
+                <Slot id="statistik.events" props={{ insights: ready, locationId: f.locationId, from: f.from, to: f.to }} />
+              )}
+
               {showCatering && (
                 <>
                   <h3 className="sk-section-title" id="catering">

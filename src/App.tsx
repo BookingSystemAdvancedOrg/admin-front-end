@@ -23,6 +23,8 @@ const PersonalliggarePage = lazy(pages.personalliggare)
 const GasterPage = lazy(pages.gaster)
 const PresentkortPage = lazy(pages.presentkort)
 const WebbplatsPage = lazy(pages.webbplats)
+const TelefonPage = lazy(pages.telefon)
+const EvenemangPage = lazy(pages.evenemang)
 const KassaPrintPage = lazy(() => pages.kassaGuide().then((m) => ({ default: m.KassaPrintPage })))
 
 
@@ -58,10 +60,15 @@ function App() {
         <Route path="catering" element={<CateringPage />} />
         <Route path="catering/:locationId/:requestId" element={<CateringRequestPage />} />
         <Route path="personalliggare" element={<PersonalliggarePage />} />
+        <Route path="telefon" element={<TelefonPage />} />
+        <Route path="telefon/samtal/:callId" element={<TelefonPage />} />
         <Route path="layout" element={<LayoutEditorPage />} />
         <Route path="gaster" element={<GasterPage />} />
         <Route path="presentkort" element={<PresentkortPage />} />
         <Route path="webbplats" element={<WebbplatsPage />} />
+        <Route path="evenemang" element={<EvenemangPage />} />
+        <Route path="evenemang/:eventId" element={<EvenemangPage />} />
+        <Route path="evenemang/:eventId/inslapp/:occurrenceId" element={<EvenemangPage />} />
         <Route path="marknadsforing" element={<MarknadsforingPage />} />
         <Route path="installningar" element={<InstallningarPage />} />
         <Route path="hjalp" element={<HjalpPage />} />

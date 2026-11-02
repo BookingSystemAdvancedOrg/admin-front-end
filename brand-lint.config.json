@@ -10,6 +10,8 @@
     "features/social-posting/**",
     "features/personalliggare/**",
     "features/accounting-sync/**",
-    "features/dish-margin/**"
+    "features/dish-margin/**",
+    "features/events-tickets/**",
+    "features/phone-agent/**"
   ]
 }

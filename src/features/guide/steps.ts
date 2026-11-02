@@ -293,6 +293,17 @@ export const GUIDE_STEPS: GuideStep[] = [
     text: 'Checka in och ut när ni jobbar. Visa liggaren direkt om Skatteverket kommer på besök.',
   },
 
+  // --- Telefon -----------------------------------------------------------------
+  {
+    id: 'telefon',
+    route: '/telefon',
+    target: 'nav-telefon',
+    feature: 'phoneAgent',
+    section: 'Telefon',
+    title: 'Telefon',
+    text: 'Låt assistenten svara när ni inte hinner. Se samtalen, vem som vill bli uppringd och stäng av när ni vill.',
+  },
+
   // --- Layout ----------------------------------------------------------------
   {
     id: 'layout',
@@ -346,6 +357,17 @@ export const GUIDE_STEPS: GuideStep[] = [
     section: 'Webbplats',
     title: 'Webbplats',
     text: 'Ändra er hemsida, förhandsgranska och publicera när ni är nöjda.',
+  },
+
+  // --- Evenemang ---------------------------------------------------------------
+  {
+    id: 'evenemang',
+    route: '/evenemang',
+    target: 'nav-evenemang',
+    feature: 'events',
+    section: 'Evenemang',
+    title: 'Evenemang',
+    text: 'Sälj biljetter till kvällar och middagar, scanna vid dörren och se vad som är sålt.',
   },
 
   // --- Statistik -------------------------------------------------------------

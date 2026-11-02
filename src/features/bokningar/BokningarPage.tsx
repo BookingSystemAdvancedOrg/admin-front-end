@@ -249,6 +249,9 @@ export default function BokningarPage() {
                           props={{ locationId, reservationId: r.reservationId, email: r.customerEmail, phone: r.customerPhone }}
                         />
                       )}
+                      {locationId && (
+                        <Slot id="bokningar.reservation.call" props={{ locationId, reservationId: r.reservationId }} />
+                      )}
                       {r.notes && <span className="note-dot" title={r.notes}> <Icon name="note" size={14} /></span>}
                       {r.customerPhone && <div className="cell-muted">{r.customerPhone}</div>}
                       {r.source && r.source !== 'online' && (
@@ -278,6 +281,7 @@ export default function BokningarPage() {
           )}
         </section>
         {locationId && <Slot id="bokningar.panel.waitlist" props={{ locationId, date }} />}
+        {locationId && <Slot id="bokningar.panel.callbacks" props={{ locationId, date }} />}
       </div>
 
       {open && (

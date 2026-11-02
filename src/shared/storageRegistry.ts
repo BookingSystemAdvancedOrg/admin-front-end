@@ -13,7 +13,9 @@
  * omprövas först: då krävs samtycke innan något sådant sätts.
  */
 
-export type StorageKind = 'cookie' | 'localStorage' | 'sessionStorage'
+import { STORAGE_KEYS } from './contracts'
+
+export type StorageKind = 'cookie' | 'localStorage' | 'sessionStorage' | 'IndexedDB'
 export type StorageCategory = 'nödvändig' | 'funktionell' | 'analys' | 'marknadsföring'
 
 export interface StorageEntry {
@@ -40,6 +42,8 @@ export const SOUND_VOLUME_KEY = 'booqy-sound-volume'
 export const NAV_CLOSED_KEY = 'booqy-nav-closed'
 export const SAMPLE_DATA_KEY = 'booqy-sample-data'
 export const CARD_READER_KEY_PREFIX = 'booqy-card-reader:'
+/** IndexedDB-databasen för insläpp vid dörren, en per tillfälle (CONTRACTS.md 10). */
+export const EVENT_SCAN_KEY_PREFIX = STORAGE_KEYS.EVENT_SCAN_KEY_PREFIX
 
 export const STORAGE_REGISTRY: readonly StorageEntry[] = [
   {
@@ -130,6 +134,14 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     setBy: 'Booqy',
     purpose: 'Vilken kortläsare du senast valde under Ta betalt på den här enheten, så att den är förvald nästa gång. Inga personuppgifter.',
     lifetime: 'Tills du rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: `${EVENT_SCAN_KEY_PREFIX}{tillfälle}`,
+    kind: 'IndexedDB',
+    setBy: 'Booqy (Evenemang, insläpp)',
+    purpose: 'Sparar gästlistan och insläpp som gjorts utan nät vid dörren, tills de har skickats till servern.',
+    lifetime: 'Tills insläppen är synkade, senast dagen efter evenemanget',
     category: 'nödvändig',
   },
 ]

@@ -65,4 +65,29 @@ describe('AdminLayout sidebar', () => {
     expect(labels).toContain('Gäster')
     for (const l of ['Presentkort', 'Webbplats', 'Marknadsföring']) expect(labels).not.toContain(l)
   })
+
+  it('hides Telefon and Evenemang while phoneAgent and events are off', () => {
+    owner({ personalliggare: true, siteBuilder: true })
+    renderLayout()
+    const labels = navLabels()
+    expect(labels).not.toContain('Telefon')
+    expect(labels).not.toContain('Evenemang')
+  })
+
+  it('shows Telefon after Personalliggare and Evenemang after Webbplats when on', () => {
+    owner({ personalliggare: true, siteBuilder: true, phoneAgent: true, events: true })
+    renderLayout()
+    expect(navLabels()).toEqual([
+      'Översikt', 'Statistik', 'Bokningar', 'Personalliggare', 'Telefon',
+      'Meny', 'Layout', 'Webbplats', 'Evenemang', 'Inställningar',
+    ])
+  })
+
+  it('shows Telefon and Evenemang to staff', () => {
+    owner({ phoneAgent: true, events: true }, 'staff_user')
+    renderLayout()
+    const labels = navLabels()
+    expect(labels).toContain('Telefon')
+    expect(labels).toContain('Evenemang')
+  })
 })

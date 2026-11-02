@@ -36,6 +36,9 @@ const SLOT_LOADERS: Record<ComponentSlotId, Loader> = {
   'meny.dish.cost': () => import('../features/dish-margin/DishCostField'),
   'meny.dish.share': () => import('../features/social-posting/ShareDishAction'),
   'statistik.dishes.margin': () => import('../features/dish-margin/MarginChart'),
+  'bokningar.panel.callbacks': () => import('../features/phone-agent/CallbacksPanel'),
+  'bokningar.reservation.call': () => import('../features/phone-agent/CallBadge'),
+  'statistik.events': () => import('../features/events-tickets/EventsStats'),
 }
 
 /** Det värdsidan skickar in till varje plats (CONTRACTS.md 8.2, kolumnen Props). */
@@ -63,6 +66,9 @@ export interface SlotProps {
   'meny.dish.cost': { locationId: string; menuItemId: string; priceSek: number; alcohol: boolean }
   'meny.dish.share': { locationId: string; menuItemId: string }
   'statistik.dishes.margin': { insights: InsightsResponse; locationId: string; from: string; to: string }
+  'bokningar.panel.callbacks': { locationId: string; date: string }
+  'bokningar.reservation.call': { locationId: string; reservationId: string }
+  'statistik.events': { insights: InsightsResponse; locationId: string; from: string; to: string }
 }
 
 const LAZY = Object.fromEntries(

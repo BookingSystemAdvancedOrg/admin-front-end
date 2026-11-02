@@ -50,6 +50,8 @@ const NAV_GROUPS: { id: string; label: string | null; items: NavItem[] }[] = [
       { to: '/catering', label: 'Catering', tour: 'nav-catering', feature: 'catering' },
       // In- och utcheckning för personalen (personalliggaren).
       { to: '/personalliggare', label: 'Personalliggare', tour: 'nav-personalliggare', feature: 'personalliggare' },
+      // Telefonassistenten: samtal, återuppringningar och avstängning; inställningarna är ägarens.
+      { to: '/telefon', label: 'Telefon', tour: 'nav-telefon', feature: 'phoneAgent' },
     ],
   },
   {
@@ -61,6 +63,8 @@ const NAV_GROUPS: { id: string; label: string | null; items: NavItem[] }[] = [
       { to: '/gaster', label: 'Gäster', tour: 'nav-gaster', feature: 'guestCrm' },
       { to: '/presentkort', label: 'Presentkort', tour: 'nav-presentkort', feature: 'giftCards', ownerOnly: true },
       { to: '/webbplats', label: 'Webbplats', tour: 'nav-webbplats', feature: 'siteBuilder', ownerOnly: true },
+      // Biljetter till kvällar och middagar; personalen scannar vid dörren, ägaren redigerar.
+      { to: '/evenemang', label: 'Evenemang', tour: 'nav-evenemang', feature: 'events' },
       // Utskick, annonser, omdömen och inlägg; bara ägare, när minst en av dem ingår i planen.
       {
         to: '/marknadsforing',

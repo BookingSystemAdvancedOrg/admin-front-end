@@ -10,6 +10,7 @@ import { DEFAULT_TIMEZONE } from '../installningar/data'
 import { CATEGORY_LABEL } from './data'
 import type { Dish, DishCategory } from './data'
 import { DishModal } from './DishModal'
+import { Slot } from '../../shared/slots'
 import type { DishFormValues } from './DishModal'
 import {
   CATEGORY_TO_API,
@@ -29,8 +30,8 @@ import type { MenuItemCreate } from './menuApi'
 import { dishStatus, dishStatusLabel, matchesStatus } from './schedule'
 import type { DishStatus, StatusFilter } from './schedule'
 import './meny.css'
-import { Loading } from '../../shared/Loading'
 import { Icon } from '../../shared/Icon'
+import { SkelBlock, SkelTableRows } from '../../shared/Skeleton'
 
 type ModalState = { mode: 'add' } | { mode: 'edit'; id: string } | null
 
@@ -310,7 +311,7 @@ export default function MenyPage() {
             <h2 className="card-title">Menyrätter</h2>
             <span className="cell-muted">
               {fetching
-                ? <Loading variant="inline" label="Hämtar meny" />
+                ? <SkelBlock w={150} h={14} />
                 : hasActiveFilters
                   ? `${filteredDishes.length} av ${dishes.length} rätter · ${activeCount} aktiva totalt`
                   : `${dishes.length} rätter · ${activeCount} aktiva`}
@@ -384,6 +385,7 @@ export default function MenyPage() {
                 </tr>
               </thead>
               <tbody>
+                {fetching && <SkelTableRows n={5} cols={6} />}
                 {Boolean(locationId) && !fetching && dishes.length === 0 && !loadError && (
                   <tr>
                     <td colSpan={6} className="cell-muted">
@@ -454,6 +456,7 @@ export default function MenyPage() {
                         >
                           Radera
                         </button>
+                        {locationId && <Slot id="meny.dish.share" props={{ locationId, menuItemId: d.id }} />}
                       </span>
                     </td>
                   </tr>
@@ -469,6 +472,7 @@ export default function MenyPage() {
           title={modal.mode === 'add' ? 'Lägg till rätt' : 'Redigera rätt'}
           initial={editingDish}
           timeZone={timeZone}
+          locationId={locationId}
           onSave={handleSave}
           onCancel={() => setModal(null)}
         />

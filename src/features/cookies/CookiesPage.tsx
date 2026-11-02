@@ -8,6 +8,7 @@ const KIND_LABEL: Record<StorageKind, string> = {
   cookie: 'Cookie',
   localStorage: 'Lokal lagring',
   sessionStorage: 'Sessionslagring',
+  IndexedDB: 'Databas i webbläsaren (IndexedDB)',
 }
 
 /**

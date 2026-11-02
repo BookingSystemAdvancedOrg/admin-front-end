@@ -8,7 +8,7 @@ import { useAuth } from '../auth/useAuth'
 import { NEEDS_OWNER, formatDate, kronor, listRequests, statusClass, statusLabel } from './cateringApi'
 import type { CateringStatus, RequestSummary } from './cateringApi'
 import './catering.css'
-import { Loading } from '../../shared/Loading'
+import { SkelCard, SkelPage, SkelRows, SkelTiles } from '../../shared/Skeleton'
 
 type Filter = 'aktiva' | 'alla'
 const ACTIVE: CateringStatus[] = ['requested', 'offer_sent', 'change_requested', 'signed', 'confirmed', 'delivered']
@@ -71,7 +71,12 @@ export default function CateringPage() {
       />
       <main className="admin-main">
         {!locationId ? (
-          resolving ? <Loading label="Hämtar platsen" /> : <p className="cell-muted">Ingen plats är vald.</p>
+          resolving ? (
+            <SkelPage label="Hämtar platsen">
+              <SkelTiles />
+              <SkelCard rows={5} cols={4} />
+            </SkelPage>
+          ) : <p className="cell-muted">Ingen plats är vald.</p>
         ) : (
           <>
           <section className="stats-row" aria-label="Cateringens siffror">
@@ -88,7 +93,7 @@ export default function CateringPage() {
               </select>
             </div>
             {error && <p className="form-error" role="alert">Kunde inte hämta förfrågningarna.</p>}
-            {rows === null && !error && <Loading />}
+            {rows === null && !error && <SkelRows n={5} cols={4} />}
             {rows !== null && visible.length === 0 && (
               <p className="cell-muted">
                 Inga {filter === 'aktiva' ? 'pågående ' : ''}cateringförfrågningar. Gäster skickar dem från

@@ -15,7 +15,7 @@
   min-width: 112px;
   max-width: min(260px, 100%);
   padding: 8px 10px;
-  border-radius: var(--r-sm, 3px);
+  border-radius: var(--r-md);
   background: var(--surface);
   color: var(--ink);
   box-shadow: inset 0 0 0 1px var(--border), var(--shadow-lg);
@@ -68,7 +68,7 @@
   display: inline-block;
   width: 9px;
   height: 9px;
-  border-radius: 2px;
+  border-radius: var(--r-md);
   flex: none;
   background: var(--ink);
 }
@@ -78,7 +78,7 @@
 }
 
 .chart-tip-swatch--steel {
-  background: var(--sk-steel, #80868c);
+  background: var(--sk-steel, #a88462);
 }
 
 .chart-tip-swatch--muted {
@@ -88,7 +88,7 @@
 .chart-tip-swatch--line {
   width: 12px;
   height: 2px;
-  background: var(--sk-steel, #80868c);
+  background: var(--sk-steel, #a88462);
 }
 
 .chart-tip-swatch--border {
@@ -118,7 +118,7 @@
 .chart-tip-surface:focus-visible {
   outline: 2px solid var(--accent-ink);
   outline-offset: 3px;
-  border-radius: 2px;
+  border-radius: var(--r-md);
 }
 
 @media (prefers-reduced-motion: reduce) {

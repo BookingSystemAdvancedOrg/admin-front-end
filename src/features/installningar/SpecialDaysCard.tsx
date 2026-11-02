@@ -16,8 +16,8 @@ import {
   sortDays,
 } from './bookingRules'
 import type { Draft } from './bookingRules'
-import { Loading } from '../../shared/Loading'
 import { DateInput, TimeInput } from '../../shared/DateInput'
+import { SkelRows } from '../../shared/Skeleton'
 
 /**
  * Avvikande öppettider för den valda platsen (backend shared/booking_rules.py):
@@ -176,7 +176,7 @@ export function SpecialDaysCard({
             {error}
           </p>
         ) : (
-          <Loading />
+          <SkelRows n={3} cols={3} />
         )
       ) : (
         <form onSubmit={save} className="notifications-form">

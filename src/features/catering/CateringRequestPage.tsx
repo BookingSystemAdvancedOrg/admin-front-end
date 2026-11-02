@@ -27,9 +27,17 @@ import {
 import type { CateringDish, CateringPackage, CateringRequest, EquipmentReturn, OfferInput } from './cateringApi'
 import { MAX_ITEM_PRICE_KR } from '../meny/menuApi'
 import './catering.css'
-import { Loading } from '../../shared/Loading'
 import { RestaurantSigning } from './RestaurantSigning'
 import { DateInput } from '../../shared/DateInput'
+import { focusErrorField } from '../../shared/errors'
+import { Num } from '../../shared/motion/Num'
+import { SkelCard, SkelPage } from '../../shared/Skeleton'
+
+/** API:ts fältnamn i offerten -> fältets id, så ett fel flyttar fokus dit. */
+const OFFER_FIELD_IDS: Record<string, string> = {
+  discountPercent: 'offer-discount', deliveryFee: 'offer-delivery', equipmentReturn: 'offer-return',
+  cleaningFee: 'offer-cleaning', serviceIncluded: 'offer-service', validUntil: 'offer-valid', message: 'offer-message',
+}
 
 const EDITABLE = ['requested', 'change_requested', 'offer_sent']
 
@@ -142,6 +150,7 @@ export default function CateringRequestPage() {
     setBusy(true)
     setError(null)
     setNotice(null)
+    let onField = false
     try {
       await action()
       setNotice(done)
@@ -149,8 +158,10 @@ export default function CateringRequestPage() {
       setReason('')
     } catch (err) {
       setError(errorText(err))
+      // Ett fel i ett fält: behåll det som skrivits, markera fältet och ge det fokus.
+      onField = focusErrorField(err, OFFER_FIELD_IDS)
     } finally {
-      await load()
+      if (!onField) await load()
       setBusy(false)
     }
   }
@@ -171,7 +182,13 @@ export default function CateringRequestPage() {
       <>
         <AdminTopbar title="Catering" />
         <main className="admin-main">
-          <Loading label="Hämtar förfrågan" />
+          <SkelPage label="Hämtar förfrågan">
+            <div className="settings-row" aria-hidden="true">
+              <SkelCard aside={false} lines={5} />
+              <SkelCard aside={false} rows={4} cols={2} />
+            </div>
+            <SkelCard rows={4} cols={4} />
+          </SkelPage>
         </main>
       </>
     )
@@ -262,21 +279,21 @@ export default function CateringRequestPage() {
               {request.request.lines.map((l) => (
                 <li key={l.name}>
                   <span>{l.quantity} × {l.name}</span>
-                  <span>{kronor(l.unitPrice * l.quantity)}</span>
+                  <span><Num>{kronor(l.unitPrice * l.quantity)}</Num></span>
                 </li>
               ))}
               {request.request.discount > 0 && (
                 <li><span>Rabatt {request.request.discountPercent} %{request.request.tierName ? ` (${request.request.tierName})` : ''}</span>
-                  <span>-{kronor(request.request.discount)}</span></li>
+                  <span><Num>{`-${kronor(request.request.discount)}`}</Num></span></li>
               )}
               {request.request.deliveryFeeManual
                 ? <li><span>Leverans</span><span>Sätt priset i offerten</span></li>
-                : request.request.deliveryFee > 0 && <li><span>Leverans</span><span>{kronor(request.request.deliveryFee)}</span></li>}
+                : request.request.deliveryFee > 0 && <li><span>Leverans</span><span><Num>{kronor(request.request.deliveryFee)}</Num></span></li>}
               {(request.request.cleaningFee ?? 0) > 0 && (
-                <li><span>Rengöringsavgift</span><span>{kronor(request.request.cleaningFee)}</span></li>
+                <li><span>Rengöringsavgift</span><span><Num>{kronor(request.request.cleaningFee)}</Num></span></li>
               )}
-              <li className="catering-lines-total"><span>Totalt inkl. moms</span><span>{kronor(request.request.total)}</span></li>
-              <li className="cell-muted"><span>varav moms {request.request.vatRate ?? 12} %</span><span>{kronor(request.request.vat)}</span></li>
+              <li className="catering-lines-total"><span>Totalt inkl. moms</span><span><Num>{kronor(request.request.total)}</Num></span></li>
+              <li className="cell-muted"><span>varav moms {request.request.vatRate ?? 12} %</span><span><Num>{kronor(request.request.vat)}</Num></span></li>
             </ul>
           </section>
         </div>
@@ -326,7 +343,7 @@ export default function CateringRequestPage() {
                         onChange={(e) => setLine(i, { unitPrice: Number(e.target.value.replace(',', '.')) || 0 })} /></td>
                       <td><input aria-label={`Rad ${i + 1} antal`} inputMode="numeric" value={String(l.quantity)}
                         onChange={(e) => setLine(i, { quantity: Number(e.target.value.replace(/\D/g, '')) || 0 })} /></td>
-                      <td>{kronor(Math.round(l.unitPrice * 100) * l.quantity)}</td>
+                      <td><Num>{kronor(Math.round(l.unitPrice * 100) * l.quantity)}</Num></td>
                       <td>
                         <button type="button" className="link-action danger" aria-label={`Ta bort rad ${i + 1}`}
                           onClick={() => setOffer({ ...offer, lines: offer.lines.filter((_, n) => n !== i) })}>Ta bort</button>
@@ -409,12 +426,12 @@ export default function CateringRequestPage() {
                 onChange={(e) => setOffer({ ...offer, message: e.target.value })} />
             </div>
             <ul className="catering-lines">
-              <li><span>Delsumma</span><span>{kronor(totals.subtotal)}</span></li>
-              {totals.discount > 0 && <li><span>Rabatt {totals.discountPercent} %</span><span>-{kronor(totals.discount)}</span></li>}
-              {totals.deliveryFee > 0 && <li><span>Leverans</span><span>{kronor(totals.deliveryFee)}</span></li>}
-              {(totals.cleaningFee ?? 0) > 0 && <li><span>Rengöringsavgift</span><span>{kronor(totals.cleaningFee)}</span></li>}
-              <li className="catering-lines-total"><span>Totalt inkl. moms</span><span>{kronor(totals.total)}</span></li>
-              <li className="cell-muted"><span>varav moms {totals.vatRate} %</span><span>{kronor(totals.vat)}</span></li>
+              <li><span>Delsumma</span><span><Num>{kronor(totals.subtotal)}</Num></span></li>
+              {totals.discount > 0 && <li><span>Rabatt {totals.discountPercent} %</span><span><Num>{`-${kronor(totals.discount)}`}</Num></span></li>}
+              {totals.deliveryFee > 0 && <li><span>Leverans</span><span><Num>{kronor(totals.deliveryFee)}</Num></span></li>}
+              {(totals.cleaningFee ?? 0) > 0 && <li><span>Rengöringsavgift</span><span><Num>{kronor(totals.cleaningFee)}</Num></span></li>}
+              <li className="catering-lines-total"><span>Totalt inkl. moms</span><span><Num>{kronor(totals.total)}</Num></span></li>
+              <li className="cell-muted"><span>varav moms {totals.vatRate} %</span><span><Num>{kronor(totals.vat)}</Num></span></li>
             </ul>
             {overPriced && (
               <p className="form-error" role="alert">

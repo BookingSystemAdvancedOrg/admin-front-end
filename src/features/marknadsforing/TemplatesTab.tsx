@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Loading } from '../../shared/Loading'
 import { TemplateEditor } from './TemplateEditor'
 import {
   createTemplate,
@@ -12,6 +11,7 @@ import {
 } from './marketingApi'
 import type { Starter, Template, TemplateInput } from './marketingApi'
 import { useEscape } from './useEscape'
+import { SkelRows } from '../../shared/Skeleton'
 
 type Editing = { mode: 'new'; initial: TemplateInput; title: string } | { mode: 'edit'; template: Template }
 
@@ -112,7 +112,7 @@ export function TemplatesTab() {
             Ny tom mall
           </button>
         </div>
-        {templates === null && !error && <Loading />}
+        {templates === null && !error && <SkelRows n={3} cols={2} />}
         {templates !== null && templates.length === 0 && (
           <p className="cell-muted">Inga mallar än. Börja från en färdig mall nedan eller skapa en tom.</p>
         )}

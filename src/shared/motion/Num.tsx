@@ -1,16 +1,16 @@
 import { useEffect, useRef } from 'react'
 import { easeOutExpo, formatStatValue, parseStatValue, reducedMotion } from './countUp'
-import { claimReveal, useMotionAllowed } from './MotionScope'
+import { claimNumberReveal } from './MotionScope'
 
 const DURATION_MS = 1100
 
 /**
  * Ett tal som räknas upp när det visas: rusar iväg från noll och saktar in
- * exponentiellt ju närmare det riktiga värdet det kommer. Bara en gång per
- * inloggning: på första sidan efter inloggningen, inom sidans avslöjande
- * (MotionScope). Därefter, och när ett värde ändras senare, står talet bara där.
+ * exponentiellt ju närmare det riktiga värdet det kommer. Varje gång en sida
+ * visas (MotionScope.claimNumberReveal), som i Booqy Console; ändras värdet
+ * senare (ny period, en rätt till på notan) räknar det vidare därifrån det stod.
  *
- * Medan talet räknas upp sätts `--count` (0 till 1, hur långt det kommit)
+ * Medan talet räknas upp första gången sätts `--count` (0 till 1, hur långt det kommit)
  * på elementet, så att ett grönt eller rött tal (shared/trend.css) börjar
  * i vanlig textfärg och får sin färg i takt med att siffran växer.
  *
@@ -32,26 +32,38 @@ export function Num({ children, className, delayMs = 0 }: { children: string | n
   const text = String(children)
   const ref = useRef<HTMLSpanElement>(null)
   const shown = useRef<number | null>(null)
-  const allowed = useMotionAllowed()
-  const played = useRef(false)
+  const grown = useRef(false)
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
     const parsed = parseStatValue(text)
-    if (!parsed || !allowed || played.current || reducedMotion() || !claimReveal()) {
-      played.current = true
+    if (!parsed || reducedMotion() || typeof requestAnimationFrame !== 'function') {
       el.textContent = text
       shown.current = parsed?.value ?? null
+      grown.current = true
+      return
+    }
+    const to = parsed.value
+    // Första gången: från noll, men bara medan sidan just visats; ett tal som
+    // dyker upp senare (omhämtning, ny rad) står direkt där.
+    const first = !grown.current
+    if (first && shown.current === null && !claimNumberReveal()) {
+      el.textContent = text
+      shown.current = to
+      grown.current = true
       return
     }
     const from = shown.current ?? 0
-    const to = parsed.value
     if (from === to) {
       el.textContent = text
+      shown.current = to
+      grown.current = true
       return
     }
-    played.current = true
+    // Färgen växer bara fram första gången; senare uppräkningar behåller den.
+    const colour = first
+    grown.current = true
     const start = performance.now() + delayMs
     let raf = 0
     let finished = false
@@ -69,25 +81,24 @@ export function Num({ children, className, delayMs = 0 }: { children: string | n
       }
       current = from + (to - from) * p
       el.textContent = formatStatValue(parsed, current)
-      el.style.setProperty('--count', growth(u))
+      if (colour) el.style.setProperty('--count', growth(u))
       raf = requestAnimationFrame(frame)
     }
     el.textContent = formatStatValue(parsed, from)
-    el.style.setProperty('--count', growth(0))
+    if (colour) el.style.setProperty('--count', growth(0))
     raf = requestAnimationFrame(frame)
     return () => {
       if (raf) cancelAnimationFrame(raf)
       el.style.removeProperty('--count')
       // Avbruten innan målet (React StrictMode kör effekten två gånger i
-      // utveckling): nästa körning får räkna klart från där den var.
-      if (finished) {
-        shown.current = to
-      } else {
-        played.current = false
+      // utveckling, eller värdet ändrades): nästa körning räknar vidare
+      // därifrån det var.
+      if (!finished) {
         shown.current = current
+        if (colour) grown.current = false
       }
     }
-  }, [text, delayMs, allowed])
+  }, [text, delayMs])
 
   // Tal har alltid samma bredd per siffra, så raden inte hoppar medan det räknas.
   return (

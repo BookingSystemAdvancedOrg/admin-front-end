@@ -61,7 +61,7 @@
 .admin-logo-tag {
   padding: 3px 6px 2px;
   border: 1.5px solid currentColor;
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: transparent;
   font: 700 9.5px/1.2 var(--mono);
   letter-spacing: 0.1em;
@@ -81,7 +81,7 @@
 }
 
 .admin-location-picker select {
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: rgba(246, 236, 233, 0.1);
   box-shadow: inset 0 0 0 1px rgba(246, 236, 233, 0.22);
   color: var(--on-ox);
@@ -89,7 +89,7 @@
 }
 
 .admin-nav-item {
-  border-radius: 3px;
+  border-radius: var(--r-md);
   font: 600 15px/1.3 var(--font);
   font-stretch: 106%;
   color: var(--on-ox-2);
@@ -127,7 +127,7 @@
 }
 
 .admin-avatar {
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: var(--on-ox);
   color: var(--ox);
   font: 700 13px/1 var(--mono);
@@ -174,7 +174,7 @@
 .admin-card,
 .modal {
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-lg);
 }
 
 .card-title,
@@ -227,7 +227,7 @@
 .stat-tile--link:hover {
   transform: translateY(-3px);
   border-color: var(--ink);
-  box-shadow: 0 2px 4px rgba(28, 25, 24, 0.06), 0 18px 32px -14px rgba(28, 25, 24, 0.35);
+  box-shadow: 0 2px 4px rgba(26, 18, 14, 0.06), 0 18px 32px -14px rgba(26, 18, 14, 0.35);
 }
 
 .stat-tile--link:active {
@@ -246,7 +246,7 @@ button.stat-tile {
   border: 1px solid var(--border);
   text-align: left;
   font: inherit;
-  cursor: pointer;
+  cursor: default;
 }
 
 .stat-tile-delta {
@@ -303,7 +303,7 @@ button.stat-tile {
 
 .quick-link {
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-md);
   transition: border-color 140ms var(--ease), transform 140ms var(--ease);
 }
 
@@ -312,7 +312,7 @@ button.stat-tile {
 }
 
 .quick-link-icon {
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: var(--fill);
   color: var(--ink);
 }
@@ -322,7 +322,7 @@ button.stat-tile {
 .status-badge[class] {
   padding: 3px 7px 2px;
   border: 1.5px solid currentColor;
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: transparent;
   font: 700 10.5px/1.2 var(--mono);
   letter-spacing: 0.08em;
@@ -337,7 +337,7 @@ button.stat-tile {
 /* --- Knappar: det omvända trycket ---------------------------------------- */
 
 .btn {
-  border-radius: 3px;
+  border-radius: var(--r-md);
   font: 650 15px/1.2 var(--font);
   font-stretch: 106%;
   transition: background-color 140ms var(--ease), border-color 140ms var(--ease),
@@ -375,7 +375,7 @@ button.stat-tile {
 }
 
 .btn.square {
-  border-radius: 3px;
+  border-radius: var(--r-md);
 }
 
 .link-action:hover {
@@ -410,7 +410,7 @@ button.stat-tile {
 .form-field input,
 .form-field textarea,
 .form-field select {
-  border-radius: 3px;
+  border-radius: var(--r-md);
   box-shadow: inset 0 0 0 1.5px var(--border);
 }
 
@@ -428,7 +428,7 @@ button.stat-tile {
 
 /* Inställningsflikar: tryckta lappar, vald flik i omvänt tryck. */
 .settings-tabs button {
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: var(--surface);
   box-shadow: inset 0 0 0 1px var(--border);
   font-weight: 600;
@@ -488,7 +488,7 @@ button.stat-tile {
   gap: 8px 14px;
   padding: 12px 20px;
   border: 1.5px dashed var(--accent-ink);
-  border-radius: 6px;
+  border-radius: var(--r-md);
   background: var(--surface);
   font-size: 14px;
   color: var(--ink);
@@ -498,7 +498,7 @@ button.stat-tile {
   display: inline-block;
   padding: 3px 7px 2px;
   border: 2px solid currentColor;
-  border-radius: 3px;
+  border-radius: var(--r-md);
   font: 800 10.5px/1.2 var(--mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -513,7 +513,7 @@ button.stat-tile {
   gap: 8px 12px;
   padding: 12px 20px;
   border: 1.5px solid var(--success-ink);
-  border-radius: 6px;
+  border-radius: var(--r-md);
   background: var(--surface);
   font-size: 14px;
   color: var(--ink);
@@ -548,7 +548,7 @@ button.stat-tile {
   font: inherit;
   font-weight: 600;
   color: var(--accent-ink);
-  cursor: pointer;
+  cursor: default;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -568,86 +568,6 @@ button.stat-tile {
   border: 0;
 }
 
-.busy-bar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  height: 0;
-  pointer-events: none;
-}
-
-.busy-bar-fill {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 4px;
-  width: 0;
-  overflow: hidden;
-  background: var(--accent-ink);
-  opacity: 0;
-  border-radius: 0 3px 3px 0;
-  box-shadow: 0 1px 6px rgba(158, 29, 38, 0.35);
-}
-
-/* Pågår: rinner snabbt in och kryper sedan långsamt mot kanten, så det
-   alltid rör sig men aldrig blir "klart" förrän svaret kommit. */
-.busy-bar--busy .busy-bar-fill {
-  opacity: 1;
-  animation: busy-creep 9s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
-}
-
-@keyframes busy-creep {
-  0% {
-    width: 0;
-  }
-  12% {
-    width: 42%;
-  }
-  40% {
-    width: 72%;
-  }
-  100% {
-    width: 92%;
-  }
-}
-
-/* Ytan: ett ljust skimmer som vandrar längs strimman. */
-.busy-bar-wave {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent 0%, rgba(246, 236, 233, 0.55) 45%, transparent 90%);
-  background-size: 160px 100%;
-  background-repeat: no-repeat;
-  animation: busy-wave 1.1s linear infinite;
-}
-
-@keyframes busy-wave {
-  from {
-    background-position: -160px 0;
-  }
-  to {
-    background-position: calc(100% + 160px) 0;
-  }
-}
-
-/* Klart: fyller ut hela bredden och tonar bort. */
-.busy-bar--done .busy-bar-fill {
-  width: 100%;
-  animation: busy-done 900ms var(--ease) forwards;
-}
-
-@keyframes busy-done {
-  0% {
-    opacity: 1;
-  }
-  60% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
 /* Medan något sparas: pekaren säger det också, och knappar som redan är
    avstängda (Sparar…) får inte se döda ut. */
 html.is-saving {
@@ -658,16 +578,6 @@ html.is-saving .btn:disabled {
   opacity: 0.85;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .busy-bar--busy .busy-bar-fill {
-    animation: none;
-    width: 70%;
-  }
-
-  .busy-bar-wave {
-    animation: none;
-  }
-}
 
 
 /* --- Sidomenyns grupper ------------------------------------------------
@@ -700,5 +610,1021 @@ html.is-saving .btn:disabled {
 
   .admin-nav-heading {
     display: none;
+  }
+}
+
+/* ============================================================================
+   Glasrummet (samma som booqy.se, 2026-10-31). Allt nedanför klär om
+   reglerna ovan; ligg kvar sist i filen. Ett varmt, ljust rum bakom allt,
+   sidomenyn och sidhuvudet är svävande glasytor, arbetet ligger på en stor
+   klar glasyta, kort är vitt papper. Muspekaren byter aldrig form; det är
+   elementet under den som svarar.
+   ========================================================================== */
+.admin-shell {
+  background: transparent;
+  gap: 14px;
+  padding: 12px;
+}
+.admin-right {
+  background: transparent;
+  gap: 14px;
+}
+/* Breda skärmar: arbetsytan växer inte längre än 1640 px utan står mitt i
+   ytan bredvid sidomenyn, så tabeller och rutor förblir lätta att läsa. */
+.admin-right > * {
+  width: 100%;
+  max-width: 1640px;
+  margin-inline: auto;
+}
+
+/* Sidomenyn: en svävande glasyta */
+.admin-sidebar,
+.admin-sidebar.liquid--full {
+  top: 12px;
+  min-height: calc(100svh - 24px);
+  border-radius: var(--r-panel);
+  background: var(--glass-hi);
+  box-shadow: var(--rim), var(--shadow-lg);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  backdrop-filter: blur(16px) saturate(1.6);
+}
+/* Datorer: sidomenyn är exakt skärmhög och rullar för sig. Med pekaren över
+   den rullar bara menyn tills den är i botten; därefter tar sidan över
+   (webbläsarens vanliga kedja). Över sidan rullar bara sidan. */
+@media (min-width: 901px) {
+  .admin-sidebar,
+  .admin-sidebar.liquid--full {
+    height: calc(100svh - 24px);
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(58, 36, 24, 0.22) transparent;
+  }
+  :root[data-theme='dark'] .admin-sidebar {
+    scrollbar-color: rgba(213, 196, 174, 0.22) transparent;
+  }
+}
+.admin-sidebar--pouring {
+  background: var(--glass);
+  --liquid: 255, 255, 255;
+  --liquid-alpha: 0.5;
+  --liquid-edge: 213, 196, 174;
+}
+:root[data-theme='dark'] .admin-sidebar--pouring {
+  --liquid: 26, 18, 14;
+  --liquid-alpha: 0.6;
+}
+.admin-logo-tag {
+  border-radius: var(--r-pill);
+  color: var(--on-ox-3);
+}
+.admin-location-picker select {
+  border-radius: var(--r-md);
+  background: var(--wall-tint);
+  box-shadow: none;
+  color-scheme: light;
+}
+:root[data-theme='dark'] .admin-location-picker select {
+  color-scheme: dark;
+}
+.admin-nav-heading {
+  font: 400 15px/1.2 var(--serif-face);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--on-ox-3);
+}
+.admin-nav-item {
+  border-radius: var(--r-pill);
+  font: 500 15px/1.3 var(--font);
+  font-stretch: 100%;
+  color: var(--on-ox);
+  transition: background-color 200ms var(--ease), color 300ms var(--ease);
+}
+.admin-nav-item:hover {
+  background: var(--wall-tint);
+  color: var(--on-ox);
+}
+.admin-nav-item.active,
+.admin-nav-item.active:hover {
+  background: var(--slip);
+  color: var(--on-slip);
+  box-shadow: 0 10px 24px -14px rgba(26, 18, 14, 0.7);
+}
+.admin-nav--bottom {
+  border-top-color: var(--wall-tint-2);
+}
+.admin-avatar {
+  border-radius: var(--r-pill);
+  background: var(--slip);
+  color: var(--on-slip);
+}
+
+/* Sidhuvudet: en glasyta överst i arbetsytan som rullar bort med sidan */
+.admin-topbar {
+  position: relative;
+  border: 0;
+  border-radius: var(--r-panel);
+  background: var(--glass-hi);
+  box-shadow: var(--rim), var(--shadow);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  backdrop-filter: blur(16px) saturate(1.6);
+}
+.admin-topbar-titles h1 {
+  font: 800 32px/1.05 var(--display);
+  font-stretch: 100%;
+  letter-spacing: -0.03em;
+}
+.stat-tile-value {
+  font-family: var(--display);
+  font-weight: 800;
+  font-stretch: 100%;
+  letter-spacing: -0.03em;
+}
+
+/* Arbetet: en stor klar glasyta, korten är vitt papper på den */
+.admin-main {
+  border-radius: var(--r-panel);
+  background: var(--glass-hi);
+  box-shadow: var(--rim), var(--shadow-lg);
+}
+@media (min-width: 768px) {
+  .admin-main {
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(18px) saturate(1.5);
+    backdrop-filter: blur(18px) saturate(1.5);
+  }
+}
+.admin-card,
+.modal {
+  border: 0;
+  border-radius: var(--r-lg);
+  box-shadow: var(--rim), var(--shadow);
+}
+.stat-tile--link:hover {
+  border-color: transparent;
+  box-shadow: var(--rim), var(--shadow-lg);
+}
+
+/* Nyckeltalen som brytande glas (samma glas som skenorna och booqy.se): en
+   varm, halvklar yta som böjer det som ligger bakom på Chromium (filtret
+   "booqy-glass") och frostar i andra webbläsare. Kanten är en tunn, tänd
+   linje: vit i överkant, som tonar till sand nedåt, så rutan får tjocklek
+   utan en hård ram. Rutan som kräver något ("att hantera") tonas i Booqys
+   bruna i stället för rött. */
+.admin-card.stat-tile,
+.stat-tile.stat-tile--full,
+.stat-tile.liquid--full {
+  --tile-glass: linear-gradient(165deg, rgba(255, 255, 255, 0.78), rgba(255, 252, 247, 0.56) 55%, rgba(246, 241, 234, 0.5));
+  --tile-edge: linear-gradient(170deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.35) 38%, rgba(168, 132, 98, 0.32));
+  background: var(--tile-glass);
+  -webkit-backdrop-filter: blur(14px) saturate(1.6);
+  backdrop-filter: blur(14px) saturate(1.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(58, 36, 24, 0.06), 0 18px 36px -24px rgba(58, 36, 24, 0.45);
+}
+.glass-refract .stat-tile {
+  backdrop-filter: url(#booqy-glass) blur(14px) saturate(1.6);
+}
+.stat-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--tile-edge);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+}
+.admin-card.stat-tile.stat-tile--attention {
+  --tile-glass: linear-gradient(165deg, rgba(255, 250, 244, 0.8), rgba(232, 214, 192, 0.52) 60%, rgba(213, 196, 174, 0.46));
+  --tile-edge: linear-gradient(170deg, rgba(255, 255, 255, 0.95), rgba(168, 132, 98, 0.4) 45%, rgba(107, 74, 46, 0.36));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 1px 2px rgba(58, 36, 24, 0.08), 0 18px 36px -22px rgba(107, 74, 46, 0.5);
+}
+.admin-card.stat-tile--link:hover,
+.admin-card.stat-tile.stat-tile--attention.stat-tile--link:hover {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 2px 6px -2px rgba(58, 36, 24, 0.12), 0 26px 44px -24px rgba(58, 36, 24, 0.55);
+}
+:root[data-theme='dark'] .admin-card.stat-tile,
+:root[data-theme='dark'] .stat-tile.stat-tile--full,
+:root[data-theme='dark'] .stat-tile.liquid--full {
+  --tile-glass: linear-gradient(165deg, rgba(58, 36, 24, 0.78), rgba(42, 29, 22, 0.66) 55%, rgba(26, 18, 14, 0.62));
+  --tile-edge: linear-gradient(170deg, rgba(246, 241, 234, 0.4), rgba(213, 196, 174, 0.12) 40%, rgba(213, 196, 174, 0.22));
+  background: var(--tile-glass);
+  box-shadow: inset 0 1px 0 rgba(213, 196, 174, 0.2), 0 1px 2px rgba(0, 0, 0, 0.3), 0 18px 36px -22px rgba(0, 0, 0, 0.8);
+}
+:root[data-theme='dark'] .admin-card.stat-tile.stat-tile--attention {
+  --tile-glass: linear-gradient(165deg, rgba(107, 74, 46, 0.62), rgba(58, 36, 24, 0.7) 60%, rgba(42, 29, 22, 0.68));
+  --tile-edge: linear-gradient(170deg, rgba(246, 241, 234, 0.45), rgba(213, 196, 174, 0.2) 45%, rgba(213, 196, 174, 0.35));
+}
+
+/* Knappar: piller; huvudknappen är mörk espresso */
+.btn,
+.btn.square {
+  border-radius: var(--r-pill);
+  font-weight: 600;
+  transition: background-color 180ms var(--ease), color 180ms var(--ease), translate 180ms var(--ease), box-shadow 180ms var(--ease), filter 180ms var(--ease);
+}
+.btn.primary {
+  box-shadow: 0 10px 24px -14px rgba(26, 18, 14, 0.7);
+}
+.btn.primary:hover:not(:disabled) {
+  translate: 0 -2px;
+  box-shadow: 0 16px 30px -14px rgba(26, 18, 14, 0.75);
+}
+.btn.outline,
+.btn.danger-outline {
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.btn.outline:hover:not(:disabled),
+.btn.danger-outline:hover:not(:disabled) {
+  filter: none;
+  translate: 0 -2px;
+  box-shadow: inset 0 0 0 1px var(--accent-ink), 0 10px 22px -16px rgba(58, 36, 24, 0.6);
+}
+.btn:disabled {
+  translate: none;
+  box-shadow: none;
+}
+
+/* Muspekaren byter aldrig form, inte heller på länkar och knappar */
+a[href],
+button,
+summary,
+label,
+select,
+[role='tab'],
+[role='button'],
+input[type='checkbox'],
+input[type='radio'] {
+  cursor: default;
+}
+html.is-busy,
+html.is-busy * {
+  cursor: progress;
+}
+
+/* Tryckkänsla (shared/press.ts): en snabb klämning och en mjuk brun krusning
+   från trycket, aldrig vid hovring. Minska rörelse: bara en kort blinkning. */
+.is-pressed {
+  scale: 0.97;
+  transition: scale 90ms var(--ease);
+}
+.is-pressed-text {
+  opacity: 0.6;
+  transition: opacity 90ms var(--ease);
+}
+/* Tryck var som helst: en mjuk prick och två tunna ringar som växer ut från
+   punkten, som en signal. Minska rörelse: av (se nedan). */
+.press-ripple {
+  position: fixed;
+  z-index: 200;
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+  border-radius: 50%;
+  pointer-events: none;
+  --signal: rgba(107, 74, 46, 0.6);
+  background: radial-gradient(circle, rgba(168, 132, 98, 0.4), rgba(168, 132, 98, 0) 32%);
+  animation: press-dot 420ms ease-out forwards;
+}
+.press-ripple::before,
+.press-ripple::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--signal);
+  opacity: 0;
+  animation: press-signal 820ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.press-ripple::after {
+  animation-delay: 150ms;
+}
+:root[data-theme='dark'] .press-ripple {
+  --signal: rgba(213, 196, 174, 0.65);
+  background: radial-gradient(circle, rgba(213, 196, 174, 0.35), rgba(213, 196, 174, 0) 32%);
+}
+@keyframes press-signal {
+  0% {
+    scale: 0.12;
+    opacity: 0.95;
+  }
+  55% {
+    opacity: 0.6;
+  }
+  100% {
+    scale: 1;
+    opacity: 0;
+  }
+}
+@keyframes press-dot {
+  from {
+    scale: 0.4;
+    opacity: 1;
+  }
+  to {
+    scale: 1;
+    opacity: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .admin-shell {
+    padding: 10px;
+    gap: 10px;
+  }
+  .admin-sidebar,
+  .admin-sidebar.liquid--full {
+    min-height: 0;
+  }
+  .admin-nav-item.active {
+    border-bottom-color: transparent;
+  }
+  .admin-theme-toggle {
+    width: auto;
+  }
+  .admin-nav--bottom {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-top: 0;
+    margin-top: 0;
+    padding-top: 0;
+  }
+}
+
+/* Utan backdrop-filter eller med minskad genomskinlighet: hela ytor */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .admin-sidebar,
+  .admin-topbar,
+  .admin-main {
+    background: var(--bg);
+  }
+  .admin-card.stat-tile,
+  .stat-tile.stat-tile--full,
+  .stat-tile.liquid--full,
+  :root[data-theme='dark'] .admin-card.stat-tile {
+    background: var(--surface);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  body::before {
+    background: var(--bg);
+  }
+  .admin-sidebar,
+  .admin-topbar,
+  .admin-main {
+    background: var(--bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .admin-card.stat-tile,
+  .stat-tile.stat-tile--full,
+  .stat-tile.liquid--full,
+  :root[data-theme='dark'] .admin-card.stat-tile {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .is-pressed {
+    scale: none;
+    opacity: 0.75;
+    transition: opacity 90ms linear;
+  }
+  .press-ripple {
+    display: none;
+  }
+  .btn.primary:hover:not(:disabled),
+  .btn.outline:hover:not(:disabled),
+  .btn.danger-outline:hover:not(:disabled) {
+    translate: none;
+  }
+}
+
+/* Inställningar > Utseende och ljud: en rad per val, knappen som ett piller */
+.appearance-rows {
+  display: grid;
+  gap: 0;
+  margin-top: 16px;
+}
+.appearance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  border-top: 1.5px dashed var(--border);
+}
+.appearance-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+.appearance-toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--fill);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--ink);
+  font: 600 14px/1 var(--font);
+  transition: background-color 180ms var(--ease), color 180ms var(--ease), translate 180ms var(--ease);
+}
+.appearance-toggle:hover {
+  translate: 0 -2px;
+}
+.appearance-toggle[aria-pressed='true'] {
+  background: var(--slip);
+  color: var(--on-slip);
+  box-shadow: 0 10px 24px -14px rgba(26, 18, 14, 0.7);
+}
+@media (max-width: 600px) {
+  .appearance-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Inställningsflikarna: piller, vald flik mörk espresso (även under musen) */
+.settings-tabs button {
+  border-radius: var(--r-pill);
+  transition: background-color 200ms var(--ease), color 300ms var(--ease), box-shadow 200ms var(--ease);
+}
+.settings-tabs button:hover {
+  background: var(--fill);
+  box-shadow: inset 0 0 0 1px var(--accent-ink);
+}
+.settings-tabs button.active,
+.settings-tabs button.active:hover {
+  background: var(--slip);
+  color: var(--on-slip);
+  box-shadow: 0 10px 24px -14px rgba(26, 18, 14, 0.7);
+}
+
+/* Inställningsmenyn (InstallningarPage): grupperna under varandra, var och
+   en med en rad om vad som finns där. Ett klick öppnar gruppen: "Alla
+   inställningar" överst leder tillbaka, sedan gruppens delar med var sin
+   förklarande rad. Den valda delen bär den glidande pillen (shared/glide).
+   Datorn: menyn till vänster om innehållet; mobil och surfplatta: överst. */
+.settings-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-width: 0;
+}
+.settings-nav {
+  min-width: 0;
+}
+
+/* grupplistan */
+.settings-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.settings-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 14px 14px 16px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 0 0 1px rgba(58, 36, 24, 0.1);
+  color: var(--ink);
+  text-align: left;
+  cursor: default;
+  transition: background-color 200ms var(--ease), box-shadow 200ms var(--ease);
+}
+.settings-menu-item.current {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 0 0 1.5px rgba(58, 36, 24, 0.35);
+}
+.settings-menu-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.settings-menu-title {
+  font: 650 15px/1.25 var(--font);
+}
+.settings-menu-hint,
+.settings-tab-hint {
+  font: 400 13px/1.35 var(--font);
+  color: var(--muted);
+}
+.settings-menu-arrow {
+  flex: none;
+  font: 400 22px/1 var(--font);
+  color: var(--muted);
+  transition: translate 200ms var(--ease);
+}
+
+/* en öppen grupp */
+.settings-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  margin: 0 0 8px -6px;
+  padding: 0 12px 0 8px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  font: 600 14px/1 var(--font);
+  color: var(--accent-ink);
+  cursor: default;
+  transition: background-color 200ms var(--ease);
+}
+.settings-back span {
+  font-size: 20px;
+  line-height: 1;
+}
+.settings-group-name {
+  margin: 0 0 8px 14px;
+  font: 400 17px/1.2 var(--serif-face);
+  color: var(--muted);
+}
+.settings-nav .settings-tabs {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.settings-nav .settings-tabs button,
+.settings-nav .settings-tabs button:hover {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-height: 0;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+  white-space: normal;
+  color: var(--ink);
+}
+.settings-tab-title {
+  font: 600 15px/1.25 var(--font);
+}
+/* på den mörka pillen: ljus text, även förklaringen */
+.settings-nav .settings-tabs button.active .settings-tab-hint {
+  color: rgba(255, 255, 255, 0.72);
+}
+:root[data-theme='dark'] .settings-nav .settings-tabs button.active .settings-tab-hint {
+  color: rgba(26, 18, 14, 0.7);
+}
+:root[data-theme='dark'] .settings-menu-item {
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 1px 0 rgba(213, 196, 174, 0.18), inset 0 0 0 1px rgba(213, 196, 174, 0.12);
+}
+:root[data-theme='dark'] .settings-menu-item.current {
+  box-shadow: inset 0 1px 0 rgba(213, 196, 174, 0.18), inset 0 0 0 1.5px rgba(213, 196, 174, 0.4);
+}
+
+@media (hover: hover) {
+  .settings-menu-item:hover {
+    background: rgba(255, 255, 255, 0.8);
+  }
+  .settings-menu-item:hover .settings-menu-arrow {
+    translate: 3px 0;
+  }
+  .settings-back:hover {
+    background: var(--fill);
+  }
+  :root[data-theme='dark'] .settings-menu-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+@media (min-width: 1100px) {
+  .settings-main {
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 32px;
+  }
+  .settings-nav {
+    position: sticky;
+    top: 24px;
+    padding-right: 24px;
+    border-right: 1px dashed var(--border);
+  }
+}
+
+/* --- Väljare som glider (shared/glide.ts) --------------------------------
+   En smal glasskena med en espressofärgad pill som glider och sträcker sig
+   till det valda, som flikarna på booqy.se. Skenan är frostat glas med en
+   tänd överkant; på Chromium böjer filtret "booqy-glass" (shared/glassFilter)
+   det som ligger bakom. Mörkt läge: mörkt glas och en ljus pill. Sidornas egna
+   regler för valda knappar slås av här (därav !important), annars skulle två
+   piller synas under glidningen. */
+[data-glide] {
+  position: relative;
+  isolation: isolate;
+}
+
+[data-glide='track'] {
+  flex-wrap: nowrap !important;
+  gap: 2px !important;
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px !important;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border: 0 !important;
+  border-radius: var(--r-pill) !important;
+  /* nästan vit, så att skenan ser likadan ut på papper och på glas */
+  background: rgba(255, 255, 255, 0.9) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(1.5);
+  backdrop-filter: blur(10px) saturate(1.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 0 0 1px rgba(58, 36, 24, 0.12), 0 6px 16px -12px rgba(58, 36, 24, 0.35) !important;
+}
+
+.glass-refract [data-glide='track'] {
+  backdrop-filter: url(#booqy-glass) blur(10px) saturate(1.5);
+}
+
+[data-glide='track']::-webkit-scrollbar {
+  display: none;
+}
+
+[data-glide] > :is(button, a) {
+  position: relative;
+  flex: none;
+  border-color: transparent !important;
+  border-radius: var(--r-pill) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  translate: none !important;
+  white-space: nowrap;
+  transition: color 360ms var(--ease) 80ms, background-color 200ms var(--ease);
+}
+
+[data-glide='track'] > :is(button, a) {
+  min-height: 32px;
+  padding: 0 14px;
+  color: #3a2418 !important;
+  font-size: 14px;
+  font-weight: 550;
+}
+
+[data-glide] > :is(button, a):is(.active, .on, [aria-pressed='true'], [aria-selected='true'], [aria-checked='true']) {
+  color: #ffffff !important;
+}
+
+[data-glide='bare'] {
+  gap: 2px !important;
+}
+
+[data-glide='bare'] > :is(button, a) {
+  padding-inline: 14px !important;
+  border-radius: var(--r-md) !important;
+}
+
+/* en lista med flera rader per val: pillen följer radernas hörn */
+[data-glide='bare']::before {
+  border-radius: var(--r-md) !important;
+}
+
+@media (hover: hover) {
+  [data-glide] > :is(button, a):not(.active, .on, [aria-pressed='true'], [aria-selected='true'], [aria-checked='true'], :disabled):hover {
+    background: rgba(58, 36, 24, 0.08) !important;
+  }
+}
+
+/* pillen: espresso med en tänd överkant */
+[data-glide]::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  left: 0;
+  width: var(--glide-w, 0);
+  height: var(--glide-h, 0);
+  translate: var(--glide-x, 0) var(--glide-y, 0);
+  border-radius: var(--r-pill);
+  background: linear-gradient(180deg, #3a2418, #1a120e);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 10px -6px rgba(26, 18, 14, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  will-change: translate, width;
+}
+
+[data-glide][data-glide-on]::before {
+  opacity: 1;
+}
+
+[data-glide][data-glide-placed]::before {
+  transition:
+    translate 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 160ms var(--ease);
+}
+
+:root[data-theme='dark'] [data-glide='track'] {
+  background: rgba(255, 255, 255, 0.06) !important;
+  box-shadow: inset 0 1px 0 rgba(213, 196, 174, 0.22), inset 0 0 0 1px rgba(213, 196, 174, 0.12), 0 6px 16px -12px rgba(0, 0, 0, 0.6) !important;
+}
+
+:root[data-theme='dark'] [data-glide='track'] > :is(button, a) {
+  color: #d5c4ae !important;
+}
+
+:root[data-theme='dark'] [data-glide] > :is(button, a):is(.active, .on, [aria-pressed='true'], [aria-selected='true'], [aria-checked='true']) {
+  color: #1a120e !important;
+}
+
+:root[data-theme='dark'] [data-glide]::before {
+  background: linear-gradient(180deg, #ffffff, #efe7dc);
+  box-shadow: inset 0 1px 0 #ffffff, 0 4px 10px -6px rgba(0, 0, 0, 0.6);
+}
+
+@media (hover: hover) {
+  :root[data-theme='dark'] [data-glide] > :is(button, a):not(.active, .on, [aria-pressed='true'], [aria-selected='true'], [aria-checked='true'], :disabled):hover {
+    background: rgba(213, 196, 174, 0.12) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-glide][data-glide-placed]::before {
+    transition: translate 160ms linear, width 160ms linear, height 160ms linear;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  [data-glide='track'],
+  .glass-refract [data-glide='track'] {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--surface) !important;
+  }
+}
+
+/* Telefon: skenan går över hela bredden och valen delar på den, som på
+   booqy.se; en grupp som ändå inte ryms rullar i sidled. */
+@media (max-width: 560px) {
+  [data-glide='track'] {
+    width: 100%;
+  }
+
+  [data-glide='track'] > :is(button, a) {
+    flex: 1 0 auto;
+    padding: 0 10px;
+  }
+}
+
+/* Volym för klickljudet (shared/SoundVolume): en smal skena som fylls i
+   espresso upp till nivån, ett runt vitt handtag och procenten bredvid. */
+.sound-volume {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
+
+.sound-volume input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 180px;
+  height: 6px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: linear-gradient(90deg, #1a120e var(--fill, 70%), rgba(58, 36, 24, 0.16) var(--fill, 70%));
+  box-shadow: none;
+  cursor: default;
+}
+
+.sound-volume input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(26, 18, 14, 0.35), inset 0 0 0 1px rgba(58, 36, 24, 0.15);
+}
+
+.sound-volume input[type='range']::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(26, 18, 14, 0.35), inset 0 0 0 1px rgba(58, 36, 24, 0.15);
+}
+
+.sound-volume input[type='range']:focus-visible {
+  outline: 2px solid #1a120e;
+  outline-offset: 6px;
+}
+
+.sound-volume output {
+  min-width: 44px;
+  font-weight: 600;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.sound-volume.off {
+  opacity: 0.45;
+}
+
+:root[data-theme='dark'] .sound-volume input[type='range'] {
+  background: linear-gradient(90deg, #f6f1ea var(--fill, 70%), rgba(213, 196, 174, 0.2) var(--fill, 70%));
+}
+
+:root[data-theme='dark'] .sound-volume input[type='range']:focus-visible {
+  outline-color: #f6f1ea;
+}
+
+@media (max-width: 600px) {
+  .sound-volume {
+    width: 100%;
+  }
+
+  .sound-volume input[type='range'] {
+    flex: 1;
+    width: auto;
+  }
+}
+
+/* En ensam del i en grupp (t.ex. Utseende och ljud) får ingen glidande pill,
+   så den valda raden får sin egen mörka bakgrund och läsbar text. */
+.settings-nav .settings-tabs:not([data-glide]) button.active,
+.settings-nav .settings-tabs:not([data-glide]) button.active:hover {
+  background: linear-gradient(180deg, #3a2418, #1a120e);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 10px -6px rgba(26, 18, 14, 0.6);
+  color: #ffffff;
+}
+
+:root[data-theme='dark'] .settings-nav .settings-tabs:not([data-glide]) button.active,
+:root[data-theme='dark'] .settings-nav .settings-tabs:not([data-glide]) button.active:hover {
+  background: linear-gradient(180deg, #ffffff, #efe7dc);
+  box-shadow: inset 0 1px 0 #ffffff, 0 4px 10px -6px rgba(0, 0, 0, 0.6);
+  color: #1a120e;
+}
+
+/* Volymraden i Utseende och ljud: texten överst, reglaget på en egen rad
+   under, så att förklaringen inte trycks ihop i det smala kortet. */
+.appearance-row:has(.sound-volume) {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.appearance-row .sound-volume {
+  width: 100%;
+}
+
+.appearance-row .sound-volume input[type='range'] {
+  flex: 1;
+  width: auto;
+}
+
+/* Sidomenyns grupper går att fälla ihop (AdminLayout): rubriken är en knapp
+   med en liten pil, gruppen är öppen från början. På datorn glider länkarna
+   ihop; en hopfälld grupps länkar går inte att tabba till. På mobil, där
+   menyn är ett band utan rubriker, ändras ingenting. */
+.admin-nav-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  text-align: left;
+  cursor: default;
+  transition: background-color 160ms var(--ease), color 160ms var(--ease);
+}
+
+.admin-nav-chevron {
+  width: 7px;
+  height: 7px;
+  margin: 0 6px 3px 0;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  rotate: 45deg;
+  opacity: 0.7;
+  transition: rotate 220ms var(--ease), margin 220ms var(--ease);
+}
+
+.admin-nav-group.closed .admin-nav-chevron {
+  margin-bottom: -2px;
+  rotate: -45deg;
+}
+
+@media (hover: hover) {
+  .admin-nav-toggle:hover {
+    color: var(--on-ox);
+  }
+}
+
+.admin-nav-toggle:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.admin-nav-items {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition:
+    grid-template-rows 260ms var(--ease),
+    opacity 200ms var(--ease),
+    visibility 0s;
+}
+
+.admin-nav-items > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (min-width: 901px) {
+  .admin-nav-group.closed .admin-nav-items {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      grid-template-rows 260ms var(--ease),
+      opacity 160ms var(--ease),
+      visibility 0s 260ms;
+  }
+}
+
+@media (max-width: 900px) {
+  .admin-nav-toggle {
+    display: none;
+  }
+
+  .admin-nav-items,
+  .admin-nav-items > div {
+    display: contents;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-nav-items,
+  .admin-nav-chevron {
+    transition: none;
+  }
+}
+
+/* Små rullistor bredvid väljarna (Marknadsföring, Catering): samma vita
+   glaspiller som skenan, så att de syns på glaset. Mörkt: mörkt glas. */
+.compact-select {
+  min-height: 38px;
+  border-radius: var(--r-pill);
+  background-color: rgba(255, 255, 255, 0.9);
+  -webkit-backdrop-filter: blur(10px) saturate(1.5);
+  backdrop-filter: blur(10px) saturate(1.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 0 0 1px rgba(58, 36, 24, 0.12), 0 6px 16px -12px rgba(58, 36, 24, 0.35);
+  transition: background-color 160ms var(--ease), box-shadow 160ms var(--ease);
+}
+@media (hover: hover) {
+  .compact-select:hover {
+    background-color: #ffffff;
+  }
+}
+:root[data-theme='dark'] .compact-select {
+  background-color: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(213, 196, 174, 0.22), inset 0 0 0 1px rgba(213, 196, 174, 0.12), 0 6px 16px -12px rgba(0, 0, 0, 0.6);
+}
+@media (hover: hover) {
+  :root[data-theme='dark'] .compact-select:hover {
+    background-color: rgba(255, 255, 255, 0.1);
   }
 }

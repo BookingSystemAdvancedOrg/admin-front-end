@@ -1,7 +1,8 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { STORAGE_REGISTRY } from './storageRegistry'
+import { STORAGE_KEYS } from './contracts'
+import { EVENT_SCAN_KEY_PREFIX, STORAGE_REGISTRY } from './storageRegistry'
 
 const SRC = join(__dirname, '..')
 
@@ -31,7 +32,7 @@ describe('storage registry', () => {
   it('every file that writes to browser storage takes its key names from the registry', () => {
     const writers = sourceFiles(SRC).filter((file) => {
       const text = readFileSync(file, 'utf8')
-      return /(localStorage|sessionStorage)\.setItem\(|document\.cookie\s*=/.test(text)
+      return /(localStorage|sessionStorage)\.setItem\(|indexedDB\.open\(|document\.cookie\s*=/.test(text)
     })
     expect(writers.length).toBeGreaterThan(0)
     for (const file of writers) {
@@ -46,5 +47,12 @@ describe('storage registry', () => {
       const text = readFileSync(file, 'utf8')
       expect(text, file).not.toMatch(/(localStorage|sessionStorage)\.setItem\([^)]*(token|session|auth)/i)
     }
+  })
+
+  it('lists the door scan database from the contract key (IndexedDB)', () => {
+    expect(EVENT_SCAN_KEY_PREFIX).toBe(STORAGE_KEYS.EVENT_SCAN_KEY_PREFIX)
+    const entry = STORAGE_REGISTRY.find((e) => e.name.startsWith(EVENT_SCAN_KEY_PREFIX))
+    expect(entry?.kind).toBe('IndexedDB')
+    expect(entry?.category).toBe('nödvändig')
   })
 })

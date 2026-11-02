@@ -4,6 +4,7 @@ import { Num } from '../../shared/motion/Num'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { isApiConfigured } from '../../shared/api'
 import { currentLocation, useTenant } from '../../shared/tenant'
+import { Slot } from '../../shared/slots'
 import { NewReservationModal } from './NewReservationModal'
 import { ReservationModal } from './ReservationModal'
 import {
@@ -22,9 +23,9 @@ import {
 import type { Reservation } from './bookingsApi'
 import { tableNames, useTables } from '../../shared/tables'
 import './bokningar.css'
-import { Loading } from '../../shared/Loading'
 import { DateInput } from '../../shared/DateInput'
 import { Icon } from '../../shared/Icon'
+import { SkelBlock, SkelTableRows } from '../../shared/Skeleton'
 
 const REFRESH_MS = 60_000
 
@@ -170,7 +171,7 @@ export default function BokningarPage() {
               <div className="day-nav-label">
                 <h2 className="card-title">{date === today ? `Idag · ${dayLabel(date)}` : dayLabel(date)}</h2>
                 {loading ? (
-                  <Loading variant="inline" />
+                  <SkelBlock w={150} h={14} />
                 ) : (
                   <span className="cell-muted">
                     <Num>{active.length}</Num> {active.length === 1 ? 'bokning' : 'bokningar'} · <Num>{guests}</Num> gäster
@@ -218,6 +219,7 @@ export default function BokningarPage() {
                 </tr>
               </thead>
               <tbody>
+                {loading && <SkelTableRows n={5} cols={5} />}
                 {!loading && visible.length === 0 && (
                   <tr>
                     <td colSpan={5} className="cell-muted">
@@ -241,6 +243,15 @@ export default function BokningarPage() {
                     <td className="cell-strong">{r.startTime}</td>
                     <td>
                       <span className="cell-strong">{r.customerName || 'Gäst'}</span>
+                      {locationId && (
+                        <Slot
+                          id="bokningar.reservation.badge"
+                          props={{ locationId, reservationId: r.reservationId, email: r.customerEmail, phone: r.customerPhone }}
+                        />
+                      )}
+                      {locationId && (
+                        <Slot id="bokningar.reservation.call" props={{ locationId, reservationId: r.reservationId }} />
+                      )}
                       {r.notes && <span className="note-dot" title={r.notes}> <Icon name="note" size={14} /></span>}
                       {r.customerPhone && <div className="cell-muted">{r.customerPhone}</div>}
                       {r.source && r.source !== 'online' && (
@@ -269,6 +280,8 @@ export default function BokningarPage() {
             </button>
           )}
         </section>
+        {locationId && <Slot id="bokningar.panel.waitlist" props={{ locationId, date }} />}
+        {locationId && <Slot id="bokningar.panel.callbacks" props={{ locationId, date }} />}
       </div>
 
       {open && (

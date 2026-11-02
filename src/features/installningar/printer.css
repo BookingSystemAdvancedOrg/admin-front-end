@@ -119,7 +119,7 @@
 
 .printer-tips code {
   padding: 0 4px;
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: var(--fill);
   color: var(--ink);
   font-family: var(--mono);

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { KassaMenu } from './KassaMenu'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { ApiError } from '../../shared/api'
 import { Icon } from '../../shared/Icon'
-import { Loading } from '../../shared/Loading'
+import { Slot } from '../../shared/slots'
 import { useLocationId } from '../../shared/location'
 import { useAuth } from '../auth/useAuth'
 import {
@@ -53,6 +54,8 @@ import {
 import type { Bill, BillKind, DayStatus, Delivery, Discount, Done, KassaState, MenuChoice, Register } from './kassaApi'
 import '../tabetalt/tabetalt.css'
 import './kassa.css'
+import { SkelBlock, SkelBox, SkelCard, SkelPage } from '../../shared/Skeleton'
+import { Num } from '../../shared/motion/Num'
 
 /** Hur ofta en pågående kortbetalning frågas om. */
 export const POLL_MS = 2_000
@@ -133,7 +136,6 @@ export default function KassaPage() {
   const [done, setDone] = useState<{ done: Done; title: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [more, setMore] = useState(false)
   /** Avbrott (csDownSince) där meddelandet om felanmälan redan stängts på den här skärmen. */
   const [dismissed, setDismissed] = useState<string | null>(null)
   const shownFor = useRef<string | null>(null)
@@ -411,6 +413,20 @@ export default function KassaPage() {
     }
   }, [locationId])
 
+  // Presentkort (giftCards) drogs på notan: hämta den igen, som efter en kortbetalning.
+  async function giftCardPaid() {
+    if (!locationId || !billIdRef.current) return
+    try {
+      const fresh = await getBill(locationId, billIdRef.current)
+      show(fresh)
+      checkoutId.current = newCheckoutId()
+      setAmountText(kr(fresh.remaining))
+      setStage(fresh.remaining <= 0 ? 'deliver' : 'pay')
+    } catch (err) {
+      setError(errorText(err))
+    }
+  }
+
   const pollId = payment?.status === 'processing' ? `${payment.paymentId}:${payment.attempt ?? 1}` : null
   useEffect(() => {
     if (!locationId || !pollId) return
@@ -547,7 +563,7 @@ export default function KassaPage() {
     return (
       <>
         <AdminTopbar title="Kassa" />
-        <div className="admin-main">{resolving ? <Loading label="Hämtar platsen" /> : <p className="cell-muted">Ingen plats är vald.</p>}</div>
+        <div className="admin-main">{resolving ? <KassaSkeleton label="Hämtar platsen" /> : <p className="cell-muted">Ingen plats är vald.</p>}</div>
       </>
     )
   }
@@ -561,7 +577,7 @@ export default function KassaPage() {
               <p className="kassa-alert danger" role="alert">{loadError}</p>
               <button type="button" className="btn outline" onClick={() => void loadState()}>Försök igen</button>
             </div>
-          ) : <Loading label="Öppnar kassan" />}
+          ) : <KassaSkeleton label="Öppnar kassan" />}
         </div>
       </>
     )
@@ -618,40 +634,47 @@ export default function KassaPage() {
             {day && !day.dayOpen && (
               <button type="button" className="btn primary" onClick={() => setDialog('openDay')}>Öppna dagen</button>
             )}
-            <button type="button" className="btn outline" onClick={() => setDialog('receipts')}>Kvitton</button>
-            <button type="button" className="btn outline" disabled={busy} onClick={() => void runReport('x')}>X-rapport</button>
-            <button type="button" className="btn outline" disabled={busy} onClick={() => void runReport('z')}>Z-rapport</button>
-            <button type="button" className={`btn outline${register.training ? ' on' : ''}`} disabled={busy}
-              aria-pressed={Boolean(register.training)} onClick={() => void registerDo('training', { on: !register.training })}>
-              Övningsläge
-            </button>
-            <button type="button" className={`btn outline${more ? ' on-more' : ''}`} aria-expanded={more}
-              aria-controls="kassa-more" onClick={() => setMore(!more)}>
-              {more ? 'Mindre' : 'Mer'}
-            </button>
+            <KassaMenu
+              label="Rapporter"
+              items={[
+                { label: 'Kvitton', hint: 'Se och skriv ut kvitton och rapporter för en dag', onSelect: () => setDialog('receipts') },
+                { label: 'X-rapport', hint: 'Dagens försäljning hittills. Stänger inte dagen', disabled: busy, onSelect: () => void runReport('x') },
+                { label: 'Z-rapport', hint: 'Stänger dagen. Görs när ni stänger för kvällen', disabled: busy, onSelect: () => void runReport('z') },
+                { label: 'Manuell försäljningslista', hint: 'Lista att skriva på om kassan inte fungerar', to: `/kassa/utskrift/manuell-lista?kassa=${register.registerId}` },
+                ...(state.isOwner
+                  ? [{ label: 'Exportera', hint: 'Kassans uppgifter till revisorn eller Skatteverket', onSelect: () => setDialog('export') }]
+                  : []),
+              ]}
+            />
+            <KassaMenu
+              label="Kassan"
+              items={[
+                {
+                  label: 'Övningsläge',
+                  hint: 'Öva utan att något räknas som riktig försäljning',
+                  on: Boolean(register.training),
+                  disabled: busy,
+                  onSelect: () => void registerDo('training', { on: !register.training }),
+                },
+                { label: 'Kom igång', hint: 'Det som ska vara klart innan kassan används', onSelect: () => setDialog('setup') },
+                { label: 'Bruksanvisning', hint: 'Så använder ni kassan, steg för steg', to: '/kassa/bruksanvisning' },
+                { label: 'Om kassan', hint: 'Kassans beteckning, version och kontrollsystem', onSelect: () => setDialog('about') },
+                ...(state.isOwner && state.registers.length < 5
+                  ? [{ label: 'Ny kassa', hint: 'Lägg till en kassa till på platsen (högst fem)', onSelect: () => setDialog('newRegister') }]
+                  : []),
+                ...(state.canSimulate
+                  ? [{
+                      label: register.simulateDown ? 'Starta kontrollsystemet (test)' : 'Stäng kontrollsystemet (test)',
+                      hint: 'Bara i testmiljön: prova vad som händer när kontrollsystemet inte svarar',
+                      quiet: true,
+                      disabled: busy,
+                      onSelect: () => void registerDo('simulate', { down: !register.simulateDown }),
+                    }]
+                  : []),
+              ]}
+            />
           </div>
         </div>
-
-        {more && (
-          <div className="kassa-bar-actions kassa-more" id="kassa-more">
-            <button type="button" className="btn outline" onClick={() => setDialog('setup')}>Kom igång</button>
-            <Link className="btn outline" to={`/kassa/utskrift/manuell-lista?kassa=${register.registerId}`}>
-              <Icon name="printer" size={18} /> Manuell försäljningslista
-            </Link>
-            <Link className="btn outline" to="/kassa/bruksanvisning">Bruksanvisning</Link>
-            <button type="button" className="btn outline" onClick={() => setDialog('about')}>Om kassan</button>
-            {state.isOwner && <button type="button" className="btn outline" onClick={() => setDialog('export')}>Exportera</button>}
-            {state.isOwner && state.registers.length < 5 && (
-              <button type="button" className="btn outline" onClick={() => setDialog('newRegister')}>Ny kassa</button>
-            )}
-            {state.canSimulate && (
-              <button type="button" className="btn outline kassa-quiet" disabled={busy}
-                onClick={() => void registerDo('simulate', { down: !register.simulateDown })}>
-                {register.simulateDown ? 'Starta kontrollsystemet (test)' : 'Stäng kontrollsystemet (test)'}
-              </button>
-            )}
-          </div>
-        )}
 
         {day && day.unclosedDays.length > 0 && (
           <p className="kassa-alert warn" role="alert">
@@ -661,7 +684,7 @@ export default function KassaPage() {
         {banner && <OutageBanner register={banner} onDismiss={dismissBanner} onRetry={() => void loadState()} />}
         {register.controlSystem.connected === false && (
           <p className="kassa-alert danger" role="alert">
-            Kassan är inte kopplad till kontrollsystemet {register.controlSystem.name}. Ägaren skapar en ny kassa med Ny kassa under Mer.
+            Kassan är inte kopplad till kontrollsystemet {register.controlSystem.name}. Ägaren skapar en ny kassa med Ny kassa under Kassan.
           </p>
         )}
         {!csOk && !banner && register.controlSystem.connected !== false && (
@@ -704,7 +727,7 @@ export default function KassaPage() {
                     disabled={Boolean(bill?.locked) || stage !== 'bill' || (m.alcohol && bill?.kind === 'takeaway')}
                     onClick={() => void add(m)}>
                     <span className="name">{m.name}</span>
-                    <span className="price">{kr(m.price)}</span>
+                    <span className="price"><Num>{kr(m.price)}</Num></span>
                   </button>
                 ))}
               </div>
@@ -716,7 +739,7 @@ export default function KassaPage() {
               {myBills.map((b) => (
                 <button key={b.billId} type="button" className={`kassa-chip${bill?.billId === b.billId ? ' on' : ''}`}
                   onClick={() => void openBill(b.billId)}>
-                  {billName(b)} <small>{kr(bill?.billId === b.billId ? totals.total : b.total)}</small>
+                  {billName(b)} <small><Num>{kr(bill?.billId === b.billId ? totals.total : b.total)}</Num></small>
                 </button>
               ))}
               <button type="button" className="kassa-chip add" onClick={() => setDialog('table')}><Icon name="plus" size={16} /> Bord</button>
@@ -757,7 +780,7 @@ export default function KassaPage() {
                               <Icon name="plus" size={20} />
                             </button>
                           </div>
-                          <span className="sum">{kr(l.unitPrice * l.quantity)}</span>
+                          <span className="sum"><Num>{kr(l.unitPrice * l.quantity)}</Num></span>
                           {!l.sent && !bill.locked && (
                             <button type="button" className="kassa-icon-btn" aria-label={`Notering för ${l.name}`}
                               onClick={() => { setNoteKey(l.key); setDialog('note') }}>
@@ -770,10 +793,10 @@ export default function KassaPage() {
 
                     <div className="kassa-sum">
                       {totals.discount > 0 && (
-                        <div className="row"><span>Rabatt ({discount?.label})</span><span>-{kr(totals.discount)}</span></div>
+                        <div className="row"><span>Rabatt ({discount?.label})</span><span><Num>{`-${kr(totals.discount)}`}</Num></span></div>
                       )}
-                      {bill.paid > 0 && <div className="row"><span>Betalt med kort</span><span>{kr(bill.paid)}</span></div>}
-                      <div className="row total"><span>Att betala</span><span>{kr(totals.total - bill.paid)}</span></div>
+                      {bill.paid > 0 && <div className="row"><span>Betalt med kort</span><span><Num>{kr(bill.paid)}</Num></span></div>}
+                      <div className="row total"><span>Att betala</span><span><Num>{kr(totals.total - bill.paid)}</Num></span></div>
                     </div>
 
                     <div className="kassa-actions">
@@ -803,7 +826,7 @@ export default function KassaPage() {
                 {stage === 'pay' && (
                   <div className="kassa-pay-panel">
                     <div className="kassa-sum">
-                      <div className="row total"><span>Kvar att betala</span><span>{kr(bill.remaining)}</span></div>
+                      <div className="row total"><span>Kvar att betala</span><span><Num>{kr(bill.remaining)}</Num></span></div>
                     </div>
                     <div className="kassa-chips" aria-label="Dela notan">
                       <button type="button" className={`kassa-chip${amount === bill.remaining ? ' on' : ''}`} onClick={() => setAmountText(kr(bill.remaining))}>Hela</button>
@@ -835,6 +858,12 @@ export default function KassaPage() {
                     <button type="button" className="btn primary kassa-pay" disabled={busy || !amountOk || !readerId || !csOk} onClick={() => void charge()}>
                       <Icon name="card" size={22} /> Skicka {amount !== null ? kr(amount) : ''} kr till läsaren
                     </button>
+                    {locationId && (
+                      <Slot
+                        id="kassa.payment.giftcard"
+                        props={{ locationId, billId: bill.billId, remainingOre: bill.remaining, onPaid: () => void giftCardPaid() }}
+                      />
+                    )}
                     <PaidParts bill={bill} busy={busy} onUndo={(p) => void undo(p)} />
                     {bill.paid === 0 && (
                       <button type="button" className="btn outline" onClick={() => setStage('bill')}>Tillbaka till notan</button>
@@ -845,7 +874,7 @@ export default function KassaPage() {
                 {stage === 'waiting' && payment && (
                   <div className={`pay-stage ${payment.status === 'processing' ? 'waiting' : payment.status === 'succeeded' ? 'paid' : 'declined'}`}>
                     <div className="pay-stage-mark"><Icon name={payment.status === 'processing' ? 'card' : payment.status === 'succeeded' ? 'check' : 'close'} size={44} /></div>
-                    <p className="kassa-big-amount">{kr(payment.amount)} kr</p>
+                    <p className="kassa-big-amount"><Num>{`${kr(payment.amount)} kr`}</Num></p>
                     <h2>{payment.status === 'processing' ? 'Väntar på kort' : payment.status === 'succeeded' ? 'Betald' : 'Inte betald'}</h2>
                     {payment.status === 'processing' ? (
                       <>
@@ -875,7 +904,7 @@ export default function KassaPage() {
                     {!bill.training && (
                       <div className="pay-stage paid">
                         <div className="pay-stage-mark"><Icon name="check" size={44} /></div>
-                        <h2>Betalt {kr(bill.paid)} kr</h2>
+                        <h2>Betalt <Num>{`${kr(bill.paid)} kr`}</Num></h2>
                       </div>
                     )}
                     <p className="cell-muted">Kvittot skapas med kontrollkod och skrivs ut eller mejlas. Gästen får välja att inte ta det.</p>
@@ -945,5 +974,27 @@ function PaidParts({ bill, busy, onUndo }: { bill: Bill; busy: boolean; onUndo: 
         </li>
       ))}
     </ul>
+  )
+}
+
+/** Medan kassan öppnas: kategorier, rätter och notan, som suddigt glas. */
+function KassaSkeleton({ label }: { label: string }) {
+  return (
+    <SkelPage label={label}>
+      <div className="kassa-layout show-menu" aria-hidden="true">
+        <section className="kassa-menu">
+          <SkelBlock w="70%" h={46} round />
+          <div className="kassa-tiles">
+            {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+              <SkelBox key={i} className="admin-card kassa-tile" h={80}>
+                <SkelBlock w="70%" />
+                <SkelBlock w="36%" style={{ marginTop: 'auto' }} />
+              </SkelBox>
+            ))}
+          </div>
+        </section>
+        <SkelCard className="kassa-bill" aside={false} lines={6} />
+      </div>
+    </SkelPage>
   )
 }

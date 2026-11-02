@@ -36,7 +36,7 @@
   background: transparent;
   color: var(--muted);
   font: 500 15px/1.2 var(--font);
-  cursor: pointer;
+  cursor: default;
   transition: background 200ms var(--ease), color 200ms var(--ease);
 }
 

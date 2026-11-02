@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Loading } from '../../shared/Loading'
 import {
   SUBSCRIBER_STATUS_CLASS,
   SUBSCRIBER_STATUS_LABEL,
@@ -16,6 +15,7 @@ import { eraseGuest, eraseSummary, lookupConsent, withdrawConsent } from '../ins
 import type { ChannelConsent, EraseResult } from '../installningar/privacyApi'
 import '../installningar/privacy.css'
 import { useEscape } from './useEscape'
+import { SkelRows } from '../../shared/Skeleton'
 
 const CONSENT_SOURCE: Record<string, string> = {
   booking: 'Vid bokning',
@@ -205,7 +205,7 @@ export function SubscribersTab() {
             </button>
           )}
         </form>
-        {rows === null && !error && <Loading />}
+        {rows === null && !error && <SkelRows n={5} cols={4} />}
         {rows !== null && rows.length === 0 && (
           <p className="cell-muted">
             {view.email
@@ -281,7 +281,7 @@ export function SubscribersTab() {
         <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && setHistory(null)}>
           <div className="modal" role="dialog" aria-modal="true" aria-label="Samtyckeshistorik">
             <h2>Historik för {history.subscriber.email}</h2>
-            {history.consent === null && <Loading />}
+            {history.consent === null && <SkelRows n={3} cols={2} />}
             {history.consent && history.consent.history.length === 0 && (
               <p className="modal-text">Inga rader i samtyckesloggen (mottagaren kom till före loggen).</p>
             )}

@@ -3,13 +3,13 @@ import type { ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { isApiConfigured } from '../../shared/api'
-import { Loading } from '../../shared/Loading'
 import { Num } from '../../shared/motion/Num'
 import { TrendBadge } from '../../shared/TrendBadge'
 import { useTrendPop } from '../../shared/motion/useTrendPop'
 import { toneClass, trendOf } from '../../shared/trend'
 import type { Trend, TrendMetric } from '../../shared/trend'
 import { canSeeInsights, currentLocation, useTenant } from '../../shared/tenant'
+import { Slot } from '../../shared/slots'
 import { todayIn } from '../bokningar/bookingsApi'
 import { channelLabel } from '../marknadsforing/marketingApi'
 import { sampleModeOn, setSampleMode } from '../oversikt/sample'
@@ -39,6 +39,7 @@ import { sampleInsights } from './insightsSample'
 import { addDays, daysBetween, deltaPct, fmtDecimal, fmtInt, fmtKr, fmtPct, insightTitle, rangeLabel, shortDate } from './stats'
 import './statistik.css'
 import { DateInput } from '../../shared/DateInput'
+import { SkelBlock, SkelBox, SkelCard, SkelPage } from '../../shared/Skeleton'
 
 /**
  * Statistik: restaurangens egna siffror för en period, i tre steg: vad som
@@ -409,7 +410,7 @@ export default function StatistikPage() {
                 ))}
               </select>
             </label>
-            <label className="sk-field">
+            <label className="sk-field sk-wide">
               <span>Jämför med</span>
               <select value={f.compare} onChange={(e) => setFilters({ compare: e.target.value as Filters['compare'] })}>
                 {COMPARES.map((o) => (
@@ -429,13 +430,20 @@ export default function StatistikPage() {
             </button>
           </div>
         </div>
-        <p className="sk-period">
-          {f.from === f.to ? shortDate(f.from) : rangeLabel(f.from, f.to)}
-          {days > 1 ? `, ${fmtInt(days)} dagar` : ''}
-          {ready?.compare.from && ready.compare.to ? ` · jämförs med ${rangeLabel(ready.compare.from, ready.compare.to)}` : ''}
-          {locationName ? ` · ${locationName}` : multi ? ' · alla platser' : ''}
-          {f.service !== 'all' ? ` · ${f.service === 'lunch' ? 'lunch' : 'middag'}` : ''}
-        </p>
+        {/* Bara perioden syns; resten (antal dagar, jämförelse, plats, pass)
+            fälls ut för den som vill läsa. */}
+        <details className="sk-period">
+          <summary>
+            {f.from === f.to ? shortDate(f.from) : rangeLabel(f.from, f.to)}
+            <span className="sk-period-more">Detaljer</span>
+          </summary>
+          <p>
+            {days > 1 ? `${fmtInt(days)} dagar` : '1 dag'}
+            {ready?.compare.from && ready.compare.to ? ` · jämförs med ${rangeLabel(ready.compare.from, ready.compare.to)}` : ''}
+            {locationName ? ` · ${locationName}` : multi ? ' · alla platser' : ''}
+            {f.service !== 'all' ? ` · ${f.service === 'lunch' ? 'lunch' : 'middag'}` : ''}
+          </p>
+        </details>
 
         {showSample && (
           <div className="sample-notice" role="status">
@@ -466,9 +474,24 @@ export default function StatistikPage() {
         )}
 
         {!s && !error && (
-          <div className="admin-card table-card">
-            <Loading variant="block" label="Räknar ihop perioden" />
-          </div>
+          <SkelPage label="Räknar ihop perioden">
+            <section className="sk-block" aria-hidden="true">
+              <SkelBlock w={160} h={22} />
+              <div className="sk-kpis">
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <SkelBox key={i} className="admin-card sk-kpi">
+                    <SkelBlock w="44%" h={12} />
+                    <SkelBlock w="36%" h={36} style={{ borderRadius: 'var(--r-md)' }} />
+                    <SkelBlock w="62%" h={12} />
+                  </SkelBox>
+                ))}
+              </div>
+            </section>
+            <section className="sk-block" aria-hidden="true">
+              <SkelBlock w={200} h={22} />
+              <SkelCard chart aside={false} />
+            </section>
+          </SkelPage>
         )}
 
         {s && nothing && (
@@ -913,6 +936,13 @@ export default function StatistikPage() {
                       </Card>
                     )}
 
+                    {ready && (
+                      <Slot
+                        id="statistik.dishes.margin"
+                        props={{ insights: ready, locationId: f.locationId, from: f.from, to: f.to }}
+                      />
+                    )}
+
                     {s.pairs.length > 0 && (
                       <Card title="Beställs ofta tillsammans" label="Beställs ofta tillsammans">
                         <ul className="sk-pairs">
@@ -930,6 +960,10 @@ export default function StatistikPage() {
                     )}
                   </div>
                 </>
+              )}
+
+              {ready && (
+                <Slot id="statistik.events" props={{ insights: ready, locationId: f.locationId, from: f.from, to: f.to }} />
               )}
 
               {showCatering && (

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { isApiConfigured } from '../../shared/api'
-import { Loading } from '../../shared/Loading'
 import { Num } from '../../shared/motion/Num'
 import { TrendBadge } from '../../shared/TrendBadge'
 import { useTrendPop } from '../../shared/motion/useTrendPop'
@@ -14,6 +13,7 @@ import { fetchInsights } from '../statistik/insightsApi'
 import { sampleInsights } from '../statistik/insightsSample'
 import { daysBetween, fmtInt, fmtKr, fmtPct, shortDate } from '../statistik/stats'
 import '../statistik/statistik.css'
+import { SkelLines } from '../../shared/Skeleton'
 
 /**
  * "Den här månaden" på Översikt: månaden hittills i fyra siffror och en
@@ -114,7 +114,7 @@ export function MonthCard({
         <p className="admin-empty">Kunde inte hämta månadens siffror. Försök igen om en stund, eller öppna Statistik.</p>
       ) : !s ? (
         <div className="month-card-loading" role="status">
-          <Loading variant="inline" label="Räknar ihop månaden" />
+          <SkelLines n={4} />
         </div>
       ) : empty ? (
         <p className="admin-empty">

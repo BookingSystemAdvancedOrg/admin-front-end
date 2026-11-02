@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { StatTile } from '../../shared/motion/StatTile'
 import type { FormEvent } from 'react'
-import { Loading } from '../../shared/Loading'
 import { useTenant } from '../../shared/tenant'
 import { listMenuItems, menuImageUrl } from '../meny/menuApi'
 import type { MenuItem } from '../meny/menuApi'
 import { errorText, getOfferSettings, kronorFromOre, offerErrors, percent, saveOfferSettings, withPercent } from './marketingApi'
 import type { OfferSettings, OfferView } from './marketingApi'
 import { DateInput } from '../../shared/DateInput'
+import { SkelCard, SkelPage } from '../../shared/Skeleton'
 
 const PERCENTS = [5, 10, 15, 20, 25, 30, 40, 50]
 const VALID_DAYS = [7, 14, 30, 60, 90]
@@ -106,7 +106,11 @@ export function OfferTab() {
   }, [locationId])
 
   if (!view || !draft) {
-    return error ? <p className="form-error" role="alert">{error}</p> : <Loading label="Hämtar erbjudandet" />
+    return error ? <p className="form-error" role="alert">{error}</p> : (
+      <SkelPage label="Hämtar erbjudandet">
+        <SkelCard aside={false} lines={6} />
+      </SkelPage>
+    )
   }
 
   const set = <K extends keyof OfferSettings>(key: K, value: OfferSettings[K]) => {

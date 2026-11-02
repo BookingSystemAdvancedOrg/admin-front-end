@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './useAuth'
-import { Loading } from '../../shared/Loading'
+import { SkelShell } from '../../shared/Skeleton'
 
 /** Skyddar admin-sidorna: skickar utloggade användare till /logga-in. */
 export function RequireAuth({ children }: { children: ReactNode }) {
@@ -9,7 +9,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const location = useLocation()
 
   if (status === 'loading') {
-    return <div className="auth-splash"><Loading variant="screen" label="Laddar" /></div>
+    return <SkelShell label="Laddar" />
   }
   if (status === 'signed-out') {
     return <Navigate to="/logga-in" replace state={{ from: location }} />

@@ -24,6 +24,7 @@ import { TableRulesCard } from './TableRulesCard'
 import { BookingTimeCard } from './BookingTimeCard'
 import { BusinessHoursEditor } from './BusinessHoursEditor'
 import { BokforingCard } from './BokforingCard'
+import { AppearanceCard } from './AppearanceCard'
 import {
   createLocation,
   getLocation,
@@ -58,9 +59,10 @@ import {
   resolveLocationId,
   useLocationId,
 } from '../../shared/location'
-import { useTenant } from '../../shared/tenant'
-import { Loading } from '../../shared/Loading'
+import { hasFeature, useTenant } from '../../shared/tenant'
+import { Slot } from '../../shared/slots'
 import { PhoneInput } from '../../shared/PhoneInput'
+import { SkelBlock } from '../../shared/Skeleton'
 
 const ROLE_LABEL: Record<User['role'], string> = {
   staff: 'Personal',
@@ -90,7 +92,7 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * andra användare - de rutterna är bara för ägare.
  */
 /** Flikarna - en sektion i taget i stället för en lång sida. */
-type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'skrivare' | 'dagar' | 'bord' | 'statistik' | 'bokforing' | 'integritet'
+type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'skrivare' | 'dagar' | 'bord' | 'statistik' | 'bokforing' | 'integritet' | 'utseende'
 
 const TAB_LABEL: Record<SettingsTab, string> = {
   profil: 'Restaurang',
@@ -105,6 +107,38 @@ const TAB_LABEL: Record<SettingsTab, string> = {
   statistik: 'Statistik',
   bokforing: 'Bokföring',
   integritet: 'Integritet',
+  utseende: 'Utseende och ljud',
+}
+
+/**
+ * Inställningarna i fem grupper. Menyn visar först grupperna under varandra,
+ * var och en med en rad om vad som finns där; ett klick öppnar gruppen och
+ * dess delar, och "Alla inställningar" leder tillbaka. Texterna ska gå att
+ * förstå utan att kunna systemet.
+ */
+const GROUPS: { id: string; label: string; hint: string; tabs: SettingsTab[] }[] = [
+  { id: 'verksamhet', label: 'Verksamheten', hint: 'Namn, adress, öppettider, bord och personal', tabs: ['profil', 'dagar', 'bord', 'personal'] },
+  { id: 'gaster', label: 'Gäster', hint: 'Sms och mejl till gästerna, avbokning och beställning', tabs: ['notiser', 'avbokning', 'bestallning', 'skrivare'] },
+  { id: 'ekonomi', label: 'Ekonomi', hint: 'Ta betalt online och underlag till bokföringen', tabs: ['betalningar', 'bokforing'] },
+  { id: 'data', label: 'Data och integritet', hint: 'Vad personalen ser i Statistik och gästernas uppgifter', tabs: ['statistik', 'integritet'] },
+  { id: 'enhet', label: 'Den här enheten', hint: 'Ljust eller mörkt läge och klickljud på just den här skärmen', tabs: ['utseende'] },
+]
+
+/** En rad under varje del som säger vad man ställer in där. */
+const TAB_HINT: Record<SettingsTab, string> = {
+  profil: 'Namn, adress, telefon, e-post och öppettider',
+  dagar: 'Helgdagar, stängt eller andra tider en viss dag',
+  bord: 'Hur många gäster varje bord tar och vilka bord som kan ställas ihop',
+  personal: 'Bjud in medarbetare och välj vad de får göra',
+  notiser: 'Sms och mejl till gästerna, och mejl till er',
+  avbokning: 'Kortgaranti och avgift om gästen inte kommer',
+  bestallning: 'Avhämtning, beställning vid bordet och QR-koder',
+  skrivare: 'Skrivaren i köket som skriver ut beställningarna',
+  betalningar: 'Koppla Stripe så att gästerna kan betala online',
+  bokforing: 'Exportera försäljningen till bokföringsprogrammet',
+  statistik: 'Vad personalen får se och när lunchen slutar',
+  integritet: 'Integritetspolicyn och gästernas uppgifter',
+  utseende: 'Ljust eller mörkt läge och klickljud, bara på den här skärmen',
 }
 
 function initialTab(stripeReturn: string | null): SettingsTab {
@@ -134,6 +168,14 @@ export default function InstallningarPage() {
     const fromHash = hash.replace(/^#/, '') as SettingsTab
     if (fromHash in TAB_LABEL) setTab(fromHash)
   }, [hash])
+  // Menyn: grupplistan eller den öppna gruppens delar. Grupplistan hör till
+  // fliken den öppnades vid, så byts fliken (ett klick, en länk eller guiden
+  // via #flik) visas gruppen igen. Sidan börjar på grupplistan, utom när en
+  // länk pekar på en viss del.
+  const [menuAt, setMenuAt] = useState<SettingsTab | null>(() =>
+    stripeReturn || window.location.hash ? null : initialTab(stripeReturn),
+  )
+  const menuOpen = menuAt === tab
   function openTab(next: SettingsTab) {
     setTab(next)
     window.history.replaceState(null, '', `#${next}`)
@@ -401,6 +443,16 @@ export default function InstallningarPage() {
     }
   }
 
+  const showTab = (t: SettingsTab) =>
+    t === 'personal' || t === 'statistik' || t === 'bokforing' || t === 'integritet'
+      ? isOwner
+      : t === 'bestallning' || t === 'skrivare'
+        ? Boolean(tenant?.entitlements.features.ordering)
+        : true
+  const tabGroups = GROUPS.map((g) => ({ ...g, tabs: g.tabs.filter(showTab) })).filter((g) => g.tabs.length > 0)
+  const activeGroup = tabGroups.find((g) => g.tabs.includes(tab))?.id ?? tabGroups[0]?.id
+  const openGroup = tabGroups.find((g) => g.id === activeGroup)
+
   return (
     <>
       <AdminTopbar
@@ -421,311 +473,362 @@ export default function InstallningarPage() {
           </span>
         }
       />
-      <div className="admin-main">
-        <nav className="settings-tabs" aria-label="Inställningar">
-          {(Object.keys(TAB_LABEL) as SettingsTab[])
-            .filter((t) => (t === 'personal' || t === 'statistik' || t === 'bokforing' || t === 'integritet' ? isOwner : t === 'bestallning' || t === 'skrivare' ? Boolean(tenant?.entitlements.features.ordering) : true))
-            .map((t) => (
-              <button
-                key={t}
-                type="button"
-                className={tab === t ? 'active' : ''}
-                data-tour={`settings-tab-${t}`}
-                aria-current={tab === t ? 'page' : undefined}
-                onClick={() => openTab(t)}
-              >
-                {TAB_LABEL[t]}
+      <div className="admin-main settings-main">
+        <nav className="settings-nav" aria-label="Inställningar">
+          {menuOpen || !openGroup ? (
+            <ul className="settings-menu">
+              {tabGroups.map((g) => (
+                <li key={g.id}>
+                  <button
+                    type="button"
+                    className={g.id === activeGroup ? 'settings-menu-item current' : 'settings-menu-item'}
+                    onClick={() => {
+                      setMenuAt(null)
+                      if (g.id !== activeGroup) openTab(g.tabs[0])
+                    }}
+                  >
+                    <span className="settings-menu-text">
+                      <span className="settings-menu-title">{g.label}</span>
+                      <span className="settings-menu-hint">{g.hint}</span>
+                    </span>
+                    <span className="settings-menu-arrow" aria-hidden="true">›</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="settings-group-view">
+              <button type="button" className="settings-back" onClick={() => setMenuAt(tab)}>
+                <span aria-hidden="true">‹</span> Alla inställningar
               </button>
-            ))}
-        </nav>
-        {/* Flikar döljs (hidden) i stället för att tas bort - osparade ändringar ligger kvar. */}
-        <section className="admin-card table-card" hidden={tab !== 'profil'}>
-          <div className="card-head">
-            <div>
-              <h2 className="card-title">Restaurangprofil</h2>
-              <p className="cell-muted">
-                {resolvingLocation
-                  ? 'Letar efter restaurangens plats…'
-                  : locationId
-                    ? isOwner
-                      ? 'Namn, kontakt och öppettider. Spara med knappen uppe till höger.'
-                      : 'Uppgifter för din plats. Bara ägaren kan ändra dem.'
-                    : isOwner
-                      ? 'Restaurangen har ingen plats än. Fyll i uppgifterna och spara för att skapa den första.'
-                      : 'Du är inte kopplad till någon plats än. Be ägaren att koppla dig till en plats.'}
-              </p>
-            </div>
-          </div>
-          {locationError && (
-            <p className="form-error" role="alert">
-              {locationError}
-            </p>
-          )}
-          <div className="form-grid">
-            <div className="form-field">
-              <label htmlFor="rp-name">Namn</label>
-              <input
-                id="rp-name"
-                value={profile.name}
-                onChange={(e) => updateProfile('name', e.target.value)}
-              />
-            </div>
-            <div className="form-field">
-              <label htmlFor="rp-phone">Telefon</label>
-              <PhoneInput id="rp-phone" value={profile.phone} onChange={(v) => updateProfile('phone', v)} />
-            </div>
-            <div className="form-field">
-              <label htmlFor="rp-address">Adress</label>
-              <input
-                id="rp-address"
-                value={profile.address}
-                onChange={(e) => updateProfile('address', e.target.value)}
-              />
-            </div>
-            <div className="form-field">
-              <label htmlFor="rp-email">E-post</label>
-              <input
-                id="rp-email"
-                type="email"
-                value={profile.email}
-                onChange={(e) => updateProfile('email', e.target.value)}
-              />
-            </div>
-            <div className="form-field">
-              <span className="form-field-label-row">
-                <label htmlFor="rp-grace">Grace period (minuter)</label>
-                <InfoTooltip label="Grace period (minuter)">
-                  Hur länge bordet hålls om gästen är sen. Därefter blir bordet
-                  ledigt igen.
-                </InfoTooltip>
-              </span>
-              <select
-                id="rp-grace"
-                value={graceMinutes}
-                onChange={(e) => {
-                  setSaved(false)
-                  setGracePeriodHours(Number(e.target.value) / 60)
-                }}
-              >
-                {GRACE_MINUTES.map((m) => (
-                  <option key={m} value={m}>
-                    {m} min
-                  </option>
+              <p className="settings-group-name">{openGroup.label}</p>
+              <div className="settings-tabs">
+                {openGroup.tabs.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    className={tab === t ? 'active' : ''}
+                    data-tour={`settings-tab-${t}`}
+                    aria-current={tab === t ? 'page' : undefined}
+                    onClick={() => openTab(t)}
+                  >
+                    <span className="settings-tab-title">{TAB_LABEL[t]}</span>
+                    <span className="settings-tab-hint">{TAB_HINT[t]}</span>
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
-          </div>
-          <div style={{ height: 20 }} />
-          <p className="form-section-label">Öppettider</p>
-          <div style={{ height: 8 }} />
-          <BusinessHoursEditor
-            value={businessHours}
-            onChange={(next) => {
-              setSaved(false)
-              setBusinessHours(next)
-            }}
-          />
-        </section>
-
-        <div hidden={tab !== 'profil'}>
-          <BookingTimeCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
-        </div>
-
-        {isOwner && (
-        <section className="admin-card table-card" hidden={tab !== 'personal'}>
-          <div className="card-head">
-            <div>
-              <h2 className="card-title">Personal &amp; behörigheter</h2>
-              <p className="cell-muted">
-                {staffLoading
-                  ? <Loading variant="inline" label="Hämtar användare" />
-                  : `${staff.length} användare, varav ${
-                      staff.filter((s) => s.status === 'active').length
-                    } aktiva`}
-              </p>
-            </div>
-            {canManageStaff && (
-              <button
-                type="button"
-                className="btn primary square"
-                onClick={() => setModal({ mode: 'invite' })}
-              >
-                + Bjud in personal
-              </button>
-            )}
-          </div>
-          {(staffError ?? rowError) && (
-            <p className="form-error" role="alert">
-              {staffError ?? rowError}
-            </p>
           )}
-          <div className="table-scroll">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Namn</th>
-                  <th>Roll</th>
-                  <th>E-post</th>
-                  <th>Status</th>
-                  <th>Åtgärder</th>
-                </tr>
-              </thead>
-              <tbody>
-                {!staffLoading && staff.length === 0 && !staffError && (
+        </nav>
+        <div className="settings-body">
+          {/* Flikar döljs (hidden) i stället för att tas bort - osparade ändringar ligger kvar. */}
+          <section className="admin-card table-card" hidden={tab !== 'profil'}>
+            <div className="card-head">
+              <div>
+                <h2 className="card-title">Restaurangprofil</h2>
+                <p className="cell-muted">
+                  {resolvingLocation
+                    ? 'Letar efter restaurangens plats…'
+                    : locationId
+                      ? isOwner
+                        ? 'Namn, kontakt och öppettider. Spara med knappen uppe till höger.'
+                        : 'Uppgifter för din plats. Bara ägaren kan ändra dem.'
+                      : isOwner
+                        ? 'Restaurangen har ingen plats än. Fyll i uppgifterna och spara för att skapa den första.'
+                        : 'Du är inte kopplad till någon plats än. Be ägaren att koppla dig till en plats.'}
+                </p>
+              </div>
+            </div>
+            {locationError && (
+              <p className="form-error" role="alert">
+                {locationError}
+              </p>
+            )}
+            <div className="form-grid">
+              <div className="form-field">
+                <label htmlFor="rp-name">Namn</label>
+                <input
+                  id="rp-name"
+                  value={profile.name}
+                  onChange={(e) => updateProfile('name', e.target.value)}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="rp-phone">Telefon</label>
+                <PhoneInput id="rp-phone" value={profile.phone} onChange={(v) => updateProfile('phone', v)} />
+              </div>
+              <div className="form-field">
+                <label htmlFor="rp-address">Adress</label>
+                <input
+                  id="rp-address"
+                  value={profile.address}
+                  onChange={(e) => updateProfile('address', e.target.value)}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="rp-email">E-post</label>
+                <input
+                  id="rp-email"
+                  type="email"
+                  value={profile.email}
+                  onChange={(e) => updateProfile('email', e.target.value)}
+                />
+              </div>
+              <div className="form-field">
+                <span className="form-field-label-row">
+                  <label htmlFor="rp-grace">Grace period (minuter)</label>
+                  <InfoTooltip label="Grace period (minuter)">
+                    Hur länge bordet hålls om gästen är sen. Därefter blir bordet
+                    ledigt igen.
+                  </InfoTooltip>
+                </span>
+                <select
+                  id="rp-grace"
+                  value={graceMinutes}
+                  onChange={(e) => {
+                    setSaved(false)
+                    setGracePeriodHours(Number(e.target.value) / 60)
+                  }}
+                >
+                  {GRACE_MINUTES.map((m) => (
+                    <option key={m} value={m}>
+                      {m} min
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div style={{ height: 20 }} />
+            <p className="form-section-label">Öppettider</p>
+            <div style={{ height: 8 }} />
+            <BusinessHoursEditor
+              value={businessHours}
+              onChange={(next) => {
+                setSaved(false)
+                setBusinessHours(next)
+              }}
+            />
+          </section>
+
+          {locationId && tab === 'profil' && (
+            <Slot id="installningar.verksamhet.google" props={{ locationId }} />
+          )}
+
+          <div hidden={tab !== 'profil'}>
+            <BookingTimeCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+          </div>
+
+          {isOwner && (
+          <section className="admin-card table-card" hidden={tab !== 'personal'}>
+            <div className="card-head">
+              <div>
+                <h2 className="card-title">Personal &amp; behörigheter</h2>
+                <p className="cell-muted">
+                  {staffLoading
+                    ? <SkelBlock w={200} h={14} />
+                    : `${staff.length} användare, varav ${
+                        staff.filter((s) => s.status === 'active').length
+                      } aktiva`}
+                </p>
+              </div>
+              {canManageStaff && (
+                <button
+                  type="button"
+                  className="btn primary square"
+                  onClick={() => setModal({ mode: 'invite' })}
+                >
+                  + Bjud in personal
+                </button>
+              )}
+            </div>
+            {(staffError ?? rowError) && (
+              <p className="form-error" role="alert">
+                {staffError ?? rowError}
+              </p>
+            )}
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
                   <tr>
-                    <td colSpan={5} className="cell-muted">
-                      Inga användare att visa än.
-                    </td>
+                    <th>Namn</th>
+                    <th>Roll</th>
+                    <th>E-post</th>
+                    <th>Status</th>
+                    <th>Åtgärder</th>
                   </tr>
-                )}
-                {staff.map((s) => {
-                  const canEdit = canManageTarget(caller, s, 'profile')
-                  const statusAction = s.status === 'active' ? 'deactivate' : 'reactivate'
-                  const canToggleStatus = canManageTarget(caller, s, statusAction)
-                  const canDelete = canManageTarget(caller, s, 'delete')
-                  const busy = busySub === s.cognitoSub
-                  return (
-                    <tr key={s.cognitoSub}>
-                      <td className="cell-strong">{s.name}</td>
-                      <td>
-                        {ROLE_LABEL[s.role] ?? s.role}
-                        {s.role === 'staff' && (
-                          <span className="cell-muted">
-                            {' · '}
-                            {locationOptions.find((l) => l.locationId === s.locationId)
-                              ?.name ?? 'Ingen plats'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="cell-muted">{s.email}</td>
-                      <td>
-                        <span
-                          className={`status-badge ${
-                            s.status === 'active' ? 'reserved' : 'cancelled'
-                          }`}
-                        >
-                          {s.status === 'active' ? 'Aktiv' : 'Inaktiv'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="row-actions">
-                          {canEdit && (
-                            <button
-                              type="button"
-                              className="link-action"
-                              disabled={busy}
-                              onClick={() => setModal({ mode: 'edit', user: s })}
-                            >
-                              Redigera
-                            </button>
-                          )}
-                          {canToggleStatus && (
-                            <button
-                              type="button"
-                              className="link-action"
-                              disabled={busy}
-                              onClick={() => handleToggleStatus(s)}
-                            >
-                              {s.status === 'active' ? 'Inaktivera' : 'Aktivera'}
-                            </button>
-                          )}
-                          {canDelete && (
-                            <button
-                              type="button"
-                              className="link-action danger"
-                              disabled={busy}
-                              onClick={() => handleDelete(s)}
-                            >
-                              Ta bort
-                            </button>
-                          )}
-                        </span>
+                </thead>
+                <tbody>
+                  {!staffLoading && staff.length === 0 && !staffError && (
+                    <tr>
+                      <td colSpan={5} className="cell-muted">
+                        Inga användare att visa än.
                       </td>
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                  )}
+                  {staff.map((s) => {
+                    const canEdit = canManageTarget(caller, s, 'profile')
+                    const statusAction = s.status === 'active' ? 'deactivate' : 'reactivate'
+                    const canToggleStatus = canManageTarget(caller, s, statusAction)
+                    const canDelete = canManageTarget(caller, s, 'delete')
+                    const busy = busySub === s.cognitoSub
+                    return (
+                      <tr key={s.cognitoSub}>
+                        <td className="cell-strong">{s.name}</td>
+                        <td>
+                          {ROLE_LABEL[s.role] ?? s.role}
+                          {s.role === 'staff' && (
+                            <span className="cell-muted">
+                              {' · '}
+                              {locationOptions.find((l) => l.locationId === s.locationId)
+                                ?.name ?? 'Ingen plats'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="cell-muted">{s.email}</td>
+                        <td>
+                          <span
+                            className={`status-badge ${
+                              s.status === 'active' ? 'reserved' : 'cancelled'
+                            }`}
+                          >
+                            {s.status === 'active' ? 'Aktiv' : 'Inaktiv'}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="row-actions">
+                            {canEdit && (
+                              <button
+                                type="button"
+                                className="link-action"
+                                disabled={busy}
+                                onClick={() => setModal({ mode: 'edit', user: s })}
+                              >
+                                Redigera
+                              </button>
+                            )}
+                            {canToggleStatus && (
+                              <button
+                                type="button"
+                                className="link-action"
+                                disabled={busy}
+                                onClick={() => handleToggleStatus(s)}
+                              >
+                                {s.status === 'active' ? 'Inaktivera' : 'Aktivera'}
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button
+                                type="button"
+                                className="link-action danger"
+                                disabled={busy}
+                                onClick={() => handleDelete(s)}
+                              >
+                                Ta bort
+                              </button>
+                            )}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          )}
+
+          <div className="settings-row" hidden={tab !== 'betalningar'}>
+            {tenant && (
+              <PaymentsCard
+                tenant={tenant}
+                isOwner={isOwner}
+                stripeReturn={stripeReturn}
+                onRefresh={refreshTenant}
+              />
+            )}
           </div>
-        </section>
-        )}
 
-        <div className="settings-row" hidden={tab !== 'betalningar'}>
-          {tenant && (
-            <PaymentsCard
-              tenant={tenant}
-              isOwner={isOwner}
-              stripeReturn={stripeReturn}
-              onRefresh={refreshTenant}
-            />
-          )}
-        </div>
+          <div className="settings-row" hidden={tab !== 'notiser'}>
+            {tenant && (
+              <NotificationsCard
+                key={`${tenant.tenantId}:${JSON.stringify(tenant.notifications)}:${tenant.senderName ?? ''}`}
+                tenant={tenant}
+                isOwner={isOwner}
+              />
+            )}
+          </div>
 
-        <div className="settings-row" hidden={tab !== 'notiser'}>
-          {tenant && (
-            <NotificationsCard
-              key={`${tenant.tenantId}:${JSON.stringify(tenant.notifications)}:${tenant.senderName ?? ''}`}
-              tenant={tenant}
-              isOwner={isOwner}
-            />
-          )}
-        </div>
-
-        <div className="settings-row" hidden={tab !== 'avbokning'}>
-          <CancellationPolicyCard
-            key={locationId ?? 'none'}
-            locationId={locationId}
-            isOwner={isOwner}
-            stripeReady={Boolean(tenant?.stripe.chargesEnabled)}
-          />
-        </div>
-
-        {tenant?.entitlements.features.ordering && (
-          <div className="settings-row" hidden={tab !== 'bestallning'}>
-            <OrderingCard
+          <div className="settings-row" hidden={tab !== 'avbokning'}>
+            <CancellationPolicyCard
               key={locationId ?? 'none'}
               locationId={locationId}
               isOwner={isOwner}
               stripeReady={Boolean(tenant?.stripe.chargesEnabled)}
             />
           </div>
-        )}
 
-        {tenant?.entitlements.features.ordering && tab === 'skrivare' && (
-          <div className="settings-row">
-            <PrinterCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+          {tenant?.entitlements.features.ordering && (
+            <div className="settings-row" hidden={tab !== 'bestallning'}>
+              <OrderingCard
+                key={locationId ?? 'none'}
+                locationId={locationId}
+                isOwner={isOwner}
+                stripeReady={Boolean(tenant?.stripe.chargesEnabled)}
+              />
+            </div>
+          )}
+
+          {tenant?.entitlements.features.ordering && tab === 'skrivare' && (
+            <div className="settings-row">
+              <PrinterCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+            </div>
+          )}
+
+          <div className="settings-row" hidden={tab !== 'dagar'}>
+            <SpecialDaysCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
           </div>
-        )}
 
-        <div className="settings-row" hidden={tab !== 'dagar'}>
-          <SpecialDaysCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+          <div className="settings-row" hidden={tab !== 'bord'}>
+            <TableRulesCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+          </div>
+
+          {locationId && tab === 'bord' && (
+            <Slot id="installningar.verksamhet.waitlist" props={{ locationId }} />
+          )}
+
+          {isOwner && tenant && (
+            <div className="settings-row" hidden={tab !== 'statistik'}>
+              <InsightsSettingsCard
+                key={`${locationId ?? 'none'}:${tenant.insights?.staffAccess ?? 'operations'}`}
+                tenant={tenant}
+                locationId={locationId}
+              />
+            </div>
+          )}
+
+          {isOwner && tab === 'bokforing' && (
+            <div className="settings-row">
+              <Slot id="installningar.bokforing.sync" props={{}} />
+              <BokforingCard
+                key={locationId ?? 'none'}
+                locationId={locationId}
+                giftCards={hasFeature(tenant, 'giftCards')}
+              />
+            </div>
+          )}
+
+          {isOwner && tab === 'integritet' && (
+            <div className="settings-row">
+              <PrivacyCard />
+            </div>
+          )}
+
+          {tab === 'utseende' && (
+            <div className="settings-row">
+              <AppearanceCard />
+            </div>
+          )}
         </div>
-
-        <div className="settings-row" hidden={tab !== 'bord'}>
-          <TableRulesCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
-        </div>
-
-        {isOwner && tenant && (
-          <div className="settings-row" hidden={tab !== 'statistik'}>
-            <InsightsSettingsCard
-              key={`${locationId ?? 'none'}:${tenant.insights?.staffAccess ?? 'operations'}`}
-              tenant={tenant}
-              locationId={locationId}
-            />
-          </div>
-        )}
-
-        {isOwner && tab === 'bokforing' && (
-          <div className="settings-row">
-            <BokforingCard key={locationId ?? 'none'} locationId={locationId} />
-          </div>
-        )}
-
-        {isOwner && tab === 'integritet' && (
-          <div className="settings-row">
-            <PrivacyCard />
-          </div>
-        )}
       </div>
 
       {modal && (

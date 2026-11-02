@@ -3,8 +3,9 @@ import { ChartTip } from '../../shared/ChartTip'
 import { useChartTip } from '../../shared/chartTipState'
 import { StatTile } from '../../shared/motion/StatTile'
 import { Num } from '../../shared/motion/Num'
-import { Loading } from '../../shared/Loading'
+import { OverviewSkeleton } from './OverviewSkeleton'
 import { useTenant } from '../../shared/tenant'
+import { Slot } from '../../shared/slots'
 import { trendOf } from '../../shared/trend'
 import {
   channelLabel,
@@ -161,7 +162,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
       </div>
 
       {error && <p className="form-error" role="alert">{error}</p>}
-      {!data && !error && <Loading label="Hämtar statistiken" />}
+      {!data && !error && <OverviewSkeleton />}
 
       {data && (
         <>
@@ -177,6 +178,8 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
               />
             ))}
           </section>
+
+          <Slot id="marketing.oversikt.ads" props={{ locationId: forLocation, from: data.from, to: data.to }} />
 
           <section className="admin-card table-card">
             <div className="card-head">

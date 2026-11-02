@@ -1,27 +1,30 @@
-import { useCallback, useRef, useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { BrandMark, BrandWordmark } from './BrandMark'
 import { useAuth } from '../features/auth/useAuth'
 import { primaryGroupLabel } from '../features/installningar/usersApi'
-import { canSeeInsights, selectLocation, useTenant } from './tenant'
+import { canSeeInsights, hasFeature, selectLocation, useTenant } from './tenant'
+import type { FeatureKey } from './contracts'
 import { GuideProvider } from '../features/guide/Guide'
 import { LogoutConfirm } from './LogoutConfirm'
 import type { TenantErrorCode } from './tenant'
 import './admin.css'
 import './brand.css'
 import './select.css'
-import { Loading } from './Loading'
 import { useLiquidFill } from './motion/useLiquidFill'
 import { MotionScope, sidebarPourDone, sidebarShouldPour } from './motion/MotionScope'
 import { BusyBar } from './motion/BusyBar'
-import { ThemeToggle } from './ThemeToggle'
 import { DpaBanner } from '../features/dpa/DpaBanner'
+import { SkelCard, SkelPage, SkelTiles } from './Skeleton'
+import { NAV_CLOSED_KEY } from './storageRegistry'
+import { preloadPages } from '../pages'
 
 // Sidebar-länkarna, i grupper efter när man behöver dem: överblicken,
 // det som händer under passet, och det man ställer in mer sällan.
 // `end: true` gör att '/' bara markeras aktiv på exakt träff, annars skulle
 // den lysa upp på alla undersidor också.
-type NavItem = { to: string; label: string; tour: string; end?: boolean; feature?: string; ownerOnly?: boolean; insights?: boolean }
+// `feature` som lista = minst en av dem ingår i planen.
+type NavItem = { to: string; label: string; tour: string; end?: boolean; feature?: FeatureKey | FeatureKey[]; ownerOnly?: boolean; insights?: boolean }
 const NAV_GROUPS: { id: string; label: string | null; items: NavItem[] }[] = [
   {
     id: 'overblick',
@@ -45,6 +48,10 @@ const NAV_GROUPS: { id: string; label: string | null; items: NavItem[] }[] = [
       { to: '/kassa', label: 'Kassa', tour: 'nav-kassa', feature: 'kassa' },
       // Förfrågningar; inställningar och rabatter nås därifrån (/cateringkalkyl).
       { to: '/catering', label: 'Catering', tour: 'nav-catering', feature: 'catering' },
+      // In- och utcheckning för personalen (personalliggaren).
+      { to: '/personalliggare', label: 'Personalliggare', tour: 'nav-personalliggare', feature: 'personalliggare' },
+      // Telefonassistenten: samtal, återuppringningar och avstängning; inställningarna är ägarens.
+      { to: '/telefon', label: 'Telefon', tour: 'nav-telefon', feature: 'phoneAgent' },
     ],
   },
   {
@@ -53,12 +60,38 @@ const NAV_GROUPS: { id: string; label: string | null; items: NavItem[] }[] = [
     items: [
       { to: '/meny', label: 'Meny', tour: 'nav-meny' },
       { to: '/layout', label: 'Layout', tour: 'nav-layout' },
-      // E-postutskick; bara ägare, och bara med marknadsföring i planen.
-      { to: '/marknadsforing', label: 'Marknadsföring', tour: 'nav-marknadsforing', feature: 'marketing', ownerOnly: true },
+      { to: '/gaster', label: 'Gäster', tour: 'nav-gaster', feature: 'guestCrm' },
+      { to: '/presentkort', label: 'Presentkort', tour: 'nav-presentkort', feature: 'giftCards', ownerOnly: true },
+      { to: '/webbplats', label: 'Webbplats', tour: 'nav-webbplats', feature: 'siteBuilder', ownerOnly: true },
+      // Biljetter till kvällar och middagar; personalen scannar vid dörren, ägaren redigerar.
+      { to: '/evenemang', label: 'Evenemang', tour: 'nav-evenemang', feature: 'events' },
+      // Utskick, annonser, omdömen och inlägg; bara ägare, när minst en av dem ingår i planen.
+      {
+        to: '/marknadsforing',
+        label: 'Marknadsföring',
+        tour: 'nav-marknadsforing',
+        feature: ['marketing', 'metaAds', 'googleBusiness', 'socialPosting'],
+        ownerOnly: true,
+      },
       { to: '/installningar', label: 'Inställningar', tour: 'nav-installningar' },
     ],
   },
 ]
+
+/** Grupperna i sidomenyn som användaren har fällt ihop (sparas i webbläsaren). */
+function storedClosedGroups(): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(NAV_CLOSED_KEY) ?? '[]') as unknown
+    return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+/** Är sidan en av gruppens? */
+function onItem(pathname: string, item: NavItem): boolean {
+  return item.end ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`)
+}
 
 const TENANT_ERROR: Record<TenantErrorCode, { title: string; text: string }> = {
   tenant_inactive: {
@@ -91,6 +124,34 @@ const TENANT_ERROR: Record<TenantErrorCode, { title: string; text: string }> = {
 export function AdminLayout() {
   const { email, sub, groups, logout } = useAuth()
   const { tenant, status, error, locationId, refresh } = useTenant()
+  const { pathname } = useLocation()
+  // Sidomenyns grupper är öppna från början; en grupp man fäller ihop förblir
+  // hopfälld i den här webbläsaren.
+  const [closedGroups, setClosedGroups] = useState<string[]>(storedClosedGroups)
+  // Skalet och första sidan är uppe: resten av sidorna hämtas i bakgrunden.
+  useEffect(() => {
+    if (status === 'ready') preloadPages()
+  }, [status])
+
+  // Går man till en sida i en hopfälld grupp (en länk, eller guiden) öppnas
+  // gruppen igen, så att sidan man står på alltid syns i menyn.
+  useEffect(() => {
+    const group = NAV_GROUPS.find((g) => g.label && g.items.some((item) => onItem(pathname, item)))
+    if (group && closedGroups.includes(group.id)) toggleGroup(group.id, false)
+    // bara när sidan byts, inte när användaren fäller ihop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
+  function toggleGroup(id: string, open: boolean) {
+    setClosedGroups((prev) => {
+      const next = open ? [...prev.filter((x) => x !== id), id] : prev.filter((x) => x !== id)
+      try {
+        localStorage.setItem(NAV_CLOSED_KEY, JSON.stringify(next))
+      } catch {
+        /* privat läge utan lagring: valet gäller tills sidan laddas om */
+      }
+      return next
+    })
+  }
   // Visningsnamn = det som står innan '@' i e-posten, t.ex. "anna@..." -> "anna".
   const displayName = email ? email.split('@')[0] : 'Personal'
   const initial = (displayName[0] ?? 'K').toUpperCase()
@@ -177,35 +238,53 @@ export function AdminLayout() {
           {NAV_GROUPS.map((group) => {
             const items = group.items.filter(
               (item) =>
-                (!item.feature || Boolean(tenant?.entitlements.features[item.feature])) &&
+                (!item.feature || hasFeature(tenant, item.feature)) &&
                 (!item.ownerOnly || tenant?.role === 'owner_user') &&
                 (!item.insights || canSeeInsights(tenant)),
             )
             if (items.length === 0) return null
             const headingId = `nav-group-${group.id}`
+            const listId = `nav-list-${group.id}`
+            // Öppen från början; hopfälld bara om användaren har fällt ihop den.
+            const open = !group.label || !closedGroups.includes(group.id)
+            const links = items.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                data-tour={item.tour}
+                className={({ isActive }) => (isActive ? 'admin-nav-item active' : 'admin-nav-item')}
+              >
+                {item.label}
+              </NavLink>
+            ))
             return (
               <div
                 key={group.id}
-                className="admin-nav-group"
+                className={open ? 'admin-nav-group' : 'admin-nav-group closed'}
                 role={group.label ? 'group' : undefined}
                 aria-labelledby={group.label ? headingId : undefined}
               >
-                {group.label && (
-                  <span className="admin-nav-heading" id={headingId}>
-                    {group.label}
-                  </span>
+                {group.label ? (
+                  <>
+                    <button
+                      type="button"
+                      className="admin-nav-heading admin-nav-toggle"
+                      id={headingId}
+                      aria-expanded={open}
+                      aria-controls={listId}
+                      onClick={() => toggleGroup(group.id, open)}
+                    >
+                      {group.label}
+                      <span className="admin-nav-chevron" aria-hidden="true" />
+                    </button>
+                    <div className="admin-nav-items" id={listId}>
+                      <div>{links}</div>
+                    </div>
+                  </>
+                ) : (
+                  links
                 )}
-                {items.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.end}
-                    data-tour={item.tour}
-                    className={({ isActive }) => (isActive ? 'admin-nav-item active' : 'admin-nav-item')}
-                  >
-                    {item.label}
-                  </NavLink>
-                ))}
               </div>
             )
           })}
@@ -221,7 +300,6 @@ export function AdminLayout() {
           >
             Hjälp
           </NavLink>
-          <ThemeToggle label className="admin-nav-item admin-theme-toggle" />
         </nav>
 
         <div className="admin-user">
@@ -274,11 +352,17 @@ export function AdminLayout() {
         ) : status === 'ready' ? (
           <MotionScope>
             <DpaBanner />
-            <Outlet key={locationId ?? 'no-location'} />
+            {/* Sidans kod hämtas när den öppnas (App.tsx); under tiden samma skelett som när restaurangen hämtas. */}
+            <Suspense fallback={<div className="admin-main"><SkelPage label="Hämtar sidan"><SkelTiles /><SkelCard rows={5} /></SkelPage></div>}>
+              <Outlet key={locationId ?? 'no-location'} />
+            </Suspense>
           </MotionScope>
         ) : (
           <div className="admin-main">
-            <Loading variant="screen" label="Hämtar restaurangen" />
+            <SkelPage label="Hämtar restaurangen">
+              <SkelTiles />
+              <SkelCard rows={5} />
+            </SkelPage>
           </div>
         )}
       </div>

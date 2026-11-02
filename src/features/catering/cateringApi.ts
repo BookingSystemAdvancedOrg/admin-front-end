@@ -538,8 +538,20 @@ export function offerFromRequest(r: CateringRequest): OfferInput {
     equipmentReturn,
     cleaningFee: savedFee > 0 ? savedFee : Number(r.settings?.cleaningFee ?? 0),
     message: source?.message ?? '',
-    validUntil: source?.validUntil,
+    validUntil: source?.validUntil ?? defaultValidUntil(r),
   }
+}
+
+/**
+ * Förvalt "Giltig till och med": idag plus platsens giltighetsdagar, men
+ * aldrig efter leveransdagen (samma regel som servern).
+ */
+export function defaultValidUntil(r: CateringRequest, today = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate() + Number(r.settings?.offerValidDays ?? 7))
+  const valid = iso(end)
+  return r.deliveryDate && iso(today) <= r.deliveryDate && r.deliveryDate < valid ? r.deliveryDate : valid
 }
 
 /**
@@ -598,6 +610,9 @@ const ERRORS: Record<string, string> = {
   signing_document_closed: 'Offerten är redan färdigsignerad. Ladda om sidan.',
   no_signing_started: 'Ingen signering pågår. Tryck på Signera med BankID.',
   offer_expired: 'Offerten har gått ut. Ändra giltighetstiden och skicka den igen.',
+  'validUntil must not be after the delivery date': 'Giltig till och med kan inte vara efter leveransdagen. Välj leveransdagen eller ett tidigare datum.',
+  'validUntil must not be in the past': 'Giltig till och med har redan passerat. Välj dagens datum eller senare.',
+  'validUntil must be YYYY-MM-DD': 'Skriv datumet i Giltig till och med som DD/MM/ÅÅÅÅ.',
 }
 
 export function errorText(err: unknown, action = 'Kunde inte spara.'): string {

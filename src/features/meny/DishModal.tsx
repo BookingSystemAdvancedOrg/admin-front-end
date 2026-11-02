@@ -7,6 +7,7 @@ import { validateDishName, validateDishPrice } from './menuApi'
 import { utcToZonedInput, zonedInputToUtc } from './schedule'
 import { DateTimeInput } from '../../shared/DateInput'
 import { Icon } from '../../shared/Icon'
+import { Slot } from '../../shared/slots'
 
 export interface DishFormValues {
   name: string
@@ -59,6 +60,7 @@ export function DishModal({
   title,
   initial,
   timeZone,
+  locationId = null,
   onSave,
   onCancel,
 }: {
@@ -66,6 +68,8 @@ export function DishModal({
   initial: Dish | null
   /** Platsens tidszon (IANA); schemat matas in och visas i den. */
   timeZone: string
+  /** Platsen rätten hör till; behövs för planfunktionernas fält (Slot). */
+  locationId?: string | null
   onSave: (values: DishFormValues) => Promise<void>
   onCancel: () => void
 }) {
@@ -85,6 +89,8 @@ export function DishModal({
   const [openedAt] = useState(() => Date.now())
   const [fromInput, setFromInput] = useState(initialFrom)
   const [untilInput, setUntilInput] = useState(initialUntil)
+  // Schemat är ett tillval: stängt tills någon vill begränsa när rätten syns.
+  const [scheduleOn, setScheduleOn] = useState(Boolean(initialFrom || initialUntil))
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -249,6 +255,12 @@ export function DishModal({
             )}
           </div>
         </div>
+        {locationId && initial && (
+          <Slot
+            id="meny.dish.cost"
+            props={{ locationId, menuItemId: initial.id, priceSek: parsedPrice, alcohol }}
+          />
+        )}
 
         <div className="toggle-row">
           <span className="toggle-row-label">
@@ -278,59 +290,70 @@ export function DishModal({
           />
         </div>
 
-        <fieldset className="dish-schedule">
-          <legend>Schema (valfritt)</legend>
-          <p className="dish-schedule-help">
-            Rätten visas för gäster när den är aktiv och tiden är inom schemat. Till-tiden
-            räknas inte med: till 14:00 betyder att rätten försvinner 14:00. Tider i{' '}
-            {timeZone}.
-          </p>
-          <div className="form-grid">
-            <div className="form-field">
-              <label htmlFor="dish-available-from">Visas från</label>
-              <DateTimeInput
-                id="dish-available-from" timeLabel="Visas från, tid"
-                value={fromInput}
-                onChange={(e) => setFromInput(e.target.value)}
-                aria-invalid={availableFrom === undefined ? true : undefined}
-                aria-describedby={availableFrom === undefined ? 'dish-from-error' : undefined}
-              />
-              {availableFrom === undefined && (
-                <p id="dish-from-error" className="form-error">{GAP_ERROR}</p>
-              )}
-            </div>
-            <div className="form-field">
-              <label htmlFor="dish-available-until">Visas till</label>
-              <DateTimeInput
-                id="dish-available-until" timeLabel="Visas till, tid"
-                value={untilInput}
-                onChange={(e) => setUntilInput(e.target.value)}
-                aria-invalid={availableUntil === undefined || orderError ? true : undefined}
-                aria-describedby={
-                  availableUntil === undefined || orderError ? 'dish-until-error' : undefined
-                }
-              />
-              {(availableUntil === undefined || orderError) && (
-                <p id="dish-until-error" className="form-error">
-                  {availableUntil === undefined ? GAP_ERROR : orderError}
-                </p>
-              )}
-            </div>
-          </div>
-          {scheduleWarning && <p className="dish-schedule-warning">{scheduleWarning}</p>}
-          {(fromInput || untilInput) && (
-            <button
-              type="button"
-              className="btn outline square"
-              onClick={() => {
+        <div className="toggle-row">
+          <span className="toggle-row-label">
+            Bara under en viss tid - t.ex. en lunchrätt eller en säsongsrätt
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={scheduleOn}
+            aria-controls="dish-schedule"
+            aria-label="Bara under en viss tid"
+            className="switch"
+            onClick={() => {
+              // av = rätten syns hela tiden igen, så tiderna töms
+              if (scheduleOn) {
                 setFromInput('')
                 setUntilInput('')
-              }}
-            >
-              Rensa schema
-            </button>
-          )}
-        </fieldset>
+              }
+              setScheduleOn((on) => !on)
+            }}
+          />
+        </div>
+
+        {scheduleOn && (
+          <fieldset className="dish-schedule" id="dish-schedule">
+            <legend className="sr-only">När rätten visas</legend>
+            <p className="dish-schedule-help">
+              Lämna en ruta tom för ingen gräns åt det hållet. Rätten är borta på
+              till-tiden (till 14:00 = borta 14:00). Svensk tid ({timeZone}).
+            </p>
+            <div className="form-grid">
+              <div className="form-field">
+                <label htmlFor="dish-available-from">Visas från</label>
+                <DateTimeInput
+                  id="dish-available-from" timeLabel="Visas från, tid"
+                  value={fromInput}
+                  onChange={(e) => setFromInput(e.target.value)}
+                  aria-invalid={availableFrom === undefined ? true : undefined}
+                  aria-describedby={availableFrom === undefined ? 'dish-from-error' : undefined}
+                />
+                {availableFrom === undefined && (
+                  <p id="dish-from-error" className="form-error">{GAP_ERROR}</p>
+                )}
+              </div>
+              <div className="form-field">
+                <label htmlFor="dish-available-until">Visas till</label>
+                <DateTimeInput
+                  id="dish-available-until" timeLabel="Visas till, tid"
+                  value={untilInput}
+                  onChange={(e) => setUntilInput(e.target.value)}
+                  aria-invalid={availableUntil === undefined || orderError ? true : undefined}
+                  aria-describedby={
+                    availableUntil === undefined || orderError ? 'dish-until-error' : undefined
+                  }
+                />
+                {(availableUntil === undefined || orderError) && (
+                  <p id="dish-until-error" className="form-error">
+                    {availableUntil === undefined ? GAP_ERROR : orderError}
+                  </p>
+                )}
+              </div>
+            </div>
+            {scheduleWarning && <p className="dish-schedule-warning">{scheduleWarning}</p>}
+          </fieldset>
+        )}
 
         {error && (
           <p className="form-error" role="alert">

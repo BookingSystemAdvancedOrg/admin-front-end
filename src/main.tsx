@@ -1,7 +1,11 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import '@booqy/brand/styles.css'
 import './index.css'
+import { installPress } from './shared/press'
+import { installGlide } from './shared/glide'
+import { installGlassFilter } from './shared/glassFilter'
 import App from './App.tsx'
 import { AuthProvider } from './features/auth/AuthContext.tsx'
 import { RequireAuth } from './features/auth/RequireAuth.tsx'
@@ -16,6 +20,10 @@ import CookiesPage from './features/cookies/CookiesPage.tsx'
 // /cookies are reachable while signed out; everything else is the admin panel (App.tsx)
 // and is gated by RequireAuth, which redirects signed-out visitors to
 // /logga-in.
+installPress()
+installGlide()
+installGlassFilter()
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>

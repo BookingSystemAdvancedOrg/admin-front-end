@@ -3,7 +3,7 @@ import { THEME_KEY } from './storageRegistry'
 
 /**
  * Ljust och mörkt läge. Valet ligger i localStorage (booqy-theme) och på
- * <html data-theme>; public/theme.v1.js sätter attributet innan sidan
+ * <html data-theme>; public/theme.v2.js sätter attributet innan sidan
  * ritas, så att den aldrig blinkar ljus före mörk. Utan val är admin
  * ljust (standard). Samma nyckel i alla Booqys appar.
  */
@@ -13,7 +13,7 @@ export type Theme = 'light' | 'dark'
 export const DEFAULT_THEME: Theme = 'light'
 
 /** Färgen webbläsarens egen ram får (meta theme-color): skrivbordet. */
-const THEME_COLOR: Record<Theme, string> = { light: '#f1eee6', dark: '#1c1918' }
+const THEME_COLOR: Record<Theme, string> = { light: '#f6f1ea', dark: '#1a120e' }
 
 function isTheme(value: unknown): value is Theme {
   return value === 'light' || value === 'dark'
@@ -75,8 +75,31 @@ function subscribe(listener: () => void) {
   }
 }
 
-export function useTheme(): { theme: Theme; toggle: () => void; setTheme: (theme: Theme) => void } {
+/**
+ * Byter läge med ett svep: de nya färgerna växer ut i en cirkel från
+ * knappen (origin) tills de täcker sidan (View Transitions). Utan stöd i
+ * webbläsaren, utan origin eller med "minska rörelse" byts det direkt.
+ */
+export function switchTheme(theme: Theme, origin?: { x: number; y: number }) {
+  const doc = document as Document & { startViewTransition?: (update: () => void) => { ready: Promise<void> } }
+  const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (!origin || reduce || typeof doc.startViewTransition !== 'function') {
+    setTheme(theme)
+    return
+  }
+  const { x, y } = origin
+  const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
+  const transition = doc.startViewTransition(() => setTheme(theme))
+  transition.ready.then(() => {
+    document.documentElement.animate(
+      { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+      { duration: 700, easing: 'cubic-bezier(0.65, 0, 0.35, 1)', pseudoElement: '::view-transition-new(root)' },
+    )
+  }, () => {})
+}
+
+export function useTheme(): { theme: Theme; toggle: (origin?: { x: number; y: number }) => void; setTheme: (theme: Theme) => void } {
   const theme = useSyncExternalStore(subscribe, currentTheme, () => DEFAULT_THEME)
-  const toggle = useCallback(() => setTheme(currentTheme() === 'dark' ? 'light' : 'dark'), [])
+  const toggle = useCallback((origin?: { x: number; y: number }) => switchTheme(currentTheme() === 'dark' ? 'light' : 'dark', origin), [])
   return { theme, toggle, setTheme }
 }

@@ -6,7 +6,7 @@
   background: var(--tint-orange);
   border: 0;
   color: var(--warning-ink);
-  border-radius: 3px;
+  border-radius: var(--r-md);
   font-size: 13px;
 }
 
@@ -47,7 +47,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border-radius: 6px;
+  border-radius: var(--r-md);
   align-self: flex-start;
 }
 
@@ -59,12 +59,12 @@
   gap: 2px;
   width: 56px;
   height: 52px;
-  border-radius: 3px;
+  border-radius: var(--r-md);
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--ink);
   font: 600 15px/1 var(--sans);
-  cursor: pointer;
+  cursor: default;
   transition: border-color 120ms ease, background 120ms ease;
 }
 
@@ -119,7 +119,7 @@
   height: 600px;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-md);
   overflow: hidden;
   perspective: 1600px;
   user-select: none;
@@ -161,11 +161,11 @@
 .floor-tabs button {
   padding: 8px 14px;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: var(--surface);
   font: 600 13px/1.2 var(--sans);
   color: var(--muted);
-  cursor: pointer;
+  cursor: default;
 }
 
 .floor-tabs button.active {
@@ -186,7 +186,7 @@
 .view-toggle {
   display: flex;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--r-md);
   overflow: hidden;
   background: var(--surface);
 }
@@ -197,7 +197,7 @@
   background: transparent;
   font: 600 13px/1.2 var(--sans);
   color: var(--muted);
-  cursor: pointer;
+  cursor: default;
 }
 
 .view-toggle button.active {
@@ -225,8 +225,8 @@
   padding: 16px 18px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 12px 32px -12px rgba(28, 20, 18, 0.35);
+  border-radius: var(--r-md);
+  box-shadow: 0 12px 32px -12px rgba(26, 18, 14, 0.35);
   cursor: default;
 }
 
@@ -242,7 +242,7 @@
   background: transparent;
   color: var(--muted);
   font-size: 14px;
-  cursor: pointer;
+  cursor: default;
 }
 
 .shortcut-groups {
@@ -284,7 +284,7 @@
   font: 600 11px/1 var(--mono, ui-monospace, monospace);
   padding: 2px 5px;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: var(--bg, #f6f3ee);
   color: var(--ink);
 }
@@ -317,6 +317,8 @@
   color: var(--danger);
 }
 
+/* Vridning och lutning: exponentiell inbromsning, snabb start och mjuk
+   landning. Etiketterna som vänder sig mot kameran har samma tid och kurva. */
 .floor-world {
   position: absolute;
   left: 50%;
@@ -325,7 +327,7 @@
   /* --pan-x/--pan-y: panorering i skärmpixlar (scroll, hand, mellanslag). */
   transform: translate(calc(-50% + var(--pan-x, 0px)), calc(-50% + var(--pan-y, 0px)))
     scale(var(--zoom, 1)) rotateX(var(--tilt, 0deg)) rotateZ(var(--spin, 0deg));
-  transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Under fri dragrotation (handverktyget) stängs övergången av - annars
@@ -339,7 +341,7 @@
   position: relative;
   border: 1px dashed rgba(0, 0, 0, 0.18);
   transform-style: preserve-3d;
-  transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /*
@@ -385,7 +387,10 @@
     linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
   background-size: 20px 20px;
-  cursor: pointer;
+  cursor: default;
+  /* En pixel under väggarnas fot: annars delar golvet kant med väggarna och
+     Safaris 3D-sortering skär upp det i kilar som ritas ovanpå väggen. */
+  transform: translateZ(-1px);
 }
 
 .ground.selected {
@@ -413,7 +418,7 @@
 .scene-empty p {
   max-width: 340px;
   padding: 20px 24px;
-  border-radius: 6px;
+  border-radius: var(--r-md);
   background: color-mix(in srgb, var(--surface) 88%, transparent);
   border: 1px solid var(--border);
   font-size: 14px;
@@ -436,7 +441,7 @@
 .seg {
   position: absolute;
   transform-style: preserve-3d;
-  cursor: pointer;
+  cursor: default;
 }
 
 .seg-face {
@@ -571,26 +576,26 @@
 }
 
 .seg-handle.h-a {
-  left: -11px;
+  left: calc(var(--half-t, 0px) - 11px);
   top: 50%;
   margin-top: -11px;
 }
 
 .seg-handle.h-b {
-  right: -11px;
+  right: calc(var(--half-t, 0px) - 11px);
   top: 50%;
   margin-top: -11px;
 }
 
 .seg-handle.v-a {
-  top: -11px;
+  top: calc(var(--half-t, 0px) - 11px);
   left: 50%;
   margin-left: -11px;
   cursor: ns-resize;
 }
 
 .seg-handle.v-b {
-  bottom: -11px;
+  bottom: calc(var(--half-t, 0px) - 11px);
   left: 50%;
   margin-left: -11px;
   cursor: ns-resize;
@@ -603,7 +608,7 @@
   top: 50%;
   transform-style: preserve-3d;
   transform: translateZ(calc(var(--tagz, var(--wh, 90px)) + 6px));
-  transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
 }
 
@@ -611,13 +616,13 @@
   display: inline-block;
   transform: translate(-50%, -50%)
     rotateZ(calc(-1 * var(--spin, 0deg))) rotateX(calc(-1 * var(--tilt, 0deg)));
-  transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
   font: 700 10px/1 var(--sans);
   letter-spacing: 0.08em;
   color: var(--muted);
   background: rgba(255, 255, 255, 0.9);
   padding: 3px 7px;
-  border-radius: 6px;
+  border-radius: var(--r-md);
   white-space: nowrap;
 }
 
@@ -670,7 +675,7 @@
   top: 0;
   width: 100%;
   height: 22px;
-  border-radius: 3px 3px 0 0;
+  border-radius: var(--r-md) var(--r-md) 0 0;
   background: #b9ab95;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14);
   transform-origin: top center;
@@ -686,7 +691,7 @@
   right: 0;
   top: 0;
   height: 28%;
-  border-radius: 3px 3px 0 0;
+  border-radius: var(--r-md) var(--r-md) 0 0;
   background: #b9ab95;
 }
 
@@ -822,7 +827,7 @@
   transform-origin: bottom center;
   transform: translateZ(1px) rotateZ(calc(-1 * var(--spin, 0deg)))
     rotateX(calc(-1 * var(--tilt, 0deg)));
-  transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .table-el.round .table-top,
@@ -848,7 +853,7 @@
   font: 700 10px/1.1 var(--sans);
   color: var(--on-accent);
   background: var(--ink, #1d1d1f);
-  border-radius: 3px;
+  border-radius: var(--r-md);
   padding: 1px 6px;
 }
 
@@ -1060,7 +1065,7 @@
 .shape-toggle {
   display: inline-flex;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--r-md);
   overflow: hidden;
   align-self: flex-start;
 }
@@ -1071,7 +1076,7 @@
   background: var(--surface);
   font: 400 13px/1.2 var(--sans);
   color: var(--muted);
-  cursor: pointer;
+  cursor: default;
 }
 
 .shape-toggle button.active {
@@ -1086,7 +1091,7 @@
   gap: 16px;
   padding: 6px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-md);
   align-self: flex-start;
 }
 
@@ -1104,11 +1109,11 @@
   width: 32px;
   height: 32px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--r-md);
   background: var(--green);
   color: var(--on-accent);
   font: 700 13px/1 var(--sans);
-  cursor: pointer;
+  cursor: default;
 }
 
 .step-btn:disabled {
@@ -1120,11 +1125,11 @@
   align-self: flex-start;
   padding: 8px 16px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--r-md);
   background: var(--green);
   color: var(--on-accent);
   font: 600 13px/1.2 var(--sans);
-  cursor: pointer;
+  cursor: default;
 }
 
 .props-pos {
@@ -1153,11 +1158,11 @@
 .floor-pill {
   padding: 8px 14px;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: var(--surface);
   font: 600 13px/1.2 var(--sans);
   color: var(--muted);
-  cursor: pointer;
+  cursor: default;
 }
 
 .floor-pill.active {
@@ -1175,7 +1180,7 @@
   width: 100%;
   padding: 14px 20px;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: var(--surface);
   font-size: 13px;
   color: var(--muted);
@@ -1271,7 +1276,7 @@
   background: var(--tint-orange);
   border: 0;
   color: var(--warning-ink);
-  border-radius: 3px;
+  border-radius: var(--r-md);
   font-size: 13px;
 }
 
@@ -1308,13 +1313,12 @@
     padding: 16px;
   }
 
-  /* Scene-controls får en egen rad UNDER floor-tabs (båda kvar upptill)
-     istället för att dela top:16px-raden - annars får de inte plats
-     bredvid varandra på en smal scen. Håll dem till EN rad var (skrollbar
-     i sidled vid behov) så höjden är förutsägbar och de aldrig krockar med
-     scene-hint-texten som bor längst ner. */
+  /* Verktygsraden överst och våningsflikarna på raden under (container-
+     regeln för smala planer längre ner lägger flikarna på 72 px); båda på
+     EN rad var (skrollbar i sidled vid behov) så höjden är förutsägbar och
+     de aldrig krockar med varandra eller scene-hint-texten längst ner. */
   .scene-controls {
-    top: 58px;
+    top: 12px;
     left: 12px;
     right: 12px;
     flex-wrap: nowrap;
@@ -1327,7 +1331,6 @@
   }
 
   .floor-tabs {
-    top: 12px;
     left: 12px;
     max-width: calc(100% - 24px);
   }
@@ -1385,7 +1388,7 @@
   position: absolute;
   z-index: 6;
   padding: 3px 7px;
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: var(--accent);
   color: var(--on-accent);
   font: 600 11px/1.2 var(--mono, ui-monospace, monospace);
@@ -1400,8 +1403,8 @@
   padding: 4px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 14px 36px -12px rgba(28, 20, 18, 0.4);
+  border-radius: var(--r-md);
+  box-shadow: 0 14px 36px -12px rgba(26, 18, 14, 0.4);
 }
 
 .context-menu-group + .context-menu-group {
@@ -1418,12 +1421,12 @@
   width: 100%;
   padding: 7px 10px;
   border: 0;
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: transparent;
   color: var(--ink);
   font: 500 13px/1.2 var(--sans);
   text-align: left;
-  cursor: pointer;
+  cursor: default;
 }
 
 .context-menu-item:hover:not(:disabled),
@@ -1445,4 +1448,167 @@
 .context-menu-item kbd {
   font: 500 10px/1 var(--mono, ui-monospace, monospace);
   color: var(--muted);
+}
+
+/* --- Medan layouten hämtas: frostat glas och en lokal som dukas fram ----- */
+
+.layout-prep {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--bg) 42%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(14px) saturate(1.3);
+  opacity: 1;
+  transition: opacity 520ms var(--ease), visibility 0s linear 0s;
+}
+.layout-prep.is-done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 520ms var(--ease), visibility 0s linear 520ms;
+}
+.layout-prep-card {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 26px 30px 22px;
+  border-radius: var(--r-lg);
+  background: var(--glass-hi, color-mix(in srgb, var(--surface) 70%, transparent));
+  box-shadow: var(--rim, none), var(--shadow, 0 20px 40px -24px rgba(26, 18, 14, 0.4));
+  transition: translate 520ms var(--ease), scale 520ms var(--ease);
+}
+.layout-prep.is-done .layout-prep-card {
+  translate: 0 -6px;
+  scale: 0.98;
+}
+.layout-prep-card p {
+  margin: 0;
+  font: 400 17px/1.2 var(--serif-face);
+  color: var(--muted);
+}
+.layout-prep-plan {
+  width: min(240px, 56vw);
+  height: auto;
+  overflow: visible;
+}
+.layout-prep-wall {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0.75;
+  animation: layout-prep-draw 2.8s var(--ease) infinite;
+}
+.layout-prep-wall--inner {
+  animation-delay: 0.25s;
+}
+.layout-prep-table {
+  fill: color-mix(in srgb, #a88462 38%, transparent);
+  stroke: #a88462;
+  stroke-width: 1.5;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: layout-prep-set 2.8s var(--ease) infinite;
+}
+.layout-prep-door {
+  fill: #6b4a2e;
+  opacity: 0.55;
+}
+@keyframes layout-prep-draw {
+  0% { stroke-dashoffset: 1; }
+  35%, 85% { stroke-dashoffset: 0; opacity: 0.75; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes layout-prep-set {
+  0% { opacity: 0; scale: 0.6; }
+  18%, 70% { opacity: 1; scale: 1; }
+  92%, 100% { opacity: 0; scale: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .layout-prep-wall,
+  .layout-prep-table {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .layout-prep {
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+  }
+}
+
+/* Våningsflikarna och verktygsraden delar överkanten. När planen är för smal
+   för båda (mindre bärbara, surfplattor) lägger sig våningarna på en egen rad
+   under verktygen i stället för att hamna under dem. */
+.floor-scene {
+  container-type: inline-size;
+}
+
+@container (max-width: 860px) {
+  .floor-tabs {
+    top: 72px;
+    max-width: calc(100% - 32px);
+  }
+}
+
+/* Tipset i sidopanelen: en rad, resten bakom "Mer" */
+.props-tip {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.props-tip summary {
+  list-style: none;
+  cursor: default;
+}
+.props-tip summary::-webkit-details-marker {
+  display: none;
+}
+.props-tip-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  font-size: 11.5px;
+  font-weight: 600;
+  vertical-align: 1px;
+  transition: background-color 140ms var(--ease);
+}
+.props-tip-more::after {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  rotate: 45deg;
+  translate: 0 -1px;
+  transition: rotate 180ms var(--ease);
+}
+.props-tip[open] .props-tip-more::after {
+  rotate: -135deg;
+  translate: 0 1px;
+}
+@media (hover: hover) {
+  .props-tip summary:hover .props-tip-more {
+    background: color-mix(in srgb, var(--ink) 11%, transparent);
+  }
+}
+.props-tip summary:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 3px;
+  border-radius: var(--r-md);
+}
+.props-tip p {
+  margin: 8px 0 0;
 }

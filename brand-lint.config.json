@@ -1,0 +1,17 @@
+{
+  "paths": ["src"],
+  "block": [
+    "features/meta-ads/**",
+    "features/site-builder/**",
+    "features/guest-crm/**",
+    "features/google-business/**",
+    "features/gift-cards/**",
+    "features/waitlist/**",
+    "features/social-posting/**",
+    "features/personalliggare/**",
+    "features/accounting-sync/**",
+    "features/dish-margin/**",
+    "features/events-tickets/**",
+    "features/phone-agent/**"
+  ]
+}

@@ -13,7 +13,9 @@
  * omprövas först: då krävs samtycke innan något sådant sätts.
  */
 
-export type StorageKind = 'cookie' | 'localStorage' | 'sessionStorage'
+import { STORAGE_KEYS } from './contracts'
+
+export type StorageKind = 'cookie' | 'localStorage' | 'sessionStorage' | 'IndexedDB'
 export type StorageCategory = 'nödvändig' | 'funktionell' | 'analys' | 'marknadsföring'
 
 export interface StorageEntry {
@@ -35,8 +37,13 @@ export const MOCK_SESSION_KEY = 'admin-mock-session'
 export const LOGOUT_PENDING_KEY = 'booqy-logout-pending'
 export const MOTION_SEEN_KEY = 'booqy-motion-seen'
 export const THEME_KEY = 'booqy-theme'
+export const SOUND_KEY = 'booqy-sound'
+export const SOUND_VOLUME_KEY = 'booqy-sound-volume'
+export const NAV_CLOSED_KEY = 'booqy-nav-closed'
 export const SAMPLE_DATA_KEY = 'booqy-sample-data'
 export const CARD_READER_KEY_PREFIX = 'booqy-card-reader:'
+/** IndexedDB-databasen för insläpp vid dörren, en per tillfälle (CONTRACTS.md 10). */
+export const EVENT_SCAN_KEY_PREFIX = STORAGE_KEYS.EVENT_SCAN_KEY_PREFIX
 
 export const STORAGE_REGISTRY: readonly StorageEntry[] = [
   {
@@ -85,7 +92,31 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     name: THEME_KEY,
     kind: 'localStorage',
     setBy: 'Booqy',
-    purpose: 'Ditt val av ljust eller mörkt läge (knappen i sidomenyn och på inloggningssidan). Samma nyckel på booqy.se och i Booqy Console. Inga personuppgifter.',
+    purpose: 'Ditt val av ljust eller mörkt läge (Inställningar, Utseende och ljud). Samma nyckel på booqy.se och i Booqy Console. Inga personuppgifter.',
+    lifetime: 'Tills du rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: SOUND_KEY,
+    kind: 'localStorage',
+    setBy: 'Booqy',
+    purpose: 'Ditt val av klickljud på eller av (Inställningar, Utseende och ljud). Sparas bara när du trycker på den. Samma nyckel på booqy.se och i Booqy Console. Inga personuppgifter.',
+    lifetime: 'Tills du rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: SOUND_VOLUME_KEY,
+    kind: 'localStorage',
+    setBy: 'Booqy',
+    purpose: 'Hur högt klickljudet är, 0-100 (Inställningar, Utseende och ljud). Sparas bara när du ändrar den. Inga personuppgifter.',
+    lifetime: 'Tills du rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: NAV_CLOSED_KEY,
+    kind: 'localStorage',
+    setBy: 'Booqy',
+    purpose: 'Vilka grupper i sidomenyn (Under passet, Restaurangen) du har fällt ihop. Sparas bara när du fäller ihop eller öppnar en grupp. Inga personuppgifter.',
     lifetime: 'Tills du rensar webbläsaren',
     category: 'nödvändig',
   },
@@ -103,6 +134,14 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     setBy: 'Booqy',
     purpose: 'Vilken kortläsare du senast valde under Ta betalt på den här enheten, så att den är förvald nästa gång. Inga personuppgifter.',
     lifetime: 'Tills du rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: `${EVENT_SCAN_KEY_PREFIX}{tillfälle}`,
+    kind: 'IndexedDB',
+    setBy: 'Booqy (Evenemang, insläpp)',
+    purpose: 'Sparar gästlistan och insläpp som gjorts utan nät vid dörren, tills de har skickats till servern.',
+    lifetime: 'Tills insläppen är synkade, senast dagen efter evenemanget',
     category: 'nödvändig',
   },
 ]

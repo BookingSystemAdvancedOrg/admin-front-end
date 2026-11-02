@@ -10,8 +10,10 @@ import {
   newBlock,
   previewTemplate,
   templateErrors,
+  THEME_BACKGROUNDS,
+  THEME_COLORS,
 } from './marketingApi'
-import type { Block, BlockType, Destination, TemplateInput } from './marketingApi'
+import type { Block, BlockType, Destination, TemplateInput, TemplateTheme } from './marketingApi'
 import { Icon } from '../../shared/Icon'
 
 const ADDABLE: BlockType[] = ['heading', 'text', 'button', 'image', 'dish', 'divider', 'spacer']
@@ -232,6 +234,8 @@ export function TemplateEditor({
             <input id="mk-tpl-pre" value={draft.preheader} maxLength={140} onChange={(e) => setDraft({ ...draft, preheader: e.target.value })} />
           </div>
 
+          <ThemePicker theme={draft.theme ?? null} onChange={(theme) => setDraft({ ...draft, theme })} />
+
           <p className="form-section-label">Innehåll</p>
           <ol className="mk-blocks">
             {draft.blocks.map((b, i) => (
@@ -291,5 +295,88 @@ export function TemplateEditor({
         </div>
       </div>
     </section>
+  )
+}
+
+/**
+ * Mejlets färger: huvudfärgen (sidhuvudet och knapparna) och bakgrunden runt
+ * mejlet. Färdiga färger att trycka på, och "Egen färg" för en helt egen.
+ * Förhandsvisningen bredvid visar resultatet direkt.
+ */
+export function ThemePicker({ theme, onChange }: { theme: TemplateTheme | null; onChange: (t: TemplateTheme | null) => void }) {
+  const color = theme?.color ?? null
+  const background = theme?.background ?? null
+  const set = (next: TemplateTheme) => {
+    const merged = { color, background, ...next }
+    onChange(merged.color || merged.background ? merged : null)
+  }
+  return (
+    <fieldset className="mk-theme">
+      <legend className="form-section-label">Färger</legend>
+      <SwatchRow
+        label="Huvudfärg"
+        hint="Sidhuvudet och knapparna i mejlet. Texten på färgen blir ljus eller mörk av sig själv så att den går att läsa."
+        options={THEME_COLORS}
+        value={color}
+        fallback="#1f2a24"
+        onPick={(v) => set({ color: v })}
+      />
+      <SwatchRow
+        label="Bakgrund"
+        hint="Färgen runt själva mejlet."
+        options={THEME_BACKGROUNDS}
+        value={background}
+        fallback="#f4f2ee"
+        onPick={(v) => set({ background: v })}
+      />
+    </fieldset>
+  )
+}
+
+function SwatchRow({ label, hint, options, value, fallback, onPick }: {
+  label: string
+  hint: string
+  options: { label: string; value: string | null }[]
+  value: string | null
+  fallback: string
+  onPick: (v: string | null) => void
+}) {
+  const custom = value !== null && !options.some((o) => o.value === value)
+  return (
+    <div className="mk-theme-row">
+      <p className="mk-theme-label">{label}</p>
+      <p className="mk-theme-hint">{hint}</p>
+      <div className="mk-swatches" role="radiogroup" aria-label={label}>
+        {options.map((o) => (
+          <button
+            key={o.label}
+            type="button"
+            role="radio"
+            aria-checked={value === o.value}
+            className={value === o.value ? 'mk-swatch on' : 'mk-swatch'}
+            title={o.label}
+            onClick={() => onPick(o.value)}
+          >
+            <span
+              className={o.value === null ? 'mk-swatch-dot auto' : 'mk-swatch-dot'}
+              style={{ background: o.value ?? fallback }}
+              aria-hidden="true"
+            />
+            <span className="mk-swatch-name">{o.label}</span>
+          </button>
+        ))}
+        <label className={custom ? 'mk-swatch on' : 'mk-swatch'} title="Egen färg">
+          <span className="mk-swatch-dot custom" style={custom ? { background: value ?? undefined } : undefined} aria-hidden="true" />
+          <span className="mk-swatch-name">Egen färg</span>
+          <input
+            type="color"
+            className="mk-swatch-input"
+            value={custom && value ? value : fallback}
+            aria-label={`${label}: egen färg`}
+            onChange={(e) => onPick(e.target.value)}
+          />
+        </label>
+      </div>
+    </div>
   )
 }

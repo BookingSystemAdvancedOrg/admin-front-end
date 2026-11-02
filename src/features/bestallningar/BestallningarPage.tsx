@@ -21,7 +21,7 @@ import type { Order, OrderingState, StaffMove } from './ordersApi'
 import { getPrintStatus, printBannerText, printErrorText, reprintOrder } from './printApi'
 import type { JobState, PrintStatus } from './printApi'
 import './bestallningar.css'
-import { Loading } from '../../shared/Loading'
+import { SkelBlock, SkelBox, SkelPage, SkelTiles } from '../../shared/Skeleton'
 
 /** Hur ofta listan hämtas om (köksskärmen står öppen hela kvällen). */
 export const POLL_MS = 10_000
@@ -306,7 +306,12 @@ export default function BestallningarPage() {
       <AdminTopbar title="Beställningar" actions={ordering ? pauseControls : undefined} />
       <div className="admin-main">
         {!locationId ? (
-          resolving ? <Loading label="Hämtar platsen" /> : <p className="cell-muted">Ingen plats är vald.</p>
+          resolving ? (
+            <SkelPage label="Hämtar platsen">
+              <SkelTiles />
+              <OrdersBoardSkeleton />
+            </SkelPage>
+          ) : <p className="cell-muted">Ingen plats är vald.</p>
         ) : (
           <>
             {ordering && !ordering.open && (
@@ -347,7 +352,9 @@ export default function BestallningarPage() {
               ))}
             </section>
             {orders === null && !loadError ? (
-              <Loading label="Hämtar beställningar" />
+              <SkelPage label="Hämtar beställningar">
+                <OrdersBoardSkeleton />
+              </SkelPage>
             ) : (
               <div className="orders-board" data-tour="orders-board">
                 {COLUMNS.map((column) => {
@@ -382,5 +389,25 @@ export default function BestallningarPage() {
         )}
       </div>
     </>
+  )
+}
+
+/** Medan beställningarna hämtas: tavlans tre kolumner med suddiga lappar. */
+function OrdersBoardSkeleton() {
+  return (
+    <div className="orders-board" aria-hidden="true">
+      {COLUMNS.map((column) => (
+        <section key={column.status} className="orders-column">
+          <SkelBlock w={110} h={20} />
+          {[0, 1].map((i) => (
+            <SkelBox key={i} className="order-card" h={118}>
+              <SkelBlock w="40%" h={16} />
+              <SkelBlock w="80%" />
+              <SkelBlock w="60%" />
+            </SkelBox>
+          ))}
+        </section>
+      ))}
+    </div>
   )
 }

@@ -23,6 +23,7 @@ import type {
   CateringPackageInput,
   Dietary,
 } from '../catering/cateringApi'
+import { Num } from '../../shared/motion/Num'
 import { parseKronor } from './data'
 
 const kr = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 2 })
@@ -143,7 +144,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
                       <span className="cm-tags">{d.dietary.map((x) => DIETARY_LABEL[x]).join(' · ')}</span>
                     )}
                   </td>
-                  <td className="cell-price">{kr.format(d.pricePerPortion)} kr</td>
+                  <td className="cell-price"><Num>{`${kr.format(d.pricePerPortion)} kr`}</Num></td>
                   <td className="cm-allergens">
                     {d.allergens.length ? d.allergens.map((a) => ALLERGEN_LABEL[a]).join(', ') : <span className="cell-muted">Inga</span>}
                   </td>
@@ -200,7 +201,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
               {packages.map((p) => (
                 <tr key={p.packageId}>
                   <td className="cell-strong">{p.name}</td>
-                  <td className="cell-price">{kr.format(p.pricePerGuest)} kr</td>
+                  <td className="cell-price"><Num>{`${kr.format(p.pricePerGuest)} kr`}</Num></td>
                   <td className="cm-allergens">{p.dishIds.map(dishName).join(', ')}</td>
                   <td>{p.minGuests ? `${p.minGuests} gäster` : <span className="cell-muted">-</span>}</td>
                   <td>

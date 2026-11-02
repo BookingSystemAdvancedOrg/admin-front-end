@@ -10,7 +10,7 @@
 .orders-pause select {
   padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: var(--surface);
   font: inherit;
 }
@@ -18,7 +18,7 @@
 .orders-banner {
   margin: 0;
   padding: 12px 16px;
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: var(--tint-orange);
   color: var(--warning-ink);
   font-weight: 600;
@@ -75,7 +75,7 @@
   padding: 16px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-lg);
   box-shadow: var(--shadow);
 }
 
@@ -113,7 +113,7 @@
 .order-notes {
   margin: 0;
   padding: 8px 10px;
-  border-radius: 3px;
+  border-radius: var(--r-md);
   background: var(--tint-orange);
   font-size: 14px;
 }
@@ -142,7 +142,7 @@
 }
 
 .orders-done summary {
-  cursor: pointer;
+  cursor: default;
   font-weight: 600;
 }
 
@@ -174,7 +174,7 @@
   gap: 6px;
   padding: 12px;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--r-md);
   text-align: center;
   break-inside: avoid;
 }

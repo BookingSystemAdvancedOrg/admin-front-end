@@ -8,6 +8,8 @@
  * - `ownerOnly`: bara restaurangens ägare (personal kan inte ändra det).
  * - `feature`: bara när restaurangens plan har funktionen.
  */
+import type { FeatureKey } from '../../shared/contracts'
+
 export interface GuideStep {
   id: string
   route?: string
@@ -15,7 +17,8 @@ export interface GuideStep {
   title: string
   text: string
   ownerOnly?: boolean
-  feature?: 'ordering' | 'catering' | 'marketing' | 'terminal'
+  /** En lista betyder minst en av dem (som i sidomenyn). */
+  feature?: FeatureKey | FeatureKey[]
   /** Bara när restaurangen har flera platser (platsväljaren). */
   multiLocation?: boolean
   /** Rubrik i Hjälp-sidans lista (bara på stegen som beskriver en hel del). */
@@ -279,6 +282,28 @@ export const GUIDE_STEPS: GuideStep[] = [
     text: 'Här slår du på catering för gästerna och ställer in minsta antal portioner, leveranspriser och rabatter.',
   },
 
+  // --- Personalliggare --------------------------------------------------------
+  {
+    id: 'personalliggare',
+    route: '/personalliggare',
+    target: 'nav-personalliggare',
+    feature: 'personalliggare',
+    section: 'Personalliggare',
+    title: 'Personalliggare',
+    text: 'Checka in och ut när ni jobbar. Visa liggaren direkt om Skatteverket kommer på besök.',
+  },
+
+  // --- Telefon -----------------------------------------------------------------
+  {
+    id: 'telefon',
+    route: '/telefon',
+    target: 'nav-telefon',
+    feature: 'phoneAgent',
+    section: 'Telefon',
+    title: 'Telefon',
+    text: 'Låt assistenten svara när ni inte hinner. Se samtalen, vem som vill bli uppringd och stäng av när ni vill.',
+  },
+
   // --- Layout ----------------------------------------------------------------
   {
     id: 'layout',
@@ -301,6 +326,48 @@ export const GUIDE_STEPS: GuideStep[] = [
     target: 'layout-publish',
     title: 'Publicera',
     text: 'Ändringar sparas som utkast. När du publicerar ser gästerna den nya planritningen.',
+  },
+
+  // --- Gäster, presentkort och webbplats ----------------------------------------
+  {
+    id: 'gaster',
+    route: '/gaster',
+    target: 'nav-gaster',
+    feature: 'guestCrm',
+    section: 'Gäster',
+    title: 'Gäster',
+    text: 'Se vilka gäster som kommer tillbaka och vad de har bokat och beställt.',
+  },
+  {
+    id: 'presentkort',
+    route: '/presentkort',
+    target: 'nav-presentkort',
+    feature: 'giftCards',
+    ownerOnly: true,
+    section: 'Presentkort',
+    title: 'Presentkort',
+    text: 'Sälj presentkort på er hemsida och se vad som finns kvar att lösa in.',
+  },
+  {
+    id: 'webbplats',
+    route: '/webbplats',
+    target: 'nav-webbplats',
+    feature: 'siteBuilder',
+    ownerOnly: true,
+    section: 'Webbplats',
+    title: 'Webbplats',
+    text: 'Ändra er hemsida, förhandsgranska och publicera när ni är nöjda.',
+  },
+
+  // --- Evenemang ---------------------------------------------------------------
+  {
+    id: 'evenemang',
+    route: '/evenemang',
+    target: 'nav-evenemang',
+    feature: 'events',
+    section: 'Evenemang',
+    title: 'Evenemang',
+    text: 'Sälj biljetter till kvällar och middagar, scanna vid dörren och se vad som är sålt.',
   },
 
   // --- Statistik -------------------------------------------------------------
@@ -349,7 +416,7 @@ export function stepsFor(ctx: GuideContext): GuideStep[] {
   return GUIDE_STEPS.filter(
     (s) =>
       (!s.ownerOnly || ctx.isOwner) &&
-      (!s.feature || Boolean(ctx.features[s.feature])) &&
+      (!s.feature || [s.feature].flat().some((k) => Boolean(ctx.features[k]))) &&
       (!s.multiLocation || (ctx.locations ?? 1) > 1),
   )
 }

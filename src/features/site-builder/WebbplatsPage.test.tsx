@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import WebbplatsPage from './WebbplatsPage'
+import WebbplatsPage, { POLL_LIMIT, waitForPublish } from './WebbplatsPage'
 import * as api from './api'
 import { ApiError } from '../../shared/api'
 
@@ -78,6 +78,35 @@ describe('WebbplatsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Spara utkast' }))
     expect(await screen.findByText('En länk pekar på en sida som inte finns.')).toBeInTheDocument()
     expect(screen.getByText('Meny (kontrollera)')).toBeInTheDocument()
+  })
+
+  it('shows a reserved or taken page address on the Adress field of that page', async () => {
+    tenant = on
+    vi.mocked(api.saveDraft).mockRejectedValue(new ApiError(400, 'schema_invalid', { code: 'schema_invalid', field: '/pages/1/slug', fromServer: true }))
+    render(<WebbplatsPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Ny sida' }))
+    const address = screen.getByLabelText('Adress')
+    expect(address).toHaveValue('sida-2')
+    fireEvent.change(address, { target: { value: 'meny' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Spara utkast' }))
+    expect((await screen.findAllByText(api.SLUG_ERROR)).length).toBeGreaterThan(0)
+    expect(screen.getByLabelText('Adress')).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('stops waiting for a publish after about five minutes and says so', async () => {
+    vi.mocked(api.publishStatus).mockResolvedValue({ status: 'running' })
+    const waits: number[] = []
+    expect(await waitForPublish('p', async (ms) => { waits.push(ms) })).toBeNull()
+    expect(api.publishStatus).toHaveBeenCalledTimes(POLL_LIMIT)
+    expect(waits.reduce((a, b) => a + b, 0)).toBe(300_000)
+    vi.mocked(api.publishStatus).mockResolvedValueOnce({ status: 'done', versionNo: 2 })
+    expect(await waitForPublish('p', async () => undefined)).toEqual({ status: 'done', versionNo: 2 })
+  })
+
+  it('never suggests a reserved or used address for a new page', () => {
+    expect(api.freeSlug('Meny', [])).toBe('meny-2')
+    expect(api.freeSlug('Sida 2', ['sida-2'])).toBe('sida-2-2')
+    expect(api.locate('/pages/1/slug')).toEqual({ page: 1, slug: true })
   })
 
   it('moves blocks without losing any', () => {

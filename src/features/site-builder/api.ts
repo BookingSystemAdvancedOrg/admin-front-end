@@ -95,10 +95,32 @@ export const ERRORS: Record<string, string> = {
   render_missing: 'Sidan kunde inte byggas. Försök igen om en stund.',
 }
 
-/** Var i dokumentet ett fel gäller ("/pages/1/blocks/2/heading") -> sidans och blockets index. */
-export function locate(field: string | undefined): { page?: number; block?: number } {
-  const m = /^\/pages\/(\d+)(?:\/blocks\/(\d+))?/.exec(field ?? '')
-  return m ? { page: Number(m[1]), block: m[2] === undefined ? undefined : Number(m[2]) } : {}
+/**
+ * Adresser som gästsajten redan använder själv (customer-front-end App.tsx)
+ * och som API:t därför inte tar emot som sidadress (400 schema_invalid på
+ * /pages/<i>/slug). Samma lista som application shared/features/site_builder.
+ */
+export const RESERVED_SLUGS = new Set([
+  'meny', 'boka-bord', 'bokningsvillkor', 'bokning', 'bestall', 'bestallning', 'catering', 'om-oss',
+  'kontakt', 'integritetspolicy', 'cookies', 'presentkort', 'ko', 'forhandsvisning', 'evenemang',
+  'biljett', 'assets', 'v', 'releases', 'preview',
+])
+
+export const SLUG_ERROR = 'Adressen används redan, av en annan sida eller av sajten själv (till exempel /meny eller /kontakt). Välj en annan.'
+
+/** Var i dokumentet ett fel gäller ("/pages/1/blocks/2/heading") -> sidans och blockets index, eller sidans adress. */
+export function locate(field: string | undefined): { page?: number; block?: number; slug?: boolean } {
+  const m = /^\/pages\/(\d+)(?:\/blocks\/(\d+)|\/(slug)$)?/.exec(field ?? '')
+  if (!m) return {}
+  return { page: Number(m[1]), ...(m[2] !== undefined ? { block: Number(m[2]) } : {}), ...(m[3] ? { slug: true } : {}) }
+}
+
+/** En ledig adress för en ny sida: aldrig en annan sidas eller sajtens egen. */
+export function freeSlug(title: string, taken: string[]): string {
+  const base = slugify(title)
+  let slug = base
+  for (let n = 2; taken.includes(slug) || RESERVED_SLUGS.has(slug); n += 1) slug = `${base}-${n}`
+  return slug
 }
 
 export function newId(): string {

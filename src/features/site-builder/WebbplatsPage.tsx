@@ -1,18 +1,22 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Bar, Button, Card, Field, Input, Modal, Select, toast } from '@booqy/brand'
 import { ApiError } from '../../shared/api'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { errorText } from '../../shared/errors'
 import { currentLocation, useTenant } from '../../shared/tenant'
+import './webbplats.css'
 import { listMenuItems, type MenuItem } from '../meny/menuApi'
 import {
   BLOCK_FIELDS,
   BLOCK_LABEL,
   ERRORS,
   FIELD_LABEL,
+  RESERVED_SLUGS,
+  SLUG_ERROR,
   FIELD_MAX,
   blockId,
   createPreviewLink,
+  freeSlug,
   getSite,
   listVersions,
   locate,
@@ -22,7 +26,6 @@ import {
   publishStatus,
   rollback,
   saveDraft,
-  slugify,
   type Block,
   type BlockType,
   type SiteDoc,
@@ -31,6 +34,19 @@ import {
 } from './api'
 
 const POLL_MS = 2000
+/** Längsta väntan på en publicering eller återställning (cirka 5 minuter). */
+export const POLL_LIMIT = 150
+export const POLL_SLOW = 'Publiceringen tar längre tid än vanligt. Den fortsätter i bakgrunden; öppna Versioner om en stund för att se om den är klar.'
+
+/** Frågar efter publiceringens status tills den är klar eller misslyckad, högst POLL_LIMIT gånger. */
+export async function waitForPublish(publishId: string, wait = (ms: number) => new Promise((r) => setTimeout(r, ms))) {
+  for (let i = 0; i < POLL_LIMIT; i += 1) {
+    await wait(POLL_MS)
+    const s = await publishStatus(publishId)
+    if (s.status !== 'running') return s
+  }
+  return null
+}
 
 /** Webbplats (planfunktionen "siteBuilder", bara ägare): Utkast och Publicerad. */
 export default function WebbplatsPage() {
@@ -63,7 +79,7 @@ function Editor() {
   const [version, setVersion] = useState(0)
   const [dirty, setDirty] = useState(false)
   const [pageIndex, setPageIndex] = useState(0)
-  const [error, setError] = useState<{ text: string; page?: number; block?: number } | null>(null)
+  const [error, setError] = useState<{ text: string; page?: number; block?: number; slug?: boolean } | null>(null)
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [width, setWidth] = useState<'mobile' | 'desktop'>('mobile')
@@ -95,8 +111,8 @@ function Editor() {
 
   function fail(err: unknown, action: string) {
     const field = err instanceof ApiError ? err.field : undefined
-    setError({ text: errorText(err, action, ERRORS), ...locate(field) })
     const at = locate(field)
+    setError({ text: at.slug ? SLUG_ERROR : errorText(err, action, ERRORS), ...at })
     if (at.page !== undefined) setPageIndex(at.page)
   }
 
@@ -140,18 +156,16 @@ function Editor() {
     const publishId = newId()
     try {
       await publish(publishId, draftVersion)
-      for (;;) {
-        await new Promise((r) => setTimeout(r, POLL_MS))
-        const s = await publishStatus(publishId)
-        if (s.status === 'done') {
-          toast(`Webbplatsen är publicerad (version ${s.versionNo}).`, { tone: 'success' })
-          await load()
-          break
-        }
-        if (s.status === 'failed') {
-          setError({ text: ERRORS[s.error?.code ?? ''] ?? 'Publiceringen misslyckades. Försök igen.', ...locate(s.error?.field) })
-          break
-        }
+      const s = await waitForPublish(publishId)
+      if (!s) {
+        setError({ text: POLL_SLOW })
+      } else if (s.status === 'done') {
+        toast(`Webbplatsen är publicerad (version ${s.versionNo}).`, { tone: 'success' })
+        await load()
+      } else {
+        const at = locate(s.error?.field)
+        setError({ text: at.slug ? SLUG_ERROR : ERRORS[s.error?.code ?? ''] ?? 'Publiceringen misslyckades. Försök igen.', ...at })
+        if (at.page !== undefined) setPageIndex(at.page)
       }
     } catch (err) {
       fail(err, 'Kunde inte publicera.')
@@ -168,6 +182,7 @@ function Editor() {
   }
 
   const page = doc.pages[Math.min(pageIndex, doc.pages.length - 1)]
+  const slugError = Boolean(error?.slug && error.page === pageIndex) || RESERVED_SLUGS.has(page.slug)
   const setPage = (patch: Partial<typeof page>) =>
     change({ ...doc, pages: doc.pages.map((p, i) => (i === pageIndex ? { ...p, ...patch } : p)) })
   const setBlocks = (blocks: Block[]) => setPage({ blocks })
@@ -175,8 +190,7 @@ function Editor() {
   function addPage() {
     if (!doc) return
     const title = `Sida ${doc.pages.length + 1}`
-    let slug = slugify(title)
-    while (doc.pages.some((p) => p.slug === slug)) slug = `${slug}-1`
+    const slug = freeSlug(title, doc.pages.flatMap((p) => [p.slug, p.id]))
     const id = slug
     change({
       ...doc,
@@ -230,72 +244,82 @@ function Editor() {
         </div>
       </Card>
 
-      <div className="oversikt-row">
-        <Card title={page.title || 'Startsida'} level={3}>
-          <div className="form-grid">
-            <Field label="Sidans namn">
-              <Input value={page.title} maxLength={80} onChange={(e) => setPage({ title: e.target.value })} />
+      <Card title={page.title || 'Startsida'} level={3}>
+        <div className="webbplats-fields">
+          <Field label="Sidans namn">
+            <Input value={page.title} maxLength={80} onChange={(e) => setPage({ title: e.target.value })} />
+          </Field>
+          {page.slug !== '' || slugError ? (
+            <Field label="Adress" hint={slugError ? undefined : `Gästerna hittar sidan på /${page.slug}`} error={slugError ? SLUG_ERROR : undefined}>
+              <Input value={page.slug} maxLength={40} onChange={(e) => setPage({ slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })} />
             </Field>
-            <Field label="Rubrik i sökmotorer">
-              <Input value={page.seo.title} maxLength={70} onChange={(e) => setPage({ seo: { ...page.seo, title: e.target.value } })} />
-            </Field>
-            <Field label="Beskrivning i sökmotorer">
-              <Input value={page.seo.description} maxLength={160} onChange={(e) => setPage({ seo: { ...page.seo, description: e.target.value } })} />
-            </Field>
-          </div>
-          <ol className="today-list" aria-label="Block på sidan">
-            {page.blocks.map((block, i) => (
-              <li key={block.id} className="settings-row">
-                <BlockEditor
-                  block={block}
-                  images={images}
-                  pages={doc.pages.map((p) => ({ id: p.id, title: p.title }))}
-                  invalid={error?.page === pageIndex && error.block === i}
-                  onChange={(b) => setBlocks(page.blocks.map((x, j) => (j === i ? b : x)))}
-                />
-                <div className="row-actions">
-                  <Button size="sm" variant="ghost" aria-label={`Flytta upp ${BLOCK_LABEL[block.type]}`} disabled={i === 0}
-                    onClick={() => setBlocks(moveBlock(page.blocks, i, -1))}>Upp</Button>
-                  <Button size="sm" variant="ghost" aria-label={`Flytta ner ${BLOCK_LABEL[block.type]}`} disabled={i === page.blocks.length - 1}
-                    onClick={() => setBlocks(moveBlock(page.blocks, i, 1))}>Ner</Button>
-                  <Button size="sm" variant="danger" aria-label={`Ta bort ${BLOCK_LABEL[block.type]}`}
-                    onClick={() => setBlocks(page.blocks.filter((_, j) => j !== i))}>Ta bort</Button>
-                </div>
-              </li>
-            ))}
-          </ol>
-          <Field label="Lägg till block">
-            <Select value="" disabled={page.blocks.length >= 40} onChange={(e) => e.target.value && addBlock(e.target.value as BlockType)}>
-              <option value="">Välj…</option>
-              {(Object.keys(BLOCK_LABEL) as BlockType[]).map((t) => <option key={t} value={t}>{BLOCK_LABEL[t]}</option>)}
+          ) : null}
+          <Field label="Rubrik i sökmotorer">
+            <Input value={page.seo.title} maxLength={70} onChange={(e) => setPage({ seo: { ...page.seo, title: e.target.value } })} />
+          </Field>
+          <Field label="Beskrivning i sökmotorer">
+            <Input value={page.seo.description} maxLength={160} onChange={(e) => setPage({ seo: { ...page.seo, description: e.target.value } })} />
+          </Field>
+        </div>
+        <h4 className="webbplats-heading">Block på sidan</h4>
+        {page.blocks.length === 0 ? <p className="cell-muted">Sidan har inga block än. Lägg till ett nedan.</p> : null}
+        <ol className="webbplats-blocks" aria-label="Block på sidan">
+          {page.blocks.map((block, i) => (
+            <li key={block.id} className="webbplats-block" aria-invalid={(error?.page === pageIndex && error.block === i) || undefined}>
+              <BlockEditor
+                block={block}
+                images={images}
+                pages={doc.pages.map((p) => ({ id: p.id, title: p.title || 'Startsida' }))}
+                invalid={error?.page === pageIndex && error.block === i}
+                onChange={(b) => setBlocks(page.blocks.map((x, j) => (j === i ? b : x)))}
+                actions={
+                  <div className="row-actions">
+                    <Button size="sm" variant="ghost" aria-label={`Flytta upp ${BLOCK_LABEL[block.type]}`} disabled={i === 0}
+                      onClick={() => setBlocks(moveBlock(page.blocks, i, -1))}>Upp</Button>
+                    <Button size="sm" variant="ghost" aria-label={`Flytta ner ${BLOCK_LABEL[block.type]}`} disabled={i === page.blocks.length - 1}
+                      onClick={() => setBlocks(moveBlock(page.blocks, i, 1))}>Ner</Button>
+                    <Button size="sm" variant="danger" aria-label={`Ta bort ${BLOCK_LABEL[block.type]}`}
+                      onClick={() => setBlocks(page.blocks.filter((_, j) => j !== i))}>Ta bort</Button>
+                  </div>
+                }
+              />
+            </li>
+          ))}
+        </ol>
+        <Field label="Lägg till block">
+          <Select value="" disabled={page.blocks.length >= 40} onChange={(e) => e.target.value && addBlock(e.target.value as BlockType)}>
+            <option value="">Välj…</option>
+            {(Object.keys(BLOCK_LABEL) as BlockType[]).map((t) => <option key={t} value={t}>{BLOCK_LABEL[t]}</option>)}
+          </Select>
+        </Field>
+      </Card>
+
+      <Card title="Utseende" level={3}>
+        <div className="webbplats-fields">
+          <Field label="Huvudfärg">
+            <Input type="color" value={doc.theme.primaryColor} onChange={(e) => change({ ...doc, theme: { ...doc.theme, primaryColor: e.target.value } })} />
+          </Field>
+          <Field label="Accentfärg" hint="Knappar och länkar. Booqy justerar färgen så att texten alltid går att läsa.">
+            <Input type="color" value={doc.theme.accentColor} onChange={(e) => change({ ...doc, theme: { ...doc.theme, accentColor: e.target.value } })} />
+          </Field>
+          <Field label="Typsnitt">
+            <Select value={doc.theme.font} onChange={(e) => change({ ...doc, theme: { ...doc.theme, font: e.target.value as 'serif' | 'sans' } })}>
+              <option value="serif">Klassiskt (serif)</option>
+              <option value="sans">Modernt (sans)</option>
             </Select>
           </Field>
-        </Card>
+          <Field label="Sidfot">
+            <Input value={doc.footer.text} maxLength={300} onChange={(e) => change({ ...doc, footer: { text: e.target.value } })} />
+          </Field>
+        </div>
+      </Card>
 
-        <Card title="Utseende" level={3}>
-          <div className="form-grid">
-            <Field label="Huvudfärg">
-              <Input type="color" value={doc.theme.primaryColor} onChange={(e) => change({ ...doc, theme: { ...doc.theme, primaryColor: e.target.value } })} />
-            </Field>
-            <Field label="Accentfärg" hint="Knappar och länkar. Booqy justerar färgen så att texten alltid går att läsa.">
-              <Input type="color" value={doc.theme.accentColor} onChange={(e) => change({ ...doc, theme: { ...doc.theme, accentColor: e.target.value } })} />
-            </Field>
-            <Field label="Typsnitt">
-              <Select value={doc.theme.font} onChange={(e) => change({ ...doc, theme: { ...doc.theme, font: e.target.value as 'serif' | 'sans' } })}>
-                <option value="serif">Klassiskt (serif)</option>
-                <option value="sans">Modernt (sans)</option>
-              </Select>
-            </Field>
-            <Field label="Sidfot">
-              <Input value={doc.footer.text} maxLength={300} onChange={(e) => change({ ...doc, footer: { text: e.target.value } })} />
-            </Field>
-          </div>
-          <Bar variant="tab" kind="track" label="Bredd" value={width} onChange={(k) => setWidth(k as 'mobile' | 'desktop')}
-            items={[{ key: 'mobile', label: 'Mobil' }, { key: 'desktop', label: 'Dator' }]} />
-          <Outline doc={doc} pageIndex={pageIndex} width={width} />
-          <p className="field-hint">Förhandsgranska visar sidan precis som gästerna ser den.</p>
-        </Card>
-      </div>
+      <Card title="Sidans uppbyggnad" level={3}>
+        <Bar variant="tab" kind="track" label="Bredd" value={width} onChange={(k) => setWidth(k as 'mobile' | 'desktop')}
+          items={[{ key: 'mobile', label: 'Mobil' }, { key: 'desktop', label: 'Dator' }]} />
+        <Outline doc={doc} pageIndex={pageIndex} width={width} />
+        <p className="field-hint">Förhandsgranska visar sidan precis som gästerna ser den.</p>
+      </Card>
 
       <Bar variant="action" sticky label="Spara utkast" status={dirty ? 'Osparade ändringar' : 'Sparat'}>
         <Button busy={saving} busyLabel="Sparar…" disabled={!dirty} onClick={() => void save()}>Spara utkast</Button>
@@ -306,69 +330,81 @@ function Editor() {
   )
 }
 
-function BlockEditor({ block, images, pages, invalid, onChange }: {
+function BlockEditor({ block, images, pages, invalid, onChange, actions }: {
   block: Block
   images: MenuItem[]
   pages: { id: string; title: string }[]
   invalid: boolean
   onChange: (b: Block) => void
+  actions: ReactNode
 }) {
   const fields = BLOCK_FIELDS[block.type]
+  const headingId = `block-${block.id}`
   return (
-    <fieldset className="form-grid" aria-invalid={invalid || undefined}>
-      <legend className="form-section-label">{BLOCK_LABEL[block.type]}{invalid ? ' (kontrollera)' : ''}</legend>
-      {fields.map((f) => (
-        <Field key={f} label={FIELD_LABEL[f]} error={invalid ? 'Kontrollera det här blocket.' : undefined}>
-          {f === 'body' ? (
-            <textarea className="bq-input" maxLength={FIELD_MAX[f]} value={block[f] ?? ''} onChange={(e) => onChange({ ...block, [f]: e.target.value })} />
-          ) : (
-            <Input value={block[f] ?? ''} maxLength={FIELD_MAX[f]} onChange={(e) => onChange({ ...block, [f]: e.target.value || undefined })} />
-          )}
-        </Field>
-      ))}
-      {block.type === 'image' ? (
-        <Field label="Bild" hint={images.length ? undefined : 'Ladda upp bilder på rätter under Meny först.'}>
-          <Select value={block.image ?? ''} onChange={(e) => onChange({ ...block, image: e.target.value })}>
-            {images.map((i) => <option key={i.menuItemId} value={i.imageKey}>{i.name}</option>)}
-          </Select>
-        </Field>
-      ) : null}
-      {block.type === 'hero' ? (
-        <Field label="Knapp till sida">
-          <Select value={block.cta?.link ?? ''} onChange={(e) => onChange({
-            ...block, cta: e.target.value ? { label: block.cta?.label || 'Läs mer', link: e.target.value } : undefined,
-          })}>
-            <option value="">Ingen knapp</option>
-            {pages.map((p) => <option key={p.id} value={`page:${p.id}`}>{p.title}</option>)}
-          </Select>
-        </Field>
-      ) : null}
-      {block.type === 'contact' ? (
-        <label className="toggle-row">
-          <input type="checkbox" className="switch" checked={Boolean(block.showMap)} onChange={(e) => onChange({ ...block, showMap: e.target.checked })} />
-          <span className="toggle-row-label">Visa karta</span>
-        </label>
-      ) : null}
-    </fieldset>
+    <div role="group" aria-labelledby={headingId}>
+      <div className="webbplats-block-head">
+        <h5 id={headingId} className="form-section-label">{BLOCK_LABEL[block.type]}{invalid ? ' (kontrollera)' : ''}</h5>
+        {actions}
+      </div>
+      <div className="webbplats-fields">
+        {fields.map((f) => (
+          <Field key={f} label={FIELD_LABEL[f]} error={invalid ? 'Kontrollera det här blocket.' : undefined}>
+            {f === 'body' ? (
+              <textarea className="bq-input" rows={4} maxLength={FIELD_MAX[f]} value={block[f] ?? ''} onChange={(e) => onChange({ ...block, [f]: e.target.value })} />
+            ) : (
+              <Input value={block[f] ?? ''} maxLength={FIELD_MAX[f]} onChange={(e) => onChange({ ...block, [f]: e.target.value || undefined })} />
+            )}
+          </Field>
+        ))}
+        {block.type === 'image' ? (
+          <Field label="Bild" hint={images.length ? undefined : 'Ladda upp bilder på rätter under Meny först.'}>
+            <Select value={block.image ?? ''} onChange={(e) => onChange({ ...block, image: e.target.value })}>
+              {images.map((i) => <option key={i.menuItemId} value={i.imageKey}>{i.name}</option>)}
+            </Select>
+          </Field>
+        ) : null}
+        {block.type === 'hero' ? (
+          <Field label="Knapp till sida">
+            <Select value={block.cta?.link ?? ''} onChange={(e) => onChange({
+              ...block, cta: e.target.value ? { label: block.cta?.label || 'Läs mer', link: e.target.value } : undefined,
+            })}>
+              <option value="">Ingen knapp</option>
+              {pages.map((p) => <option key={p.id} value={`page:${p.id}`}>{p.title}</option>)}
+            </Select>
+          </Field>
+        ) : null}
+        {block.type === 'contact' ? (
+          <label className="toggle-row">
+            <input type="checkbox" className="switch" checked={Boolean(block.showMap)} onChange={(e) => onChange({ ...block, showMap: e.target.checked })} />
+            <span className="toggle-row-label">Visa karta</span>
+          </label>
+        ) : null}
+      </div>
+    </div>
   )
 }
 
-/** Sidans uppbyggnad i vald bredd: block för block, i ordning. */
+/** Sidans uppbyggnad i vald bredd: menyn, blocken i ordning och sidfoten, som en enkel lista. */
 function Outline({ doc, pageIndex, width }: { doc: SiteDoc; pageIndex: number; width: 'mobile' | 'desktop' }) {
   const page = doc.pages[pageIndex]
   if (!page) return null
+  const nav = doc.nav.map((n) => doc.pages.find((p) => p.id === n.pageId)).filter(Boolean).map((p) => p?.title || 'Startsida')
   return (
-    <div className={`view-toggle ${width === 'mobile' ? 'compact-select' : ''}`} aria-label={`Sidan i ${width === 'mobile' ? 'mobil' : 'dator'}`}>
-      <nav aria-label="Webbplatsens meny"><p className="cell-muted">{doc.nav.map((n) => doc.pages.find((p) => p.id === n.pageId)?.title).filter(Boolean).join(' · ')}</p></nav>
-      {page.blocks.length === 0 ? <p className="cell-muted">Sidan är tom.</p> : page.blocks.map((b) => (
-        <section key={b.id} className="admin-card">
-          <p className="form-section-label">{BLOCK_LABEL[b.type]}</p>
-          {b.heading ? <h4>{b.heading}</h4> : null}
-          {b.text || b.body ? <p>{b.text ?? b.body}</p> : null}
-          {b.label || b.cta ? <span className="status-badge">{b.label ?? b.cta?.label}</span> : null}
-        </section>
-      ))}
-      <p className="cell-muted">{doc.footer.text}</p>
+    <div className="webbplats-outline" data-width={width} role="group" aria-label={`Sidan i ${width === 'mobile' ? 'mobil' : 'dator'}`}>
+      <p className="cell-muted">Meny: {nav.join(' · ')}</p>
+      {page.blocks.length === 0 ? <p className="cell-muted">Sidan är tom.</p> : (
+        <ol className="webbplats-outline-list">
+          {page.blocks.map((b) => (
+            <li key={b.id}>
+              <span className="form-section-label">{BLOCK_LABEL[b.type]}</span>
+              {b.heading ? <strong>{b.heading}</strong> : null}
+              {b.text || b.body ? <span className="cell-muted">{b.text ?? b.body}</span> : null}
+              {b.label || b.cta ? <span className="cell-muted">Knapp: {b.label ?? b.cta?.label}</span> : null}
+            </li>
+          ))}
+        </ol>
+      )}
+      {doc.footer.text ? <p className="cell-muted">Sidfot: {doc.footer.text}</p> : null}
     </div>
   )
 }
@@ -387,12 +423,12 @@ function Versions({ onClose, onRestored }: { onClose: () => void; onRestored: ()
       const publishId = newId()
       const started = await rollback(publishId, v.versionNo)
       if (started.status !== 'done') {
-        for (;;) {
-          await new Promise((r) => setTimeout(r, POLL_MS))
-          const s = await publishStatus(publishId)
-          if (s.status === 'done') break
-          if (s.status === 'failed') throw new Error('Återställningen misslyckades. Försök igen.')
+        const s = await waitForPublish(publishId)
+        if (!s) {
+          toast(POLL_SLOW, { tone: 'info' })
+          return
         }
+        if (s.status === 'failed') throw new Error('Återställningen misslyckades. Försök igen.')
       }
       toast(`Version ${v.versionNo} är publicerad igen.`, { tone: 'success' })
       onRestored()
@@ -408,9 +444,9 @@ function Versions({ onClose, onRestored }: { onClose: () => void; onRestored: ()
       {versions === null ? <p className="cell-muted">Hämtar…</p> : null}
       {versions && versions.length === 0 ? <p className="admin-empty">Inget är publicerat än.</p> : null}
       {versions && versions.length > 0 ? (
-        <ul className="today-list">
+        <ul className="webbplats-versions">
           {versions.map((v) => (
-            <li key={v.versionNo} className="settings-row">
+            <li key={v.versionNo}>
               <span>Version {v.versionNo} · {new Date(v.publishedAt).toLocaleString('sv-SE')}{v.live ? ' · visas nu' : ''}</span>
               {!v.live ? <Button size="sm" variant="secondary" busy={busy === v.versionNo} onClick={() => void restore(v)}>Återställ</Button> : null}
             </li>

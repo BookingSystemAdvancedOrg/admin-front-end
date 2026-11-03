@@ -49,6 +49,9 @@ describe('GasterPage', () => {
     expect(await screen.findByText('anna@example.se')).toBeInTheDocument()
     expect(screen.getByText('Ja')).toBeInTheDocument()
     expect(screen.getByText('500 kr')).toBeInTheDocument()
+    const facts = screen.getByText('anna@example.se').closest('dl')!
+    expect(facts).toHaveClass('gaster-facts')  // the profile facts, not the booking list's one-line meta
+    expect(facts).not.toHaveClass('booking-meta')
     expect(screen.getByRole('button', { name: 'Spara' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Bygg gästregistret' })).toBeInTheDocument()
   })

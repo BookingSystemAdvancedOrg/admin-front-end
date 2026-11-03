@@ -15,6 +15,7 @@ import {
   type Segment,
   type SegmentTemplate,
 } from './api'
+import './gaster.css'
 
 /** Målgrupper på Marknadsföring > Mottagare (ägare): sparade regler, antal och "Använd i kampanj". */
 export default function SegmentsPanel() {
@@ -101,9 +102,9 @@ export default function SegmentsPanel() {
         </div>
       ) : null}
       {segments && segments.length > 0 ? (
-        <ul className="today-list">
+        <ul className="gaster-segments">
           {segments.map((s) => (
-            <li key={s.segmentId} className="settings-row">
+            <li key={s.segmentId}>
               <div>
                 <strong>{s.name}</strong>
                 <p className="cell-muted">{describeRules(s.rules, locationName)}</p>

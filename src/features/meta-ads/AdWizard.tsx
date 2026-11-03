@@ -3,6 +3,7 @@ import { Bar, Button, Field, Input, Modal, Select } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
 import { listMenuItems, menuImageUrl, type MenuItem } from '../meny/menuApi'
 import { ERRORS, GOALS, createCampaign, newCampaignId, suggestCopy, type Goal } from './api'
+import './annonser.css'
 
 const STEPS = ['Mål', 'Bild och text', 'Budget', 'Område', 'Förhandsvisning', 'Skapa'] as const
 const MAX_HEADLINE = 40
@@ -93,12 +94,12 @@ export default function AdWizard({ locationId, onClose, onCreated }: {
       {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
 
       {step === 0 ? (
-        <fieldset className="toggle-stack">
+        <fieldset className="annons-choices">
           <legend className="form-section-label">Vad ska annonsen ge?</legend>
           {GOALS.map((g) => (
-            <label key={g.id} className="toggle-row">
+            <label key={g.id} className="annons-choice">
               <input type="radio" name="goal" value={g.id} checked={goal === g.id} onChange={() => setGoal(g.id)} />
-              <span className="toggle-row-label"><strong>{g.label}</strong> <span className="cell-muted">{g.text}</span></span>
+              <span><strong>{g.label}</strong> <span className="cell-muted">{g.text}</span></span>
             </label>
           ))}
         </fieldset>
@@ -175,7 +176,7 @@ export default function AdWizard({ locationId, onClose, onCreated }: {
             Annonsen skapas hos Meta och blir <strong>pausad</strong>. Den visas först när du trycker på
             "Starta annonsen" i listan.
           </p>
-          <dl className="booking-meta">
+          <dl className="annons-facts">
             <dt>Rätt</dt><dd>{dish?.name}</dd>
             <dt>Budget</dt><dd>{Number(budget).toLocaleString('sv-SE')} kr under {days} dagar</dd>
             <dt>Område</dt><dd>{radius} km runt restaurangen</dd>

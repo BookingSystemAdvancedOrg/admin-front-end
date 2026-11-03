@@ -76,6 +76,9 @@ describe('AnnonserTab', () => {
     vi.mocked(api.suggestCopy).mockResolvedValue({ suggestions: [{ headline: 'Fredagspasta', primaryText: 'Boka bord i kväll.' }] })
     renderTab()
     fireEvent.click(await screen.findByRole('button', { name: 'Ny annons' }))
+    const goals = screen.getAllByRole('radio')
+    expect(goals.length).toBeGreaterThan(1)
+    expect(goals.every((r) => r.closest('label')?.classList.contains('annons-choice') && !r.closest('.toggle-row'))).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Nästa' }))
     const dish = await screen.findByLabelText(/Rätt/)
     await waitFor(() => expect(screen.getByRole('option', { name: 'Pasta' })).toBeInTheDocument())
@@ -85,6 +88,7 @@ describe('AnnonserTab', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Fredagspasta/ }))
     for (let i = 0; i < 4; i++) fireEvent.click(screen.getByRole('button', { name: 'Nästa' }))
     expect(screen.getByText(/blir/)).toHaveTextContent('pausad')
+    expect(screen.getByText('Område').closest('dl')).toHaveClass('annons-facts')
     fireEvent.click(screen.getByRole('button', { name: 'Skapa annonsen' }))
     await waitFor(() => expect(api.createCampaign).toHaveBeenCalledTimes(1))
     const body = vi.mocked(api.createCampaign).mock.calls[0][1]

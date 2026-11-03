@@ -14,6 +14,7 @@ import {
   type GuestDetail,
   type GuestSummary,
 } from './api'
+import './gaster.css'
 
 const KIND_LABEL = { booking: 'Bokning', order: 'Beställning', catering: 'Catering' } as const
 const CONSENT_LABEL = { granted: 'Ja', withdrawn: 'Nej, återkallat', none: 'Inget svar' } as const
@@ -260,7 +261,7 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
       {!guest && !error ? <p className="cell-muted">Hämtar…</p> : null}
       {guest ? (
         <>
-          <dl className="booking-meta">
+          <dl className="gaster-facts">
             <dt>Först här</dt><dd>{formatDay(guest.firstSeenAt)}</dd>
             <dt>Senast här</dt><dd>{formatDay(guest.lastSeenAt)}</dd>
             <dt>Besök</dt><dd>{guest.visits}{guest.noShows ? ` (uteblev ${guest.noShows})` : ''}</dd>

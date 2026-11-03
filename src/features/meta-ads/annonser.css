@@ -1,0 +1,44 @@
+/* Annonsguiden: val av mål och sammanfattningen. Bara @booqy/brand-tokens. */
+.annons-choices {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.annons-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--bq-space-3);
+  padding: var(--bq-space-3) 0;
+  border-top: 1px solid var(--bq-line);
+  cursor: pointer;
+}
+.annons-choice input {
+  flex: none;
+  margin: var(--bq-space-1) 0 0;
+  accent-color: var(--bq-accent);
+}
+.annons-choice span {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bq-space-1);
+}
+.annons-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--bq-space-2) var(--bq-space-4);
+  margin: var(--bq-space-4) 0 0;
+}
+.annons-facts dt {
+  color: var(--bq-muted);
+  font-size: var(--bq-text-sm);
+}
+.annons-facts dd {
+  margin: 0;
+  color: var(--bq-ink);
+  overflow-wrap: anywhere;
+}
+.annons-choices legend {
+  margin: var(--bq-space-4) 0 var(--bq-space-2);
+}

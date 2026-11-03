@@ -78,6 +78,9 @@ describe('WebbplatsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Spara utkast' }))
     expect(await screen.findByText('En länk pekar på en sida som inte finns.')).toBeInTheDocument()
     expect(screen.getByText('Meny (kontrollera)')).toBeInTheDocument()
+    const item = screen.getByText('Meny (kontrollera)').closest('li')!
+    expect(item).toHaveClass('webbplats-block--invalid')
+    expect(item).not.toHaveAttribute('aria-invalid')  // aria-invalid belongs on form fields, not a list item
   })
 
   it('shows a reserved or taken page address on the Adress field of that page', async () => {

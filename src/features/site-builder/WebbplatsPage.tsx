@@ -265,7 +265,7 @@ function Editor() {
         {page.blocks.length === 0 ? <p className="cell-muted">Sidan har inga block än. Lägg till ett nedan.</p> : null}
         <ol className="webbplats-blocks" aria-label="Block på sidan">
           {page.blocks.map((block, i) => (
-            <li key={block.id} className="webbplats-block" aria-invalid={(error?.page === pageIndex && error.block === i) || undefined}>
+            <li key={block.id} className={error?.page === pageIndex && error.block === i ? 'webbplats-block webbplats-block--invalid' : 'webbplats-block'}>
               <BlockEditor
                 block={block}
                 images={images}

@@ -31,7 +31,7 @@
 .webbplats-block:last-child {
   border-bottom: 1px solid var(--bq-line);
 }
-.webbplats-block[aria-invalid='true'] {
+.webbplats-block--invalid {
   border-left: var(--bq-bar-thin) solid var(--bq-danger);
   padding-left: var(--bq-space-4);
 }

@@ -73,6 +73,13 @@ describe('AnnonserTab', () => {
     expect(screen.getByRole('meter', { name: 'Annonskostnad den här månaden' })).toBeInTheDocument()
   })
 
+  it('explains a publish the sweep could not start (start_failed)', async () => {
+    vi.mocked(api.getConnection).mockResolvedValue(connected)
+    vi.mocked(api.listCampaigns).mockResolvedValue({ campaigns: [{ ...paused, status: 'failed', error: { code: 'start_failed' } }] })
+    renderTab()
+    expect(await screen.findByText('Annonsen kom aldrig i gång. Skapa den igen.')).toBeInTheDocument()
+  })
+
   it('creates a campaign through the six steps, never offering alcohol, with one id', async () => {
     vi.mocked(api.getConnection).mockResolvedValue(connected)
     vi.mocked(api.createCampaign).mockResolvedValue({ ...paused, status: 'publishing' })

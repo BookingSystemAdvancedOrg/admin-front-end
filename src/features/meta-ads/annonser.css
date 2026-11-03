@@ -42,3 +42,6 @@
 .annons-choices legend {
   margin: var(--bq-space-4) 0 var(--bq-space-2);
 }
+.annonser-row-action {
+  margin-top: var(--bq-space-2);
+}

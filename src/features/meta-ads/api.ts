@@ -120,6 +120,7 @@ export const FAILED_LABEL: Record<string, string> = {
   assets_missing: 'Något saknas hos Meta (annonskonto, sida eller bild).',
   unknown_image: 'Bilden kunde inte användas.',
   feature_not_in_plan: 'Annonser ingår inte längre i er plan.',
+  start_failed: 'Annonsen kom aldrig i gång. Skapa den igen.',
 }
 
 export const ERRORS: Record<string, string> = {

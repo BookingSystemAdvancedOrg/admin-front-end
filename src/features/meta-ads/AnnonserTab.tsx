@@ -247,26 +247,29 @@ function Campaigns({ locationId, blocked }: { locationId: string; blocked: boole
         <div className="table-scroll">
           <table className="data-table">
             <thead>
-              <tr><th scope="col">Annons</th><th scope="col">Period</th><th scope="col">Budget</th><th scope="col">Status</th><th scope="col"><span className="bq-sr-only">Åtgärd</span></th></tr>
+              <tr><th scope="col">Annons</th><th scope="col">Period</th><th scope="col">Budget</th><th scope="col">Status</th></tr>
             </thead>
             <tbody>
               {campaigns.map((c) => (
                 <tr key={c.campaignId}>
-                  <td>{c.creative.headline}</td>
+                  <td>
+                    {c.creative.headline}
+                    {/* In the first cell so it is on screen at phone width without scrolling the table sideways (F15). */}
+                    {c.status === 'paused' || c.status === 'active' ? (
+                      <div className="annonser-row-action">
+                        <Button size="sm" variant={c.status === 'active' ? 'secondary' : 'primary'}
+                          busy={busy === c.campaignId} disabled={blocked && c.status !== 'active'}
+                          onClick={() => void toggle(c)}>
+                          {c.status === 'active' ? 'Pausa' : 'Starta annonsen'}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </td>
                   <td>{c.startDate} - {c.endDate}</td>
                   <td>{c.budgetSek.toLocaleString('sv-SE')} kr</td>
                   <td>
                     <span className="status-badge">{STATUS_LABEL[c.status]}</span>
                     {c.status === 'failed' && c.error ? <span className="cell-muted"> {FAILED_LABEL[c.error.code] ?? ''}</span> : null}
-                  </td>
-                  <td>
-                    {c.status === 'paused' || c.status === 'active' ? (
-                      <Button size="sm" variant={c.status === 'active' ? 'secondary' : 'primary'}
-                        busy={busy === c.campaignId} disabled={blocked && c.status !== 'active'}
-                        onClick={() => void toggle(c)}>
-                        {c.status === 'active' ? 'Pausa' : 'Starta annonsen'}
-                      </Button>
-                    ) : null}
                   </td>
                 </tr>
               ))}

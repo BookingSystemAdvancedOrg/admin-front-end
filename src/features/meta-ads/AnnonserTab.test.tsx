@@ -64,7 +64,10 @@ describe('AnnonserTab', () => {
     vi.mocked(api.getConnection).mockResolvedValue(connected)
     vi.mocked(api.activate).mockResolvedValue({ ...paused, status: 'active', version: 3 })
     renderTab()
-    fireEvent.click(await screen.findByRole('button', { name: 'Starta annonsen' }))
+    const start = await screen.findByRole('button', { name: 'Starta annonsen' })
+    // F15: the action sits in the first cell, on screen at 390px without scrolling the table
+    expect(start.closest('td')).toBe(start.closest('tr')!.firstElementChild)
+    fireEvent.click(start)
     await waitFor(() => expect(api.activate).toHaveBeenCalledWith('loc-1', paused))
     expect(await screen.findByRole('button', { name: 'Pausa' })).toBeInTheDocument()
     expect(screen.getByRole('meter', { name: 'Annonskostnad den här månaden' })).toBeInTheDocument()

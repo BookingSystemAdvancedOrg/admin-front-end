@@ -104,6 +104,7 @@ function CardModal({ cardId, onClose, onChanged }: { cardId: string; onClose: ()
   const [busy, setBusy] = useState<string | null>(null)
   const [extendTo, setExtendTo] = useState('')
   const [reason, setReason] = useState('')
+  const [confirmResend, setConfirmResend] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -157,15 +158,31 @@ function CardModal({ cardId, onClose, onChanged }: { cardId: string; onClose: ()
                   onClick={() => void run('extend', () => extendCard(card.cardId, `${extendTo}T21:59:59Z`, reason.trim()), 'Giltigheten är förlängd.')}>
                   Förläng
                 </Button>
-                <Button variant="secondary" busy={busy === 'resend'}
-                  onClick={() => void run('resend', () => resendCode(card.cardId, card.recipientEmail ? 'recipient' : 'buyer'), 'En ny kod är skickad. Den gamla koden fungerar inte längre.')}>
-                  Skicka ny kod
-                </Button>
+                {confirmResend ? null : (
+                  <Button variant="secondary" onClick={() => setConfirmResend(true)}>
+                    Skicka ny kod
+                  </Button>
+                )}
                 <Button variant="danger" disabled={!reason.trim()} busy={busy === 'refund'}
                   onClick={() => void run('refund', () => refundCard(card.cardId, reason.trim()), 'Det som var kvar är återbetalt till köparen.')}>
                   Återbetala
                 </Button>
               </Bar>
+              {confirmResend ? (
+                <div className="presentkort-confirm" role="alertdialog" aria-labelledby="presentkort-confirm-text">
+                  <p id="presentkort-confirm-text">
+                    En ny kod mejlas till {card.recipientEmail ? 'mottagaren' : 'köparen'}. Den gamla koden
+                    (****{card.last4}) slutar fungera direkt, även om den redan är utskriven eller vidareskickad.
+                  </p>
+                  <Bar variant="action" label="Skicka ny kod">
+                    <Button variant="ghost" onClick={() => setConfirmResend(false)}>Behåll koden</Button>
+                    <Button variant="danger" busy={busy === 'resend'} busyLabel="Skickar…"
+                      onClick={() => void run('resend', () => resendCode(card.cardId, card.recipientEmail ? 'recipient' : 'buyer'), 'En ny kod är skickad. Den gamla koden fungerar inte längre.').then(() => setConfirmResend(false))}>
+                      Ja, skicka ny kod
+                    </Button>
+                  </Bar>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </>

@@ -1,11 +1,28 @@
 import { useState } from 'react'
 import { Bar, Button, Field, Input, Modal, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
+import { kassaGiftCardsAvailable, markKassaRefused } from './kassaAvailability'
 import { ERRORS, addKassaGiftCardPayment, kr, lookupCode, newTxId, redeemCode, reverseRedemption } from './api'
 
+function isNotSupported(err: unknown): boolean {
+  const e = err as { status?: number; code?: string; body?: { code?: string } } | null
+  return e?.status === 501 || e?.code === 'gift_card_receipt_not_supported' || e?.body?.code === 'gift_card_receipt_not_supported'
+}
+
 /** Kassan > betala > "Presentkort": koden, saldot och beloppet, sedan en betalning på notan. */
-export default function KassaGiftCardButton({ locationId, billId, remainingOre, onPaid }: {
+export default function KassaGiftCardButton(props: {
   locationId: string; billId: string; remainingOre: number; onPaid: (p: { paymentId: string; amountOre: number }) => void
+  /** Tests only: render even while Kassa refuses gift cards. */
+  forceAvailable?: boolean
+}) {
+  const [hidden, setHidden] = useState(!(props.forceAvailable || kassaGiftCardsAvailable()))
+  if (hidden) return null
+  return <KassaGiftCardDialog {...props} onRefused={() => { markKassaRefused(); setHidden(true) }} />
+}
+
+function KassaGiftCardDialog({ locationId, billId, remainingOre, onPaid, onRefused }: {
+  locationId: string; billId: string; remainingOre: number; onPaid: (p: { paymentId: string; amountOre: number }) => void
+  onRefused: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [code, setCode] = useState('')
@@ -44,6 +61,12 @@ export default function KassaGiftCardButton({ locationId, billId, remainingOre, 
         await addKassaGiftCardPayment(locationId, billId, txId)
       } catch (err) {
         await reverseRedemption(locationId, txId).catch(() => undefined)
+        if (isNotSupported(err)) {
+          toast(ERRORS.gift_card_receipt_not_supported, { tone: 'danger' })
+          close()
+          onRefused()
+          return
+        }
         throw err
       }
       toast(`Presentkort ****${found.last4}: ${kr(amountOre)} betalt.`, { tone: 'success' })

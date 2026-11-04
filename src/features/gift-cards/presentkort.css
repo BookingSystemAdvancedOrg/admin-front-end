@@ -50,3 +50,13 @@
 .presentkort-check input {
   accent-color: var(--bq-accent);
 }
+.presentkort-confirm {
+  grid-column: 1 / -1;
+  padding: var(--bq-space-3);
+  border: 1px solid var(--bq-line);
+  border-radius: var(--bq-radius-inner);
+}
+.presentkort-confirm p {
+  margin: 0 0 var(--bq-space-2);
+  color: var(--bq-ink);
+}

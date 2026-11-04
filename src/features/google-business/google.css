@@ -1,0 +1,63 @@
+/* Google-profil och Omdömen. Bara @booqy/brand-tokens. */
+.google-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bq-space-2);
+  margin: var(--bq-space-3) 0;
+}
+.google-preview {
+  margin: var(--bq-space-3) 0;
+}
+.google-preview h3,
+.google-preview h4 {
+  margin: var(--bq-space-3) 0 var(--bq-space-2);
+  font-size: var(--bq-text-sm);
+  color: var(--bq-muted);
+}
+.google-hours {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+  gap: var(--bq-space-1) var(--bq-space-4);
+  margin: 0;
+}
+.google-hours div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--bq-space-3);
+  border-top: 1px solid var(--bq-line);
+  padding: var(--bq-space-1) 0;
+}
+.google-hours dt {
+  color: var(--bq-muted);
+}
+.google-hours dd {
+  margin: 0;
+  color: var(--bq-ink);
+}
+.omdomen-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--bq-space-2) var(--bq-space-4);
+  margin: 0 0 var(--bq-space-3);
+  padding: 0;
+  border: 0;
+}
+.omdomen-checks legend {
+  margin-bottom: var(--bq-space-2);
+}
+.omdomen-checks label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bq-space-2);
+  min-height: var(--bq-space-6);
+}
+.omdomen-checks input {
+  accent-color: var(--bq-accent);
+}
+.omdomen-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+  gap: var(--bq-space-3);
+  margin-bottom: var(--bq-space-4);
+}

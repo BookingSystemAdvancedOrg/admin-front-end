@@ -153,7 +153,7 @@ function CardModal({ cardId, onClose, onChanged }: { cardId: string; onClose: ()
             <div className="form-grid">
               <Field label="Förläng till"><Input type="date" value={extendTo} onChange={(e) => setExtendTo(e.target.value)} /></Field>
               <Field label="Anledning" hint="Sparas i historiken." required><Input value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
-              <Bar variant="action" label="Presentkortet">
+              <Bar variant="action" label="Presentkortet" className="presentkort-actions">
                 <Button variant="secondary" disabled={!extendTo || !reason.trim()} busy={busy === 'extend'}
                   onClick={() => void run('extend', () => extendCard(card.cardId, `${extendTo}T21:59:59Z`, reason.trim()), 'Giltigheten är förlängd.')}>
                   Förläng
@@ -238,7 +238,7 @@ function SettingsCard() {
         <Field label="Giltighet (månader)" hint="Minst 12 månader. Visas för köparen." required>
           <Input type="number" min={12} max={60} value={String(draft.validityMonths)} onChange={(e) => setDraft({ ...draft, validityMonths: Number(e.target.value) })} />
         </Field>
-        <Bar variant="action" label="Spara presentkortsinställningar">
+        <Bar variant="action" label="Spara presentkortsinställningar" className="presentkort-actions">
           <Button type="submit" busy={saving} busyLabel="Sparar…">Spara</Button>
         </Bar>
       </form>

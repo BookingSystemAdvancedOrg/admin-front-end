@@ -84,7 +84,7 @@ export default function QueuePanel({ locationId, date }: { locationId: string; d
                 <strong>{e.position ? `${e.position}. ` : ''}{e.name}</strong>
                 <span className="cell-muted">{e.partySize} pers. · i kö sedan {clock(e.joinedAt)}{e.source === 'site' ? ' · från hemsidan' : ''}</span>
                 {e.note ? <span className="cell-muted">{e.note}</span> : null}
-                <span>
+                <span className="queue-status">
                   <span className="status-badge">{STATUS_LABEL[e.status]}</span>
                   {e.offer && e.status === 'offered' ? <span className="cell-muted"> Bord {e.offer.tableIds.join(', ')} kl. {e.offer.startTime}, svar senast {clock(e.offer.expiresAt)}</span> : null}
                   {e.notice && !e.notice.sentAt ? <span className="queue-warn"> Sms ej skickat</span> : null}

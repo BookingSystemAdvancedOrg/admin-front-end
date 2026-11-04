@@ -40,3 +40,13 @@
 .queue-checks input {
   accent-color: var(--bq-accent);
 }
+/* The save bar spans the whole form grid, under the fields. */
+.queue-actions {
+  grid-column: 1 / -1;
+}
+.queue-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bq-space-1) var(--bq-space-2);
+}

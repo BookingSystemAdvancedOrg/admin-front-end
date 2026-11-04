@@ -60,3 +60,7 @@
   margin: 0 0 var(--bq-space-2);
   color: var(--bq-ink);
 }
+/* The save bar spans the whole form grid, under the fields. */
+.presentkort-actions {
+  grid-column: 1 / -1;
+}

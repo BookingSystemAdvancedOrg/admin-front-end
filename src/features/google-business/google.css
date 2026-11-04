@@ -61,3 +61,7 @@
   gap: var(--bq-space-3);
   margin-bottom: var(--bq-space-4);
 }
+/* The save bar spans the whole form grid, under the fields. */
+.omdomen-actions {
+  grid-column: 1 / -1;
+}

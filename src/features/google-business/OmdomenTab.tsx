@@ -125,7 +125,7 @@ export default function OmdomenTab() {
             <Input type="number" min={30} max={365} value={String(draft.minDaysBetween)} required
               onChange={(e) => setDraft({ ...draft, minDaysBetween: Number(e.target.value) })} />
           </Field>
-          <Bar variant="action" label="Spara omdömesinställningar">
+          <Bar variant="action" label="Spara omdömesinställningar" className="omdomen-actions">
             <Button type="submit" busy={saving} busyLabel="Sparar…" disabled={!draft.channels.length}>Spara</Button>
           </Bar>
         </form>

@@ -53,7 +53,7 @@ export default function WaitlistSettingsCard({ locationId }: { locationId: strin
           <Input type="number" min={1} max={200} value={String(draft.maxWaiting)} required
             onChange={(e) => setDraft({ ...draft, maxWaiting: Number(e.target.value) })} />
         </Field>
-        <Bar variant="action" label="Spara köinställningar">
+        <Bar variant="action" label="Spara köinställningar" className="queue-actions">
           <Button type="submit" busy={saving} busyLabel="Sparar…">Spara</Button>
         </Bar>
       </form>

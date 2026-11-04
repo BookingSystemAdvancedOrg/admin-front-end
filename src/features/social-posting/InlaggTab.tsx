@@ -72,7 +72,7 @@ export default function InlaggTab() {
                 <button type="button" className="inlagg-row" onClick={() => setOpenId(p.postId)} aria-current={p.postId === openId}>
                   <span className="inlagg-caption">{p.caption.split('\n')[0]}</span>
                   <span className="status-badge">{STATUS_LABEL[p.status]}</span>
-                  {p.scheduledAt && p.status === 'scheduled' ? <span className="cell-muted">{new Date(p.scheduledAt).toLocaleString('sv-SE')}</span> : null}
+                  {p.scheduledAt && p.status === 'scheduled' ? <span className="cell-muted">{new Date(p.scheduledAt).toLocaleString('sv-SE', { dateStyle: 'medium', timeStyle: 'short' })}</span> : null}
                 </button>
               </li>
             ))}

@@ -1,0 +1,92 @@
+/* Marknadsföring > Inlägg. Bara @booqy/brand-tokens. */
+.inlagg-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.inlagg-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bq-space-2) var(--bq-space-3);
+  width: 100%;
+  padding: var(--bq-space-3) 0;
+  border: 0;
+  border-top: 1px solid var(--bq-line);
+  background: none;
+  color: var(--bq-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.inlagg-row[aria-current='true'] .inlagg-caption {
+  font-weight: 600;
+}
+.inlagg-caption {
+  flex: 1 1 12rem;
+  overflow-wrap: anywhere;
+}
+.inlagg-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: var(--bq-space-4);
+}
+.inlagg-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bq-space-3);
+}
+.inlagg-text {
+  width: 100%;
+  font: inherit;
+  color: var(--bq-ink);
+  background: var(--bq-surface);
+  border: 1px solid var(--bq-line-strong);
+  border-radius: var(--bq-radius-inner);
+  padding: var(--bq-space-2) var(--bq-space-3);
+}
+.inlagg-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--bq-space-2) var(--bq-space-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.inlagg-checks label,
+.inlagg-confirm {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--bq-space-2);
+}
+.inlagg-checks input,
+.inlagg-confirm input {
+  accent-color: var(--bq-accent);
+  margin-top: var(--bq-space-1);
+}
+.inlagg-confirm {
+  font-size: var(--bq-text-sm);
+  color: var(--bq-muted);
+}
+.inlagg-warn {
+  margin: 0;
+  color: var(--bq-danger);
+}
+.inlagg-previews {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bq-space-3);
+}
+.inlagg-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--bq-radius-inner);
+}
+.inlagg-preview-text {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}

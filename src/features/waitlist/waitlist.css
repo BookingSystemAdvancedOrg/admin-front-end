@@ -1,0 +1,52 @@
+/* Kö i Bokningar och Inställningar. Bara @booqy/brand-tokens. */
+.queue-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.queue-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bq-space-2);
+  padding: var(--bq-space-3) 0;
+  border-top: 1px solid var(--bq-line);
+}
+.queue-who {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bq-space-1);
+  overflow-wrap: anywhere;
+}
+.queue-warn {
+  color: var(--bq-danger);
+  font-weight: 600;
+}
+.queue-checks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bq-space-2);
+  margin: 0 0 var(--bq-space-3);
+  padding: 0;
+  border: 0;
+}
+.queue-checks label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bq-space-2);
+  min-height: var(--bq-space-6);
+}
+.queue-checks input {
+  accent-color: var(--bq-accent);
+}
+/* The save bar spans the whole form grid, under the fields. */
+.queue-actions {
+  grid-column: 1 / -1;
+}
+.queue-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bq-space-1) var(--bq-space-2);
+}

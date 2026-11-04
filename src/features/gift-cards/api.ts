@@ -70,4 +70,6 @@ export const ERRORS: Record<string, string> = {
   invalid_validity: 'Giltigheten ska vara 12-60 månader.',
   invalid_amount: 'Beloppen ska vara 100-5 000 kr.',
   gift_card_receipt_not_supported: 'Kassan kan inte ta emot presentkort än (kontrollsystemet saknar betalsättet). Beloppet har lagts tillbaka på kortet.',
+  // E10: koden är redan bytt men mejlet gick inte ut; ett nytt försök byter koden igen och skickar den.
+  notification_unavailable: 'Mejlet kunde inte skickas just nu. Försök igen om en stund.',
 }

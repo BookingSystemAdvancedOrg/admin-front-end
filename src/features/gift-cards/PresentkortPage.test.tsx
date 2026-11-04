@@ -5,6 +5,7 @@ import { KASSA_ACCEPTS_GIFT_CARDS, resetKassaRefusedForTests } from './kassaAvai
 import PresentkortPage from './PresentkortPage'
 import * as api from './api'
 import { ApiError } from '../../shared/api'
+import { errorText } from '../../shared/errors'
 
 let tenant: Record<string, unknown>
 vi.mock('../../shared/tenant', () => ({ useTenant: () => ({ tenant }) }))
@@ -69,6 +70,15 @@ describe('PresentkortPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Skicka ny kod' }))
     fireEvent.click(screen.getByRole('button', { name: 'Ja, skicka ny kod' }))
     await waitFor(() => expect(api.resendCode).toHaveBeenCalledWith('gc1', 'recipient'))
+  })
+})
+
+describe('ERRORS', () => {
+  it('explains a 502 notification_unavailable on resend like stripe_unavailable: what failed and that a retry is fine', () => {
+    const err = new ApiError(502, 'notification_unavailable', { code: 'notification_unavailable', fromServer: true })
+    expect(errorText(err, 'Det gick inte.', api.ERRORS)).toBe('Mejlet kunde inte skickas just nu. Försök igen om en stund.')
+    expect(errorText(new ApiError(502, 'stripe_unavailable', { code: 'stripe_unavailable', fromServer: true }), 'Det gick inte.', api.ERRORS))
+      .toMatch(/Försök igen om en stund\.$/)
   })
 })
 

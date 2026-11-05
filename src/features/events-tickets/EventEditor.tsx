@@ -15,8 +15,15 @@ function newType(): TypeRow {
   return { typeId: newId(), name: '', priceKr: '', vatRate: 12, perOrderMax: '10', capacity: '', includes: '' }
 }
 
-function localToIso(date: string, time: string): string {
-  return new Date(`${date}T${time}:00`).toISOString()
+/**
+ * Start och slut i lokal tid som ISO. Ett slut som inte ligger efter starten
+ * (01:00 efter 21:00) är nästa dag: ett evenemang får sluta efter midnatt.
+ */
+export function occurrenceWindow(date: string, start: string, end: string): { startAt: string; endAt: string } {
+  const startAt = new Date(`${date}T${start}:00`)
+  const endAt = new Date(`${date}T${end}:00`)
+  if (endAt <= startAt) endAt.setDate(endAt.getDate() + 1)
+  return { startAt: startAt.toISOString(), endAt: endAt.toISOString() }
 }
 
 /**
@@ -65,7 +72,7 @@ export default function EventEditor({ locationId, existing, onSaved, onCancel }:
         }
         const body: NewEvent = {
           eventId, title: title.trim(), description,
-          occurrences: [{ startAt: localToIso(date, start), endAt: localToIso(date, end), capacity: Number(capacity) }],
+          occurrences: [{ ...occurrenceWindow(date, start, end), capacity: Number(capacity) }],
           ticketTypes: types.map((t, i) => ({
             typeId: t.typeId, name: t.name.trim(), priceOre: Math.round(Number(t.priceKr.replace(',', '.')) * 100),
             vatRate: t.vatRate, perOrderMax: Number(t.perOrderMax), sortOrder: i,
@@ -99,7 +106,9 @@ export default function EventEditor({ locationId, existing, onSaved, onCancel }:
             <div className="evenemang-row">
               <Field label="Datum" required><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required /></Field>
               <Field label="Börjar"><Input type="time" value={start} onChange={(e) => setStart(e.target.value)} required /></Field>
-              <Field label="Slutar"><Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} required /></Field>
+              <Field label="Slutar" hint="En sluttid före starten räknas till nästa dag, till exempel 21:00-01:00.">
+                <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} required />
+              </Field>
               <Field label="Platser"><Input type="number" min={1} max={10000} value={capacity} onChange={(e) => setCapacity(e.target.value)} required /></Field>
             </div>
             <fieldset className="evenemang-fieldset">

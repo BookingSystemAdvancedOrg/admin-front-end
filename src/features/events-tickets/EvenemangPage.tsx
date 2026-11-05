@@ -194,6 +194,15 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
   )
 }
 
+const JOB_POLL_MS = 3000
+const JOB_POLLS = 100
+
+/**
+ * Ställ in = en återbetalningskörning (K9 svarar 202, resten gör servern i
+ * bakgrunden). Samma jobId hela vägen: om svaret aldrig kom (timeout, tappad
+ * anslutning) frågar vi K14 om jobbet finns innan vi visar ett fel, så ett
+ * jobb som faktiskt startade visas som pågående i stället för som misslyckat.
+ */
 function CancelModal({ locationId, event, occurrence, onClose }: { locationId: string; event: EventDetail; occurrence: Occurrence; onClose: () => void }) {
   const [message, setMessage] = useState('')
   const [jobId] = useState(newId)
@@ -203,14 +212,21 @@ function CancelModal({ locationId, event, occurrence, onClose }: { locationId: s
   async function confirm() {
     setBusy(true)
     try {
-      const started = await cancelOccurrence(locationId, event.eventId, occurrence.occurrenceId,
-        { jobId, version: occurrence.version, ...(message.trim() ? { message: message.trim() } : {}) })
-      let job = await getJob(locationId, started.jobId)
-      setProgress({ done: job.done, refunded: job.counts.refunded, toRefund: started.toRefund, failed: job.counts.failed })
-      for (let i = 0; i < 10 && !job.done; i++) {
-        await new Promise((r) => window.setTimeout(r, 3000))
-        job = await getJob(locationId, started.jobId)
-        setProgress({ done: job.done, refunded: job.counts.refunded, toRefund: started.toRefund, failed: job.counts.failed })
+      let toRefund = occurrence.sold
+      try {
+        toRefund = (await cancelOccurrence(locationId, event.eventId, occurrence.occurrenceId,
+          { jobId, version: occurrence.version, ...(message.trim() ? { message: message.trim() } : {}) })).toRefund
+      } catch (err) {
+        const started = await getJob(locationId, jobId).catch(() => null)
+        if (!started) throw err
+        toRefund = started.toRefund
+      }
+      let job = await getJob(locationId, jobId)
+      setProgress({ done: job.done, refunded: job.counts.refunded, toRefund, failed: job.counts.failed })
+      for (let i = 0; i < JOB_POLLS && !job.done; i++) {
+        await new Promise((r) => window.setTimeout(r, JOB_POLL_MS))
+        job = await getJob(locationId, jobId)
+        setProgress({ done: job.done, refunded: job.counts.refunded, toRefund, failed: job.counts.failed })
       }
     } catch (err) {
       toast(errorText(err, 'Kunde inte ställa in tillfället.', ERRORS), { tone: 'danger' })
@@ -233,7 +249,9 @@ function CancelModal({ locationId, event, occurrence, onClose }: { locationId: s
             valueText={`${progress.refunded} av ${progress.toRefund} återbetalda`} />
           <p className="cell-muted">
             {progress.done ? 'Klart. Alla köpare har fått pengarna tillbaka och ett mejl.'
-              : 'Återbetalningarna fortsätter i bakgrunden även om du stänger fönstret.'}
+              : progress.failed > 0
+                ? `${progress.failed} återbetalningar väntar på Stripe och görs om automatiskt inom några minuter. Du kan stänga fönstret.`
+                : 'Återbetalningarna fortsätter i bakgrunden även om du stänger fönstret.'}
           </p>
         </>
       ) : (

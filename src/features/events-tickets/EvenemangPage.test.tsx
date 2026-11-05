@@ -1,7 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiError } from '../../shared/api'
 import EvenemangPage from './EvenemangPage'
+import { occurrenceWindow } from './EventEditor'
 import EventsStats from './EventsStats'
 import * as api from './api'
 import { parseCode, signature } from './scanStore'
@@ -85,6 +87,28 @@ describe('EvenemangPage', () => {
     expect(body.occurrences[0].capacity).toBe(40)
   })
 
+  it('lets an event end after midnight (the end rolls to the next day)', async () => {
+    tenant = OWNER
+    vi.mocked(api.createEvent).mockResolvedValue({ ...detail, status: 'draft' })
+    at('/evenemang')
+    fireEvent.click(await screen.findByRole('button', { name: 'Nytt evenemang' }))
+    fireEvent.change(screen.getAllByLabelText(/Namn/)[0], { target: { value: 'Klubbkväll' } })
+    fireEvent.change(screen.getByLabelText(/Datum/), { target: { value: '2026-12-10' } })
+    fireEvent.change(screen.getByLabelText(/Börjar/), { target: { value: '21:00' } })
+    fireEvent.change(screen.getByLabelText(/Slutar/), { target: { value: '01:00' } })
+    fireEvent.change(screen.getAllByLabelText(/Namn/)[1], { target: { value: 'Inträde' } })
+    fireEvent.change(screen.getByLabelText(/Pris/), { target: { value: '100' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(() => expect(api.createEvent).toHaveBeenCalled())
+    const { startAt, endAt } = vi.mocked(api.createEvent).mock.calls[0][1].occurrences[0]
+    expect(new Date(endAt).getTime() - new Date(startAt).getTime()).toBe(4 * 3600 * 1000)
+    expect(startAt).toBe(new Date('2026-12-10T21:00:00').toISOString())
+    expect(endAt).toBe(new Date('2026-12-11T01:00:00').toISOString())
+    // the same day when the end is after the start
+    const same = occurrenceWindow('2026-12-10', '19:00', '22:00')
+    expect(new Date(same.endAt).getTime() - new Date(same.startAt).getTime()).toBe(3 * 3600 * 1000)
+  })
+
   it('shows staff the event without owner actions or money', async () => {
     tenant = STAFF
     at('/evenemang/EVENT1AAAAAAAA')
@@ -106,6 +130,41 @@ describe('EvenemangPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ställ in och återbetala' }))
     expect(await screen.findByText(/Klart. Alla köpare/)).toBeInTheDocument()
     expect(vi.mocked(api.cancelOccurrence).mock.calls[0][2]).toBe(OCC)
+  })
+
+  it('polls the job when the cancel call times out but the job exists', async () => {
+    tenant = OWNER
+    vi.mocked(api.cancelOccurrence).mockRejectedValue(new ApiError(504, 'timeout'))
+    const running = { jobId: 'J1', kind: 'mass_refund', done: false, toRefund: 12, counts: { refunded: 10, failed: 2, notified: 0 } }
+    vi.mocked(api.getJob).mockResolvedValueOnce(running).mockResolvedValueOnce(running)
+      .mockResolvedValue({ ...running, done: true, counts: { refunded: 12, failed: 0, notified: 5 } })
+    at('/evenemang/EVENT1AAAAAAAA')
+    expect(await screen.findByText(/Intäkt/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Ställ in' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ställ in och återbetala' }))
+    expect(await screen.findByText('10 av 12 återbetalda')).toBeInTheDocument()
+    expect(screen.getByText(/2 återbetalningar väntar på Stripe/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ställ in och återbetala' })).not.toBeInTheDocument()
+    const sentJobId = vi.mocked(api.cancelOccurrence).mock.calls[0][3].jobId
+    expect(vi.mocked(api.getJob).mock.calls.every(([, id]) => id === sentJobId)).toBe(true)
+  })
+
+  it('shows the error when the cancel call fails and no job was started', async () => {
+    tenant = OWNER
+    vi.mocked(api.cancelOccurrence).mockRejectedValue(new ApiError(409, 'changed_retry'))
+    vi.mocked(api.getJob).mockRejectedValue(new ApiError(404, 'not_found'))
+    at('/evenemang/EVENT1AAAAAAAA')
+    expect(await screen.findByText(/Intäkt/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Ställ in' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ställ in och återbetala' }))
+    await waitFor(() => expect(api.getJob).toHaveBeenCalledTimes(1))
+    expect(screen.getByRole('button', { name: 'Ställ in och återbetala' })).toBeInTheDocument()
+    expect(screen.queryByText(/återbetalda/)).not.toBeInTheDocument()
+  })
+
+  it('refunds a ticket with one txId derived from the ticket, so a retry is the same refund', () => {
+    expect(api.refundTxId('T0123456789ABCDEF0123456789')).toBe('rf_T0123456789ABCDEF0123456789')
+    expect(api.refundTxId('T0123456789ABCDEF0123456789')).toMatch(/^[0-9A-Za-z_]{8,40}$/)
   })
 
   it('checks a typed code offline against the scan key and queues it', async () => {

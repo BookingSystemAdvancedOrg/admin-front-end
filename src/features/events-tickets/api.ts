@@ -62,9 +62,15 @@ export const getGuestList = (loc: string, id: string, occId: string) => apiFetch
 export const sendCheckIns = (loc: string, id: string, occId: string, checkIns: CheckIn[]) =>
   apiFetch<{ results: CheckInResult[] }>(`${occ(loc, id, occId)}/check-ins`, { method: 'POST', body: JSON.stringify({ checkIns }) })
 export const listOrders = (loc: string, id: string) => apiFetch<{ orders: Order[]; cursor: string | null }>(`${ev(loc, id)}/orders`)
+/**
+ * En återbetalning per biljett: txId härleds ur biljettens id, så ett nytt
+ * försök (Stripe nere, tappad anslutning) är samma återbetalning för servern
+ * och pengarna går aldrig tillbaka två gånger.
+ */
+export const refundTxId = (ticketId: string) => `rf_${ticketId}`
 export const refundTicket = (loc: string, ticketId: string, reason: string) =>
   apiFetch<Ticket>(`${base(loc)}/tickets/${encodeURIComponent(ticketId)}/refund`, {
-    method: 'POST', body: JSON.stringify({ txId: newId(), reason }),
+    method: 'POST', body: JSON.stringify({ txId: refundTxId(ticketId), reason }),
   })
 
 export function newId(): string {

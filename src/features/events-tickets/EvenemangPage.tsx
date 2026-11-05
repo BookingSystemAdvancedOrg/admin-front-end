@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Bar, Button, Card, Field, Input, Modal, Printing, toast } from '@booqy/brand'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { errorText } from '../../shared/errors'
 import { useTenant } from '../../shared/tenant'
 import {
-  ERRORS, STATUS_LABEL, cancelOccurrence, getEvent, getJob, kr, listEvents, listOrders, newId,
-  publishEvent, refundTicket, ticketLabel, when, type EventDetail, type EventSummary, type Occurrence, type Order,
-  type Ticket,
+  ERRORS, STATUS_LABEL, cancelOccurrence, eventEditable, getEvent, getJob, kr, listEvents, listOrders,
+  newId, occurrenceOpen, publishEvent, refundTicket, ticketLabel, when,
+  type EventDetail, type EventSummary, type Occurrence, type Order, type Ticket, type TicketType,
 } from './api'
+import { CapacityModal, TypeEditModal } from './EditModals'
 import EventEditor from './EventEditor'
 import InslappPage from './InslappPage'
 import { eventUrl, printPoster } from './posterPrint'
@@ -98,6 +99,11 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
   const [editing, setEditing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [cancelling, setCancelling] = useState<Occurrence | null>(null)
+  const [editingType, setEditingType] = useState<TicketType | null>(null)
+  const [editingOcc, setEditingOcc] = useState<Occurrence | null>(null)
+  // Knappen som öppnade en ändringsdialog: fokus går tillbaka dit när den stängs (tangentbord, skärmläsare).
+  const opener = useRef<HTMLElement | null>(null)
+  const refocus = () => { window.setTimeout(() => opener.current?.focus(), 0) }
 
   const load = useCallback(async () => {
     try {
@@ -163,8 +169,19 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
         <ul className="evenemang-list">
           {event.ticketTypes.map((t) => (
             <li key={t.typeId}>
-              <span>{t.name}{t.includes ? ` (${t.includes})` : ''}</span>
-              <span>{kr(t.priceOre)}, {t.vatRate} % moms, {t.sold} sålda{t.capacity ? ` av ${t.capacity}` : ''}</span>
+              <span>
+                {t.name}{t.includes ? ` (${t.includes})` : ''}
+                {t.vatReview ? <> <span className="status-badge">Momsen ändrad: revisorn ska granska</span></> : null}
+              </span>
+              <span className="evenemang-actions">
+                <span>
+                  {kr(t.priceOre)}, {t.vatRate} % moms, {t.sold} sålda{t.capacity ? ` av ${t.capacity}` : ''}
+                  {t.held ? `, ${t.held} reserverade` : ''}
+                </span>
+                {isOwner && eventEditable(event) ? (
+                  <Button size="sm" variant="ghost" aria-label={`Ändra ${t.name}`} onClick={(e) => { opener.current = e.currentTarget; setEditingType(t) }}>Ändra</Button>
+                ) : null}
+              </span>
             </li>
           ))}
         </ul>
@@ -187,6 +204,10 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
                 {o.status === 'scheduled' && event.status === 'published' ? (
                   <Link className="card-link" to={`/evenemang/${encodeURIComponent(event.eventId)}/inslapp/${encodeURIComponent(o.occurrenceId)}`}>Insläpp</Link>
                 ) : null}
+                {isOwner && event.status !== 'cancelled' && occurrenceOpen(o) ? (
+                  <Button size="sm" variant="secondary" aria-label={`Ändra platser ${when(o.startAt)}`}
+                    onClick={(e) => { opener.current = e.currentTarget; setEditingOcc(o) }}>Ändra platser</Button>
+                ) : null}
                 {isOwner && o.status === 'scheduled' && event.status === 'published' ? (
                   <Button size="sm" variant="danger" onClick={() => setCancelling(o)}>Ställ in</Button>
                 ) : null}
@@ -196,6 +217,24 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
         </ul>
       </Card>
       {isOwner && event.status !== 'draft' ? <Orders locationId={locationId} eventId={event.eventId} onChanged={() => void load()} /> : null}
+      {editingType ? (
+        <TypeEditModal locationId={locationId} eventId={event.eventId} type={editingType}
+          onClose={() => { setEditingType(null); refocus(); void load() }}
+          onSaved={(t) => {
+            setEditingType(null)
+            refocus()
+            setEvent((e) => e && { ...e, ticketTypes: e.ticketTypes.map((x) => (x.typeId === t.typeId ? t : x)) })
+          }} />
+      ) : null}
+      {editingOcc ? (
+        <CapacityModal locationId={locationId} eventId={event.eventId} occurrence={editingOcc}
+          onClose={() => { setEditingOcc(null); refocus(); void load() }}
+          onSaved={(o) => {
+            setEditingOcc(null)
+            refocus()
+            setEvent((e) => e && { ...e, occurrences: e.occurrences.map((x) => (x.occurrenceId === o.occurrenceId ? o : x)) })
+          }} />
+      ) : null}
       {cancelling ? (
         <CancelModal locationId={locationId} event={event} occurrence={cancelling}
           onClose={() => { setCancelling(null); void load() }} />

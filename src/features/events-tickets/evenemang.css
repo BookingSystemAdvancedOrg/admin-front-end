@@ -76,6 +76,14 @@
 .evenemang-check input {
   accent-color: var(--bq-accent);
 }
+.evenemang-check-block {
+  display: grid;
+  gap: var(--bq-space-1);
+}
+.evenemang-check-hint {
+  margin: 0;
+  font-size: var(--bq-text-sm);
+}
 .evenemang-scan {
   display: flex;
   flex-wrap: wrap;

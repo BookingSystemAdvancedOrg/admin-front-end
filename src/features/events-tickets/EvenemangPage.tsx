@@ -5,8 +5,9 @@ import { AdminTopbar } from '../../shared/AdminTopbar'
 import { errorText } from '../../shared/errors'
 import { useTenant } from '../../shared/tenant'
 import {
-  ERRORS, STATUS_LABEL, TICKET_LABEL, cancelOccurrence, getEvent, getJob, kr, listEvents, listOrders, newId,
-  publishEvent, refundTicket, when, type EventDetail, type EventSummary, type Occurrence, type Order, type Ticket,
+  ERRORS, STATUS_LABEL, cancelOccurrence, getEvent, getJob, kr, listEvents, listOrders, newId,
+  publishEvent, refundTicket, ticketLabel, when, type EventDetail, type EventSummary, type Occurrence, type Order,
+  type Ticket,
 } from './api'
 import EventEditor from './EventEditor'
 import InslappPage from './InslappPage'
@@ -152,6 +153,12 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
       <Card title={event.title} actions={actions}>
         <p className="cell-muted"><span className="status-badge">{STATUS_LABEL[event.status]}</span></p>
         {event.description ? <p className="evenemang-description">{event.description}</p> : null}
+        <p className="cell-muted">
+          {event.settings.transferAllowed ? 'Gästen får ge bort sin biljett. ' : 'Biljetter kan inte ges bort. '}
+          {event.settings.resaleAllowed
+            ? 'Vidareförsäljning till samma pris är på: biljetter som gäster lägger ut syns på er webbplats.'
+            : 'Vidareförsäljning är av.'}
+        </p>
         <h3 className="evenemang-sub">Biljettyper</h3>
         <ul className="evenemang-list">
           {event.ticketTypes.map((t) => (
@@ -172,6 +179,9 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
                 <Bar variant="meter" value={o.sold} max={o.capacity} label={`Sålda ${when(o.startAt)}`}
                   valueText={`${o.sold} sålda av ${o.capacity}, ${o.checkedIn} insläppta`} />
                 {isOwner && o.revenueOre !== undefined ? <span className="cell-muted">Intäkt {kr(o.revenueOre)}</span> : null}
+                {o.resaleListed ? (
+                  <span className="cell-muted">{o.resaleListed === 1 ? '1 biljett till salu i andra hand' : `${o.resaleListed} biljetter till salu i andra hand`}</span>
+                ) : null}
               </div>
               <div className="evenemang-actions">
                 {o.status === 'scheduled' && event.status === 'published' ? (
@@ -310,13 +320,16 @@ function Orders({ locationId, eventId, onChanged }: { locationId: string; eventI
             <tbody>
               {orders.map((o) => (
                 <tr key={o.orderId}>
-                  <td>{o.buyerName ?? 'Raderad'}<br /><span className="cell-muted">{o.buyerEmail ?? ''}</span></td>
+                  <td>
+                    {o.buyerName ?? 'Raderad'}<br /><span className="cell-muted">{o.buyerEmail ?? ''}</span>
+                    {o.resale ? <><br /><span className="status-badge">Andrahandsköp</span></> : null}
+                  </td>
                   <td>{kr(o.amountOre)}{o.refundedOre ? <><br /><span className="cell-muted">{kr(o.refundedOre)} återbetalt</span></> : null}</td>
                   <td>
                     <ul className="evenemang-list">
                       {o.tickets.map((t) => (
                         <li key={t.ticketId}>
-                          <span>{t.typeName}, {t.holderName || 'namn saknas'}: {TICKET_LABEL[t.status]}</span>
+                          <span>{t.typeName}, {t.holderName || 'namn saknas'}: {ticketLabel(t)}</span>
                           {t.status === 'valid' || t.status === 'checked_in' ? (
                             <Button size="sm" variant="ghost" onClick={() => setRefunding(t)}>Återbetala</Button>
                           ) : null}

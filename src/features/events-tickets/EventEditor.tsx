@@ -45,6 +45,7 @@ export default function EventEditor({ locationId, existing, onSaved, onCancel }:
   const [types, setTypes] = useState<TypeRow[]>([newType()])
   const [perOrderMax, setPerOrderMax] = useState(String(existing?.settings.perOrderMax ?? 10))
   const [transferAllowed, setTransferAllowed] = useState(existing?.settings.transferAllowed ?? true)
+  const [resaleAllowed, setResaleAllowed] = useState(existing?.settings.resaleAllowed ?? false)
   const [refundPolicy, setRefundPolicy] = useState(existing?.settings.refundPolicy ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -57,7 +58,7 @@ export default function EventEditor({ locationId, existing, onSaved, onCancel }:
   async function save(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    const settings = { perOrderMax: Number(perOrderMax), transferAllowed, refundPolicy: refundPolicy.trim() || undefined }
+    const settings = { perOrderMax: Number(perOrderMax), transferAllowed, resaleAllowed, refundPolicy: refundPolicy.trim() || undefined }
     setBusy(true)
     try {
       if (existing) {
@@ -154,6 +155,17 @@ export default function EventEditor({ locationId, existing, onSaved, onCancel }:
             <input type="checkbox" checked={transferAllowed} onChange={(e) => setTransferAllowed(e.target.checked)} />
             Gästen får ge bort sin biljett (stänger 2 timmar före start)
           </label>
+        </div>
+        <div className="evenemang-check-block">
+          <label className="evenemang-check">
+            <input type="checkbox" checked={resaleAllowed} onChange={(e) => setResaleAllowed(e.target.checked)} />
+            Gästen får sälja sin biljett vidare via er webbplats (stänger 2 timmar före start)
+          </label>
+          <p className="cell-muted evenemang-check-hint">
+            Alltid till samma pris som gästen betalade, aldrig mer. Köparen betalar till ert Stripe-konto och säljaren får
+            pengarna tillbaka automatiskt; ni behåller intäkten och bokföringen går jämnt ut. Stripes avgifter för båda
+            betalningarna står ni för.
+          </p>
         </div>
         <Field label="Villkor för återbetalning" hint="Visas vid köpet och i biljettmejlet.">
           <textarea className="evenemang-text" value={refundPolicy} maxLength={1000} rows={2} onChange={(e) => setRefundPolicy(e.target.value)} />

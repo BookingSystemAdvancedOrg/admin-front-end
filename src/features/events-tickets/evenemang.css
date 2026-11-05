@@ -1,0 +1,102 @@
+/* Evenemang i admin. Bara @booqy/brand-tokens. */
+.evenemang-back {
+  margin: 0 0 var(--bq-space-3);
+}
+.evenemang-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bq-space-2);
+}
+.evenemang-description {
+  white-space: pre-line;
+  color: var(--bq-ink);
+}
+.evenemang-sub {
+  margin: var(--bq-space-4) 0 var(--bq-space-2);
+  font-size: var(--bq-text-sm);
+  color: var(--bq-muted);
+}
+.evenemang-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.evenemang-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--bq-space-2) var(--bq-space-3);
+  padding: var(--bq-space-2) 0;
+  border-top: 1px solid var(--bq-line);
+}
+.evenemang-occ > div:first-child {
+  display: grid;
+  gap: var(--bq-space-1);
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+.evenemang-form {
+  display: grid;
+  gap: var(--bq-space-3);
+}
+.evenemang-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+  align-items: end;
+  gap: var(--bq-space-3);
+}
+.evenemang-fieldset {
+  display: grid;
+  gap: var(--bq-space-3);
+  margin: 0;
+  padding: var(--bq-space-3);
+  border: 1px solid var(--bq-line);
+  border-radius: var(--bq-radius-inner);
+}
+.evenemang-fieldset legend {
+  padding: 0 var(--bq-space-1);
+  color: var(--bq-muted);
+}
+.evenemang-text {
+  width: 100%;
+  font: inherit;
+  color: var(--bq-ink);
+  background: var(--bq-surface);
+  border: 1px solid var(--bq-line);
+  border-radius: var(--bq-radius-inner);
+  padding: var(--bq-space-2);
+}
+.evenemang-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bq-space-2);
+}
+.evenemang-check input {
+  accent-color: var(--bq-accent);
+}
+.evenemang-scan {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--bq-space-3);
+  margin: var(--bq-space-3) 0;
+}
+.evenemang-code {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--bq-space-2);
+}
+.evenemang-video {
+  width: 100%;
+  max-width: 28rem;
+  border-radius: var(--bq-radius-inner);
+}
+.evenemang-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--bq-space-3);
+  margin-bottom: var(--bq-space-4);
+}

@@ -1,15 +1,10 @@
 import { useState } from 'react'
 import { Bar, Button, Card, Field, Input, Select, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
-import { ERRORS, createEvent, newId, updateEvent, type EventDetail, type NewEvent, type VatRate } from './api'
+import { ERRORS, VAT_OPTIONS, createEvent, newId, updateEvent, type EventDetail, type NewEvent, type VatRate } from './api'
 
 interface TypeRow { typeId: string; name: string; priceKr: string; vatRate: VatRate; perOrderMax: string; capacity: string; includes: string }
 
-const VAT_OPTIONS: { value: VatRate; label: string }[] = [
-  { value: 12, label: '12 % (middag, mat och dryck utan alkohol)' },
-  { value: 25, label: '25 % (enbart inträde, till exempel quiz)' },
-  { value: 6, label: '6 % (kulturevenemang)' },
-]
 
 function newType(): TypeRow {
   return { typeId: newId(), name: '', priceKr: '', vatRate: 12, perOrderMax: '10', capacity: '', includes: '' }

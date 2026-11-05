@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../shared/api'
 import EvenemangPage from './EvenemangPage'
+import { validateCapacity, validateType, typeForm } from './edit'
 import { occurrenceWindow } from './EventEditor'
 import EventsStats from './EventsStats'
 import * as api from './api'
@@ -15,7 +16,7 @@ vi.mock('./api', async (orig) => ({
   ...(await orig<typeof import('./api')>()),
   listEvents: vi.fn(), createEvent: vi.fn(), getEvent: vi.fn(), updateEvent: vi.fn(), publishEvent: vi.fn(),
   cancelOccurrence: vi.fn(), getJob: vi.fn(), getGuestList: vi.fn(), sendCheckIns: vi.fn(), listOrders: vi.fn(),
-  refundTicket: vi.fn(),
+  refundTicket: vi.fn(), updateTicketType: vi.fn(), updateOccurrence: vi.fn(),
 }))
 
 const OWNER = { role: 'owner_user', entitlements: { maxLocations: null, features: { events: true } } }
@@ -26,7 +27,7 @@ const detail: api.EventDetail = {
   settings: { perOrderMax: 6, transferAllowed: true }, version: 2,
   occurrences: [{ occurrenceId: OCC, startAt: '2026-12-04T18:00:00Z', endAt: '2026-12-04T22:00:00Z', capacity: 40, sold: 12,
     held: 0, checkedIn: 3, left: 28, status: 'scheduled', version: 1, revenueOre: 1074000 }],
-  ticketTypes: [{ typeId: 'T1AAAAAAAA', name: 'Middag', priceOre: 89500, vatRate: 12, perOrderMax: 4, sortOrder: 0, sold: 12, version: 1 }],
+  ticketTypes: [{ typeId: 'T1AAAAAAAA', name: 'Middag', priceOre: 89500, vatRate: 12, perOrderMax: 4, sortOrder: 0, sold: 12, held: 0, version: 1 }],
 }
 const SCAN_KEY = 'ab'.repeat(32)
 
@@ -185,6 +186,148 @@ describe('EvenemangPage', () => {
     await waitFor(() => expect(api.sendCheckIns).toHaveBeenCalled())
     const sent = vi.mocked(api.sendCheckIns).mock.calls[0][3]
     expect(sent[0]).toMatchObject({ ticketId, sig })
+  })
+})
+
+describe('editing ticket types and occurrences after sales', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-05T12:00:00Z'))
+  })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('sends a new price and VAT rate for later sales and warns that the VAT change is flagged', async () => {
+    tenant = OWNER
+    vi.mocked(api.updateTicketType).mockResolvedValue({ ...detail.ticketTypes[0], priceOre: 99500, vatRate: 25, version: 2,
+      vatReview: 'needs_accountant_review' })
+    at('/evenemang/EVENT1AAAAAAAA')
+    fireEvent.click(await screen.findByRole('button', { name: 'Ändra Middag' }))
+    expect(screen.getByText(/12 sålda\. Sålda och reserverade biljetter behåller sitt pris/)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(/^Pris/), { target: { value: '995' } })
+    expect(screen.getByText(/Nya priset gäller bara nya köp. Sålda biljetter kostade 895 kr./)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(/^Moms/), { target: { value: '25' } })
+    expect(screen.getByText(/Momssatsen ändras från 12 % till 25 % för nya köp. Redan sålda biljetter behåller sin moms. Ändringen sparas och markeras för granskning av revisorn./)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(() => expect(api.updateTicketType).toHaveBeenCalled())
+    const [loc, eventId, typeId, body] = vi.mocked(api.updateTicketType).mock.calls[0]
+    expect([loc, eventId, typeId]).toEqual(['loc-a-1', 'EVENT1AAAAAAAA', 'T1AAAAAAAA'])
+    expect(body).toEqual({ name: 'Middag', priceOre: 99500, vatRate: 25, perOrderMax: 4, sortOrder: 0, version: 1 })
+    expect(await screen.findByText('Momsen ändrad: revisorn ska granska')).toBeInTheDocument()
+  })
+
+  it('refuses a type capacity below sold and held in Swedish, before calling the server', async () => {
+    tenant = OWNER
+    vi.mocked(api.getEvent).mockResolvedValue({ ...detail, ticketTypes: [{ ...detail.ticketTypes[0], capacity: 20, held: 2 }] })
+    at('/evenemang/EVENT1AAAAAAAA')
+    fireEvent.click(await screen.findByRole('button', { name: 'Ändra Middag' }))
+    fireEvent.change(screen.getByLabelText(/^Antal av typen/), { target: { value: '13' } })
+    fireEvent.change(screen.getByLabelText(/^Namn/), { target: { value: ' ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    expect(await screen.findByText('Det finns redan 12 sålda och 2 reserverade i pågående köp, så antalet kan inte vara lägre än 14.')).toBeInTheDocument()
+    expect(screen.getByText('Skriv ett namn på biljettypen.')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Namn/)).toHaveAttribute('aria-invalid', 'true')
+    expect(api.updateTicketType).not.toHaveBeenCalled()
+  })
+
+  it('shows a sale during the edit on the field (server invalid_capacity)', async () => {
+    tenant = OWNER
+    vi.mocked(api.updateOccurrence).mockRejectedValue(new ApiError(400, 'invalid_capacity', { code: 'invalid_capacity', field: 'capacity', fromServer: true }))
+    at('/evenemang/EVENT1AAAAAAAA')
+    fireEvent.click(await screen.findByRole('button', { name: /^Ändra platser/ }))
+    fireEvent.change(screen.getByLabelText(/^Antal platser/), { target: { value: '5' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    expect(await screen.findByText('Det finns redan 12 sålda, så antalet kan inte vara lägre än 12.')).toBeInTheDocument()
+    expect(api.updateOccurrence).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText(/^Antal platser/), { target: { value: '12' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    expect(await screen.findByText(/Fler platser såldes medan du ändrade/)).toBeInTheDocument()
+    expect(vi.mocked(api.updateOccurrence).mock.calls[0].slice(2)).toEqual([OCC, { capacity: 12, version: 1 }])
+  })
+
+  it('saves a new occurrence capacity and shows it', async () => {
+    tenant = OWNER
+    vi.mocked(api.updateOccurrence).mockResolvedValue({ ...detail.occurrences[0], capacity: 60, left: 48, version: 2 })
+    at('/evenemang/EVENT1AAAAAAAA')
+    fireEvent.click(await screen.findByRole('button', { name: /^Ändra platser/ }))
+    fireEvent.change(screen.getByLabelText(/^Antal platser/), { target: { value: '60' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    expect(await screen.findByText('12 sålda av 60, 3 insläppta')).toBeInTheDocument()
+  })
+
+  it('offers no edits to staff or once the event is over', async () => {
+    tenant = STAFF
+    const { unmount } = at('/evenemang/EVENT1AAAAAAAA')
+    expect(await screen.findByRole('heading', { name: 'Vinmiddag' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ändra Middag' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Ändra platser/ })).not.toBeInTheDocument()
+    unmount()
+    tenant = OWNER
+    vi.setSystemTime(new Date('2026-12-05T00:00:00Z'))
+    at('/evenemang/EVENT1AAAAAAAA')
+    expect(await screen.findByText(/Intäkt/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ändra Middag' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Ändra platser/ })).not.toBeInTheDocument()
+  })
+
+  it('returns focus to the opening button after Avbryt and after a successful Spara (both modals)', async () => {
+    tenant = OWNER
+    vi.mocked(api.updateTicketType).mockResolvedValue({ ...detail.ticketTypes[0], version: 2 })
+    vi.mocked(api.updateOccurrence).mockResolvedValue({ ...detail.occurrences[0], capacity: 50, left: 38, version: 2 })
+    at('/evenemang/EVENT1AAAAAAAA')
+    const typeButton = await screen.findByRole('button', { name: 'Ändra Middag' })
+    typeButton.focus()
+    fireEvent.click(typeButton)
+    screen.getByRole('button', { name: 'Avbryt' }).focus()  // focus inside the modal (jsdom has no showModal)
+    expect(screen.getByRole('button', { name: 'Avbryt' })).toHaveFocus()
+    fireEvent.click(screen.getByRole('button', { name: 'Avbryt' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Ändra Middag' })).toHaveFocus())
+    fireEvent.click(screen.getByRole('button', { name: 'Ändra Middag' }))
+    screen.getByRole('button', { name: 'Spara' }).focus()  // focus inside the modal (jsdom has no showModal)
+    expect(screen.getByRole('button', { name: 'Spara' })).toHaveFocus()
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(() => expect(api.updateTicketType).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Ändra Middag' })).toHaveFocus())
+    fireEvent.click(screen.getByRole('button', { name: /^Ändra platser/ }))
+    screen.getByRole('button', { name: 'Avbryt' }).focus()  // focus inside the modal (jsdom has no showModal)
+    expect(screen.getByRole('button', { name: 'Avbryt' })).toHaveFocus()
+    fireEvent.click(screen.getByRole('button', { name: 'Avbryt' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Ändra platser/ })).toHaveFocus())
+    fireEvent.click(screen.getByRole('button', { name: /^Ändra platser/ }))
+    fireEvent.change(screen.getByLabelText(/^Antal platser/), { target: { value: '50' } })
+    screen.getByRole('button', { name: 'Spara' }).focus()  // focus inside the modal (jsdom has no showModal)
+    expect(screen.getByRole('button', { name: 'Spara' })).toHaveFocus()
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(() => expect(api.updateOccurrence).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Ändra platser/ })).toHaveFocus())
+  })
+
+  it('shows a server invalid_capacity on tier (the untilSold cap) on the capacity field', async () => {
+    tenant = OWNER
+    vi.mocked(api.updateTicketType).mockRejectedValue(new ApiError(400, 'invalid_capacity', { code: 'invalid_capacity', field: 'tier', fromServer: true }))
+    at('/evenemang/EVENT1AAAAAAAA')
+    fireEvent.click(await screen.findByRole('button', { name: 'Ändra Middag' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    expect(await screen.findByText(/Fler biljetter såldes medan du ändrade/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Antal av typen/)).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText(/^Säljs till/)).not.toHaveAttribute('aria-invalid')
+  })
+
+  it('validates in Swedish (pure helpers)', () => {
+    const t = { ...detail.ticketTypes[0], held: 1 }
+    const ok = typeForm(t)
+    expect(ok.priceKr).toBe('895')
+    expect(validateType(ok, t)).toEqual({})
+    expect(validateType({ ...ok, priceKr: '-5' }, t).priceKr).toBe('Skriv priset i kronor, till exempel 495 eller 495,50.')
+    expect(validateType({ ...ok, priceKr: '12,345' }, t).priceKr).toBeDefined()
+    expect(validateType({ ...ok, perOrderMax: '21' }, t).perOrderMax).toBe('Max per köp ska vara ett heltal från 1 till 20.')
+    expect(validateType({ ...ok, from: '2026-12-01T10:00', until: '2026-12-01T09:00' }, t).until)
+      .toBe('Försäljningen måste sluta efter att den har börjat.')
+    expect(validateType({ ...ok, capacity: '12' }, t).capacity).toBe('Det finns redan 12 sålda och 1 reserverade i pågående köp, så antalet kan inte vara lägre än 13.')
+    const o = detail.occurrences[0]
+    expect(validateCapacity('', o)).toBe('Skriv antalet platser.')
+    expect(validateCapacity('2,5', o)).toBe('Antalet platser ska vara ett heltal, minst 1.')
+    expect(validateCapacity('10001', o)).toBe('Antalet platser får vara högst 10\u00a0000.')
+    expect(validateCapacity('12', o)).toBeNull()
   })
 })
 

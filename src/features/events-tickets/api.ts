@@ -13,10 +13,18 @@ export interface Occurrence {
   left: number; status: 'scheduled' | 'cancelled' | 'done'; version: number; revenueOre?: number
   salesOpenAt?: string; salesCloseAt?: string; doorsAt?: string
 }
+export interface Tier { availableFrom?: string; availableUntil?: string; untilSold?: number }
+export interface VatChange { fromRate: VatRate; toRate: VatRate; at: string; by: string; soldBefore: number }
 export interface TicketType {
   typeId: string; name: string; priceOre: number; vatRate: VatRate; perOrderMax: number; sortOrder: number
-  capacity?: number; includes?: string; tier?: { availableFrom?: string; availableUntil?: string; untilSold?: number }
-  sold: number; version: number
+  capacity?: number; includes?: string; tier?: Tier
+  sold: number; held: number; version: number
+  /** Satt när momssatsen ändrats: revisorn ska granska (vatChanges är spåret). */
+  vatReview?: 'needs_accountant_review'; vatChanges?: VatChange[]
+}
+export interface TicketTypeEdit {
+  name: string; priceOre: number; vatRate: VatRate; perOrderMax: number; sortOrder: number
+  capacity?: number; includes?: string; tier?: Tier; version: number
 }
 export interface EventDetail {
   eventId: string; locationId: string; title: string; description: string; status: EventStatus; settings: Settings
@@ -51,6 +59,8 @@ export const updateEvent = (loc: string, id: string, body: { title: string; desc
   apiFetch<EventDetail>(ev(loc, id), { method: 'PUT', body: JSON.stringify(body) })
 export const publishEvent = (loc: string, id: string, version: number) =>
   apiFetch<EventDetail>(`${ev(loc, id)}/publish`, { method: 'POST', body: JSON.stringify({ version }) })
+export const updateTicketType = (loc: string, id: string, typeId: string, body: TicketTypeEdit) =>
+  apiFetch<TicketType>(`${ev(loc, id)}/ticket-types/${encodeURIComponent(typeId)}`, { method: 'PUT', body: JSON.stringify(body) })
 export const updateOccurrence = (loc: string, id: string, occId: string, body: { capacity?: number; version: number }) =>
   apiFetch<Occurrence>(occ(loc, id, occId), { method: 'PUT', body: JSON.stringify(body) })
 export const cancelOccurrence = (loc: string, id: string, occId: string, body: { jobId: string; version: number; message?: string }) =>
@@ -85,19 +95,37 @@ export function when(iso: string): string {
   return new Date(iso).toLocaleString('sv-SE', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
+/** Momssatser revisorn ska godkänna (ADR-K, NEEDS ACCOUNTANT REVIEW). */
+export const VAT_OPTIONS: { value: VatRate; label: string }[] = [
+  { value: 12, label: '12 % (middag, mat och dryck utan alkohol)' },
+  { value: 25, label: '25 % (enbart inträde, till exempel quiz)' },
+  { value: 6, label: '6 % (kulturevenemang)' },
+]
+
 export const STATUS_LABEL: Record<EventStatus, string> = { draft: 'Utkast', published: 'Publicerat', cancelled: 'Inställt' }
 export const TICKET_LABEL: Record<TicketStatus, string> = {
   valid: 'Giltig', checked_in: 'Insläppt', transferred: 'Bortgiven', refunded: 'Återbetald', void: 'Ogiltig',
 }
 
+/** Ett tillfälle som har passerat, är inställt eller klart går inte att ändra. */
+export function occurrenceOpen(o: Occurrence, now = Date.now()): boolean {
+  return o.status === 'scheduled' && new Date(o.endAt).getTime() > now
+}
+
+/** Ett publicerat evenemang utan tillfälle som kan sälja mer är avslutat: biljettyperna låses. */
+export function eventEditable(e: EventDetail, now = Date.now()): boolean {
+  if (e.status === 'cancelled') return false
+  return e.status === 'draft' || e.occurrences.some((o) => occurrenceOpen(o, now))
+}
+
 export const ERRORS: Record<string, string> = {
-  invalid_capacity: 'Antalet platser måste vara minst så många som redan är sålda.',
+  invalid_capacity: 'Antalet platser kan inte vara lägre än antalet sålda och reserverade biljetter.',
   invalid_price: 'Priset ska vara 0 kr eller mer.',
   invalid_vat_rate: 'Välj en av momssatserna i listan.',
   invalid_window: 'Kontrollera tiderna: slutet ska vara efter starten och försäljningen ska stänga före slutet.',
   invalid_series: 'Upprepningen kan sträcka sig högst ett år framåt.',
   invalid_state: 'Det går inte i det här läget.',
-  has_sales: 'Biljettypen har redan sålts och kan inte tas bort eller få nytt pris.',
+  has_sales: 'Biljettypen har redan sålts och kan inte tas bort.',
   changed_retry: 'Någon annan ändrade samtidigt. Ladda om och försök igen.',
   stripe_unavailable: 'Betalningen kunde inte återbetalas just nu. Försök igen om en stund.',
   owner_only: 'Bara ägaren kan göra det här.',

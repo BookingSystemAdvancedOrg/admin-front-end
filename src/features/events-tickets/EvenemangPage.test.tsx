@@ -269,6 +269,41 @@ describe('editing ticket types and occurrences after sales', () => {
     expect(screen.queryByRole('button', { name: /^Ändra platser/ })).not.toBeInTheDocument()
   })
 
+  it('returns focus to the opening button after Avbryt and after a successful Spara (both modals)', async () => {
+    tenant = OWNER
+    vi.mocked(api.updateTicketType).mockResolvedValue({ ...detail.ticketTypes[0], version: 2 })
+    vi.mocked(api.updateOccurrence).mockResolvedValue({ ...detail.occurrences[0], capacity: 50, left: 38, version: 2 })
+    at('/evenemang/EVENT1AAAAAAAA')
+    const typeButton = await screen.findByRole('button', { name: 'Ändra Middag' })
+    typeButton.focus()
+    fireEvent.click(typeButton)
+    fireEvent.click(screen.getByRole('button', { name: 'Avbryt' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Ändra Middag' })).toHaveFocus())
+    fireEvent.click(screen.getByRole('button', { name: 'Ändra Middag' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(() => expect(api.updateTicketType).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Ändra Middag' })).toHaveFocus())
+    fireEvent.click(screen.getByRole('button', { name: /^Ändra platser/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Avbryt' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Ändra platser/ })).toHaveFocus())
+    fireEvent.click(screen.getByRole('button', { name: /^Ändra platser/ }))
+    fireEvent.change(screen.getByLabelText(/^Antal platser/), { target: { value: '50' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(() => expect(api.updateOccurrence).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Ändra platser/ })).toHaveFocus())
+  })
+
+  it('shows a server invalid_capacity on tier (the untilSold cap) on the capacity field', async () => {
+    tenant = OWNER
+    vi.mocked(api.updateTicketType).mockRejectedValue(new ApiError(400, 'invalid_capacity', { code: 'invalid_capacity', field: 'tier', fromServer: true }))
+    at('/evenemang/EVENT1AAAAAAAA')
+    fireEvent.click(await screen.findByRole('button', { name: 'Ändra Middag' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    expect(await screen.findByText(/Fler biljetter såldes medan du ändrade/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Antal av typen/)).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText(/^Säljs till/)).not.toHaveAttribute('aria-invalid')
+  })
+
   it('validates in Swedish (pure helpers)', () => {
     const t = { ...detail.ticketTypes[0], held: 1 }
     const ok = typeForm(t)

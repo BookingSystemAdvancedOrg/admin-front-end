@@ -76,7 +76,8 @@ export function TypeEditModal({ locationId, eventId, type, onClose, onSaved }: {
       toast(vatChanged ? 'Biljettypen är sparad. Momsändringen är markerad för revisorn.' : 'Biljettypen är sparad.', { tone: 'success' })
     } catch (err) {
       const field = (err as { field?: string }).field
-      const local = field ? SERVER_FIELD[field.split('.')[0]] : undefined
+      // invalid_capacity på tier är taket (untilSold) och hör till antalet; andra tier-fel gäller säljfönstret.
+      const local = errorCode(err) === 'invalid_capacity' ? 'capacity' : field ? SERVER_FIELD[field.split('.')[0]] : undefined
       const text = errorText(err, 'Kunde inte spara biljettypen.', {
         ...ERRORS,
         invalid_capacity: 'Fler biljetter såldes medan du ändrade. Stäng, ladda om och välj ett större antal.',

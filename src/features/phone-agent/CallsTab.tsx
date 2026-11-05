@@ -1,0 +1,63 @@
+import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Button, Card, toast } from '@booqy/brand'
+import { errorText } from '../../shared/errors'
+import { COUNTER_LABEL, ERRORS, OUTCOME_LABEL, REFUSED_LABEL, daysAgo, listCalls, today, when, type CallRow } from './api'
+
+/** Telefon > Samtal: veckans samtal, senaste först, med utfall och om assistenten erbjöd något annat. */
+export default function CallsTab({ locationId, owner }: { locationId: string; owner: boolean }) {
+  const [calls, setCalls] = useState<CallRow[] | null>(null)
+  const [cursor, setCursor] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const load = useCallback(async (after?: string | null) => {
+    setBusy(true)
+    try {
+      const page = await listCalls(locationId, daysAgo(6), today(), after)
+      setCalls((prev) => (after ? [...(prev ?? []), ...page.calls] : page.calls))
+      setCursor(page.cursor)
+    } catch (err) {
+      toast(errorText(err, 'Kunde inte hämta samtalen.', ERRORS), { tone: 'danger' })
+      setCalls((prev) => prev ?? [])
+    } finally {
+      setBusy(false)
+    }
+  }, [locationId])
+
+  useEffect(() => { void load() }, [load])
+
+  return (
+    <Card title="Samtal senaste veckan">
+      {!calls ? <p className="cell-muted">Hämtar…</p> : calls.length === 0 ? (
+        <p className="admin-empty">Inga samtal den senaste veckan.</p>
+      ) : (
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th scope="col">När</th>{owner ? <th scope="col">Från</th> : null}<th scope="col">Utfall</th>
+                <th scope="col">Sammanfattning</th><th scope="col">Längd</th>
+              </tr>
+            </thead>
+            <tbody>
+              {calls.map((c) => (
+                <tr key={c.callId}>
+                  <td><Link className="card-link" to={`/telefon/samtal/${encodeURIComponent(c.callId)}`}>{when(c.startedAt)}</Link></td>
+                  {owner ? <td className="telefon-mono">{c.from ?? '-'}</td> : null}
+                  <td>
+                    <span className="status-badge">{c.outcome ? OUTCOME_LABEL[c.outcome] : 'Pågår'}</span>
+                    {c.counterOffer !== 'none' ? <span className="cell-muted"> {COUNTER_LABEL[c.counterOffer]}</span> : null}
+                    {c.outcome === 'refused' && c.refusedReason ? <span className="cell-muted"> ({REFUSED_LABEL[c.refusedReason] ?? c.refusedReason})</span> : null}
+                  </td>
+                  <td>{c.summary}</td>
+                  <td>{Math.max(0, Math.round(c.durationSec / 60))} min</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {cursor ? <Button variant="secondary" busy={busy} busyLabel="Hämtar…" onClick={() => void load(cursor)}>Visa fler</Button> : null}
+    </Card>
+  )
+}

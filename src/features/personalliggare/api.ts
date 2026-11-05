@@ -86,6 +86,7 @@ export const ERRORS: Record<string, string> = {
   changed_retry: 'Någon annan registrerade samtidigt. Försök igen.',
   reason_required: 'Skriv en orsak på 5–300 tecken.',
   invalid_event_time: 'Tiden kan inte ligga i framtiden eller för långt bak i tiden.',
+  wrong_person: 'Rättelsen måste gälla samma person som den ursprungliga registreringen.',
   invalid_personal_identity: 'Personnumret stämmer inte. Kontrollera siffrorna.',
   user_already_linked: 'Inloggningen är redan kopplad till en annan person.',
   invalid_range: 'Välj ett datumintervall på högst ett år där från-datumet kommer först.',

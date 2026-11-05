@@ -52,7 +52,7 @@ export interface CallRow {
 export interface Turn { role: 'agent' | 'caller' | 'tool' | 'system'; text: string; at: string; toolName?: string; toolOk?: boolean }
 export interface CallDetail extends CallRow {
   billedMinutes: number
-  disclosure: { text?: string; playedAt?: string | null; repeats?: number; languages?: string[] }
+  disclosure: { text?: string; playedAt?: string | null; spoken?: string; verbatim?: boolean; repeats?: number; languages?: string[] }
   turns: Turn[]
   recordingUrl?: string
 }

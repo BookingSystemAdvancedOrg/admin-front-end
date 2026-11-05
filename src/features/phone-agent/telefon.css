@@ -1,0 +1,109 @@
+/* Telefon i admin. Bara @booqy/brand-tokens. */
+.telefon-section {
+  margin: var(--bq-space-3) 0;
+}
+.telefon-mono {
+  font-family: var(--bq-font-mono);
+}
+.telefon-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--bq-space-2) var(--bq-space-4);
+  margin: 0 0 var(--bq-space-4);
+}
+.telefon-facts dt {
+  color: var(--bq-muted);
+}
+.telefon-facts dd {
+  margin: 0;
+  color: var(--bq-ink);
+}
+.telefon-sub {
+  margin: var(--bq-space-4) 0 var(--bq-space-2);
+  font-size: var(--bq-text-base);
+}
+.telefon-transcript {
+  margin: 0 0 var(--bq-space-4);
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--bq-space-2);
+}
+.telefon-turn {
+  display: grid;
+  gap: var(--bq-space-1);
+  padding: var(--bq-space-2) var(--bq-space-3);
+  border-left: var(--bq-bar-hairline) solid var(--bq-line-strong);
+}
+.telefon-turn--caller {
+  border-left-color: var(--bq-line);
+  color: var(--bq-ink);
+}
+.telefon-turn__who {
+  font-size: var(--bq-text-xs);
+  color: var(--bq-muted);
+}
+.telefon-recording {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bq-space-3);
+  margin-bottom: var(--bq-space-4);
+}
+.telefon-callbacks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.telefon-callbacks li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--bq-space-2);
+  padding: var(--bq-space-2) 0;
+  border-bottom: var(--bq-bar-hairline) solid var(--bq-line);
+}
+.telefon-callbacks__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--bq-space-3);
+}
+.telefon-fixed {
+  margin: 0;
+  color: var(--bq-muted);
+  font-size: var(--bq-text-sm);
+}
+.telefon-check {
+  display: flex;
+  align-items: center;
+  gap: var(--bq-space-2);
+}
+.telefon-hours {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--bq-space-2);
+}
+.telefon-hours__row {
+  display: grid;
+  grid-template-columns: minmax(5rem, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--bq-space-2);
+}
+.telefon-codes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--bq-space-2);
+}
+.telefon-codes li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--bq-space-3);
+}
+.telefon-sim {
+  display: grid;
+  gap: var(--bq-space-3);
+}

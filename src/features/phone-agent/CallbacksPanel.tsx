@@ -1,4 +1,6 @@
-/** Platshållare (Run 0-tillägget): funktionen byggs här och syns bara när den ingår i planen. */
-export default function CallbacksPanel() {
-  return null
+import { CallbackList } from './CallbacksTab'
+
+/** Bokningar > panel: öppna återuppringningar från telefonassistenten ("Ring upp", "Klar"). Syns bara när någon väntar. */
+export default function CallbacksPanel({ locationId }: { locationId: string; date: string }) {
+  return <CallbackList locationId={locationId} title="Vill bli uppringda" compact />
 }

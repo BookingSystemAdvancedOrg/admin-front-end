@@ -108,3 +108,28 @@
   gap: var(--bq-space-3);
   margin-bottom: var(--bq-space-4);
 }
+.evenemang-image {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bq-space-3);
+}
+.evenemang-image-preview {
+  display: grid;
+  place-items: center;
+  width: 9rem;
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--bq-line);
+  border-radius: var(--bq-radius-inner);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.evenemang-image-empty {
+  padding: var(--bq-space-2);
+  font-size: var(--bq-text-sm);
+  color: var(--bq-muted);
+  text-align: center;
+}
+.evenemang-image-hint {
+  margin: 0;
+}

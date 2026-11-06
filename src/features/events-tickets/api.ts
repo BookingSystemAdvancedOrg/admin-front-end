@@ -33,6 +33,7 @@ export interface TicketTypeEdit {
 }
 export interface EventDetail {
   eventId: string; locationId: string; title: string; description: string; status: EventStatus; settings: Settings
+  imageKey?: string; imageAlt?: string
   series?: Series; version: number; occurrences: Occurrence[]; ticketTypes: TicketType[]
 }
 export interface EventSummary { eventId: string; title: string; status: EventStatus; nextOccurrence: string | null; sold: number; capacity: number }
@@ -50,7 +51,7 @@ export interface GuestList { scanKey: string; tickets: Ticket[]; counters: { sol
 export interface CheckIn { ticketId: string; sig: string; at: string; clientId: string }
 export interface CheckInResult { clientId: string; status: 'ok' | 'already' | 'invalid' | 'void'; at?: string; by?: string }
 export interface NewEvent {
-  eventId: string; title: string; description: string
+  eventId: string; title: string; description: string; imageKey?: string; imageAlt?: string
   occurrences: { startAt: string; endAt: string; capacity: number; salesCloseAt?: string }[]
   series?: Series
   ticketTypes: { typeId: string; name: string; priceOre: number; vatRate: VatRate; perOrderMax: number; sortOrder: number; capacity?: number; includes?: string }[]
@@ -65,7 +66,7 @@ export const listEvents = (loc: string) => apiFetch<{ events: EventSummary[]; cu
 export const createEvent = (loc: string, body: NewEvent) =>
   apiFetch<EventDetail>(base(loc), { method: 'POST', body: JSON.stringify(body) })
 export const getEvent = (loc: string, id: string) => apiFetch<EventDetail>(ev(loc, id))
-export const updateEvent = (loc: string, id: string, body: { title: string; description: string; settings: Settings; series?: Series; version: number }) =>
+export const updateEvent = (loc: string, id: string, body: { title: string; description: string; settings: Settings; series?: Series; version: number; imageKey?: string; imageAlt?: string }) =>
   apiFetch<EventDetail>(ev(loc, id), { method: 'PUT', body: JSON.stringify(body) })
 export const publishEvent = (loc: string, id: string, version: number) =>
   apiFetch<EventDetail>(`${ev(loc, id)}/publish`, { method: 'POST', body: JSON.stringify({ version }) })
@@ -150,4 +151,5 @@ export const ERRORS: Record<string, string> = {
   stripe_unavailable: 'Betalningen kunde inte återbetalas just nu. Försök igen om en stund.',
   owner_only: 'Bara ägaren kan göra det här.',
   too_many_tickets: 'Max antal biljetter per köp ska vara 1-20.',
+  unknown_image: 'Bilden hittades inte för den här platsen. Välj bilden igen.',
 }

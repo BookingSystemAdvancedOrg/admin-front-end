@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Bar, Button, Card, Field, Input, Select, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
 import { ERRORS, VAT_OPTIONS, createEvent, newId, updateEvent, type EventDetail, type NewEvent, type VatRate } from './api'
+import EventImageField from './EventImageField'
+import { imageAltError, imageFields, initialImage } from './eventImage'
 
 interface TypeRow { typeId: string; name: string; priceKr: string; vatRate: VatRate; perOrderMax: string; capacity: string; includes: string }
 
@@ -42,6 +44,8 @@ export default function EventEditor({ locationId, existing, onSaved, onCancel }:
   const [transferAllowed, setTransferAllowed] = useState(existing?.settings.transferAllowed ?? true)
   const [resaleAllowed, setResaleAllowed] = useState(existing?.settings.resaleAllowed ?? false)
   const [refundPolicy, setRefundPolicy] = useState(existing?.settings.refundPolicy ?? '')
+  const [image, setImage] = useState(() => initialImage(existing))
+  const [showErrors, setShowErrors] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [eventId] = useState(() => existing?.eventId ?? newId())
@@ -50,15 +54,25 @@ export default function EventEditor({ locationId, existing, onSaved, onCancel }:
     setTypes((rows) => rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
   }
 
+  // Uppladdad bild behålls vid fel i själva sparandet: ett nytt försök laddar inte upp den igen.
+  function keepUploaded(key: string) { setImage((cur) => ({ ...cur, key, file: null })) }
+
   async function save(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     const settings = { perOrderMax: Number(perOrderMax), transferAllowed, resaleAllowed, refundPolicy: refundPolicy.trim() || undefined }
+    const altProblem = imageAltError(image)
+    if (altProblem) {
+      setShowErrors(true)
+      setError(altProblem)
+      return
+    }
     setBusy(true)
     try {
       if (existing) {
+        const pictured = await imageFields(locationId, image, keepUploaded)
         onSaved(await updateEvent(locationId, existing.eventId, {
-          title: title.trim(), description, settings, version: existing.version,
+          title: title.trim(), description, settings, version: existing.version, ...pictured,
           ...(existing.status === 'draft' && repeat && until ? { series: { freq: repeat, until } } : {}),
         }))
       } else {
@@ -66,8 +80,9 @@ export default function EventEditor({ locationId, existing, onSaved, onCancel }:
           setError('Välj ett datum.')
           return
         }
+        const pictured = await imageFields(locationId, image, keepUploaded)
         const body: NewEvent = {
-          eventId, title: title.trim(), description,
+          eventId, title: title.trim(), description, ...pictured,
           occurrences: [{ ...occurrenceWindow(date, start, end), capacity: Number(capacity) }],
           ticketTypes: types.map((t, i) => ({
             typeId: t.typeId, name: t.name.trim(), priceOre: Math.round(Number(t.priceKr.replace(',', '.')) * 100),
@@ -97,6 +112,7 @@ export default function EventEditor({ locationId, existing, onSaved, onCancel }:
           <textarea className="evenemang-text" value={description} maxLength={4000} rows={4}
             onChange={(e) => setDescription(e.target.value)} />
         </Field>
+        <EventImageField value={image} onChange={(next) => { setImage(next); if (error) setError(null) }} showErrors={showErrors} />
         {!existing ? (
           <>
             <div className="evenemang-row">

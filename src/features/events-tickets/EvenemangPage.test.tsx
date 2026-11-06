@@ -163,6 +163,64 @@ describe('EvenemangPage', () => {
     expect(screen.queryByText(/återbetalda/)).not.toBeInTheDocument()
   })
 
+  it('sends resaleAllowed off by default and on when the owner ticks it', async () => {
+    tenant = OWNER
+    vi.mocked(api.createEvent).mockResolvedValue({ ...detail, status: 'draft' })
+    at('/evenemang')
+    fireEvent.click(await screen.findByRole('button', { name: 'Nytt evenemang' }))
+    fireEvent.change(screen.getAllByLabelText(/Namn/)[0], { target: { value: 'Quiz' } })
+    fireEvent.change(screen.getByLabelText(/Datum/), { target: { value: '2026-12-10' } })
+    fireEvent.change(screen.getAllByLabelText(/Namn/)[1], { target: { value: 'Inträde' } })
+    fireEvent.change(screen.getByLabelText(/Pris/), { target: { value: '100' } })
+    const resale = screen.getByLabelText(/sälja sin biljett vidare/)
+    expect(resale).not.toBeChecked()
+    expect(screen.getByText(/samma pris som gästen betalade, aldrig mer/)).toBeInTheDocument()
+    fireEvent.click(resale)
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(() => expect(api.createEvent).toHaveBeenCalled())
+    expect(vi.mocked(api.createEvent).mock.calls[0][1].settings).toMatchObject({ transferAllowed: true, resaleAllowed: true })
+  })
+
+  it('keeps resaleAllowed when the owner edits an event that has it on', async () => {
+    tenant = OWNER
+    vi.mocked(api.getEvent).mockResolvedValue({ ...detail, settings: { perOrderMax: 6, transferAllowed: true, resaleAllowed: true } })
+    vi.mocked(api.updateEvent).mockResolvedValue(detail)
+    at('/evenemang/EVENT1AAAAAAAA')
+    expect(await screen.findByText(/Vidareförsäljning till samma pris är på/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Ändra' }))
+    expect(screen.getByLabelText(/sälja sin biljett vidare/)).toBeChecked()
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(() => expect(api.updateEvent).toHaveBeenCalled())
+    expect(vi.mocked(api.updateEvent).mock.calls[0][2].settings.resaleAllowed).toBe(true)
+  })
+
+  it('shows listed tickets per occurrence and marks resale orders and tickets', async () => {
+    tenant = OWNER
+    vi.mocked(api.getEvent).mockResolvedValue({
+      ...detail, settings: { perOrderMax: 6, transferAllowed: true, resaleAllowed: true },
+      occurrences: [{ ...detail.occurrences[0], resaleListed: 2 }],
+    })
+    vi.mocked(api.listOrders).mockResolvedValue({ cursor: null, orders: [
+      { orderId: 'O1', occurrenceId: OCC, qty: 2, amountOre: 179000, refundedOre: 89500, status: 'partly_refunded', buyerName: 'Sara',
+        buyerEmail: 'sara@example.se', createdAt: '2026-11-05T12:00:00Z', resale: false, tickets: [
+          { ticketId: 'T1', typeId: 'T1AAAAAAAA', typeName: 'Middag', holderName: 'Sara', status: 'void', resale: 'sold' },
+          { ticketId: 'T2', typeId: 'T1AAAAAAAA', typeName: 'Middag', holderName: 'Sara', status: 'valid', resale: 'listed' },
+        ] },
+      { orderId: 'O2', occurrenceId: OCC, qty: 1, amountOre: 89500, refundedOre: 0, status: 'paid', buyerName: 'Kim',
+        buyerEmail: 'kim@example.se', createdAt: '2026-11-06T12:00:00Z', resale: true, tickets: [
+          { ticketId: 'T3', typeId: 'T1AAAAAAAA', typeName: 'Middag', holderName: 'Kim', status: 'valid', resale: 'bought' },
+        ] },
+    ] })
+    at('/evenemang/EVENT1AAAAAAAA')
+    expect(await screen.findByText('2 biljetter till salu i andra hand')).toBeInTheDocument()
+    expect(await screen.findByText('Andrahandsköp')).toBeInTheDocument()
+    expect(screen.getByText(/Middag, Sara: Såld vidare/)).toBeInTheDocument()
+    expect(screen.getByText(/Middag, Sara: Giltig \(till salu i andra hand\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Middag, Kim: Giltig \(köpt i andra hand\)/)).toBeInTheDocument()
+    // the voided (resold) ticket cannot be refunded; the bought and the listed ones can
+    expect(screen.getAllByRole('button', { name: 'Återbetala' })).toHaveLength(2)
+  })
+
   it('refunds a ticket with one txId derived from the ticket, so a retry is the same refund', () => {
     expect(api.refundTxId('T0123456789ABCDEF0123456789')).toBe('rf_T0123456789ABCDEF0123456789')
     expect(api.refundTxId('T0123456789ABCDEF0123456789')).toMatch(/^[0-9A-Za-z_]{8,40}$/)

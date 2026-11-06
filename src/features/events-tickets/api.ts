@@ -6,13 +6,18 @@ export type EventStatus = 'draft' | 'published' | 'cancelled'
 export type TicketStatus = 'valid' | 'checked_in' | 'transferred' | 'refunded' | 'void'
 export type VatRate = 25 | 12 | 6
 
+/** `resaleAllowed`: gästen får sälja sin biljett vidare till samma pris via er webbplats (ADR-K 8), av som standard. */
 export interface Settings { perOrderMax: number; transferAllowed: boolean; resaleAllowed?: boolean; refundPolicy?: string; tablePick?: boolean }
 export interface Series { freq: 'weekly' | 'monthly'; until: string; exceptions?: string[] }
 export interface Occurrence {
   occurrenceId: string; startAt: string; endAt: string; capacity: number; sold: number; held: number; checkedIn: number
   left: number; status: 'scheduled' | 'cancelled' | 'done'; version: number; revenueOre?: number
   salesOpenAt?: string; salesCloseAt?: string; doorsAt?: string
+  /** Biljetter som gäster just nu har lagt ut till försäljning (bara när vidareförsäljning är på). */
+  resaleListed?: number
 }
+/** listed = ute till försäljning, sold = såld vidare (ogiltig), bought = köpt i andra hand. */
+export type ResaleState = 'listed' | 'sold' | 'bought'
 export interface Tier { availableFrom?: string; availableUntil?: string; untilSold?: number }
 export interface VatChange { fromRate: VatRate; toRate: VatRate; at: string; by: string; soldBefore: number }
 export interface TicketType {
@@ -31,10 +36,15 @@ export interface EventDetail {
   series?: Series; version: number; occurrences: Occurrence[]; ticketTypes: TicketType[]
 }
 export interface EventSummary { eventId: string; title: string; status: EventStatus; nextOccurrence: string | null; sold: number; capacity: number }
-export interface Ticket { ticketId: string; typeId: string; typeName: string; holderName: string; status: TicketStatus; checkedInAt?: string }
+export interface Ticket {
+  ticketId: string; typeId: string; typeName: string; holderName: string; status: TicketStatus; checkedInAt?: string
+  resale?: ResaleState
+}
 export interface Order {
   orderId: string; occurrenceId: string; qty: number; amountOre: number; refundedOre: number; status: string
   buyerName?: string; buyerEmail?: string; createdAt: string; paidAt?: string; tickets: Ticket[]
+  /** Ett andrahandsköp: biljetterna kommer från andra gäster, inga nya platser. */
+  resale?: boolean
 }
 export interface GuestList { scanKey: string; tickets: Ticket[]; counters: { sold: number; checkedIn: number; capacity: number } }
 export interface CheckIn { ticketId: string; sig: string; at: string; clientId: string }
@@ -105,6 +115,16 @@ export const VAT_OPTIONS: { value: VatRate; label: string }[] = [
 export const STATUS_LABEL: Record<EventStatus, string> = { draft: 'Utkast', published: 'Publicerat', cancelled: 'Inställt' }
 export const TICKET_LABEL: Record<TicketStatus, string> = {
   valid: 'Giltig', checked_in: 'Insläppt', transferred: 'Bortgiven', refunded: 'Återbetald', void: 'Ogiltig',
+}
+export const RESALE_LABEL: Record<ResaleState, string> = {
+  listed: 'Till salu i andra hand', sold: 'Såld vidare', bought: 'Köpt i andra hand',
+}
+
+/** Biljettens status för ägaren: en vidaresåld biljett heter så, inte bara "Ogiltig". */
+export function ticketLabel(t: Pick<Ticket, 'status' | 'resale'>): string {
+  if (t.resale === 'sold') return RESALE_LABEL.sold
+  const base = TICKET_LABEL[t.status]
+  return t.resale ? `${base} (${RESALE_LABEL[t.resale].toLowerCase()})` : base
 }
 
 /** Ett tillfälle som har passerat, är inställt eller klart går inte att ändra. */

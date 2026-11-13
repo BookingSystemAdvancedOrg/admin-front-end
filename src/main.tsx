@@ -7,6 +7,7 @@ import { installPress } from './shared/press'
 import { installGlide } from './shared/glide'
 import { installGlassFilter } from './shared/glassFilter'
 import { installDesktopGlass } from './shared/desktopGlass'
+import { startUpdateNotice } from './shared/updateNotice'
 import App from './App.tsx'
 import { AuthProvider } from './features/auth/AuthContext.tsx'
 import { RequireAuth } from './features/auth/RequireAuth.tsx'
@@ -25,6 +26,8 @@ installPress()
 installGlide()
 installGlassFilter()
 installDesktopGlass()
+// "Ny version finns" efter en deploy (bara i bygget, inte i npm run dev).
+if (import.meta.env.PROD) startUpdateNotice()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

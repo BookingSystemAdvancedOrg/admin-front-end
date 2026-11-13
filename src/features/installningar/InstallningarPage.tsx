@@ -26,6 +26,7 @@ import { BookingTimeCard } from './BookingTimeCard'
 import { BusinessHoursEditor } from './BusinessHoursEditor'
 import { BokforingCard } from './BokforingCard'
 import { AppearanceCard } from './AppearanceCard'
+import { DesktopAppCard } from './DesktopAppCard'
 import {
   createLocation,
   getLocation,
@@ -98,7 +99,7 @@ const GROUPS: { id: string; label: string; hint: string; tabs: SettingsTab[] }[]
   { id: 'gaster', label: 'Gäster', hint: 'Sms och mejl till gästerna, avbokning och beställning', tabs: ['notiser', 'avbokning', 'bestallning', 'skrivare'] },
   { id: 'ekonomi', label: 'Ekonomi', hint: 'Ta betalt online och underlag till bokföringen', tabs: ['betalningar', 'bokforing'] },
   { id: 'data', label: 'Data och integritet', hint: 'Vad personalen ser i Statistik och gästernas uppgifter', tabs: ['statistik', 'integritet'] },
-  { id: 'enhet', label: 'Den här enheten', hint: 'Ljust eller mörkt läge och klickljud på just den här skärmen', tabs: ['utseende'] },
+  { id: 'enhet', label: 'Den här enheten', hint: 'Ljust eller mörkt läge, klickljud och skrivbordsappen', tabs: ['utseende'] },
 ]
 
 /** En rad under varje del som säger vad man ställer in där. */
@@ -577,9 +578,14 @@ export default function InstallningarPage() {
           )}
 
           {tab === 'utseende' && (
-            <div className="settings-row">
-              <AppearanceCard />
-            </div>
+            <>
+              <div className="settings-row">
+                <AppearanceCard />
+              </div>
+              <div className="settings-row">
+                <DesktopAppCard />
+              </div>
+            </>
           )}
         </div>
       </div>

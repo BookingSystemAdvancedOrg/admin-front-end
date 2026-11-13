@@ -1,0 +1,19 @@
+/* Inställningar > Utseende > Skrivbordsappen (DesktopAppCard.tsx). */
+.desktop-app .cell-muted { margin: 6px 0 0; }
+.desktop-app__pick { margin: 16px 0 4px; }
+.desktop-app__now { margin: 14px 0 4px; color: var(--ink); font-weight: 600; }
+.desktop-app__list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.desktop-app__list a {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 16px;
+  padding: 11px 14px; border-radius: 12px; text-decoration: none; color: var(--ink);
+  border: 1px solid var(--glass-edge, var(--border));
+  background: var(--glass-well, transparent);
+  transition: background-color 160ms cubic-bezier(0.16, 1, 0.3, 1), border-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.desktop-app__list a:hover { background: var(--glass-fill, var(--glass-well)); }
+.desktop-app__list .is-yours a { border-color: var(--ink); }
+.desktop-app__title { font-weight: 600; }
+.desktop-app__detail { color: var(--muted); font-size: 0.8125rem; font-family: var(--font-mono, ui-monospace, monospace); }
+.desktop-app__help { margin-top: 14px; }
+.desktop-app__help summary { cursor: pointer; font-weight: 600; color: var(--ink); }
+.desktop-app__help p { margin: 8px 0 0; }

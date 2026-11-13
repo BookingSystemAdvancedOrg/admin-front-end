@@ -7,5 +7,9 @@
   "urls": {
     "dev": "https://restaurang.dev.booqy.se/",
     "prod": "https://restaurang.booqy.se/"
+  },
+  "downloads": {
+    "dev": "https://dev.booqy.se/downloads/admin",
+    "prod": "https://booqy.se/downloads/admin"
   }
 }

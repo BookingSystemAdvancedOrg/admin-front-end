@@ -16,32 +16,32 @@ export function AppearanceCard() {
       <div style={{ height: 8 }} />
       <p className="cell-muted">Gäller den här webbläsaren. Ljust läge och klickljud är på från början.</p>
       <div className="appearance-rows">
-        <div className="appearance-row">
+        <div className="appearance-row" data-help="utseende:tema">
           <div>
             <p className="appearance-title">Ljust eller mörkt</p>
             <p className="cell-muted">Tryck för att byta. Mörka ytor passar till exempel en mörk lokal på kvällen.</p>
           </div>
           <ThemeToggle label className="appearance-toggle" />
         </div>
-        <div className="appearance-row">
+        <div className="appearance-row" data-help="utseende:bakgrund">
           <div>
             <p className="appearance-title">Bakgrund</p>
             <p className="cell-muted">
               {isDesktopShell()
-                ? 'Genomskinligt visar det som ligger bakom fönstret. Färg lägger glaset över en färg du väljer.'
-                : 'Färgen bakom glaset i den här webbläsaren. Genomskinligt, där skrivbordet syns igenom, finns i skrivbordsappen.'}
+                ? 'Genomskinligt visar det som ligger bakom fönstret. Färg lägger glaset över en färg du väljer, Egen bild över en bild du laddar upp.'
+                : 'Det som ligger bakom glaset: en färg eller en egen bild. Genomskinligt, där skrivbordet syns igenom, finns i skrivbordsappen.'}
             </p>
           </div>
           <BackdropSetting />
         </div>
-        <div className="appearance-row">
+        <div className="appearance-row" data-help="utseende:klickljud">
           <div>
             <p className="appearance-title">Klickljud</p>
             <p className="cell-muted">Ett mjukt klick när du trycker på knappar och länkar.</p>
           </div>
           <SoundToggle label className="appearance-toggle" />
         </div>
-        <div className="appearance-row">
+        <div className="appearance-row" data-help="utseende:volym">
           <div>
             <label className="appearance-title" htmlFor="sound-volume">Volym</label>
             <p className="cell-muted">Hur högt klicket låter. 40 % är standard, 0 % är tyst.</p>

@@ -6,6 +6,7 @@ import { primaryGroupLabel } from '../features/installningar/usersApi'
 import { selectLocation, useTenant } from './tenant'
 import { GuideProvider, useGuide } from '../features/guide/Guide'
 import { LogoutConfirm } from './LogoutConfirm'
+import { syncBackdropImage } from './backdropImage'
 import type { TenantErrorCode } from './tenant'
 import './admin.css'
 import './brand.css'
@@ -65,6 +66,8 @@ const TENANT_ERROR: Record<TenantErrorCode, { title: string; text: string }> = {
  * en plats till en annan.
  */
 export function AdminLayout() {
+  // Egen bild bakom glaset: hämtas när man är inloggad (shared/backdropImage.ts).
+  useEffect(() => syncBackdropImage(), [])
   const { email, sub, groups, logout } = useAuth()
   const { tenant, status, error, locationId, refresh } = useTenant()
   const { pathname } = useLocation()
@@ -145,6 +148,7 @@ export function AdminLayout() {
       to={item.to}
       end={item.end}
       data-tour={item.tour}
+      data-help={`nav:${item.to}`}
       // En länk till en del av en sida (#) markeras inte: sidan själv (Inställningar) är aktiv.
       className={({ isActive }) => (isActive && !item.to.includes('#') ? 'admin-nav-item active' : 'admin-nav-item')}
     >

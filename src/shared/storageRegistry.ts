@@ -103,7 +103,7 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     name: GLASS_BACKDROP_KEY,
     kind: 'localStorage',
     setBy: 'Booqy',
-    purpose: 'Bakgrunden bakom glaset om du valt en färg (Inställningar, Utseende och ljud). Utan val är skrivbordsappen genomskinlig och webbläsaren har Booqys bakgrund. Inga personuppgifter.',
+    purpose: 'Vilken bakgrund du valt bakom glaset på den här enheten: en färg eller "egen bild" (Inställningar, Utseende och ljud). Själva bilden sparas på servern under ditt konto och tas bort när du tar bort den eller ditt konto. Utan val är skrivbordsappen genomskinlig och webbläsaren har Booqys bakgrund.',
     lifetime: 'Tills du byter tillbaka eller rensar webbläsaren',
     category: 'nödvändig',
   },

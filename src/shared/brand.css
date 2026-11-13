@@ -1691,3 +1691,29 @@ html.is-busy * {
     justify-content: flex-start;
   }
 }
+.backdrop-image {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.backdrop-image-choose {
+  position: relative;
+}
+.backdrop-image-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: default;
+}
+.backdrop-image-choose:has(.backdrop-image-input:focus-visible) {
+  box-shadow: 0 0 0 3px var(--field-ring);
+}
+.backdrop-image-error {
+  margin: 0;
+  max-width: 34ch;
+  color: var(--danger-ink);
+  font-size: 13px;
+}

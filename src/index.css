@@ -371,3 +371,26 @@ html.is-desktop-glass[data-glass-backdrop='colour'][data-theme='dark'] body::bef
   --uc-hi: color-mix(in srgb, var(--uc-base) 80%, #6b4a2e);
   --uc-lo: color-mix(in srgb, var(--uc-base) 70%, #0f0a08);
 }
+
+/* Bakgrund: Egen bild. Tills bilden är avkodad visas Booqys bakgrund, också i
+   skrivbordsappen (image-loading). Sedan bilden, med en lätt slöja i lägets
+   ton så att texten på glaset håller AA. */
+html.is-desktop-glass[data-glass-backdrop='image-loading'] body::before {
+  display: block;
+  background: var(--backdrop-blobs), url('./assets/backdrop.webp') center / cover no-repeat, var(--bg);
+}
+html[data-glass-backdrop='image'] body::before,
+html.is-desktop-glass[data-glass-backdrop='image'] body::before {
+  display: block;
+  background:
+    linear-gradient(rgb(246 241 234 / 0.28), rgb(246 241 234 / 0.28)),
+    var(--user-image) center / cover no-repeat,
+    var(--bg);
+}
+html[data-glass-backdrop='image'][data-theme='dark'] body::before,
+html.is-desktop-glass[data-glass-backdrop='image'][data-theme='dark'] body::before {
+  background:
+    linear-gradient(rgb(26 18 14 / 0.42), rgb(26 18 14 / 0.42)),
+    var(--user-image) center / cover no-repeat,
+    var(--bg);
+}

@@ -61,9 +61,17 @@
   transition: none !important;
 }
 
-/* Övertoningen (skrivbordsappen): plus-lighter håller samma täckning genom
-   hela bytet, så att det genomskinliga fönstret inte bleknar på mitten. */
-html.theme-crossfade::view-transition-old(root),
-html.theme-crossfade::view-transition-new(root) {
-  mix-blend-mode: plus-lighter;
+/* Skrivbordsappen: under svepet har den nya bilden en tät botten i ungefär
+   det nya glasets färg (switchTheme i theme.ts). När skalet bytt glaset tonar
+   botten bort, så att det levande glaset tar över utan ryck. */
+html.is-desktop-glass {
+  transition: background-color 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+html.is-desktop-glass.theme-settling[data-theme='light'],
+html.is-desktop-glass[data-theme='light']::view-transition-new(root) {
+  background-color: rgb(236 232 227);
+}
+html.is-desktop-glass.theme-settling[data-theme='dark'],
+html.is-desktop-glass[data-theme='dark']::view-transition-new(root) {
+  background-color: rgb(40 33 29);
 }

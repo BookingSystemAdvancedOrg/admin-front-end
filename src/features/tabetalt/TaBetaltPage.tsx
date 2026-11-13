@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { tableTitle } from '../table-qr/tableQrApi'
 import type { FormEvent } from 'react'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { ApiError } from '../../shared/api'
@@ -53,7 +54,7 @@ const STATUS_BADGE: Record<CardPayment['status'], string> = {
 }
 
 function orderLabel(order: PayableOrder): string {
-  const where = order.mode === 'table' ? `Bord ${order.tableLabel ?? '?'}` : 'Avhämtning'
+  const where = order.mode === 'table' ? tableTitle(order.tableLabel ?? '?') : 'Avhämtning'
   return `${where}${order.customerName ? `, ${order.customerName}` : ''} (${kronor(order.totalAmount)})`
 }
 

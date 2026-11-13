@@ -159,33 +159,76 @@
   }
 }
 
-/* Utskrift av QR-koder (OrderingCard). */
-.qr-sheet {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 16px;
-  margin-top: 12px;
-}
-
-.qr-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 12px;
-  border: 1px solid var(--border);
+/* Var maten ska: bordet stort på varje lapp, så det syns från köket. */
+.order-place {
+  padding: 4px 10px;
   border-radius: var(--r-md);
-  text-align: center;
-  break-inside: avoid;
+  background: var(--tint-orange);
+  color: var(--warning-ink);
+  font: 700 14px/1.2 var(--sans);
 }
 
-.qr-tile img {
-  width: 160px;
-  height: 160px;
+.order-place--table {
+  background: var(--slip);
+  color: var(--on-slip);
+  font-size: 18px;
+  letter-spacing: 0.01em;
 }
 
-.qr-tile-label {
-  font: 700 16px/1.2 var(--sans);
+.order-serve-to {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  border-left: 4px solid var(--success);
+  background: color-mix(in srgb, var(--success) 14%, var(--surface));
+  color: var(--success-ink);
+  font: 700 16px/1.3 var(--sans);
+}
+
+/* Efter "Klar att servera": bordet maten ska till, överst och stort. */
+.orders-serve {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: var(--r-lg);
+  border: 1px solid color-mix(in srgb, var(--success) 45%, transparent);
+  border-left-width: 6px;
+  background: color-mix(in srgb, var(--success) 16%, var(--surface));
+  color: var(--success-ink);
+  font: 600 17px/1.3 var(--sans);
+}
+
+.orders-serve-table {
+  display: block;
+  margin-top: 2px;
+  font: 700 32px/1.1 var(--serif);
+}
+
+.orders-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font: 600 13px/1.2 var(--sans);
+}
+
+.orders-filter select {
+  min-width: 220px;
+  max-width: 100%;
+}
+
+@media (max-width: 480px) {
+  .orders-serve {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .orders-filter select {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
 }
 
 /* Köksskrivaren: läget för en beställning som inte är utskriven än. */

@@ -18,6 +18,7 @@ import {
   pauseOrdering,
 } from './ordersApi'
 import type { Order, OrderingState, StaffMove } from './ordersApi'
+import { tableTitle } from '../table-qr/tableQrApi'
 import { getPrintStatus, printBannerText, printErrorText, reprintOrder } from './printApi'
 import type { JobState, PrintStatus } from './printApi'
 import './bestallningar.css'
@@ -40,12 +41,15 @@ const JOB_TEXT: Record<JobState, string> = {
 }
 
 function where(order: Order): string {
-  if (order.mode === 'table') {
-    const label = order.tableLabel ?? '?'
-    return /^bord/i.test(label) ? label : `Bord ${label}`
-  }
-  return 'Avhämtning'
+  return order.mode === 'table' ? tableTitle(order.tableLabel ?? '?') : 'Avhämtning'
 }
+
+/** Filtrets värde för en beställning: bordets id (eller namn), "pickup" för avhämtning. */
+function placeKey(order: Order): string {
+  return order.mode === 'table' ? `table:${order.tableId ?? order.tableLabel ?? '?'}` : 'pickup'
+}
+
+const ALL = 'all'
 
 /**
  * Köks-/kassaskärmen för matbeställningar: dagens betalda beställningar i
@@ -71,6 +75,12 @@ export default function BestallningarPage() {
   const [listDate, setListDate] = useState<string | null>(null)
   const [lastWeek, setLastWeek] = useState<{ key: string; orders: Order[] } | null>(null)
   const [printNotice, setPrintNotice] = useState<string | null>(null)
+  /** Vilket bord (eller avhämtning) tavlan visar; "all" = alla. */
+  const [place, setPlace] = useState(ALL)
+  /** Efter "Klar att servera": vilket bord maten ska till, stort överst. */
+  const [serveTo, setServeTo] = useState<Order | null>(null)
+  /** Skärmläsarens besked om nya beställningar ("Ny beställning #12, Bord 7"). */
+  const [announce, setAnnounce] = useState('')
 
   const refresh = useCallback(async () => {
     if (!locationId) return
@@ -78,8 +88,11 @@ export default function BestallningarPage() {
       const list = await listOrders(locationId)
       const ids = new Set(list.orders.map((o) => o.orderId))
       if (seen.current) {
-        const added = list.orders.filter((o) => !seen.current!.has(o.orderId)).map((o) => o.orderId)
-        if (added.length) setFresh((prev) => new Set([...prev, ...added]))
+        const added = list.orders.filter((o) => !seen.current!.has(o.orderId))
+        if (added.length) {
+          setFresh((prev) => new Set([...prev, ...added.map((o) => o.orderId)]))
+          setAnnounce(added.map((o) => `Ny beställning #${o.number ?? ''}, ${where(o)}`).join('. '))
+        }
       }
       seen.current = ids
       setOrders(list.orders)
@@ -127,6 +140,8 @@ export default function BestallningarPage() {
     setActionError(null)
     try {
       const updated = await moveOrder(locationId, order, status)
+      if (updated.mode === 'table' && status === 'ready') setServeTo(updated)
+      else if (serveTo?.orderId === updated.orderId) setServeTo(null)
       setOrders((prev) => (prev ?? []).map((o) => (o.orderId === updated.orderId ? updated : o)))
       setFresh((prev) => {
         const next = new Set(prev)
@@ -169,8 +184,16 @@ export default function BestallningarPage() {
     }
   }
 
-  const active = (orders ?? []).filter((o) => ['confirmed', 'preparing', 'ready'].includes(o.status))
-  const done = (orders ?? []).filter((o) => o.status === 'completed' || o.status === 'cancelled')
+  // Filtret: borden (och avhämtning) som finns bland dagens beställningar.
+  const places = new Map<string, string>()
+  for (const o of orders ?? []) places.set(placeKey(o), where(o))
+  const placeOptions = [...places].sort((a, b) =>
+    a[0] === 'pickup' ? -1 : b[0] === 'pickup' ? 1 : a[1].localeCompare(b[1], 'sv', { numeric: true }),
+  )
+  const placeValue = places.has(place) ? place : ALL
+  const shown = (orders ?? []).filter((o) => placeValue === ALL || placeKey(o) === placeValue)
+  const active = shown.filter((o) => ['confirmed', 'preparing', 'ready'].includes(o.status))
+  const done = shown.filter((o) => o.status === 'completed' || o.status === 'cancelled')
   const paused = ordering?.reason === 'paused'
   const revenue = revenueToday(orders)
   const lastWeekOrders = lastWeek?.key === `${locationId}|${listDate}` ? lastWeek.orders : null
@@ -223,17 +246,20 @@ export default function BestallningarPage() {
       <article
         key={order.orderId}
         className={`order-card${fresh.has(order.orderId) ? ' fresh' : ''}`}
-        aria-label={`Beställning ${order.number ?? ''}`}
+        aria-label={`Beställning ${order.number ?? ''}, ${where(order)}`}
       >
         <header className="order-card-head">
           <span className="order-number">#{order.number ?? '-'}</span>
-          <span className={`status-badge ${order.mode === 'table' ? 'arrived' : 'waiting'}`}>
+          <span className={order.mode === 'table' ? 'order-place order-place--table' : 'order-place'}>
             {where(order)}
           </span>
           <span className="order-time" title="Betald">
             {clock(order.confirmedAt)}
           </span>
         </header>
+        {order.mode === 'table' && order.status === 'ready' && (
+          <p className="order-serve-to">Bär till {where(order)}</p>
+        )}
         {print?.orders[order.orderId] && (
           <span className={`status-badge order-print ${print.orders[order.orderId] === 'FAILED' ? 'cancelled' : 'waiting'}`}>
             {JOB_TEXT[print.orders[order.orderId]]}
@@ -271,7 +297,7 @@ export default function BestallningarPage() {
           {order.status === 'ready' && (
             <button type="button" className="btn primary square" disabled={isBusy}
               onClick={() => void move(order, 'completed')}>
-              {order.mode === 'pickup' ? 'Hämtad' : 'Serverad'}
+              {order.mode === 'pickup' ? 'Hämtad' : `Serverad vid ${where(order)}`}
             </button>
           )}
           {print?.printerConfigured && !confirming && order.status !== 'cancelled' && (
@@ -351,6 +377,36 @@ export default function BestallningarPage() {
                 <StatTile key={t.label} {...t} loading={orders === null} index={i} />
               ))}
             </section>
+            {serveTo && (
+              <div className="orders-serve" role="status">
+                <span>
+                  #{serveTo.number ?? ''} är klar. Bär maten till
+                  <strong className="orders-serve-table">{where(serveTo)}</strong>
+                </span>
+                <button type="button" className="btn outline square" onClick={() => setServeTo(null)}>
+                  OK
+                </button>
+              </div>
+            )}
+            <p className="sr-only" aria-live="polite">{announce}</p>
+            {placeOptions.length > 1 && (
+              <div className="orders-filter">
+                <label htmlFor="orders-place">Visa</label>
+                <select id="orders-place" value={placeValue} onChange={(e) => setPlace(e.target.value)}>
+                  <option value={ALL}>Alla bord och avhämtning</option>
+                  {placeOptions.map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                {placeValue !== ALL && (
+                  <button type="button" className="btn outline square" onClick={() => setPlace(ALL)}>
+                    Visa alla
+                  </button>
+                )}
+              </div>
+            )}
             {orders === null && !loadError ? (
               <SkelPage label="Hämtar beställningar">
                 <OrdersBoardSkeleton />

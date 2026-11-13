@@ -38,6 +38,9 @@ export interface Order {
   status: OrderStatus
   paymentStatus?: 'processing' | 'paid' | 'failed' | 'refunded'
   mode: OrderMode
+  /** Bordets id i planritningen (QR-koden); står kvar om bordet byter namn. */
+  tableId?: string
+  /** Bordets namn när gästen beställde. */
   tableLabel?: string
   lines: OrderLine[]
   /** Öre. */
@@ -75,14 +78,6 @@ export interface OrderList {
 
 export type StaffMove = 'preparing' | 'ready' | 'completed' | 'cancelled'
 
-export interface TableCode {
-  tableId: string
-  label: string
-  code: string
-  /** Gästsidans adress att lägga i QR-koden; null = restaurangen saknar webbadress. */
-  url: string | null
-}
-
 function base(locationId: string): string {
   return `/locations/${encodeURIComponent(locationId)}/orders`
 }
@@ -107,16 +102,6 @@ export function pauseOrdering(locationId: string, minutes: number): Promise<{ or
   return apiFetch(`${base(locationId)}/pause`, {
     method: 'PUT',
     body: JSON.stringify({ minutes }),
-  })
-}
-
-export function tableCodes(
-  locationId: string,
-  tables: { tableId: string; label: string }[],
-): Promise<{ tables: TableCode[] }> {
-  return apiFetch(`${base(locationId)}/table-codes`, {
-    method: 'POST',
-    body: JSON.stringify({ tables }),
   })
 }
 

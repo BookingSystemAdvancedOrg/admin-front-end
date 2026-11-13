@@ -7,6 +7,7 @@ import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { getStoredLocationId, useLocationId } from '../../shared/location'
 import { LayoutVersionsModal } from './LayoutVersionsModal'
+import { TableQrModal, TableQrPanel } from '../table-qr/TableQr'
 import {
   GRID,
   MIN_TABLE_SIZE,
@@ -328,6 +329,9 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
   const [publishing, setPublishing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
+  const [showQr, setShowQr] = useState(false)
+  // Ökas efter en publicering så QR-panelen hämtar de publicerade borden igen.
+  const [publishCount, setPublishCount] = useState(0)
   const [layoutError, setLayoutError] = useState<string | null>(null)
   // Vilken plats vars sparade layout är inläst; tills dess ligger planen bakom glaset (LayoutPrep).
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
@@ -436,6 +440,11 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       prev.map((f) => (f.id === floor.id ? { ...f, ...patch(f) } : f)),
     )
   }
+
+  // Utan API: alla ritade bord räknas som publicerade, numrerade som gästsidan gör.
+  const qrMockTables = floors
+    .flatMap((f) => f.tables)
+    .map((t, i) => ({ tableId: t.id, label: String(i + 1), seats: t.seats }))
 
   const selectedTable =
     selection?.kind === 'table'
@@ -1846,7 +1855,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
   // av hanteraren (som ser aktuellt urval, verktyg och historik).
   const onKey = useRef<(e: KeyboardEvent) => void>(() => {})
   onKey.current = (e: KeyboardEvent) => {
-    if (showVersions || isTypingTarget(e.target)) return
+    if (showVersions || showQr || isTypingTarget(e.target)) return
     if (menu) {
       // Med menyn öppen: Esc stänger, pilarna flyttar mellan raderna och
       // Enter/mellanslag väljer raden (knappens eget beteende).
@@ -2032,6 +2041,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       const snapshot = await publishLayout(loc)
       try {
         const activation = await activateLayoutVersion(loc, snapshot.version)
+        setPublishCount((n) => n + 1)
         await refreshVersionLabel()
         setStatusText(
           activation.status === 'active'
@@ -2124,6 +2134,15 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
               onClick={() => setShowVersions(true)}
             >
               Versioner
+            </button>
+            <button
+              type="button"
+              className="btn outline"
+              disabled={!locationId}
+              title="QR-kod per bord för beställning vid bordet: skriv ut alla eller ladda ner"
+              onClick={() => setShowQr(true)}
+            >
+              QR-koder
             </button>
             <button
               type="button"
@@ -2758,6 +2777,12 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                     lika mellanrum och nästa lediga nummer.
                   </p>
                 </div>
+                <TableQrPanel
+                  locationId={locationId}
+                  tableId={selectedTable.id}
+                  mockTables={qrMockTables}
+                  version={publishCount}
+                />
                 <div className="props-divider" />
                 <button type="button" className="btn danger-outline" onClick={() => removeByKind('table', selectedTable.id)}>
                   Ta bort element
@@ -2951,6 +2976,9 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
         </div>
       )}
 
+      {showQr && locationId && (
+        <TableQrModal locationId={locationId} mockTables={qrMockTables} onClose={() => setShowQr(false)} />
+      )}
       {showVersions && locationId && (
         <LayoutVersionsModal
           locationId={locationId}

@@ -50,8 +50,8 @@
   --glass-edge: var(--liquid-edge);
 
   /* Glaslagren: arbetsyta, sidopaneler, popup, dialog och palett. */
-  --glass-main: rgb(var(--bq-snow-rgb) / 0.32);
-  --glass-side: rgb(var(--bq-snow-rgb) / 0.4);
+  --glass-main: rgb(var(--bq-snow-rgb) / 0.24);
+  --glass-side: rgb(var(--bq-snow-rgb) / 0.34);
   --glass-pop: rgb(var(--bq-snow-rgb) / 0.8);
   --glass-modal: rgb(var(--bq-snow-rgb) / 0.86);
 
@@ -62,19 +62,19 @@
   --glass-border: rgb(var(--bq-snow-rgb) / 0.42);
   --glass-blur: var(--blur-main);
   --glass-highlight: rgb(var(--bq-snow-rgb) / 0.85);
-  --glass-text-bg: rgb(var(--bq-snow-rgb) / 0.62);
+  --glass-text-bg: rgb(var(--bq-snow-rgb) / 0.5);
   /* Flytande glas: tänd överkant, mjukt inre sken, glans uppifrån och djup
      under. Samma värden i console, kundsidan och booqy.se. */
   --liquid-edge: inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.95), inset 0 0 0 1px rgb(var(--bq-snow-rgb) / 0.42), inset 0 -1px 0 rgb(58 36 24 / 0.1), inset 0 12px 28px -18px rgb(var(--bq-snow-rgb) / 0.7);
   --liquid-sheen: linear-gradient(180deg, rgb(var(--bq-snow-rgb) / 0.46), rgb(var(--bq-snow-rgb) / 0.08) 38%, rgb(var(--bq-snow-rgb) / 0) 62%);
   --liquid-depth: 0 28px 64px -30px rgb(26 18 14 / 0.5), 0 2px 8px -3px rgb(26 18 14 / 0.14);
   /* Fält: en synlig glasbrunn med 1 px kant och fokusring (AA). */
-  --field-bg: rgb(var(--bq-snow-rgb) / 0.62);
-  --field-bg-focus: rgb(var(--bq-snow-rgb) / 0.82);
-  --field-border: rgb(58 36 24 / 0.34);
-  --field-border-hover: rgb(58 36 24 / 0.52);
+  --field-bg: rgb(226 214 199 / 0.58);
+  --field-bg-focus: rgb(var(--bq-snow-rgb) / 0.86);
+  --field-border: rgb(58 36 24 / 0.55);
+  --field-border-hover: rgb(58 36 24 / 0.78);
   --field-ring: rgb(107 74 46 / 0.34);
-  --field-inset: inset 0 1px 2px rgb(26 18 14 / 0.1), inset 0 -1px 0 rgb(var(--bq-snow-rgb) / 0.6);
+  --field-inset: inset 0 2px 4px rgb(26 18 14 / 0.14), inset 0 -1px 0 rgb(var(--bq-snow-rgb) / 0.55);
   --field-placeholder: #5f5751;
   --glass-saturate: 1.6;
   --blur-main: 18px;
@@ -101,22 +101,22 @@
   --hairline: rgba(213, 196, 174, 0.12);
   --hairline-strong: rgba(213, 196, 174, 0.22);
   --glass-edge: var(--liquid-edge);
-  --glass-main: rgba(26, 18, 14, 0.44);
-  --glass-side: rgba(30, 21, 16, 0.52);
+  --glass-main: rgba(26, 18, 14, 0.36);
+  --glass-side: rgba(30, 21, 16, 0.46);
   --glass-pop: rgba(36, 25, 19, 0.86);
   --glass-modal: rgba(36, 25, 19, 0.9);
   --glass-border: rgba(213, 196, 174, 0.14);
   --glass-highlight: rgba(213, 196, 174, 0.22);
-  --glass-text-bg: rgba(26, 18, 14, 0.66);
+  --glass-text-bg: rgba(26, 18, 14, 0.58);
   --liquid-edge: inset 0 1px 0 rgb(246 241 234 / 0.28), inset 0 0 0 1px rgb(213 196 174 / 0.16), inset 0 12px 28px -18px rgb(246 241 234 / 0.14);
   --liquid-sheen: linear-gradient(180deg, rgb(246 241 234 / 0.12), rgb(246 241 234 / 0.02) 40%, rgb(246 241 234 / 0) 62%);
   --liquid-depth: 0 30px 70px -30px rgb(0 0 0 / 0.75), 0 2px 8px -3px rgb(0 0 0 / 0.4);
-  --field-bg: rgba(26, 18, 14, 0.5);
+  --field-bg: rgba(10, 7, 5, 0.46);
   --field-bg-focus: rgba(26, 18, 14, 0.72);
-  --field-border: rgba(213, 196, 174, 0.34);
-  --field-border-hover: rgba(213, 196, 174, 0.52);
+  --field-border: rgba(213, 196, 174, 0.5);
+  --field-border-hover: rgba(213, 196, 174, 0.74);
   --field-ring: rgba(213, 196, 174, 0.3);
-  --field-inset: inset 0 1px 2px rgb(0 0 0 / 0.3), inset 0 -1px 0 rgb(246 241 234 / 0.06);
+  --field-inset: inset 0 2px 4px rgb(0 0 0 / 0.42), inset 0 -1px 0 rgb(246 241 234 / 0.07);
   --field-placeholder: #b3a79f;
   --dim: rgba(0, 0, 0, 0.55);
 }
@@ -1298,5 +1298,35 @@ html.is-desktop-glass .admin-main {
 @media (prefers-reduced-transparency: reduce) {
   :where(input, select, textarea) {
     background-color: var(--surface);
+  }
+}
+:where(input, select, textarea):disabled,
+:where(input, textarea)[readonly] {
+  border-style: dashed;
+  background-color: transparent;
+  box-shadow: none;
+}
+:where(input, select, textarea):disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Flytande brytning, bara Chromium och Electron (glassFilter.ts sätter
+   .glass-refract där). Safari behåller den vanliga -webkit-oskärpan. */
+.glass-refract .admin-main,
+.glass-refract .admin-topbar,
+.glass-refract .admin-sidebar {
+  backdrop-filter: url(#booqy-glass) blur(var(--blur-main)) saturate(1.7);
+}
+html.is-desktop-glass.glass-refract .admin-main,
+html.is-desktop-glass.glass-refract .admin-topbar,
+html.is-desktop-glass.glass-refract .admin-sidebar {
+  backdrop-filter: none;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass-refract .admin-main,
+  .glass-refract .admin-topbar,
+  .glass-refract .admin-sidebar {
+    backdrop-filter: none;
   }
 }

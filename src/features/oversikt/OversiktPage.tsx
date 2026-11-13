@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { Num } from '../../shared/motion/Num'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { QuickLinkIcon } from './QuickLinkIcon'
 import { MonthCard } from './MonthCard'
 import { StatTile } from './StatTile'
-import type { QuickLinkIconName } from './QuickLinkIcon'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { currentLocation, stripeStage, useTenant } from '../../shared/tenant'
 import { getLocation } from '../installningar/locationApi'
@@ -43,17 +41,19 @@ import { addDays } from '../statistik/stats'
 import { trendOf } from '../../shared/trend'
 import type { Trend } from '../../shared/trend'
 import { Icon } from '../../shared/Icon'
+import type { IconName } from '../../shared/Icon'
+import { Disclosure } from '../../shared/Disclosure'
 import { SkelRows } from '../../shared/Skeleton'
 
 // Genvägskorten längst ned som länkar till de andra sidorna. Ägaren får
 // Statistik i stället för "Se alla bokningar" (dagens bokningar har redan
 // "Visa alla" ovanför).
-const QUICK_LINKS: { to: string; icon: QuickLinkIconName; label: string; ownerOnly?: boolean; staffOnly?: boolean }[] = [
-  { to: '/statistik?period=month', icon: 'stats', label: 'Månadens statistik', ownerOnly: true },
-  { to: '/meny', icon: 'menu', label: 'Hantera meny' },
-  { to: '/layout', icon: 'layout', label: 'Redigera layout' },
-  { to: '/bokningar', icon: 'bookings', label: 'Se alla bokningar', staffOnly: true },
-  { to: '/installningar', icon: 'settings', label: 'Inställningar' },
+const QUICK_LINKS: { to: string; icon: IconName; label: string; ownerOnly?: boolean; staffOnly?: boolean }[] = [
+  { to: '/statistik?period=month', icon: 'chart', label: 'Månadens statistik', ownerOnly: true },
+  { to: '/meny', icon: 'book', label: 'Hantera meny' },
+  { to: '/layout', icon: 'tool-floor', label: 'Redigera layout' },
+  { to: '/bokningar', icon: 'calendar', label: 'Se alla bokningar', staffOnly: true },
+  { to: '/installningar', icon: 'gear', label: 'Inställningar' },
 ]
 
 interface OverviewData {
@@ -412,21 +412,21 @@ export default function OversiktPage() {
           />
         )}
 
-        <section className="quick-links-row" aria-label="Genvägar">
-          {QUICK_LINKS.filter((link) => (link.ownerOnly ? isOwner : link.staffOnly ? !isOwner : true)).map((link) => (
-            <Link key={link.to + link.label} className="admin-card quick-link" to={link.to}>
-              <span className="quick-link-label">
-                <span className="quick-link-icon" aria-hidden="true">
-                  <QuickLinkIcon name={link.icon} />
+        <Disclosure title="Genvägar" className="ds-acc--line">
+          <section className="quick-links-row" aria-label="Genvägar">
+            {QUICK_LINKS.filter((link) => (link.ownerOnly ? isOwner : link.staffOnly ? !isOwner : true)).map((link) => (
+              <Link key={link.to + link.label} className="admin-card quick-link" to={link.to}>
+                <span className="quick-link-label">
+                  <span className="quick-link-icon" aria-hidden="true">
+                    <Icon name={link.icon} size={20} />
+                  </span>
+                  {link.label}
                 </span>
-                {link.label}
-              </span>
-              <span className="quick-link-arrow" aria-hidden="true">
-                →
-              </span>
-            </Link>
-          ))}
-        </section>
+                <Icon name="arrow-right" size={18} className="quick-link-arrow" />
+              </Link>
+            ))}
+          </section>
+        </Disclosure>
 
         {setupComplete && (
           <details className="admin-card setup-card setup-card--done" data-tour="getting-started">

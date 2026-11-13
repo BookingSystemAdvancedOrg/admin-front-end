@@ -1,5 +1,7 @@
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
+import { onPageAction, takePageAction } from '../../shared/nav'
+import { CtaButton } from '../../shared/CtaButton'
 import { StatTile } from '../../shared/motion/StatTile'
 import { Num } from '../../shared/motion/Num'
 import { useAuth } from '../auth/useAuth'
@@ -96,7 +98,9 @@ export default function MenyPage() {
   /** Sant när adminrutterna saknas och publika menyn visas i stället. */
   const [readOnly, setReadOnly] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [modal, setModal] = useState<ModalState>(null)
+  const [modal, setModal] = useState<ModalState>(() => (takePageAction('new-dish') ? { mode: 'add' } : null))
+  // Kommandopaletten (⌘K) kan öppna formuläret direkt.
+  useEffect(() => onPageAction('new-dish', () => setModal({ mode: 'add' })), [])
 
   const [filterName, setFilterName] = useState('')
   const [filterCategory, setFilterCategory] = useState<DishCategory | 'alla'>('alla')
@@ -277,15 +281,13 @@ export default function MenyPage() {
       <AdminTopbar
         title="Meny"
         actions={
-          <button
+          <CtaButton
+            label="+ Lägg till rätt"
+            win="Kör!"
             data-tour="menu-add"
-            type="button"
-            className="btn primary"
             disabled={!canEdit}
             onClick={() => setModal({ mode: 'add' })}
-          >
-            + Lägg till rätt
-          </button>
+          />
         }
       />
       <div className="admin-main">

@@ -39,7 +39,7 @@ describe('AdminLayout sidebar', () => {
     renderLayout()
     const labels = navLabels()
     for (const l of [...NEW, 'Marknadsföring']) expect(labels).not.toContain(l)
-    expect(labels).toEqual(['Översikt', 'Statistik', 'Bokningar', 'Meny', 'Layout', 'Inställningar'])
+    expect(labels).toEqual(['Översikt', 'Statistik', 'Bokningar', 'Meny', 'Layout'])
   })
 
   it('shows the new items in contract order when on', () => {
@@ -47,8 +47,14 @@ describe('AdminLayout sidebar', () => {
     renderLayout()
     expect(navLabels()).toEqual([
       'Översikt', 'Statistik', 'Bokningar', 'Catering', 'Personalliggare',
-      'Meny', 'Layout', 'Gäster', 'Presentkort', 'Webbplats', 'Marknadsföring', 'Inställningar',
+      'Meny', 'Layout', 'Gäster', 'Presentkort', 'Webbplats', 'Marknadsföring',
     ])
+  })
+
+  it('keeps Inställningar and Hjälp at the foot of the menu', () => {
+    renderLayout()
+    const foot = screen.getByRole('navigation', { name: 'Inställningar och hjälp' })
+    expect(within(foot).getAllByRole('link').map((a) => a.textContent)).toEqual(['Inställningar', 'Hjälp'])
   })
 
   it('shows Marknadsföring when any one of its four features is on', () => {
@@ -79,7 +85,7 @@ describe('AdminLayout sidebar', () => {
     renderLayout()
     expect(navLabels()).toEqual([
       'Översikt', 'Statistik', 'Bokningar', 'Personalliggare', 'Telefon',
-      'Meny', 'Layout', 'Webbplats', 'Evenemang', 'Inställningar',
+      'Meny', 'Layout', 'Webbplats', 'Evenemang',
     ])
   })
 

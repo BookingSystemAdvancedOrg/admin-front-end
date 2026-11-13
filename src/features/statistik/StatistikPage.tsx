@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
+import { Disclosure } from '../../shared/Disclosure'
+import { revealSection } from '../../shared/reveal'
 import { isApiConfigured } from '../../shared/api'
 import { Num } from '../../shared/motion/Num'
 import { TrendBadge } from '../../shared/TrendBadge'
@@ -555,7 +557,7 @@ export default function StatistikPage() {
                   {SECTIONS.filter((x) => (x.id === 'omsattning' ? money && showOrders : x.id === 'meny' ? showOrders : x.id === 'catering' ? showCatering : x.id === 'hemsidan' ? showWeb : true)).map((x) => (
                     <a key={x.id} href={`#${x.id}`} onClick={(e) => {
                       e.preventDefault()
-                      document.getElementById(x.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      revealSection(x.id)
                     }}>
                       {x.label}
                     </a>
@@ -566,10 +568,8 @@ export default function StatistikPage() {
               {/* Ägaren: pengarna över tid först, sedan gästerna (docs/DASHBOARD.md). */}
               {money && showOrders && (
                 <>
-                  <h3 className="sk-section-title" id="omsattning">
-                    Omsättning
-                  </h3>
-                  <div className="sk-charts">
+                  <Disclosure id="omsattning" title="Omsättning" className="sk-acc" defaultOpen={true}>
+                    <div className="sk-charts">
                     <Card title={insightTitle('Omsättningen', deltaPct(s.revenue, p?.revenue))} label="Omsättning per dag" wide>
                       <p className="sk-insight">Betalda beställningar och levererad catering per dag, inklusive moms.</p>
                       <ColumnChart
@@ -592,13 +592,12 @@ export default function StatistikPage() {
                       <Tip>Jämför med samma period förra året för att se säsongen, inte bara förra veckan.</Tip>
                     </Card>
                   </div>
+                  </Disclosure>
                 </>
               )}
 
-              <h3 className="sk-section-title" id="gaster">
-                Gäster och bokningar
-              </h3>
-              <div className="sk-charts">
+              <Disclosure id="gaster" title="Gäster och bokningar" className="sk-acc" defaultOpen={!(money && showOrders)}>
+                <div className="sk-charts">
                 <Card title="Gäster per dag" label="Gäster per dag" wide>
                   <p className="sk-insight">
                     Gäster som bokat, per dag{p && prevByDay(0) ? `; linjen är ${cmp}` : ''}.
@@ -740,11 +739,10 @@ export default function StatistikPage() {
                   <Tip>Mest par? Fler 2-bord, eller bord som går att dela, fyller salen bättre än stora bord.</Tip>
                 </Card>
               </div>
+              </Disclosure>
 
-              <h3 className="sk-section-title" id="belaggning">
-                Beläggning
-              </h3>
-              <div className="sk-charts">
+              <Disclosure id="belaggning" title="Beläggning" className="sk-acc" defaultOpen={false}>
+                <div className="sk-charts">
                 <Card title="Beläggning per veckodag och timme" label="Beläggning per veckodag och timme" wide>
                   <p className="sk-insight">Andel av bordstiden som var bokad, i procent. Mörkare = fullare.</p>
                   <Heatmap
@@ -797,13 +795,12 @@ export default function StatistikPage() {
                   <Tip>Under 40 % en dag i veckan? Fundera på kortare öppettider den dagen, eller ett fast erbjudande.</Tip>
                 </Card>
               </div>
+              </Disclosure>
 
               {showOrders && (
                 <>
-                  <h3 className="sk-section-title" id="meny">
-                    Beställningar och meny
-                  </h3>
-                  <div className="sk-charts">
+                  <Disclosure id="meny" title="Beställningar och meny" className="sk-acc" defaultOpen={false}>
+                    <div className="sk-charts">
                     <Card title={money ? `${fmtKr(s.avgOrder)} per beställning` : `${fmtInt(s.orders)} beställningar`} label="Beställningarna">
                       {money && (
                         <Ring
@@ -959,6 +956,7 @@ export default function StatistikPage() {
                       </Card>
                     )}
                   </div>
+                  </Disclosure>
                 </>
               )}
 
@@ -968,10 +966,8 @@ export default function StatistikPage() {
 
               {showCatering && (
                 <>
-                  <h3 className="sk-section-title" id="catering">
-                    Catering
-                  </h3>
-                  <div className="sk-charts">
+                  <Disclosure id="catering" title="Catering" className="sk-acc" defaultOpen={false}>
+                    <div className="sk-charts">
                     <Card title={s.catering.conversionPct !== null ? `${fmtPct(s.catering.conversionPct)} av offerterna blev beställningar` : 'Från förfrågan till beställning'} label="Catering">
                       <BarChart
                         format={fmtInt}
@@ -1009,15 +1005,14 @@ export default function StatistikPage() {
                       </Link>
                     </Card>
                   </div>
+                  </Disclosure>
                 </>
               )}
 
               {showWeb && (
                 <>
-                  <h3 className="sk-section-title" id="hemsidan">
-                    Hemsidan
-                  </h3>
-                  <div className="sk-charts">
+                  <Disclosure id="hemsidan" title="Hemsidan" className="sk-acc" defaultOpen={false}>
+                    <div className="sk-charts">
                     <Card title={s.web.conversionPct !== null ? `${fmtPct(s.web.conversionPct)} av besöken blev en bokning eller beställning` : 'Besök på hemsidan'} label="Hemsidan" wide>
                       <dl className="sk-facts sk-facts--row">
                         <dt>Besök</dt>
@@ -1064,6 +1059,7 @@ export default function StatistikPage() {
                       <Tip>En kanal med många besök men få bokningar: se till att länken går direkt till bokningen. Mät nya kampanjer med en egen länk under Marknadsföring.</Tip>
                     </Card>
                   </div>
+                  </Disclosure>
                 </>
               )}
             </section>

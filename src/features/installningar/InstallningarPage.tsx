@@ -1,5 +1,6 @@
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
+import { CtaButton } from '../../shared/CtaButton'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
@@ -460,16 +461,14 @@ export default function InstallningarPage() {
         actions={
           tab === 'profil' && <span className="row-actions">
             {saved && <span className="save-notice">Sparat</span>}
-            <button
-              type="button"
-              className="btn primary square"
+            <CtaButton
+              label={savingLocation ? 'Sparar…' : 'Spara ändringar'}
+              win="Klart!"
               data-tour="settings-save"
               disabled={savingLocation || resolvingLocation || !isOwner}
               title={isOwner ? undefined : 'Bara ägaren kan ändra restaurangens uppgifter'}
               onClick={handleSaveAll}
-            >
-              {savingLocation ? 'Sparar…' : 'Spara ändringar'}
-            </button>
+            />
           </span>
         }
       />

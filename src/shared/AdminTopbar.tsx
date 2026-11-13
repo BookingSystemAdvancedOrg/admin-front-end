@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { useLocationSummary } from './location'
+import { PaletteTrigger } from './CommandPalette'
 
 /** Formaterar dagens datum som "Idag, mån 17 augusti 2026". */
 function todayLabel(): string {
@@ -37,7 +38,9 @@ export function AdminTopbar({
         {text && <p>{text}</p>}
       </div>
       <div className="admin-topbar-actions">
-        {actions ?? <span className="admin-topbar-date">{todayLabel()}</span>}
+        {!actions && <span className="admin-topbar-date">{todayLabel()}</span>}
+        <PaletteTrigger />
+        {actions}
       </div>
     </header>
   )

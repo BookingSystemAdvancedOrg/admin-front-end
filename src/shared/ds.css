@@ -1,0 +1,990 @@
+/* ============================================================================
+   Designsystemet (2026-11-13): ett lager ovanpå admin.css och brand.css som
+   samlar allt i tokens och ger hela admin samma rytm. Laddas sist i
+   AdminLayout, så reglerna här vinner över de äldre.
+
+   - Avstånd: 4/8-skalan från @booqy/brand (--space-1 = 4 px ... --space-16 = 64 px).
+   - Text: sju storlekar och tre vikter (400, 600, 800 bara i rubrikernas
+     Bricolage). Siffror och etiketter i Martian Mono.
+   - Färg: Booqys bruna och en enda accent, espresso (--accent). Rött, grönt
+     och gult bara för status, aldrig som dekor.
+   - Hörn: 14 inne i kort, 22 kort, 28 glasytor, piller för knappar.
+   - Djup: tre nivåer skugga och fyra lager glas, ett tätare för varje lager
+     som ligger ovanpå (arbetsyta, sidomeny, popup, dialog/palett). Tunn,
+     svag kant och mjuk skugga; utan oskärpa blir glaset helt.
+   ========================================================================== */
+
+:root {
+  --space-1: var(--bq-space-1, 4px);
+  --space-2: var(--bq-space-2, 8px);
+  --space-3: var(--bq-space-3, 12px);
+  --space-4: var(--bq-space-4, 16px);
+  --space-5: var(--bq-space-5, 20px);
+  --space-6: var(--bq-space-6, 24px);
+  --space-8: var(--bq-space-8, 32px);
+  --space-10: var(--bq-space-10, 40px);
+  --space-12: var(--bq-space-12, 48px);
+
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-base: 15px;
+  --fs-md: 17px;
+  --fs-lg: 20px;
+  --fs-xl: 24px;
+  --fs-2xl: 32px;
+  --fw-regular: 400;
+  --fw-strong: 600;
+  --fw-display: 800;
+
+  --radius-inner: var(--r-md);
+  --radius-card: var(--r-lg);
+  --radius-panel: var(--r-panel, 28px);
+  --radius-pill: var(--r-pill);
+
+  --elev-1: 0 1px 2px rgba(58, 36, 24, 0.06), 0 8px 20px -14px rgba(58, 36, 24, 0.35);
+  --elev-2: 0 2px 6px -2px rgba(58, 36, 24, 0.1), 0 22px 44px -26px rgba(58, 36, 24, 0.45);
+  --elev-3: 0 4px 12px -4px rgba(26, 18, 14, 0.18), 0 40px 80px -32px rgba(26, 18, 14, 0.55);
+
+  --hairline: rgba(58, 36, 24, 0.1);
+  --hairline-strong: rgba(58, 36, 24, 0.18);
+  --glass-edge: inset 0 1px 0 rgba(255, 255, 255, 0.75), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+
+  /* Glaslagren: arbetsyta, sidopaneler, popup, dialog och palett. */
+  --glass-main: rgba(255, 255, 255, 0.56);
+  --glass-side: rgba(255, 255, 255, 0.66);
+  --glass-pop: rgba(255, 252, 248, 0.8);
+  --glass-modal: rgba(255, 252, 248, 0.88);
+  --blur-main: 18px;
+  --blur-side: 22px;
+  --blur-pop: 24px;
+  --blur-modal: 28px;
+  --dim: rgba(26, 18, 14, 0.38);
+
+  --dur-fast: var(--bq-duration-fast, 160ms);
+  --dur-base: var(--bq-duration-base, 200ms);
+  --dur-slow: var(--bq-duration-slow, 360ms);
+  --dur-cta: 780ms;
+  --ease-out: var(--bq-ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+  --ease-std: var(--bq-ease-std, cubic-bezier(0.2, 0, 0, 1));
+
+  --nav-w: 248px;
+  --shell-gap: var(--space-3);
+}
+
+:root[data-theme='dark'] {
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 20px -14px rgba(0, 0, 0, 0.6);
+  --elev-2: 0 2px 6px -2px rgba(0, 0, 0, 0.4), 0 22px 44px -26px rgba(0, 0, 0, 0.7);
+  --elev-3: 0 4px 12px -4px rgba(0, 0, 0, 0.5), 0 40px 80px -32px rgba(0, 0, 0, 0.8);
+  --hairline: rgba(213, 196, 174, 0.12);
+  --hairline-strong: rgba(213, 196, 174, 0.22);
+  --glass-edge: inset 0 1px 0 rgba(213, 196, 174, 0.14), inset 0 0 0 1px rgba(213, 196, 174, 0.08);
+  --glass-main: rgba(26, 18, 14, 0.66);
+  --glass-side: rgba(30, 21, 16, 0.74);
+  --glass-pop: rgba(36, 25, 19, 0.86);
+  --glass-modal: rgba(36, 25, 19, 0.92);
+  --dim: rgba(0, 0, 0, 0.55);
+}
+
+/* --- Skalet ---------------------------------------------------------------- */
+
+.admin-shell {
+  gap: var(--shell-gap);
+  padding: var(--shell-gap);
+}
+
+.admin-right {
+  gap: var(--shell-gap);
+}
+
+.admin-sidebar,
+.admin-sidebar.liquid--full {
+  width: var(--nav-w);
+  gap: var(--space-1);
+  padding: var(--space-5) 0 var(--space-4);
+  border-radius: var(--radius-panel);
+  background: var(--glass-side);
+  box-shadow: var(--glass-edge), var(--elev-2);
+  -webkit-backdrop-filter: blur(var(--blur-side)) saturate(1.5);
+  backdrop-filter: blur(var(--blur-side)) saturate(1.5);
+}
+
+.admin-logo {
+  padding: 0 var(--space-5) var(--space-5);
+}
+
+.admin-location-picker {
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+.admin-nav {
+  gap: 1px;
+  padding: 0 var(--space-3);
+}
+
+.admin-nav-group + .admin-nav-group {
+  margin-top: var(--space-4);
+}
+
+/* Gruppens rubrik: kort etikett, pilen vänder sig när gruppen fälls ihop. */
+.admin-nav-heading,
+.admin-nav-toggle {
+  min-height: 28px;
+  padding: 0 var(--space-3);
+  font: var(--fw-strong) var(--fs-xs) / 1 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--on-ox-3);
+}
+
+.admin-nav-toggle:hover {
+  color: var(--ink);
+}
+
+.admin-nav-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.admin-nav-chevron,
+.admin-nav-group.closed .admin-nav-chevron {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  border: 0;
+  rotate: 0deg;
+  opacity: 0.7;
+  transition: rotate var(--dur-base) var(--ease-out);
+}
+
+.admin-nav-group.closed .admin-nav-chevron {
+  rotate: -90deg;
+}
+
+.admin-nav-item {
+  gap: var(--space-3);
+  min-height: 38px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-inner);
+  font: var(--fw-regular) var(--fs-base) / 1.3 var(--font);
+  color: var(--ink);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.admin-nav-icon {
+  color: var(--accent-ink);
+  opacity: 0.9;
+}
+
+.admin-nav-item:hover {
+  background: var(--wall-tint);
+  color: var(--ink);
+}
+
+.admin-nav-item:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+/* Vald sida: en mörk rad med en tunn markering till vänster om ikonen. */
+.admin-nav-item.active,
+.admin-nav-item.active:hover {
+  background: var(--slip);
+  color: var(--on-slip);
+  font-weight: var(--fw-strong);
+  box-shadow: var(--elev-1);
+}
+
+.admin-nav-item.active .admin-nav-icon {
+  color: inherit;
+  opacity: 1;
+}
+
+.admin-nav--bottom {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--hairline);
+}
+
+.admin-user {
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5) 0;
+}
+
+.admin-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+}
+
+/* Telefonens rad överst: bara på smala skärmar (se längre ned). */
+.admin-mobilebar,
+.admin-drawer-scrim {
+  display: none;
+}
+
+/* --- Sidhuvudet ------------------------------------------------------------ */
+
+.admin-topbar {
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  background: var(--glass-side);
+  box-shadow: var(--glass-edge), var(--elev-1);
+  -webkit-backdrop-filter: blur(var(--blur-side)) saturate(1.5);
+  backdrop-filter: blur(var(--blur-side)) saturate(1.5);
+}
+
+.admin-topbar-titles h1 {
+  font: var(--fw-display) var(--fs-2xl) / 1.05 var(--display);
+  letter-spacing: -0.03em;
+}
+
+.admin-topbar-titles p {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.admin-topbar-actions {
+  gap: var(--space-2) var(--space-3);
+}
+
+.admin-topbar-date {
+  font: var(--fw-regular) var(--fs-sm) / 1.3 var(--font);
+  color: var(--muted);
+}
+
+/* Den lilla sökrutan med ⌘K i stället för ett stort sökfält. */
+.palette-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 36px;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--wall-tint);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  font: var(--fw-regular) var(--fs-sm) / 1 var(--font);
+  color: var(--muted);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.palette-trigger:hover {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+}
+
+.palette-trigger:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--hairline-strong), 0 0 0 3px var(--focus);
+}
+
+.palette-trigger-text {
+  min-width: 64px;
+  text-align: left;
+}
+
+.palette-trigger-kbd,
+.palette-kbd,
+.palette-foot kbd {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 var(--space-2);
+  border-radius: var(--space-2);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  font: var(--fw-strong) 11px/1 var(--mono);
+  color: var(--muted);
+}
+
+/* --- Arbetsytan och korten ------------------------------------------------- */
+
+.admin-main {
+  gap: var(--space-6);
+  padding: var(--space-8);
+  background: var(--glass-main);
+  box-shadow: var(--glass-edge), var(--elev-2);
+}
+
+@media (min-width: 768px) {
+  .admin-main {
+    background: var(--glass-main);
+    -webkit-backdrop-filter: blur(var(--blur-main)) saturate(1.4);
+    backdrop-filter: blur(var(--blur-main)) saturate(1.4);
+  }
+}
+
+.admin-card {
+  border: 0;
+  border-radius: var(--radius-card);
+  box-shadow: var(--elev-1);
+}
+
+.table-card,
+.bookings-card,
+.activity-card {
+  padding: var(--space-6);
+}
+
+.card-head {
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+}
+
+.card-title {
+  font: var(--fw-strong) var(--fs-lg) / 1.3 var(--font);
+  letter-spacing: -0.01em;
+}
+
+.card-link {
+  font: var(--fw-strong) var(--fs-sm) / 1.3 var(--font);
+}
+
+.stats-row {
+  gap: var(--space-4);
+}
+
+.data-table th {
+  font-size: var(--fs-xs);
+}
+
+.data-table td,
+.data-table th {
+  border-color: var(--hairline);
+}
+
+/* Rubrik för en grupp kort (Statistik och Översikt). */
+.ds-section-title {
+  font: var(--fw-display) var(--fs-xl) / 1.15 var(--display);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+/* --- Knappar och huvudknappen ---------------------------------------------- */
+
+.btn {
+  min-height: 40px;
+  font-weight: var(--fw-strong);
+}
+
+.btn.primary {
+  box-shadow: var(--bq-shadow-pill, 0 10px 24px -14px rgba(26, 18, 14, 0.7));
+}
+
+/* Huvudknappen: texten byts mot en vinnarfras och planet flyger i slinga. */
+.btn.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-4) var(--space-5);
+}
+
+.cta-plane {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  overflow: hidden;
+}
+
+.cta-plane .icon {
+  display: block;
+}
+
+.cta.is-flying:not(:disabled) .cta-plane-fly {
+  animation: cta-fly var(--dur-cta) var(--ease-std) infinite;
+}
+
+@keyframes cta-fly {
+  0% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  42% {
+    transform: translate(18px, -18px);
+    opacity: 0;
+  }
+  43% {
+    transform: translate(-18px, 18px);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+}
+
+.cta-label {
+  position: relative;
+  display: inline-grid;
+  overflow: hidden;
+}
+
+.cta-text,
+.cta-win {
+  grid-area: 1 / 1;
+  transition:
+    transform var(--dur-slow) var(--ease-out),
+    opacity var(--dur-base) var(--ease-out);
+}
+
+.cta-win {
+  justify-self: center;
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+@media (hover: hover) {
+  .cta:hover:not(:disabled) .cta-text {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  .cta:hover:not(:disabled) .cta-win {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta.is-flying .cta-plane-fly {
+    animation: none !important;
+  }
+  .cta-text,
+  .cta-win {
+    transition: none !important;
+  }
+}
+
+/* --- Hopfällda avsnitt (Disclosure) ---------------------------------------- */
+
+.ds-acc {
+  border-radius: var(--radius-card);
+}
+
+.ds-acc-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 48px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-inner);
+  list-style: none;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.ds-acc-head::-webkit-details-marker {
+  display: none;
+}
+
+.ds-acc-head:hover {
+  background: var(--wall-tint);
+}
+
+.ds-acc-head:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.ds-acc-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: var(--fw-display) var(--fs-lg) / 1.2 var(--display);
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+.ds-acc-meta {
+  font: var(--fw-regular) var(--fs-sm) / 1.3 var(--font);
+  color: var(--muted);
+}
+
+.ds-acc-chevron {
+  color: var(--muted);
+  transition: rotate var(--dur-base) var(--ease-out);
+}
+
+.ds-acc[open] > .ds-acc-head .ds-acc-chevron {
+  rotate: 180deg;
+}
+
+.ds-acc-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-3) 0 var(--space-2);
+}
+
+/* I ett kort: tunn linje ovanför, ingen egen yta. */
+.ds-acc--line {
+  border-top: 1px solid var(--hairline);
+  border-radius: 0;
+  padding-top: var(--space-2);
+}
+
+.ds-acc--line > .ds-acc-head {
+  padding-inline: var(--space-2);
+}
+
+.ds-acc--line .ds-acc-title {
+  font: var(--fw-strong) var(--fs-base) / 1.3 var(--font);
+  letter-spacing: 0;
+}
+
+/* --- Kommandopaletten ------------------------------------------------------ */
+
+.palette-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: min(14vh, 120px) var(--space-4) var(--space-4);
+  background: var(--dim);
+  animation: palette-fade var(--dur-base) var(--ease-out);
+}
+
+.palette {
+  display: flex;
+  flex-direction: column;
+  width: min(620px, 100%);
+  max-height: min(560px, 76vh);
+  border-radius: var(--radius-card);
+  background: var(--glass-modal);
+  box-shadow: var(--glass-edge), var(--elev-3);
+  -webkit-backdrop-filter: blur(var(--blur-modal)) saturate(1.6);
+  backdrop-filter: blur(var(--blur-modal)) saturate(1.6);
+  overflow: hidden;
+  animation: palette-in var(--dur-slow) var(--ease-out);
+}
+
+@keyframes palette-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes palette-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+.palette-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--hairline);
+  color: var(--muted);
+}
+
+.palette-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: var(--fw-regular) var(--fs-md) / 1.3 var(--font);
+  color: var(--ink);
+  outline: none;
+}
+
+.palette-input::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+.palette-input:focus-visible {
+  box-shadow: none;
+}
+
+.palette-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--space-2);
+  overscroll-behavior: contain;
+}
+
+.palette-group + .palette-group {
+  margin-top: var(--space-2);
+}
+
+.palette-group-label {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  font: var(--fw-strong) var(--fs-xs) / 1 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.palette-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-inner);
+  font: var(--fw-regular) var(--fs-base) / 1.3 var(--font);
+  color: var(--ink);
+}
+
+.palette-option[aria-selected='true'] {
+  background: var(--slip);
+  color: var(--on-slip);
+}
+
+.palette-option-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--space-2);
+  background: var(--wall-tint);
+  color: var(--accent-ink);
+}
+
+.palette-option[aria-selected='true'] .palette-option-icon {
+  background: transparent;
+  color: inherit;
+}
+
+.palette-option-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.palette-option-hint {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.palette-option[aria-selected='true'] .palette-option-hint {
+  color: inherit;
+  opacity: 0.75;
+}
+
+.palette-option-go {
+  opacity: 0;
+}
+
+.palette-option[aria-selected='true'] .palette-option-go {
+  opacity: 1;
+}
+
+.palette-empty {
+  padding: var(--space-6) var(--space-4);
+  font-size: var(--fs-base);
+  text-align: center;
+  color: var(--muted);
+}
+
+.palette-foot {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--hairline);
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.palette-foot span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* Popup och dialog: samma glas, ett lager tätare än sidan under. */
+.modal {
+  background: var(--glass-modal);
+  box-shadow: var(--glass-edge), var(--elev-3);
+  -webkit-backdrop-filter: blur(var(--blur-modal)) saturate(1.5);
+  backdrop-filter: blur(var(--blur-modal)) saturate(1.5);
+}
+
+.info-tooltip-panel {
+  background: var(--glass-pop);
+  box-shadow: var(--glass-edge), var(--elev-2);
+  -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
+  backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
+}
+
+/* --- Smala skärmar: menyn blir en glaslåda --------------------------------- */
+
+@media (max-width: 900px) {
+  .admin-shell {
+    padding: var(--space-2);
+    gap: var(--space-2);
+  }
+
+  .admin-mobilebar {
+    position: sticky;
+    top: var(--space-2);
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 56px;
+    padding: var(--space-2) var(--space-4) var(--space-2) var(--space-2);
+    border-radius: var(--radius-panel);
+    background: var(--glass-side);
+    box-shadow: var(--glass-edge), var(--elev-1);
+    -webkit-backdrop-filter: blur(var(--blur-side)) saturate(1.5);
+    backdrop-filter: blur(var(--blur-side)) saturate(1.5);
+  }
+
+  .admin-menu-button {
+    display: inline-grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: var(--wall-tint);
+    color: var(--ink);
+  }
+
+  .admin-menu-button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--focus);
+  }
+
+  .admin-mobilebar-brand {
+    display: inline-flex;
+    color: var(--ink);
+  }
+
+  .admin-mobilebar-name {
+    min-width: 0;
+    overflow: hidden;
+    font-size: var(--fs-sm);
+    color: var(--muted);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .admin-drawer-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: var(--dim);
+    animation: palette-fade var(--dur-base) var(--ease-out);
+  }
+
+  .admin-sidebar,
+  .admin-sidebar.liquid--full {
+    position: fixed;
+    top: var(--space-2);
+    bottom: var(--space-2);
+    left: var(--space-2);
+    z-index: 60;
+    width: min(300px, calc(100vw - 48px));
+    height: auto;
+    min-height: 0;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: var(--space-1);
+    padding: var(--space-5) 0 var(--space-4);
+    overflow-y: auto;
+    background: var(--glass-pop);
+    box-shadow: var(--glass-edge), var(--elev-3);
+    -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
+    backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
+    transform: translateX(calc(-100% - var(--space-4)));
+    visibility: hidden;
+    transition:
+      transform var(--dur-slow) var(--ease-out),
+      visibility 0s var(--dur-slow);
+  }
+
+  .drawer-open .admin-sidebar {
+    transform: none;
+    visibility: visible;
+    transition: transform var(--dur-slow) var(--ease-out);
+  }
+
+  .admin-logo {
+    padding: 0 var(--space-5) var(--space-5);
+  }
+
+  .admin-nav {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    width: 100%;
+  }
+
+  .admin-nav-group {
+    display: flex;
+  }
+
+  .admin-nav-heading,
+  .admin-nav-toggle {
+    display: flex;
+  }
+
+  .admin-nav-items {
+    display: grid;
+  }
+
+  .admin-nav-items > div {
+    display: flex;
+  }
+
+  .admin-nav-group.closed .admin-nav-items {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .admin-nav-item {
+    min-height: 44px;
+    padding: 0 var(--space-3);
+    border-bottom: 0;
+  }
+
+  .admin-sidebar-spacer {
+    display: block;
+    min-height: var(--space-4);
+  }
+
+  .admin-nav--bottom {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    margin-top: var(--space-2);
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--hairline);
+  }
+
+  .admin-user {
+    margin: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-5) 0;
+  }
+
+  .admin-logout {
+    align-self: flex-start;
+  }
+
+  /* Guiden pekar på menylänkarna: lådan står öppen i flödet så länge. */
+  .guide-nav-open .admin-sidebar {
+    position: relative;
+    inset: auto;
+    z-index: auto;
+    width: 100%;
+    transform: none;
+    visibility: visible;
+  }
+
+  .admin-topbar {
+    padding: var(--space-4) var(--space-5);
+  }
+
+  .admin-main {
+    padding: var(--space-5);
+    gap: var(--space-5);
+  }
+
+  .stats-row {
+    gap: var(--space-3);
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-topbar {
+    padding: var(--space-4);
+  }
+
+  .admin-topbar-titles h1 {
+    font-size: var(--fs-xl);
+  }
+
+  .admin-main {
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+
+  .table-card,
+  .bookings-card,
+  .activity-card {
+    padding: var(--space-4);
+  }
+
+  .card-title {
+    font-size: var(--fs-md);
+  }
+
+  .palette-trigger-text,
+  .palette-trigger-kbd {
+    display: none;
+  }
+
+  .palette-trigger {
+    width: 40px;
+    height: 40px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .palette-backdrop {
+    padding-top: var(--space-4);
+  }
+
+  .palette-foot {
+    display: none;
+  }
+}
+
+/* --- Utan oskärpa eller med minskad genomskinlighet: hela ytor -------------- */
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .admin-sidebar,
+  .admin-sidebar.liquid--full,
+  .admin-topbar,
+  .admin-main,
+  .admin-mobilebar,
+  .modal,
+  .info-tooltip-panel,
+  .palette {
+    background: var(--surface);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .admin-sidebar,
+  .admin-sidebar.liquid--full,
+  .admin-topbar,
+  .admin-main,
+  .admin-mobilebar,
+  .modal,
+  .info-tooltip-panel,
+  .palette {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .palette,
+  .palette-backdrop,
+  .admin-drawer-scrim {
+    animation: none;
+  }
+  .admin-sidebar,
+  .drawer-open .admin-sidebar {
+    transition: none;
+  }
+}

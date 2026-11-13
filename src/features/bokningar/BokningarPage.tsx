@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { StatTile } from '../../shared/motion/StatTile'
+import { onPageAction, takePageAction } from '../../shared/nav'
+import { CtaButton } from '../../shared/CtaButton'
 import { Num } from '../../shared/motion/Num'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { isApiConfigured } from '../../shared/api'
@@ -51,7 +53,9 @@ export default function BokningarPage() {
   )
   const [showCancelled, setShowCancelled] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
-  const [creating, setCreating] = useState(false)
+  const [creating, setCreating] = useState(() => takePageAction('new-booking'))
+  // Kommandopaletten (⌘K) kan öppna formuläret direkt.
+  useEffect(() => onPageAction('new-booking', () => setCreating(true)), [])
   // Räknas upp vid varje ändring härifrån: ett svar som hämtades före
   // ändringen skriver inte över den.
   const edits = useRef(0)
@@ -140,15 +144,13 @@ export default function BokningarPage() {
       <AdminTopbar
         title="Bokningar"
         actions={
-          <button
-            type="button"
-            className="btn primary square"
+          <CtaButton
+            label="+ Ny bokning"
+            win="Kör!"
             data-tour="booking-new"
             disabled={!locationId}
             onClick={() => setCreating(true)}
-          >
-            + Ny bokning
-          </button>
+          />
         }
       />
       <div className="admin-main">

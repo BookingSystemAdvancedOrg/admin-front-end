@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/useAuth'
+import { CtaButton } from '../../shared/CtaButton'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useLocationId } from '../../shared/location'
 import { DiscountTierModal } from './DiscountTierModal'
@@ -200,9 +201,7 @@ export default function CateringkalkylPage() {
         subtitle="Regler, rabattnivåer och leveranspriser för catering"
         actions={
           isOwner ? (
-            <button type="button" className="btn primary" disabled={!loaded || saving} onClick={() => void save()}>
-              {saving ? 'Sparar…' : 'Spara inställningar'}
-            </button>
+            <CtaButton label={saving ? 'Sparar…' : 'Spara inställningar'} win="Klart!" disabled={!loaded || saving} onClick={() => void save()} />
           ) : (
             <span className="cell-muted">Bara ägaren kan ändra</span>
           )

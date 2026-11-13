@@ -160,6 +160,15 @@ describe('dishChanges', () => {
     }
   }
 
+  it('sends the ticket station and combo parts only when they change, and clears them', () => {
+    const combo: Dish = { ...original, station: 'kok', components: [{ name: 'Burgare' }, { name: 'Läsk', station: 'bar' }] }
+    const same = desired({ station: 'kok', components: [{ name: 'Burgare' }, { name: 'Läsk', station: 'bar' }] })
+    expect(dishChanges(combo, same)).toEqual({})
+    expect(dishChanges(combo, { ...same, station: 'none' })).toEqual({ station: 'none' })
+    expect(dishChanges(combo, { ...same, components: [] })).toEqual({ components: null })
+    expect(toDish(menuItem()).station).toBeNull()
+  })
+
   it('sends a changed or cleared schedule and skips an unchanged one', () => {
     const scheduled: Dish = { ...original, availableFrom: '2026-11-01T10:00:00Z', availableUntil: null }
     const keep = { ...desired(), availableFrom: '2026-11-01T10:00:00Z', availableUntil: null }

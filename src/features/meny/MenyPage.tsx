@@ -243,6 +243,8 @@ export default function MenyPage() {
       alcohol: values.alcohol,
       availableFrom: values.availableFrom,
       availableUntil: values.availableUntil,
+      station: values.station,
+      components: values.components,
     }
     // Fokuspunkten skickas bara när den inte är mitten (ny rätt) eller när
     // den ändrats (dishChanges), så äldre API:er utan fältet inte påverkas.

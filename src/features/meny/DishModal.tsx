@@ -2,7 +2,9 @@ import { errorText, focusErrorField } from '../../shared/errors'
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { CATEGORY_LABEL } from './data'
-import type { Dish, DishCategory } from './data'
+import type { Dish, DishCategory, DishComponent } from './data'
+import { getRouting, NO_TICKET } from '../bestallningar/printApi'
+import type { Station } from '../bestallningar/printApi'
 import { validateDishName, validateDishPrice } from './menuApi'
 import { utcToZonedInput, zonedInputToUtc } from './schedule'
 import { DateTimeInput } from '../../shared/DateInput'
@@ -33,6 +35,10 @@ export interface DishFormValues {
   /** Schemat i UTC ("...Z"), null = ingen gräns. */
   availableFrom: string | null
   availableUntil: string | null
+  /** Bongens station, "none" = ingen bong, null = kategorins. */
+  station: string | null
+  /** Meny/combo: delarna (tomma namn är borttagna). */
+  components: DishComponent[]
 }
 
 const GAP_ERROR =
@@ -100,8 +106,21 @@ export function DishModal({
   const [untilInput, setUntilInput] = useState(initialUntil)
   // Schemat är ett tillval: stängt tills någon vill begränsa när rätten syns.
   const [scheduleOn, setScheduleOn] = useState(Boolean(initialFrom || initialUntil))
+  const [station, setStation] = useState<string>(initial?.station ?? '')
+  const [parts, setParts] = useState<DishComponent[]>(initial?.components ?? [])
+  const [stations, setStations] = useState<Station[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  // Stationerna (Kök, Bar ...) för bongvalet; utan dem visas bara kategorins.
+  useEffect(() => {
+    if (!locationId) return
+    let cancelled = false
+    getRouting(locationId).then((r) => !cancelled && setStations(r.stations)).catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [locationId])
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Stäng med Escape.
@@ -164,6 +183,10 @@ export function DishModal({
         imageFocus,
         availableFrom,
         availableUntil,
+        station: station || null,
+        components: parts
+          .map((p) => ({ name: p.name.trim(), ...(p.station ? { station: p.station } : {}) }))
+          .filter((p) => p.name),
       })
     } catch (err) {
       setError(errorText(err, 'Kunde inte spara.'))
@@ -331,6 +354,54 @@ export function DishModal({
             onClick={() => setAlcohol((a) => !a)}
           />
         </div>
+
+        <fieldset className="dish-ticket">
+          <legend>Bong</legend>
+          <div className="form-field">
+            <label htmlFor="dish-station">Vart går rätten?</label>
+            <select id="dish-station" value={station} onChange={(e) => setStation(e.target.value)}>
+              <option value="">Som kategorin {CATEGORY_LABEL[category].toLowerCase()}</option>
+              {stations.map((s) => (
+                <option key={s.stationId} value={s.stationId}>{s.name}</option>
+              ))}
+              <option value={NO_TICKET}>Ingen bong (till exempel läsk ur kylen)</option>
+            </select>
+          </div>
+          <p className="cell-muted dish-ticket-hint">
+            En meny eller combo delas upp: varje del får sin egen bong, till exempel burgare och pommes till
+            köket och drycken till baren.
+          </p>
+          {parts.map((part, i) => (
+            <div key={i} className="dish-part">
+              <div className="form-field">
+                <label htmlFor={`dish-part-${i}`}>Del {i + 1}</label>
+                <input id={`dish-part-${i}`} value={part.name} maxLength={60} placeholder="Till exempel Pommes"
+                  onChange={(e) => setParts((prev) => prev.map((p, j) => (j === i ? { ...p, name: e.target.value } : p)))} />
+              </div>
+              <div className="form-field">
+                <label htmlFor={`dish-part-station-${i}`}>Bong</label>
+                <select id={`dish-part-station-${i}`} value={part.station ?? ''}
+                  onChange={(e) => setParts((prev) => prev.map((p, j) => (j === i ? { ...p, station: e.target.value || null } : p)))}>
+                  <option value="">Som rätten</option>
+                  {stations.map((s) => (
+                    <option key={s.stationId} value={s.stationId}>{s.name}</option>
+                  ))}
+                  <option value={NO_TICKET}>Ingen bong</option>
+                </select>
+              </div>
+              <button type="button" className="btn outline square" aria-label={`Ta bort del ${i + 1}`}
+                onClick={() => setParts((prev) => prev.filter((_, j) => j !== i))}>
+                Ta bort
+              </button>
+            </div>
+          ))}
+          {parts.length < 8 && (
+            <button type="button" className="btn outline square dish-part-add"
+              onClick={() => setParts((prev) => [...prev, { name: '' }])}>
+              {parts.length ? 'Lägg till del' : 'Dela upp som meny/combo'}
+            </button>
+          )}
+        </fieldset>
 
         <div className="toggle-row">
           <span className="toggle-row-label">

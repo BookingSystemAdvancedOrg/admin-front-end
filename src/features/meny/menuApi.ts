@@ -1,7 +1,7 @@
 import { errorText as commonError } from '../../shared/errors'
 import { apiFetch, ApiError } from '../../shared/api'
 import { withBusy } from '../../shared/motion/busy'
-import type { Dish, DishCategory } from './data'
+import type { Dish, DishCategory, DishComponent } from './data'
 import { clampFocus, isCentre, sameFocus } from './imageFocus'
 import type { ImageFocus } from './imageFocus'
 
@@ -52,6 +52,9 @@ export interface MenuItem {
   /** Schema i UTC; null eller saknas = ingen gräns. Slutet är exklusivt. */
   availableFrom?: string | null
   availableUntil?: string | null
+  /** Bongens station; "none" = ingen bong; null = kategorins. */
+  station?: string | null
+  components?: DishComponent[]
   /** Bildens fokuspunkt i hela procent; saknas = mitten. */
   imageFocus?: ImageFocus | null
   createdBy: string
@@ -84,6 +87,9 @@ export interface MenuItemCreate {
   /** null rensar gränsen. */
   availableFrom?: string | null
   availableUntil?: string | null
+  station?: string | null
+  /** null eller tom rensar. */
+  components?: DishComponent[] | null
   /** null = mitten (rensar ett sparat värde). Skickas bara när det ändrats. */
   imageFocus?: ImageFocus | null
 }
@@ -123,6 +129,8 @@ export function toDish(item: MenuItem): Dish {
     imageFocus: item.imageFocus && !isCentre(item.imageFocus) ? clampFocus(item.imageFocus) : null,
     availableFrom: item.availableFrom ?? null,
     availableUntil: item.availableUntil ?? null,
+    station: item.station ?? null,
+    components: item.components ?? [],
   }
 }
 
@@ -156,6 +164,10 @@ export function dishChanges(original: Dish, next: MenuItemCreate): MenuItemUpdat
   }
   if (next.availableUntil !== undefined && next.availableUntil !== original.availableUntil) {
     updates.availableUntil = next.availableUntil
+  }
+  if (next.station !== undefined && next.station !== (original.station ?? null)) updates.station = next.station
+  if (next.components !== undefined && JSON.stringify(next.components ?? []) !== JSON.stringify(original.components ?? [])) {
+    updates.components = next.components?.length ? next.components : null
   }
   if (next.imageFocus !== undefined && !sameFocus(next.imageFocus, original.imageFocus)) {
     updates.imageFocus = isCentre(next.imageFocus) ? null : clampFocus(next.imageFocus)

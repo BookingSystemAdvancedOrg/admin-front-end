@@ -340,3 +340,40 @@
     transition: none;
   }
 }
+
+/* Rättens bong: station och delar av en meny/combo (DishModal). */
+.dish-ticket {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 4px 0 0;
+  border: 0;
+  min-width: 0;
+}
+
+.dish-ticket legend {
+  padding: 0 0 6px;
+  font: 700 15px/1.3 var(--sans);
+  color: var(--ink);
+}
+
+.dish-ticket-hint {
+  margin: 0;
+  font-size: 13px;
+}
+
+.dish-part {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.dish-part .form-field {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.dish-part-add {
+  justify-self: start;
+}

@@ -24,6 +24,7 @@ import type {
   PrivacyNotice,
 } from './privacyApi'
 import './privacy.css'
+import ModalOverlay from '../../shared/ModalOverlay'
 
 /**
  * Integritet: restaurangen är personuppgiftsansvarig för sina gäster.
@@ -134,7 +135,7 @@ export function EraseGuestDialog({ who, busy, onCancel, onConfirm }: {
   onConfirm: () => void
 }) {
   return (
-    <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && !busy && onCancel()}>
+    <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && !busy && onCancel()}>
       <div className="modal modal--confirm" role="dialog" aria-modal="true" aria-label="Radera gästens uppgifter">
         <h2>Radera uppgifterna om {who}?</h2>
         <p className="modal-text">
@@ -150,7 +151,7 @@ export function EraseGuestDialog({ who, busy, onCancel, onConfirm }: {
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   )
 }
 

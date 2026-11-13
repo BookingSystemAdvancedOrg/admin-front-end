@@ -8,6 +8,7 @@ import {
 } from './layoutApi'
 import type { LayoutActivation, PublishedLayoutSnapshot } from './layoutApi'
 import { SkelRows } from '../../shared/Skeleton'
+import ModalOverlay from '../../shared/ModalOverlay'
 
 /** "2026-10-05T01:00:00Z" -> "5 oktober 2026, 03:00" i lokal tid. */
 function formatMoment(iso: string): string {
@@ -165,7 +166,7 @@ export function LayoutVersionsModal({
   const currentVersion = versions?.find((v) => v.isCurrent)
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true">
+    <ModalOverlay role="dialog" aria-modal="true">
       <div className="modal">
         <h2>Publicerade versioner</h2>
 
@@ -271,6 +272,6 @@ export function LayoutVersionsModal({
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   )
 }

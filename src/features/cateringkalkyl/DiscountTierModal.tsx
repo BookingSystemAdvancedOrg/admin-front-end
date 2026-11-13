@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { rangesOverlap } from './data'
 import type { DiscountTier } from './data'
+import ModalOverlay from '../../shared/ModalOverlay'
 
 export interface DiscountTierFormValues {
   name: string
@@ -91,8 +92,7 @@ export function DiscountTierModal({
   }
 
   return (
-    <div
-      className="modal-overlay"
+    <ModalOverlay
       onPointerDown={(e) => e.target === e.currentTarget && onCancel()}
     >
       <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
@@ -185,6 +185,6 @@ export function DiscountTierModal({
           </span>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   )
 }

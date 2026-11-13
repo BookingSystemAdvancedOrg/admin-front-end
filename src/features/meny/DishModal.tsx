@@ -8,6 +8,7 @@ import { utcToZonedInput, zonedInputToUtc } from './schedule'
 import { DateTimeInput } from '../../shared/DateInput'
 import { Icon } from '../../shared/Icon'
 import { Slot } from '../../shared/slots'
+import ModalOverlay from '../../shared/ModalOverlay'
 
 export interface DishFormValues {
   name: string
@@ -164,8 +165,7 @@ export function DishModal({
   }
 
   return (
-    <div
-      className="modal-overlay"
+    <ModalOverlay
       onPointerDown={(e) => e.target === e.currentTarget && onCancel()}
     >
       <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
@@ -375,6 +375,6 @@ export function DishModal({
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   )
 }

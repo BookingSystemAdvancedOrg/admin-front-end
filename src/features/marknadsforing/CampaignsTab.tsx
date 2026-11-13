@@ -28,6 +28,7 @@ import type { TabId } from './MarknadsforingPage'
 import { useEscape } from './useEscape'
 import { DateTimeInput } from '../../shared/DateInput'
 import { SkelRows } from '../../shared/Skeleton'
+import ModalOverlay from '../../shared/ModalOverlay'
 
 const DAY_CHOICES = [30, 60, 90, 180, 365]
 
@@ -93,7 +94,7 @@ function CampaignForm({
   }
 
   return (
-    <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+    <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
       <form className="modal mk-modal" role="dialog" aria-modal="true" aria-label="Kampanj" onSubmit={(e) => void submit(e)}>
         <h2>{campaign ? 'Redigera kampanj' : 'Ny kampanj'}</h2>
         <div className="form-field">
@@ -157,7 +158,7 @@ function CampaignForm({
           <button type="submit" className="btn primary square" disabled={saving}>{saving ? 'Sparar…' : 'Spara utkast'}</button>
         </div>
       </form>
-    </div>
+    </ModalOverlay>
   )
 }
 
@@ -210,7 +211,7 @@ function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone:
   }
 
   return (
-    <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+    <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal mk-modal" role="dialog" aria-modal="true" aria-label="Skicka kampanjen">
         <h2>Skicka {campaign.name}?</h2>
         <p className="modal-text">
@@ -239,7 +240,7 @@ function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone:
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   )
 }
 

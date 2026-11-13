@@ -11,6 +11,7 @@ import {
   validatePhone,
 } from './usersApi'
 import { PhoneInput } from '../../shared/PhoneInput'
+import ModalOverlay from '../../shared/ModalOverlay'
 
 export interface StaffFormValues {
   name: string
@@ -118,8 +119,7 @@ export function StaffModal({
   }
 
   return (
-    <div
-      className="modal-overlay"
+    <ModalOverlay
       onPointerDown={(e) => e.target === e.currentTarget && onCancel()}
     >
       <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
@@ -214,7 +214,7 @@ export function StaffModal({
           </div>
         </form>
       </div>
-    </div>
+    </ModalOverlay>
   )
 }
 

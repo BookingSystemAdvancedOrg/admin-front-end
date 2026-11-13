@@ -27,6 +27,7 @@ import { tableNames, useTables } from '../../shared/tables'
 import { PhoneInput } from '../../shared/PhoneInput'
 import { ApiError } from '../../shared/api'
 import { minutesLabel } from '../installningar/bookingTime'
+import ModalOverlay from '../../shared/ModalOverlay'
 
 type Panel = null | 'no_show' | 'cancel' | 'refund' | 'edit' | 'extend'
 
@@ -133,7 +134,7 @@ export function ReservationModal({
   const p = r.payment
 
   return (
-    <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+    <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal booking-modal" role="dialog" aria-modal="true" aria-label="Bokning">
         <div className="booking-modal-head">
           <div>
@@ -375,7 +376,7 @@ export function ReservationModal({
           </>
         )}
       </div>
-    </div>
+    </ModalOverlay>
   )
 }
 

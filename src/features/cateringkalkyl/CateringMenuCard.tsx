@@ -25,6 +25,7 @@ import type {
 } from '../catering/cateringApi'
 import { Num } from '../../shared/motion/Num'
 import { parseKronor } from './data'
+import ModalOverlay from '../../shared/ModalOverlay'
 
 const kr = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 2 })
 
@@ -255,7 +256,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
           }} />
       )}
       {modal?.kind === 'delete' && (
-        <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && setModal(null)}>
+        <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && setModal(null)}>
           <div className="modal modal--confirm" role="dialog" aria-modal="true" aria-label={`Radera ${modal.label}`}>
             <h2>Radera {modal.label}?</h2>
             <p className="modal-text">
@@ -269,7 +270,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </section>
   )
@@ -290,12 +291,12 @@ function toggle<T>(list: T[], value: T): T[] {
 function ModalShell({ title, onCancel, children }: { title: string; onCancel: () => void; children: React.ReactNode }) {
   useEscape(onCancel)
   return (
-    <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && onCancel()}>
+    <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="modal cm-modal" role="dialog" aria-modal="true" aria-label={title}>
         <h2>{title}</h2>
         {children}
       </div>
-    </div>
+    </ModalOverlay>
   )
 }
 

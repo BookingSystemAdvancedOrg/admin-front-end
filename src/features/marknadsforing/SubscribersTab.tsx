@@ -16,6 +16,7 @@ import type { ChannelConsent, EraseResult } from '../installningar/privacyApi'
 import '../installningar/privacy.css'
 import { useEscape } from './useEscape'
 import { SkelRows } from '../../shared/Skeleton'
+import ModalOverlay from '../../shared/ModalOverlay'
 
 const CONSENT_SOURCE: Record<string, string> = {
   booking: 'Vid bokning',
@@ -278,7 +279,7 @@ export function SubscribersTab() {
       )}
 
       {history && (
-        <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && setHistory(null)}>
+        <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && setHistory(null)}>
           <div className="modal" role="dialog" aria-modal="true" aria-label="Samtyckeshistorik">
             <h2>Historik för {history.subscriber.email}</h2>
             {history.consent === null && <SkelRows n={3} cols={2} />}
@@ -290,7 +291,7 @@ export function SubscribersTab() {
               <button type="button" className="btn outline square" autoFocus onClick={() => setHistory(null)}>Stäng</button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   )

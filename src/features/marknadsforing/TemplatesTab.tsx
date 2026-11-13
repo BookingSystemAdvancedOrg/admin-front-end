@@ -12,6 +12,7 @@ import {
 import type { Starter, Template, TemplateInput } from './marketingApi'
 import { useEscape } from './useEscape'
 import { SkelRows } from '../../shared/Skeleton'
+import ModalOverlay from '../../shared/ModalOverlay'
 
 type Editing = { mode: 'new'; initial: TemplateInput; title: string } | { mode: 'edit'; template: Template }
 
@@ -184,7 +185,7 @@ export function TemplatesTab() {
       )}
 
       {confirmDelete && (
-        <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && setConfirmDelete(null)}>
+        <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && setConfirmDelete(null)}>
           <div className="modal modal--confirm" role="dialog" aria-modal="true" aria-label="Ta bort mallen">
             <h2>Ta bort {confirmDelete.name}?</h2>
             <p className="modal-text">Kampanjer som redan skickats påverkas inte. Utkast som använder mallen kan inte skickas.</p>
@@ -193,7 +194,7 @@ export function TemplatesTab() {
               <button type="button" className="btn danger-outline square" onClick={() => void remove(confirmDelete)}>Ta bort</button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   )

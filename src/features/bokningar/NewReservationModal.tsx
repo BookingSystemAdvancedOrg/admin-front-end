@@ -16,6 +16,7 @@ import {
   validEmail,
 } from './bookingsApi'
 import type { Reservation } from './bookingsApi'
+import ModalOverlay from '../../shared/ModalOverlay'
 
 /** Ett datum inom bokningsbara dagar (idag … idag + 20). */
 function clampDate(date: string, today: string): string {
@@ -110,7 +111,7 @@ export function NewReservationModal({
   }
 
   return (
-    <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && onCancel()}>
+    <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="modal booking-modal" role="dialog" aria-modal="true" aria-label="Ny bokning">
         <h2>Ny bokning</h2>
         <form onSubmit={submit} className="booking-form">
@@ -210,6 +211,6 @@ export function NewReservationModal({
           </div>
         </form>
       </div>
-    </div>
+    </ModalOverlay>
   )
 }

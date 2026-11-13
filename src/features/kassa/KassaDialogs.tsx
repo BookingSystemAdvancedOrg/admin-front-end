@@ -15,6 +15,7 @@ import {
 } from './kassaApi'
 import type { Delivery, Discount, Done, JournalItem, KassaDocument, ReceiptInfo } from './kassaApi'
 import { SkelRows } from '../../shared/Skeleton'
+import ModalOverlay from '../../shared/ModalOverlay'
 
 export function Dialog({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
   useEffect(() => {
@@ -23,7 +24,7 @@ export function Dialog({ title, onClose, children, wide }: { title: string; onCl
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
   return (
-    <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <ModalOverlay onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal kassa-modal${wide ? ' wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}>
         <div className="kassa-modal-head">
           <h2>{title}</h2>
@@ -33,7 +34,7 @@ export function Dialog({ title, onClose, children, wide }: { title: string; onCl
         </div>
         {children}
       </div>
-    </div>
+    </ModalOverlay>
   )
 }
 

@@ -49,7 +49,7 @@ function Pages({ emptyMenu = false }: { emptyMenu?: boolean }) {
         path="/installningar"
         element={
           <div>
-            {['profil', 'personal', 'betalningar', 'notiser', 'avbokning', 'bestallning', 'dagar', 'bord'].map((t) => (
+            {['profil', 'betalningar', 'notiser', 'avbokning', 'bestallning', 'dagar', 'bord'].map((t) => (
               <button key={t} type="button" data-tour={`settings-tab-${t}`}>{t}</button>
             ))}
             <button type="button" data-tour="settings-save">Spara ändringar</button>
@@ -69,6 +69,7 @@ function Pages({ emptyMenu = false }: { emptyMenu?: boolean }) {
       <Route path="/bokningar" element={<div><div data-tour="booking-day" /><div data-tour="booking-list" /><button type="button" data-tour="booking-new" /></div>} />
       <Route path="/bestallningar" element={<div><div data-tour="orders-board" /><div data-tour="orders-pause" /></div>} />
       <Route path="/catering" element={<div><div data-tour="catering-list" /><a data-tour="catering-settings" /></div>} />
+      <Route path="/personal" element={<button type="button" data-tour="personal-invite">+ Bjud in personal</button>} />
       <Route path="/layout" element={<div><div data-tour="layout-tools" /><button type="button" data-tour="layout-publish" /></div>} />
       <Route path="*" element={null} />
     </Routes>
@@ -144,7 +145,7 @@ describe('Guide', () => {
     expect(screen.getByRole('dialog', { name: 'Spara' })).toBeInTheDocument()
     await next(user)
     expect(screen.getByRole('dialog', { name: 'Personal' })).toBeInTheDocument()
-    expect(screen.getByTestId('where')).toHaveTextContent('/installningar#personal')
+    expect(screen.getByTestId('where')).toHaveTextContent('/personal')
 
     for (const title of ['Betalningar', 'Notiser', 'Avbokning', 'Beställning', 'Avvikande dagar', 'Bord']) {
       await next(user)

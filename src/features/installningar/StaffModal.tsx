@@ -166,8 +166,10 @@ export function StaffModal({
                   </option>
                 ))}
               </select>
-              {lockRole && (
+              {lockRole ? (
                 <p className="cell-muted">Du kan inte ändra din egen roll.</p>
+              ) : (
+                selectableGroups.length <= 1 && <p className="cell-muted">Fler ägare läggs till av Booqy.</p>
               )}
             </div>
             {group === 'staff_user' && (

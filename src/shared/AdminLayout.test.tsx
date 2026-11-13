@@ -39,7 +39,7 @@ describe('AdminLayout sidebar', () => {
     renderLayout()
     const labels = navLabels()
     for (const l of [...NEW, 'Marknadsföring']) expect(labels).not.toContain(l)
-    expect(labels).toEqual(['Översikt', 'Statistik', 'Bokningar', 'Meny', 'Layout'])
+    expect(labels).toEqual(['Översikt', 'Statistik', 'Bokningar', 'Meny', 'Layout', 'Personal'])
   })
 
   it('shows the new items in contract order when on', () => {
@@ -47,7 +47,7 @@ describe('AdminLayout sidebar', () => {
     renderLayout()
     expect(navLabels()).toEqual([
       'Översikt', 'Statistik', 'Bokningar', 'Catering', 'Personalliggare',
-      'Meny', 'Layout', 'Gäster', 'Presentkort', 'Webbplats', 'Marknadsföring',
+      'Meny', 'Layout', 'Personal', 'Gäster', 'Presentkort', 'Webbplats', 'Marknadsföring',
     ])
   })
 
@@ -69,7 +69,7 @@ describe('AdminLayout sidebar', () => {
     const labels = navLabels()
     expect(labels).toContain('Personalliggare')
     expect(labels).toContain('Gäster')
-    for (const l of ['Presentkort', 'Webbplats', 'Marknadsföring']) expect(labels).not.toContain(l)
+    for (const l of ['Personal', 'Presentkort', 'Webbplats', 'Marknadsföring']) expect(labels).not.toContain(l)
   })
 
   it('hides Telefon and Evenemang while phoneAgent and events are off', () => {
@@ -85,7 +85,7 @@ describe('AdminLayout sidebar', () => {
     renderLayout()
     expect(navLabels()).toEqual([
       'Översikt', 'Statistik', 'Bokningar', 'Personalliggare', 'Telefon',
-      'Meny', 'Layout', 'Webbplats', 'Evenemang',
+      'Meny', 'Layout', 'Personal', 'Webbplats', 'Evenemang',
     ])
   })
 

@@ -1,7 +1,7 @@
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import { CtaButton } from '../../shared/CtaButton'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { InfoTooltip } from '../../shared/InfoTooltip'
@@ -41,20 +41,6 @@ import {
   validateTimezone,
 } from './locationApi'
 import type { BusinessHours, LocationCreateRequest } from './locationApi'
-import { StaffModal } from './StaffModal'
-import type { StaffFormValues } from './StaffModal'
-import {
-  ROLE_TO_GROUP,
-  canManageTarget,
-  changeUserGroup,
-  deactivateUser,
-  deleteUser,
-  inviteUser,
-  listUsers,
-  reactivateUser,
-  updateUserProfile,
-} from './usersApi'
-import type { User } from './usersApi'
 import {
   clearLocationSummaryCache,
   resolveLocationId,
@@ -63,15 +49,7 @@ import {
 import { hasFeature, useTenant } from '../../shared/tenant'
 import { Slot } from '../../shared/slots'
 import { PhoneInput } from '../../shared/PhoneInput'
-import { SkelBlock } from '../../shared/Skeleton'
 
-const ROLE_LABEL: Record<User['role'], string> = {
-  staff: 'Personal',
-  owner_user: 'Ägare',
-}
-
-
-type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
 
 /**
  * Figma: admin-installningar-page (43:2).
@@ -82,8 +60,7 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * de fält som faktiskt ändrats. Plats-ID:t är också det layout-editorn
  * behöver för att kunna spara.
  *
- * Personal & behörigheter går mot det riktiga /users/*-API:t (usersApi.ts);
- * listan hämtas från GET /list-users vid sidladdning. Ingen mockdata.
+ * Personalen hanteras på egen sida (/personal, features/personal).
  *
  * Betalningar visar restaurangens riktiga Stripe-status (GET /tenant) och
  * öppnar Stripes onboarding. Avbokningspolicyn (kortgaranti, avgifter för
@@ -93,11 +70,10 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * andra användare - de rutterna är bara för ägare.
  */
 /** Flikarna - en sektion i taget i stället för en lång sida. */
-type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'skrivare' | 'dagar' | 'bord' | 'statistik' | 'bokforing' | 'integritet' | 'utseende'
+type SettingsTab = 'profil' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'skrivare' | 'dagar' | 'bord' | 'statistik' | 'bokforing' | 'integritet' | 'utseende'
 
 const TAB_LABEL: Record<SettingsTab, string> = {
   profil: 'Restaurang',
-  personal: 'Personal',
   betalningar: 'Betalningar',
   notiser: 'Notiser',
   avbokning: 'Avbokning',
@@ -118,7 +94,7 @@ const TAB_LABEL: Record<SettingsTab, string> = {
  * förstå utan att kunna systemet.
  */
 const GROUPS: { id: string; label: string; hint: string; tabs: SettingsTab[] }[] = [
-  { id: 'verksamhet', label: 'Verksamheten', hint: 'Namn, adress, öppettider, bord och personal', tabs: ['profil', 'dagar', 'bord', 'personal'] },
+  { id: 'verksamhet', label: 'Verksamheten', hint: 'Namn, adress, öppettider och bord', tabs: ['profil', 'dagar', 'bord'] },
   { id: 'gaster', label: 'Gäster', hint: 'Sms och mejl till gästerna, avbokning och beställning', tabs: ['notiser', 'avbokning', 'bestallning', 'skrivare'] },
   { id: 'ekonomi', label: 'Ekonomi', hint: 'Ta betalt online och underlag till bokföringen', tabs: ['betalningar', 'bokforing'] },
   { id: 'data', label: 'Data och integritet', hint: 'Vad personalen ser i Statistik och gästernas uppgifter', tabs: ['statistik', 'integritet'] },
@@ -130,7 +106,6 @@ const TAB_HINT: Record<SettingsTab, string> = {
   profil: 'Namn, adress, telefon, e-post och öppettider',
   dagar: 'Helgdagar, stängt eller andra tider en viss dag',
   bord: 'Hur många gäster varje bord tar och vilka bord som kan ställas ihop',
-  personal: 'Bjud in medarbetare och välj vad de får göra',
   notiser: 'Sms och mejl till gästerna, och mejl till er',
   avbokning: 'Kortgaranti och avgift om gästen inte kommer',
   bestallning: 'Avhämtning, beställning vid bordet och QR-koder',
@@ -158,7 +133,8 @@ function clampGraceHours(hours: number): number {
 }
 
 export default function InstallningarPage() {
-  const { sub, groups } = useAuth()
+  const { sub } = useAuth()
+  const navigate = useNavigate()
   const { tenant, refresh: refreshTenant } = useTenant()
   const [searchParams] = useSearchParams()
   const stripeReturn = searchParams.get('stripe')
@@ -167,8 +143,10 @@ export default function InstallningarPage() {
   const { hash } = useLocation()
   useEffect(() => {
     const fromHash = hash.replace(/^#/, '') as SettingsTab
-    if (fromHash in TAB_LABEL) setTab(fromHash)
-  }, [hash])
+    // Personalen har flyttat till en egen sida; gamla länkar leds dit.
+    if ((fromHash as string) === 'personal') navigate('/personal', { replace: true })
+    else if (fromHash in TAB_LABEL) setTab(fromHash)
+  }, [hash, navigate])
   // Menyn: grupplistan eller den öppna gruppens delar. Grupplistan hör till
   // fliken den öppnades vid, så byts fliken (ett klick, en länk eller guiden
   // via #flik) visas gruppen igen. Sidan börjar på grupplistan, utom när en
@@ -204,23 +182,11 @@ export default function InstallningarPage() {
     null,
   )
 
-  const [staff, setStaff] = useState<User[]>([])
-  const [staffLoading, setStaffLoading] = useState(true)
-  const [staffError, setStaffError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
-  const [modal, setModal] = useState<ModalState>(null)
-  const [rowError, setRowError] = useState<string | null>(null)
-  const [busySub, setBusySub] = useState<string | null>(null)
 
-  const caller = { sub, groups }
   // Rollen kommer från servern (GET /tenant), inte från klientens tolkning
   // av tokenens grupper.
   const isOwner = tenant?.role === 'owner_user'
-  const canManageStaff = isOwner
-  const locationOptions = (tenant?.locations ?? []).map((l) => ({
-    locationId: l.locationId,
-    name: l.name || 'Namnlös plats',
-  }))
 
   // En plats är redan skapad - hämta den riktiga datan istället för att
   // visa kvarvarande mockvärden.
@@ -263,29 +229,6 @@ export default function InstallningarPage() {
       cancelled = true
     }
   }, [locationId])
-
-  // Hämta restaurangens användare (bara ägare får lista dem).
-  useEffect(() => {
-    if (!isOwner) return
-    let cancelled = false
-    listUsers()
-      .then((users) => {
-        if (!cancelled) setStaff(users)
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setStaffError(
-            errorText(err, 'Kunde inte hämta användarna.'),
-          )
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setStaffLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [isOwner])
 
   function updateProfile(field: keyof RestaurantProfile, value: string) {
     setSaved(false)
@@ -373,79 +316,9 @@ export default function InstallningarPage() {
     }
   }
 
-  function replaceStaff(updated: User) {
-    setStaff((prev) =>
-      prev.map((s) => (s.cognitoSub === updated.cognitoSub ? updated : s)),
-    )
-  }
-
-  async function handleSave(values: StaffFormValues) {
-    if (modal?.mode === 'invite') {
-      const created = await inviteUser(values)
-      setStaff((prev) => [...prev, created])
-      setModal(null)
-      return
-    }
-    if (modal?.mode === 'edit') {
-      const original = modal.user
-      const roleChanged = values.group !== ROLE_TO_GROUP[original.role]
-
-      const profileUpdates: Record<string, string> = {}
-      if (values.name !== original.name) profileUpdates.name = values.name
-      if (values.email !== original.email) profileUpdates.email = values.email
-      if (values.phone !== original.phone) profileUpdates.phone = values.phone
-
-      if (!roleChanged && values.locationId !== original.locationId) {
-        profileUpdates.locationId = values.locationId
-      }
-
-      let updated = original
-      if (Object.keys(profileUpdates).length > 0) {
-        updated = await updateUserProfile(original.cognitoSub, profileUpdates)
-      }
-      if (roleChanged) {
-        updated = await changeUserGroup(original.cognitoSub, {
-          group: values.group,
-          locationId: values.locationId,
-        })
-      }
-      replaceStaff(updated)
-      setModal(null)
-    }
-  }
-
-  async function handleToggleStatus(user: User) {
-    setRowError(null)
-    setBusySub(user.cognitoSub)
-    try {
-      const updated =
-        user.status === 'active'
-          ? await deactivateUser(user.cognitoSub)
-          : await reactivateUser(user.cognitoSub)
-      replaceStaff(updated)
-    } catch (err) {
-      setRowError(errorText(err, 'Kunde inte ändra status.'))
-    } finally {
-      setBusySub(null)
-    }
-  }
-
-  async function handleDelete(user: User) {
-    if (!window.confirm(`Ta bort ${user.name} permanent?`)) return
-    setRowError(null)
-    setBusySub(user.cognitoSub)
-    try {
-      await deleteUser(user.cognitoSub)
-      setStaff((prev) => prev.filter((s) => s.cognitoSub !== user.cognitoSub))
-    } catch (err) {
-      setRowError(errorText(err, 'Kunde inte ta bort användaren.'))
-    } finally {
-      setBusySub(null)
-    }
-  }
 
   const showTab = (t: SettingsTab) =>
-    t === 'personal' || t === 'statistik' || t === 'bokforing' || t === 'integritet'
+    t === 'statistik' || t === 'bokforing' || t === 'integritet'
       ? isOwner
       : t === 'bestallning' || t === 'skrivare'
         ? Boolean(tenant?.entitlements.features.ordering)
@@ -617,125 +490,6 @@ export default function InstallningarPage() {
             <BookingTimeCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
           </div>
 
-          {isOwner && (
-          <section className="admin-card table-card" hidden={tab !== 'personal'}>
-            <div className="card-head">
-              <div>
-                <h2 className="card-title">Personal &amp; behörigheter</h2>
-                <p className="cell-muted">
-                  {staffLoading
-                    ? <SkelBlock w={200} h={14} />
-                    : `${staff.length} användare, varav ${
-                        staff.filter((s) => s.status === 'active').length
-                      } aktiva`}
-                </p>
-              </div>
-              {canManageStaff && (
-                <button
-                  type="button"
-                  className="btn primary square"
-                  onClick={() => setModal({ mode: 'invite' })}
-                >
-                  + Bjud in personal
-                </button>
-              )}
-            </div>
-            {(staffError ?? rowError) && (
-              <p className="form-error" role="alert">
-                {staffError ?? rowError}
-              </p>
-            )}
-            <div className="table-scroll">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Namn</th>
-                    <th>Roll</th>
-                    <th>E-post</th>
-                    <th>Status</th>
-                    <th>Åtgärder</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {!staffLoading && staff.length === 0 && !staffError && (
-                    <tr>
-                      <td colSpan={5} className="cell-muted">
-                        Inga användare att visa än.
-                      </td>
-                    </tr>
-                  )}
-                  {staff.map((s) => {
-                    const canEdit = canManageTarget(caller, s, 'profile')
-                    const statusAction = s.status === 'active' ? 'deactivate' : 'reactivate'
-                    const canToggleStatus = canManageTarget(caller, s, statusAction)
-                    const canDelete = canManageTarget(caller, s, 'delete')
-                    const busy = busySub === s.cognitoSub
-                    return (
-                      <tr key={s.cognitoSub}>
-                        <td className="cell-strong">{s.name}</td>
-                        <td>
-                          {ROLE_LABEL[s.role] ?? s.role}
-                          {s.role === 'staff' && (
-                            <span className="cell-muted">
-                              {' · '}
-                              {locationOptions.find((l) => l.locationId === s.locationId)
-                                ?.name ?? 'Ingen plats'}
-                            </span>
-                          )}
-                        </td>
-                        <td className="cell-muted">{s.email}</td>
-                        <td>
-                          <span
-                            className={`status-badge ${
-                              s.status === 'active' ? 'reserved' : 'cancelled'
-                            }`}
-                          >
-                            {s.status === 'active' ? 'Aktiv' : 'Inaktiv'}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="row-actions">
-                            {canEdit && (
-                              <button
-                                type="button"
-                                className="link-action"
-                                disabled={busy}
-                                onClick={() => setModal({ mode: 'edit', user: s })}
-                              >
-                                Redigera
-                              </button>
-                            )}
-                            {canToggleStatus && (
-                              <button
-                                type="button"
-                                className="link-action"
-                                disabled={busy}
-                                onClick={() => handleToggleStatus(s)}
-                              >
-                                {s.status === 'active' ? 'Inaktivera' : 'Aktivera'}
-                              </button>
-                            )}
-                            {canDelete && (
-                              <button
-                                type="button"
-                                className="link-action danger"
-                                disabled={busy}
-                                onClick={() => handleDelete(s)}
-                              >
-                                Ta bort
-                              </button>
-                            )}
-                          </span>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-          )}
-
           <div className="settings-row" hidden={tab !== 'betalningar'}>
             {tenant && (
               <PaymentsCard
@@ -830,18 +584,6 @@ export default function InstallningarPage() {
         </div>
       </div>
 
-      {modal && (
-        <StaffModal
-          title={modal.mode === 'invite' ? 'Bjud in personal' : 'Redigera användare'}
-          initial={modal.mode === 'edit' ? modal.user : null}
-          callerGroups={groups}
-          lockRole={modal.mode === 'edit' && modal.user.cognitoSub === sub}
-          locations={locationOptions}
-          defaultLocationId={locationId ?? undefined}
-          onSave={handleSave}
-          onCancel={() => setModal(null)}
-        />
-      )}
     </>
   )
 }

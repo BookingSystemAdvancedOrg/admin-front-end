@@ -106,7 +106,7 @@ export function setupSteps(input: SetupInput): SetupStep[] {
       id: 'staff',
       label: 'Bjud in personal',
       done: input.staffCount === null ? null : input.staffCount > 0,
-      to: '/installningar#personal',
+      to: '/personal',
     },
   ]
 }

@@ -20,6 +20,7 @@ export const pages = {
   tabetalt: () => import('./features/tabetalt/TaBetaltPage'),
   kassa: () => import('./features/kassa/KassaPage'),
   kassaGuide: () => import('./features/kassa/KassaGuide'),
+  personal: () => import('./features/personal/PersonalPage'),
   personalliggare: () => import('./features/personalliggare/PersonalliggarePage'),
   gaster: () => import('./features/guest-crm/GasterPage'),
   presentkort: () => import('./features/gift-cards/PresentkortPage'),

@@ -56,6 +56,8 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/meny', label: 'Meny', icon: 'book', tour: 'nav-meny' },
       { to: '/layout', label: 'Layout', icon: 'tool-floor', tour: 'nav-layout' },
+      // Medarbetarnas inloggningar; bara ägaren bjuder in och hanterar.
+      { to: '/personal', label: 'Personal', icon: 'staff', tour: 'nav-personal', ownerOnly: true },
     ],
   },
   {

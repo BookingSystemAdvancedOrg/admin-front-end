@@ -91,8 +91,8 @@ export const GUIDE_STEPS: GuideStep[] = [
   },
   {
     id: 'set-personal',
-    route: '/installningar#personal',
-    target: 'settings-tab-personal',
+    route: '/personal',
+    target: 'personal-invite',
     ownerOnly: true,
     title: 'Personal',
     text:

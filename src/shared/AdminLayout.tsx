@@ -360,6 +360,9 @@ function ShellPalette({ onLogout }: { onLogout: () => void }) {
       ...(canBook
         ? [{ id: 'a-booking', group: 'Åtgärder' as const, label: 'Ny bokning', icon: 'plus' as const, keywords: 'boka bord gäst', run: () => { requestPageAction('new-booking'); navigate('/bokningar') } }]
         : []),
+      ...(nav.some((n) => n.to === '/personal')
+        ? [{ id: 'a-staff', group: 'Åtgärder' as const, label: 'Bjud in personal', icon: 'staff' as const, keywords: 'medarbetare anställd användare inloggning', run: () => { requestPageAction('invite-staff'); navigate('/personal') } }]
+        : []),
       { id: 'a-dish', group: 'Åtgärder', label: 'Lägg till rätt', icon: 'dish', keywords: 'meny mat', run: () => { requestPageAction('new-dish'); navigate('/meny') } },
       { id: 'a-look', group: 'Åtgärder', label: 'Utseende och ljud', hint: 'Inställningar', icon: 'gear', keywords: 'mörkt ljust tema klickljud', run: () => navigate('/installningar#utseende') },
       { id: 'a-guide', group: 'Åtgärder', label: 'Starta guiden', icon: 'help', keywords: 'hjälp introduktion', run: start },

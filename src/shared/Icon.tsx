@@ -43,7 +43,6 @@ export type IconName =
   | 'home'
   | 'chart'
   | 'bag'
-  | 'terminal'
   | 'register'
   | 'tray'
   | 'badge'
@@ -101,7 +100,6 @@ const DRAWN: Record<IconName, string> = {
   home: '<path d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-6h-6v6H5.5A1.5 1.5 0 0 1 4 19z"/>',
   chart: '<path d="M4 20h16M6.5 20v-6M11 20V9M15.5 20v-8M20 20V5"/>',
   bag: '<path d="M5 8h14l-1 12.5H6zM9 8V6.5a3 3 0 0 1 6 0V8"/>',
-  terminal: '<rect x="6" y="3.5" width="12" height="17" rx="2"/><path d="M9 7.5h6M9 11.5h.01M12 11.5h.01M15 11.5h.01M9 15h.01M12 15h.01M15 15h.01"/>',
   register: '<path d="M4 20h16M5.5 20l1-8h11l1 8M8 12V5h8v7M10 8h4"/>',
   tray: '<path d="M3.5 16.5h17M5 16.5a7 7 0 0 1 14 0M12 9.5V7.5M5 20h14"/>',
   badge: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M9.5 3v4h5V3M9 14.5a3 3 0 0 1 6 0M12 11.5h.01"/>',

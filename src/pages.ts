@@ -17,7 +17,6 @@ export const pages = {
   marknadsforing: () => import('./features/marknadsforing/MarknadsforingPage'),
   statistik: () => import('./features/statistik/StatistikPage'),
   avtal: () => import('./features/dpa/AvtalPage'),
-  tabetalt: () => import('./features/tabetalt/TaBetaltPage'),
   kassa: () => import('./features/kassa/KassaPage'),
   kassaGuide: () => import('./features/kassa/KassaGuide'),
   personal: () => import('./features/personal/PersonalPage'),

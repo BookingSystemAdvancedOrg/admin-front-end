@@ -242,8 +242,8 @@ export default function StatistikPage() {
         key="revenue"
         label="Omsättning"
         value={fmtKr(s.revenue)}
-        info="Betalda beställningar, levererad catering och kortköp i kassan i perioden, inklusive moms. Bara ägaren ser beloppen."
-        sub={`Beställningar ${fmtKr(s.orderRevenue)}, catering ${fmtKr(s.cateringRevenue)}${s.inPersonRevenue ? `, kort i kassan ${fmtKr(s.inPersonRevenue)}` : ''}`}
+        info="Betalda beställningar och levererad catering i perioden, inklusive moms. Bara ägaren ser beloppen."
+        sub={`Beställningar ${fmtKr(s.orderRevenue)}, catering ${fmtKr(s.cateringRevenue)}`}
         spark={spark((d) => d.revenue, (v) => fmtKr(v))}
         {...versus(s.revenue, p?.revenue, 'revenue')}
       />
@@ -813,7 +813,6 @@ export default function StatistikPage() {
                             { key: 'pickup', label: 'Avhämtning', value: s.pickupRevenue ?? 0, tone: 'ink' },
                             { key: 'table', label: 'Vid bordet', value: s.tableRevenue ?? 0, tone: 'red' },
                             { key: 'catering', label: 'Catering', value: s.cateringRevenue ?? 0, tone: 'steel' },
-                            ...(s.inPersonRevenue ? [{ key: 'card', label: 'Kort i kassan', value: s.inPersonRevenue, tone: 'muted' as const }] : []),
                           ]}
                         />
                       )}
@@ -828,15 +827,6 @@ export default function StatistikPage() {
                         <dd>{fmtPct(s.latePct)}</dd>
                         {money && (
                           <>
-                            {(s.cardPayments ?? 0) > 0 && (
-                              <>
-                                <dt>Kortköp i kassan</dt>
-                                <dd>
-                                  {fmtInt(s.cardPayments ?? 0)}, {fmtKr(s.cardRevenue)}
-                                  {(s.cardRefunds ?? 0) > 0 ? `, ${fmtKr(s.cardRefunded)} återbetalt` : ''}
-                                </dd>
-                              </>
-                            )}
                             <dt>Avgifter, uteblivna och sena</dt>
                             <dd>
                               {fmtKr(s.feesCharged)}

@@ -514,64 +514,6 @@
       ]
     },
     {
-      "id": "tabetalt",
-      "route": "/ta-betalt",
-      "title": "Ta betalt med kortläsaren",
-      "audience": "all",
-      "feature": "terminal",
-      "keywords": [
-        "ta betalt",
-        "kortläsare",
-        "kortbetalning",
-        "kort",
-        "betalterminal",
-        "terminal",
-        "blippa",
-        "kvitto"
-      ],
-      "answer": "Under Ta betalt tar du kortbetalningar på restaurangens kortläsare.",
-      "steps": [
-        "Öppna Ta betalt.",
-        "Välj Belopp (skriv belopp, moms och gärna en notering) eller Obetald beställning.",
-        "Välj kortläsare och tryck Ta betalt.",
-        "Gästen blippar kortet. Du ser direkt om det blev Betalt eller Nekat.",
-        "Vill gästen ha kvitto: tryck Skicka kvitto till e-post."
-      ],
-      "actions": [
-        {
-          "id": "tabetalt-open",
-          "label": "Öppna Ta betalt",
-          "to": "/ta-betalt"
-        }
-      ]
-    },
-    {
-      "id": "tabetalt-aterbetala",
-      "route": "/ta-betalt",
-      "title": "Återbetala ett kortköp",
-      "audience": "owner",
-      "feature": "terminal",
-      "keywords": [
-        "återbetala kortköp",
-        "återbetala kort",
-        "återbetalning kort",
-        "kortköp idag"
-      ],
-      "answer": "Ägaren kan återbetala dagens kortköp som inte hör till en beställning.",
-      "steps": [
-        "Öppna Ta betalt.",
-        "Under Kortköp idag trycker du Återbetala på köpet.",
-        "Bekräfta med Bekräfta: återbetala."
-      ],
-      "actions": [
-        {
-          "id": "tabetalt-open",
-          "label": "Öppna Ta betalt",
-          "to": "/ta-betalt"
-        }
-      ]
-    },
-    {
       "id": "kassa-salja",
       "route": "/kassa",
       "title": "Sälja i kassan",
@@ -586,15 +528,19 @@
         "öppna dagen",
         "växelkassa",
         "till köket",
-        "rabatt"
+        "rabatt",
+        "kort",
+        "kortterminal",
+        "ta betalt",
+        "dela notan"
       ],
-      "answer": "I Kassa öppnar du dagen, lägger rätter på en nota och tar betalt.",
+      "answer": "I Kassa öppnar du dagen, lägger rätter på en nota och tar betalt med kort på restaurangens egen kortterminal.",
       "steps": [
         "Öppna Kassa och tryck Öppna dagen. Fyll i växelkassan och tryck Öppna dagen.",
         "Tryck Bord (välj bord och Öppna nota) eller Avhämtning.",
         "Tryck på rätterna och ändra antal med plus och minus.",
         "Tryck Till köket när beställningen ska lagas. Rabatt lägger du till på notan.",
-        "Tryck Ta betalt och välj hur kvittot ska lämnas."
+        "Tryck Ta betalt och dra kortet på restaurangens kortterminal. När terminalen visar godkänt trycker du Kortet godkänt, registrera. Välj sedan hur kvittot ska lämnas."
       ],
       "actions": [
         {
@@ -1079,10 +1025,9 @@
         "funktioner",
         "egen domän",
         "domän",
-        "kortläsare beställa",
         "faktura booqy"
       ],
-      "answer": "Fler ägare, byte av plan, nya funktioner, egen domän och kortläsare ordnar Booqy åt er. Kontakta Booqy så hjälper vi till.",
+      "answer": "Fler ägare, byte av plan, nya funktioner och egen domän ordnar Booqy åt er. Kontakta Booqy så hjälper vi till.",
       "steps": []
     },
     {

@@ -17,7 +17,6 @@ const HjalpPage = lazy(pages.hjalp)
 const MarknadsforingPage = lazy(pages.marknadsforing)
 const StatistikPage = lazy(pages.statistik)
 const AvtalPage = lazy(pages.avtal)
-const TaBetaltPage = lazy(pages.tabetalt)
 const KassaPage = lazy(pages.kassa)
 const KassaManualPage = lazy(() => pages.kassaGuide().then((m) => ({ default: m.KassaManualPage })))
 const PersonalPage = lazy(pages.personal)
@@ -53,7 +52,6 @@ function App() {
         <Route path="statistik" element={<StatistikPage />} />
         <Route path="bokningar" element={<BokningarPage />} />
         <Route path="bestallningar" element={<BestallningarPage />} />
-        <Route path="ta-betalt" element={<TaBetaltPage />} />
         <Route path="kassa" element={<KassaPage />} />
         <Route path="kassa/bruksanvisning" element={<KassaManualPage />} />
         <Route path="kassa/utskrift/:kind" element={<KassaPrintPage />} />

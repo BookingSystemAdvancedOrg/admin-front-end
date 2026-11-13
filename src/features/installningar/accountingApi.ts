@@ -11,12 +11,13 @@ export const ACCOUNT_ROLES = [
   'stripe', 'bank', 'receivables', 'advances',
   'cardFees', 'tips', 'refundsOwed', 'unclassified', 'rounding',
   'giftCardLiability', 'giftCardBreakage',
+  'cardTerminal',
 ] as const
 
 export type AccountRole = (typeof ACCOUNT_ROLES)[number]
-type GiftCardRole = 'giftCardLiability' | 'giftCardBreakage'
-/** Presentkortskontona saknas i svar från en äldre backend. */
-export type Accounts = Record<Exclude<AccountRole, GiftCardRole>, string> & Partial<Record<GiftCardRole, string>>
+type OptionalRole = 'giftCardLiability' | 'giftCardBreakage' | 'cardTerminal'
+/** Presentkorts- och kassakortskontona saknas i svar från en äldre backend. */
+export type Accounts = Record<Exclude<AccountRole, OptionalRole>, string> & Partial<Record<OptionalRole, string>>
 
 export interface AccountingSettings {
   accounts: Accounts
@@ -74,7 +75,7 @@ const DEFAULTS: Accounts = {
   sales25: '3001', sales12: '3002', sales6: '3003', vat25: '2611', vat12: '2621', vat6: '2631',
   stripe: '1580', bank: '1930', receivables: '1510', advances: '2420', cardFees: '6570',
   tips: '2890', refundsOwed: '2890', unclassified: '2999', rounding: '3740',
-  giftCardLiability: '2421', giftCardBreakage: '3990',
+  giftCardLiability: '2421', giftCardBreakage: '3990', cardTerminal: '1580',
 }
 
 const NAMES: Accounts = {
@@ -95,6 +96,7 @@ const NAMES: Accounts = {
   rounding: 'Öres- och kronutjämning',
   giftCardLiability: 'Ej inlösta presentkort',
   giftCardBreakage: 'Övriga ersättningar och intäkter',
+  cardTerminal: 'Fordringar för kontokort och kuponger',
 }
 
 let mock: AccountingSettings = {

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { DateInput } from '../../shared/DateInput'
 import { Icon } from '../../shared/Icon'
-import { parseKronor } from '../tabetalt/cardApi'
 import {
   PROBLEMS,
   copyReceipt,
@@ -11,6 +10,7 @@ import {
   getReceipt,
   kr,
   listJournal,
+  parseKronor,
   returnReceipt,
 } from './kassaApi'
 import type { Delivery, Discount, Done, JournalItem, KassaDocument, ReceiptInfo } from './kassaApi'

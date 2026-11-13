@@ -94,7 +94,6 @@ export const ROUTE_PATTERNS = [
   '/statistik',
   '/bokningar',
   '/bestallningar',
-  '/ta-betalt',
   '/kassa',
   '/kassa/bruksanvisning',
   '/kassa/utskrift/:kind',

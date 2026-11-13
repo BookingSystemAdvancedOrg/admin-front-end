@@ -254,7 +254,7 @@ function RegisterInfoSheet({ company, register }: { company?: Company | null; re
         <Field label="Id-nummer från Skatteverket" />
       </div>
       <h2>Övriga delar</h2>
-      <p>Surfplattor eller datorer där kassan används, kortläsare och skrivare:</p>
+      <p>Surfplattor eller datorer där kassan används, kortterminal och skrivare:</p>
       <table className="kassa-print-table short">
         <thead><tr><th>Del</th><th>Modell</th><th>Placering</th></tr></thead>
         <tbody>{Array.from({ length: 4 }, (_, i) => <tr key={i}><td /><td /><td /></tr>)}</tbody>

@@ -242,17 +242,6 @@ export const GUIDE_STEPS: GuideStep[] = [
     text: 'Hinner köket inte med? Pausa nya beställningar en stund - de som redan kommit in påverkas inte.',
   },
 
-  // --- Ta betalt -------------------------------------------------------------
-  {
-    id: 'ta-betalt',
-    route: '/ta-betalt',
-    target: 'nav-ta-betalt',
-    feature: 'terminal',
-    section: 'Ta betalt',
-    title: 'Ta betalt med kort',
-    text: 'Skriv beloppet, välj kortläsare och tryck Ta betalt. Gästen blippar kortet på läsaren och du ser direkt om det är Betalt eller Nekat.',
-  },
-
   // --- Catering --------------------------------------------------------------
   {
     id: 'catering',

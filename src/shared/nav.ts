@@ -41,8 +41,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/bokningar', label: 'Bokningar', icon: 'calendar', tour: 'nav-bokningar' },
       // Bara för restauranger vars plan har matbeställning.
       { to: '/bestallningar', label: 'Beställningar', icon: 'bag', tour: 'nav-bestallningar', feature: 'ordering' },
-      // Kortbetalning på restaurangens kortläsare; bara med kortterminaler i planen.
-      { to: '/ta-betalt', label: 'Ta betalt', icon: 'terminal', tour: 'nav-ta-betalt', feature: 'terminal' },
       // Kassaregistret; av tills Booqy slår på det per restaurang.
       { to: '/kassa', label: 'Kassa', icon: 'register', tour: 'nav-kassa', feature: 'kassa' },
       // Förfrågningar; inställningar och rabatter nås därifrån (/cateringkalkyl).

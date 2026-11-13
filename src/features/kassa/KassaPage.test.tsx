@@ -17,10 +17,10 @@ async function openDay(user: ReturnType<typeof userEvent.setup>) {
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Öppna dagen' })).not.toBeInTheDocument())
 }
 
-// Utan API kör kassan och kortläsaren i minnet (kassaApi och cardApi), så
-// hela försäljningen går att köra här.
+// Utan API kör kassan i minnet (kassaApi), så hela försäljningen går att köra här.
+// Kortet dras på restaurangens egen terminal; kassan registrerar beloppet.
 describe('KassaPage', () => {
-  it('sells on the simulated reader and shows the receipt with control code', async () => {
+  it('records a card paid on the own terminal and shows the receipt with control code', async () => {
     const user = userEvent.setup()
     render(<MemoryRouter><KassaPage /></MemoryRouter>)
     expect(await screen.findByText('Testläge - inte ett certifierat kassaregister än')).toBeInTheDocument()
@@ -32,14 +32,29 @@ describe('KassaPage', () => {
     const pay = await screen.findByRole('button', { name: 'Ta betalt 333,00 kr' })
     await waitFor(() => expect(pay).toBeEnabled())
     await user.click(pay)
-    await user.click(await screen.findByRole('button', { name: /Skicka 333,00 kr till läsaren/ }))
-    expect(await screen.findByText('Väntar på kort')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Simulera godkänt kort' }))
+    expect(await screen.findByText(/på restaurangens kortterminal/)).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: /Kortet godkänt, registrera 333,00 kr/ }))
     await user.click(await screen.findByRole('button', { name: /Visa på skärmen/ }, { timeout: 5000 }))
     const receipt = await screen.findByRole('dialog', { name: 'Kvitto' })
     expect(within(receipt).getByText('Kontrollkod:')).toBeInTheDocument()
     expect(within(receipt).getAllByText('333,00')).toHaveLength(2)
   }, 15000)
+
+  it('splits the bill over two cards and can take a paid part off before the receipt', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<MemoryRouter><KassaPage /></MemoryRouter>)
+    await user.click(await screen.findByRole('button', { name: /Toast Skagen/ }))
+    const pay = await screen.findByRole('button', { name: /^Ta betalt/ })
+    await waitFor(() => expect(pay).toBeEnabled())
+    await user.click(pay)
+    await user.click(await screen.findByRole('button', { name: /^1\/2/ }))
+    await user.click(screen.getByRole('button', { name: /Kortet godkänt, registrera/ }))
+    const undo = await screen.findByRole('button', { name: 'Återbetala' })
+    expect(screen.getByText(/Betalt .* kr, kort/)).toBeInTheDocument()
+    await user.click(undo)
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Återbetala' })).not.toBeInTheDocument())
+  })
 
   it('stops card payments while the control system is down and asks for a felanmälan', async () => {
     const user = userEvent.setup()

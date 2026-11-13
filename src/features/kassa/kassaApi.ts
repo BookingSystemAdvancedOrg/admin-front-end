@@ -4,20 +4,44 @@ import { getAccessToken } from '../auth/cognito'
 import { busyEnd, busyStart } from '../../shared/motion/busy'
 import { listMenuItems } from '../meny/menuApi'
 import type { MenuCategory } from '../meny/menuApi'
-import { createPayment } from '../tabetalt/cardApi'
-import type { CardPayment } from '../tabetalt/cardApi'
 
 /**
  * Kassan (backend functions/kassa, shared/kassa.py i application). Notor
- * per bord eller avhämtning, kortbetalning på restaurangens kortläsare,
+ * per bord eller avhämtning, kortbetalning på restaurangens egen
+ * kortterminal (personalen registrerar beloppet när kortet är godkänt),
  * kvitto med kontrollkod, retur, en kopia, övningsläge, X- och Z-rapport
- * och export av journalen (XML). Kortbetalningen frågas om, avbryts och
- * försöks igen via Ta betalts API (tabetalt/cardApi).
+ * och export av journalen (XML).
  *
  * Utan API (VITE_API_BASE_URL saknas) körs en enkel kassa i minnet.
  */
 
 export type BillKind = 'table' | 'takeaway'
+
+/** En betald del av notan: kort på restaurangens terminal eller presentkort. */
+export interface KassaPayment {
+  paymentId: string
+  method: 'Kort' | 'Presentkort'
+  amount: number
+  status: 'succeeded' | 'refunded'
+  at?: string
+  last4?: string
+  balanceAfter?: number
+}
+
+/** Ett nytt id per kortbetalning: samma id två gånger registrerar en betalning. */
+export function newCheckoutId(): string {
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/** "125,50" eller "125" kr till öre; null om det inte är ett belopp. */
+export function parseKronor(text: string): number | null {
+  const clean = text.replace(/[\s\u00a0]/g, '').replace(/kr$/i, '').replace(',', '.')
+  if (!/^\d+(\.\d{1,2})?$/.test(clean)) return null
+  const [whole, frac = ''] = clean.split('.')
+  return Number(whole) * 100 + Number(frac.padEnd(2, '0'))
+}
 export type Delivery = 'print' | 'email' | 'screen'
 
 export interface DocRow {
@@ -147,7 +171,7 @@ export interface Bill {
   vat: { rate: number; gross: number; net: number; vat: number }[]
   paid: number
   remaining: number
-  payments: CardPayment[]
+  payments: KassaPayment[]
   locked: boolean
 }
 
@@ -159,7 +183,6 @@ export interface KassaState {
   registers: Register[]
   openBills: BillSummary[]
   printer: boolean
-  cardReaders: boolean
   isOwner: boolean
   simulator: boolean
   canSimulate: boolean
@@ -307,17 +330,19 @@ export function billAction(locationId: string, billId: string, action: 'send' | 
   return apiFetch(`${base(locationId)}/bills/${billId}/${action}`, post({}))
 }
 
-export function startPayment(
+/** Kortet är godkänt på restaurangens terminal: beloppet registreras på notan. */
+export function recordCardPayment(
   locationId: string,
   billId: string,
-  input: { checkoutId: string; readerId: string; amount: number },
-): Promise<CardPayment> {
-  if (!isApiConfigured()) return mock.startPayment(locationId, billId, input)
+  input: { checkoutId: string; amount: number },
+): Promise<KassaPayment> {
+  if (!isApiConfigured()) return mock.recordCardPayment(billId, input)
   return apiFetch(`${base(locationId)}/bills/${billId}/payments`, post(input))
 }
 
-export function undoPayment(locationId: string, billId: string, paymentId: string): Promise<CardPayment> {
-  if (!isApiConfigured()) return Promise.reject(new ApiError(409, 'not_in_demo'))
+/** Före kvittot: den betalda delen tas bort från notan (återbetalas på terminalen). */
+export function undoPayment(locationId: string, billId: string, paymentId: string): Promise<KassaPayment> {
+  if (!isApiConfigured()) return mock.undoPayment(billId, paymentId)
   return apiFetch(`${base(locationId)}/bills/${billId}/payments/${paymentId}/undo`, post({}))
 }
 
@@ -409,7 +434,6 @@ const ERRORS: Record<string, string> = {
   day_not_open: 'Öppna dagen först. Växelkassan registreras när försäljningsdagen börjar, och Z-rapporten avslutar dagen.',
   control_system_rejected: 'Kontrollsystemet tog inte emot uppgifterna, så inget kvitto skapades. Kontrollera organisationsnummer och adress (gata med nummer, postnummer och ort) och kontakta Booqy om det inte hjälper.',
   not_fully_paid: 'Notan är inte fullt betald än.',
-  payment_in_progress: 'En kortbetalning pågår. Vänta tills den är klar.',
   bill_has_payments: 'Notan har en kortbetalning och kan inte ändras.',
   bill_closed: 'Notan är redan stängd.',
   bill_empty: 'Notan är tom.',
@@ -430,13 +454,9 @@ const ERRORS: Record<string, string> = {
   register_busy: 'Kassan är upptagen en sekund. Försök igen.',
   register_limit: 'Platsen har redan fem kassor.',
   label_taken: 'Det finns redan en kassa med det namnet.',
-  terminal_not_enabled: 'Kortläsare är inte aktiverade för den här platsen ännu.',
   feature_not_in_plan: 'Kassan ingår inte i restaurangens plan ännu.',
   owner_only: 'Bara ägaren kan göra det.',
   nothing_to_export: 'Det finns inga registreringar under perioden.',
-  payment_unavailable: 'Stripe svarar inte just nu. Försök igen om en stund.',
-  stripe_refused: 'Stripe tog inte emot betalningen. Försök igen.',
-  refund_too_large: 'Återbetalningen är större än betalningen.',
 }
 
 export function errorText(err: unknown): string {
@@ -477,12 +497,12 @@ const mock = (() => {
   const registers: Register[] = []
   const setupItems: Setup = { anmalan: { done: false }, skylt: { done: false }, zrapport: { done: false },
     journal: { done: false }, avbrott: { done: false } }
-  const bills = new Map<string, Bill & { _payments: string[] }>()
+  const bills = new Map<string, Bill>()
   const receipts: { seq: number; bill: Bill; doc: KassaDocument; copy: boolean }[] = []
   let ids = 0
   const id = () => `${(++ids).toString(16).padStart(8, '0')}${'0'.repeat(24)}`
 
-  function priced(b: Bill & { _payments: string[] }): Bill & { _payments: string[] } {
+  function priced(b: Bill): Bill {
     const t = localTotals(b.lines, b.discount ?? null)
     let left = t.discount
     const lines = b.lines.map((l, i) => {
@@ -544,7 +564,7 @@ const mock = (() => {
         billId: b.billId, registerId: b.registerId, kind: b.kind, tableLabel: b.tableLabel, training: Boolean(b.training),
         lines: b.lines.reduce((s, l) => s + l.quantity, 0), total: b.total,
       })),
-      printer: true, cardReaders: true, isOwner: true, simulator: true, canSimulate: true,
+      printer: true, isOwner: true, simulator: true, canSimulate: true,
     }),
     createRegister(label: string) {
       const r: Register = {
@@ -615,7 +635,7 @@ const mock = (() => {
     },
     createBill(registerId: string, kind: BillKind, tableLabel?: string) {
       const b = priced({ billId: id(), registerId, kind, tableLabel, status: 'open', version: 1, lines: [], gross: 0, discountAmount: 0,
-        total: 0, vat: [], paid: 0, remaining: 0, payments: [], locked: false, _payments: [],
+        total: 0, vat: [], paid: 0, remaining: 0, payments: [], locked: false,
         training: Boolean(registers.find((r) => r.registerId === registerId)?.training) })
       bills.set(b.billId, b)
       return delay(b)
@@ -651,15 +671,26 @@ const mock = (() => {
       bills.set(billId, next)
       return delay(next)
     },
-    async startPayment(locationId: string, billId: string, input: { checkoutId: string; readerId: string; amount: number }) {
+    recordCardPayment(billId: string, input: { checkoutId: string; amount: number }) {
       const b = bills.get(billId)
       if (!b) return Promise.reject(new ApiError(404, 'not found'))
       if (registers.find((r) => r.registerId === b.registerId)?.simulateDown) {
         return Promise.reject(new ApiError(503, 'control_system_unreachable'))
       }
-      const payment = await createPayment(locationId, { ...input, note: 'Kassa' })
-      b._payments.push(payment.paymentId)
-      return payment
+      const known = b.payments.find((p) => p.paymentId === input.checkoutId)
+      if (known) return delay(known)
+      if (input.amount > b.remaining) return Promise.reject(new ApiError(409, 'amount_too_large'))
+      const payment: KassaPayment = { paymentId: input.checkoutId, method: 'Kort', amount: input.amount, status: 'succeeded',
+        at: new Date().toISOString() }
+      setPayments(b, [...b.payments, payment])
+      return delay(payment)
+    },
+    undoPayment(billId: string, paymentId: string) {
+      const b = bills.get(billId)
+      const payment = b?.payments.find((p) => p.paymentId === paymentId)
+      if (!b || !payment) return Promise.reject(new ApiError(404, 'not found'))
+      setPayments(b, b.payments.filter((p) => p.paymentId !== paymentId))
+      return delay({ ...payment, status: 'refunded' as const })
     },
     finalize(billId: string, delivery: Delivery) {
       const b = bills.get(billId)
@@ -676,18 +707,10 @@ const mock = (() => {
       if (registers[0]) registers[0].receiptSeq = seq
       return delay({ document: d, problems: [] })
     },
-    /** Kortbetalningen räknas in när läsaren godkänt (tabetalt-mocken). */
-    paid(billId: string, payment: CardPayment) {
-      const b = bills.get(billId)
-      if (!b) return
-      const payments = [...b.payments.filter((p) => p.paymentId !== payment.paymentId), payment]
-      const paid = payments.filter((p) => p.status === 'succeeded').reduce((s, p) => s + p.amount, 0)
-      bills.set(billId, { ...b, payments, paid, remaining: b.total - paid, locked: payments.some((p) => p.status === 'processing' || p.status === 'succeeded') })
-    },
+  }
+
+  function setPayments(b: Bill, payments: KassaPayment[]) {
+    const paid = payments.reduce((s, p) => s + p.amount, 0)
+    bills.set(b.billId, { ...b, version: b.version + 1, payments, paid, remaining: b.total - paid, locked: payments.length > 0 })
   }
 })()
-
-/** Utan API: läsarens svar förs in på notan (servern läser kortposten själv). */
-export function mockPaymentSettled(billId: string, payment: CardPayment): void {
-  if (!isApiConfigured()) mock.paid(billId, payment)
-}

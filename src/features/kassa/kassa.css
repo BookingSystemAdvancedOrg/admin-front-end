@@ -469,6 +469,15 @@
   gap: 10px;
   font: 600 20px/1.2 var(--font);
   font-variant-numeric: tabular-nums;
+  /* "Kortet godkänt, registrera 1 234,00 kr" wraps instead of running out of a narrow panel */
+  white-space: normal;
+  text-align: center;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.btn.kassa-pay svg {
+  flex: none;
 }
 
 .kassa-big-amount {
@@ -1122,7 +1131,7 @@
     background: var(--bq-snow) !important;
   }
 
-  /* Ta betalts utskriftsregel döljer allt med visibility; arket ska synas. */
+  /* En annan utskriftsregel kan dölja allt med visibility; arket ska synas. */
   .kassa-print-root,
   .kassa-print-root * {
     visibility: visible !important;
@@ -1301,4 +1310,118 @@
   .kassa-menu-panel {
     animation: none;
   }
+}
+
+/* --- betalning: belopp, rabattläge och betalt --- */
+
+.pay-mode {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--r-lg);
+  background: var(--glass-fill);
+}
+
+.pay-mode button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--muted);
+  font: 500 15px/1.2 var(--font);
+  cursor: default;
+  transition: background 200ms var(--ease), color 200ms var(--ease);
+}
+
+.pay-mode button.active {
+  background: var(--glass-surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.pay-mode button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+.pay-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 20px;
+  border-radius: var(--r-md);
+  background: var(--glass-fill);
+  transition: box-shadow 200ms var(--ease);
+}
+
+.pay-amount:focus-within {
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+.form-field .pay-amount input {
+  min-height: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  font: 600 44px/1.15 var(--font);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.form-field .pay-amount input:focus {
+  box-shadow: none;
+}
+
+.pay-amount span {
+  font: 500 22px/1 var(--font);
+  color: var(--muted);
+}
+
+.pay-field-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger-ink);
+}
+
+.pay-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 0 8px;
+  text-align: center;
+}
+
+.pay-stage-mark {
+  display: grid;
+  place-items: center;
+  width: 104px;
+  height: 104px;
+  margin-bottom: 12px;
+  border-radius: 50%;
+  background: var(--glass-fill);
+  color: var(--ink);
+}
+
+.pay-stage.paid .pay-stage-mark {
+  background: color-mix(in srgb, var(--success) 18%, var(--glass-surface));
+  color: var(--success-ink);
+  animation: pay-land 520ms var(--ease) both;
+}
+
+@keyframes pay-land {
+  from { transform: scale(0.82); }
+  to { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pay-stage .pay-stage-mark {
+    animation: none;
+  }
+}
+
+.kassa-terminal-hint {
+  margin: 0;
 }

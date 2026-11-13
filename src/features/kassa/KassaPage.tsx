@@ -8,19 +8,6 @@ import { Slot } from '../../shared/slots'
 import { useLocationId } from '../../shared/location'
 import { useAuth } from '../auth/useAuth'
 import {
-  MIN_ORE,
-  act,
-  failureText,
-  getPayment,
-  listReaders,
-  newCheckoutId,
-  parseKronor,
-  rememberReader,
-  rememberedReader,
-  simulate,
-} from '../tabetalt/cardApi'
-import type { CardPayment, CardReader } from '../tabetalt/cardApi'
-import {
   AmountDialog,
   DeliveryPicker,
   DiscountDialog,
@@ -43,22 +30,22 @@ import {
   getState,
   kr,
   localTotals,
-  mockPaymentSettled,
+  newCheckoutId,
   outageNotice,
+  parseKronor,
+  recordCardPayment,
   registerAction,
   report,
-  startPayment,
   undoPayment,
   updateBill,
 } from './kassaApi'
-import type { Bill, BillKind, DayStatus, Delivery, Discount, Done, KassaState, MenuChoice, Register } from './kassaApi'
-import '../tabetalt/tabetalt.css'
+import type {
+  Bill, BillKind, DayStatus, Delivery, Discount, Done, KassaPayment, KassaState, MenuChoice, Register,
+} from './kassaApi'
 import './kassa.css'
 import { SkelBlock, SkelBox, SkelCard, SkelPage } from '../../shared/Skeleton'
 import { Num } from '../../shared/motion/Num'
 
-/** Hur ofta en pågående kortbetalning frågas om. */
-export const POLL_MS = 2_000
 /** Ändringar på notan skickas när personalen slutat trycka en kort stund. */
 const SYNC_MS = 250
 
@@ -73,7 +60,7 @@ type DraftLine = {
   note?: string
   sent?: boolean
 }
-type Stage = 'bill' | 'pay' | 'waiting' | 'deliver'
+type Stage = 'bill' | 'pay' | 'deliver'
 type DialogName = 'table' | 'note' | 'discount' | 'openDay' | 'receipts' | 'export' | 'newRegister' | 'setup' | 'about' | null
 /** Hur ofta kassan frågar om kontrollsystemet medan det inte svarar. */
 const OUTAGE_POLL_MS = 60_000
@@ -94,8 +81,9 @@ function billName(b: { kind: BillKind; tableLabel?: string }) {
 
 /**
  * Kassa: kassaregistret för personal mitt i rusningen. Menyn som stora
- * knappar, notan bredvid (per bord eller avhämtning), kort på vald läsare,
- * kvitto ut på skrivaren eller mejl. Kvitton, retur, kopia, X- och
+ * knappar, notan bredvid (per bord eller avhämtning), kort på restaurangens
+ * egen terminal (beloppet registreras här när kortet är godkänt), kvitto ut
+ * på skrivaren eller mejl. Kvitton, retur, kopia, X- och
  * Z-rapport och export nås från raden överst. Testläge tills ett
  * certifierat kontrollsystem är kopplat (application/docs/KASSA-REQUIREMENTS.md).
  */
@@ -125,10 +113,7 @@ export default function KassaPage() {
   const [saving, setSaving] = useState(false)
 
   const [stage, setStage] = useState<Stage>('bill')
-  const [readers, setReaders] = useState<CardReader[]>([])
-  const [readerId, setReaderId] = useState('')
   const [amountText, setAmountText] = useState('')
-  const [payment, setPayment] = useState<CardPayment | null>(null)
   const checkoutId = useRef(newCheckoutId())
 
   const [dialog, setDialog] = useState<DialogName>(null)
@@ -161,14 +146,6 @@ export default function KassaPage() {
     if (!locationId) return
     void loadState()
     getMenu(locationId).then(setMenu).catch(() => setMenu([]))
-    listReaders(locationId)
-      .then((r) => {
-        setReaders(r.readers)
-        const remembered = rememberedReader(locationId)
-        const pick = r.readers.find((x) => x.id === remembered) ?? r.readers.find((x) => x.status === 'online') ?? r.readers[0]
-        setReaderId(pick?.id ?? '')
-      })
-      .catch(() => setReaders([]))
   }, [locationId, loadState])
 
   const loadDay = useCallback(async () => {
@@ -380,17 +357,20 @@ export default function KassaPage() {
   }
 
   const amount = parseKronor(amountText)
-  const amountOk = amount !== null && bill !== null && amount >= MIN_ORE && amount <= bill.remaining
+  const amountOk = amount !== null && bill !== null && amount > 0 && amount <= bill.remaining
 
-  async function charge() {
-    if (!locationId || !bill || !amountOk || amount === null || !readerId) return
+  /** Kortet är godkänt på terminalen: beloppet registreras på notan. */
+  async function cardApproved() {
+    if (!locationId || !bill || !amountOk || amount === null) return
     setBusy(true)
     setError(null)
-    rememberReader(locationId, readerId)
     try {
-      const p = await startPayment(locationId, bill.billId, { checkoutId: checkoutId.current, readerId, amount })
-      setPayment(p)
-      setStage('waiting')
+      await recordCardPayment(locationId, bill.billId, { checkoutId: checkoutId.current, amount })
+      const fresh = await getBill(locationId, bill.billId)
+      show(fresh)
+      checkoutId.current = newCheckoutId()
+      setAmountText(kr(fresh.remaining))
+      setStage(fresh.remaining <= 0 ? 'deliver' : 'pay')
     } catch (err) {
       setError(errorText(err))
       if (err instanceof ApiError && err.status < 500) checkoutId.current = newCheckoutId()
@@ -399,19 +379,6 @@ export default function KassaPage() {
       setBusy(false)
     }
   }
-
-  const settle = useCallback(async (p: CardPayment) => {
-    if (!locationId || !billIdRef.current) return
-    mockPaymentSettled(billIdRef.current, p)
-    const fresh = await getBill(locationId, billIdRef.current)
-    show(fresh)
-    if (p.status === 'succeeded') {
-      setPayment(null)
-      checkoutId.current = newCheckoutId()
-      setAmountText(kr(fresh.remaining))
-      setStage(fresh.remaining <= 0 ? 'deliver' : 'pay')
-    }
-  }, [locationId])
 
   // Presentkort (giftCards) drogs på notan: hämta den igen, som efter en kortbetalning.
   async function giftCardPaid() {
@@ -427,42 +394,10 @@ export default function KassaPage() {
     }
   }
 
-  const pollId = payment?.status === 'processing' ? `${payment.paymentId}:${payment.attempt ?? 1}` : null
-  useEffect(() => {
-    if (!locationId || !pollId) return
-    const id = pollId.split(':')[0]
-    const t = window.setInterval(async () => {
-      try {
-        const next = await getPayment(locationId, id)
-        if (next.status !== 'processing') {
-          setPayment(next)
-          void settle(next)
-        }
-      } catch {
-        // Nätet hackar: nästa fråga om två sekunder.
-      }
-    }, POLL_MS)
-    return () => window.clearInterval(t)
-  }, [locationId, pollId, settle])
-
-  async function cardAction(action: 'cancel' | 'retry') {
-    if (!locationId || !payment) return
-    setBusy(true)
-    setError(null)
-    try {
-      const next = await act(locationId, payment.paymentId, action)
-      setPayment(next)
-      if (next.status === 'succeeded') void settle(next)
-    } catch (err) {
-      setError(errorText(err))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function undo(p: CardPayment) {
+  async function undo(p: KassaPayment) {
     if (!locationId || !bill) return
-    if (!window.confirm(`Återbetala ${kr(p.amount)} kr till kortet?`)) return
+    const how = p.method === 'Presentkort' ? 'till presentkortet' : 'på kortterminalen, och ta bort betalningen från notan'
+    if (!window.confirm(`Återbetala ${kr(p.amount)} kr ${how}?`)) return
     setBusy(true)
     setError(null)
     try {
@@ -755,7 +690,7 @@ export default function KassaPage() {
               <>
                 <div className="kassa-bill-head">
                   <h2>{billName(bill)}{bill.training ? ' (övning)' : ''}</h2>
-                  <span className="cell-muted" aria-live="polite">{saving ? 'Sparar' : bill.paid > 0 && bill.remaining <= 0 ? 'Betald' : bill.locked ? 'Betalning pågår' : ''}</span>
+                  <span className="cell-muted" aria-live="polite">{saving ? 'Sparar' : bill.paid > 0 && bill.remaining <= 0 ? 'Betald' : bill.locked ? 'Delvis betald' : ''}</span>
                 </div>
 
                 {stage === 'bill' && (
@@ -818,7 +753,6 @@ export default function KassaPage() {
                       {!bill.training && dayClosed && (
                         <p className="cell-muted">Öppna dagen först. Växelkassan registreras när försäljningsdagen börjar.</p>
                       )}
-                      {!bill.training && !state.cardReaders && <p className="cell-muted">Kortläsare är inte kopplade för platsen ännu.</p>}
                     </div>
                   </>
                 )}
@@ -832,7 +766,7 @@ export default function KassaPage() {
                       <button type="button" className={`kassa-chip${amount === bill.remaining ? ' on' : ''}`} onClick={() => setAmountText(kr(bill.remaining))}>Hela</button>
                       {[2, 3, 4].map((n) => {
                         const part = Math.ceil(bill.total / n)
-                        return part <= bill.remaining && part >= MIN_ORE ? (
+                        return part <= bill.remaining && part > 0 ? (
                           <button key={n} type="button" className={`kassa-chip${amount === part ? ' on' : ''}`} onClick={() => setAmountText(kr(part))}>
                             1/{n} · {kr(part)}
                           </button>
@@ -846,18 +780,16 @@ export default function KassaPage() {
                           aria-invalid={!amountOk} onChange={(e) => setAmountText(e.target.value)} />
                         <span aria-hidden="true">kr</span>
                       </div>
-                      {!amountOk && <p className="pay-field-error">Minst {kr(MIN_ORE)} kr och högst det som är kvar.</p>}
+                      {!amountOk && <p className="pay-field-error">Högst det som är kvar att betala.</p>}
                     </div>
-                    <div className="form-field">
-                      <label htmlFor="kassa-reader">Kortläsare</label>
-                      <select id="kassa-reader" value={readerId} onChange={(e) => setReaderId(e.target.value)}>
-                        {readers.length === 0 && <option value="">Ingen kortläsare</option>}
-                        {readers.map((r) => <option key={r.id} value={r.id}>{r.label}{r.status === 'offline' ? ' (offline)' : ''}</option>)}
-                      </select>
-                    </div>
-                    <button type="button" className="btn primary kassa-pay" disabled={busy || !amountOk || !readerId || !csOk} onClick={() => void charge()}>
-                      <Icon name="card" size={22} /> Skicka {amount !== null ? kr(amount) : ''} kr till läsaren
+                    <p className="cell-muted kassa-terminal-hint" data-help="kassa.payment.terminal">
+                      Ta betalt {amount !== null && amountOk ? `${kr(amount)} kr ` : ''}på restaurangens kortterminal.
+                      Registrera beloppet här först när terminalen visar att kortet är godkänt.
+                    </p>
+                    <button type="button" className="btn primary kassa-pay" disabled={busy || !amountOk || !csOk} onClick={() => void cardApproved()}>
+                      <Icon name="card" size={22} /> Kortet godkänt, registrera {amount !== null && amountOk ? kr(amount) : ''} kr
                     </button>
+                    {!csOk && <p className="cell-muted">Kontrollsystemet svarar inte. Ta inte betalt på terminalen förrän kassan fungerar igen.</p>}
                     {locationId && (
                       <Slot
                         id="kassa.payment.giftcard"
@@ -868,34 +800,6 @@ export default function KassaPage() {
                     {bill.paid === 0 && (
                       <button type="button" className="btn outline" onClick={() => setStage('bill')}>Tillbaka till notan</button>
                     )}
-                  </div>
-                )}
-
-                {stage === 'waiting' && payment && (
-                  <div className={`pay-stage ${payment.status === 'processing' ? 'waiting' : payment.status === 'succeeded' ? 'paid' : 'declined'}`}>
-                    <div className="pay-stage-mark"><Icon name={payment.status === 'processing' ? 'card' : payment.status === 'succeeded' ? 'check' : 'close'} size={44} /></div>
-                    <p className="kassa-big-amount"><Num>{`${kr(payment.amount)} kr`}</Num></p>
-                    <h2>{payment.status === 'processing' ? 'Väntar på kort' : payment.status === 'succeeded' ? 'Betald' : 'Inte betald'}</h2>
-                    {payment.status === 'processing' ? (
-                      <>
-                        <p className="cell-muted">Be gästen blippa eller sätta i kortet på {payment.readerLabel ?? 'läsaren'}.</p>
-                        {payment.simulated && (
-                          <div className="kassa-row">
-                            <button type="button" className="btn outline" onClick={() => void simulate(locationId, payment.paymentId, 'approve')}>Simulera godkänt kort</button>
-                            <button type="button" className="btn outline" onClick={() => void simulate(locationId, payment.paymentId, 'decline')}>Simulera nekat kort</button>
-                          </div>
-                        )}
-                        <button type="button" className="btn outline kassa-big" disabled={busy} onClick={() => void cardAction('cancel')}>Avbryt</button>
-                      </>
-                    ) : payment.status !== 'succeeded' ? (
-                      <>
-                        <p className="kassa-alert danger" role="alert">{failureText(payment)}</p>
-                        <div className="kassa-row">
-                          <button type="button" className="btn outline kassa-big" onClick={() => { setPayment(null); checkoutId.current = newCheckoutId(); setAmountText(kr(bill.remaining)); setStage('pay') }}>Annat belopp eller läsare</button>
-                          <button type="button" className="btn primary kassa-big" disabled={busy} onClick={() => void cardAction('retry')}>Försök igen</button>
-                        </div>
-                      </>
-                    ) : null}
                   </div>
                 )}
 
@@ -962,14 +866,14 @@ export default function KassaPage() {
 }
 
 /** Betalda delar före kvittot; kan återbetalas om gästen ångrar sig. */
-function PaidParts({ bill, busy, onUndo }: { bill: Bill; busy: boolean; onUndo: (p: CardPayment) => void }) {
+function PaidParts({ bill, busy, onUndo }: { bill: Bill; busy: boolean; onUndo: (p: KassaPayment) => void }) {
   const paid = bill.payments.filter((p) => p.status === 'succeeded')
   if (!paid.length) return null
   return (
     <ul className="kassa-paid">
       {paid.map((p) => (
         <li key={p.paymentId}>
-          <span>Betalt {kr(p.amount)} kr{p.card?.last4 ? `, kort **** ${p.card.last4}` : ''}</span>
+          <span>Betalt {kr(p.amount)} kr, {p.method === 'Presentkort' ? `presentkort **** ${p.last4 ?? ''}` : 'kort'}</span>
           <button type="button" className="btn outline" disabled={busy} onClick={() => onUndo(p)}>Återbetala</button>
         </li>
       ))}

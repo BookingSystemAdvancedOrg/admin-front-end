@@ -38,7 +38,7 @@ describe('actionAllowed', () => {
   it('refuses pages the role or plan does not show', () => {
     expect(actionAllowed({ id: 'x', label: 'X', to: '/personal' }, owner)).toBe(true)
     expect(actionAllowed({ id: 'x', label: 'X', to: '/personal' }, staff)).toBe(false)
-    expect(actionAllowed({ id: 'x', label: 'X', to: '/ta-betalt' }, owner)).toBe(false)
+    expect(actionAllowed({ id: 'x', label: 'X', to: '/finns-inte' }, owner)).toBe(false)
     expect(actionAllowed({ id: 'x', label: 'X', to: '/avtal' }, staff)).toBe(false)
   })
 

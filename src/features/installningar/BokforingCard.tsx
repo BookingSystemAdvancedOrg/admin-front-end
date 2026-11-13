@@ -33,6 +33,8 @@ const GROUPS: { title: string; roles: AccountRole[] }[] = [
 
 /** Visas bara när presentkort ingår i planen (giftCards). */
 const GIFT_CARD_GROUP = { title: 'Presentkort', roles: ['giftCardLiability', 'giftCardBreakage'] as AccountRole[] }
+/** Visas bara med Kassa: kort som dras på restaurangens egen terminal går inte via Stripe. */
+const KASSA_GROUP = { title: 'Kassa', roles: ['cardTerminal'] as AccountRole[] }
 
 const LABEL: Record<AccountRole, string> = {
   sales25: '25 % (alkohol)',
@@ -52,6 +54,7 @@ const LABEL: Record<AccountRole, string> = {
   rounding: 'Öresavrundning',
   giftCardLiability: 'Ej inlösta presentkort',
   giftCardBreakage: 'Övriga ersättningar och intäkter',
+  cardTerminal: 'Kort i kassan (egen kortterminal)',
 }
 
 const MONTHS = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober',
@@ -99,8 +102,12 @@ function message(err: unknown, fallback: string): string {
   return commonError(err, fallback, ERRORS, FIELDS)
 }
 
-export function BokforingCard({ locationId, giftCards = false }: { locationId: string | null; giftCards?: boolean }) {
-  const groups = giftCards ? [...GROUPS, GIFT_CARD_GROUP] : GROUPS
+export function BokforingCard({ locationId, giftCards = false, kassa = false }: {
+  locationId: string | null
+  giftCards?: boolean
+  kassa?: boolean
+}) {
+  const groups = [...GROUPS, ...(kassa ? [KASSA_GROUP] : []), ...(giftCards ? [GIFT_CARD_GROUP] : [])]
   // Bara kontona som visas kontrolleras; en dold grupp får inte stoppa Spara.
   const shown = groups.flatMap((g) => g.roles)
   const months = monthOptions()

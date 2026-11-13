@@ -2031,6 +2031,95 @@ html.is-busy * {
   outline: none;
   box-shadow: 0 0 0 3px var(--field-ring);
 }
+/* Bilden i en rad är en knapp som visar profilbilden i stort (AvatarLightbox). */
+.avatar-btn {
+  display: inline-grid;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  cursor: default;
+}
+.avatar-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--field-ring);
+}
+/* Profilbilden i stort: samma glasruta som rätternas bilder, med namnet under. */
+:root {
+  --avatar-xl: min(16rem, calc(100vw - 96px));
+}
+.avatar--xl {
+  inline-size: var(--avatar-xl);
+  block-size: var(--avatar-xl);
+  font-size: calc(var(--avatar-xl) * 0.36);
+  letter-spacing: 0.01em;
+}
+.lightbox:has(.avatar-lightbox) {
+  padding: 40px 32px 28px;
+}
+.avatar-lightbox {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  min-width: 0;
+}
+.avatar-lightbox figcaption {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  max-inline-size: var(--avatar-xl);
+  text-align: center;
+}
+.avatar-lightbox-name {
+  font: 700 1.125rem/1.3 var(--sans);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.avatar-lightbox-email {
+  font-size: 13px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.lightbox:has(.avatar-lightbox) .lightbox-close {
+  inset-block-start: 10px;
+  inset-inline-end: 10px;
+  inline-size: 36px;
+  block-size: 36px;
+}
+@media (max-width: 600px) {
+  .lightbox:has(.avatar-lightbox) {
+    padding: 36px 20px 20px;
+  }
+}
+/* Personal: hela raden öppnar Redigera för den som får redigera. Markören
+   byter aldrig form (ägarens regel från Meny); markeringen räcker. */
+.person-row,
+.person-row * {
+  cursor: default;
+}
+.person-row > td {
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.person-row:hover > td,
+.person-row:focus-visible > td {
+  background-color: color-mix(in srgb, var(--glass-highlight) 55%, transparent);
+}
+.person-row:hover > td:first-child,
+.person-row:focus-visible > td:first-child {
+  border-radius: var(--r-md) 0 0 var(--r-md);
+}
+.person-row:hover > td:last-child,
+.person-row:focus-visible > td:last-child {
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+}
+.person-row:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+  box-shadow: none;
+}
 .person-cell {
   display: inline-flex;
   align-items: center;

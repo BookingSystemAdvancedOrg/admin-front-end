@@ -90,6 +90,49 @@ describe('PersonalPage', () => {
     )
   })
 
+  it('opens Redigera when an editable row is clicked, or Enter on it', async () => {
+    renderPage()
+    fireEvent.click(await screen.findByText('anna@example.com'))
+    expect(screen.getByRole('dialog', { name: 'Redigera medarbetare' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Avbryt' }))
+    const row = screen.getByText('Bo Kock').closest('tr') as HTMLElement
+    expect(row).toHaveAttribute('tabindex', '0')
+    fireEvent.keyDown(row, { key: 'Enter' })
+    expect(screen.getByRole('dialog', { name: 'Redigera medarbetare' })).toBeInTheDocument()
+  })
+
+  it('leaves a row the owner may not edit unclickable (another owner)', async () => {
+    const OTHER = { ...OWNER, cognitoSub: 'owner-2', name: 'Ylva Ägare', email: 'ylva@example.com' } as User
+    vi.mocked(users.listUsers).mockResolvedValue([OWNER, OTHER, ANNA])
+    renderPage()
+    const row = (await screen.findByText('Ylva Ägare')).closest('tr') as HTMLElement
+    expect(row).not.toHaveClass('person-row')
+    expect(row).not.toHaveAttribute('tabindex')
+    fireEvent.click(row.querySelector('td') as HTMLElement)
+    fireEvent.keyDown(row, { key: 'Enter' })
+    expect(screen.queryByRole('dialog', { name: 'Redigera medarbetare' })).not.toBeInTheDocument()
+  })
+
+  it('opens the profile picture, not the editor, from the avatar', async () => {
+    renderPage()
+    fireEvent.click(await screen.findByRole('button', { name: 'Visa profilbilden för Anna Servis' }))
+    const box = screen.getByRole('dialog', { name: 'Profilbild: Anna Servis' })
+    expect(box.querySelector('.avatar--xl')?.textContent).toBe('AS')
+    expect(within(box).getByText('anna@example.com')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Redigera medarbetare' })).not.toBeInTheDocument()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: /Profilbild/ })).not.toBeInTheDocument()
+  })
+
+  it('keeps the row actions to themselves', async () => {
+    vi.mocked(users.deactivateUser).mockResolvedValue({ ...ANNA, status: 'disabled' })
+    renderPage()
+    const row = (await screen.findByText('Anna Servis')).closest('tr') as HTMLElement
+    fireEvent.click(within(row).getByRole('button', { name: 'Inaktivera' }))
+    await waitFor(() => expect(users.deactivateUser).toHaveBeenCalledWith('staff-1'))
+    expect(screen.queryByRole('dialog', { name: 'Redigera medarbetare' })).not.toBeInTheDocument()
+  })
+
   it('shows staff a note and never loads the list', () => {
     tenant = { role: 'staff_user', locations: LOCATIONS, entitlements: { features: {} } }
     renderPage()

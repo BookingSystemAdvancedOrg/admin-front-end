@@ -1,4 +1,6 @@
 import { Avatar } from '../../shared/Avatar'
+import { AvatarLightbox } from '../../shared/AvatarLightbox'
+import { isRowOpenKey, shouldOpenRow } from '../meny/rowClick'
 import { getMyAvatar, removeUserAvatar, subscribeMyAvatar } from '../../shared/avatarStore'
 import { RowActions } from '../../shared/RowActions'
 import { useEffect, useState, useSyncExternalStore } from 'react'
@@ -55,6 +57,8 @@ export default function PersonalPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [rowError, setRowError] = useState<string | null>(null)
   const [busySub, setBusySub] = useState<string | null>(null)
+  const [viewing, setViewing] = useState<User | null>(null)
+  const avatarFor = (u: User) => (u.cognitoSub === sub ? (myAvatar.url ?? u.avatarUrl) : u.avatarUrl)
   const [place, setPlace] = useState('')
   const [modal, setModal] = useState<ModalState>(() =>
     takePageAction('invite-staff') ? { mode: 'invite' } : null,
@@ -258,10 +262,33 @@ export default function PersonalPage() {
                   const canDelete = canManageTarget(caller, s, 'delete')
                   const busy = busySub === s.cognitoSub
                   return (
-                    <tr key={s.cognitoSub}>
+                    // Hela raden öppnar Redigera (klick eller Enter) när man får redigera
+                    // personen; bilden öppnar profilbilden och knapparna gör sitt eget.
+                    <tr
+                      key={s.cognitoSub}
+                      className={canEdit ? 'person-row' : undefined}
+                      tabIndex={canEdit ? 0 : undefined}
+                      aria-label={canEdit ? `${s.name || s.email}, öppna för att redigera` : undefined}
+                      onClick={(e) => {
+                        if (canEdit && !busy && shouldOpenRow(e.target, e.currentTarget)) setModal({ mode: 'edit', user: s })
+                      }}
+                      onKeyDown={(e) => {
+                        if (canEdit && !busy && isRowOpenKey(e)) {
+                          e.preventDefault()
+                          setModal({ mode: 'edit', user: s })
+                        }
+                      }}
+                    >
                       <td className="cell-strong">
                         <span className="person-cell">
-                          <Avatar url={s.cognitoSub === sub ? (myAvatar.url ?? s.avatarUrl) : s.avatarUrl} name={s.name} email={s.email} size="md" />
+                          <button
+                            type="button"
+                            className="avatar-btn"
+                            aria-label={`Visa profilbilden för ${s.name || s.email}`}
+                            onClick={() => setViewing(s)}
+                          >
+                            <Avatar url={avatarFor(s)} name={s.name} email={s.email} size="md" />
+                          </button>
                           <span className="person-cell-text">
                             {s.name}
                             {s.cognitoSub === sub && <span className="cell-muted"> (du)</span>}
@@ -311,6 +338,9 @@ export default function PersonalPage() {
         </section>
       </div>
 
+      {viewing && (
+        <AvatarLightbox url={avatarFor(viewing)} name={viewing.name} email={viewing.email} onClose={() => setViewing(null)} />
+      )}
       {modal && (
         <StaffModal
           title={modal.mode === 'invite' ? 'Bjud in personal' : 'Redigera medarbetare'}

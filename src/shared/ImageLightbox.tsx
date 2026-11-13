@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import ModalOverlay from './ModalOverlay'
 import './lightbox.css'
 
@@ -13,8 +13,11 @@ const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select
  * (redigera rätt) inte stängs av samma tangenttryck. Rutan ligger i en
  * portal; React-händelser bubblar ändå upp i komponentträdet, så den ska
  * ritas utanför klickbara rader (se MenyPage).
+ *
+ * Med children visas de i stället för en bild (profilbilden med namn, eller
+ * stora initialer när bild saknas: shared/AvatarLightbox.tsx).
  */
-export function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+export function ImageLightbox({ src, alt, onClose, children }: { src?: string; alt: string; onClose: () => void; children?: ReactNode }) {
   const panel = useRef<HTMLDivElement>(null)
   const closeBtn = useRef<HTMLButtonElement>(null)
   const closeRef = useRef(onClose)
@@ -64,7 +67,7 @@ export function ImageLightbox({ src, alt, onClose }: { src: string; alt: string;
       }}
     >
       <div ref={panel} className="lightbox" role="dialog" aria-modal="true" aria-label={alt}>
-        <img className="lightbox-img" src={src} alt={alt} />
+        {children ?? <img className="lightbox-img" src={src} alt={alt} />}
         <button
           ref={closeBtn}
           type="button"

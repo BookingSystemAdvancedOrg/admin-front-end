@@ -1,0 +1,11 @@
+{
+  "productName": "Booqy Admin",
+  "appId": "se.booqy.admin",
+  "fileName": "booqy-admin",
+  "description": "Booqy för restauranger: bokningar, beställningar och catering.",
+  "background": "#f6f1ea",
+  "urls": {
+    "dev": "https://restaurang.dev.booqy.se/",
+    "prod": "https://restaurang.booqy.se/"
+  }
+}

@@ -119,19 +119,29 @@ With an identity set, hardened runtime and the entitlements in
 
 ## Where users download it
 
-Restaurant staff have no GitHub access, so a private repo's Releases page does
-not work for them. Recommended: an S3 bucket behind CloudFront, for example
-`download.booqy.se/admin/`, linked from booqy.se and from the admin's
-settings page. That needs a new bucket, distribution and DNS record plus
-`s3:PutObject` for whoever uploads. **Not created: owner's decision.** Until
-then, attach the installers to a GitHub Release and send them directly.
+`https://dev.booqy.se/downloads/admin/latest/` (dev) and
+`https://booqy.se/downloads/admin/latest/` (prod), stable names:
+`Booqy-Admin-mac-arm64.dmg`, `Booqy-Admin-mac-x64.dmg`, `Booqy-Admin-Setup.exe`,
+`Booqy-Admin.AppImage`, `Booqy-Admin.deb`. Each build also keeps an immutable copy
+under `/downloads/versions/admin/<version>-<sha7>/`, and `latest.json` lists
+them. The download card in settings (and booqy.se/ladda-ner for the admin)
+picks the file for the visitor's computer.
 
-CI: `desktop-installers.workflow.yml` here is a ready workflow. `.github/` is
-the owner's, so copy it to `.github/workflows/desktop-installers.yml`. Run it
-by hand (dev or prod), or push a tag `desktop-v<version>` (match `version` in
-`package.json`) to build prod on macOS, Windows and Linux runners and attach
-the installers to a GitHub Release.
+## Updates
 
-Auto-update is not set up: the content updates with every web deploy, so the
-shell rarely needs a new version. If wanted later, `electron-updater` works
-from the same S3 location (and needs signed builds on macOS).
+- **The web app** (what the window shows) updates with every web deploy. The
+  page compares `index.html`'s ETag every 60 s and on focus and shows
+  "Ny version finns" with a Ladda om button. It never reloads by itself.
+- **The shell** (this folder) checks `latest.json` 15 s after start and every
+  6 hours, and from Hjälp > Sök efter uppdateringar. When `version` in
+  `package.json` is higher than the installed one it offers Uppdatera, which
+  downloads the installer to Hämtade filer and opens it. Bump `version` when
+  you change the shell, or nobody is offered the new build.
+
+## CI
+
+`.github/workflows/desktop-installers.yml` builds on macOS, Windows and Linux
+runners whenever `desktop/` changes on `dev` (publishes to dev) or `main`
+(prod), or by hand. `publish.mjs` uploads through `desktop-release-role`
+(Terraform: `network/platform-domain/downloads.tf` and
+`security/iam/oidc/desktop-release-role` in infrastructure).

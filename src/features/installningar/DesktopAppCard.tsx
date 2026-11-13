@@ -3,11 +3,13 @@ import { useLocation } from 'react-router-dom'
 import {
   desktopFiles,
   isDesktopShell,
+  isPhoneOrTablet,
   readSignals,
   recommend,
   type DesktopOs,
   type Recommendation,
 } from '../../shared/desktopDownloads'
+import { phoneKind, usePwaInstall } from '../../shared/pwa'
 import './desktopApp.css'
 
 const LABELS: Record<DesktopOs, { title: string; detail: string; button: string }> = {
@@ -32,7 +34,116 @@ function badge(rec: Recommendation): string {
 export function DesktopAppCard({ heading = true }: { heading?: boolean }) {
   // I skrivbordsappen finns inget att ladda ner: kortet visas inte alls.
   if (isDesktopShell()) return null
+  // Telefon och surfplatta: ingen fillista, appen installeras från webbläsaren.
+  if (isPhoneOrTablet({ ua: navigator.userAgent, platform: navigator.platform, maxTouchPoints: navigator.maxTouchPoints })) {
+    return <PhoneInstallBody />
+  }
   return <DesktopAppCardBody heading={heading} />
+}
+
+/**
+ * Sidomenyns "Ladda ner appen" / "Installera appen" går till #skrivbordsappen:
+ * rulla hit, flytta fokus och lys upp kortet en kort stund. location.key gör
+ * att det sker vid varje klick, även när adressen redan slutar på #skrivbordsappen.
+ */
+function useFlashOnHash() {
+  const location = useLocation()
+  const ref = useRef<HTMLElement>(null)
+  const [flash, setFlash] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (location.hash !== '#skrivbordsappen' || !el) return
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    el.scrollIntoView?.({ behavior: still ? 'auto' : 'smooth', block: 'start' })
+    el.focus({ preventScroll: true })
+    setFlash(true)
+    const t = window.setTimeout(() => setFlash(false), 1800)
+    return () => window.clearTimeout(t)
+  }, [location.hash, location.key])
+  return { ref, flash }
+}
+
+/** iOS Dela-ikonen (ruta med pil uppåt) och Lägg till-ikonen (ruta med plus). */
+function ShareGlyph() {
+  return (
+    <svg className="phone-install__glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M12 3.5v11M8 7.5l4-4 4 4M7.5 10.5H6a1.5 1.5 0 0 0-1.5 1.5v7A1.5 1.5 0 0 0 6 20.5h12a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5h-1.5" />
+    </svg>
+  )
+}
+function AddGlyph() {
+  return (
+    <svg className="phone-install__glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <rect x="4" y="4" width="16" height="16" rx="3.5" />
+      <path d="M12 8.5v7M8.5 12h7" />
+    </svg>
+  )
+}
+
+/** Telefonens kort: installera Booqy Admin som app på hemskärmen. */
+function PhoneInstallBody() {
+  const { ref, flash } = useFlashOnHash()
+  const { canPrompt, installed, prompt } = usePwaInstall()
+  const kind = phoneKind()
+
+  return (
+    <section
+      id="skrivbordsappen"
+      ref={ref}
+      tabIndex={-1}
+      className={flash ? 'admin-card table-card desktop-app phone-install is-flash' : 'admin-card table-card desktop-app phone-install'}
+    >
+      <h2 className="card-title">Appen på telefonen</h2>
+      {installed ? (
+        <p className="desktop-app__now">Appen är installerad. Öppna Booqy Admin från hemskärmen.</p>
+      ) : (
+        <>
+          <p className="cell-muted">
+            Lägg Booqy Admin på hemskärmen, så öppnas den som en egen app i helskärm. Samma inloggning och samma funktioner
+            som här, och den visar alltid den senaste versionen.
+          </p>
+          {kind === 'ios' ? (
+            <ol className="phone-install__steps">
+              <li>
+                <span className="phone-install__icon"><ShareGlyph /></span>
+                <span>Tryck på <strong>Dela</strong> i Safari (längst ned, på iPad uppe till höger).</span>
+              </li>
+              <li>
+                <span className="phone-install__icon"><AddGlyph /></span>
+                <span>Scrolla och välj <strong>Lägg till på hemskärmen</strong>.</span>
+              </li>
+              <li>
+                <span className="phone-install__icon phone-install__icon--text">Lägg till</span>
+                <span>Tryck <strong>Lägg till</strong> uppe till höger. Appen hamnar på hemskärmen.</span>
+              </li>
+            </ol>
+          ) : canPrompt ? (
+            <p className="desktop-app__pick">
+              <button type="button" className="btn primary" onClick={() => void prompt()}>
+                Installera appen
+              </button>
+            </p>
+          ) : (
+            <ol className="phone-install__steps">
+              <li>
+                <span className="phone-install__icon phone-install__icon--text">⋮</span>
+                <span>Tryck på menyn <strong>⋮</strong> uppe till höger i Chrome.</span>
+              </li>
+              <li>
+                <span className="phone-install__icon"><AddGlyph /></span>
+                <span>Välj <strong>Installera app</strong> eller <strong>Lägg till på startskärmen</strong>.</span>
+              </li>
+            </ol>
+          )}
+          {kind === 'ios' && (
+            <p className="cell-muted phone-install__note">
+              Första gången i appen loggar du in en gång till; hemskärmsappen har egen inloggning.
+            </p>
+          )}
+        </>
+      )}
+    </section>
+  )
 }
 
 function DesktopAppCardBody({ heading }: { heading: boolean }) {
@@ -52,22 +163,7 @@ function DesktopAppCardBody({ heading }: { heading: boolean }) {
 
   const mine = rec ? files.find((f) => f.os === rec.os) : undefined
 
-  // Sidomenyns "Ladda ner appen" går till #skrivbordsappen: rulla hit, flytta
-  // fokus och lys upp kortet en kort stund. location.key gör att det sker
-  // vid varje klick, även när adressen redan slutar på #skrivbordsappen.
-  const location = useLocation()
-  const ref = useRef<HTMLElement>(null)
-  const [flash, setFlash] = useState(false)
-  useEffect(() => {
-    const el = ref.current
-    if (location.hash !== '#skrivbordsappen' || !el) return
-    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    el.scrollIntoView?.({ behavior: still ? 'auto' : 'smooth', block: 'start' })
-    el.focus({ preventScroll: true })
-    setFlash(true)
-    const t = window.setTimeout(() => setFlash(false), 1800)
-    return () => window.clearTimeout(t)
-  }, [location.hash, location.key])
+  const { ref, flash } = useFlashOnHash()
 
   return (
     <section

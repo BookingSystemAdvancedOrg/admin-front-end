@@ -58,3 +58,13 @@
 
 /* Lång knapptext (t.ex. Ladda ner för Mac (Apple-chip)) radbryts i kortet i stället för att sticka ut. */
 .desktop-app .btn { max-width: 100%; white-space: normal; text-align: center; }
+
+/* Telefonens kort: Installera på hemskärmen (PhoneInstallBody). */
+.phone-install__steps { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 10px; counter-reset: step; }
+.phone-install__steps li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid var(--glass-edge, var(--border)); background: var(--glass-well, transparent); color: var(--ink); }
+.phone-install__icon { flex: none; display: grid; place-items: center; min-width: 40px; height: 40px; padding: 0 8px; border-radius: 10px;
+  background: var(--glass-pop, rgb(251 250 246 / 0.8)); color: #0a7aff; font-weight: 700; font-size: 0.85rem; }
+.phone-install__icon--text { color: var(--ink); font-size: 1rem; }
+.phone-install__glyph { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.phone-install__note { margin-top: 12px; }

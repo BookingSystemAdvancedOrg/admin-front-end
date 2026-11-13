@@ -3,6 +3,7 @@ import type { IconName } from './Icon'
 import { canSeeInsights, hasFeature } from './tenant'
 import type { Tenant } from './tenant'
 import { showDownloadNav } from './desktopDownloads'
+import { showPhoneInstallNav } from './pwa'
 
 // Sidomenyns länkar, i korta grupper i den ordning man behöver dem: överblicken,
 // driften under passet, restaurangen själv, det som ger fler gäster.
@@ -20,6 +21,8 @@ export type NavItem = {
   insights?: boolean
   /** Bara i en webbläsare på en dator: inte i skrivbordsappen, inte på mobil. */
   browserOnly?: boolean
+  /** Bara på telefon och surfplatta i webbläsaren (inte redan installerad). */
+  phoneOnly?: boolean
 }
 
 export type NavGroup = { id: string; label: string | null; items: NavItem[] }
@@ -90,6 +93,8 @@ export const NAV_FOOTER: NavItem[] = [
   { to: '/hjalp', label: 'Hjälp', icon: 'help', tour: 'nav-hjalp' },
   // Leder till kortet Skrivbordsappen i Inställningar > Den här enheten.
   { to: '/installningar#skrivbordsappen', label: 'Ladda ner appen', icon: 'download', tour: 'nav-ladda-ner', browserOnly: true },
+  // Samma kort på telefonen: där installeras appen på hemskärmen.
+  { to: '/installningar#skrivbordsappen', label: 'Installera appen', icon: 'phone', tour: 'nav-installera-appen', phoneOnly: true },
 ]
 
 /** Får användaren se länken (plan, roll, statistik)? */
@@ -98,7 +103,8 @@ export function navVisible(item: NavItem, tenant: Tenant | null): boolean {
     (!item.feature || hasFeature(tenant, item.feature)) &&
     (!item.ownerOnly || tenant?.role === 'owner_user') &&
     (!item.insights || canSeeInsights(tenant)) &&
-    (!item.browserOnly || showDownloadNav())
+    (!item.browserOnly || showDownloadNav()) &&
+    (!item.phoneOnly || showPhoneInstallNav())
   )
 }
 

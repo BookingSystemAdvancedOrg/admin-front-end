@@ -8,6 +8,7 @@ import { installGlide } from './shared/glide'
 import { installGlassFilter } from './shared/glassFilter'
 import { installDesktopGlass } from './shared/desktopGlass'
 import { startUpdateNotice } from './shared/updateNotice'
+import { installPwa } from './shared/pwa'
 import App from './App.tsx'
 import { AuthProvider } from './features/auth/AuthContext.tsx'
 import { RequireAuth } from './features/auth/RequireAuth.tsx'
@@ -28,6 +29,8 @@ installGlassFilter()
 installDesktopGlass()
 // "Ny version finns" efter en deploy (bara i bygget, inte i npm run dev).
 if (import.meta.env.PROD) startUpdateNotice()
+// Appen på telefonen: service worker och installationsknappen (bara i bygget).
+if (import.meta.env.PROD) installPwa()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

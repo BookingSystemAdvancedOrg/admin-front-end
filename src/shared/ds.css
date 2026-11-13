@@ -47,13 +47,23 @@
 
   --hairline: rgba(58, 36, 24, 0.1);
   --hairline-strong: rgba(58, 36, 24, 0.18);
-  --glass-edge: inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.75), inset 0 0 0 1px rgb(var(--bq-snow-rgb) / 0.4);
+  --glass-edge: inset 0 1px 0 var(--glass-highlight), inset 0 0 0 1px var(--glass-border);
 
   /* Glaslagren: arbetsyta, sidopaneler, popup, dialog och palett. */
-  --glass-main: rgb(var(--bq-snow-rgb) / 0.56);
-  --glass-side: rgb(var(--bq-snow-rgb) / 0.66);
-  --glass-pop: rgba(255, 252, 248, 0.8);
-  --glass-modal: rgba(255, 252, 248, 0.88);
+  --glass-main: rgb(var(--bq-snow-rgb) / 0.46);
+  --glass-side: rgb(var(--bq-snow-rgb) / 0.56);
+  --glass-pop: rgb(var(--bq-snow-rgb) / 0.8);
+  --glass-modal: rgb(var(--bq-snow-rgb) / 0.86);
+
+  /* Glasets gemensamma tokens (samma namn i console, kundsidan och booqy.se):
+     ton, kant, oskärpa, den ljusa överkanten och en tätare ton bakom
+     brödtext och tabeller (WCAG AA). */
+  --glass-bg: var(--glass-main);
+  --glass-border: rgb(var(--bq-snow-rgb) / 0.42);
+  --glass-blur: var(--blur-main);
+  --glass-highlight: rgb(var(--bq-snow-rgb) / 0.85);
+  --glass-text-bg: rgb(var(--bq-snow-rgb) / 0.8);
+  --glass-saturate: 1.6;
   --blur-main: 18px;
   --blur-side: 22px;
   --blur-pop: 24px;
@@ -77,11 +87,14 @@
   --elev-3: 0 4px 12px -4px rgba(0, 0, 0, 0.5), 0 40px 80px -32px rgba(0, 0, 0, 0.8);
   --hairline: rgba(213, 196, 174, 0.12);
   --hairline-strong: rgba(213, 196, 174, 0.22);
-  --glass-edge: inset 0 1px 0 rgba(213, 196, 174, 0.14), inset 0 0 0 1px rgba(213, 196, 174, 0.08);
-  --glass-main: rgba(26, 18, 14, 0.66);
-  --glass-side: rgba(30, 21, 16, 0.74);
+  --glass-edge: inset 0 1px 0 var(--glass-highlight), inset 0 0 0 1px var(--glass-border);
+  --glass-main: rgba(26, 18, 14, 0.56);
+  --glass-side: rgba(30, 21, 16, 0.66);
   --glass-pop: rgba(36, 25, 19, 0.86);
-  --glass-modal: rgba(36, 25, 19, 0.92);
+  --glass-modal: rgba(36, 25, 19, 0.9);
+  --glass-border: rgba(213, 196, 174, 0.14);
+  --glass-highlight: rgba(213, 196, 174, 0.22);
+  --glass-text-bg: rgba(26, 18, 14, 0.82);
   --dim: rgba(0, 0, 0, 0.55);
 }
 
@@ -1135,5 +1148,84 @@
 @media (min-width: 601px) and (max-width: 1100px) {
   .data-table:not(.keep-table) {
     min-width: 0 !important;
+  }
+}
+
+/* ============================================================================
+   Genomskinligt glas (2026-11-13). Glasytorna är nästan genomskinliga och
+   suddar det som ligger bakom. I webbläsaren är det rummet bakom (foto och
+   mjuka bruna och vinröda fläckar, se index.css); i skrivbordsappen är det
+   användarens eget skrivbord (html.is-desktop-glass, se desktopGlass.ts).
+   Högst tre lager oskärpa ovanpå varandra och oskärpan animeras aldrig.
+   ========================================================================== */
+
+/* Korten är frostat glas ovanpå arbetsytans glas (ingen egen oskärpa, den
+   under räcker); brödtext och tabeller får den tätare tonen för AA. */
+.admin-card,
+.table-card,
+.bookings-card {
+  background: var(--glass-text-bg);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), inset 0 0 0 1px var(--glass-border), var(--elev-1);
+}
+
+/* Glasreglage: genomskinlig skena, ljus överkant och en upphöjd knopp. */
+.switch {
+  background: var(--wall-tint-2);
+  box-shadow: inset 0 1px 2px rgba(26, 18, 14, 0.18), inset 0 0 0 1px var(--glass-border);
+}
+
+.switch::after {
+  box-shadow: inset 0 -1px 0 rgba(26, 18, 14, 0.08), 0 2px 6px rgba(26, 18, 14, 0.28);
+}
+
+/* --- Skrivbordsappen: skrivbordet syns igenom ------------------------------ */
+
+html.is-desktop-glass {
+  --desk-veil: rgb(var(--bq-snow-rgb) / 0.16);
+  --glass-main: rgb(var(--bq-snow-rgb) / 0.55);
+  --glass-side: rgb(var(--bq-snow-rgb) / 0.62);
+}
+
+html.is-desktop-glass[data-theme='dark'] {
+  --desk-veil: rgba(26, 18, 14, 0.3);
+  --glass-main: rgba(26, 18, 14, 0.58);
+  --glass-side: rgba(30, 21, 16, 0.66);
+}
+
+/* Linux: ingen oskärpa bakom fönstret, så tonen bär läsbarheten själv. */
+html.is-desktop-glass[data-desktop-glass='tint'] {
+  --desk-veil: rgb(var(--bq-snow-rgb) / 0.55);
+  --glass-main: rgb(var(--bq-snow-rgb) / 0.86);
+  --glass-side: rgb(var(--bq-snow-rgb) / 0.9);
+}
+
+html.is-desktop-glass[data-desktop-glass='tint'][data-theme='dark'] {
+  --desk-veil: rgba(26, 18, 14, 0.6);
+  --glass-main: rgba(26, 18, 14, 0.88);
+  --glass-side: rgba(30, 21, 16, 0.9);
+}
+
+/* Systemet suddar redan skrivbordet; sidans egen oskärpa skulle bara sudda
+   det genomskinliga fönstret och kosta en ritning per ruta. Dialoger och
+   paletten behåller sin, de ligger över sidans innehåll. */
+html.is-desktop-glass .admin-sidebar,
+html.is-desktop-glass .admin-sidebar.liquid--full,
+html.is-desktop-glass .admin-topbar,
+html.is-desktop-glass .admin-main {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Minskad genomskinlighet: hela ytor, också i skrivbordsappen. */
+@media (prefers-reduced-transparency: reduce) {
+  .admin-card,
+  .table-card,
+  .bookings-card {
+    background: var(--surface);
+  }
+  html.is-desktop-glass .admin-sidebar,
+  html.is-desktop-glass .admin-topbar,
+  html.is-desktop-glass .admin-main {
+    background: var(--surface);
   }
 }

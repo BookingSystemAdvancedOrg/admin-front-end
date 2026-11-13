@@ -261,11 +261,39 @@ a {
   --wall-tint-2: rgba(213, 196, 174, 0.2);
 }
 
+/* Rummet bakom glaset: fotot, mjuka bruna och vinröda fläckar och kvällens
+   slöja i mörkt läge. Fläckarna ligger stilla (ingen animation). */
+:root {
+  --backdrop-blobs:
+    radial-gradient(48% 42% at 12% 16%, rgba(53, 0, 1, 0.16), transparent 70%),
+    radial-gradient(42% 46% at 88% 84%, rgba(107, 74, 46, 0.22), transparent 70%),
+    radial-gradient(36% 34% at 78% 12%, rgba(168, 132, 98, 0.2), transparent 70%);
+}
+
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: linear-gradient(var(--backdrop-veil), var(--backdrop-veil)), url('./assets/backdrop.webp') center / cover no-repeat, var(--bg);
+  background: linear-gradient(var(--backdrop-veil), var(--backdrop-veil)), var(--backdrop-blobs), url('./assets/backdrop.webp') center / cover no-repeat, var(--bg);
+}
+
+/* Skrivbordsappen (desktopGlass.ts): sidan är genomskinlig och systemets
+   glas (vibrancy, akryl) visar skrivbordet bakom fönstret. Bara en tunn
+   slöja och fläckarna ligger kvar; tokens i shared/ds.css. */
+html.is-desktop-glass,
+html.is-desktop-glass body {
+  background: transparent;
+}
+
+html.is-desktop-glass body::before {
+  background: linear-gradient(var(--desk-veil, transparent), var(--desk-veil, transparent)), var(--backdrop-blobs);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  html.is-desktop-glass,
+  html.is-desktop-glass body {
+    background: var(--bg);
+  }
 }

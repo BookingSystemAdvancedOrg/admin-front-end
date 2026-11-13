@@ -6,6 +6,7 @@ import './index.css'
 import { installPress } from './shared/press'
 import { installGlide } from './shared/glide'
 import { installGlassFilter } from './shared/glassFilter'
+import { installDesktopGlass } from './shared/desktopGlass'
 import App from './App.tsx'
 import { AuthProvider } from './features/auth/AuthContext.tsx'
 import { RequireAuth } from './features/auth/RequireAuth.tsx'
@@ -23,6 +24,7 @@ import CookiesPage from './features/cookies/CookiesPage.tsx'
 installPress()
 installGlide()
 installGlassFilter()
+installDesktopGlass()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

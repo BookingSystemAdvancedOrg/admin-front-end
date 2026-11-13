@@ -60,6 +60,7 @@ export const PAGE_ACTIONS = ['new-dish', 'new-booking', 'invite-staff'] as const
  */
 export const ROUTE_PATTERNS = [
   '/',
+  '/ladda-ner',
   '/statistik',
   '/bokningar',
   '/bestallningar',

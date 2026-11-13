@@ -13,6 +13,7 @@ const CateringRequestPage = lazy(pages.cateringRequest)
 const LayoutEditorPage = lazy(pages.layout)
 const InstallningarPage = lazy(pages.installningar)
 const HjalpPage = lazy(pages.hjalp)
+const LaddaNerPage = lazy(pages.laddaNer)
 const MarknadsforingPage = lazy(pages.marknadsforing)
 const StatistikPage = lazy(pages.statistik)
 const AvtalPage = lazy(pages.avtal)
@@ -74,6 +75,7 @@ function App() {
         <Route path="marknadsforing" element={<MarknadsforingPage />} />
         <Route path="installningar" element={<InstallningarPage />} />
         <Route path="hjalp" element={<HjalpPage />} />
+        <Route path="ladda-ner" element={<LaddaNerPage />} />
         <Route path="avtal" element={<AvtalPage />} />
         <Route path="settings/payments" element={<StripeReturn />} />
         <Route path="*" element={<Navigate to="/" replace />} />

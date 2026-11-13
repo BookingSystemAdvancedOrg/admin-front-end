@@ -2,6 +2,7 @@ import type { FeatureKey } from './contracts'
 import type { IconName } from './Icon'
 import { canSeeInsights, hasFeature } from './tenant'
 import type { Tenant } from './tenant'
+import { showDownloadNav } from './desktopDownloads'
 
 // Sidomenyns länkar, i korta grupper i den ordning man behöver dem: överblicken,
 // driften under passet, restaurangen själv, det som ger fler gäster.
@@ -17,6 +18,8 @@ export type NavItem = {
   feature?: FeatureKey | FeatureKey[]
   ownerOnly?: boolean
   insights?: boolean
+  /** Bara i en webbläsare på en dator: inte i skrivbordsappen, inte på mobil. */
+  browserOnly?: boolean
 }
 
 export type NavGroup = { id: string; label: string | null; items: NavItem[] }
@@ -87,6 +90,7 @@ export const NAV_GROUPS: NavGroup[] = [
 export const NAV_FOOTER: NavItem[] = [
   { to: '/installningar', label: 'Inställningar', icon: 'gear', tour: 'nav-installningar' },
   { to: '/hjalp', label: 'Hjälp', icon: 'help', tour: 'nav-hjalp' },
+  { to: '/ladda-ner', label: 'Ladda ner appen', icon: 'download', tour: 'nav-ladda-ner', browserOnly: true },
 ]
 
 /** Får användaren se länken (plan, roll, statistik)? */
@@ -94,7 +98,8 @@ export function navVisible(item: NavItem, tenant: Tenant | null): boolean {
   return (
     (!item.feature || hasFeature(tenant, item.feature)) &&
     (!item.ownerOnly || tenant?.role === 'owner_user') &&
-    (!item.insights || canSeeInsights(tenant))
+    (!item.insights || canSeeInsights(tenant)) &&
+    (!item.browserOnly || showDownloadNav())
   )
 }
 

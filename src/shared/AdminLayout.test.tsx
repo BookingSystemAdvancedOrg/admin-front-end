@@ -51,10 +51,10 @@ describe('AdminLayout sidebar', () => {
     ])
   })
 
-  it('keeps Inställningar and Hjälp at the foot of the menu', () => {
+  it('keeps Inställningar, Hjälp and Ladda ner appen at the foot of the menu', () => {
     renderLayout()
     const foot = screen.getByRole('navigation', { name: 'Inställningar och hjälp' })
-    expect(within(foot).getAllByRole('link').map((a) => a.textContent)).toEqual(['Inställningar', 'Hjälp'])
+    expect(within(foot).getAllByRole('link').map((a) => a.textContent)).toEqual(['Inställningar', 'Hjälp', 'Ladda ner appen'])
   })
 
   it('shows Marknadsföring when any one of its four features is on', () => {

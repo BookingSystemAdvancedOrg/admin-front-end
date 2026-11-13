@@ -51,3 +51,19 @@
   animation: none;
   mix-blend-mode: normal;
 }
+
+/* Under bytet (switchTheme) tonar ingen yta: inga övergångar på bakgrund,
+   ton eller oskärpa, så att inget mellanläge blir grått. */
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
+/* Övertoningen (skrivbordsappen): plus-lighter håller samma täckning genom
+   hela bytet, så att det genomskinliga fönstret inte bleknar på mitten. */
+html.theme-crossfade::view-transition-old(root),
+html.theme-crossfade::view-transition-new(root) {
+  mix-blend-mode: plus-lighter;
+}

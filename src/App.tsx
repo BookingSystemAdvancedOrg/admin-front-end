@@ -2,6 +2,7 @@ import { lazy } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AdminLayout } from './shared/AdminLayout'
 import { pages } from './pages'
+import { DownloadRedirect } from './features/installningar/DownloadRedirect'
 
 const OversiktPage = lazy(pages.oversikt)
 const BokningarPage = lazy(pages.bokningar)
@@ -74,6 +75,7 @@ function App() {
         <Route path="marknadsforing" element={<MarknadsforingPage />} />
         <Route path="installningar" element={<InstallningarPage />} />
         <Route path="hjalp" element={<HjalpPage />} />
+        <Route path="ladda-ner" element={<DownloadRedirect />} />
         <Route path="avtal" element={<AvtalPage />} />
         <Route path="settings/payments" element={<StripeReturn />} />
         <Route path="*" element={<Navigate to="/" replace />} />

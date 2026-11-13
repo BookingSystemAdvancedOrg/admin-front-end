@@ -1,6 +1,7 @@
 import type { FeatureKey } from '../../shared/contracts'
 import { NAV_FOOTER, NAV_GROUPS, navVisible, onItem } from '../../shared/nav'
 import type { Tenant } from '../../shared/tenant'
+import { isDesktopShell } from '../../shared/desktopDownloads'
 import data from './helpKb.json'
 
 /**
@@ -60,6 +61,7 @@ export const PAGE_ACTIONS = ['new-dish', 'new-booking', 'invite-staff'] as const
  */
 export const ROUTE_PATTERNS = [
   '/',
+  '/ladda-ner',
   '/statistik',
   '/bokningar',
   '/bestallningar',
@@ -103,8 +105,13 @@ export function viewOf(tenant: Tenant | null): HelpView {
   }
 }
 
+/** Hjälptexter om att ladda ner skrivbordsappen. */
+export const DOWNLOAD_ENTRIES = ['ladda-ner-appen']
+
 /** Får den inloggade se hjälptexten (roll, plan, statistik)? Samma regel som servern. */
 export function entryVisible(entry: HelpEntry, view: HelpView): boolean {
+  // Om att ladda ner appen: inte i skrivbordsappen själv.
+  if (DOWNLOAD_ENTRIES.includes(entry.id) && isDesktopShell()) return false
   if (entry.audience === 'owner' && view.role !== 'owner_user') return false
   if (entry.feature) {
     const keys = Array.isArray(entry.feature) ? entry.feature : [entry.feature]
@@ -126,6 +133,7 @@ export function actionAllowed(action: HelpAction, tenant: Tenant | null): boolea
   if (typeof action?.to !== 'string' || typeof action.label !== 'string' || !action.label.trim()) return false
   if (!(ROUTE_PATTERNS as readonly string[]).includes(action.to) || action.to.includes(':')) return false
   if (action.to === '/settings/payments') return false
+  if (isDesktopShell() && (action.to === '/ladda-ner' || action.hash === 'skrivbordsappen')) return false
   const item = NAV_ITEMS.find((n) => onItem(action.to, n))
   if (item && !navVisible(item, tenant)) return false
   if (action.to === '/avtal' && tenant?.role !== 'owner_user') return false

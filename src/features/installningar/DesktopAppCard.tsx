@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
-  desktopAppVersion,
   desktopFiles,
+  isDesktopShell,
   readSignals,
   recommend,
   type DesktopOs,
@@ -30,8 +30,13 @@ function badge(rec: Recommendation): string {
  * säger hur man öppnar den första gången (Gatekeeper och SmartScreen).
  */
 export function DesktopAppCard({ heading = true }: { heading?: boolean }) {
+  // I skrivbordsappen finns inget att ladda ner: kortet visas inte alls.
+  if (isDesktopShell()) return null
+  return <DesktopAppCardBody heading={heading} />
+}
+
+function DesktopAppCardBody({ heading }: { heading: boolean }) {
   const files = desktopFiles('admin', 'Booqy-Admin')
-  const inApp = desktopAppVersion()
   // undefined = läser fortfarande, null = ingen säker rekommendation.
   const [rec, setRec] = useState<Recommendation | null | undefined>(undefined)
 
@@ -77,9 +82,7 @@ export function DesktopAppCard({ heading = true }: { heading?: boolean }) {
         den senaste versionen av Booqy och frågar när själva appen kan uppdateras.
       </p>
 
-      {inApp ? (
-        <p className="desktop-app__now">Du använder skrivbordsappen, version {inApp}. Hjälp-menyn har Sök efter uppdateringar.</p>
-      ) : mine && rec ? (
+      {mine && rec ? (
         <p className="desktop-app__pick">
           <a className="btn primary" href={mine.url} download>
             {LABELS[rec.os].button}

@@ -17,3 +17,10 @@
 .desktop-app__help { margin-top: 14px; }
 .desktop-app__help summary { cursor: pointer; font-weight: 600; color: var(--ink); }
 .desktop-app__help p { margin: 8px 0 0; }
+.desktop-app__title { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.desktop-app__badge {
+  font-size: 0.75rem; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+  background: var(--ink); color: var(--glass-text-bg, #fbfaf6);
+}
+.desktop-app__list .is-yours a { border-width: 1.5px; background: var(--glass-fill, var(--glass-well)); }
+.desktop-page { max-width: 720px; }

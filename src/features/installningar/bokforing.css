@@ -122,19 +122,13 @@
   width: 100%;
   min-height: 44px;
   padding: 10px 14px;
-  border: 0;
   border-radius: var(--r-md);
-  background: var(--glass-fill);
   font: 500 16px/1.2 var(--mono);
   letter-spacing: 0.08em;
   text-align: center;
   color: var(--ink);
 }
 
-.bokforing-input input:focus {
-  outline: none;
-  box-shadow: 0 0 0 4px var(--focus);
-}
 
 .bokforing-input input[aria-invalid='true'] {
   box-shadow: 0 0 0 2px var(--danger);

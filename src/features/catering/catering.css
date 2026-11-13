@@ -58,7 +58,6 @@
   width: 100%;
   min-width: 70px;
   padding: 8px 10px;
-  border: 1px solid var(--border);
   border-radius: var(--r-md);
   font: inherit;
 }
@@ -76,7 +75,6 @@
 .catering-confirm textarea,
 .catering-request .form-field textarea {
   padding: 10px 12px;
-  border: 1px solid var(--border);
   border-radius: var(--r-md);
   font: inherit;
 }

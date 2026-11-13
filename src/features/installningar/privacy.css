@@ -27,9 +27,7 @@
   width: 100%;
   min-height: 320px;
   padding: 12px 14px;
-  border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--glass-surface);
   color: var(--ink);
   font: inherit;
   font-size: 14px;

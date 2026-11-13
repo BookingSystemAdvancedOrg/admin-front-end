@@ -9,9 +9,7 @@
 
 .orders-pause select {
   padding: 10px 12px;
-  border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--glass-surface);
   font: inherit;
 }
 

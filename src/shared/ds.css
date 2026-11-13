@@ -1330,3 +1330,15 @@ html.is-desktop-glass.glass-refract .admin-sidebar {
     backdrop-filter: none;
   }
 }
+
+/* Sifferfält: ingen inbyggd snurra, siffrorna står i linje. */
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+  font-variant-numeric: tabular-nums;
+}
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

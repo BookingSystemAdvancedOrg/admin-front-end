@@ -54,7 +54,7 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     setBy: 'Booqy (servern)',
     purpose:
       'Håller dig inloggad. Kan inte läsas av sidans skript (HttpOnly), skickas bara till inloggningstjänsten på den här adressen och byts ut vid varje förnyelse.',
-    lifetime: '12 timmar, raderas när du loggar ut',
+    lifetime: '30 dagar, raderas när du loggar ut',
     category: 'nödvändig',
   },
   {

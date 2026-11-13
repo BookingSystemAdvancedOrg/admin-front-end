@@ -1607,3 +1607,87 @@ html.is-busy * {
     background-color: rgb(var(--bq-snow-rgb) / 0.1);
   }
 }
+
+/* Bakgrund (shared/BackdropSetting.tsx): ett segment och färgprover. */
+.backdrop-setting {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+}
+.backdrop-segment {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--r-pill);
+  background: var(--glass-fill);
+  box-shadow: inset 0 0 0 1px var(--glass-border);
+}
+.backdrop-segment button {
+  appearance: none;
+  min-height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink);
+  font: 600 14px/1 var(--sans);
+  cursor: default;
+  transition: background-color 160ms var(--ease), color 160ms var(--ease);
+}
+.backdrop-segment button[aria-pressed='true'] {
+  background: var(--slip);
+  color: var(--on-slip);
+}
+.backdrop-segment button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--field-ring);
+}
+.backdrop-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.backdrop-swatch {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgb(26 18 14 / 0.18), inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.45);
+  color: var(--ink);
+  cursor: default;
+}
+.backdrop-swatch[aria-pressed='true'],
+.backdrop-swatch[data-selected='true'] {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink);
+}
+.backdrop-swatch:focus-visible,
+.backdrop-swatch--custom:has(input:focus-visible) {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--field-ring);
+}
+.backdrop-swatch--brand {
+  background: radial-gradient(60% 60% at 25% 25%, #a88462, transparent 70%), radial-gradient(60% 60% at 80% 80%, #350001, transparent 70%), #e8dccb;
+}
+.backdrop-swatch--custom {
+  background: var(--glass-fill);
+  font: 600 18px/1 var(--sans);
+}
+.backdrop-swatch--custom input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: default;
+}
+@container (max-width: 520px) {
+  .backdrop-setting,
+  .backdrop-swatches {
+    justify-items: start;
+    justify-content: flex-start;
+  }
+}

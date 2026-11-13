@@ -347,3 +347,27 @@ html.is-desktop-glass[data-desktop-glass='tint'] body::before {
     --tint-purple: #352a40 !important;
   }
 }
+
+/* Bakgrund: Färg (shared/glassBackdrop.ts). Ett mjukt färgfält i den valda
+   färgen, blandad mot läget (ljust: papper, mörkt: espresso) så att texten på
+   glaset håller AA vilken färg man än väljer. Det sista lagret är tätt, så i
+   skrivbordsappen täcks systemets glas helt. */
+html[data-glass-backdrop='colour'] body::before,
+html.is-desktop-glass[data-glass-backdrop='colour'] body::before {
+  display: block;
+  --uc-base: color-mix(in srgb, var(--user-colour) 55%, #f6f1ea);
+  --uc-hi: color-mix(in srgb, var(--uc-base) 65%, #fbfaf6);
+  --uc-lo: color-mix(in srgb, var(--uc-base) 78%, #1a120e);
+  background:
+    radial-gradient(42% 50% at 8% 12%, var(--uc-hi), transparent 72%),
+    radial-gradient(38% 46% at 92% 88%, var(--uc-lo), transparent 72%),
+    radial-gradient(30% 36% at 82% 8%, color-mix(in srgb, var(--user-colour) 55%, transparent), transparent 70%),
+    radial-gradient(34% 40% at 30% 92%, color-mix(in srgb, var(--uc-base) 55%, var(--user-colour)), transparent 70%),
+    linear-gradient(155deg, var(--uc-hi), var(--uc-base) 50%, var(--uc-lo));
+}
+html[data-glass-backdrop='colour'][data-theme='dark'] body::before,
+html.is-desktop-glass[data-glass-backdrop='colour'][data-theme='dark'] body::before {
+  --uc-base: color-mix(in srgb, var(--user-colour) 50%, #1a120e);
+  --uc-hi: color-mix(in srgb, var(--uc-base) 80%, #6b4a2e);
+  --uc-lo: color-mix(in srgb, var(--uc-base) 70%, #0f0a08);
+}

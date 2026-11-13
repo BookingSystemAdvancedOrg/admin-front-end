@@ -38,6 +38,7 @@ export const LOGOUT_PENDING_KEY = 'booqy-logout-pending'
 export const MOTION_SEEN_KEY = 'booqy-motion-seen'
 export const THEME_KEY = 'booqy-theme'
 export const APP_HINT_KEY = 'booqy-app-hint'
+export const GLASS_BACKDROP_KEY = 'booqy-glass-backdrop'
 export const SOUND_KEY = 'booqy-sound'
 export const SOUND_VOLUME_KEY = 'booqy-sound-volume'
 export const NAV_CLOSED_KEY = 'booqy-nav-closed'
@@ -96,6 +97,14 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     setBy: 'Booqy',
     purpose: 'Ditt val av ljust eller mörkt läge (Inställningar, Utseende och ljud). Samma nyckel på booqy.se och i Booqy Console. Inga personuppgifter.',
     lifetime: 'Tills du rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: GLASS_BACKDROP_KEY,
+    kind: 'localStorage',
+    setBy: 'Booqy',
+    purpose: 'Bakgrunden bakom glaset om du valt en färg (Inställningar, Utseende och ljud). Utan val är skrivbordsappen genomskinlig och webbläsaren har Booqys bakgrund. Inga personuppgifter.',
+    lifetime: 'Tills du byter tillbaka eller rensar webbläsaren',
     category: 'nödvändig',
   },
   {

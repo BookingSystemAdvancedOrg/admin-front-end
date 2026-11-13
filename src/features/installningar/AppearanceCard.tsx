@@ -1,3 +1,5 @@
+import { BackdropSetting } from '../../shared/BackdropSetting'
+import { isDesktopShell } from '../../shared/desktopDownloads'
 import { SoundToggle } from '../../shared/SoundToggle'
 import { SoundVolume } from '../../shared/SoundVolume'
 import { ThemeToggle } from '../../shared/ThemeToggle'
@@ -20,6 +22,17 @@ export function AppearanceCard() {
             <p className="cell-muted">Tryck för att byta. Mörka ytor passar till exempel en mörk lokal på kvällen.</p>
           </div>
           <ThemeToggle label className="appearance-toggle" />
+        </div>
+        <div className="appearance-row">
+          <div>
+            <p className="appearance-title">Bakgrund</p>
+            <p className="cell-muted">
+              {isDesktopShell()
+                ? 'Genomskinligt visar det som ligger bakom fönstret. Färg lägger glaset över en färg du väljer.'
+                : 'Färgen bakom glaset i den här webbläsaren. Genomskinligt, där skrivbordet syns igenom, finns i skrivbordsappen.'}
+            </p>
+          </div>
+          <BackdropSetting />
         </div>
         <div className="appearance-row">
           <div>

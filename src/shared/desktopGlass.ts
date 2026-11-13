@@ -7,6 +7,7 @@
  * webbläsare händer ingenting.
  */
 import { showDesktopHint } from './desktopHint'
+import { installGlassBackdrop } from './glassBackdrop'
 
 export type DesktopGlass = 'vibrancy' | 'acrylic' | 'tint'
 
@@ -16,6 +17,7 @@ export function desktopGlassMode(userAgent: string): DesktopGlass | null {
 }
 
 export function installDesktopGlass(): DesktopGlass | null {
+  installGlassBackdrop()
   // Den borttagna Bakgrund-inställningen sparade en bild här; städa bort den.
   try {
     localStorage.removeItem('booqy-backdrop')

@@ -562,7 +562,7 @@ export default function StatistikPage() {
                 <>
                   <Disclosure id="omsattning" title="Omsättning" className="sk-acc" defaultOpen={open.includes('omsattning')} onToggle={toggle('omsattning')}>
                     <div className="sk-charts">
-                    <Card title={insightTitle('Omsättningen', deltaPct(s.revenue, p?.revenue))} label="Omsättning per dag" info="Betalda beställningar på dagen de betalades, catering på leveransdagen och kortköp i kassan, inklusive moms." wide>
+                    <Card title={insightTitle('Omsättningen', deltaPct(s.revenue, p?.revenue))} label="Omsättning per dag" info="Betalda beställningar på dagen de betalades, catering på leveransdagen, inklusive moms." wide>
                       <p className="sk-insight">Betalda beställningar och levererad catering per dag, inklusive moms.</p>
                       <ColumnChart
                         unit="kr"

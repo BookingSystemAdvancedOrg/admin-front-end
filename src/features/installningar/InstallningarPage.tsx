@@ -579,7 +579,6 @@ export default function InstallningarPage() {
                 key={locationId ?? 'none'}
                 locationId={locationId}
                 giftCards={hasFeature(tenant, 'giftCards')}
-                kassa={hasFeature(tenant, 'kassa')}
               />
             </div>
           )}

@@ -1,6 +1,6 @@
 /**
- * Den valda fliken glider, som flikarna "Boka bord · Beställ mat · Catering ·
- * Kassa" på booqy.se: varje väljare där man väljer ett av flera får ett
+ * Den valda fliken glider, som flikarna "Boka bord · Beställ mat · Catering"
+ * på booqy.se: varje väljare där man väljer ett av flera får ett
  * sandfärgat spår och en espressofärgad pill (::before) som glider och
  * sträcker sig till det valda alternativet i stället för att hoppa.
  *
@@ -22,14 +22,10 @@ const GROUPS: [string, 'track' | 'bare', 'always'?][] = [
   ['.sk-chips', 'track'],
   ['.segmented', 'track'],
   ['.channel-picker', 'bare'],
-  ['.kassa-switch', 'track'],
-  ['.kassa-cats', 'track'],
   ['.floor-tabs', 'track'],
   ['.view-toggle', 'track'],
   ['.shape-toggle', 'track'],
   ['.floor-list', 'track'],
-  ['.pay-mode', 'track'],
-  ['.kassa-chips', 'track', 'always'],
 ]
 
 const ACTIVE = ".active, .on, [aria-pressed='true'], [aria-selected='true'], [aria-checked='true']"

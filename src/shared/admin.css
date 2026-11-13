@@ -983,8 +983,6 @@
    mellanslag får aldrig spräcka kortet eller skapa horisontell scroll. */
 .form-error,
 .auth-error,
-.kassa-alert,
-.pay-field-error,
 .field-hint.error,
 .mk-errors {
   max-width: 100%;

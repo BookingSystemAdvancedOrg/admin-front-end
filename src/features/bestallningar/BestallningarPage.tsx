@@ -53,7 +53,7 @@ function placeKey(order: Order): string {
 const ALL = 'all'
 
 /**
- * Köks-/kassaskärmen för matbeställningar: dagens betalda beställningar i
+ * Köksskärmen för matbeställningar: dagens betalda beställningar i
  * tre kolumner (Nya, Tillagas, Klara). Två klick per beställning:
  * "Påbörja" skickar gästens bekräftelse-sms (restaurangen har börjat, klar
  * ca HH:MM räknat från klicket) och "Klar" på en avhämtning skickar sms:et

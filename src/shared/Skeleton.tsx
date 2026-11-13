@@ -143,7 +143,7 @@ export function SkelTiles({ n = 4 }: { n?: number }) {
   )
 }
 
-/** En ruta i sidans eget kort eller rutnät (t.ex. kassans rätter). */
+/** En ruta i sidans eget kort eller rutnät (t.ex. menyns rätter). */
 export function SkelBox({ className = '', h, children }: { className?: string; h?: Size; children?: ReactNode }) {
   return (
     <div className={`skel-box${className ? ` ${className}` : ''}`} aria-hidden="true" style={h !== undefined ? { minHeight: h } : undefined}>

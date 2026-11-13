@@ -17,7 +17,7 @@ import { SkelLines } from '../../shared/Skeleton'
 import { StationsCard } from './StationsCard'
 
 /**
- * Inställningar > Skrivare: bongskrivarna för matbeställningar och Kassa.
+ * Inställningar > Skrivare: bongskrivarna för matbeställningar.
  *
  * Skrivaren (Star CloudPRNT, t.ex. mC-Print3, eller Epson Server Direct
  * Print, t.ex. TM-m30III, med nätverkskabel eller wifi) frågar Booqy var
@@ -238,7 +238,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
                       <p className="cell-muted printer-meta">
                         {printer.protocol === 'epson' ? 'Epson' : 'Star'}
                         {stationsOf(printer).length ? ` · Bongar: ${stationsOf(printer).join(', ')}` : ' · Ingen station'}
-                        {printer.deviceId === saved?.printerId ? ' · Kassakvitton' : ''}
+                        {printer.deviceId === saved?.printerId ? ' · Orderskrivare' : ''}
                         {printer.mac ? ` · MAC ${printer.mac}` : ''}
                         {printer.statusCode && !printer.statusCode.startsWith('2') ? ` · Skrivaren rapporterar: ${printer.statusCode}` : ''}
                       </p>
@@ -310,7 +310,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
                 </div>
                 <div className="form-grid">
                   <div className="form-field">
-                    <label htmlFor="print-printer">Skrivare för kvitton (Kassa)</label>
+                    <label htmlFor="print-printer">Orderskrivare (omtryck och makulering)</label>
                     <select id="print-printer" value={printerId} disabled={disabled}
                       onChange={(e) => { setPrinterId(e.target.value); setNotice(null) }}>
                       <option value="">Ingen</option>

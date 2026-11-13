@@ -1,6 +1,6 @@
 import { apiFetch } from '../../shared/api'
 
-/** Presentkort (CONTRACTS.md 6.E). Översikten och inställningarna är ägarens; kassan når även personalen. */
+/** Presentkort (CONTRACTS.md 6.E). Översikten och inställningarna är ägarens; gästen löser in kortet när hen beställer online. */
 
 export type CardStatus = 'active' | 'used' | 'expired' | 'void'
 export interface Settings { enabled: boolean; amountsSek: number[]; customMinSek: number; customMaxSek: number; validityMonths: number; version: number }
@@ -15,7 +15,6 @@ export interface CardDetail extends Card {
 export interface Listing { cards: Card[]; liabilitySek: number; liabilityOre: number; cursor: string | null }
 
 const card = (id: string) => `/tenant/gift-cards/${encodeURIComponent(id)}`
-const loc = (id: string) => `/locations/${encodeURIComponent(id)}/gift-cards`
 
 export const getSettings = () => apiFetch<Settings>('/tenant/gift-cards/settings')
 export const saveSettings = (s: Settings) => apiFetch<Settings>('/tenant/gift-cards/settings', { method: 'PUT', body: JSON.stringify(s) })
@@ -33,19 +32,6 @@ export const refundCard = (id: string, reason: string) =>
   apiFetch<Card>(`${card(id)}/refund`, { method: 'POST', body: JSON.stringify({ txId: newTxId(), reason }) })
 export const resendCode = (id: string, to: 'buyer' | 'recipient') =>
   apiFetch<{ last4: string }>(`${card(id)}/resend`, { method: 'POST', body: JSON.stringify({ to }) })
-export const lookupCode = (locationId: string, code: string) =>
-  apiFetch<{ cardId: string; last4: string; balanceSek: number; balanceOre: number; expiresAt: string; status: CardStatus }>(
-    `${loc(locationId)}/lookup`, { method: 'POST', body: JSON.stringify({ code }) })
-export const redeemCode = (locationId: string, body: { txId: string; code: string; amountOre: number; billId: string }) =>
-  apiFetch<{ txId: string; balanceAfterSek: number; balanceAfterOre: number; cardLast4: string }>(
-    `${loc(locationId)}/redemptions`, { method: 'POST', body: JSON.stringify(body) })
-export const reverseRedemption = (locationId: string, txId: string) =>
-  apiFetch<{ balanceAfterSek: number }>(`${loc(locationId)}/redemptions/${encodeURIComponent(txId)}/reverse`, { method: 'POST', body: '{}' })
-/** Kassan tar emot det inlösta beloppet som en betalning på notan (Run 0, kind giftcard). */
-export const addKassaGiftCardPayment = (locationId: string, billId: string, paymentId: string) =>
-  apiFetch<unknown>(`/locations/${encodeURIComponent(locationId)}/kassa/bills/${encodeURIComponent(billId)}/payments`, {
-    method: 'POST', body: JSON.stringify({ kind: 'giftcard', paymentId }),
-  })
 
 export function newTxId(): string {
   return crypto.randomUUID().replace(/-/g, '')
@@ -66,10 +52,8 @@ export const ERRORS: Record<string, string> = {
   card_expired: 'Presentkortet har gått ut.',
   card_void: 'Presentkortet är makulerat.',
   refund_window_passed: 'Ångerfristen på 14 dagar har gått ut.',
-  receipt_issued: 'Kassan har redan tagit emot betalningen. Ångra den i kassan i stället.',
   invalid_validity: 'Giltigheten ska vara 12-60 månader.',
   invalid_amount: 'Beloppen ska vara 100-5 000 kr.',
-  gift_card_receipt_not_supported: 'Kassan kan inte ta emot presentkort än (kontrollsystemet saknar betalsättet). Beloppet har lagts tillbaka på kortet.',
   // E10: koden är redan bytt men mejlet gick inte ut; ett nytt försök byter koden igen och skickar den.
   notification_unavailable: 'Mejlet kunde inte skickas just nu. Försök igen om en stund.',
 }

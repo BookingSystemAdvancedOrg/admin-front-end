@@ -196,32 +196,6 @@
   accent-color: var(--green);
 }
 
-.segmented {
-  display: inline-flex;
-  align-self: flex-start;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--bg);
-}
-
-.segmented button {
-  min-height: 36px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: var(--r-md);
-  background: none;
-  font: 600 13px/1 var(--sans);
-  color: var(--muted);
-  cursor: default;
-}
-
-.segmented button.active {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: var(--shadow);
-}
-
 .slot-picker {
   display: flex;
   flex-direction: column;
@@ -314,5 +288,77 @@
 
   .day-tools {
     width: 100%;
+  }
+}
+
+/* Hur gästen bokade (ChannelPicker): två stora val mitt i kortet; den
+   valda pillen glider (glide.ts, 'bare'). */
+.channel-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 4px;
+  border-radius: var(--r-md);
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.channel-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+
+.channel-option.active {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.channel-picker[data-glide] > .channel-option.active {
+  background: transparent;
+}
+
+.channel-option:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus) !important;
+}
+
+.channel-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.channel-option-label {
+  font: 700 16px/1.1 var(--sans);
+}
+
+.channel-option-hint {
+  font: 400 12px/1.2 var(--sans);
+  opacity: 0.75;
+}
+
+@media (max-width: 380px) {
+  .channel-option {
+    flex-direction: column;
+    gap: 6px;
+    text-align: center;
+  }
+
+  .channel-option-text {
+    align-items: center;
   }
 }

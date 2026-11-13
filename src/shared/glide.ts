@@ -21,6 +21,7 @@ const GROUPS: [string, 'track' | 'bare', 'always'?][] = [
   ['.mk-segment', 'track'],
   ['.sk-chips', 'track'],
   ['.segmented', 'track'],
+  ['.channel-picker', 'bare'],
   ['.kassa-switch', 'track'],
   ['.kassa-cats', 'track'],
   ['.floor-tabs', 'track'],

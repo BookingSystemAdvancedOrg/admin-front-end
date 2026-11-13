@@ -581,8 +581,8 @@ export default function CateringkalkylPage() {
                 {tiers.map((t) => (
                   <tr key={t.id}>
                     <td className="cell-strong">{t.name}</td>
-                    <td>{t.fromPortions} gäster</td>
-                    <td>{t.toPortions != null ? `${t.toPortions} gäster` : 'och uppåt'}</td>
+                    <td data-label="Från">{t.fromPortions} gäster</td>
+                    <td data-label={t.toPortions != null ? "Till" : undefined}>{t.toPortions != null ? `${t.toPortions} gäster` : 'och uppåt'}</td>
                     <td>
                       {t.discountPercent > 0 ? (
                         <span className="cell-price">-{t.discountPercent} %</span>

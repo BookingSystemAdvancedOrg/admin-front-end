@@ -15,7 +15,7 @@ export function SoundToggle({ label = false, className = '' }: { label?: boolean
       className={`theme-toggle sound-toggle${className ? ` ${className}` : ''}`}
       aria-pressed={on}
       aria-label={label ? undefined : 'Klickljud'}
-      title={label ? undefined : name}
+      title={label ? undefined : `${name}, slå ${on ? 'av' : 'på'}`}
       onClick={toggle}
     >
       <span className="theme-toggle-icon" aria-hidden="true">

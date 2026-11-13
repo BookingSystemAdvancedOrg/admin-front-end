@@ -172,7 +172,7 @@ describe('NewReservationModal', () => {
     await user.selectOptions(await screen.findByLabelText('Tid'), '19:00')
     await user.click(screen.getByLabelText(/Bord 2/))
     await user.type(screen.getByLabelText('Namn'), 'Anna')
-    await user.type(screen.getByLabelText(/Telefon/), '+46701234567')
+    await user.type(screen.getByLabelText('Telefon (valfritt)'), '+46701234567')
     await user.click(screen.getByRole('button', { name: 'Boka' }))
     expect(createManualReservation).toHaveBeenCalledWith('loc-1', {
       date: '2026-10-12',

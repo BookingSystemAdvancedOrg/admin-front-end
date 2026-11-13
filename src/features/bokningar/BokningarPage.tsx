@@ -260,7 +260,7 @@ export default function BokningarPage() {
                         <div className="cell-muted">{SOURCE_LABEL[r.source]}</div>
                       )}
                     </td>
-                    <td><Num>{r.partySize}</Num></td>
+                    <td data-label="Pers"><Num>{r.partySize}</Num></td>
                     <td>{tableNames(r.tableIds, labels)}</td>
                     <td>
                       <span className={`status-badge ${STATUS_CLASS[r.status]}`}>

@@ -1,7 +1,8 @@
 import { errorText } from '../../shared/errors'
 import { useEffect, useRef, useState } from 'react'
 import { LayoutPrep } from './LayoutPrep'
-import type { PointerEvent as ReactPointerEvent } from 'react'
+import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import { FloorBooking } from './FloorBooking'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { getStoredLocationId, useLocationId } from '../../shared/location'
@@ -168,6 +169,70 @@ const OPENING_TOOLS: { tool: Tool; kind: OpeningKind; warn: string }[] = [
   { tool: 'kitchen', kind: 'kitchen', warn: 'Kökets ingång kan bara placeras på en vägg - rita väggen först.' },
 ]
 
+/** Sant när skärmen är för smal för redigeraren (telefon). */
+function useSmallScreen(): boolean {
+  const query = '(max-width: 767px)'
+  const get = () => typeof window.matchMedia === 'function' && window.matchMedia(query).matches
+  const [small, setSmall] = useState(get)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia(query)
+    const on = () => setSmall(mq.matches)
+    mq.addEventListener?.('change', on)
+    return () => mq.removeEventListener?.('change', on)
+  }, [])
+  return small
+}
+
+/**
+ * Layout-sidan: "Boka bord" (boka direkt från den publicerade bordskartan)
+ * och "Redigera" (3D-redigeraren). Redigeraren kräver mus och en stor skärm;
+ * i telefonen visas bara bokningsvyn, med en rad om att planen redigeras på
+ * en större skärm. Redigeraren ligger kvar monterad (dold) när man växlar
+ * till bokning, så ett osparat utkast inte försvinner.
+ */
+export default function LayoutEditorPage() {
+  const small = useSmallScreen()
+  const [mode, setMode] = useState<'book' | 'edit'>('edit')
+  // Monteras första gången skärmen är stor nog, och ligger sedan kvar.
+  const [editorMounted, setEditorMounted] = useState(!small)
+  if (!small && !editorMounted) setEditorMounted(true)
+
+  if (small) {
+    return (
+      <FloorBooking
+        notice={
+          <p className="layout-small-notice" role="note">
+            <Icon name="tool-floor" size={20} />
+            Redigera bordskartan på en större skärm. Här kan du se borden och boka dem.
+          </p>
+        }
+      />
+    )
+  }
+
+  const modeSwitch = (
+    <span className="view-toggle layout-mode-switch" role="tablist" aria-label="Läge">
+      <button type="button" role="tab" aria-selected={mode === 'book'} className={mode === 'book' ? 'active' : ''} onClick={() => setMode('book')}>
+        Boka bord
+      </button>
+      <button type="button" role="tab" aria-selected={mode === 'edit'} className={mode === 'edit' ? 'active' : ''} onClick={() => setMode('edit')}>
+        Redigera
+      </button>
+    </span>
+  )
+  return (
+    <>
+      {mode === 'book' && <FloorBooking actions={modeSwitch} />}
+      {editorMounted && (
+        <div style={{ display: mode === 'edit' ? 'contents' : 'none' }}>
+          <LayoutEditor modeSwitch={modeSwitch} active={mode === 'edit'} />
+        </div>
+      )}
+    </>
+  )
+}
+
 /**
  * Figma: admin-live-layout-editor-page (26:2), byggd som riktig 3D-scen i
  * CSS. Origo ligger i canvasens mitt. Marken ritas fritt och får
@@ -182,7 +247,10 @@ const OPENING_TOOLS: { tool: Tool; kind: OpeningKind; warn: string }[] = [
  * utkast"/"Publicera layout". Markytor och kassan finns inte i API:ts
  * datamodell och lever bara lokalt - se kommentaren i layoutApi.ts.
  */
-export default function LayoutEditorPage() {
+function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; active?: boolean }) {
+  // Dold bakom "Boka bord": tangentbordsgenvägarna får inte röra planen då.
+  const activeRef = useRef(active)
+  activeRef.current = active
   // Den faktiskt inloggade användaren - statusraden visade tidigare ett
   // påhittat namn ("Anna") oavsett vem som satt vid tangentbordet.
   const { email: editorEmail, sub: editorSub, groups } = useAuth()
@@ -1808,9 +1876,11 @@ export default function LayoutEditorPage() {
     if (action) runAction(action, e)
   }
   useEffect(() => {
-    const down = (e: KeyboardEvent) => onKey.current(e)
+    const down = (e: KeyboardEvent) => {
+      if (activeRef.current) onKey.current(e)
+    }
     const up = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
+      if (activeRef.current && e.code === 'Space') {
         e.preventDefault()
         setSpaceDown(false)
       }
@@ -2045,6 +2115,7 @@ export default function LayoutEditorPage() {
         title="Layout"
         actions={
           <span className="row-actions">
+            {modeSwitch}
             <span className="cell-muted">{versionLabel}</span>
             <button
               type="button"

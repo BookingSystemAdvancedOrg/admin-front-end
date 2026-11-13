@@ -1,0 +1,265 @@
+/* Boka från bordskartan (FloorBooking.tsx). */
+
+.floor-booking-controls,
+.floor-map-card,
+.floor-booking-panel {
+  padding: 20px;
+}
+
+.floor-booking-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.floor-booking-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.floor-booking-controls > .field-hint,
+.floor-booking-controls > .form-error {
+  text-align: center;
+}
+
+.floor-booking-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: 20px;
+  align-items: start;
+}
+
+.floor-map-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.floor-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 68vh;
+  border-radius: var(--r-md);
+  background: var(--bg);
+  touch-action: manipulation;
+}
+
+.floor-map-ground {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.floor-map-wall {
+  stroke: var(--ink);
+  stroke-width: 6;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+
+.floor-map-table {
+  cursor: default;
+  outline: none;
+}
+
+.floor-map-top {
+  fill: var(--tint-green);
+  stroke: var(--green);
+  stroke-width: 2;
+  transition: fill 0.15s, stroke-width 0.15s;
+}
+
+.floor-map-table.is-small .floor-map-top {
+  fill: var(--tint-orange);
+  stroke: var(--warning);
+}
+
+.floor-map-table.is-full .floor-map-top,
+.floor-map-table.is-loading .floor-map-top {
+  fill: var(--fill, var(--bg));
+  stroke: var(--border);
+  stroke-dasharray: 4 3;
+}
+
+.floor-map-table.is-full {
+  opacity: 0.6;
+}
+
+.floor-map-table.is-selected .floor-map-top {
+  fill: var(--green);
+  stroke: var(--ink);
+  stroke-width: 3;
+}
+
+.floor-map-table:focus-visible .floor-map-top {
+  stroke: var(--ink);
+  stroke-width: 4;
+}
+
+@media (hover: hover) {
+  .floor-map-table.is-free:hover .floor-map-top,
+  .floor-map-table.is-small:hover .floor-map-top {
+    stroke-width: 3.5;
+  }
+}
+
+.floor-map-label,
+.floor-map-seats {
+  text-anchor: middle;
+  dominant-baseline: middle;
+  fill: var(--ink);
+  pointer-events: none;
+  user-select: none;
+}
+
+.floor-map-label {
+  font: 800 19px/1 var(--sans);
+}
+
+.floor-map-seats {
+  font: 600 12px/1 var(--sans);
+  opacity: 0.75;
+}
+
+.floor-map-table.is-selected .floor-map-label,
+.floor-map-table.is-selected .floor-map-seats {
+  fill: var(--surface);
+}
+
+/* större yta att träffa med fingret än själva bordet */
+.floor-map-hit {
+  fill: transparent;
+}
+
+.floor-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.floor-map-legend > span[class^='legend-']::before {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  border-radius: 3px;
+  border: 1.5px solid;
+}
+
+.legend-free::before {
+  background: var(--tint-green);
+  border-color: var(--green) !important;
+}
+
+.legend-small::before {
+  background: var(--tint-orange);
+  border-color: var(--warning) !important;
+}
+
+.legend-full::before {
+  background: var(--bg);
+  border-style: dashed !important;
+  border-color: var(--border) !important;
+}
+
+.floor-booking-panel {
+  position: sticky;
+  top: 110px;
+  min-width: 0;
+}
+
+.floor-booking-hint {
+  padding: 24px 8px;
+  text-align: center;
+}
+
+.floor-booking-head .card-title {
+  margin: 0;
+}
+
+.time-chip {
+  min-width: 68px;
+  justify-content: center;
+  border-width: 1.5px;
+  font: 600 14px/1 var(--mono);
+  color: var(--ink);
+}
+
+.floor-booking-done {
+  padding: 12px 16px;
+  border-radius: var(--r-md);
+  background: var(--tint-green);
+  color: var(--success-ink, var(--ink));
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Telefonen: kartan överst, formuläret under; redigeraren visas inte. */
+.layout-small-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--tint-blue);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.layout-mode-switch {
+  display: inline-flex;
+}
+
+@media (max-width: 900px) {
+  .floor-booking-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .floor-booking-controls,
+  .floor-map-card,
+  .floor-booking-panel {
+    padding: 16px;
+  }
+
+  .floor-booking-panel {
+    position: static;
+    scroll-margin-top: 80px;
+  }
+
+  .floor-map {
+    max-height: 60vh;
+  }
+}
+
+@media (max-width: 420px) {
+  .floor-booking-fields {
+    gap: 10px;
+  }
+
+  /* borden ritas större i telefonen (på samma plats), så att de går att träffa */
+  .floor-map-body {
+    scale: 1.4;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .floor-map-label {
+    font-size: 21px;
+  }
+
+  .floor-map-seats {
+    font-size: 13px;
+  }
+}

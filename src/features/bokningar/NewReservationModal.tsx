@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { SlotTablePicker } from './SlotTablePicker'
+import { ChannelPicker } from './ChannelPicker'
+import type { StaffChannel } from './ChannelPicker'
 import type { SlotValue } from './SlotTablePicker'
 import {
   EMAIL_MAX,
@@ -43,7 +45,7 @@ export function NewReservationModal({
   onCreated: (r: Reservation) => void
   onCancel: () => void
 }) {
-  const [source, setSource] = useState<'phone' | 'walk_in'>('phone')
+  const [source, setSource] = useState<StaffChannel>('phone')
   const [partySize, setPartySize] = useState('2')
   const [slot, setSlot] = useState<SlotValue>({
     date: clampDate(initialDate, today),
@@ -68,7 +70,7 @@ export function NewReservationModal({
     sizeOk && name.trim() && slot.startTime && slot.tableIds.length > 0 && phoneOk && emailOk
   const canNotify = Boolean(phone.trim() || email.trim())
 
-  function chooseSource(value: 'phone' | 'walk_in') {
+  function chooseSource(value: StaffChannel) {
     if (value === source) return
     setSource(value)
     setNotify(value === 'phone')
@@ -112,25 +114,7 @@ export function NewReservationModal({
       <div className="modal booking-modal" role="dialog" aria-modal="true" aria-label="Ny bokning">
         <h2>Ny bokning</h2>
         <form onSubmit={submit} className="booking-form">
-          <div className="segmented" role="radiogroup" aria-label="Typ av bokning">
-            {(
-              [
-                ['phone', 'Telefon'],
-                ['walk_in', 'Drop-in'],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={source === value}
-                className={source === value ? 'active' : ''}
-                onClick={() => chooseSource(value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <ChannelPicker value={source} onChange={chooseSource} />
 
           <div className="form-field">
             <label htmlFor="nb-size">Antal personer</label>

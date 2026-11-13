@@ -6,7 +6,7 @@
  * CSS:en gör sidan genomskinlig så att skrivbordet syns igenom. I en vanlig
  * webbläsare händer ingenting.
  */
-import { installBackdrop } from './backdrop'
+import { showDesktopHint } from './desktopHint'
 
 export type DesktopGlass = 'vibrancy' | 'acrylic' | 'tint'
 
@@ -16,12 +16,19 @@ export function desktopGlassMode(userAgent: string): DesktopGlass | null {
 }
 
 export function installDesktopGlass(): DesktopGlass | null {
-  // Den egna bakgrunden (backdrop.ts) hör till samma glasrum: i webbläsaren
-  // ligger den bakom glaset, i skrivbordsappen syns skrivbordet i stället.
-  installBackdrop()
+  // Den borttagna Bakgrund-inställningen sparade en bild här; städa bort den.
+  try {
+    localStorage.removeItem('booqy-backdrop')
+  } catch {
+    // ingen lagring, inget att städa
+  }
   if (typeof document === 'undefined' || typeof navigator === 'undefined') return null
   const mode = desktopGlassMode(navigator.userAgent)
-  if (!mode) return null
+  if (!mode) {
+    // I webbläsaren: en gång, ett tips om appen (den ser skrivbordet, sidan kan inte).
+    window.setTimeout(showDesktopHint, 2500)
+    return null
+  }
   const root = document.documentElement
   root.classList.add('is-desktop-glass')
   root.dataset.desktopGlass = mode

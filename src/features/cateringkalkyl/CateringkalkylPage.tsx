@@ -1,3 +1,4 @@
+import { RowActions } from '../../shared/RowActions'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/useAuth'
 import { CtaButton } from '../../shared/CtaButton'
@@ -574,7 +575,7 @@ export default function CateringkalkylPage() {
                   <th>Rabatt</th>
                   <th>Status</th>
                   <th>Aktiv</th>
-                  <th>Åtgärder</th>
+                  <th className="right">Åtgärder</th>
                 </tr>
               </thead>
               <tbody>
@@ -605,8 +606,8 @@ export default function CateringkalkylPage() {
                         onClick={() => toggleTierActive(t.id)}
                       />
                     </td>
-                    <td>
-                      <span className="row-actions">
+                    <td className="right">
+                      <RowActions label="Åtgärder">
                         <button
                           type="button"
                           className="link-action"
@@ -621,7 +622,7 @@ export default function CateringkalkylPage() {
                         >
                           Radera
                         </button>
-                      </span>
+                      </RowActions>
                     </td>
                   </tr>
                 ))}

@@ -1,4 +1,3 @@
-import { BackdropPicker } from '../../shared/BackdropPicker'
 import { SoundToggle } from '../../shared/SoundToggle'
 import { SoundVolume } from '../../shared/SoundVolume'
 import { ThemeToggle } from '../../shared/ThemeToggle'
@@ -21,15 +20,6 @@ export function AppearanceCard() {
             <p className="cell-muted">Tryck för att byta. Mörka ytor passar till exempel en mörk lokal på kvällen.</p>
           </div>
           <ThemeToggle label className="appearance-toggle" />
-        </div>
-        <div className="appearance-row">
-          <div>
-            <label className="appearance-title" htmlFor="backdrop-file">Bakgrund</label>
-            <p className="cell-muted">
-              Bilden bakom glaset. Välj gärna din skrivbordsbild. Den sparas bara i den här webbläsaren. I skrivbordsappen syns ditt riktiga skrivbord.
-            </p>
-          </div>
-          <BackdropPicker id="backdrop-file" />
         </div>
         <div className="appearance-row">
           <div>

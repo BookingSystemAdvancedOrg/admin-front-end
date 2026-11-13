@@ -180,19 +180,6 @@
   max-width: 70ch;
 }
 
-.mk-row-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  justify-content: flex-end;
-  white-space: nowrap;
-}
-
-.link-action.danger {
-  color: var(--danger-ink);
-}
-
 .mk-small {
   padding: 6px 12px;
   font-size: 13px;
@@ -462,7 +449,7 @@
   color: #1a120e;
   color-scheme: light;
   display: grid;
-  grid-template-columns: 84px 1fr;
+  grid-template-columns: 84px minmax(0, 1fr);
   max-width: 380px;
   margin-left: auto;
   border-radius: var(--r-md);

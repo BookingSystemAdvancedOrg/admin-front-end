@@ -1,3 +1,4 @@
+import { RowActions } from '../../shared/RowActions'
 import { useCallback, useEffect, useState } from 'react'
 import { Num } from '../../shared/motion/Num'
 import type { FormEvent } from 'react'
@@ -370,7 +371,7 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
                         <Num>{kronorFromOre(s.revenueOre ?? 0)}</Num>
                         {(s.unsubscribed ?? 0) > 0 && <div className="cell-muted">{s.unsubscribed} avregistrerade</div>}
                       </td>
-                      <td className="mk-row-actions">
+                      <td className="right"><RowActions label="Åtgärder">
                         {c.status === 'draft' && (
                           <>
                             <button type="button" className="link-action" onClick={() => setForm({ campaign: c })}>Redigera</button>
@@ -387,7 +388,7 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
                         {(c.status === 'scheduled' || c.status === 'sending' || c.status === 'paused_limit') && (
                           <button type="button" className="link-action danger" disabled={isBusy('cancel')} onClick={() => void act(c, 'cancel')}>Avbryt</button>
                         )}
-                      </td>
+                      </RowActions></td>
                     </tr>
                   )
                 })}

@@ -170,7 +170,7 @@
 
 @media (max-width: 600px) {
   .help-sections li {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 4px;
   }
 }

@@ -1,3 +1,4 @@
+import { RowActions } from '../../shared/RowActions'
 import { useEffect, useState } from 'react'
 import { errorText } from '../../shared/errors'
 import { AdminTopbar } from '../../shared/AdminTopbar'
@@ -224,7 +225,7 @@ export default function PersonalPage() {
                   <th>Namn</th>
                   <th>Roll och plats</th>
                   <th>Status</th>
-                  <th>Åtgärder</th>
+                  <th className="right">Åtgärder</th>
                 </tr>
               </thead>
               <tbody>
@@ -257,8 +258,8 @@ export default function PersonalPage() {
                           {s.status === 'active' ? 'Aktiv' : 'Inaktiv'}
                         </span>
                       </td>
-                      <td>
-                        <span className="row-actions">
+                      <td className="right">
+                        <RowActions label="Åtgärder för personen">
                           {canEdit && (
                             <button type="button" className="link-action" disabled={busy} onClick={() => setModal({ mode: 'edit', user: s })}>
                               Redigera
@@ -274,7 +275,7 @@ export default function PersonalPage() {
                               Ta bort
                             </button>
                           )}
-                        </span>
+                        </RowActions>
                       </td>
                     </tr>
                   )

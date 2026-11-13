@@ -1,3 +1,4 @@
+import { RowActions } from '../../shared/RowActions'
 import { useCallback, useEffect, useState } from 'react'
 import { TemplateEditor } from './TemplateEditor'
 import {
@@ -134,7 +135,7 @@ export function TemplatesTab() {
                     <td className="cell-strong">{t.name}</td>
                     <td>{t.subject}</td>
                     <td className="cell-muted">{formatDateTime(t.updatedAt)}</td>
-                    <td className="mk-row-actions">
+                    <td className="right"><RowActions label="Åtgärder">
                       <button type="button" className="link-action" onClick={() => { setNotice(null); setEditing({ mode: 'edit', template: t }) }}>
                         Redigera
                       </button>
@@ -151,7 +152,7 @@ export function TemplatesTab() {
                       <button type="button" className="link-action danger" onClick={() => setConfirmDelete(t)}>
                         Ta bort
                       </button>
-                    </td>
+                    </RowActions></td>
                   </tr>
                 ))}
               </tbody>

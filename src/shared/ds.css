@@ -1143,11 +1143,11 @@
   }
 
   .data-table:not(.keep-table) td[colspan],
-  .data-table:not(.keep-table) td:has(> .row-actions) {
+  .data-table:not(.keep-table) td:has(> :is(.row-actions, .row-actions-box)) {
     flex: 1 1 100%;
   }
 
-  .data-table:not(.keep-table) td:has(> .row-actions) .row-actions {
+  .data-table:not(.keep-table) td:has(> :is(.row-actions, .row-actions-box)) .row-actions {
     flex-wrap: wrap;
     gap: 6px 16px;
   }
@@ -1200,7 +1200,6 @@
 /* Lätt ton och tunt glas så att skrivbordsbilden läses (former och kanter),
    medan korten bär texten med tätare glas (AA). */
 html.is-desktop-glass {
-  --desk-veil: rgb(var(--bq-snow-rgb) / 0.04);
   --glass-main: rgb(var(--bq-snow-rgb) / 0.34);
   --glass-side: rgb(var(--bq-snow-rgb) / 0.42);
   --glass-surface: rgb(var(--bq-snow-rgb) / 0.5);
@@ -1208,7 +1207,6 @@ html.is-desktop-glass {
 }
 
 html.is-desktop-glass[data-theme='dark'] {
-  --desk-veil: rgba(26, 18, 14, 0.14);
   --glass-main: rgba(26, 18, 14, 0.42);
   --glass-side: rgba(30, 21, 16, 0.5);
   --glass-surface: rgba(42, 29, 22, 0.52);

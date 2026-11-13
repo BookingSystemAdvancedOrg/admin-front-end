@@ -547,26 +547,106 @@
   cursor: not-allowed;
 }
 
-.link-action {
-  /* Vertikal padding gör tryckytan bekväm på touch utan att texten ser
-     större ut - radhöjden i tabellen växer bara ett par pixlar. */
-  padding: 10px 2px;
-  margin: -10px -2px;
+/* Radåtgärder (shared/RowActions.tsx) och alla små textåtgärder: en lugn
+   knapp utan kant. Glas bara vid hovring och fokus, tydlig fokusring, ta
+   bort i varningsrött. Samma i varje tabell och lista, och i Booqy Console. */
+.link-action,
+.row-action {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 10px;
   border: 0;
-  background: none;
-  font: 400 13px/1.3 var(--sans);
-  color: var(--muted);
-  cursor: default;
-}
-
-.link-action:hover {
+  border-radius: var(--r-pill);
+  background: transparent;
+  font: 600 13.5px/1.2 var(--sans);
   color: var(--ink);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: default;
+  transition: background-color 160ms var(--ease), color 160ms var(--ease);
 }
 
-.link-action.danger:hover {
-  color: var(--danger);
+.link-action:hover:not(:disabled),
+.row-action:hover:not(:disabled),
+.link-action:focus-visible,
+.row-action:focus-visible,
+.row-action[aria-expanded='true'] {
+  background: var(--glass-fill);
+}
+
+.link-action:focus-visible,
+.row-action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--field-ring);
+}
+
+.link-action:disabled,
+.row-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.link-action.danger,
+.row-action.danger {
+  color: var(--danger-ink);
+}
+
+.row-actions-box {
+  display: inline-flex;
+  justify-content: flex-end;
+  vertical-align: middle;
+}
+
+.row-actions--inline {
+  gap: 2px;
+  flex-wrap: nowrap;
+}
+
+.row-menu {
+  display: none;
+}
+
+.row-menu-toggle {
+  min-width: 36px;
+  font-size: 18px;
+}
+
+.row-menu-list {
+  display: grid;
+  margin-top: 4px;
+  padding: 4px;
+  min-width: 160px;
+  border-radius: var(--r-md);
+  background: var(--glass-surface);
+  box-shadow: var(--liquid-edge);
+}
+
+.row-menu-list .link-action,
+.row-menu-list .row-action {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .row-actions--inline {
+    display: none;
+  }
+
+  .row-menu {
+    display: inline-grid;
+    justify-items: end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link-action,
+  .row-action {
+    transition: none;
+  }
 }
 
 /* --- Datatabeller ------------------------------------------------------- */
@@ -670,7 +750,7 @@
 .row-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 6px;
   align-items: center;
 }
 
@@ -1072,7 +1152,7 @@
   }
 
   .settings-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .oversikt-row {
@@ -1088,7 +1168,7 @@
 
 @media (max-width: 900px) {
   .form-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .admin-shell {
@@ -1155,7 +1235,7 @@
   }
 
   .quick-links-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1320,7 +1400,7 @@
 
 .today-list li {
   display: grid;
-  grid-template-columns: 52px 1fr auto;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 12px 0;
@@ -1624,4 +1704,10 @@
 .view-toggle button:has(> .icon:only-child) {
   display: inline-grid;
   place-items: center;
+}
+
+/* Åtgärdskolumnen: rubrik och knappar högerställda tillsammans. */
+.data-table th.right,
+.data-table td.right {
+  text-align: right;
 }

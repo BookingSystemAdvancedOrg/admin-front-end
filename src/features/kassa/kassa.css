@@ -661,7 +661,7 @@
     top: 0;
     z-index: 5;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 6px;
     padding: 6px;
     border-radius: var(--r-pill);
@@ -1038,7 +1038,7 @@
 
 .kassa-print-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px 18px;
   margin: 12px 0;
 }
@@ -1095,7 +1095,7 @@
 
 .kassa-print-sign {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 18px;
   margin: 18px 0 10px;
 }

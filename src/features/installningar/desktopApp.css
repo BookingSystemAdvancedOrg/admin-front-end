@@ -6,7 +6,7 @@
 .desktop-app__list a {
   display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 16px;
   padding: 11px 14px; border-radius: 12px; text-decoration: none; color: var(--ink);
-  border: 1px solid var(--glass-edge, var(--border));
+  border: 1px solid var(--glass-border, var(--border));
   background: var(--glass-well, transparent);
   transition: background-color 160ms cubic-bezier(0.16, 1, 0.3, 1), border-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -55,3 +55,6 @@
   .desktop-app__list a, .desktop-app__list a::after { transition: none; }
   .desktop-app__list a:hover, .desktop-app__list a:focus-visible { transform: none; }
 }
+
+/* Lång knapptext (t.ex. Ladda ner för Mac (Apple-chip)) radbryts i kortet i stället för att sticka ut. */
+.desktop-app .btn { max-width: 100%; white-space: normal; text-align: center; }

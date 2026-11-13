@@ -113,7 +113,7 @@
 
 @media (max-width: 480px) {
   .tqr-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .tqr-modal .row-actions .btn {

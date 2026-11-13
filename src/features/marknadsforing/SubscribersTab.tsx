@@ -1,3 +1,4 @@
+import { RowActions } from '../../shared/RowActions'
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
@@ -241,7 +242,7 @@ export function SubscribersTab() {
                       {s.consentSource && <div>{CONSENT_SOURCE[s.consentSource] ?? s.consentSource}</div>}
                     </td>
                     <td className="cell-muted">{s.lastVisit ? s.lastVisit.slice(0, 10) : '-'}</td>
-                    <td className="mk-row-actions">
+                    <td className="right"><RowActions label="Åtgärder">
                       {s.email && (
                         <button type="button" className="link-action" onClick={() => void openHistory(s)}>Historik</button>
                       )}
@@ -251,7 +252,7 @@ export function SubscribersTab() {
                       {s.email && (
                         <button type="button" className="link-action danger" onClick={() => setConfirmErase(s)}>Radera</button>
                       )}
-                    </td>
+                    </RowActions></td>
                   </tr>
                 ))}
               </tbody>

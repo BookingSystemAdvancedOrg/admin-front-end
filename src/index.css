@@ -293,28 +293,27 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: var(--backdrop-blobs), linear-gradient(var(--backdrop-veil), var(--backdrop-veil)), var(--user-backdrop, url('./assets/backdrop.webp')) center / cover no-repeat, var(--bg);
+  background: var(--backdrop-blobs), linear-gradient(var(--backdrop-veil), var(--backdrop-veil)), url('./assets/backdrop.webp') center / cover no-repeat, var(--bg);
 }
 
 /* Skrivbordsappen (desktopGlass.ts): sidan är genomskinlig och systemets
-   glas (vibrancy, akryl) visar skrivbordet bakom fönstret. Bara en tunn
-   slöja och fläckarna ligger kvar; tokens i shared/ds.css. */
+   glas (vibrancy, akryl) visar det som ligger bakom fönstret. Panelerna är
+   själva glaset; tokens i shared/ds.css. */
 html.is-desktop-glass,
 html.is-desktop-glass body {
   background: transparent;
 }
 
-/* Egen bakgrund (shared/backdrop.ts): användarens bild utan fläckar och med
-   en lätt kvällsslöja, så att den syns tydligt genom glaset. */
-html[data-user-backdrop] {
-  --backdrop-blobs: linear-gradient(transparent, transparent);
-}
-html[data-user-backdrop][data-theme='dark'] {
-  --backdrop-veil: rgba(26, 18, 14, 0.36);
+/* Inget foto, inga fläckar och ingen slöja bakom panelerna: det som ligger
+   bakom fönstret (andra fönster, skrivbordet) syns levande genom glaset. */
+html.is-desktop-glass body::before {
+  display: none;
 }
 
-html.is-desktop-glass body::before {
-  background: linear-gradient(var(--desk-veil, transparent), var(--desk-veil, transparent)), var(--backdrop-blobs);
+/* Linux (tint): ingen oskärpa bakom fönstret, så en tät slöja bär texten. */
+html.is-desktop-glass[data-desktop-glass='tint'] body::before {
+  display: block;
+  background: linear-gradient(var(--desk-veil), var(--desk-veil));
 }
 
 @media (prefers-reduced-transparency: reduce) {

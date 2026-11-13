@@ -604,7 +604,7 @@
 @media (max-width: 1000px) {
   .sk-hero,
   .sk-charts {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .sk-kpi--hero .sk-kpi-value {
@@ -1019,7 +1019,7 @@
 
 @media (max-width: 1000px) {
   .sk-todo {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1061,7 +1061,7 @@
   .sk-filters {
     display: none;
     width: 100%;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .sk-filters.is-open {

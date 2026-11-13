@@ -1,3 +1,4 @@
+import { RowActions } from '../../shared/RowActions'
 import { useCallback, useEffect, useState } from 'react'
 import { ApiError, isApiConfigured } from '../../shared/api'
 import { getPublicMenu, listMenuItems } from '../meny/menuApi'
@@ -133,7 +134,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
                 <th>Allergener</th>
                 <th>Status</th>
                 {isOwner && <th>Aktiv</th>}
-                {isOwner && <th>Åtgärder</th>}
+                {isOwner && <th className="right">Åtgärder</th>}
               </tr>
             </thead>
             <tbody>
@@ -162,8 +163,8 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
                     </td>
                   )}
                   {isOwner && (
-                    <td>
-                      <span className="row-actions">
+                    <td className="right">
+                      <RowActions label="Åtgärder">
                         <button type="button" className="link-action" onClick={() => setModal({ kind: 'dish', dish: d })}>
                           Redigera
                         </button>
@@ -172,7 +173,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
                             run: async () => { await deleteCateringDish(locationId!, d.dishId) } })}>
                           Radera
                         </button>
-                      </span>
+                      </RowActions>
                     </td>
                   )}
                 </tr>
@@ -195,7 +196,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
                 <th>Rätter</th>
                 <th>Minst</th>
                 <th>Status</th>
-                {isOwner && <th>Åtgärder</th>}
+                {isOwner && <th className="right">Åtgärder</th>}
               </tr>
             </thead>
             <tbody>
@@ -211,8 +212,8 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
                     </span>
                   </td>
                   {isOwner && (
-                    <td>
-                      <span className="row-actions">
+                    <td className="right">
+                      <RowActions label="Åtgärder">
                         <button type="button" className="link-action" onClick={() => setModal({ kind: 'package', pkg: p })}>
                           Redigera
                         </button>
@@ -221,7 +222,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
                             run: async () => { await deleteCateringPackage(locationId!, p.packageId) } })}>
                           Radera
                         </button>
-                      </span>
+                      </RowActions>
                     </td>
                   )}
                 </tr>

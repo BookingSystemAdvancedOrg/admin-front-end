@@ -1,3 +1,4 @@
+import { RowActions } from '../../shared/RowActions'
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import { onPageAction, takePageAction } from '../../shared/nav'
@@ -383,7 +384,7 @@ export default function MenyPage() {
                   <th>Kategori</th>
                   <th>Pris</th>
                   <th>Status</th>
-                  <th>Åtgärder</th>
+                  <th className="right">Åtgärder</th>
                 </tr>
               </thead>
               <tbody>
@@ -440,8 +441,8 @@ export default function MenyPage() {
                         </span>
                       </span>
                     </td>
-                    <td>
-                      <span className="row-actions" data-tour={index === 0 ? 'menu-row-actions' : undefined}>
+                    <td className="right">
+                      <RowActions label="Åtgärder för rätten" tour={index === 0 ? 'menu-row-actions' : undefined}>
                         <button
                           type="button"
                           className="link-action"
@@ -459,7 +460,7 @@ export default function MenyPage() {
                           Radera
                         </button>
                         {locationId && <Slot id="meny.dish.share" props={{ locationId, menuItemId: d.id }} />}
-                      </span>
+                      </RowActions>
                     </td>
                   </tr>
                 ))}

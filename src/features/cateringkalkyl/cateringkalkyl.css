@@ -102,7 +102,7 @@
 }
 
 .cm-checks--wide {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .cm-check {
@@ -170,11 +170,6 @@
 
 .lead-table input::placeholder {
   color: var(--muted);
-}
-
-.link-action:disabled {
-  opacity: 0.4;
-  cursor: default;
 }
 
 @media (max-width: 480px) {

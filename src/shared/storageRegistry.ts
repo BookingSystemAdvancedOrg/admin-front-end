@@ -37,7 +37,7 @@ export const MOCK_SESSION_KEY = 'admin-mock-session'
 export const LOGOUT_PENDING_KEY = 'booqy-logout-pending'
 export const MOTION_SEEN_KEY = 'booqy-motion-seen'
 export const THEME_KEY = 'booqy-theme'
-export const BACKDROP_KEY = 'booqy-backdrop'
+export const APP_HINT_KEY = 'booqy-app-hint'
 export const SOUND_KEY = 'booqy-sound'
 export const SOUND_VOLUME_KEY = 'booqy-sound-volume'
 export const NAV_CLOSED_KEY = 'booqy-nav-closed'
@@ -99,11 +99,11 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     category: 'nödvändig',
   },
   {
-    name: BACKDROP_KEY,
+    name: APP_HINT_KEY,
     kind: 'localStorage',
     setBy: 'Booqy',
-    purpose: 'Bilden du själv valt som bakgrund bakom glaset (Inställningar, Utseende och ljud), förminskad. Lämnar aldrig webbläsaren. Samma nyckel i Booqy Console.',
-    lifetime: 'Tills du tar bort bilden eller rensar webbläsaren',
+    purpose: 'Att tipset om skrivbordsappen redan visats i den här webbläsaren, så att det bara syns en gång. Inga personuppgifter.',
+    lifetime: 'Tills du rensar webbläsaren',
     category: 'nödvändig',
   },
   {

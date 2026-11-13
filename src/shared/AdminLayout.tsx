@@ -145,7 +145,8 @@ export function AdminLayout() {
       to={item.to}
       end={item.end}
       data-tour={item.tour}
-      className={({ isActive }) => (isActive ? 'admin-nav-item active' : 'admin-nav-item')}
+      // En länk till en del av en sida (#) markeras inte: sidan själv (Inställningar) är aktiv.
+      className={({ isActive }) => (isActive && !item.to.includes('#') ? 'admin-nav-item active' : 'admin-nav-item')}
     >
       <Icon name={item.icon} size={18} className="admin-nav-icon" />
       <span className="admin-nav-label">{item.label}</span>

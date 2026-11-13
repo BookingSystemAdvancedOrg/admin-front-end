@@ -118,10 +118,19 @@ const TAB_HINT: Record<SettingsTab, string> = {
   utseende: 'Ljust eller mörkt läge och klickljud, bara på den här skärmen',
 }
 
+/** Delar som har egen länk (#del) och fliken de ligger i. */
+const SECTION_TAB: Record<string, SettingsTab> = { skrivbordsappen: 'utseende' }
+
+/** #flik eller #del ur adressen, som flik; null om den inte finns. */
+function tabFromHash(hash: string): SettingsTab | null {
+  const id = hash.replace(/^#/, '')
+  if (id in SECTION_TAB) return SECTION_TAB[id]
+  return id in TAB_LABEL ? (id as SettingsTab) : null
+}
+
 function initialTab(stripeReturn: string | null): SettingsTab {
   if (stripeReturn) return 'betalningar'
-  const fromHash = window.location.hash.replace(/^#/, '') as SettingsTab
-  return fromHash in TAB_LABEL ? fromHash : 'profil'
+  return tabFromHash(window.location.hash) ?? 'profil'
 }
 
 /** Grace period i 5-minuterssteg. Bokningslängden ställs in i kortet Bokningstid. */
@@ -143,10 +152,12 @@ export default function InstallningarPage() {
   // Länkar (och guiden) kan öppna en flik via #flik i adressen.
   const { hash } = useLocation()
   useEffect(() => {
-    const fromHash = hash.replace(/^#/, '') as SettingsTab
     // Personalen har flyttat till en egen sida; gamla länkar leds dit.
-    if ((fromHash as string) === 'personal') navigate('/personal', { replace: true })
-    else if (fromHash in TAB_LABEL) setTab(fromHash)
+    if (hash === '#personal') navigate('/personal', { replace: true })
+    else {
+      const next = tabFromHash(hash)
+      if (next) setTab(next)
+    }
   }, [hash, navigate])
   // Menyn: grupplistan eller den öppna gruppens delar. Grupplistan hör till
   // fliken den öppnades vid, så byts fliken (ett klick, en länk eller guiden

@@ -14,7 +14,6 @@ export const pages = {
   layout: () => import('./features/layout-editor/LayoutEditorPage'),
   installningar: () => import('./features/installningar/InstallningarPage'),
   hjalp: () => import('./features/guide/HjalpPage'),
-  laddaNer: () => import('./features/installningar/LaddaNerPage'),
   marknadsforing: () => import('./features/marknadsforing/MarknadsforingPage'),
   statistik: () => import('./features/statistik/StatistikPage'),
   avtal: () => import('./features/dpa/AvtalPage'),

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import {
   desktopAppVersion,
   desktopFiles,
@@ -25,7 +26,7 @@ function badge(rec: Recommendation): string {
 /**
  * Skrivbordsappens nedladdningar: hela listan och, när datorn går att avgöra
  * säkert, en markerad rad "Rekommenderas för din dator". Används på sidan
- * /ladda-ner och i Inställningar > Utseende. Inte signerad ännu, så rutan
+ * Inställningar > Den här enheten (sidomenyns "Ladda ner appen" leder hit). Inte signerad ännu, så rutan
  * säger hur man öppnar den första gången (Gatekeeper och SmartScreen).
  */
 export function DesktopAppCard({ heading = true }: { heading?: boolean }) {
@@ -46,8 +47,30 @@ export function DesktopAppCard({ heading = true }: { heading?: boolean }) {
 
   const mine = rec ? files.find((f) => f.os === rec.os) : undefined
 
+  // Sidomenyns "Ladda ner appen" går till #skrivbordsappen: rulla hit, flytta
+  // fokus och lys upp kortet en kort stund. location.key gör att det sker
+  // vid varje klick, även när adressen redan slutar på #skrivbordsappen.
+  const location = useLocation()
+  const ref = useRef<HTMLElement>(null)
+  const [flash, setFlash] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (location.hash !== '#skrivbordsappen' || !el) return
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    el.scrollIntoView?.({ behavior: still ? 'auto' : 'smooth', block: 'start' })
+    el.focus({ preventScroll: true })
+    setFlash(true)
+    const t = window.setTimeout(() => setFlash(false), 1800)
+    return () => window.clearTimeout(t)
+  }, [location.hash, location.key])
+
   return (
-    <section id="skrivbordsappen" className="admin-card table-card desktop-app">
+    <section
+      id="skrivbordsappen"
+      ref={ref}
+      tabIndex={-1}
+      className={flash ? 'admin-card table-card desktop-app is-flash' : 'admin-card table-card desktop-app'}
+    >
       {heading && <h2 className="card-title">Skrivbordsappen</h2>}
       <p className="cell-muted">
         Booqy Admin som app på datorn, i ett eget fönster. Samma inloggning och samma funktioner som här. Appen visar alltid

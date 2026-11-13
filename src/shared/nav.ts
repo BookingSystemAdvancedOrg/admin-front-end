@@ -90,7 +90,8 @@ export const NAV_GROUPS: NavGroup[] = [
 export const NAV_FOOTER: NavItem[] = [
   { to: '/installningar', label: 'Inställningar', icon: 'gear', tour: 'nav-installningar' },
   { to: '/hjalp', label: 'Hjälp', icon: 'help', tour: 'nav-hjalp' },
-  { to: '/ladda-ner', label: 'Ladda ner appen', icon: 'download', tour: 'nav-ladda-ner', browserOnly: true },
+  // Leder till kortet Skrivbordsappen i Inställningar > Den här enheten.
+  { to: '/installningar#skrivbordsappen', label: 'Ladda ner appen', icon: 'download', tour: 'nav-ladda-ner', browserOnly: true },
 ]
 
 /** Får användaren se länken (plan, roll, statistik)? */

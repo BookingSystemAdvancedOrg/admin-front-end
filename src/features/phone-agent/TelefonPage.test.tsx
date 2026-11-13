@@ -133,6 +133,59 @@ describe('TelefonPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
     expect(await screen.findByText(/Jag håller ett bord/)).toBeInTheDocument()
   })
+
+  it('lets the owner choose the languages the assistant may switch to (Swedish is always on)', async () => {
+    tenant = OWNER
+    vi.mocked(api.getOverview).mockResolvedValue({ config: { agentName: 'Sara', tone: 'friendly', languages: ['sv', 'en'],
+      recording: { enabled: false }, minutesCapPerMonth: 300, version: 1 }, locations: [],
+      usage: { minutes: 0, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
+    vi.mocked(api.saveConfig).mockImplementation(async (c) => ({ ...c, version: 2 }))
+    vi.mocked(api.saveLocation).mockResolvedValue(LOC)
+    renderAt()
+    fireEvent.click(await screen.findByRole('tab', { name: 'Inställningar' }))
+    expect(await screen.findByText(/Assistenten börjar alltid på svenska/)).toBeInTheDocument()
+    expect(screen.getByLabelText('Engelska')).toBeChecked()
+    expect(screen.queryByLabelText('Svenska')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText('Tyska'))
+    fireEvent.click(screen.getByLabelText('Engelska'))
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(() => expect(api.saveConfig).toHaveBeenCalled())
+    expect(vi.mocked(api.saveConfig).mock.calls[0][0].languages).toEqual(['sv', 'de'])
+  })
+
+  it('turns a location on with the number of another location (shared number)', async () => {
+    tenant = { ...OWNER, locations: [{ locationId: 'loc-1', name: 'Bistro Norrmalm' }, { locationId: 'loc-2', name: 'Bistro Malmö' }] }
+    vi.mocked(api.getLocation).mockResolvedValue({ ...LOC, enabled: false, number: null, forwarding: { number: null, codes: [] } })
+    vi.mocked(api.getOverview).mockResolvedValue({ config: { agentName: 'Sara', tone: 'friendly', languages: ['sv'],
+      recording: { enabled: false }, minutesCapPerMonth: 300, version: 1 },
+      locations: [{ locationId: 'loc-2', name: 'Bistro Malmö', enabled: true, killSwitch: false, mode: 'always', number: '+46100000002', minutesThisPeriod: 0 }],
+      usage: { minutes: 0, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
+    vi.mocked(api.saveLocation).mockResolvedValue({ ...LOC, number: '+46100000002', numberSharedWith: 'loc-2' })
+    renderAt()
+    fireEvent.click(await screen.findByRole('tab', { name: 'Inställningar' }))
+    fireEvent.click(await screen.findByRole('tab', { name: '5. Nummer' }))
+    fireEvent.change(screen.getByLabelText(/^Nummer/), { target: { value: 'loc-2' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Slå på med delat nummer' }))
+    await waitFor(() => expect(api.saveLocation).toHaveBeenCalled())
+    expect(vi.mocked(api.saveLocation).mock.calls[0][1]).toMatchObject({ enabled: true, shareNumberWith: 'loc-2' })
+    expect(await screen.findByText(/samma nummer som Bistro Malmö/)).toBeInTheDocument()
+  })
+
+  it('shows when the simulated call switched language', async () => {
+    tenant = OWNER
+    vi.mocked(api.getOverview).mockResolvedValue({ config: { agentName: 'Sara', tone: 'friendly', languages: ['sv', 'en'],
+      recording: { enabled: false }, minutesCapPerMonth: 300, version: 1 }, locations: [],
+      usage: { minutes: 0, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
+    vi.mocked(api.simulate).mockResolvedValue({ reply: 'I am an AI assistant for Bistro. I can offer 18:00.', language: 'en',
+      toolCalls: [], state: {}, disclosure: false })
+    renderAt()
+    fireEvent.click(await screen.findByRole('tab', { name: 'Inställningar' }))
+    fireEvent.click(await screen.findByRole('tab', { name: '6. Prova' }))
+    fireEvent.change(screen.getByLabelText('Du säger'), { target: { value: 'A table for four tomorrow at 7 pm' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
+    expect(await screen.findByText(/I can offer 18:00/)).toBeInTheDocument()
+    expect(screen.getByText(/på engelska/)).toBeInTheDocument()
+  })
 })
 
 describe('Bokningar slots', () => {

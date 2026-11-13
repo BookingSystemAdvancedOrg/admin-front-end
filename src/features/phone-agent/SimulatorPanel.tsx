@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Bar, Button, Field, Input } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
-import { ERRORS, newId, simulate } from './api'
+import { ERRORS, LANG_LABEL, newId, simulate, type Lang } from './api'
 
-interface Line { who: 'du' | 'assistenten'; text: string }
+interface Line { who: 'du' | 'assistenten'; text: string; lang?: Lang }
 
 /** "Prova": skriv som om du ringde och läs assistentens svar. Ingenting bokas på riktigt. */
 export default function SimulatorPanel({ locationId }: { locationId: string }) {
@@ -21,7 +21,7 @@ export default function SimulatorPanel({ locationId }: { locationId: string }) {
     setError(null)
     try {
       const out = await simulate(locationId, session, said)
-      setLines((prev) => [...prev, { who: 'du', text: said }, { who: 'assistenten', text: out.reply }])
+      setLines((prev) => [...prev, { who: 'du', text: said }, { who: 'assistenten', text: out.reply, lang: out.language }])
       setText('')
     } catch (err) {
       setError(errorText(err, 'Assistenten svarade inte.', ERRORS))
@@ -32,12 +32,15 @@ export default function SimulatorPanel({ locationId }: { locationId: string }) {
 
   return (
     <div className="telefon-sim">
-      <p className="cell-muted">Skriv som om du ringde. Assistenten kollar riktiga lediga tider men bokar ingenting här.</p>
+      <p className="cell-muted">Skriv som om du ringde, på vilket språk du vill. Assistenten kollar riktiga lediga tider men bokar ingenting här.</p>
       {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
       <ol className="telefon-transcript" aria-live="polite">
         {lines.map((l, i) => (
           <li key={i} className={`telefon-turn telefon-turn--${l.who === 'du' ? 'caller' : 'agent'}`}>
-            <span className="telefon-turn__who">{l.who === 'du' ? 'Du' : 'Assistenten'}</span>
+            <span className="telefon-turn__who">
+              {l.who === 'du' ? 'Du' : 'Assistenten'}
+              {l.lang && l.lang !== 'sv' ? <span className="telefon-turn__lang"> på {LANG_LABEL[l.lang] ?? l.lang}</span> : null}
+            </span>
             <span>{l.text}</span>
           </li>
         ))}

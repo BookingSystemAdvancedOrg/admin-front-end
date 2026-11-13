@@ -1,6 +1,17 @@
 /* Telefon i admin. Bara @booqy/brand-tokens. */
 .telefon-section {
   margin: var(--bq-space-3) 0;
+  /* The six wizard steps scroll sideways on a phone instead of widening the card. */
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.telefon-section > .bq-bar {
+  width: max-content;
+}
+.telefon-section + [role='tabpanel'] {
+  min-width: 0;
 }
 .telefon-mono {
   font-family: var(--bq-font-mono);
@@ -106,4 +117,28 @@
 .telefon-sim {
   display: grid;
   gap: var(--bq-space-3);
+}
+.telefon-langs {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--bq-space-2);
+}
+.telefon-langs legend {
+  padding: 0;
+  font-weight: 600;
+  margin-bottom: var(--bq-space-1);
+}
+.telefon-langs p {
+  margin: 0;
+  font-size: var(--bq-text-sm);
+}
+.telefon-langs__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--bq-space-2) var(--bq-space-4);
+}
+.telefon-turn__lang {
+  font-style: italic;
 }

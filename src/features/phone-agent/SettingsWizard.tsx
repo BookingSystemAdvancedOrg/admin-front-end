@@ -3,7 +3,7 @@ import { Bar, Button, Card, Field, Input, Select, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
 import { useTenant } from '../../shared/tenant'
 import SimulatorPanel from './SimulatorPanel'
-import { DAYS, ERRORS, MODE_LABEL, getLocation, getOverview, saveConfig, saveLocation, type Config, type Day, type LocationConfig, type Mode } from './api'
+import { DAYS, ERRORS, LANGS, LANG_LABEL, MODE_LABEL, getLocation, getOverview, saveConfig, saveLocation, type Config, type Day, type Lang, type LocationConfig, type Mode, type Overview } from './api'
 
 type Step = 'namn' | 'tider' | 'koppla' | 'inspelning' | 'nummer' | 'prova'
 const STEPS: { key: Step; label: string }[] = [
@@ -19,6 +19,8 @@ export default function SettingsWizard({ locationId, onSaved }: { locationId: st
   const [config, setConfig] = useState<Config | null>(null)
   const [cap, setCap] = useState<{ cap: number; included: number } | null>(null)
   const [loc, setLoc] = useState<LocationConfig | null>(null)
+  const [others, setOthers] = useState<Overview['locations']>([])
+  const [share, setShare] = useState('')
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
@@ -27,6 +29,7 @@ export default function SettingsWizard({ locationId, onSaved }: { locationId: st
       setConfig(overview.config)
       setCap({ cap: overview.usage.cap, included: overview.usage.includedMinutes })
       setLoc(location)
+      setOthers(overview.locations.filter((l) => l.locationId !== locationId && l.enabled && l.number))
     } catch (err) {
       toast(errorText(err, 'Kunde inte hämta inställningarna.', ERRORS), { tone: 'danger' })
     }
@@ -48,13 +51,14 @@ export default function SettingsWizard({ locationId, onSaved }: { locationId: st
     }
   }
 
-  async function storeLocation(next: LocationConfig, ok = 'Sparat.') {
+  async function storeLocation(next: LocationConfig, ok = 'Sparat.', shareNumberWith?: string) {
     setSaving(true)
     try {
       const saved = await saveLocation(locationId, {
         enabled: next.enabled, mode: next.mode, agentHours: next.agentHours, greetingExtraSv: next.greetingExtraSv,
         greetingExtraEn: next.greetingExtraEn, transferTo: next.transferTo || null, maxCallSeconds: next.maxCallSeconds,
         counterOffers: next.counterOffers, version: next.version,
+        ...(next.enabled && (shareNumberWith ?? next.numberSharedWith) ? { shareNumberWith: shareNumberWith ?? next.numberSharedWith } : {}),
       })
       setLoc(saved)
       onSaved(saved)
@@ -65,6 +69,17 @@ export default function SettingsWizard({ locationId, onSaved }: { locationId: st
       setSaving(false)
     }
   }
+
+  function toggleLanguage(lang: Lang, on: boolean) {
+    if (!config) return
+    const chosen = new Set<Lang>([...config.languages, 'sv'])
+    if (on) chosen.add(lang)
+    else chosen.delete(lang)
+    setConfig({ ...config, languages: LANGS.filter((l) => chosen.has(l)) })
+  }
+
+  const otherName = (id?: string | null) => others.find((o) => o.locationId === id)?.name
+    ?? tenant?.locations?.find((l) => l.locationId === id)?.name ?? 'den andra platsen'
 
   function setHours(day: Day, field: 'from' | 'to', value: string) {
     if (!loc) return
@@ -105,6 +120,21 @@ export default function SettingsWizard({ locationId, onSaved }: { locationId: st
             <Field label="Sedan säger den (engelska)">
               <Input value={loc.greetingExtraEn} maxLength={200} onChange={(e) => setLoc({ ...loc, greetingExtraEn: e.target.value })} />
             </Field>
+            <fieldset className="telefon-langs">
+              <legend>Språk</legend>
+              <p className="cell-muted">
+                Assistenten börjar alltid på svenska. Pratar den som ringer ett annat språk byter den direkt och säger igen,
+                på det språket, att den är en AI. Välj vilka språk den får byta till.
+              </p>
+              <div className="telefon-langs__list">
+                {LANGS.filter((l) => l !== 'sv').map((l) => (
+                  <label key={l} className="telefon-check">
+                    <input type="checkbox" checked={config.languages.includes(l)} onChange={(e) => toggleLanguage(l, e.target.checked)} />
+                    {LANG_LABEL[l][0].toUpperCase() + LANG_LABEL[l].slice(1)}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <Field label="Minuttak per månad" hint={cap ? `Ingår i er plan: ${cap.included} minuter.` : undefined}>
               <Input type="number" min={0} value={String(config.minutesCapPerMonth)}
                 onChange={(e) => setConfig({ ...config, minutesCapPerMonth: Number(e.target.value) })} />
@@ -131,7 +161,7 @@ export default function SettingsWizard({ locationId, onSaved }: { locationId: st
                 ))}
               </fieldset>
             ) : null}
-            <Field label="Längsta samtal (minuter)" hint="2–15 minuter.">
+            <Field label="Längsta samtal (minuter)" hint="2 till 15 minuter.">
               <Input type="number" min={2} max={15} value={String(Math.round(loc.maxCallSeconds / 60))}
                 onChange={(e) => setLoc({ ...loc, maxCallSeconds: Number(e.target.value) * 60 })} />
             </Field>
@@ -186,6 +216,12 @@ export default function SettingsWizard({ locationId, onSaved }: { locationId: st
             {loc.enabled && loc.number ? (
               <>
                 <p>Ert Booqy-nummer: <strong className="telefon-mono">{loc.number}</strong></p>
+                {loc.numberSharedWith ? (
+                  <p className="telefon-fixed">
+                    Platsen svarar på samma nummer som {otherName(loc.numberSharedWith)}. Assistenten frågar först vilken restaurang
+                    det gäller och pratar sedan bara om den.
+                  </p>
+                ) : null}
                 <p className="cell-muted">Vidarekoppla restaurangens nummer hit med koderna nedan, från telefonen som har restaurangens nummer.</p>
                 <ul className="telefon-codes">
                   {(loc.forwarding?.codes ?? []).map((c) => (
@@ -200,10 +236,22 @@ export default function SettingsWizard({ locationId, onSaved }: { locationId: st
               </>
             ) : (
               <>
-                <p className="cell-muted">När ni slår på assistenten får platsen ett eget Booqy-nummer. Sedan vidarekopplar ni ert nummer dit.</p>
+                <p className="cell-muted">
+                  När ni slår på assistenten får platsen ett eget Booqy-nummer, och assistenten vet då direkt vilken plats samtalet gäller.
+                  Sedan vidarekopplar ni ert nummer dit.
+                </p>
+                {others.length ? (
+                  <Field label="Nummer" hint="Med ett delat nummer frågar assistenten först vilken restaurang det gäller.">
+                    <Select value={share} onChange={(e) => setShare(e.target.value)}>
+                      <option value="">Eget nummer för platsen</option>
+                      {others.map((o) => <option key={o.locationId} value={o.locationId}>Samma nummer som {o.name}</option>)}
+                    </Select>
+                  </Field>
+                ) : null}
                 <Bar variant="action" label="Slå på">
-                  <Button busy={saving} busyLabel="Skaffar nummer…" onClick={() => void storeLocation({ ...loc, enabled: true }, 'Klart. Vidarekoppla nu ert nummer.')}>
-                    Slå på och skaffa nummer
+                  <Button busy={saving} busyLabel={share ? 'Sparar…' : 'Skaffar nummer…'}
+                    onClick={() => void storeLocation({ ...loc, enabled: true }, share ? 'Klart. Platsen svarar nu på det delade numret.' : 'Klart. Vidarekoppla nu ert nummer.', share || undefined)}>
+                    {share ? 'Slå på med delat nummer' : 'Slå på och skaffa nummer'}
                   </Button>
                 </Bar>
               </>

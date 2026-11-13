@@ -7,11 +7,18 @@ export type Outcome = 'booked' | 'moved' | 'cancelled' | 'info' | 'transferred' 
 export type CounterOffer = 'none' | 'other_time' | 'next_day' | 'nearby_table'
 export type Day = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
 export interface Span { from: string; to: string }
+/** Samtalsspråk: assistenten börjar på svenska och byter till uppringarens språk. */
+export type Lang = 'sv' | 'en' | 'no' | 'da' | 'fi' | 'de' | 'fr' | 'es' | 'it' | 'pl' | 'ar'
+export const LANG_LABEL: Record<Lang, string> = {
+  sv: 'svenska', en: 'engelska', no: 'norska', da: 'danska', fi: 'finska', de: 'tyska',
+  fr: 'franska', es: 'spanska', it: 'italienska', pl: 'polska', ar: 'arabiska',
+}
+export const LANGS = Object.keys(LANG_LABEL) as Lang[]
 
 export interface Config {
   agentName: string
   tone: 'formal' | 'friendly'
-  languages: ('sv' | 'en')[]
+  languages: Lang[]
   recording: { enabled: boolean; purpose?: string; retentionDays?: number }
   minutesCapPerMonth: number
   version: number
@@ -33,6 +40,8 @@ export interface LocationConfig {
   maxCallSeconds: number
   counterOffers: { nearbyTables: boolean; phoneOnlyTables: boolean }
   number: string | null
+  /** Platsen svarar på en annan plats nummer (assistenten frågar först vilken restaurang). */
+  numberSharedWith?: string | null
   version: number
   forwarding?: { number: string | null; codes: { operator: string; label: string; on: string; off: string }[] }
 }
@@ -69,7 +78,7 @@ export interface Callback {
   note: string
   version: number
 }
-export interface SimReply { reply: string; toolCalls: { name: string; ok: boolean }[]; state: { outcome?: string | null }; disclosure: boolean }
+export interface SimReply { reply: string; language?: Lang; toolCalls: { name: string; ok: boolean }[]; state: { outcome?: string | null }; disclosure: boolean }
 
 const loc = (id: string) => `/locations/${encodeURIComponent(id)}/phone-agent`
 
@@ -77,11 +86,12 @@ export const getOverview = () => apiFetch<Overview>('/tenant/phone-agent')
 export const saveConfig = (c: Omit<Config, 'version'> & { version: number }) =>
   apiFetch<Config>('/tenant/phone-agent/config', { method: 'PUT', body: JSON.stringify(c) })
 export const getLocation = (locationId: string) => apiFetch<LocationConfig>(loc(locationId))
-export const saveLocation = (locationId: string, body: Omit<LocationConfig, 'locationId' | 'killSwitch' | 'number' | 'forwarding'>) =>
+export const saveLocation = (locationId: string,
+  body: Omit<LocationConfig, 'locationId' | 'killSwitch' | 'number' | 'forwarding' | 'numberSharedWith'> & { shareNumberWith?: string | null }) =>
   apiFetch<LocationConfig>(loc(locationId), { method: 'PUT', body: JSON.stringify(body) })
 export const setKillSwitch = (locationId: string, on: boolean, version: number) =>
   apiFetch<LocationConfig>(`${loc(locationId)}/kill-switch`, { method: 'POST', body: JSON.stringify({ on, version }) })
-export const simulate = (locationId: string, sessionId: string, text: string, language?: 'sv' | 'en') =>
+export const simulate = (locationId: string, sessionId: string, text: string, language?: Lang) =>
   apiFetch<SimReply>(`${loc(locationId)}/simulate`, { method: 'POST', body: JSON.stringify({ sessionId, text, ...(language ? { language } : {}) }) })
 export const listCalls = (locationId: string, from: string, to: string, cursor?: string | null) => {
   const q = new URLSearchParams({ from, to })
@@ -157,11 +167,12 @@ export const ERRORS: Record<string, string> = {
   invalid_cap: 'Minuttaket måste vara ett heltal och högst det Booqy tillåter.',
   invalid_hours: 'Kontrollera tiderna: varje period måste sluta efter att den börjar.',
   invalid_phone: 'Skriv numret som +46 följt av numret, till exempel +46812345678.',
-  invalid_max_call: 'Ett samtal får vara 2–15 minuter långt.',
+  invalid_max_call: 'Ett samtal får vara 2 till 15 minuter långt.',
   text_too_long: 'Texten är för lång.',
   number_unavailable: 'Det finns inget ledigt nummer just nu. Försök igen senare eller kontakta oss.',
   telephony_unavailable: 'Telefonileverantören svarar inte just nu. Försök igen om en stund.',
   voice_provider_unavailable: 'Röstleverantören svarar inte just nu. Försök igen om en stund.',
   ai_unavailable: 'Assistenten svarar inte just nu. Försök igen om en stund.',
   invalid_state: 'Återuppringningen ändrades nyss. Ladda om listan.',
+  share_unavailable: 'Den platsen har inget eget nummer att dela. Slå på assistenten där först.',
 }

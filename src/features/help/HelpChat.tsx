@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent as ReactKeyboardEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '../../shared/Icon'
 import { Loading } from '../../shared/Loading'
 import { requestPageAction } from '../../shared/nav'
 import { useTenant } from '../../shared/tenant'
 import { HelpLimited, askHelp, getHelpStatus } from './helpApi'
+import { METRICS, resolveLive } from './live'
+import { spotlight } from './spotlight'
 import type { HelpTurn } from './helpApi'
 import { OPEN_EVENT, helpChatEnabled, setHelpChatEnabled } from './chatState'
 import { KB, actionAllowed, actionHref, entryVisible, viewOf } from './kb'
@@ -30,8 +32,9 @@ type Message =
 let nextId = 1
 
 export function HelpChat() {
-  const { tenant, status } = useTenant()
+  const { tenant, status, locationId } = useTenant()
   const navigate = useNavigate()
+  const location = useLocation()
   const [enabled, setEnabled] = useState(false)
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
@@ -43,6 +46,7 @@ export function HelpChat() {
   const returnTo = useRef<HTMLElement | null>(null)
   const titleId = useId()
   const panelId = useId()
+  const panelRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     if (status !== 'ready') return
@@ -96,8 +100,11 @@ export function HelpChat() {
     setDraft('')
     setWaiting(true)
     try {
-      const answer = await askHelp(text, history, viewOf(tenant))
+      let answer = await askHelp(text, history, viewOf(tenant))
+      if (answer.live) answer = await withLive(answer)
       setMessages((ms) => [...ms, { id: nextId++, role: 'assistant', answer }])
+      // En levande siffra visas också där den står (Statistik), upplyst.
+      if (answer.live && answer.actions[0] && actionAllowed(answer.actions[0], tenant)) go(answer.actions[0], { keepOpen: true })
     } catch (err) {
       const notice =
         err instanceof HelpLimited
@@ -110,12 +117,45 @@ export function HelpChat() {
     }
   }
 
-  const go = (action: HelpAction) => {
+  const withLive = async (answer: HelpAnswer): Promise<HelpAnswer> => {
+    const live = answer.live!
+    const metric = METRICS[live.metric]
+    const isOwner = tenant?.role === 'owner_user'
+    let text: string | null = null
+    try {
+      text = await resolveLive(live, { locationId, timezone: tenant?.locations.find((l) => l.locationId === locationId)?.timezone ?? null, isOwner })
+    } catch {
+      text = null
+    }
+    if (text) return { ...answer, text }
+    return {
+      ...answer,
+      text: metric?.money && !isOwner ? 'Den siffran ser bara restaurangens ägare.' : 'Jag kunde inte hämta siffran just nu. Den finns på Statistik.',
+    }
+  }
+
+  /** Dit knappen pekar, och lys upp målen. Står man redan där skrollar den bara dit. */
+  function go(action: HelpAction, opts: { keepOpen?: boolean } = {}) {
     if (!actionAllowed(action, tenant)) return
+    const href = actionHref(action)
+    const here = `${location.pathname}${location.search}${location.hash}`
+    const samePage = location.pathname === action.to && (!action.hash || location.hash === `#${action.hash}`) &&
+      Object.entries(action.query ?? {}).every(([k, v]) => new URLSearchParams(location.search).get(k) === v)
     if (action.pageAction) requestPageAction(action.pageAction)
-    navigate(actionHref(action))
+    if (!samePage || (action.pageAction && here !== href)) navigate(href)
     // På mobil täcker panelen sidan: stäng så att man ser dit man kom.
-    if (window.matchMedia?.('(max-width: 600px)').matches) close()
+    if (!opts.keepOpen && window.matchMedia?.('(max-width: 600px)').matches) close()
+    if (action.highlight?.length) {
+      void spotlight(action.highlight).then((lit) => {
+        // Panelen får inte skymma det som lyses upp: då stängs den (svaret finns kvar när den öppnas igen).
+        const panel = panelRef.current?.getBoundingClientRect()
+        const covered = panel && lit.some((el) => {
+          const r = el.getBoundingClientRect()
+          return r.right > panel.left && r.left < panel.right && r.bottom > panel.top && r.top < panel.bottom && r.width > 0
+        })
+        if (covered) close()
+      })
+    }
   }
 
   const onSubmit = (e: FormEvent) => {
@@ -156,6 +196,7 @@ export function HelpChat() {
       {open && (
         <section
           id={panelId}
+          ref={panelRef}
           className="help-panel"
           role="dialog"
           aria-modal="false"

@@ -1,4 +1,5 @@
 import { ApiError, apiFetch, isApiConfigured } from '../../shared/api'
+import { loadCorpus } from './corpus'
 import type { HelpAnswer, HelpView } from './kb'
 import { answerLocally } from './retrieve'
 
@@ -23,9 +24,13 @@ export async function getHelpStatus(): Promise<{ enabled: boolean; mode: HelpMod
 
 export class HelpLimited extends Error {}
 
-export async function askHelp(question: string, history: HelpTurn[], view: HelpView): Promise<HelpAnswer> {
+async function locally(question: string, history: HelpTurn[], view: HelpView): Promise<HelpAnswer> {
   const previous = [...history].reverse().find((t) => t.role === 'user')?.text ?? ''
-  if (!isApiConfigured()) return answerLocally(question, view, previous)
+  return answerLocally(await loadCorpus(), question, view, previous)
+}
+
+export async function askHelp(question: string, history: HelpTurn[], view: HelpView): Promise<HelpAnswer> {
+  if (!isApiConfigured()) return locally(question, history, view)
   try {
     const res = await apiFetch<{ answer: HelpAnswer }>('/tenant/help-assistant/answers', {
       method: 'POST',
@@ -34,7 +39,7 @@ export async function askHelp(question: string, history: HelpTurn[], view: HelpV
     return res.answer
   } catch (err) {
     if (err instanceof ApiError && err.status === 429) throw new HelpLimited()
-    // Servern svarar inte: hjälptexterna finns ändå här.
-    return answerLocally(question, view, previous)
+    // Servern svarar inte: kunskapsbasen finns ändå här.
+    return locally(question, history, view)
   }
 }

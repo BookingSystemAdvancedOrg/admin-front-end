@@ -5,6 +5,7 @@ import { useTrendPop } from '../../shared/motion/useTrendPop'
 import { toneClass } from '../../shared/trend'
 import type { Trend } from '../../shared/trend'
 import { Delta, Sparkline } from './charts'
+import { helpSlug } from '../../shared/helpId'
 
 /**
  * Byggstenarna på Statistik: nyckeltalsrutan, kortet med rubrik och
@@ -37,7 +38,7 @@ export function Tile({
   const trendTone = !tone && trend ? trend.tone : 'neutral'
   const valueRef = useTrendPop<HTMLElement>(trendTone, 700)
   return (
-    <div className={`admin-card sk-kpi${tone ? ` sk-kpi--${tone}` : ''}`}>
+    <div className={`admin-card sk-kpi${tone ? ` sk-kpi--${tone}` : ''}`} data-help={`kpi:${helpSlug(label)}`}>
       <span className="sk-kpi-head">
         <span className="sk-kpi-label">{label}</span>
         {info && <InfoTooltip label={label}>{info}</InfoTooltip>}
@@ -76,7 +77,7 @@ export function Card({
   wide?: boolean
 }) {
   return (
-    <section className={`admin-card${wide ? ' sk-wide' : ''}`} aria-label={label}>
+    <section className={`admin-card${wide ? ' sk-wide' : ''}`} aria-label={label} data-help={`card:${helpSlug(label)}`}>
       <div className="sk-card-head">
         <h3 className="card-title">{title}</h3>
         {info && <InfoTooltip label={label}>{info}</InfoTooltip>}

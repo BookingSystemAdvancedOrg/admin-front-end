@@ -306,3 +306,30 @@
     display: none;
   }
 }
+
+/* Det assistenten pekar på: en ring som tonar bort (spotlight.ts). */
+.help-spotlight {
+  position: relative;
+  z-index: 5;
+  border-radius: var(--radius-inner);
+  box-shadow: 0 0 0 3px var(--accent-ink), 0 0 0 10px var(--focus) !important;
+  animation: help-spot-pulse 1.3s var(--ease-out) 2;
+  transition: box-shadow 420ms var(--ease-out);
+}
+
+.help-spotlight.help-spotlight--fade {
+  box-shadow: 0 0 0 3px transparent, 0 0 0 10px transparent !important;
+}
+
+@keyframes help-spot-pulse {
+  50% {
+    box-shadow: 0 0 0 3px var(--accent-ink), 0 0 0 16px transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .help-spotlight {
+    animation: none;
+    transition: none;
+  }
+}

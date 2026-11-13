@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { helpSlug } from '../helpId'
 import type { PointerEvent, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Num } from './Num'
@@ -71,6 +72,7 @@ export function StatTile({
     },
     onPointerLeave: (e: PointerEvent<HTMLElement>) => touch(e, -2),
   }
+  const help = { 'data-help': `kpi:${helpSlug(label)}` }
   const classes = `admin-card stat-tile${to || onClick ? ' stat-tile--link' : ''}${tone ? ` stat-tile--${tone}` : ''} ${className}`
   const body = (
     <>
@@ -93,20 +95,20 @@ export function StatTile({
 
   if (to) {
     return (
-      <Link ref={tileRef as React.RefObject<HTMLAnchorElement>} to={to} className={classes} {...handlers}>
+      <Link ref={tileRef as React.RefObject<HTMLAnchorElement>} to={to} className={classes} {...help} {...handlers}>
         {body}
       </Link>
     )
   }
   if (onClick) {
     return (
-      <button ref={tileRef as React.RefObject<HTMLButtonElement>} type="button" className={classes} onClick={onClick} {...handlers}>
+      <button ref={tileRef as React.RefObject<HTMLButtonElement>} type="button" className={classes} onClick={onClick} {...help} {...handlers}>
         {body}
       </button>
     )
   }
   return (
-    <div ref={tileRef as React.RefObject<HTMLDivElement>} className={classes} {...handlers}>
+    <div ref={tileRef as React.RefObject<HTMLDivElement>} className={classes} {...help} {...handlers}>
       {body}
     </div>
   )

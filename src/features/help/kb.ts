@@ -23,7 +23,12 @@ export type HelpAction = {
   hash?: string
   /** Öppnar ett formulär på sidan (nav.ts requestPageAction). */
   pageAction?: string
+  /** Lyser upp efter navigeringen: "help:<data-help-id>" eller "text:<synlig text>". */
+  highlight?: string[]
 }
+
+/** En levande siffra ur restaurangens egna data (live.ts), t.ex. gäster idag. */
+export type HelpLive = { metric: string; text: string }
 
 export type HelpEntry = {
   id: string
@@ -40,7 +45,30 @@ export type HelpEntry = {
   actions?: HelpAction[]
   /** Förslag på fråga när assistenten öppnas (högst tre visas). */
   suggestion?: string
+  /** Var på sidan svaret pekar (lyses upp med knappen). */
+  highlight?: string[]
+  live?: HelpLive
 }
+
+/**
+ * En del av kunskapsbasen som byggs ur koden (scripts/help-corpus.mjs):
+ * de kurerade guiderna (kind "guide", samma fält som HelpEntry) och allt
+ * som syns i appen: sidor, inställningar, rubriker, fält, knappar och
+ * nyckeltal (kind "page" och "element").
+ */
+export type HelpDoc = Omit<HelpEntry, 'answer' | 'steps' | 'keywords' | 'route'> & {
+  kind: 'guide' | 'page' | 'element'
+  route: string | null
+  hash?: string
+  /** Var det finns, t.ex. "Inställningar, Utseende och ljud". */
+  where?: string
+  text?: string
+  answer?: string
+  steps?: string[]
+  keywords?: string[]
+}
+
+export type HelpCorpus = { version: number; app: string; routes: string[]; docs: HelpDoc[] }
 
 export type HelpAnswer = {
   known: boolean
@@ -48,6 +76,7 @@ export type HelpAnswer = {
   steps: string[]
   actions: HelpAction[]
   sources: string[]
+  live?: HelpLive
 }
 
 export const KB = data as { version: number; entries: HelpEntry[] }
@@ -109,7 +138,7 @@ export function viewOf(tenant: Tenant | null): HelpView {
 export const DOWNLOAD_ENTRIES = ['ladda-ner-appen']
 
 /** Får den inloggade se hjälptexten (roll, plan, statistik)? Samma regel som servern. */
-export function entryVisible(entry: HelpEntry, view: HelpView): boolean {
+export function entryVisible(entry: Pick<HelpEntry, 'id' | 'audience' | 'feature' | 'insights'>, view: HelpView): boolean {
   // Om att ladda ner appen: inte i skrivbordsappen själv.
   if (DOWNLOAD_ENTRIES.includes(entry.id) && isDesktopShell()) return false
   if (entry.audience === 'owner' && view.role !== 'owner_user') return false

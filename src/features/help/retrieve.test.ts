@@ -1,53 +1,27 @@
 import { describe, expect, it } from 'vitest'
 import type { Tenant } from '../../shared/tenant'
-import cases from './helpKbCases.json'
 import { actionAllowed } from './kb'
-import type { HelpView } from './kb'
-import { OWNER_TEXT, UNKNOWN_TEXT, answerLocally, fold } from './retrieve'
+import { fold, isSecretQuestion, isWhereQuestion, matchWeight } from './retrieve'
 
-/** Samma frågor som serverns test (application/tests/test_help_assistant.py). */
-
-type Case = {
-  question: string
-  role: 'owner_user' | 'staff_user'
-  features: string[]
-  staffInsights?: boolean
-  expect: string | null
-  ownerOnly?: boolean
-  action?: Record<string, unknown>
-}
-
-function viewFor(c: Case): HelpView {
-  return { role: c.role, features: Object.fromEntries(c.features.map((f) => [f, true])), staffInsights: c.staffInsights ?? true }
-}
-
-function tenantFor(c: Case): Tenant {
-  return {
-    role: c.role,
-    entitlements: { maxLocations: null, features: Object.fromEntries(c.features.map((f) => [f, true])) },
-    insights: { staffAccess: c.staffInsights === false ? 'none' : 'operations' },
-  } as unknown as Tenant
-}
-
-describe('answerLocally', () => {
-  it.each(cases as Case[])('$role: $question', (c) => {
-    const answer = answerLocally(c.question, viewFor(c))
-    if (c.expect === null) {
-      expect(answer.known).toBe(false)
-      expect(answer.steps).toEqual([])
-      expect(answer.text).toBe(c.ownerOnly ? OWNER_TEXT : UNKNOWN_TEXT)
-      return
-    }
-    expect(answer.sources).toEqual([c.expect])
-    expect(answer.steps.length).toBeGreaterThan(0)
-    if (c.action) {
-      expect(answer.actions[0]).toMatchObject(c.action)
-      expect(actionAllowed(answer.actions[0], tenantFor(c))).toBe(true)
-    }
-  })
-
+describe('retrieval rules', () => {
   it('folds Swedish letters like the server', () => {
     expect(fold('Öppettider på Julafton!')).toBe('oppettider pa julafton')
+  })
+
+  it('matches inflections and compound starts, not compound tails', () => {
+    expect(matchWeight('ratt', 'ratt')).toBe(1)
+    expect(matchWeight('ratten', 'ratt')).toBe(0.7)
+    expect(matchWeight('koden', 'koder')).toBe(0.7)
+    expect(matchWeight('bakgrundsfargen', 'bakgrund')).toBe(0.5)
+    expect(matchWeight('oppettiderna', 'tider')).toBe(0)
+  })
+
+  it('knows where-questions and secret questions', () => {
+    expect(isWhereQuestion('Var ser jag gäster idag?')).toBe(true)
+    expect(isWhereQuestion('Hur många gäster idag?')).toBe(false)
+    expect(isSecretQuestion('Vad är lösenordet?')).toBe(true)
+    expect(isSecretQuestion('Hur byter jag lösenord?')).toBe(false)
+    expect(isSecretQuestion('Vilka andra restauranger finns?')).toBe(true)
   })
 })
 

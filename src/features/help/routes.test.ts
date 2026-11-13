@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { FEATURE_KEYS } from '../../shared/contracts'
+import { buildCorpus, helpSlug } from '../../../scripts/help-corpus.mjs'
 import { KB, PAGE_ACTIONS, ROUTE_PATTERNS } from './kb'
 
 /**
@@ -65,5 +66,28 @@ describe('help knowledge base', () => {
       expect(e.steps.length + e.answer.length, e.id).toBeGreaterThan(0)
       expect(['all', 'owner'], e.id).toContain(e.audience)
     }
+  })
+
+  it('gives every settings row and settings tab a data-help id (CI coverage check)', () => {
+    const settings = readFileSync(join(SRC, 'features/installningar/InstallningarPage.tsx'), 'utf8')
+    const rows = [...settings.matchAll(/<div className="settings-row"[^>]*>/g)].map((m) => m[0])
+    expect(rows.length).toBeGreaterThan(5)
+    for (const row of rows) expect(row, 'settings-row utan data-help').toMatch(/data-help="settings:\w+:\w+"/)
+    expect(settings).toMatch(/data-help=\{`settings-tab:\$\{t\}`\}/)
+    // Menyvalen får sitt id från nav.ts i AdminLayout.
+    expect(readFileSync(join(SRC, 'shared/AdminLayout.tsx'), 'utf8')).toMatch(/data-help=\{`nav:\$\{item\.to\}`\}/)
+  })
+
+  it('only highlights data-help ids that exist in the code', () => {
+    const code = sources(SRC).join('\n')
+    const literal = new Set([...code.matchAll(/data-help="([^"]+)"/g)].map((m) => m[1]))
+    const computed = new Set([...code.matchAll(/<(?:Tile|StatTile)\b[^>]*?label="([^"]+)"/g)].map((m) => `kpi:${helpSlug(m[1])}`))
+    for (const m of code.matchAll(/<Card\b[^>]*?label="([^"]+)"/g)) computed.add(`card:${helpSlug(m[1])}`)
+    const navTo = [...readFileSync(join(SRC, 'shared/nav.ts'), 'utf8').matchAll(/to: '([^']+)'/g)].map((m) => `nav:${m[1]}`)
+    const tabs = [...code.matchAll(/data-help="settings:(\w+):/g)].map((m) => `settings-tab:${m[1]}`)
+    const known = new Set([...literal, ...computed, ...navTo, ...tabs])
+    const used = buildCorpus().docs.flatMap((d) => [...(d.highlight ?? []), ...(d.actions ?? []).flatMap((a) => a.highlight ?? [])])
+    const missing = [...new Set(used.filter((h) => h.startsWith('help:')).map((h) => h.slice(5)))].filter((id) => !known.has(id))
+    expect(missing, `data-help som inte finns: ${missing.join(', ')}`).toEqual([])
   })
 })

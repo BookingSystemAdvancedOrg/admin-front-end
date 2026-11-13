@@ -1,7 +1,9 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { buildCorpus } from '../../../scripts/help-corpus.mjs'
+import { setCorpus } from './corpus'
 import { takePageAction } from '../../shared/nav'
 import { openHelpChat } from './chatState'
 import { HelpChat } from './HelpChat'
@@ -10,16 +12,23 @@ import { OWNER_TEXT } from './retrieve'
 let tenant: Record<string, unknown>
 vi.mock('../../shared/tenant', async (orig) => ({
   ...(await orig<typeof import('../../shared/tenant')>()),
-  useTenant: () => ({ tenant, status: 'ready', error: null, locationId: null, refresh: async () => null }),
+  useTenant: () => ({ tenant, status: 'ready', error: null, locationId: 'loc-1', refresh: async () => null }),
 }))
 
 function as(role: string, features: Record<string, boolean> = { reservations: true }) {
-  tenant = { tenantId: 't1', name: 'Roma', role, locations: [], entitlements: { maxLocations: null, features } }
+  tenant = { tenantId: 't1', name: 'Roma', role, locations: [{ locationId: 'loc-1', name: 'Roma', address: null, timezone: 'Europe/Stockholm' }], entitlements: { maxLocations: null, features } }
 }
 
 function Where() {
   const { pathname, search, hash } = useLocation()
-  return <p data-testid="where">{`${pathname}${search}${hash}`}</p>
+  return (
+    <>
+      <p data-testid="where">{`${pathname}${search}${hash}`}</p>
+      {/* Det som assistenten lyser upp på riktiga sidor. */}
+      {pathname === '/installningar' && hash === '#utseende' && <div className="appearance-row" data-help="utseende:bakgrund">Bakgrund</div>}
+      {pathname === '/statistik' && <div className="sk-kpi" data-help="kpi:gaster-idag">Gäster idag</div>}
+    </>
+  )
 }
 
 function renderChat() {
@@ -39,7 +48,30 @@ async function openPanel(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('HelpChat', () => {
+  beforeAll(() => setCorpus(buildCorpus()))
   beforeEach(() => as('owner_user'))
+
+  it('answers a question about today\'s Bakgrund setting and lights it up', async () => {
+    const user = userEvent.setup()
+    renderChat()
+    await openPanel(user)
+    await user.type(screen.getByRole('textbox', { name: 'Din fråga' }), 'Hur ändrar jag bakgrundsfärgen?{Enter}')
+    await user.click(await screen.findByRole('button', { name: 'Visa Bakgrund' }))
+    expect(screen.getByTestId('where')).toHaveTextContent('/installningar#utseende')
+    await waitFor(() => expect(document.querySelector('[data-help="utseende:bakgrund"]')).toHaveClass('help-spotlight'))
+  })
+
+  it('answers with the live number and shows it on Statistik, lit up', async () => {
+    const user = userEvent.setup()
+    renderChat()
+    await openPanel(user)
+    await user.type(screen.getByRole('textbox', { name: 'Din fråga' }), 'Hur många gäster har vi haft idag?{Enter}')
+    await waitFor(() => expect(screen.getByRole('log')).toHaveTextContent(/Idag har ni \d+ gäster i bokningarna/))
+    expect(screen.getByTestId('where')).toHaveTextContent('/statistik')
+    await waitFor(() => expect(document.querySelector('[data-help="kpi:gaster-idag"]')).toHaveClass('help-spotlight'))
+    // Panelen står kvar och sidan lämnas där den är.
+    expect(screen.getByRole('dialog', { name: 'Hjälpassistenten' })).toBeInTheDocument()
+  })
 
   it('answers the menu question step by step and opens Meny with the new-dish form', async () => {
     const user = userEvent.setup()

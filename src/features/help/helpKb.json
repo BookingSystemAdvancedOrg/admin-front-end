@@ -139,7 +139,10 @@
         "telefonbokning",
         "drop-in",
         "walk-in",
-        "reservation"
+        "reservation",
+        "ringer",
+        "ringde",
+        "ringa"
       ],
       "answer": "En bokning som kommer per telefon eller en gäst som kliver in lägger du in under Bokningar. Bordet blir då upptaget online också.",
       "steps": [
@@ -199,7 +202,11 @@
         "avbokning",
         "ställa in bokning",
         "ta bort bokning",
-        "avbokade"
+        "avbokade",
+        "avbokar",
+        "avboka en gäst",
+        "avboka gästen",
+        "avboka bokningen"
       ],
       "answer": "Du avbokar en gäst genom att öppna bokningen under Bokningar. Gästen debiteras inte när ni avbokar.",
       "steps": [
@@ -452,7 +459,11 @@
         "ta emot beställningar",
         "tillagningstid",
         "sista beställning",
-        "avhämtning inställning"
+        "avhämtning inställning",
+        "beställa vid bordet",
+        "bordsbeställning",
+        "gästerna kan beställa",
+        "kan beställa vid bordet"
       ],
       "answer": "Avhämtning, beställning vid bordet och QR-koderna till borden ställer du in under Inställningar, Beställning.",
       "steps": [
@@ -1910,6 +1921,9 @@
           "to": "/installningar",
           "hash": "profil"
         }
+      ],
+      "highlight": [
+        "help:settings:profil:BookingTimeCard"
       ]
     },
     {
@@ -1927,7 +1941,10 @@
         "privat fest",
         "semester",
         "stäng onlinebokning",
-        "stänga onlinebokning"
+        "stänga onlinebokning",
+        "stänger onlinebokningen",
+        "stänga onlinebokningen",
+        "stäng onlinebokningen"
       ],
       "answer": "Helgdagar, stängda dagar och andra öppettider lägger ägaren in under Inställningar, Avvikande dagar.",
       "steps": [
@@ -2219,8 +2236,10 @@
       "audience": "all",
       "keywords": [
         "app",
+        "appen",
         "skrivbordsapp",
-        "ladda ner",
+        "skrivbordsappen",
+        "ladda ner appen",
         "installera",
         "mac",
         "windows",
@@ -2376,7 +2395,6 @@
         "gästerna beställer",
         "beställ mat",
         "beställa online",
-        "bordsbeställning",
         "beställa via qr"
       ],
       "answer": "Gästerna beställer under Beställ på hemsidan: avhämtning, eller vid bordet via QR-koden på bordet. De betalar i förväg.",
@@ -2458,6 +2476,369 @@
           "label": "Öppna Bokningar",
           "to": "/bokningar"
         }
+      ]
+    },
+    {
+      "id": "live-gaster-idag",
+      "route": "/statistik",
+      "title": "Gäster idag",
+      "audience": "all",
+      "insights": true,
+      "keywords": [
+        "antal gäster",
+        "gäster idag",
+        "gäster har vi",
+        "gäster haft",
+        "gästerna idag",
+        "idag",
+        "dag",
+        "dagens"
+      ],
+      "answer": "Gäster idag står överst på Statistik, under Idag.",
+      "steps": [],
+      "actions": [
+        {
+          "id": "live-gaster-idag-open",
+          "label": "Visa på Statistik",
+          "to": "/statistik",
+          "highlight": [
+            "help:kpi:gaster-idag"
+          ]
+        }
+      ],
+      "live": {
+        "metric": "guestsToday",
+        "text": "Idag har ni {value} gäster i bokningarna. Avbokade räknas inte."
+      }
+    },
+    {
+      "id": "live-bokningar-idag",
+      "route": "/statistik",
+      "title": "Bokningar idag",
+      "audience": "all",
+      "insights": true,
+      "keywords": [
+        "antal bokningar",
+        "bokningar idag",
+        "bokningar har vi",
+        "idag",
+        "dag",
+        "dagens"
+      ],
+      "answer": "Bokningar idag står överst på Statistik, under Idag.",
+      "steps": [],
+      "actions": [
+        {
+          "id": "live-bokningar-idag-open",
+          "label": "Visa på Statistik",
+          "to": "/statistik",
+          "highlight": [
+            "help:kpi:bokningar-idag"
+          ]
+        }
+      ],
+      "live": {
+        "metric": "bookingsToday",
+        "text": "Idag har ni {value} bokningar. Avbokade räknas inte."
+      }
+    },
+    {
+      "id": "live-har-kommit",
+      "route": "/statistik",
+      "title": "Har kommit idag",
+      "audience": "all",
+      "insights": true,
+      "keywords": [
+        "hur många har kommit",
+        "har kommit",
+        "kommit idag",
+        "anlänt idag",
+        "idag",
+        "dag",
+        "dagens"
+      ],
+      "answer": "Har kommit står överst på Statistik, under Idag.",
+      "steps": [],
+      "actions": [
+        {
+          "id": "live-har-kommit-open",
+          "label": "Visa på Statistik",
+          "to": "/statistik",
+          "highlight": [
+            "help:kpi:har-kommit"
+          ]
+        }
+      ],
+      "live": {
+        "metric": "arrivedToday",
+        "text": "{value} bokningar är markerade som Kommit idag."
+      }
+    },
+    {
+      "id": "live-belaggning-idag",
+      "route": "/statistik",
+      "title": "Beläggning idag",
+      "audience": "all",
+      "insights": true,
+      "keywords": [
+        "beläggning",
+        "beläggningen",
+        "hur fullt",
+        "fullbokat",
+        "idag",
+        "dag",
+        "dagens"
+      ],
+      "answer": "Beläggning idag står överst på Statistik, under Idag.",
+      "steps": [],
+      "actions": [
+        {
+          "id": "live-belaggning-idag-open",
+          "label": "Visa på Statistik",
+          "to": "/statistik",
+          "highlight": [
+            "help:kpi:belaggning-idag"
+          ]
+        }
+      ],
+      "live": {
+        "metric": "occupancyToday",
+        "text": "Beläggningen idag är {value} av bordstiden under öppettiderna."
+      }
+    },
+    {
+      "id": "live-uteblev-idag",
+      "route": "/statistik",
+      "title": "Uteblivna idag",
+      "audience": "all",
+      "insights": true,
+      "keywords": [
+        "uteblev idag",
+        "hur många uteblev",
+        "no-shows idag",
+        "idag",
+        "dag",
+        "dagens"
+      ],
+      "answer": "Uteblivna finns på Statistik.",
+      "steps": [],
+      "actions": [
+        {
+          "id": "live-uteblev-idag-open",
+          "label": "Visa på Statistik",
+          "to": "/statistik",
+          "highlight": [
+            "help:kpi:bokningar-idag"
+          ]
+        }
+      ],
+      "live": {
+        "metric": "noShowsToday",
+        "text": "{value} bokningar uteblev idag."
+      }
+    },
+    {
+      "id": "live-bestallningar-idag",
+      "route": "/statistik",
+      "title": "Beställningar idag",
+      "audience": "all",
+      "feature": "ordering",
+      "insights": true,
+      "keywords": [
+        "hur många beställningar",
+        "beställningar idag",
+        "antal beställningar",
+        "idag",
+        "dag",
+        "dagens"
+      ],
+      "answer": "Beställningarna finns på Statistik och under Beställningar.",
+      "steps": [],
+      "actions": [
+        {
+          "id": "live-bestallningar-idag-open",
+          "label": "Visa på Statistik",
+          "to": "/statistik"
+        }
+      ],
+      "live": {
+        "metric": "ordersToday",
+        "text": "Idag har ni fått {value} beställningar."
+      }
+    },
+    {
+      "id": "live-omsattning-idag",
+      "route": "/statistik",
+      "title": "Omsättning idag",
+      "audience": "owner",
+      "keywords": [
+        "omsättning idag",
+        "sålt idag",
+        "hur mycket har vi sålt",
+        "intäkter idag",
+        "försäljning idag",
+        "idag",
+        "dag",
+        "dagens"
+      ],
+      "answer": "Omsättningen finns på Statistik under Omsättning.",
+      "steps": [],
+      "actions": [
+        {
+          "id": "live-omsattning-idag-open",
+          "label": "Visa på Statistik",
+          "to": "/statistik"
+        }
+      ],
+      "live": {
+        "metric": "revenueToday",
+        "text": "Omsättningen idag är {value}."
+      }
+    },
+    {
+      "id": "live-gaster-vecka",
+      "route": "/statistik",
+      "title": "Gäster denna vecka",
+      "audience": "all",
+      "insights": true,
+      "keywords": [
+        "gäster denna vecka",
+        "gäster i veckan",
+        "gäster veckan",
+        "antal gäster vecka",
+        "vecka",
+        "veckan",
+        "veckans"
+      ],
+      "answer": "Gäster per vecka finns på Statistik.",
+      "steps": [],
+      "actions": [
+        {
+          "id": "live-gaster-vecka-open",
+          "label": "Visa på Statistik",
+          "to": "/statistik",
+          "query": {
+            "period": "week"
+          }
+        }
+      ],
+      "live": {
+        "metric": "guestsWeek",
+        "text": "Den här veckan har ni {value} gäster i bokningarna hittills."
+      }
+    },
+    {
+      "id": "live-gaster-manad",
+      "route": "/statistik",
+      "title": "Gäster denna månad",
+      "audience": "all",
+      "insights": true,
+      "keywords": [
+        "gäster denna månad",
+        "gäster i månaden",
+        "gäster månaden",
+        "antal gäster månad",
+        "månad",
+        "månaden",
+        "månadens"
+      ],
+      "answer": "Månadens siffror finns på Statistik.",
+      "steps": [],
+      "actions": [
+        {
+          "id": "live-gaster-manad-open",
+          "label": "Visa på Statistik",
+          "to": "/statistik",
+          "query": {
+            "period": "month"
+          }
+        }
+      ],
+      "live": {
+        "metric": "guestsMonth",
+        "text": "Den här månaden har ni {value} gäster i bokningarna hittills."
+      }
+    },
+    {
+      "id": "live-bokningar-manad",
+      "route": "/statistik",
+      "title": "Bokningar denna månad",
+      "audience": "all",
+      "insights": true,
+      "keywords": [
+        "bokningar denna månad",
+        "bokningar i månaden",
+        "bokningar månaden",
+        "månad",
+        "månaden",
+        "månadens"
+      ],
+      "answer": "Månadens siffror finns på Statistik.",
+      "steps": [],
+      "actions": [
+        {
+          "id": "live-bokningar-manad-open",
+          "label": "Visa på Statistik",
+          "to": "/statistik",
+          "query": {
+            "period": "month"
+          }
+        }
+      ],
+      "live": {
+        "metric": "bookingsMonth",
+        "text": "Den här månaden har ni {value} bokningar hittills."
+      }
+    },
+    {
+      "id": "live-omsattning-manad",
+      "route": "/statistik",
+      "title": "Omsättning denna månad",
+      "audience": "owner",
+      "keywords": [
+        "omsättning denna månad",
+        "omsättning månaden",
+        "sålt denna månad",
+        "intäkter månaden",
+        "månad",
+        "månaden",
+        "månadens"
+      ],
+      "answer": "Omsättningen finns på Statistik under Omsättning.",
+      "steps": [],
+      "actions": [
+        {
+          "id": "live-omsattning-manad-open",
+          "label": "Visa på Statistik",
+          "to": "/statistik",
+          "query": {
+            "period": "month"
+          }
+        }
+      ],
+      "live": {
+        "metric": "revenueMonth",
+        "text": "Omsättningen den här månaden är {value} hittills."
+      }
+    },
+    {
+      "id": "losenord",
+      "route": null,
+      "title": "Byta eller glömt lösenord",
+      "audience": "all",
+      "keywords": [
+        "lösenord",
+        "lösenordet",
+        "glömt lösenord",
+        "byta lösenord",
+        "nytt lösenord",
+        "logga in"
+      ],
+      "answer": "Lösenordet byter du på inloggningssidan. Jag kan aldrig se eller visa lösenord.",
+      "steps": [
+        "Logga ut med Logga ut längst ned i vänstermenyn.",
+        "Tryck Glömt lösenord på inloggningssidan.",
+        "Skriv din e-post och följ länken i mejlet."
       ]
     }
   ]

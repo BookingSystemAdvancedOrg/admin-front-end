@@ -393,6 +393,7 @@ export default function InstallningarPage() {
                     type="button"
                     className={tab === t ? 'active' : ''}
                     data-tour={`settings-tab-${t}`}
+                    data-help={`settings-tab:${t}`}
                     aria-current={tab === t ? 'page' : undefined}
                     onClick={() => openTab(t)}
                   >
@@ -406,7 +407,7 @@ export default function InstallningarPage() {
         </nav>
         <div className="settings-body">
           {/* Flikar döljs (hidden) i stället för att tas bort - osparade ändringar ligger kvar. */}
-          <section className="admin-card table-card" hidden={tab !== 'profil'}>
+          <section className="admin-card table-card" data-help="settings:profil:InstallningarPage" hidden={tab !== 'profil'}>
             <div className="card-head">
               <div>
                 <h2 className="card-title">Restaurangprofil</h2>
@@ -498,11 +499,11 @@ export default function InstallningarPage() {
             <Slot id="installningar.verksamhet.google" props={{ locationId }} />
           )}
 
-          <div hidden={tab !== 'profil'}>
+          <div data-help="settings:profil:BookingTimeCard" hidden={tab !== 'profil'}>
             <BookingTimeCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
           </div>
 
-          <div className="settings-row" hidden={tab !== 'betalningar'}>
+          <div className="settings-row" data-help="settings:betalningar:PaymentsCard" hidden={tab !== 'betalningar'}>
             {tenant && (
               <PaymentsCard
                 tenant={tenant}
@@ -513,7 +514,7 @@ export default function InstallningarPage() {
             )}
           </div>
 
-          <div className="settings-row" hidden={tab !== 'notiser'}>
+          <div className="settings-row" data-help="settings:notiser:NotificationsCard" hidden={tab !== 'notiser'}>
             {tenant && (
               <NotificationsCard
                 key={`${tenant.tenantId}:${JSON.stringify(tenant.notifications)}:${tenant.senderName ?? ''}`}
@@ -523,7 +524,7 @@ export default function InstallningarPage() {
             )}
           </div>
 
-          <div className="settings-row" hidden={tab !== 'avbokning'}>
+          <div className="settings-row" data-help="settings:avbokning:CancellationPolicyCard" hidden={tab !== 'avbokning'}>
             <CancellationPolicyCard
               key={locationId ?? 'none'}
               locationId={locationId}
@@ -533,7 +534,7 @@ export default function InstallningarPage() {
           </div>
 
           {tenant?.entitlements.features.ordering && (
-            <div className="settings-row" hidden={tab !== 'bestallning'}>
+            <div className="settings-row" data-help="settings:bestallning:OrderingCard" hidden={tab !== 'bestallning'}>
               <OrderingCard
                 key={locationId ?? 'none'}
                 locationId={locationId}
@@ -544,16 +545,16 @@ export default function InstallningarPage() {
           )}
 
           {tenant?.entitlements.features.ordering && tab === 'skrivare' && (
-            <div className="settings-row">
+            <div className="settings-row" data-help="settings:skrivare:PrinterCard">
               <PrinterCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
             </div>
           )}
 
-          <div className="settings-row" hidden={tab !== 'dagar'}>
+          <div className="settings-row" data-help="settings:dagar:SpecialDaysCard" hidden={tab !== 'dagar'}>
             <SpecialDaysCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
           </div>
 
-          <div className="settings-row" hidden={tab !== 'bord'}>
+          <div className="settings-row" data-help="settings:bord:TableRulesCard" hidden={tab !== 'bord'}>
             <TableRulesCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
           </div>
 
@@ -562,7 +563,7 @@ export default function InstallningarPage() {
           )}
 
           {isOwner && tenant && (
-            <div className="settings-row" hidden={tab !== 'statistik'}>
+            <div className="settings-row" data-help="settings:statistik:InsightsSettingsCard" hidden={tab !== 'statistik'}>
               <InsightsSettingsCard
                 key={`${locationId ?? 'none'}:${tenant.insights?.staffAccess ?? 'operations'}`}
                 tenant={tenant}
@@ -572,7 +573,7 @@ export default function InstallningarPage() {
           )}
 
           {isOwner && tab === 'bokforing' && (
-            <div className="settings-row">
+            <div className="settings-row" data-help="settings:bokforing:BokforingCard">
               <Slot id="installningar.bokforing.sync" props={{}} />
               <BokforingCard
                 key={locationId ?? 'none'}
@@ -583,17 +584,17 @@ export default function InstallningarPage() {
           )}
 
           {isOwner && tab === 'integritet' && (
-            <div className="settings-row">
+            <div className="settings-row" data-help="settings:integritet:PrivacyCard">
               <PrivacyCard />
             </div>
           )}
 
           {tab === 'utseende' && (
             <>
-              <div className="settings-row">
+              <div className="settings-row" data-help="settings:utseende:AppearanceCard">
                 <AppearanceCard />
               </div>
-              <div className="settings-row">
+              <div className="settings-row" data-help="settings:utseende:DesktopAppCard">
                 <DesktopAppCard />
               </div>
             </>

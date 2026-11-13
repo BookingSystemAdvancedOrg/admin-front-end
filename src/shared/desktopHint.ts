@@ -1,3 +1,4 @@
+import { showDownloadNav } from './desktopDownloads'
 import { APP_HINT_KEY } from './storageRegistry'
 
 /**
@@ -38,9 +39,9 @@ function remember() {
 
 export function showDesktopHint(): void {
   if (typeof document === 'undefined' || typeof window === 'undefined') return
-  if (document.documentElement.classList.contains('is-desktop-glass')) return
-  if (!window.matchMedia?.('(pointer: fine) and (min-width: 768px)').matches) return
-  if (/iPhone|iPad|Android/.test(navigator.userAgent) || seen()) return
+  // Aldrig i skrivbordsappen (också med minskad genomskinlighet, då glaset är
+  // av), och bara i en webbläsare på en dator: samma regel som menyvalet.
+  if (!showDownloadNav() || seen()) return
   remember()
   if (!document.getElementById(STYLE_ID)) {
     const style = document.createElement('style')

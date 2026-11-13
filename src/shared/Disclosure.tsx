@@ -12,6 +12,7 @@ export function Disclosure({
   defaultOpen = false,
   id,
   className = '',
+  onToggle,
   children,
 }: {
   title: ReactNode
@@ -20,10 +21,17 @@ export function Disclosure({
   defaultOpen?: boolean
   id?: string
   className?: string
+  /** Anropas när användaren fäller ut eller ihop (t.ex. för att minnas valet). */
+  onToggle?: (open: boolean) => void
   children: ReactNode
 }) {
   return (
-    <details className={`ds-acc ${className}`.trim()} id={id} open={defaultOpen || undefined}>
+    <details
+      className={`ds-acc ${className}`.trim()}
+      id={id}
+      open={defaultOpen || undefined}
+      onToggle={onToggle ? (e) => onToggle(e.currentTarget.open) : undefined}
+    >
       <summary className="ds-acc-head">
         <span className="ds-acc-title">{title}</span>
         {meta && <span className="ds-acc-meta">{meta}</span>}

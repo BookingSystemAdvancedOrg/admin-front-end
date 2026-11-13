@@ -5,17 +5,16 @@ import { AdminTopbar } from '../../shared/AdminTopbar'
 import { Disclosure } from '../../shared/Disclosure'
 import { revealSection } from '../../shared/reveal'
 import { isApiConfigured } from '../../shared/api'
-import { Num } from '../../shared/motion/Num'
 import { TrendBadge } from '../../shared/TrendBadge'
-import { useTrendPop } from '../../shared/motion/useTrendPop'
-import { toneClass, trendOf } from '../../shared/trend'
-import type { Trend, TrendMetric } from '../../shared/trend'
+import { trendOf } from '../../shared/trend'
+import type { TrendMetric } from '../../shared/trend'
+import { STATISTIK_OPEN_KEY_PREFIX } from '../../shared/storageRegistry'
 import { canSeeInsights, currentLocation, useTenant } from '../../shared/tenant'
 import { Slot } from '../../shared/slots'
 import { todayIn } from '../bokningar/bookingsApi'
 import { channelLabel } from '../marknadsforing/marketingApi'
 import { sampleModeOn, setSampleMode } from '../oversikt/sample'
-import { BarChart, ColumnChart, Delta, Heatmap, Ring, Sparkline } from './charts'
+import { BarChart, ColumnChart, Heatmap, Ring } from './charts'
 import {
   CHANNELS,
   COMPARES,
@@ -31,6 +30,7 @@ import {
   filtersFrom,
   filtersToParams,
   hourLabel,
+  leadSoonPct,
   presetRange,
   signals,
   toCsv,
@@ -38,16 +38,21 @@ import {
 import type { Filters, InsightsResponse, InsightsSummary, PresetId } from './insights'
 import { fetchInsights, insightsQuery } from './insightsApi'
 import { sampleInsights } from './insightsSample'
+import { Overview } from './Overview'
+import { Card, Tile, Tip } from './parts'
+import { useLiveRefresh } from './live'
 import { addDays, daysBetween, deltaPct, fmtDecimal, fmtInt, fmtKr, fmtPct, insightTitle, rangeLabel, shortDate } from './stats'
 import './statistik.css'
 import { DateInput } from '../../shared/DateInput'
 import { SkelBlock, SkelBox, SkelCard, SkelPage } from '../../shared/Skeleton'
 
 /**
- * Statistik: restaurangens egna siffror för en period, i tre steg: vad som
- * hände (nyckeltalen), vad man kan göra (Att göra) och varför (gäster,
- * beläggning, meny, catering, hemsidan). Varje diagram har en rad "Gör så
- * här" och en tabell bakom.
+ * Statistik: överst det viktigaste, alltid live (Overview: idag, kommande
+ * bokningar, gäster per vecka, uteblivna). Under Fördjupning restaurangens
+ * siffror för en vald period i hopfällda avsnitt: nyckeltal och Att göra,
+ * omsättning, gäster, beläggning, meny, catering, hemsidan. Vilka avsnitt
+ * som är utfällda minns sidan per användare. Varje siffra har en förklaring
+ * (i), varje diagram en rad "Gör så här" och en tabell bakom.
  *
  * Ett anrop (GET /insights) räknar hela perioden och jämförelsen på
  * servern, även ett helt år. Filtren står i adressen, så en länk, ett
@@ -62,59 +67,8 @@ interface Loaded {
   data: InsightsResponse
 }
 
-function Tile({
-  label,
-  value,
-  sub,
-  trend,
-  against,
-  spark,
-  tone,
-}: {
-  label: string
-  value: string
-  sub?: string
-  /** Mot jämförelsen (shared/trend); null = ingen förra period, utelämnad = ingen jämförelse vald. */
-  trend?: Trend | null
-  against?: string
-  spark?: { points: { label: string; value: number }[]; format: (v: number) => string }
-  tone?: 'warn' | 'bad'
-}) {
-  // En egen varningsfärg (t.ex. många uteblivna) går före tonen mot förra perioden.
-  const trendTone = !tone && trend ? trend.tone : 'neutral'
-  const valueRef = useTrendPop<HTMLElement>(trendTone, 700)
-  return (
-    <div className={`admin-card sk-kpi${tone ? ` sk-kpi--${tone}` : ''}`}>
-      <span className="sk-kpi-label">{label}</span>
-      <strong ref={valueRef} className={`sk-kpi-value${toneClass(trendTone)}`}>
-        <Num>{value}</Num>
-      </strong>
-      {spark && <Sparkline points={spark.points} format={spark.format} label={label} />}
-      {sub && <span className="sk-kpi-sub">{sub}</span>}
-      {trend !== undefined && <Delta trend={trend}>mot {against}</Delta>}
-    </div>
-  )
-}
-
-/** "Gör så här": vad siffran betyder för den som driver restaurangen. */
-function Tip({ children }: { children: ReactNode }) {
-  return (
-    <p className="sk-tip">
-      <span className="sk-tip-label">Gör så här</span> {children}
-    </p>
-  )
-}
-
-function Card({ title, label, children, wide }: { title: string; label: string; children: ReactNode; wide?: boolean }) {
-  return (
-    <section className={`admin-card${wide ? ' sk-wide' : ''}`} aria-label={label}>
-      <h3 className="card-title">{title}</h3>
-      {children}
-    </section>
-  )
-}
-
 const SECTIONS = [
+  { id: 'nyckeltal', label: 'Nyckeltal' },
   { id: 'omsattning', label: 'Omsättning' },
   { id: 'gaster', label: 'Gäster' },
   { id: 'belaggning', label: 'Beläggning' },
@@ -122,6 +76,15 @@ const SECTIONS = [
   { id: 'catering', label: 'Catering' },
   { id: 'hemsidan', label: 'Hemsidan' },
 ]
+
+function readOpen(key: string): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(key) ?? '[]')
+    return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
 
 function download(name: string, text: string) {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }))
@@ -160,6 +123,21 @@ export default function StatistikPage() {
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [errorKey, setErrorKey] = useState<string | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [tick, setTick] = useState(0)
+  // Utfällda avsnitt under Fördjupning, per användare i den här webbläsaren.
+  const openKey = `${STATISTIK_OPEN_KEY_PREFIX}${tenantState.sub ?? 'du'}`
+  const [open, setOpen] = useState<string[]>(() => readOpen(openKey))
+  const toggle = (id: string) => (isOpen: boolean) => {
+    setOpen((prev) => {
+      const next = isOpen ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)
+      try {
+        localStorage.setItem(openKey, JSON.stringify(next))
+      } catch {
+        // privat läge eller full lagring: valet gäller bara nu
+      }
+      return next
+    })
+  }
   const offline = !isApiConfigured()
   const showSample = sample || offline
   const key = `${insightsQuery(f)}|${showSample ? 'sample' : 'live'}|${isOwner ? 'o' : 's'}`
@@ -173,16 +151,19 @@ export default function StatistikPage() {
       ? sampleInsights({ preset: 'custom', from, to, locationId: target, service, channel, compare }, today, isOwner, sampleName)
       : null
 
+  // Når perioden idag räknas den om efter varje ändring, när fliken syns igen och varje minut.
+  useLiveRefresh(() => setTick((n) => n + 1), allowed && !showSample && to >= today)
+
   useEffect(() => {
     if (!allowed || !target || showSample) return
     let cancelled = false
-    fetchInsights({ from, to, locationId: target, service, channel, compare })
+    fetchInsights({ from, to, locationId: target, service, channel, compare }, { fresh: tick > 0 })
       .then((data) => !cancelled && setLoaded({ key, data }))
       .catch(() => !cancelled && setErrorKey(key))
     return () => {
       cancelled = true
     }
-  }, [key, allowed, showSample, target, from, to, service, channel, compare])
+  }, [key, tick, allowed, showSample, target, from, to, service, channel, compare])
 
   if (!allowed) {
     return (
@@ -236,9 +217,16 @@ export default function StatistikPage() {
   const showCatering = Boolean(features.catering) || (s?.catering.requests ?? 0) > 0
   const showWeb = Boolean(features.marketing) || (s?.web.visits ?? 0) > 0
   const heatHours = s ? [...new Set(s.heat.map((c) => c.hour))].sort((a, b) => a - b) : []
+  const heatDays = s ? [...new Set(s.heat.map((c) => c.weekday))].sort((a, b) => a - b) : []
   const peakHour = s?.byHour.reduce<InsightsSummary['byHour'][number] | null>((best, h) => (!best || h.bookings > best.bookings ? h : best), null)
-  const peakDay = s?.byWeekday.reduce((best, d) => (d.guests > best.guests ? d : best), s.byWeekday[0])
-  const leadSoon = s && s.bookings > 0 ? (((s.lead[0]?.bookings ?? 0) + (s.lead[1]?.bookings ?? 0)) / s.bookings) * 100 : null
+  // Veckodagar: bara de som finns i perioden, i snitt per dag (en veckodag
+  // som förekommer en gång till ska inte se tyngre ut för det).
+  const weekdays = (s?.byWeekday ?? []).filter((d) => d.days > 0).map((d) => ({ ...d, avgGuests: d.guests / d.days }))
+  const openWeekdays = weekdays.filter((d) => d.occupancy !== null)
+  const peakDay = weekdays.reduce<(typeof weekdays)[number] | null>((best, d) => (!best || d.avgGuests > best.avgGuests ? d : best), null)
+  const lowDay = openWeekdays.reduce<(typeof openWeekdays)[number] | null>((low, d) => (!low || (d.occupancy ?? 0) < (low.occupancy ?? 0) ? d : low), null)
+  const leadSoon = s ? leadSoonPct(s) : null
+  const unmarked = s ? Math.max(0, s.bookings - s.arrived - s.noShows) : 0
   const sourced = s ? s.sources.online + s.sources.phone + s.sources.onsite : 0
   const prevByDay = (i: number) => (p && p.byDay.length === s?.byDay.length ? p.byDay[i] : undefined)
   const sizeRows = s?.bySize ?? []
@@ -254,6 +242,7 @@ export default function StatistikPage() {
         key="revenue"
         label="Omsättning"
         value={fmtKr(s.revenue)}
+        info="Betalda beställningar, levererad catering och kortköp i kassan i perioden, inklusive moms. Bara ägaren ser beloppen."
         sub={`Beställningar ${fmtKr(s.orderRevenue)}, catering ${fmtKr(s.cateringRevenue)}${s.inPersonRevenue ? `, kort i kassan ${fmtKr(s.inPersonRevenue)}` : ''}`}
         spark={spark((d) => d.revenue, (v) => fmtKr(v))}
         {...versus(s.revenue, p?.revenue, 'revenue')}
@@ -264,6 +253,7 @@ export default function StatistikPage() {
         key="bookings"
         label="Bokningar"
         value={fmtInt(s.bookings)}
+        info="Bokningar för dagar i perioden som inte är avbokade (räknas på besöksdagen). Uteblivna räknas med, påbörjade bokningar som aldrig blev klara inte."
         sub={`${fmtInt(s.cancelled)} avbokade, ${fmtInt(s.lateCancels)} sent`}
         spark={spark((d) => d.bookings)}
         {...versus(s.bookings, p?.bookings, 'bookings')}
@@ -274,6 +264,7 @@ export default function StatistikPage() {
         key="guests"
         label="Gäster"
         value={fmtInt(s.guests)}
+        info="Antal personer i bokningarna ovan (sällskapens storlek) på besöksdagen. Avbokade räknas inte."
         sub={s.avgParty ? `${fmtDecimal(s.avgParty)} per sällskap` : 'Inga bokningar'}
         spark={spark((d) => d.guests)}
         {...versus(s.guests, p?.guests, 'guests')}
@@ -284,6 +275,7 @@ export default function StatistikPage() {
         key="avgOrder"
         label="Snittorder"
         value={fmtKr(s.avgOrder)}
+        info="Betalt belopp per onlinebeställning (avhämtning och vid bordet) i perioden."
         sub={`${fmtInt(s.orders)} betalda beställningar`}
         {...versus(s.avgOrder, p?.avgOrder, 'avgOrder')}
       />
@@ -293,6 +285,7 @@ export default function StatistikPage() {
         key="noShows"
         label="Uteblivna"
         value={fmtPct(s.noShowPct ?? 0)}
+        info="Bokningar som markerats som Kom inte, delat med alla bokningar i perioden som inte avbokats. Dagens kommande bokningar räknas med i nämnaren."
         sub={
           money && s.feeCount > 0
             ? `${fmtInt(s.noShows)} bokningar, ${fmtKr(s.feesCharged)} i avgifter`
@@ -307,19 +300,21 @@ export default function StatistikPage() {
         key="occupancy"
         label="Beläggning"
         value={fmtPct(s.occupancy)}
+        info="Bokad bordstid delat med all bordstid under öppettiderna i perioden. 100 % betyder att alla bord var bokade hela tiden."
         sub={s.seatFill !== null ? `${fmtPct(s.seatFill)} av stolarna fyllda` : 'av bordstiden bokad'}
         spark={spark((d) => d.occupancy, (v) => fmtPct(v))}
         {...versus(s.occupancy, p?.occupancy, 'occupancy')}
       />
     ),
     orders: (
-      <Tile key="orders" label="Beställningar" value={fmtInt(s.orders)} sub={`${fmtInt(s.tableOrders)} vid bordet`} spark={spark((d) => d.orders)} {...versus(s.orders, p?.orders, 'orders')} />
+      <Tile key="orders" label="Beställningar" info="Betalda onlinebeställningar i perioden, avhämtning och vid bordet." value={fmtInt(s.orders)} sub={`${fmtInt(s.tableOrders)} vid bordet`} spark={spark((d) => d.orders)} {...versus(s.orders, p?.orders, 'orders')} />
     ),
     prepTime: (
       <Tile
         key="prepTime"
         label="Tillagningstid"
         value={s.prepMinutes !== null ? `${fmtDecimal(s.prepMinutes)} min` : '-'}
+        info="Minuter från att köket bekräftade beställningen till att den markerades som klar, i snitt."
         sub={s.latePct !== null ? `${fmtPct(s.latePct)} blev klara sent` : 'Från påbörjad till klar'}
         {...versus(s.prepMinutes, p?.prepMinutes, 'prepTime')}
       />
@@ -333,6 +328,27 @@ export default function StatistikPage() {
     <>
       <AdminTopbar title="Statistik" />
       <div className="admin-main sk-page">
+        {showSample && (
+          <div className="sample-notice" role="status">
+            <span className="sample-stamp">Exempel</span>
+            <span>Du ser exempeldata, inte restaurangens riktiga siffror.</span>
+            {sample && !offline && (
+              <button type="button" className="link-action" onClick={() => chooseSample(false)}>
+                Visa riktiga siffror
+              </button>
+            )}
+          </div>
+        )}
+        {target && (
+          <Overview locationId={target} today={today} money={isOwner} sample={showSample} sampleName={sampleName} />
+        )}
+
+        <div className="sk-deep-head">
+          <h2 className="sk-block-title" id="sk-deep">
+            Fördjupning
+          </h2>
+          <p className="sk-deep-lead">Välj period och fäll ut det du vill se. Sidan minns vad du hade öppet.</p>
+        </div>
         <div className="sk-filterbar">
           <div className="sk-chips" role="group" aria-label="Period">
             {PRESETS.map((pr) => (
@@ -447,17 +463,6 @@ export default function StatistikPage() {
           </p>
         </details>
 
-        {showSample && (
-          <div className="sample-notice" role="status">
-            <span className="sample-stamp">Exempel</span>
-            <span>Du ser exempeldata, inte restaurangens riktiga siffror.</span>
-            {sample && !offline && (
-              <button type="button" className="link-action" onClick={() => chooseSample(false)}>
-                Visa riktiga siffror
-              </button>
-            )}
-          </div>
-        )}
         {ready?.pending && (
           <p className="sk-note" role="status">
             Statistiken byggs upp i natt. Tills dess visas de senaste 31 dagarna; äldre dagar och jämförelser fylls på i morgon.
@@ -513,64 +518,51 @@ export default function StatistikPage() {
 
         {s && !nothing && (
           <>
-            <section aria-labelledby="sk-what" className="sk-block">
-              <h2 className="sk-block-title" id="sk-what">
-                Så gick det
-              </h2>
-              <div className="sk-kpis">
-                {kpiTiles && kpiOrder.map((k) => kpiTiles[k])}
-              </div>
-            </section>
+            <section aria-labelledby="sk-deep" className="sk-block">
+              <nav className="sk-anchors" aria-label="Avsnitt">
+                {SECTIONS.filter((x) => (x.id === 'omsattning' ? money && showOrders : x.id === 'meny' ? showOrders : x.id === 'catering' ? showCatering : x.id === 'hemsidan' ? showWeb : true)).map((x) => (
+                  <a key={x.id} href={`#${x.id}`} onClick={(e) => {
+                    e.preventDefault()
+                    revealSection(x.id)
+                  }}>
+                    {x.label}
+                  </a>
+                ))}
+              </nav>
 
-            <section aria-labelledby="sk-todo" className="sk-block">
-              <h2 className="sk-block-title" id="sk-todo">
-                Att göra
-              </h2>
-              {todo.length === 0 ? (
-                <p className="admin-card sk-todo-none">Inget sticker ut i perioden. Titta igen när fler gäster har bokat, eller välj en längre period.</p>
-              ) : (
-                <ol className="sk-todo">
-                  {todo.map((t, i) => (
-                    <li key={t.id} className="admin-card sk-todo-item">
-                      <span className="sk-todo-n" aria-hidden="true">
-                        {String(i + 1).padStart(2, '0')}
-                      </span>
-                      <div>
-                        <h3 className="sk-todo-title">{t.title}</h3>
-                        <p className="sk-todo-text">{t.text}</p>
-                        <Link className="card-link" to={t.to}>
-                          {t.linkLabel} →
-                        </Link>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </section>
-
-            <section aria-labelledby="sk-why" className="sk-block">
-              <div className="sk-block-head">
-                <h2 className="sk-block-title" id="sk-why">
-                  Varför
-                </h2>
-                <nav className="sk-anchors" aria-label="Avsnitt">
-                  {SECTIONS.filter((x) => (x.id === 'omsattning' ? money && showOrders : x.id === 'meny' ? showOrders : x.id === 'catering' ? showCatering : x.id === 'hemsidan' ? showWeb : true)).map((x) => (
-                    <a key={x.id} href={`#${x.id}`} onClick={(e) => {
-                      e.preventDefault()
-                      revealSection(x.id)
-                    }}>
-                      {x.label}
-                    </a>
-                  ))}
-                </nav>
-              </div>
+              <Disclosure id="nyckeltal" title="Så gick det" meta={todo.length ? `${todo.length} att göra` : undefined} className="sk-acc" defaultOpen={open.includes('nyckeltal')} onToggle={toggle('nyckeltal')}>
+                <div className="sk-kpis">
+                  {kpiTiles && kpiOrder.map((k) => kpiTiles[k])}
+                </div>
+                <h3 className="sk-sub-title">Att göra</h3>
+                {todo.length === 0 ? (
+                  <p className="admin-card sk-todo-none">Inget sticker ut i perioden. Titta igen när fler gäster har bokat, eller välj en längre period.</p>
+                ) : (
+                  <ol className="sk-todo">
+                    {todo.map((t, i) => (
+                      <li key={t.id} className="admin-card sk-todo-item">
+                        <span className="sk-todo-n" aria-hidden="true">
+                          {String(i + 1).padStart(2, '0')}
+                        </span>
+                        <div>
+                          <h4 className="sk-todo-title">{t.title}</h4>
+                          <p className="sk-todo-text">{t.text}</p>
+                          <Link className="card-link" to={t.to}>
+                            {t.linkLabel} →
+                          </Link>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </Disclosure>
 
               {/* Ägaren: pengarna över tid först, sedan gästerna (docs/DASHBOARD.md). */}
               {money && showOrders && (
                 <>
-                  <Disclosure id="omsattning" title="Omsättning" className="sk-acc" defaultOpen={true}>
+                  <Disclosure id="omsattning" title="Omsättning" className="sk-acc" defaultOpen={open.includes('omsattning')} onToggle={toggle('omsattning')}>
                     <div className="sk-charts">
-                    <Card title={insightTitle('Omsättningen', deltaPct(s.revenue, p?.revenue))} label="Omsättning per dag" wide>
+                    <Card title={insightTitle('Omsättningen', deltaPct(s.revenue, p?.revenue))} label="Omsättning per dag" info="Betalda beställningar på dagen de betalades, catering på leveransdagen och kortköp i kassan, inklusive moms." wide>
                       <p className="sk-insight">Betalda beställningar och levererad catering per dag, inklusive moms.</p>
                       <ColumnChart
                         unit="kr"
@@ -596,11 +588,11 @@ export default function StatistikPage() {
                 </>
               )}
 
-              <Disclosure id="gaster" title="Gäster och bokningar" className="sk-acc" defaultOpen={!(money && showOrders)}>
+              <Disclosure id="gaster" title="Gäster och bokningar" className="sk-acc" defaultOpen={open.includes('gaster')} onToggle={toggle('gaster')}>
                 <div className="sk-charts">
-                <Card title="Gäster per dag" label="Gäster per dag" wide>
+                <Card title="Gäster per dag" label="Gäster per dag" info="Personer i bokningar som inte avbokats, räknat på dagen de kommer. Uteblivna räknas med; tabellen visar hur många som uteblev och avbokade." wide>
                   <p className="sk-insight">
-                    Gäster som bokat, per dag{p && prevByDay(0) ? `; linjen är ${cmp}` : ''}.
+                    Gäster i bokningar som inte avbokats, per besöksdag{p && prevByDay(0) ? `; linjen är ${cmp}` : ''}.
                   </p>
                   <ColumnChart
                     unit="count"
@@ -621,12 +613,12 @@ export default function StatistikPage() {
                   />
                   <Tip>
                     {peakDay && peakDay.guests > 0
-                      ? `${WEEKDAY_LABELS[peakDay.weekday]} tar flest gäster. Lägg extra personal där, och prova ett erbjudande på den svagaste dagen.`
+                      ? `${WEEKDAY_LABELS[peakDay.weekday]} tar flest gäster i snitt. Lägg extra personal där, och prova ett erbjudande på den svagaste dagen.`
                       : 'Jämför veckorna: en dag som alltid är svag är ett bättre mål för ett erbjudande än hela veckan.'}
                   </Tip>
                 </Card>
 
-                <Card title={peakHour ? `Flest bokningar klockan ${hourLabel(peakHour.hour).slice(0, 2)}` : 'När gästerna kommer'} label="Bokningar per timme">
+                <Card title={peakHour ? `Flest bokningar klockan ${hourLabel(peakHour.hour).slice(0, 2)}` : 'När gästerna kommer'} label="Bokningar per timme" info="Bokningar som inte avbokats, efter klockslaget de börjar.">
                   <p className="sk-insight">Bokningar per starttimme.</p>
                   <BarChart
                     format={fmtInt}
@@ -645,26 +637,26 @@ export default function StatistikPage() {
                   <Tip>Bemanna efter topparna och ha köket redo en halvtimme före. Svaga timmar passar för en tidig sittning eller ett happy hour.</Tip>
                 </Card>
 
-                <Card title="Gäster per veckodag" label="Gäster per veckodag">
-                  <p className="sk-insight">Den tyngsta dagen i rött.</p>
+                <Card title="Gäster per veckodag" label="Gäster per veckodag" info="Gäster i snitt per veckodag i perioden: alla gäster den veckodagen delat med hur många sådana dagar perioden har. Veckodagar som inte finns i perioden visas inte.">
+                  <p className="sk-insight">Snitt per dag. Den tyngsta dagen i rött.</p>
                   <BarChart
-                    format={fmtInt}
-                    seriesLabel="Gäster"
-                    ariaLabel="Gäster per veckodag"
-                    rows={s.byWeekday.map((d) => ({
+                    format={(v) => fmtDecimal(v, v < 10 ? 1 : 0)}
+                    seriesLabel="Gäster per dag"
+                    ariaLabel="Gäster i snitt per veckodag"
+                    rows={weekdays.map((d) => ({
                       key: String(d.weekday),
                       label: WEEKDAY_LABELS[d.weekday],
-                      value: d.guests,
-                      detail: `${fmtInt(d.bookings)} bokningar`,
-                      title: `${WEEKDAY_LABELS[d.weekday]}: ${fmtInt(d.guests)} gäster i ${fmtInt(d.bookings)} bokningar`,
+                      value: d.avgGuests,
+                      detail: `${fmtInt(d.days)} ${d.days === 1 ? 'dag' : 'dagar'}`,
+                      title: `${WEEKDAY_LABELS[d.weekday]}: ${fmtDecimal(d.avgGuests)} gäster per dag (${fmtInt(d.guests)} på ${fmtInt(d.days)} ${d.days === 1 ? 'dag' : 'dagar'})`,
                     }))}
-                    tableHead={['Veckodag', 'Gäster', 'Bokningar', 'Beläggning']}
-                    tableRows={s.byWeekday.map((d) => [WEEKDAY_LABELS[d.weekday], d.guests, d.bookings, fmtPct(d.occupancy)])}
+                    tableHead={['Veckodag', 'Gäster per dag', 'Gäster', 'Dagar', 'Beläggning']}
+                    tableRows={weekdays.map((d) => [WEEKDAY_LABELS[d.weekday], fmtDecimal(d.avgGuests), d.guests, d.days, d.occupancy === null ? 'Stängt' : fmtPct(d.occupancy)])}
                   />
                   <Tip>Planera inköp och schema per veckodag, inte per vecka.</Tip>
                 </Card>
 
-                <Card title="Hur gästerna bokar" label="Bokningskanal">
+                <Card title="Hur gästerna bokar" label="Bokningskanal" info="Bokningar i perioden som inte avbokats, efter hur de kom in: Online = gästen bokade själv på hemsidan, Telefon = personalen bokade ett samtal, På plats = drop-in som personalen lade in.">
                   <Ring
                     title="Bokningar per kanal"
                     total={sourced}
@@ -684,7 +676,7 @@ export default function StatistikPage() {
                   </Tip>
                 </Card>
 
-                <Card title="Hur bokningarna slutade" label="Utfall">
+                <Card title="Hur bokningarna slutade" label="Utfall" info="Alla bokningar i perioden: Kom och Uteblev är det personalen har markerat, Ej markerade är kommande eller aldrig markerade, Avbokade är avbokade av gästen eller restaurangen.">
                   <Ring
                     title="Utfall"
                     total={s.bookings + s.cancelled}
@@ -692,8 +684,9 @@ export default function StatistikPage() {
                     empty="Inga bokningar"
                     format={fmtInt}
                     segments={[
-                      { key: 'came', label: 'Kom', value: s.bookings - s.noShows, tone: 'ink' },
+                      { key: 'came', label: 'Kom', value: s.arrived, tone: 'ink' },
                       { key: 'noshow', label: 'Uteblev', value: s.noShows, tone: 'red' },
+                      { key: 'unmarked', label: 'Ej markerade', value: unmarked, tone: 'muted' },
                       { key: 'cancelled', label: 'Avbokade', value: s.cancelled, tone: 'steel' },
                     ]}
                   />
@@ -704,7 +697,7 @@ export default function StatistikPage() {
                   </Tip>
                 </Card>
 
-                <Card title={leadSoon !== null ? `${fmtPct(leadSoon)} bokar samma dag eller dagen före` : 'Hur långt i förväg'} label="Framförhållning">
+                <Card title={leadSoon !== null ? `${fmtPct(leadSoon)} bokar samma dag eller dagen före` : 'Hur långt i förväg'} label="Framförhållning" info="Hur många dagar före besöket bokningen gjordes, för online- och telefonbokningar som inte avbokats. Drop-in räknas inte: de bokade aldrig i förväg.">
                   <BarChart
                     format={fmtInt}
                     seriesLabel="Bokningar"
@@ -721,7 +714,7 @@ export default function StatistikPage() {
                   <Tip>Skicka erbjudanden så långt i förväg som gästerna faktiskt bokar: sent bokande gäster nås dagen före, inte veckan innan.</Tip>
                 </Card>
 
-                <Card title={s.avgParty ? `${fmtDecimal(s.avgParty)} gäster per sällskap` : 'Sällskapens storlek'} label="Sällskapens storlek">
+                <Card title={s.avgParty ? `${fmtDecimal(s.avgParty)} gäster per sällskap` : 'Sällskapens storlek'} label="Sällskapens storlek" info="Hur många bokningar som gällde 1, 2, 3 och så vidare personer, avbokade räknas inte.">
                   <BarChart
                     format={fmtInt}
                     seriesLabel="Bokningar"
@@ -741,27 +734,33 @@ export default function StatistikPage() {
               </div>
               </Disclosure>
 
-              <Disclosure id="belaggning" title="Beläggning" className="sk-acc" defaultOpen={false}>
+              <Disclosure id="belaggning" title="Beläggning" className="sk-acc" defaultOpen={open.includes('belaggning')} onToggle={toggle('belaggning')}>
                 <div className="sk-charts">
-                <Card title="Beläggning per veckodag och timme" label="Beläggning per veckodag och timme" wide>
-                  <p className="sk-insight">Andel av bordstiden som var bokad, i procent. Mörkare = fullare.</p>
+                <Card title="Beläggning per veckodag och timme" label="Beläggning per veckodag och timme" info="För varje veckodag och timme: hur stor del av alla bords tid som var bokad, för alla sådana dagar i perioden. Bara öppna timmar visas. 50 betyder att hälften av bordstiden var bokad." wide>
+                  <p className="sk-insight">Procent av bordstiden som var bokad. Mörkare ruta = fler bord bokade.</p>
                   <Heatmap
-                    rows={WEEKDAY_LABELS}
+                    rows={heatDays.map((wd) => WEEKDAY_LABELS[wd])}
                     cols={heatHours.map((h) => hourLabel(h).slice(0, 2))}
                     cells={s.heat.map((c) => ({
-                      row: c.weekday,
+                      row: heatDays.indexOf(c.weekday),
                       col: heatHours.indexOf(c.hour),
                       value: c.occupancy,
                       title: `${WEEKDAY_LABELS[c.weekday]} ${hourLabel(c.hour)}: ${fmtPct(c.occupancy)} bokat`,
                     }))}
                     ariaLabel="Beläggning per veckodag och timme"
-                    tableHead={['Veckodag', 'Timme', 'Beläggning']}
-                    tableRows={s.heat.map((c) => [WEEKDAY_LABELS[c.weekday], hourLabel(c.hour), fmtPct(c.occupancy)])}
+                    tableHead={['Dag', ...heatHours.map((h) => hourLabel(h))]}
+                    tableRows={heatDays.map((wd) => [
+                      WEEKDAY_LABELS[wd],
+                      ...heatHours.map((h) => {
+                        const c = s.heat.find((x) => x.weekday === wd && x.hour === h)
+                        return c ? fmtPct(c.occupancy) : 'Stängt'
+                      }),
+                    ])}
                   />
                   <Tip>Ljusa rutor är tomma bord: rikta erbjudanden och evenemang dit. Mörka rutor som alltid är fulla tål en kortare bordstid eller en extra sittning.</Tip>
                 </Card>
 
-                <Card title={lowSize ? `${SIZE_LABELS[lowSize.size] ?? lowSize.size} används minst` : 'Beläggning per bordsstorlek'} label="Beläggning per bordsstorlek">
+                <Card title={lowSize ? `${SIZE_LABELS[lowSize.size] ?? lowSize.size} används minst` : 'Beläggning per bordsstorlek'} label="Beläggning per bordsstorlek" info="Bord grupperade efter antal stolar (2-bord = 1-2 stolar, 4-bord = 3-4, 6-bord = 5-6). Visar hur stor del av öppettiden bord av varje storlek var bokade i hela perioden, inte bara idag.">
                   <BarChart
                     format={(v) => fmtPct(v)}
                     seriesLabel="Beläggning"
@@ -778,19 +777,19 @@ export default function StatistikPage() {
                   <Tip>Står stora bord tomma medan små är fulla? Gör om ett 6-bord till ett 2- och ett 4-bord i Layout.</Tip>
                 </Card>
 
-                <Card title="Beläggning per veckodag" label="Beläggning per veckodag">
+                <Card title={lowDay && openWeekdays.length > 1 ? `${WEEKDAY_LABELS[lowDay.weekday]} har lägst beläggning` : 'Beläggning per veckodag'} label="Beläggning per veckodag" info="Bokad bordstid delat med all bordstid under öppettiderna, per veckodag i perioden. Veckodagar som inte finns i perioden eller har stängt visas inte.">
                   <BarChart
                     format={(v) => fmtPct(v)}
                     seriesLabel="Beläggning"
                     ariaLabel="Beläggning per veckodag"
-                    rows={s.byWeekday.map((d) => ({
+                    rows={openWeekdays.map((d) => ({
                       key: String(d.weekday),
                       label: WEEKDAY_LABELS[d.weekday],
                       value: d.occupancy ?? 0,
-                      title: `${WEEKDAY_LABELS[d.weekday]}: ${fmtPct(d.occupancy)} bokat`,
+                      title: `${WEEKDAY_LABELS[d.weekday]}: ${fmtPct(d.occupancy)} bokat (${fmtInt(d.days)} ${d.days === 1 ? 'dag' : 'dagar'})`,
                     }))}
-                    tableHead={['Veckodag', 'Beläggning']}
-                    tableRows={s.byWeekday.map((d) => [WEEKDAY_LABELS[d.weekday], fmtPct(d.occupancy)])}
+                    tableHead={['Veckodag', 'Beläggning', 'Dagar']}
+                    tableRows={weekdays.map((d) => [WEEKDAY_LABELS[d.weekday], d.occupancy === null ? 'Stängt' : fmtPct(d.occupancy), d.days])}
                   />
                   <Tip>Under 40 % en dag i veckan? Fundera på kortare öppettider den dagen, eller ett fast erbjudande.</Tip>
                 </Card>
@@ -799,9 +798,9 @@ export default function StatistikPage() {
 
               {showOrders && (
                 <>
-                  <Disclosure id="meny" title="Beställningar och meny" className="sk-acc" defaultOpen={false}>
+                  <Disclosure id="meny" title="Beställningar och meny" className="sk-acc" defaultOpen={open.includes('meny')} onToggle={toggle('meny')}>
                     <div className="sk-charts">
-                    <Card title={money ? `${fmtKr(s.avgOrder)} per beställning` : `${fmtInt(s.orders)} beställningar`} label="Beställningarna">
+                    <Card title={money ? `${fmtKr(s.avgOrder)} per beställning` : `${fmtInt(s.orders)} beställningar`} label="Beställningarna" info="Betalda onlinebeställningar i perioden, räknat på dagen de betalades.">
                       {money && (
                         <Ring
                           title="Var pengarna kommer ifrån"
@@ -853,7 +852,7 @@ export default function StatistikPage() {
                       </Tip>
                     </Card>
 
-                    <Card title="Mest sålda" label="Mest sålda rätter">
+                    <Card title="Mest sålda" label="Mest sålda rätter" info="Rätter i betalda beställningar i perioden, efter antal sålda.">
                       {topDishes.length === 0 ? (
                         <p className="sk-empty">Inga beställningar i perioden.</p>
                       ) : (
@@ -902,7 +901,7 @@ export default function StatistikPage() {
                     </Card>
 
                     {bottomDishes.length > 0 && (
-                      <Card title="Säljer minst" label="Minst sålda rätter">
+                      <Card title="Säljer minst" label="Minst sålda rätter" info="De rätter som sålt minst i perioden bland dem som sålts minst en gång.">
                         <div className="sk-scroll">
                           <table className="sk-dishes">
                             <thead>
@@ -941,7 +940,7 @@ export default function StatistikPage() {
                     )}
 
                     {s.pairs.length > 0 && (
-                      <Card title="Beställs ofta tillsammans" label="Beställs ofta tillsammans">
+                      <Card title="Beställs ofta tillsammans" label="Beställs ofta tillsammans" info="Par av rätter som funnits i samma betalda beställning, och hur många beställningar det gällde.">
                         <ul className="sk-pairs">
                           {s.pairs.slice(0, 6).map((x) => (
                             <li key={`${x.a}|${x.b}`}>
@@ -966,9 +965,9 @@ export default function StatistikPage() {
 
               {showCatering && (
                 <>
-                  <Disclosure id="catering" title="Catering" className="sk-acc" defaultOpen={false}>
+                  <Disclosure id="catering" title="Catering" className="sk-acc" defaultOpen={open.includes('catering')} onToggle={toggle('catering')}>
                     <div className="sk-charts">
-                    <Card title={s.catering.conversionPct !== null ? `${fmtPct(s.catering.conversionPct)} av offerterna blev beställningar` : 'Från förfrågan till beställning'} label="Catering">
+                    <Card title={s.catering.conversionPct !== null ? `${fmtPct(s.catering.conversionPct)} av offerterna blev beställningar` : 'Från förfrågan till beställning'} label="Catering" info="Förfrågningar räknas dagen de kom in, offerter dagen de skickades, accepterade dagen de signerades och värdet på leveransdagen.">
                       <BarChart
                         format={fmtInt}
                         seriesLabel="Antal"
@@ -1011,9 +1010,9 @@ export default function StatistikPage() {
 
               {showWeb && (
                 <>
-                  <Disclosure id="hemsidan" title="Hemsidan" className="sk-acc" defaultOpen={false}>
+                  <Disclosure id="hemsidan" title="Hemsidan" className="sk-acc" defaultOpen={open.includes('hemsidan')} onToggle={toggle('hemsidan')}>
                     <div className="sk-charts">
-                    <Card title={s.web.conversionPct !== null ? `${fmtPct(s.web.conversionPct)} av besöken blev en bokning eller beställning` : 'Besök på hemsidan'} label="Hemsidan" wide>
+                    <Card title={s.web.conversionPct !== null ? `${fmtPct(s.web.conversionPct)} av besöken blev en bokning eller beställning` : 'Besök på hemsidan'} label="Hemsidan" info="Besök på restaurangens hemsida (räknas utan cookies) och bokningar och beställningar som gjordes direkt efter ett besök, räknat på dagen de gjordes. Bokningar längre upp räknas på besöksdagen, så siffrorna kan skilja." wide>
                       <dl className="sk-facts sk-facts--row">
                         <dt>Besök</dt>
                         <dd>{fmtInt(s.web.visits)}</dd>

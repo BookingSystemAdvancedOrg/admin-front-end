@@ -1100,7 +1100,58 @@
      inside the scroller instead of widening the page */
   position: relative;
   max-width: 100%;
-  overflow-x: auto;
+}
+
+/* Long tables scroll inside themselves; the header row (and a matrix's first
+   column) stays put. The header is near-opaque glass so rows slide under it. */
+.sk-table-scroll {
+  position: relative;
+  max-width: 100%;
+  max-height: min(60vh, 420px);
+  overflow: auto;
+  margin-top: 8px;
+  overscroll-behavior: contain;
+}
+
+.sk-table-scroll:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.sk-table .sk-table-scroll table {
+  margin-top: 0;
+}
+
+.sk-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-top: 6px;
+  background: var(--glass-modal);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.sk-table-matrix th[scope='row'] {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  padding: 6px 12px 6px 0;
+  border-top: 1.5px dashed var(--border);
+  background: var(--glass-modal);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  text-align: left;
+}
+
+.sk-table-matrix thead th:first-child {
+  left: 0;
+  z-index: 3;
+}
+
+.sk-table-matrix td {
+  text-align: right;
+  white-space: nowrap;
 }
 
 /* --- Verktygstipset: punkten som visas (ChartTip) ----------------------------- */
@@ -1144,4 +1195,89 @@
 
 .sk-acc > .ds-acc-body {
   padding-top: var(--space-2);
+}
+
+/* --- Översikten överst och Fördjupning (2026-11-13) ----------------------------- */
+
+.sk-kpis--four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 1100px) {
+  .sk-kpis--four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.sk-overview .sk-charts {
+  margin-top: 20px;
+}
+
+.sk-block-sub {
+  margin-left: 8px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* Title and its (i) on one line; the explanation opens leftwards inside the card. */
+.sk-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sk-card-head .card-title {
+  min-width: 0;
+}
+
+.sk-card-head .info-tooltip,
+.sk-kpi-head .info-tooltip {
+  flex: none;
+}
+
+.sk-card-head .info-tooltip-panel {
+  left: auto;
+  right: 0;
+}
+
+.sk-kpi-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sk-kpi-head .info-tooltip-trigger {
+  width: 20px;
+  height: 20px;
+}
+
+.sk-kpi-head .info-tooltip-panel {
+  left: auto;
+  right: 0;
+}
+
+.sk-deep-head {
+  margin-top: 36px;
+}
+
+.sk-deep-lead {
+  margin: 4px 0 14px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.sk-sub-title {
+  margin: 24px 0 12px;
+  font-size: 16px;
+}
+
+.sk-scroll {
+  overflow-x: auto;
+}
+
+/* The chart figure is a grid: its scrollers must not widen it to their content. */
+.sk-chart > * {
+  min-width: 0;
 }

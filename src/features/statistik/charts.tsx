@@ -37,32 +37,50 @@ function useWidth(fallback = 640): [RefObject<HTMLElement | null>, number] {
   return [ref, width]
 }
 
-/** Tabellen bakom varje diagram, för skärmläsare och för den som vill ha siffrorna. */
-export function ChartTable({ caption, head, rows }: { caption: string; head: string[]; rows: (string | number)[][] }) {
+/**
+ * Tabellen bakom varje diagram, för skärmläsare och för den som vill ha
+ * siffrorna. Långa tabeller rullar inom sig själva med rubrikraden (och i
+ * en matris även första kolumnen) kvar på plats.
+ */
+export function ChartTable({ caption, head, rows, rowHeaders = false }: {
+  caption: string
+  head: string[]
+  rows: (string | number)[][]
+  /** Första cellen i varje rad är radens rubrik (veckodagen i en matris). */
+  rowHeaders?: boolean
+}) {
   return (
     <details className="sk-table">
       <summary>Visa som tabell</summary>
-      <table>
-        <caption className="sr-only">{caption}</caption>
-        <thead>
-          <tr>
-            {head.map((h) => (
-              <th key={h} scope="col">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i}>
-              {r.map((c, j) => (
-                <td key={j}>{c}</td>
+      <div className="sk-table-scroll" tabIndex={0} role="region" aria-label={`${caption}, tabell`}>
+        <table className={rowHeaders ? 'sk-table-matrix' : undefined}>
+          <caption className="sr-only">{caption}</caption>
+          <thead>
+            <tr>
+              {head.map((h) => (
+                <th key={h} scope="col">
+                  {h}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i}>
+                {r.map((c, j) =>
+                  rowHeaders && j === 0 ? (
+                    <th key={j} scope="row">
+                      {c}
+                    </th>
+                  ) : (
+                    <td key={j}>{c}</td>
+                  ),
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </details>
   )
 }
@@ -475,6 +493,7 @@ export function Heatmap({ rows, cols, cells, ariaLabel, tableHead, tableRows }: 
   cols: string[]
   cells: HeatCell[]
   ariaLabel: string
+  /** Matrisen: första kolumnen är raden (veckodagen), sedan en kolumn per timme. */
   tableHead: string[]
   tableRows: (string | number)[][]
 }) {
@@ -564,7 +583,7 @@ export function Heatmap({ rows, cols, cells, ariaLabel, tableHead, tableRows }: 
           </span>
         ))}
       </figcaption>
-      <ChartTable caption={ariaLabel} head={tableHead} rows={tableRows} />
+      <ChartTable caption={ariaLabel} head={tableHead} rows={tableRows} rowHeaders />
     </figure>
   )
 }

@@ -146,6 +146,13 @@ async function fetchWithRetry(method: string, send: () => Promise<Response>): Pr
  *     body: JSON.stringify(dish),
  *   })
  */
+/**
+ * Skickas på window efter varje lyckad skrivning (detail.path), så att sidor
+ * som visar summor (Statistik, Översikt) räknar om direkt efter en ny
+ * bokning eller beställning, utan att någon laddar om sidan.
+ */
+export const DATA_CHANGED_EVENT = 'booqy:data-changed'
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
@@ -180,6 +187,7 @@ export async function apiFetch<T>(
   if (!res.ok) {
     throw await toApiError(res)
   }
+  if (writing && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT, { detail: { path } }))
   if (res.status === 204) {
     return undefined as T
   }

@@ -15,6 +15,8 @@ export interface DayPoint {
   date: string
   bookings: number
   guests: number
+  /** Markerade som komna. */
+  arrived: number
   orders: number
   noShows: number
   cancelled: number
@@ -103,7 +105,8 @@ export interface InsightsSummary {
   dishes: Dish[]
   pairs: { a: string; b: string; orders: number }[]
   byHour: { hour: number; bookings: number; guests: number; orders: number }[]
-  byWeekday: { weekday: number; bookings: number; guests: number; orders: number; occupancy: number | null }[]
+  /** days: hur många sådana veckodagar perioden har; occupancy null = stängt eller inte i perioden. */
+  byWeekday: { weekday: number; days: number; bookings: number; guests: number; orders: number; occupancy: number | null }[]
   byDay: DayPoint[]
   heat: { weekday: number; hour: number; occupancy: number | null }[]
 }
@@ -118,6 +121,8 @@ export interface InsightsResponse {
   builtAt: string | null
   current: InsightsSummary
   previous: InsightsSummary | null
+  /** Bokningarna som ligger kvar de närmaste dagarna efter idag (ahead). */
+  upcoming?: { date: string; bookings: number; guests: number }[]
 }
 
 /* --- Filtren ------------------------------------------------------------------ */
@@ -267,6 +272,15 @@ export const SIZE_LABELS: Record<string, string> = { '2': '2-bord', '4': '4-bord
 
 export const hourLabel = (h: number) => `${String(h).padStart(2, '0')}:00`
 
+/** Bokningar med känd framförhållning (online och telefon; drop-in räknas inte, servern lämnar dem utanför). */
+export const leadTotal = (s: InsightsSummary) => s.lead.reduce((n, l) => n + l.bookings, 0)
+
+/** Andel som bokade samma dag eller dagen före, av dem som bokade i förväg. */
+export function leadSoonPct(s: InsightsSummary): number | null {
+  const total = leadTotal(s)
+  return total > 0 ? (((s.lead[0]?.bookings ?? 0) + (s.lead[1]?.bookings ?? 0)) / total) * 100 : null
+}
+
 /* --- Att göra --------------------------------------------------------------- */
 
 export interface Signal {
@@ -353,11 +367,12 @@ export function signals(
     }
   }
   const lateLead = (s.lead[0]?.bookings ?? 0) + (s.lead[1]?.bookings ?? 0)
-  if (kept >= 30 && lateLead / kept >= 0.5) {
+  const ahead = leadTotal(s)
+  if (ahead >= 30 && lateLead / ahead >= 0.5) {
     out.push({
       id: 'lead',
       weight: 30,
-      title: `${fmtPct((lateLead / kept) * 100)} bokar samma dag eller dagen före`,
+      title: `${fmtPct((lateLead / ahead) * 100)} bokar samma dag eller dagen före`,
       text: 'Gästerna bestämmer sig sent. Lägg ut erbjudanden 1-2 dagar före, inte en vecka innan.',
       to: marketing ? '/marknadsforing' : '/bokningar',
       linkLabel: marketing ? 'Planera ett utskick' : 'Till bokningarna',

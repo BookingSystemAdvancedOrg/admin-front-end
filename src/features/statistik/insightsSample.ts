@@ -73,7 +73,7 @@ function empty(): InsightsSummary {
     catering: { requests: 0, offers: 0, won: 0, delivered: 0, replyHours: null, conversionPct: null, cateringRevenue: 0, avgCatering: null },
     web: { visits: 0, pageviews: 0, bookings: 0, orders: 0, catering: 0, conversionPct: null, channels: [] },
     dishes: [], pairs: [], byHour: [],
-    byWeekday: Array.from({ length: 7 }, (_, weekday) => ({ weekday, bookings: 0, guests: 0, orders: 0, occupancy: null })),
+    byWeekday: Array.from({ length: 7 }, (_, weekday) => ({ weekday, days: 0, bookings: 0, guests: 0, orders: 0, occupancy: null })),
     byDay: [], heat: [],
   }
 }
@@ -108,7 +108,8 @@ export function sampleSummary(from: string, to: string, today: string, f: Pick<F
     const rnd = seeded(seedOf(date))
     const wd = weekdayOf(date)
     const load = WEEKDAY_LOAD[wd] * (0.85 + rnd() * 0.3)
-    const point = { date, bookings: 0, guests: 0, orders: 0, noShows: 0, cancelled: 0, visits: 0, occupancy: null as number | null, revenue: 0, orderRevenue: 0, cateringRevenue: 0 }
+    s.byWeekday[wd].days++
+    const point = { date, bookings: 0, guests: 0, arrived: 0, orders: 0, noShows: 0, cancelled: 0, visits: 0, occupancy: null as number | null, revenue: 0, orderRevenue: 0, cateringRevenue: 0 }
     let dayBooked = 0
     let dayOpen = 0
     for (const h of [...LUNCH, ...DINNER]) {
@@ -144,7 +145,7 @@ export function sampleSummary(from: string, to: string, today: string, f: Pick<F
         point.guests += size
         party.set(Math.min(size, 8), (party.get(Math.min(size, 8)) ?? 0) + 1)
         const leadRoll = rnd()
-        s.lead[leadRoll < 0.22 ? 0 : leadRoll < 0.4 ? 1 : leadRoll < 0.78 ? 2 : leadRoll < 0.93 ? 3 : 4].bookings++
+        if (source !== 'onsite') s.lead[leadRoll < 0.22 ? 0 : leadRoll < 0.4 ? 1 : leadRoll < 0.78 ? 2 : leadRoll < 0.93 ? 3 : 4].bookings++
         if (roll < 0.11) {
           s.noShows++
           point.noShows++
@@ -152,7 +153,10 @@ export function sampleSummary(from: string, to: string, today: string, f: Pick<F
             s.feeCount++
             s.feesCharged = (s.feesCharged ?? 0) + size * 25000
           }
-        } else if (date < today) s.arrived++
+        } else if (date < today) {
+          s.arrived++
+          point.arrived++
+        }
         if (size >= 4) cardOnFile++
         const tableSize = size <= 2 ? '2' : size <= 4 ? '4' : '6'
         seats += Number(tableSize)
@@ -319,7 +323,12 @@ function yearBack(iso: string): string {
   return m === '02' && d === '29' ? `${Number(y) - 1}-02-28` : `${Number(y) - 1}-${m}-${d}`
 }
 
-export function sampleInsights(f: Filters, today: string, money: boolean, locationName = 'Exempelrestaurangen'): InsightsResponse {
+export function sampleInsights(
+  f: Filters & { ahead?: number },
+  today: string,
+  money: boolean,
+  locationName = 'Exempelrestaurangen',
+): InsightsResponse {
   const n = daysBetween(f.from, f.to)
   const compare =
     f.compare === 'none'
@@ -343,5 +352,17 @@ export function sampleInsights(f: Filters, today: string, money: boolean, locati
     builtAt: null,
     current: money ? current : withoutMoney(current),
     previous: previous ? (money ? previous : withoutMoney(previous)) : null,
+    upcoming: sampleUpcoming(today, f.ahead ?? 0, f.channel),
   }
+}
+
+/** De kommande dagarnas bokningar i exemplet: färre ju längre fram (gäster bokar sent). */
+function sampleUpcoming(today: string, ahead: number, channel: Filters['channel']): NonNullable<InsightsResponse['upcoming']> {
+  const share = channel === 'all' ? 1 : channel === 'online' ? 0.62 : channel === 'phone' ? 0.28 : 0.1
+  return Array.from({ length: ahead }, (_, i) => {
+    const date = addDays(today, i + 1)
+    const rnd = seeded(seedOf(`ahead-${date}`))
+    const bookings = Math.round(26 * WEEKDAY_LOAD[weekdayOf(date)] * share * Math.max(0.15, 1 - i * 0.12) * (0.8 + rnd() * 0.4))
+    return { date, bookings, guests: Math.round(bookings * (2.4 + rnd() * 0.6)) }
+  })
 }

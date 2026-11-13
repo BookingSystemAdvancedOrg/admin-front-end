@@ -241,8 +241,11 @@
   white-space: nowrap;
 }
 
-.dish-row {
-  cursor: pointer;
+/* Ägaren: markören byter aldrig form på en rätt-rad, inte heller över
+   bilden, reglaget eller knapparna (vanlig pil överallt). */
+.dish-row,
+.dish-row * {
+  cursor: default;
 }
 
 .dish-row > td {
@@ -280,7 +283,6 @@
   border-radius: var(--r-md);
   background: none;
   overflow: hidden;
-  cursor: zoom-in;
   /* Safari: overflow + border-radius klipper inte en skalad bild utan eget lager */
   isolation: isolate;
 }

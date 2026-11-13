@@ -7,13 +7,13 @@ export type Outcome = 'booked' | 'moved' | 'cancelled' | 'info' | 'transferred' 
 export type CounterOffer = 'none' | 'other_time' | 'next_day' | 'nearby_table'
 export type Day = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
 export interface Span { from: string; to: string }
-/** Samtalsspråk: assistenten börjar på svenska och byter till uppringarens språk. */
-export type Lang = 'sv' | 'en' | 'no' | 'da' | 'fi' | 'de' | 'fr' | 'es' | 'it' | 'pl' | 'ar'
-export const LANG_LABEL: Record<Lang, string> = {
-  sv: 'svenska', en: 'engelska', no: 'norska', da: 'danska', fi: 'finska', de: 'tyska',
-  fr: 'franska', es: 'spanska', it: 'italienska', pl: 'polska', ar: 'arabiska',
+/** Samtalsspråk (ISO-kod): assistenten börjar på svenska och byter till uppringarens språk. */
+export type Lang = string
+const LANG_NAMES = new Intl.DisplayNames(['sv'], { type: 'language' })
+/** "engelska" för "en"; koden själv om webbläsaren inte känner den. */
+export function langLabel(code: string): string {
+  try { return LANG_NAMES.of(code) ?? code } catch { return code }
 }
-export const LANGS = Object.keys(LANG_LABEL) as Lang[]
 
 export interface Config {
   agentName: string

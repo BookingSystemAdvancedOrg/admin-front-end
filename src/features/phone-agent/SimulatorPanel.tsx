@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Bar, Button, Field, Input } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
-import { ERRORS, LANG_LABEL, newId, simulate, type Lang } from './api'
+import { ERRORS, langLabel, newId, simulate, type Lang } from './api'
 
 interface Line { who: 'du' | 'assistenten'; text: string; lang?: Lang }
 
@@ -39,7 +39,7 @@ export default function SimulatorPanel({ locationId }: { locationId: string }) {
           <li key={i} className={`telefon-turn telefon-turn--${l.who === 'du' ? 'caller' : 'agent'}`}>
             <span className="telefon-turn__who">
               {l.who === 'du' ? 'Du' : 'Assistenten'}
-              {l.lang && l.lang !== 'sv' ? <span className="telefon-turn__lang"> på {LANG_LABEL[l.lang] ?? l.lang}</span> : null}
+              {l.lang && l.lang !== 'sv' ? <span className="telefon-turn__lang"> på {langLabel(l.lang)}</span> : null}
             </span>
             <span>{l.text}</span>
           </li>

@@ -134,23 +134,14 @@ describe('TelefonPage', () => {
     expect(await screen.findByText(/Jag håller ett bord/)).toBeInTheDocument()
   })
 
-  it('lets the owner choose the languages the assistant may switch to (Swedish is always on)', async () => {
+  it('explains that the assistant follows the caller\'s language', async () => {
     tenant = OWNER
     vi.mocked(api.getOverview).mockResolvedValue({ config: { agentName: 'Sara', tone: 'friendly', languages: ['sv', 'en'],
       recording: { enabled: false }, minutesCapPerMonth: 300, version: 1 }, locations: [],
       usage: { minutes: 0, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
-    vi.mocked(api.saveConfig).mockImplementation(async (c) => ({ ...c, version: 2 }))
-    vi.mocked(api.saveLocation).mockResolvedValue(LOC)
     renderAt()
     fireEvent.click(await screen.findByRole('tab', { name: 'Inställningar' }))
-    expect(await screen.findByText(/Assistenten börjar alltid på svenska/)).toBeInTheDocument()
-    expect(screen.getByLabelText('Engelska')).toBeChecked()
-    expect(screen.queryByLabelText('Svenska')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByLabelText('Tyska'))
-    fireEvent.click(screen.getByLabelText('Engelska'))
-    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    await waitFor(() => expect(api.saveConfig).toHaveBeenCalled())
-    expect(vi.mocked(api.saveConfig).mock.calls[0][0].languages).toEqual(['sv', 'de'])
+    expect(await screen.findByText(/börjar alltid på svenska/)).toBeInTheDocument()
   })
 
   it('turns a location on with the number of another location (shared number)', async () => {

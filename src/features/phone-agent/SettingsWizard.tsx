@@ -3,7 +3,7 @@ import { Bar, Button, Card, Field, Input, Select, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
 import { useTenant } from '../../shared/tenant'
 import SimulatorPanel from './SimulatorPanel'
-import { DAYS, ERRORS, LANGS, LANG_LABEL, MODE_LABEL, getLocation, getOverview, saveConfig, saveLocation, type Config, type Day, type Lang, type LocationConfig, type Mode, type Overview } from './api'
+import { DAYS, ERRORS, MODE_LABEL, getLocation, getOverview, saveConfig, saveLocation, type Config, type Day, type LocationConfig, type Mode, type Overview } from './api'
 
 type Step = 'namn' | 'tider' | 'koppla' | 'inspelning' | 'nummer' | 'prova'
 const STEPS: { key: Step; label: string }[] = [
@@ -70,14 +70,6 @@ export default function SettingsWizard({ locationId, onSaved }: { locationId: st
     }
   }
 
-  function toggleLanguage(lang: Lang, on: boolean) {
-    if (!config) return
-    const chosen = new Set<Lang>([...config.languages, 'sv'])
-    if (on) chosen.add(lang)
-    else chosen.delete(lang)
-    setConfig({ ...config, languages: LANGS.filter((l) => chosen.has(l)) })
-  }
-
   const otherName = (id?: string | null) => others.find((o) => o.locationId === id)?.name
     ?? tenant?.locations?.find((l) => l.locationId === id)?.name ?? 'den andra platsen'
 
@@ -120,21 +112,11 @@ export default function SettingsWizard({ locationId, onSaved }: { locationId: st
             <Field label="Sedan säger den (engelska)">
               <Input value={loc.greetingExtraEn} maxLength={200} onChange={(e) => setLoc({ ...loc, greetingExtraEn: e.target.value })} />
             </Field>
-            <fieldset className="telefon-langs">
-              <legend>Språk</legend>
-              <p className="cell-muted">
-                Assistenten börjar alltid på svenska. Pratar den som ringer ett annat språk byter den direkt och säger igen,
-                på det språket, att den är en AI. Välj vilka språk den får byta till.
-              </p>
-              <div className="telefon-langs__list">
-                {LANGS.filter((l) => l !== 'sv').map((l) => (
-                  <label key={l} className="telefon-check">
-                    <input type="checkbox" checked={config.languages.includes(l)} onChange={(e) => toggleLanguage(l, e.target.checked)} />
-                    {LANG_LABEL[l][0].toUpperCase() + LANG_LABEL[l].slice(1)}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
+            <p className="telefon-fixed">
+              Språk: assistenten börjar alltid på svenska. Pratar den som ringer ett annat språk byter den direkt till det
+              språket (över 30 språk, till exempel engelska, arabiska, turkiska och polska) och säger igen, på det språket,
+              att den är en AI.
+            </p>
             <Field label="Minuttak per månad" hint={cap ? `Ingår i er plan: ${cap.included} minuter.` : undefined}>
               <Input type="number" min={0} value={String(config.minutesCapPerMonth)}
                 onChange={(e) => setConfig({ ...config, minutesCapPerMonth: Number(e.target.value) })} />

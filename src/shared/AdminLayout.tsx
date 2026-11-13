@@ -85,7 +85,13 @@ export function AdminLayout() {
     if (!drawer) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setDrawer(false)
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    // Sidan bakom lådan står still medan den är öppen.
+    const root = document.documentElement
+    root.classList.add('drawer-lock')
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      root.classList.remove('drawer-lock')
+    }
   }, [drawer])
   // Skalet och första sidan är uppe: resten av sidorna hämtas i bakgrunden.
   useEffect(() => {
@@ -199,6 +205,9 @@ export function AdminLayout() {
         }}
       >
         {pour && <canvas ref={sidebarCanvas} className="admin-sidebar-liquid" aria-hidden="true" />}
+        {/* Allt i menyn ligger i en egen rullyta: glaset och oskärpan stannar på
+            panelen, och telefonens låda går att rulla till sista raden. */}
+        <div className="admin-sidebar-scroll">
         <div className="admin-logo">
           <span className="admin-logo-badge" aria-hidden="true">
             <BrandMark />
@@ -295,6 +304,7 @@ export function AdminLayout() {
             <Icon name="logout" size={16} />
             Logga ut
           </button>
+        </div>
         </div>
       </aside>
       {confirmLogout && <LogoutConfirm onConfirm={logout} onCancel={cancelLogout} />}

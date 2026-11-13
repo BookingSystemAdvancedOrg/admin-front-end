@@ -844,6 +844,26 @@
     transition: transform var(--dur-slow) var(--ease-out);
   }
 
+  /* Lådan är exakt fönstrets höjd (minus marginalen) oavsett äldre regler,
+     och innehållet rullar i en inre yta. dvh följer Safaris verktygsfält;
+     svh är reserven. Längst ned plats för hemindikatorn. */
+  .admin-shell .admin-sidebar {
+    inset-block: var(--space-2) auto;
+    block-size: calc(100svh - 2 * var(--space-2));
+    block-size: calc(100dvh - 2 * var(--space-2));
+    max-block-size: calc(100dvh - 2 * var(--space-2));
+    min-block-size: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .admin-shell .admin-sidebar-scroll {
+    padding: var(--space-5) 0 calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .admin-logo {
     padding: 0 var(--space-5) var(--space-5);
   }
@@ -1339,4 +1359,19 @@ input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+/* Menyns rullyta (AdminLayout): samma kolumn som panelen, rullar när den inte får plats. */
+.admin-sidebar-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: inherit;
+  min-block-size: 0;
+}
+
+/* Sidan bakom en öppen låda rullar inte (AdminLayout). */
+html.drawer-lock,
+html.drawer-lock body {
+  overflow: hidden;
 }

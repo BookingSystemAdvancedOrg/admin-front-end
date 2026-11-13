@@ -1,5 +1,7 @@
+import { Avatar } from '../../shared/Avatar'
+import { getMyAvatar, removeUserAvatar, subscribeMyAvatar } from '../../shared/avatarStore'
 import { RowActions } from '../../shared/RowActions'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { errorText } from '../../shared/errors'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { CtaButton } from '../../shared/CtaButton'
@@ -42,6 +44,7 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * Fler ägare läggs upp av Booqy, inte här.
  */
 export default function PersonalPage() {
+  const myAvatar = useSyncExternalStore(subscribeMyAvatar, getMyAvatar, getMyAvatar)
   const { sub, groups } = useAuth()
   const { tenant } = useTenant()
   const { locationId } = useLocationId(sub)
@@ -147,6 +150,18 @@ export default function PersonalPage() {
     }
   }
 
+  async function handleRemoveAvatar(user: User) {
+    if (!window.confirm(`Ta bort profilbilden för ${user.name}? Initialerna visas i stället.`)) return
+    setRowError(null)
+    setBusySub(user.cognitoSub)
+    if (await removeUserAvatar(user.cognitoSub)) {
+      setStaff((prev) => prev.map((s) => (s.cognitoSub === user.cognitoSub ? { ...s, avatarUrl: null } : s)))
+    } else {
+      setRowError('Kunde inte ta bort profilbilden.')
+    }
+    setBusySub(null)
+  }
+
   async function handleDelete(user: User) {
     if (!window.confirm(`Ta bort ${user.name} permanent? Inloggningen försvinner och kan inte återställas.`)) return
     setRowError(null)
@@ -245,9 +260,14 @@ export default function PersonalPage() {
                   return (
                     <tr key={s.cognitoSub}>
                       <td className="cell-strong">
-                        {s.name}
-                        {s.cognitoSub === sub && <span className="cell-muted"> (du)</span>}
-                        <span className="cell-muted" style={{ display: 'block', fontWeight: 400 }}>{s.email}</span>
+                        <span className="person-cell">
+                          <Avatar url={s.cognitoSub === sub ? (myAvatar.url ?? s.avatarUrl) : s.avatarUrl} name={s.name} email={s.email} size="md" />
+                          <span className="person-cell-text">
+                            {s.name}
+                            {s.cognitoSub === sub && <span className="cell-muted"> (du)</span>}
+                            <span className="cell-muted person-cell-email">{s.email}</span>
+                          </span>
+                        </span>
                       </td>
                       <td>
                         {ROLE_LABEL[s.role] ?? s.role}
@@ -268,6 +288,11 @@ export default function PersonalPage() {
                           {canToggle && (
                             <button type="button" className="link-action" disabled={busy} onClick={() => handleToggle(s)}>
                               {s.status === 'active' ? 'Inaktivera' : 'Aktivera'}
+                            </button>
+                          )}
+                          {canEdit && s.cognitoSub !== sub && s.avatarUrl && (
+                            <button type="button" className="link-action" disabled={busy} onClick={() => void handleRemoveAvatar(s)}>
+                              Ta bort profilbild
                             </button>
                           )}
                           {canDelete && (

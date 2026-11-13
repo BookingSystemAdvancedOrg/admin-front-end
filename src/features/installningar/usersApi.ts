@@ -29,6 +29,8 @@ export interface User {
   status: UserStatus
   createdBy: string
   createdAt: string
+  /** Förhandsgodkänd länk till profilbilden (1 h), eller null. Frivillig. */
+  avatarUrl?: string | null
 }
 
 export interface UserInviteRequest {

@@ -1981,3 +1981,124 @@ html.is-busy * {
     transition: none;
   }
 }
+
+/* --- Profilbilder (shared/Avatar.tsx, ProfilePicture.tsx), frivilliga -------- */
+:root {
+  --avatar-sm: 1.75rem;
+  --avatar-md: 2.25rem;
+  --avatar-lg: 3.5rem;
+}
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  inline-size: var(--avatar-md);
+  block-size: var(--avatar-md);
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--glass-fill) var(--liquid-sheen);
+  box-shadow: var(--liquid-edge), inset 0 0 0 1px var(--glass-border);
+  color: var(--ink);
+  font: 700 0.8125rem/1 var(--sans);
+  letter-spacing: 0.02em;
+}
+.avatar--sm {
+  inline-size: var(--avatar-sm);
+  block-size: var(--avatar-sm);
+  font-size: 0.6875rem;
+}
+.avatar--lg {
+  inline-size: var(--avatar-lg);
+  block-size: var(--avatar-lg);
+  font-size: 1.125rem;
+}
+.avatar img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+.admin-avatar-btn {
+  display: inline-grid;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: default;
+}
+.admin-avatar-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--field-ring);
+}
+.person-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.person-cell-text {
+  min-width: 0;
+}
+.person-cell-email {
+  display: block;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.profile-picture-now {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.profile-picture-choose {
+  position: relative;
+}
+.profile-picture-input {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  opacity: 0;
+  cursor: default;
+}
+.profile-picture-choose:has(.profile-picture-input:focus-visible) {
+  box-shadow: 0 0 0 3px var(--field-ring);
+}
+.avatar-crop {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+}
+.avatar-crop-view {
+  position: relative;
+  max-inline-size: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--glass-fill);
+  box-shadow: var(--liquid-edge), 0 0 0 1px var(--glass-border);
+  touch-action: none;
+  cursor: grab;
+}
+.avatar-crop-view:active {
+  cursor: grabbing;
+}
+.avatar-crop-view:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--field-ring);
+}
+.avatar-crop-view img {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  max-inline-size: none;
+  transform-origin: 0 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.avatar-crop-zoom {
+  display: grid;
+  gap: var(--space-1);
+  inline-size: min(100%, 15rem);
+}
+.avatar-crop .modal-actions {
+  inline-size: 100%;
+}

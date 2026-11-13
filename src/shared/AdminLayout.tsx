@@ -7,6 +7,7 @@ import { selectLocation, useTenant } from './tenant'
 import { GuideProvider, useGuide } from '../features/guide/Guide'
 import { LogoutConfirm } from './LogoutConfirm'
 import { syncBackdropImage } from './backdropStore'
+import { MyAvatarButton } from './ProfilePicture'
 import type { TenantErrorCode } from './tenant'
 import './admin.css'
 import './brand.css'
@@ -119,7 +120,6 @@ export function AdminLayout() {
   }
   // Visningsnamn = det som står innan '@' i e-posten, t.ex. "anna@..." -> "anna".
   const displayName = email ? email.split('@')[0] : 'Personal'
-  const initial = (displayName[0] ?? 'K').toUpperCase()
   const locations = tenant?.locations ?? []
   // Sidomenyns "Logga ut" frågar först (felrutorna nedan loggar ut direkt -
   // där går appen ändå inte att använda).
@@ -287,9 +287,7 @@ export function AdminLayout() {
 
         <div className="admin-user">
           <div className="admin-user-row" title={email ?? undefined}>
-            <span className="admin-avatar" aria-hidden="true">
-              {initial}
-            </span>
+            <MyAvatarButton name={displayName} email={email} />
             <span className="admin-user-name">
               {/* Rollen enligt servern när restaurangen är laddad. */}
               {displayName} · {primaryGroupLabel(tenant ? [tenant.role] : groups)}

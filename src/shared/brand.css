@@ -217,7 +217,7 @@
 /* Utan animation (reducerad rörelse eller ingen canvas): fylld direkt. */
 .stat-tile--full,
 .stat-tile.liquid--full {
-  background: linear-gradient(rgba(var(--liquid), var(--liquid-alpha)), rgba(var(--liquid), var(--liquid-alpha))), var(--surface);
+  background: linear-gradient(rgba(var(--liquid), var(--liquid-alpha)), rgba(var(--liquid), var(--liquid-alpha))), var(--glass-surface);
 }
 
 .stat-tile--link {
@@ -313,7 +313,7 @@ button.stat-tile {
 
 .quick-link-icon {
   border-radius: var(--r-md);
-  background: var(--fill);
+  background: var(--glass-fill);
   color: var(--ink);
 }
 
@@ -353,7 +353,7 @@ button.stat-tile {
 }
 
 .btn.outline {
-  background: var(--surface);
+  background: var(--glass-surface);
   color: var(--ink);
   box-shadow: inset 0 0 0 1px var(--border);
 }
@@ -429,13 +429,13 @@ button.stat-tile {
 /* Inställningsflikar: tryckta lappar, vald flik i omvänt tryck. */
 .settings-tabs button {
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
   box-shadow: inset 0 0 0 1px var(--border);
   font-weight: 600;
 }
 
 .settings-tabs button:hover {
-  background: var(--surface);
+  background: var(--glass-surface);
   box-shadow: inset 0 0 0 1px var(--ink);
 }
 
@@ -489,7 +489,7 @@ button.stat-tile {
   padding: 12px 20px;
   border: 1.5px dashed var(--accent-ink);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
   font-size: 14px;
   color: var(--ink);
 }
@@ -514,7 +514,7 @@ button.stat-tile {
   padding: 12px 20px;
   border: 1.5px solid var(--success-ink);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
   font-size: 14px;
   color: var(--ink);
 }
@@ -960,23 +960,23 @@ html.is-busy * {
   .admin-sidebar,
   .admin-topbar,
   .admin-main {
-    background: var(--bg);
+    background: var(--glass-well);
   }
   .admin-card.stat-tile,
   .stat-tile.stat-tile--full,
   .stat-tile.liquid--full,
   :root[data-theme='dark'] .admin-card.stat-tile {
-    background: var(--surface);
+    background: var(--glass-surface);
   }
 }
 @media (prefers-reduced-transparency: reduce) {
   body::before {
-    background: var(--bg);
+    background: var(--glass-well);
   }
   .admin-sidebar,
   .admin-topbar,
   .admin-main {
-    background: var(--bg);
+    background: var(--glass-well);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
@@ -984,7 +984,7 @@ html.is-busy * {
   .stat-tile.stat-tile--full,
   .stat-tile.liquid--full,
   :root[data-theme='dark'] .admin-card.stat-tile {
-    background: var(--surface);
+    background: var(--glass-surface);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
@@ -1032,7 +1032,7 @@ html.is-busy * {
   padding: 0 18px;
   border: 0;
   border-radius: var(--r-pill);
-  background: var(--fill);
+  background: var(--glass-fill);
   box-shadow: inset 0 0 0 1px var(--border);
   color: var(--ink);
   font: 600 14px/1 var(--font);
@@ -1059,7 +1059,7 @@ html.is-busy * {
   transition: background-color 200ms var(--ease), color 300ms var(--ease), box-shadow 200ms var(--ease);
 }
 .settings-tabs button:hover {
-  background: var(--fill);
+  background: var(--glass-fill);
   box-shadow: inset 0 0 0 1px var(--accent-ink);
 }
 .settings-tabs button.active,
@@ -1215,7 +1215,7 @@ html.is-busy * {
     translate: 3px 0;
   }
   .settings-back:hover {
-    background: var(--fill);
+    background: var(--glass-fill);
   }
   :root[data-theme='dark'] .settings-menu-item:hover {
     background: rgb(var(--bq-snow-rgb) / 0.1);
@@ -1381,7 +1381,7 @@ html.is-busy * {
   .glass-refract [data-glide='track'] {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-    background: var(--surface) !important;
+    background: var(--glass-surface) !important;
   }
 }
 
@@ -1626,5 +1626,40 @@ html.is-busy * {
 @media (hover: hover) {
   :root[data-theme='dark'] .compact-select:hover {
     background-color: rgb(var(--bq-snow-rgb) / 0.1);
+  }
+}
+
+/* Bakgrund (shared/BackdropPicker.tsx): filväljaren ser ut som de andra knapparna. */
+.backdrop-picker {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+.backdrop-picker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.backdrop-picker-choose {
+  position: relative;
+  cursor: pointer;
+}
+.backdrop-picker-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.backdrop-picker-choose:has(.backdrop-picker-input:focus-visible) {
+  box-shadow: 0 0 0 3px var(--focus);
+}
+.backdrop-picker-error {
+  margin: 0;
+  color: var(--danger-ink);
+  font-size: 13px;
+}
+@media (max-width: 600px) {
+  .backdrop-picker {
+    justify-items: start;
   }
 }

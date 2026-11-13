@@ -20,10 +20,12 @@
   width: min(320px, calc(100vw - 32px));
   padding: 20px;
   border-radius: var(--r-lg);
-  background: var(--surface);
+  background: var(--glass-pop);
   color: var(--ink);
   box-shadow: var(--shadow-lg);
   animation: guide-in 0.2s var(--ease);
+  -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
+  backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
 }
 
 /* Ramen och bubblan glider från förra målet till nästa (efter första ritningen). */
@@ -54,7 +56,7 @@
   position: absolute;
   width: 14px;
   height: 14px;
-  background: var(--surface);
+  background: var(--glass-pop);
   transform: rotate(45deg);
 }
 

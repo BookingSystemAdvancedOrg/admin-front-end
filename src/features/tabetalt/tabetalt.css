@@ -25,7 +25,7 @@
   gap: 4px;
   padding: 4px;
   border-radius: var(--r-lg);
-  background: var(--fill);
+  background: var(--glass-fill);
 }
 
 .pay-mode button {
@@ -41,7 +41,7 @@
 }
 
 .pay-mode button.active {
-  background: var(--surface);
+  background: var(--glass-surface);
   color: var(--ink);
   box-shadow: var(--shadow);
 }
@@ -57,7 +57,7 @@
   gap: 10px;
   padding: 8px 20px;
   border-radius: var(--r-md);
-  background: var(--fill);
+  background: var(--glass-fill);
   transition: box-shadow 200ms var(--ease);
 }
 
@@ -115,7 +115,7 @@
   height: 104px;
   margin-bottom: 12px;
   border-radius: 50%;
-  background: var(--fill);
+  background: var(--glass-fill);
   color: var(--ink);
 }
 
@@ -124,7 +124,7 @@
 }
 
 .pay-stage.paid .pay-stage-mark {
-  background: color-mix(in srgb, var(--success) 18%, var(--surface));
+  background: color-mix(in srgb, var(--success) 18%, var(--glass-surface));
   color: var(--success-ink);
   animation: pay-land 520ms var(--ease) both;
 }

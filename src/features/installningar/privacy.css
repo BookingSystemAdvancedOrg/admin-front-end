@@ -29,7 +29,7 @@
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
   color: var(--ink);
   font: inherit;
   font-size: 14px;
@@ -51,7 +51,7 @@
 .privacy-hint code {
   padding: 0 4px;
   border-radius: var(--r-md);
-  background: var(--fill);
+  background: var(--glass-fill);
   color: var(--ink);
 }
 
@@ -70,7 +70,7 @@
   padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
 }
 
 .consent-channel-head {
@@ -107,7 +107,7 @@
 }
 
 .consent-state.is-none {
-  background: var(--fill);
+  background: var(--glass-fill);
   color: var(--muted);
 }
 
@@ -147,7 +147,7 @@
   margin: 6px 0 0;
   padding: 8px 10px;
   border-left: 3px solid var(--border);
-  background: var(--fill);
+  background: var(--glass-fill);
 }
 
 .privacy-guest-actions {

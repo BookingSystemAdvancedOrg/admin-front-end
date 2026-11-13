@@ -57,7 +57,7 @@ select {
 select option,
 select optgroup {
   color: var(--ink);
-  background-color: var(--surface);
+  background-color: var(--glass-surface);
 }
 
 select:disabled {
@@ -113,7 +113,7 @@ select:disabled {
     overflow-y: auto;
     border: 1px solid var(--border);
     border-radius: var(--r-lg);
-    background: var(--surface);
+    background: var(--glass-surface);
     color: var(--ink);
     box-shadow: var(--shadow-lg);
     scrollbar-width: thin;

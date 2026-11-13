@@ -4,7 +4,7 @@
   margin-top: 20px;
   padding: 16px;
   border-radius: var(--r-md);
-  background: var(--fill);
+  background: var(--glass-fill);
   display: grid;
   gap: 12px;
   min-width: 0;
@@ -124,7 +124,7 @@
   padding: 10px 14px;
   border: 0;
   border-radius: var(--r-md);
-  background: var(--fill);
+  background: var(--glass-fill);
   font: 500 16px/1.2 var(--mono);
   letter-spacing: 0.08em;
   text-align: center;

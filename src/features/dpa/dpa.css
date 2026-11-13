@@ -13,7 +13,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 16px 20px;
-  background: var(--surface);
+  background: var(--glass-surface);
   border: 1px solid var(--border);
   border-left: 4px solid var(--warning);
   border-radius: var(--r-lg);

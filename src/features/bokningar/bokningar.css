@@ -15,7 +15,7 @@
   margin: -6px 0;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
   font: 600 12px/1.3 var(--sans);
   color: var(--muted);
   cursor: default;
@@ -76,7 +76,7 @@
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
   font: 500 14px/1 var(--sans);
   color: var(--ink);
 }
@@ -95,7 +95,7 @@
 
 .booking-row:hover td,
 .booking-row:focus-visible td {
-  background: var(--bg);
+  background: var(--glass-well);
 }
 
 .booking-row:focus-visible {
@@ -177,7 +177,7 @@
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  background: var(--bg);
+  background: var(--glass-well);
 }
 
 .check-row {
@@ -225,7 +225,7 @@
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
   font-size: 13px;
   cursor: default;
 }
@@ -244,7 +244,7 @@
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
   font: 400 14px/1.4 var(--sans);
   color: var(--ink);
   resize: vertical;
@@ -302,7 +302,7 @@
   margin: 0 auto;
   padding: 4px;
   border-radius: var(--r-md);
-  background: var(--bg);
+  background: var(--glass-well);
   box-shadow: inset 0 0 0 1px var(--border);
 }
 

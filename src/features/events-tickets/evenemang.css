@@ -63,7 +63,7 @@
   width: 100%;
   font: inherit;
   color: var(--bq-ink);
-  background: var(--bq-surface);
+  background: var(--glass-surface);
   border: 1px solid var(--bq-line);
   border-radius: var(--bq-radius-inner);
   padding: var(--bq-space-2);

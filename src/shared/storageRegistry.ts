@@ -37,6 +37,7 @@ export const MOCK_SESSION_KEY = 'admin-mock-session'
 export const LOGOUT_PENDING_KEY = 'booqy-logout-pending'
 export const MOTION_SEEN_KEY = 'booqy-motion-seen'
 export const THEME_KEY = 'booqy-theme'
+export const BACKDROP_KEY = 'booqy-backdrop'
 export const SOUND_KEY = 'booqy-sound'
 export const SOUND_VOLUME_KEY = 'booqy-sound-volume'
 export const NAV_CLOSED_KEY = 'booqy-nav-closed'
@@ -95,6 +96,14 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     setBy: 'Booqy',
     purpose: 'Ditt val av ljust eller mörkt läge (Inställningar, Utseende och ljud). Samma nyckel på booqy.se och i Booqy Console. Inga personuppgifter.',
     lifetime: 'Tills du rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: BACKDROP_KEY,
+    kind: 'localStorage',
+    setBy: 'Booqy',
+    purpose: 'Bilden du själv valt som bakgrund bakom glaset (Inställningar, Utseende och ljud), förminskad. Lämnar aldrig webbläsaren. Samma nyckel i Booqy Console.',
+    lifetime: 'Tills du tar bort bilden eller rensar webbläsaren',
     category: 'nödvändig',
   },
   {

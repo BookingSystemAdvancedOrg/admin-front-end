@@ -11,7 +11,7 @@
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
   font: inherit;
 }
 
@@ -29,7 +29,7 @@
   align-items: center;
   gap: 10px;
   /* Tydligt grönt "öppet"-läge som syns mot den ljusa bakgrunden, i båda lägena. */
-  background: color-mix(in srgb, var(--success) 16%, var(--surface));
+  background: color-mix(in srgb, var(--success) 16%, var(--glass-surface));
   border: 1px solid color-mix(in srgb, var(--success) 45%, transparent);
   border-left-width: 4px;
   color: var(--success-ink);
@@ -73,7 +73,7 @@
   flex-direction: column;
   gap: 10px;
   padding: 16px;
-  background: var(--surface);
+  background: var(--glass-surface);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow);
@@ -180,7 +180,7 @@
   padding: 8px 12px;
   border-radius: var(--r-md);
   border-left: 4px solid var(--success);
-  background: color-mix(in srgb, var(--success) 14%, var(--surface));
+  background: color-mix(in srgb, var(--success) 14%, var(--glass-surface));
   color: var(--success-ink);
   font: 700 16px/1.3 var(--sans);
 }
@@ -195,7 +195,7 @@
   border-radius: var(--r-lg);
   border: 1px solid color-mix(in srgb, var(--success) 45%, transparent);
   border-left-width: 6px;
-  background: color-mix(in srgb, var(--success) 16%, var(--surface));
+  background: color-mix(in srgb, var(--success) 16%, var(--glass-surface));
   color: var(--success-ink);
   font: 600 17px/1.3 var(--sans);
 }

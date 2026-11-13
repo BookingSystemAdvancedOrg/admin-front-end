@@ -6,6 +6,8 @@
  * CSS:en gör sidan genomskinlig så att skrivbordet syns igenom. I en vanlig
  * webbläsare händer ingenting.
  */
+import { installBackdrop } from './backdrop'
+
 export type DesktopGlass = 'vibrancy' | 'acrylic' | 'tint'
 
 export function desktopGlassMode(userAgent: string): DesktopGlass | null {
@@ -14,6 +16,9 @@ export function desktopGlassMode(userAgent: string): DesktopGlass | null {
 }
 
 export function installDesktopGlass(): DesktopGlass | null {
+  // Den egna bakgrunden (backdrop.ts) hör till samma glasrum: i webbläsaren
+  // ligger den bakom glaset, i skrivbordsappen syns skrivbordet i stället.
+  installBackdrop()
   if (typeof document === 'undefined' || typeof navigator === 'undefined') return null
   const mode = desktopGlassMode(navigator.userAgent)
   if (!mode) return null

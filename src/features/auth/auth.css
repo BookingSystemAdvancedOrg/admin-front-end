@@ -2,8 +2,6 @@
 
 .auth-screen {
   /* Samma designsystem som resten av admin (src/index.css). */
-  --auth-bg: var(--bg);
-  --auth-card: var(--surface);
   --auth-border: var(--border);
   --auth-ink: var(--ink);
   --auth-muted: var(--muted);
@@ -19,7 +17,6 @@
   align-items: center;
   justify-content: center;
   padding: 80px 24px;
-  background: var(--auth-bg);
   color: var(--auth-ink);
   font-family: var(--auth-sans);
 }
@@ -77,8 +74,10 @@
   width: 440px;
   max-width: 100%;
   padding: 40px 32px;
-  background: var(--auth-card);
+  background: var(--glass-modal);
   border-radius: var(--r-lg);
+  -webkit-backdrop-filter: blur(var(--blur-modal)) saturate(1.5);
+  backdrop-filter: blur(var(--blur-modal)) saturate(1.5);
   box-shadow: var(--shadow);
 }
 
@@ -135,7 +134,7 @@
   padding: 10px 16px;
   font: 400 17px/1.2 var(--auth-sans);
   color: var(--auth-ink);
-  background: var(--fill);
+  background: var(--glass-fill);
   border: 0;
   border-radius: var(--r-md);
   outline: none;
@@ -157,7 +156,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 16px;
-  background: var(--auth-bg);
+  background: var(--glass-fill);
   border-radius: var(--r-md);
   font-size: 13px;
 }
@@ -245,7 +244,7 @@
   width: 360px;
   max-width: 100%;
   padding: 16px;
-  background: var(--auth-bg);
+  background: var(--glass-fill);
   border-radius: var(--r-md);
   font-size: 13px;
   color: var(--auth-muted);

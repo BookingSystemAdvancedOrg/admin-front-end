@@ -120,7 +120,7 @@
 .printer-tips code {
   padding: 0 4px;
   border-radius: var(--r-md);
-  background: var(--fill);
+  background: var(--glass-fill);
   color: var(--ink);
   font-family: var(--mono);
   font-size: 12px;

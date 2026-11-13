@@ -72,7 +72,7 @@
   min-height: 36px;
   padding: 0 10px;
   border-radius: var(--r-pill);
-  background: var(--fill);
+  background: var(--glass-fill);
   font: 500 14px/1 var(--font);
   color: var(--ink);
   cursor: default;

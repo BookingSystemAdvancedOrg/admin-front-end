@@ -31,7 +31,7 @@
 
 .date-input-btn:hover:not(:disabled),
 .date-input-btn[aria-expanded='true'] {
-  background: var(--fill);
+  background: var(--glass-fill);
   color: var(--ink);
 }
 
@@ -83,9 +83,11 @@
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-pop);
   color: var(--ink);
   box-shadow: var(--shadow-lg);
+  -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
+  backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
 }
 
 .date-cal-head {
@@ -139,7 +141,7 @@
 .date-cal-nav:hover,
 .date-cal-day:hover:not(:disabled),
 .date-cal-today:hover:not(:disabled) {
-  background: var(--fill);
+  background: var(--glass-fill);
 }
 
 .date-cal-day.is-today {

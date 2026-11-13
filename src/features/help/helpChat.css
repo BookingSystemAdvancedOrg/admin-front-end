@@ -223,7 +223,7 @@
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--hairline-strong);
   border-radius: var(--radius-inner);
-  background: var(--surface);
+  background: var(--glass-surface);
   font: var(--fw-regular) var(--fs-base) / 1.4 var(--font);
   color: var(--ink);
   resize: none;
@@ -242,7 +242,7 @@
   height: 44px;
   border: 1px solid var(--hairline-strong);
   border-radius: var(--radius-pill);
-  background: var(--surface);
+  background: var(--glass-surface);
   color: var(--ink);
   cursor: pointer;
 }
@@ -289,14 +289,14 @@
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .help-panel,
   .help-launcher {
-    background: var(--surface);
+    background: var(--glass-surface);
   }
 }
 
 @media (prefers-reduced-transparency: reduce) {
   .help-panel,
   .help-launcher {
-    background: var(--surface);
+    background: var(--glass-surface);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }

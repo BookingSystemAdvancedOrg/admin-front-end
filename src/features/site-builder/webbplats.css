@@ -55,7 +55,7 @@
   width: 100%;
   border: 1px solid var(--bq-line);
   border-radius: var(--bq-radius-card);
-  background: var(--bq-surface);
+  background: var(--glass-surface);
 }
 .webbplats-outline[data-width='mobile'] {
   max-width: 24rem;

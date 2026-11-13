@@ -61,7 +61,7 @@
   height: 52px;
   border-radius: var(--r-md);
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--glass-surface);
   color: var(--ink);
   font: 600 15px/1 var(--sans);
   cursor: default;
@@ -117,7 +117,7 @@
   flex: 1 1 0;
   min-width: 1px;
   height: 600px;
-  background: var(--bg);
+  background: var(--glass-well);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   overflow: hidden;
@@ -162,7 +162,7 @@
   padding: 8px 14px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
   font: 600 13px/1.2 var(--sans);
   color: var(--muted);
   cursor: default;
@@ -188,7 +188,7 @@
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   overflow: hidden;
-  background: var(--surface);
+  background: var(--glass-surface);
 }
 
 .view-toggle button {
@@ -223,11 +223,13 @@
   max-height: calc(100% - 96px);
   overflow: auto;
   padding: 16px 18px;
-  background: var(--surface);
+  background: var(--glass-pop);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   box-shadow: 0 12px 32px -12px rgba(26, 18, 14, 0.35);
   cursor: default;
+  -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
+  backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
 }
 
 .shortcut-head {
@@ -285,7 +287,7 @@
   padding: 2px 5px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--bg, #f6f3ee);
+  background: var(--glass-well);
   color: var(--ink);
 }
 
@@ -419,7 +421,7 @@
   max-width: 340px;
   padding: 20px 24px;
   border-radius: var(--r-md);
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  background: color-mix(in srgb, var(--glass-surface) 88%, transparent);
   border: 1px solid var(--border);
   font-size: 14px;
   line-height: 1.5;
@@ -1073,7 +1075,7 @@
 .shape-toggle button {
   padding: 8px 16px;
   border: 0;
-  background: var(--surface);
+  background: var(--glass-surface);
   font: 400 13px/1.2 var(--sans);
   color: var(--muted);
   cursor: default;
@@ -1159,7 +1161,7 @@
   padding: 8px 14px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
   font: 600 13px/1.2 var(--sans);
   color: var(--muted);
   cursor: default;
@@ -1181,7 +1183,7 @@
   padding: 14px 20px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
   font-size: 13px;
   color: var(--muted);
 }
@@ -1401,10 +1403,12 @@
   z-index: 50;
   min-width: 230px;
   padding: 4px;
-  background: var(--surface);
+  background: var(--glass-pop);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   box-shadow: 0 14px 36px -12px rgba(26, 18, 14, 0.4);
+  -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
+  backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
 }
 
 .context-menu-group + .context-menu-group {
@@ -1431,7 +1435,7 @@
 
 .context-menu-item:hover:not(:disabled),
 .context-menu-item:focus-visible {
-  background: var(--bg);
+  background: var(--glass-well);
   outline: none;
 }
 
@@ -1458,7 +1462,7 @@
   z-index: 40;
   display: grid;
   place-items: center;
-  background: color-mix(in srgb, var(--bg) 42%, transparent);
+  background: color-mix(in srgb, var(--glass-well) 42%, transparent);
   -webkit-backdrop-filter: blur(14px) saturate(1.3);
   backdrop-filter: blur(14px) saturate(1.3);
   opacity: 1;
@@ -1476,7 +1480,7 @@
   gap: 14px;
   padding: 26px 30px 22px;
   border-radius: var(--r-lg);
-  background: var(--glass-hi, color-mix(in srgb, var(--surface) 70%, transparent));
+  background: var(--glass-hi, color-mix(in srgb, var(--glass-surface) 70%, transparent));
   box-shadow: var(--rim, none), var(--shadow, 0 20px 40px -24px rgba(26, 18, 14, 0.4));
   transition: translate 520ms var(--ease), scale 520ms var(--ease);
 }
@@ -1541,7 +1545,7 @@
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .layout-prep {
-    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    background: color-mix(in srgb, var(--glass-well) 92%, transparent);
   }
 }
 

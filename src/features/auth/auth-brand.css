@@ -8,7 +8,8 @@
 
 .auth-screen {
   position: relative;
-  background: var(--ox);
+  /* Vinröd glasvägg: bakgrunden syns igenom, ordmärket läses ändå. */
+  background: color-mix(in srgb, var(--ox) 66%, transparent);
 }
 
 
@@ -26,10 +27,8 @@
 .auth-card {
   border-radius: 0;
   padding-bottom: 46px;
-  background: var(--bq-snow);
   color: #1a120e;
   box-shadow: none;
-  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.28)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.18));
   -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 12px 6px
       repeat-x,
     linear-gradient(#000 0 0) top / 100% calc(100% - 5px) no-repeat;
@@ -41,10 +40,8 @@
 .auth-screen .auth-card {
   --auth-ink: #1a120e;
   --auth-muted: #4a4a46;
-  --auth-bg: #f6f1ea;
   --auth-error: #9e1d26;
   --auth-error-bg: #f6e6e4;
-  --fill: #f6f1ea;
   --accent: #1a120e;
   --accent-hover: #3a2418;
   --on-accent: var(--bq-snow);
@@ -55,17 +52,15 @@
 }
 
 :root[data-theme='dark'] .auth-card {
-  background: var(--surface);
+  background: var(--glass-modal);
   color: var(--ink);
 }
 
 :root[data-theme='dark'] .auth-screen .auth-card {
   --auth-ink: #f6ece9;
   --auth-muted: #b8aca6;
-  --auth-bg: #332e2b;
   --auth-error: #ee8a90;
   --auth-error-bg: #432326;
-  --fill: #332e2b;
   --accent: #f6ece9;
   --accent-hover: var(--bq-snow);
   --on-accent: #1a120e;

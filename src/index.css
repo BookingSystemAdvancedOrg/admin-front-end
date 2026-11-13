@@ -63,6 +63,10 @@
   --bg: #f6f1ea;
   --surface: var(--bq-snow);
   --fill: #f6f1ea;
+  /* Glasytor: allt som ligger på en panel (kort, tabeller, fält, brunnar). */
+  --glass-surface: rgb(var(--bq-snow-rgb) / 0.58);
+  --glass-fill: rgb(var(--bq-snow-rgb) / 0.42);
+  --glass-well: rgba(246, 241, 234, 0.36);
   --surface-glass: rgb(var(--bq-snow-rgb) / 0.7);
   --border: #e3d6c4;
   --ink: #1a120e;
@@ -90,11 +94,11 @@
   --warning-ink: #8a5a00;
   --purple: #5b3f7a;
   --purple-ink: #5b3f7a;
-  --tint-blue: #efe6da;
-  --tint-green: #e8efe6;
-  --tint-orange: #f3ead9;
-  --tint-red: #f6e6e4;
-  --tint-purple: #ece6f0;
+  --tint-blue: rgba(239, 230, 218, 0.72);
+  --tint-green: rgba(232, 239, 230, 0.74);
+  --tint-orange: rgba(243, 234, 217, 0.74);
+  --tint-red: rgba(246, 230, 228, 0.76);
+  --tint-purple: rgba(236, 230, 240, 0.74);
   --scrim: rgba(26, 18, 14, 0.42);
   --shadow: 0 1px 1px rgba(58, 36, 24, 0.05), 0 14px 30px -20px rgba(58, 36, 24, 0.4);
   --shadow-lg: 0 2px 8px -3px rgba(58, 36, 24, 0.12), 0 30px 70px -40px rgba(58, 36, 24, 0.5);
@@ -127,7 +131,7 @@
 
   font: 15px/1.5 var(--font);
   color: var(--ink);
-  background: var(--bg);
+  background: var(--glass-well);
   color-scheme: light;
   accent-color: var(--ink);
   font-synthesis: none;
@@ -142,6 +146,9 @@
   --bg: #1a120e;
   --surface: #2a1d16;
   --fill: #3a2418;
+  --glass-surface: rgba(42, 29, 22, 0.58);
+  --glass-fill: rgba(58, 36, 24, 0.5);
+  --glass-well: rgba(26, 18, 14, 0.4);
   --surface-glass: rgba(26, 18, 14, 0.74);
   --border: #4a3326;
   --ink: #f6f1ea;
@@ -163,11 +170,11 @@
   --warning-ink: #e0b35a;
   --purple: #c9b3e0;
   --purple-ink: #c9b3e0;
-  --tint-blue: #3a2418;
-  --tint-green: #223a2a;
-  --tint-orange: #3a2a16;
-  --tint-red: #432326;
-  --tint-purple: #352a40;
+  --tint-blue: rgba(58, 36, 24, 0.66);
+  --tint-green: rgba(34, 58, 42, 0.7);
+  --tint-orange: rgba(58, 42, 22, 0.7);
+  --tint-red: rgba(67, 35, 38, 0.72);
+  --tint-purple: rgba(53, 42, 64, 0.7);
   --scrim: rgba(0, 0, 0, 0.62);
   --shadow: 0 1px 1px rgba(0, 0, 0, 0.3), 0 14px 30px -20px rgba(0, 0, 0, 0.6);
   --shadow-lg: 0 2px 8px -3px rgba(0, 0, 0, 0.4), 0 40px 80px -40px rgba(0, 0, 0, 0.7);
@@ -276,7 +283,7 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: linear-gradient(var(--backdrop-veil), var(--backdrop-veil)), var(--backdrop-blobs), url('./assets/backdrop.webp') center / cover no-repeat, var(--bg);
+  background: linear-gradient(var(--backdrop-veil), var(--backdrop-veil)), var(--backdrop-blobs), var(--user-backdrop, url('./assets/backdrop.webp')) center / cover no-repeat, var(--bg);
 }
 
 /* Skrivbordsappen (desktopGlass.ts): sidan är genomskinlig och systemets
@@ -287,6 +294,15 @@ html.is-desktop-glass body {
   background: transparent;
 }
 
+/* Egen bakgrund (shared/backdrop.ts): användarens bild utan fläckar och med
+   en lätt kvällsslöja, så att den syns tydligt genom glaset. */
+html[data-user-backdrop] {
+  --backdrop-blobs: linear-gradient(transparent, transparent);
+}
+html[data-user-backdrop][data-theme='dark'] {
+  --backdrop-veil: rgba(26, 18, 14, 0.36);
+}
+
 html.is-desktop-glass body::before {
   background: linear-gradient(var(--desk-veil, transparent), var(--desk-veil, transparent)), var(--backdrop-blobs);
 }
@@ -295,5 +311,30 @@ html.is-desktop-glass body::before {
   html.is-desktop-glass,
   html.is-desktop-glass body {
     background: var(--bg);
+  }
+}
+
+/* Minskad genomskinlighet: glasytorna blir de solida materialen igen. */
+@media (prefers-reduced-transparency: reduce) {
+  /* !important: vinner över skrivbordsappens tätare/tunnare toner i ds.css. */
+  :root {
+    --glass-surface: var(--surface) !important;
+    --glass-fill: var(--fill) !important;
+    --glass-well: var(--bg) !important;
+    --glass-text-bg: var(--surface) !important;
+  }
+  :root:not([data-theme='dark']) {
+    --tint-blue: #efe6da !important;
+    --tint-green: #e8efe6 !important;
+    --tint-orange: #f3ead9 !important;
+    --tint-red: #f6e6e4 !important;
+    --tint-purple: #ece6f0 !important;
+  }
+  :root[data-theme='dark'] {
+    --tint-blue: #3a2418 !important;
+    --tint-green: #223a2a !important;
+    --tint-orange: #3a2a16 !important;
+    --tint-red: #432326 !important;
+    --tint-purple: #352a40 !important;
   }
 }

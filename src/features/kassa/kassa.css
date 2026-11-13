@@ -86,7 +86,7 @@
   gap: 6px;
   padding: 5px 10px;
   border-radius: var(--r-pill);
-  background: var(--fill);
+  background: var(--glass-fill);
   color: var(--muted);
   font: 500 13px/1.2 var(--font);
 }
@@ -141,7 +141,7 @@
   padding: 0 18px;
   border: 0;
   border-radius: var(--r-pill);
-  background: var(--fill);
+  background: var(--glass-fill);
   color: var(--muted);
   font: 500 15px/1 var(--font);
   cursor: default;
@@ -169,7 +169,7 @@
   text-align: left;
   border: 0;
   border-radius: var(--r-lg);
-  background: var(--surface);
+  background: var(--glass-surface);
   box-shadow: var(--shadow);
   color: var(--ink);
   text-align: left;
@@ -249,7 +249,7 @@
   padding: 0 14px;
   border: 1px solid var(--border);
   border-radius: var(--r-pill);
-  background: var(--surface);
+  background: var(--glass-surface);
   color: var(--ink);
   font: 500 14px/1 var(--font);
   white-space: nowrap;
@@ -363,7 +363,7 @@
   display: inline-flex;
   align-items: center;
   border-radius: var(--r-pill);
-  background: var(--fill);
+  background: var(--glass-fill);
 }
 
 .kassa-stepper button {
@@ -407,7 +407,7 @@
 }
 
 .kassa-icon-btn:hover {
-  background: var(--fill);
+  background: var(--glass-fill);
   color: var(--ink);
 }
 
@@ -606,7 +606,7 @@
 }
 
 .kassa-journal button:hover {
-  background: var(--fill);
+  background: var(--glass-fill);
 }
 
 .kassa-date {
@@ -665,7 +665,9 @@
     gap: 6px;
     padding: 6px;
     border-radius: var(--r-pill);
-    background: var(--bg);
+    background: var(--glass-pop);
+    -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
+    backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
   }
 
   .kassa-switch button {
@@ -732,7 +734,7 @@
 }
 
 .kassa-outage .btn.primary {
-  background: var(--surface);
+  background: var(--glass-surface);
   color: var(--ink);
 }
 
@@ -938,7 +940,7 @@
   margin: 0 0 12px;
   padding: 10px 12px;
   border-radius: var(--r-md);
-  background: var(--fill);
+  background: var(--glass-fill);
   overflow-x: auto;
 }
 

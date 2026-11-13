@@ -46,7 +46,7 @@
   height: auto;
   max-height: 68vh;
   border-radius: var(--r-md);
-  background: var(--bg);
+  background: var(--glass-well);
   touch-action: manipulation;
 }
 
@@ -168,7 +168,7 @@
 }
 
 .legend-full::before {
-  background: var(--bg);
+  background: var(--glass-well);
   border-style: dashed !important;
   border-color: var(--border) !important;
 }

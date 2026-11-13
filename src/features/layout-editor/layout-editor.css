@@ -518,7 +518,7 @@
 
 .seg.lowered .seg-cap {
   background: #6e6e73;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgb(var(--bq-snow-rgb) / 0.12);
 }
 
 /* Fönster - glasband som sitter i väggen (väggen bakom är kvar) */
@@ -527,7 +527,7 @@
     rgba(214, 235, 243, 0.9),
     rgba(150, 196, 214, 0.75)
   );
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 0 0 2px rgb(var(--bq-snow-rgb) / 0.6);
 }
 
 .seg.window .seg-cap.glass-cap {
@@ -568,7 +568,7 @@
   height: 22px;
   border-radius: 3px;
   background: var(--accent);
-  border: 2px solid #fff;
+  border: 2px solid var(--bq-snow);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   transform: translateZ(calc(var(--wh, 90px) + 4px));
   cursor: ew-resize;
@@ -620,7 +620,7 @@
   font: 700 10px/1 var(--sans);
   letter-spacing: 0.08em;
   color: var(--muted);
-  background: rgba(255, 255, 255, 0.9);
+  background: rgb(var(--bq-snow-rgb) / 0.9);
   padding: 3px 7px;
   border-radius: var(--r-md);
   white-space: nowrap;
@@ -700,7 +700,7 @@
 }
 
 .table-el.selected .table-seat-top {
-  background: color-mix(in srgb, var(--accent) 30%, #ffffff);
+  background: color-mix(in srgb, var(--accent) 30%, var(--bq-snow));
 }
 
 .table-el.selected .table-seat-back {
@@ -715,7 +715,7 @@
   height: 22px;
   border-radius: 3px;
   background: var(--accent);
-  border: 2px solid #fff;
+  border: 2px solid var(--bq-snow);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   transform: translateZ(calc(var(--th, 22px) + 4px));
   z-index: 2;
@@ -805,7 +805,7 @@
   align-items: center;
   justify-content: center;
   gap: 1px;
-  background: #fff;
+  background: var(--bq-snow);
   border: 1px solid #ddd5c6;
   transform: translateZ(var(--th));
   transform-style: preserve-3d;
@@ -869,7 +869,7 @@
 
 .table-el.selected .table-seats {
   color: var(--accent-ink);
-  background: #fff;
+  background: var(--bq-snow);
 }
 
 /* --- Inventarier (kassan) ----------------------------------------------- */
@@ -936,7 +936,7 @@
   /* diskens träyta */
   background-image: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.06) 0 2px,
+    rgb(var(--bq-snow-rgb) / 0.06) 0 2px,
     transparent 2px 12px
   );
 }

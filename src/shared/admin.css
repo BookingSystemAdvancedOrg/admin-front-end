@@ -703,7 +703,7 @@
   width: 27px;
   height: 27px;
   border-radius: var(--r-pill);
-  background: #fff;
+  background: var(--bq-snow);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   transition: transform 300ms var(--spring);
 }

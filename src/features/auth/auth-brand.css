@@ -26,7 +26,7 @@
 .auth-card {
   border-radius: 0;
   padding-bottom: 46px;
-  background: #ffffff;
+  background: var(--bq-snow);
   color: #1a120e;
   box-shadow: none;
   filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.28)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.18));
@@ -47,7 +47,7 @@
   --fill: #f6f1ea;
   --accent: #1a120e;
   --accent-hover: #3a2418;
-  --on-accent: #ffffff;
+  --on-accent: var(--bq-snow);
   --accent-ink: #6b4a2e;
   --focus: rgba(168, 132, 98, 0.45);
   --success-ink: #2c6a3f;
@@ -67,7 +67,7 @@
   --auth-error-bg: #432326;
   --fill: #332e2b;
   --accent: #f6ece9;
-  --accent-hover: #ffffff;
+  --accent-hover: var(--bq-snow);
   --on-accent: #1a120e;
   --accent-ink: #ee8a90;
   --focus: rgba(238, 138, 144, 0.4);

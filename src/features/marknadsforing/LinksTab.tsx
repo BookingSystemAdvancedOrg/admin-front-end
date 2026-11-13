@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
+import { tokens } from '@booqy/brand'
 import { DESTINATION_LABEL, LINK_SOURCES, campaignSlug, trackedLink } from './marketingApi'
 import type { Destination } from './marketingApi'
 
@@ -26,7 +27,7 @@ export function LinksTab({ primaryDomain }: { primaryDomain: string | null }) {
   useEffect(() => {
     if (!link) return
     let cancelled = false
-    QRCode.toDataURL(link, { margin: 1, width: 512, errorCorrectionLevel: 'M' })
+    QRCode.toDataURL(link, { margin: 1, width: 512, errorCorrectionLevel: 'M', color: { light: tokens.palette.snow } })
       .then((image) => !cancelled && setQrFor({ link, image }))
       .catch(() => undefined)
     return () => {

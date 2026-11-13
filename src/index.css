@@ -61,19 +61,19 @@
 
 :root {
   --bg: #f6f1ea;
-  --surface: #ffffff;
+  --surface: var(--bq-snow);
   --fill: #f6f1ea;
-  --surface-glass: rgba(255, 255, 255, 0.7);
+  --surface-glass: rgb(var(--bq-snow-rgb) / 0.7);
   --border: #e3d6c4;
   --ink: #1a120e;
   --muted: #4a4a46;
   --accent: #1a120e;
   --accent-hover: #3a2418;
   --accent-active: #3a2418;
-  --on-accent: #ffffff;
+  --on-accent: var(--bq-snow);
   --accent-ink: #6b4a2e;
   --brand: #1a120e;
-  --ox: rgba(255, 255, 255, 0.62);
+  --ox: rgb(var(--bq-snow-rgb) / 0.62);
   --ox-deep: #f6f1ea;
   --on-ox: #1a120e;
   --on-ox-2: #4a4a46;
@@ -100,7 +100,7 @@
   --shadow-lg: 0 2px 8px -3px rgba(58, 36, 24, 0.12), 0 30px 70px -40px rgba(58, 36, 24, 0.5);
   /* Papperslappen som sticker ut ur väggen (vald sida i sidomenyn). */
   --slip: #1a120e;
-  --on-slip: #ffffff;
+  --on-slip: var(--bq-snow);
   /* Vätskan i nyckeltalsrutorna (rgb-tripel och täthet, se brand.css). */
   --liquid-tile: 255, 255, 255;
   --liquid-tile-alpha: 0.4;
@@ -147,7 +147,7 @@
   --ink: #f6f1ea;
   --muted: #d5c4ae;
   --accent: #f6f1ea;
-  --accent-hover: #ffffff;
+  --accent-hover: var(--bq-snow);
   --accent-active: #d5c4ae;
   --on-accent: #1a120e;
   --accent-ink: #d5c4ae;
@@ -244,9 +244,9 @@ a {
 
 /* Glasrummet: tokens och det suddiga rummet bakom allt (samma som booqy.se). */
 :root {
-  --glass: rgba(255, 255, 255, 0.62);
-  --glass-hi: rgba(255, 255, 255, 0.74);
-  --rim: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+  --glass: rgb(var(--bq-snow-rgb) / 0.62);
+  --glass-hi: rgb(var(--bq-snow-rgb) / 0.74);
+  --rim: inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.9), inset 0 0 0 1px rgb(var(--bq-snow-rgb) / 0.55);
   --r-panel: 28px;
   --backdrop-veil: rgba(246, 241, 234, 0);
   --wall-tint: rgba(58, 36, 24, 0.08);

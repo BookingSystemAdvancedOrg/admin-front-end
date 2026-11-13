@@ -427,7 +427,7 @@
   align-self: flex-start;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: #fff;
+  background: var(--bq-snow);
   image-rendering: pixelated;
 }
 
@@ -472,7 +472,7 @@
   max-width: 380px;
   margin-left: auto;
   border-radius: var(--r-md);
-  background: #fff;
+  background: var(--bq-snow);
   filter: drop-shadow(0 14px 22px rgba(26, 18, 14, 0.22));
   -webkit-mask:
     radial-gradient(circle 10px at 84px 0, transparent 98%, #000) top / 100% 51% no-repeat,
@@ -491,7 +491,7 @@
   border-radius: var(--r-md) 0 0 var(--r-md);
   border-right: 2px dashed rgba(26, 18, 14, 0.2);
   background: var(--accent-ink);
-  color: #fff;
+  color: var(--bq-snow);
 }
 
 .mk-offer-percent {
@@ -567,7 +567,7 @@
   padding: 11px;
   border-radius: var(--r-pill);
   background: var(--accent-ink);
-  color: #fff;
+  color: var(--bq-snow);
   font: 700 14px/1 var(--font);
   text-align: center;
 }

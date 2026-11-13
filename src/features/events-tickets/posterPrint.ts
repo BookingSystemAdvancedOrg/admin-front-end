@@ -1,4 +1,5 @@
 import QRCode from 'qrcode'
+import { tokens } from '@booqy/brand'
 
 /** Affisch med QR-kod till evenemangssidan för dem som köper biljett i dörren (betalar i sin telefon). */
 
@@ -11,7 +12,7 @@ export function eventUrl(primaryDomain: string | null | undefined, eventId: stri
 }
 
 export async function printPoster(title: string, url: string): Promise<boolean> {
-  const image = await QRCode.toDataURL(url, { margin: 1, width: 720, errorCorrectionLevel: 'M' })
+  const image = await QRCode.toDataURL(url, { margin: 1, width: 720, errorCorrectionLevel: 'M', color: { light: tokens.palette.snow } })
   const win = window.open('', '_blank')
   if (!win) return false
   win.document.write(

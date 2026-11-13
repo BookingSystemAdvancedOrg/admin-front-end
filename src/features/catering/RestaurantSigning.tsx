@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
+import { tokens } from '@booqy/brand'
 import { errorText, restaurantSign, restaurantSignStatus } from './cateringApi'
 import type { CateringRequest } from './cateringApi'
 
@@ -73,7 +74,7 @@ export function RestaurantSigning({ request, onSigned, returned }: {
     void check()
   }, [returned, request.locationId, request.requestId, onSigned])
 
-  const qr = async (data?: string) => (data ? QRCode.toDataURL(data, { margin: 1, width: 240 }).catch(() => undefined) : undefined)
+  const qr = async (data?: string) => (data ? QRCode.toDataURL(data, { margin: 1, width: 240, color: { light: tokens.palette.snow } }).catch(() => undefined) : undefined)
 
   async function poll() {
     try {

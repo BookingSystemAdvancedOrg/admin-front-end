@@ -47,11 +47,11 @@
 
   --hairline: rgba(58, 36, 24, 0.1);
   --hairline-strong: rgba(58, 36, 24, 0.18);
-  --glass-edge: inset 0 1px 0 rgba(255, 255, 255, 0.75), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  --glass-edge: inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.75), inset 0 0 0 1px rgb(var(--bq-snow-rgb) / 0.4);
 
   /* Glaslagren: arbetsyta, sidopaneler, popup, dialog och palett. */
-  --glass-main: rgba(255, 255, 255, 0.56);
-  --glass-side: rgba(255, 255, 255, 0.66);
+  --glass-main: rgb(var(--bq-snow-rgb) / 0.56);
+  --glass-side: rgb(var(--bq-snow-rgb) / 0.66);
   --glass-pop: rgba(255, 252, 248, 0.8);
   --glass-modal: rgba(255, 252, 248, 0.88);
   --blur-main: 18px;

@@ -117,7 +117,7 @@ export const THEME_COLORS: { label: string; value: string | null }[] = [
 /** Färdiga bakgrunder runt mejlet. null = ljus (standard). */
 export const THEME_BACKGROUNDS: { label: string; value: string | null }[] = [
   { label: 'Ljus', value: null },
-  { label: 'Vit', value: '#ffffff' },
+  { label: 'Benvit', value: '#fdfaf6' },
   { label: 'Sand', value: '#efe7dc' },
   { label: 'Grå', value: '#eceef0' },
   { label: 'Mörk', value: '#1a120e' },

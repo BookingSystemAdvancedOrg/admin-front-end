@@ -700,9 +700,9 @@
 /* filtren är vitt papper i ljust läge, som skenan och nyckeltalen ovanför */
 :root:not([data-theme='dark']) .sk-field select,
 :root:not([data-theme='dark']) .sk-field input {
-  background-color: #ffffff;
+  background-color: var(--bq-snow);
   border-color: rgba(58, 36, 24, 0.14);
-  box-shadow: inset 0 1px 0 #ffffff, 0 1px 2px rgba(58, 36, 24, 0.06);
+  box-shadow: inset 0 1px 0 var(--bq-snow), 0 1px 2px rgba(58, 36, 24, 0.06);
 }
 
 /* Exportknappen hör till raden: samma höjd och hörn som filtren, men i

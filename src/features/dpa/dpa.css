@@ -1,9 +1,8 @@
 /* Personuppgiftsbiträdesavtalet: remsan i admin-skalet och /avtal. */
 
-/* Same paper as the sticky topbar below it, so the two read as one header band. */
+/* The wrap is only spacing; the banner itself is the glass. */
 .dpa-banner-wrap {
   padding: 20px 40px 0;
-  background: var(--surface-glass);
 }
 
 .dpa-banner {
@@ -13,11 +12,12 @@
   justify-content: space-between;
   gap: 16px;
   padding: 16px 20px;
-  background: var(--glass-surface);
-  border: 1px solid var(--border);
+  background: var(--glass-text-bg) var(--liquid-sheen);
   border-left: 4px solid var(--warning);
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow);
+  box-shadow: var(--liquid-edge), var(--liquid-depth);
+  -webkit-backdrop-filter: blur(var(--blur-main)) saturate(1.6);
+  backdrop-filter: blur(var(--blur-main)) saturate(1.6);
 }
 
 .dpa-banner--blocking {

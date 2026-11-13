@@ -67,7 +67,6 @@
   --glass-surface: rgb(var(--bq-snow-rgb) / 0.58);
   --glass-fill: rgb(var(--bq-snow-rgb) / 0.42);
   --glass-well: rgba(246, 241, 234, 0.36);
-  --surface-glass: rgb(var(--bq-snow-rgb) / 0.7);
   --border: #e3d6c4;
   --ink: #1a120e;
   --muted: #4a4a46;
@@ -149,7 +148,6 @@
   --glass-surface: rgba(42, 29, 22, 0.58);
   --glass-fill: rgba(58, 36, 24, 0.5);
   --glass-well: rgba(26, 18, 14, 0.4);
-  --surface-glass: rgba(26, 18, 14, 0.74);
   --border: #4a3326;
   --ink: #f6f1ea;
   --muted: #d5c4ae;
@@ -263,7 +261,7 @@ a {
   --glass: rgba(26, 18, 14, 0.7);
   --glass-hi: rgba(26, 18, 14, 0.8);
   --rim: inset 0 1px 0 rgba(213, 196, 174, 0.18), inset 0 0 0 1px rgba(213, 196, 174, 0.1);
-  --backdrop-veil: rgba(26, 18, 14, 0.86);
+  --backdrop-veil: rgba(26, 18, 14, 0.72);
   --wall-tint: rgba(213, 196, 174, 0.12);
   --wall-tint-2: rgba(213, 196, 174, 0.2);
 }
@@ -271,10 +269,22 @@ a {
 /* Rummet bakom glaset: fotot, mjuka bruna och vinröda fläckar och kvällens
    slöja i mörkt läge. Fläckarna ligger stilla (ingen animation). */
 :root {
+  /* Färg för glaset att bryta: vin, brons, sand och valnöt. */
   --backdrop-blobs:
-    radial-gradient(48% 42% at 12% 16%, rgba(53, 0, 1, 0.16), transparent 70%),
-    radial-gradient(42% 46% at 88% 84%, rgba(107, 74, 46, 0.22), transparent 70%),
-    radial-gradient(36% 34% at 78% 12%, rgba(168, 132, 98, 0.2), transparent 70%);
+    radial-gradient(40% 48% at 6% 10%, rgba(53, 0, 1, 0.66), transparent 72%),
+    radial-gradient(36% 42% at 94% 90%, rgba(107, 74, 46, 0.66), transparent 72%),
+    radial-gradient(32% 36% at 84% 6%, rgba(168, 132, 98, 0.72), transparent 70%),
+    radial-gradient(30% 34% at 28% 96%, rgba(58, 36, 24, 0.55), transparent 70%),
+    radial-gradient(26% 30% at 66% 42%, rgba(158, 29, 38, 0.36), transparent 70%),
+    radial-gradient(28% 32% at 40% 60%, rgba(168, 132, 98, 0.42), transparent 70%);
+}
+:root[data-theme='dark'] {
+  --backdrop-blobs:
+    radial-gradient(40% 48% at 6% 10%, rgba(158, 29, 38, 0.5), transparent 72%),
+    radial-gradient(36% 42% at 94% 90%, rgba(168, 132, 98, 0.4), transparent 72%),
+    radial-gradient(32% 36% at 84% 6%, rgba(107, 74, 46, 0.6), transparent 70%),
+    radial-gradient(30% 34% at 28% 96%, rgba(53, 0, 1, 0.6), transparent 70%),
+    radial-gradient(24% 28% at 56% 46%, rgba(213, 196, 174, 0.16), transparent 70%);
 }
 
 body::before {
@@ -283,7 +293,7 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: linear-gradient(var(--backdrop-veil), var(--backdrop-veil)), var(--backdrop-blobs), var(--user-backdrop, url('./assets/backdrop.webp')) center / cover no-repeat, var(--bg);
+  background: var(--backdrop-blobs), linear-gradient(var(--backdrop-veil), var(--backdrop-veil)), var(--user-backdrop, url('./assets/backdrop.webp')) center / cover no-repeat, var(--bg);
 }
 
 /* Skrivbordsappen (desktopGlass.ts): sidan är genomskinlig och systemets

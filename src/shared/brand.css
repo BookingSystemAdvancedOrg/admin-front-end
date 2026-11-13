@@ -149,7 +149,6 @@
 /* --- Sidhuvud ------------------------------------------------------------ */
 
 .admin-topbar {
-  background: var(--surface-glass);
   border-bottom: 1.5px dashed var(--border);
 }
 
@@ -407,24 +406,6 @@ button.stat-tile {
   font-weight: 650;
 }
 
-.form-field input,
-.form-field textarea,
-.form-field select {
-  border-radius: var(--r-md);
-  box-shadow: inset 0 0 0 1.5px var(--border);
-}
-
-.form-field input:hover,
-.form-field textarea:hover,
-.form-field select:hover {
-  box-shadow: inset 0 0 0 1.5px var(--muted);
-}
-
-.form-field input:focus,
-.form-field textarea:focus,
-.form-field select:focus {
-  box-shadow: inset 0 0 0 2px var(--ink);
-}
 
 /* Inställningsflikar: tryckta lappar, vald flik i omvänt tryck. */
 .settings-tabs button {

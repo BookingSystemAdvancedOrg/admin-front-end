@@ -19,8 +19,9 @@ import {
 } from './ordersApi'
 import type { Order, OrderingState, StaffMove } from './ordersApi'
 import { tableTitle } from '../table-qr/tableQrApi'
-import { getPrintStatus, printBannerText, printErrorText, reprintOrder } from './printApi'
+import { getPrintStatus, printBannerText, printErrorText, reprintOrder, TICKET_TEXT } from './printApi'
 import type { JobState, PrintStatus } from './printApi'
+import { KitchenDisplay } from './KitchenDisplay'
 import './bestallningar.css'
 import { SkelBlock, SkelBox, SkelPage, SkelTiles } from '../../shared/Skeleton'
 
@@ -81,6 +82,19 @@ export default function BestallningarPage() {
   const [serveTo, setServeTo] = useState<Order | null>(null)
   /** Skärmläsarens besked om nya beställningar ("Ny beställning #12, Bord 7"). */
   const [announce, setAnnounce] = useState('')
+  /** ?vy=kok: köksskärmen (en stations bongar) i stället för tavlan; ?station= vilken. */
+  const [params, setParams] = useState(() => new URLSearchParams(window.location.search))
+  const kds = params.get('vy') === 'kok'
+  function view(next: { vy?: string | null; station?: string | null }) {
+    const p = new URLSearchParams(params)
+    for (const [k, v] of Object.entries(next)) {
+      if (v) p.set(k, v)
+      else p.delete(k)
+    }
+    const query = p.toString()
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${query ? `?${query}` : ''}`)
+    setParams(p)
+  }
 
   const refresh = useCallback(async () => {
     if (!locationId) return
@@ -242,6 +256,7 @@ export default function BestallningarPage() {
   function card(order: Order) {
     const isBusy = busy === order.orderId
     const confirming = confirmCancel === order.orderId
+    const stations = print?.tickets?.[order.orderId] ?? []
     return (
       <article
         key={order.orderId}
@@ -265,10 +280,21 @@ export default function BestallningarPage() {
             {JOB_TEXT[print.orders[order.orderId]]}
           </span>
         )}
+        {stations.length > 0 && (
+          <ul className="order-stations" aria-label="Bongar per station">
+            {stations.map((st) => (
+              <li key={st.stationId} className={`order-station order-station--${st.status}`}>
+                {st.stationName}: {TICKET_TEXT[st.status]}
+              </li>
+            ))}
+          </ul>
+        )}
         <ul className="order-lines">
-          {order.lines.map((line) => (
-            <li key={line.menuItemId}>
+          {order.lines.map((line, i) => (
+            <li key={`${line.menuItemId}-${i}`}>
               <strong>{line.quantity} ×</strong> {line.name}
+              {line.note && <span className="order-line-note">{line.note}</span>}
+              {line.allergy && <span className="order-line-allergy">Allergi: {line.allergy}</span>}
             </li>
           ))}
         </ul>
@@ -300,7 +326,7 @@ export default function BestallningarPage() {
               {order.mode === 'pickup' ? 'Hämtad' : `Serverad vid ${where(order)}`}
             </button>
           )}
-          {print?.printerConfigured && !confirming && order.status !== 'cancelled' && (
+          {(print?.printerConfigured || stations.length > 0) && !confirming && order.status !== 'cancelled' && (
             <button type="button" className="btn outline square" disabled={isBusy}
               onClick={() => void reprint(order)}>
               Skriv ut igen
@@ -389,6 +415,20 @@ export default function BestallningarPage() {
               </div>
             )}
             <p className="sr-only" aria-live="polite">{announce}</p>
+            <div className="orders-views" role="tablist" aria-label="Vy">
+              <button type="button" role="tab" aria-selected={!kds} className={!kds ? 'active' : ''}
+                onClick={() => view({ vy: null })}>
+                Alla beställningar
+              </button>
+              <button type="button" role="tab" aria-selected={kds} className={kds ? 'active' : ''}
+                onClick={() => view({ vy: 'kok' })}>
+                Köksskärm
+              </button>
+            </div>
+            {kds ? (
+              <KitchenDisplay locationId={locationId} station={params.get('station')}
+                onStation={(station) => view({ station })} />
+            ) : <>
             {placeOptions.length > 1 && (
               <div className="orders-filter">
                 <label htmlFor="orders-place">Visa</label>
@@ -441,6 +481,7 @@ export default function BestallningarPage() {
                 </ul>
               </details>
             )}
+            </>}
           </>
         )}
       </div>

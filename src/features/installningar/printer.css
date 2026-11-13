@@ -81,12 +81,13 @@
 
 .printer-add {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 10px;
 }
 
 .printer-add .form-field {
-  flex: 1;
+  flex: 1 1 180px;
   min-width: 0;
 }
 
@@ -131,4 +132,67 @@
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+/* Bongar och stationer (StationsCard.tsx). */
+.station-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+
+.station-row {
+  display: grid;
+  gap: 10px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  min-width: 0;
+}
+
+.station-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+}
+
+.station-head .form-field {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.station-printers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.station-printers legend {
+  margin-bottom: 6px;
+  font: 600 12.5px/1.3 var(--font);
+  color: var(--ink-2, var(--ink));
+}
+
+.station-printer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 14px;
+}
+
+.station-hint {
+  margin: 4px 0 12px;
+  max-width: 68ch;
+}
+
+.printer-subtitle--gap {
+  margin-top: 20px;
 }

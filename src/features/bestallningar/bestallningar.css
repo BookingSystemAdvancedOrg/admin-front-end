@@ -233,3 +233,192 @@
 .order-print {
   align-self: flex-start;
 }
+
+/* Bongar: varje stations läge på beställningen, och radernas önskemål/allergi. */
+.order-stations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.order-station {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font: 600 12px/1.4 var(--sans);
+  background: var(--tint-blue);
+  color: var(--ink);
+}
+
+.order-station--preparing {
+  background: var(--tint-orange);
+  color: var(--warning-ink);
+}
+
+.order-station--ready {
+  background: var(--tint-green);
+  color: var(--success-ink);
+}
+
+.order-station--cancelled {
+  background: var(--tint-red);
+  color: var(--danger-ink);
+}
+
+.order-line-note,
+.order-line-allergy,
+.kds-note,
+.kds-line-allergy {
+  display: block;
+  margin-left: 22px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.order-line-allergy,
+.kds-line-allergy {
+  color: var(--danger-ink);
+}
+
+/* Tavla eller köksskärm. */
+.orders-views,
+.kds-stations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.orders-views button,
+.kds-stations button {
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--glass-surface);
+  color: var(--ink);
+  font: 600 14px/1 var(--sans);
+  cursor: pointer;
+}
+
+.orders-views button.active,
+.kds-stations button.active {
+  background: var(--slip);
+  border-color: var(--slip);
+  color: var(--on-slip);
+  box-shadow: var(--elev-1);
+}
+
+.kds {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.kds-count {
+  margin-left: 4px;
+  opacity: 0.75;
+}
+
+.kds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.kds-ticket {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  min-width: 0;
+  background: var(--glass-surface);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--tint-blue);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+}
+
+.kds-ticket--preparing {
+  border-top-color: var(--warning);
+}
+
+.kds-ticket--ready {
+  border-top-color: var(--success);
+  opacity: 0.8;
+}
+
+.kds-ticket--allergy {
+  border-color: var(--danger);
+  border-top-color: var(--danger);
+}
+
+.kds-ticket-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.kds-allergy {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  background: var(--tint-red);
+  color: var(--danger-ink);
+  font: 700 14px/1.3 var(--sans);
+}
+
+.kds-course-title {
+  margin: 0 0 4px;
+  font: 700 12px/1.2 var(--sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.kds-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 16px;
+}
+
+/* "Skriv ut här": bara bongen på papperet. */
+.kds-paper {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .kds-paper,
+  .kds-paper * {
+    visibility: visible;
+  }
+
+  .kds-paper {
+    display: block;
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 72mm;
+    font: 12px/1.35 monospace;
+    color: #000;
+  }
+
+  .kds-paper p {
+    margin: 0 0 4px;
+  }
+
+  .kds-paper-big {
+    font-size: 18px;
+    font-weight: 700;
+  }
+}

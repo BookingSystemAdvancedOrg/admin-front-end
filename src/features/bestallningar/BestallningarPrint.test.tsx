@@ -92,4 +92,17 @@ describe('BestallningarPage printing', () => {
     await user.click(await screen.findByRole('button', { name: 'Skriv ut igen' }))
     expect(await screen.findByText('Beställningen är avbruten och skrivs inte ut igen.')).toBeInTheDocument()
   })
+
+  it('shows each station\'s ticket state and the line\'s allergy on the order', async () => {
+    listOrders.mockResolvedValue({ date: '2026-10-12', ordering: { open: true }, orders: [{
+      ...ORDER, lines: [{ ...ORDER.lines[0], note: 'ingen lök', allergy: 'jordnötsallergi' }] }] })
+    getPrintStatus.mockResolvedValue({ ...STATUS, tickets: { [ORDER.orderId]: [
+      { stationId: 'kok', stationName: 'Kök', status: 'preparing', allergy: true },
+      { stationId: 'bar', stationName: 'Bar', status: 'sent', allergy: false }] } })
+    render(<BestallningarPage />)
+    const stations = await screen.findByRole('list', { name: 'Bongar per station' })
+    expect(within(stations).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Kök: tillagas', 'Bar: skickad'])
+    expect(screen.getByText('Allergi: jordnötsallergi')).toBeInTheDocument()
+    expect(screen.getByText('ingen lök')).toBeInTheDocument()
+  })
 })

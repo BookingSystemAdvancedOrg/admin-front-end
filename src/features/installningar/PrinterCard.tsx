@@ -9,16 +9,20 @@ import {
   savePrintSettings,
   testPrint,
 } from '../bestallningar/printApi'
-import type { PaperWidth, PrintOverview, Printer, PrinterCredentials } from '../bestallningar/printApi'
+import { MAX_PRINTERS } from '../bestallningar/printApi'
+import type { PaperWidth, PrintOverview, Printer, PrinterCredentials, PrinterProtocol } from '../bestallningar/printApi'
 import { clock } from '../bestallningar/ordersApi'
 import './printer.css'
 import { SkelLines } from '../../shared/Skeleton'
+import { StationsCard } from './StationsCard'
 
 /**
- * Inställningar > Skrivare: köksskrivaren för matbeställningar.
+ * Inställningar > Skrivare: bongskrivarna för matbeställningar och Kassa.
  *
- * Skrivaren (Star CloudPRNT, t.ex. mC-Print3 med nätverkskabel) frågar
- * Booqy var femte sekund om det finns något att skriva ut. Ägaren lägger
+ * Skrivaren (Star CloudPRNT, t.ex. mC-Print3, eller Epson Server Direct
+ * Print, t.ex. TM-m30III, med nätverkskabel eller wifi) frågar Booqy var
+ * femte sekund om det finns något att skriva ut. Vilken station (Kök, Bar)
+ * varje skrivare tillhör väljs i StationsCard. Ägaren lägger
  * till skrivaren här och får en adress, ett användarnamn och ett lösenord
  * att skriva in i skrivarens egen webbsida. Lösenordet visas en gång;
  * "Ny nyckel" ger ett nytt (och stänger det gamla). Personalen ser läget
@@ -63,6 +67,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
   const [printerId, setPrinterId] = useState('')
   const [paperWidth, setPaperWidth] = useState<PaperWidth>(80)
   const [name, setName] = useState('')
+  const [protocol, setProtocol] = useState<PrinterProtocol>('star')
   const [credentials, setCredentials] = useState<PrinterCredentials | null>(null)
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -139,7 +144,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
       return
     }
     void run(async () => {
-      setCredentials(await addPrinter(locationId, trimmed))
+      setCredentials(await addPrinter(locationId, trimmed, protocol))
       setName('')
       await reload()
     })
@@ -176,14 +181,17 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
   const dirty = Boolean(saved) && (saved!.autoPrint !== autoPrint || (saved!.printerId ?? '') !== printerId
     || saved!.paperWidth !== paperWidth)
   const disabled = !isOwner || busy
+  const stationsOf = (printer: Printer) =>
+    (data?.routing?.stations ?? []).filter((s) => s.printerIds.includes(printer.deviceId)).map((s) => s.name)
 
   return (
     <>
       <section id="skrivare" className="admin-card table-card printer-card">
-        <h2 className="card-title">Köksskrivare</h2>
+        <h2 className="card-title">Bongskrivare</h2>
         <p className="cell-muted printer-lead">
-          Betalda beställningar skrivs ut i köket av sig själva, som en köksnota utan priser. Fungerar med
-          Star-skrivare med CloudPRNT (till exempel mC-Print3) som är kopplade till internet med nätverkskabel.
+          Betalda beställningar skrivs ut av sig själva, en bong per station utan priser. Fungerar med
+          Star-skrivare med CloudPRNT (till exempel mC-Print3) och Epson-skrivare med Server Direct Print
+          (till exempel TM-m30III) som är kopplade till internet. Ingen dator eller app behöver stå på.
         </p>
 
         {!locationId ? (
@@ -200,7 +208,9 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
                 <p className="cell-muted">
                   Lösenordet visas bara den här gången. Tappar du bort det: välj Ny nyckel och skriv in det nya.
                 </p>
-                <CopyField id="printer-url" label="Server-URL (CloudPRNT)" value={credentials.device.serverUrl ?? ''} />
+                <CopyField id="printer-url"
+                  label={credentials.device.protocol === 'epson' ? 'Server-URL (Server Direct Print)' : 'Server-URL (CloudPRNT)'}
+                  value={credentials.device.serverUrl ?? ''} />
                 <CopyField id="printer-user" label="Användarnamn" value={credentials.username} />
                 <CopyField id="printer-secret" label="Lösenord" value={credentials.secret} secret />
                 <span className="row-actions">
@@ -226,7 +236,9 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
                         </span>
                       </div>
                       <p className="cell-muted printer-meta">
-                        {printer.deviceId === saved?.printerId ? 'Skriver ut beställningarna' : 'Används inte för beställningar'}
+                        {printer.protocol === 'epson' ? 'Epson' : 'Star'}
+                        {stationsOf(printer).length ? ` · Bongar: ${stationsOf(printer).join(', ')}` : ' · Ingen station'}
+                        {printer.deviceId === saved?.printerId ? ' · Kassakvitton' : ''}
                         {printer.mac ? ` · MAC ${printer.mac}` : ''}
                         {printer.statusCode && !printer.statusCode.startsWith('2') ? ` · Skrivaren rapporterar: ${printer.statusCode}` : ''}
                       </p>
@@ -265,12 +277,20 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
               </ul>
             )}
 
-            {isOwner && devices.length < 5 && (
+            {isOwner && devices.length < MAX_PRINTERS && (
               <form onSubmit={add} className="printer-add">
                 <div className="form-field">
                   <label htmlFor="printer-name">Lägg till skrivare</label>
                   <input id="printer-name" value={name} maxLength={40} placeholder="Till exempel Köket"
                     disabled={busy} onChange={(e) => setName(e.target.value)} />
+                </div>
+                <div className="form-field">
+                  <label htmlFor="printer-protocol">Märke</label>
+                  <select id="printer-protocol" value={protocol} disabled={busy}
+                    onChange={(e) => setProtocol(e.target.value as PrinterProtocol)}>
+                    <option value="star">Star (CloudPRNT)</option>
+                    <option value="epson">Epson (Server Direct Print)</option>
+                  </select>
                 </div>
                 <button type="submit" className="btn outline square" disabled={busy}>
                   Lägg till
@@ -282,15 +302,15 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
               <form onSubmit={saveSettings} className="notifications-form printer-settings">
                 <div className="toggle-row">
                   <div>
-                    <p className="toggle-row-label" id="print-auto-label">Skriv ut beställningar automatiskt</p>
-                    <p className="cell-muted">När en gäst har betalat kommer köksnotan ut direkt.</p>
+                    <p className="toggle-row-label" id="print-auto-label">Skriv ut bongar automatiskt</p>
+                    <p className="cell-muted">När en gäst har betalat kommer varje stations bong ut direkt.</p>
                   </div>
                   <button type="button" role="switch" aria-checked={autoPrint} aria-labelledby="print-auto-label"
                     className="switch" disabled={disabled} onClick={() => { setAutoPrint(!autoPrint); setNotice(null) }} />
                 </div>
                 <div className="form-grid">
                   <div className="form-field">
-                    <label htmlFor="print-printer">Skrivare för beställningar</label>
+                    <label htmlFor="print-printer">Skrivare för kvitton (Kassa)</label>
                     <select id="print-printer" value={printerId} disabled={disabled}
                       onChange={(e) => { setPrinterId(e.target.value); setNotice(null) }}>
                       <option value="">Ingen</option>
@@ -329,6 +349,11 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
         )}
       </section>
 
+      {locationId && data?.routing && (
+        <StationsCard key={`${locationId}-${data.routing.version}`} locationId={locationId} isOwner={isOwner}
+          routing={data.routing} devices={devices} onSaved={(routing) => setData({ ...data, routing })} />
+      )}
+
       <section className="admin-card table-card printer-guide" aria-labelledby="printer-guide-title">
         <h2 className="card-title" id="printer-guide-title">Så kopplar du skrivaren</h2>
         <p className="cell-muted printer-lead">Gäller Star mC-Print3. Andra Star-skrivare med CloudPRNT fungerar likadant.</p>
@@ -341,7 +366,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
             Skriv in IP-adressen i webbläsaren på en dator i samma nätverk och logga in i skrivarens
             inställningar (användare och lösenord står i skrivarens manual, byt gärna lösenordet).
           </li>
-          <li>Lägg till skrivaren under Köksskrivare. Booqy visar Server-URL, användarnamn och lösenord.</li>
+          <li>Lägg till skrivaren under Bongskrivare. Booqy visar Server-URL, användarnamn och lösenord.</li>
           <li>
             Öppna CloudPRNT i skrivarens inställningar. Slå på CloudPRNT, klistra in Server-URL och sätt
             avfrågningsintervallet (polling) till 5 sekunder.
@@ -364,6 +389,16 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
           </li>
           <li>Står det Svarar inte på Beställningar, skrivs notorna ut så fort skrivaren är tillbaka.</li>
         </ul>
+        <h3 className="printer-subtitle printer-subtitle--gap">Epson TM-m30III och andra Epson med Server Direct Print</h3>
+        <ol className="printer-steps">
+          <li>Lägg till skrivaren med märket Epson. Booqy visar Server-URL, användarnamn och lösenord.</li>
+          <li>
+            Öppna skrivarens webbsida (EpsonNet Config) via dess IP-adress och välj Server Direct Print.
+            Slå på det, klistra in Server-URL och sätt intervallet till 5 sekunder.
+          </li>
+          <li>Fyll i användarnamn (ID) och lösenord under autentisering, spara och starta om skrivaren.</li>
+          <li>Tryck på Testutskrift. Lappen kommer ut inom några sekunder.</li>
+        </ol>
       </section>
     </>
   )

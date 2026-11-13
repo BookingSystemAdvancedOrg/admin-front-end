@@ -19,7 +19,6 @@ const READY_KEEP_MS = 15 * 60_000
 
 function where(t: StationTicket): string {
   if (t.mode === 'table') return tableTitle(t.tableLabel ?? '?')
-  if (t.billId) return 'Kassa, avhämtning'
   return 'Avhämtning'
 }
 

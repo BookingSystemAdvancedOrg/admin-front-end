@@ -76,7 +76,6 @@ export interface StationTicket {
   entries: TicketEntry[]
   notes?: string
   orderId?: string
-  billId?: string
   number?: number
   mode?: 'pickup' | 'table'
   tableLabel?: string

@@ -58,6 +58,13 @@ describe('category mapping', () => {
 })
 
 describe('toDish', () => {
+  it('reads the focal point, with the centre and junk as null', () => {
+    expect(toDish({ ...menuItem(), imageFocus: { x: 10, y: 90 } }).imageFocus).toEqual({ x: 10, y: 90 })
+    expect(toDish({ ...menuItem(), imageFocus: { x: 50, y: 50 } }).imageFocus).toBeNull()
+    expect(toDish(menuItem()).imageFocus).toBeNull()
+    expect(toDish({ ...menuItem(), imageFocus: { x: 400, y: -3 } }).imageFocus).toEqual({ x: 100, y: 0 })
+  })
+
   it('maps an API item to the UI shape', () => {
     const dish = toDish(menuItem())
     expect(dish).toMatchObject({
@@ -161,6 +168,14 @@ describe('dishChanges', () => {
     expect(dishChanges(scheduled, { ...keep, availableUntil: '2026-11-02T10:00:00Z' })).toEqual({
       availableUntil: '2026-11-02T10:00:00Z',
     })
+  })
+
+  it('sends a moved focal point, clears it on the centre and skips an unchanged one', () => {
+    expect(dishChanges(original, desired({ imageFocus: { x: 50, y: 50 } }))).toEqual({})
+    expect(dishChanges(original, desired({ imageFocus: { x: 20, y: 80 } }))).toEqual({ imageFocus: { x: 20, y: 80 } })
+    const focused: Dish = { ...original, imageFocus: { x: 20, y: 80 } }
+    expect(dishChanges(focused, desired({ imageFocus: { x: 20, y: 80 } }))).toEqual({})
+    expect(dishChanges(focused, desired({ imageFocus: { x: 50, y: 50 } }))).toEqual({ imageFocus: null })
   })
 
   it('returns an empty diff when nothing changed', () => {

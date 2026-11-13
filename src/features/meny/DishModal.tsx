@@ -9,6 +9,10 @@ import { DateTimeInput } from '../../shared/DateInput'
 import { Icon } from '../../shared/Icon'
 import { Slot } from '../../shared/slots'
 import ModalOverlay from '../../shared/ModalOverlay'
+import { ImageLightbox } from '../../shared/ImageLightbox'
+import { FocusFrame } from './FocusFrame'
+import { CENTRE, focusPosition, isCentre } from './imageFocus'
+import type { ImageFocus } from './imageFocus'
 
 export interface DishFormValues {
   name: string
@@ -24,6 +28,8 @@ export interface DishFormValues {
    * skapas av sidan via uploadMenuImage när rätten sparas.
    */
   imageFile: File | null
+  /** Vilken del av bilden som syns i beskurna ramar; CENTRE = mitten. */
+  imageFocus: ImageFocus
   /** Schemat i UTC ("...Z"), null = ingen gräns. */
   availableFrom: string | null
   availableUntil: string | null
@@ -85,6 +91,8 @@ export function DishModal({
   // Förhandsvisning: befintlig CDN-bild eller data-URL för nyvald fil.
   const [preview, setPreview] = useState<string | null>(initial?.image ?? null)
   const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imageFocus, setImageFocus] = useState<ImageFocus>(initial?.imageFocus ?? CENTRE)
+  const [zoomed, setZoomed] = useState(false)
   const [initialFrom] = useState(() => utcToZonedInput(initial?.availableFrom ?? null, timeZone))
   const [initialUntil] = useState(() => utcToZonedInput(initial?.availableUntil ?? null, timeZone))
   const [openedAt] = useState(() => Date.now())
@@ -109,6 +117,8 @@ export function DishModal({
     const file = e.target.files?.[0]
     if (!file) return
     setImageFile(file)
+    // ett nytt foto börjar i mitten
+    setImageFocus(CENTRE)
     const reader = new FileReader()
     reader.onload = () => setPreview(String(reader.result))
     reader.readAsDataURL(file)
@@ -151,6 +161,7 @@ export function DishModal({
         active,
         alcohol,
         imageFile,
+        imageFocus,
         availableFrom,
         availableUntil,
       })
@@ -175,10 +186,12 @@ export function DishModal({
           <label>{initial ? 'Bild' : 'Bild (krävs)'}</label>
           <div className="dish-upload">
             {preview ? (
-              <img
-                className="dish-upload-preview"
+              <FocusFrame
                 src={preview}
-                alt="Förhandsvisning"
+                alt={name.trim() || 'Rättens bild'}
+                focus={imageFocus}
+                onChange={setImageFocus}
+                onOpen={() => setZoomed(true)}
               />
             ) : (
               <span className="dish-placeholder large" aria-hidden="true">
@@ -186,13 +199,42 @@ export function DishModal({
               </span>
             )}
             <div className="dish-upload-actions">
-              <button
-                type="button"
-                className="btn outline square"
-                onClick={() => fileRef.current?.click()}
-              >
-                {preview ? 'Byt bild' : 'Ladda upp bild'}
-              </button>
+              <div className="dish-upload-buttons">
+                <button
+                  type="button"
+                  className="btn outline square"
+                  data-help="meny:byt-bild"
+                  onClick={() => fileRef.current?.click()}
+                >
+                  {preview ? 'Byt bild' : 'Ladda upp bild'}
+                </button>
+                {preview && (
+                  <button
+                    type="button"
+                    className="btn outline square"
+                    data-help="meny:aterstall-bildfokus"
+                    disabled={isCentre(imageFocus)}
+                    onClick={() => setImageFocus(CENTRE)}
+                  >
+                    Återställ
+                  </button>
+                )}
+              </div>
+              {preview && (
+                <div className="dish-focus-help">
+                  <img
+                    className="dish-focus-plate"
+                    src={preview}
+                    alt=""
+                    aria-hidden="true"
+                    draggable={false}
+                    style={{ objectPosition: focusPosition(imageFocus) }}
+                  />
+                  <p className="dish-focus-hint">
+                    Dra i bilden för att välja vad som syns i listan och på sajten. Klicka för att se den i stort.
+                  </p>
+                </div>
+              )}
               <input
                 ref={fileRef}
                 type="file"
@@ -375,6 +417,9 @@ export function DishModal({
           </button>
         </div>
       </div>
+      {zoomed && preview && (
+        <ImageLightbox src={preview} alt={name.trim() || 'Rättens bild'} onClose={() => setZoomed(false)} />
+      )}
     </ModalOverlay>
   )
 }

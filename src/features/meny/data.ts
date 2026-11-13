@@ -6,6 +6,8 @@
  * behåller svenska värden i gränssnittet; översättningen bor i menuApi.ts.
  */
 
+import type { ImageFocus } from './imageFocus'
+
 export type DishCategory =
   | 'forratter'
   | 'varmratter'
@@ -34,6 +36,8 @@ export interface Dish {
    * VITE_MENU_IMAGE_BASE_URL är satt, annars null (platshållare visas).
    */
   image: string | null
+  /** Bildens fokuspunkt (imageFocus.ts); null = mitten. */
+  imageFocus: ImageFocus | null
   /** Schema i UTC ("...Z"), null = ingen gräns (schedule.ts). */
   availableFrom: string | null
   availableUntil: string | null

@@ -632,7 +632,8 @@
 }
 
 @media (max-width: 600px) {
-  .row-actions--inline {
+  /* två klasser: .row-actions längre ner (display: flex) vann annars */
+  .row-actions.row-actions--inline {
     display: none;
   }
 

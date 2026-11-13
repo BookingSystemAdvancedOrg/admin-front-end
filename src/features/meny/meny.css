@@ -52,18 +52,9 @@
 
 .dish-upload {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 16px;
-}
-
-.dish-upload-preview {
-  display: block;
-  width: 96px;
-  height: 72px;
-  border-radius: var(--r-md);
-  object-fit: cover;
-  border: 1px solid var(--border);
-  flex-shrink: 0;
 }
 
 .dish-schedule {
@@ -126,7 +117,226 @@
 
 .dish-upload-actions {
   display: flex;
+  flex: 1 1 180px;
   flex-direction: column;
   align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.dish-upload-buttons {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+/* --- Bildens fokus (FocusFrame.tsx): dra bilden i ramen ------------------- */
+
+.dish-focus-frame {
+  position: relative;
+  flex: 0 0 auto;
+  width: 176px;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  background: var(--glass-well);
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.dish-focus-frame.is-dragging {
+  cursor: grabbing;
+}
+
+.dish-focus-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+/* tredjedelslinjer och en tunn kant, tydligare under dragning */
+.dish-focus-grid {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgb(var(--bq-snow-rgb) / 0.5);
+  background:
+    linear-gradient(90deg, transparent calc(33.333% - 0.5px), rgb(var(--bq-snow-rgb) / 0.55) calc(33.333% - 0.5px), rgb(var(--bq-snow-rgb) / 0.55) calc(33.333% + 0.5px), transparent calc(33.333% + 0.5px), transparent calc(66.666% - 0.5px), rgb(var(--bq-snow-rgb) / 0.55) calc(66.666% - 0.5px), rgb(var(--bq-snow-rgb) / 0.55) calc(66.666% + 0.5px), transparent calc(66.666% + 0.5px)),
+    linear-gradient(180deg, transparent calc(33.333% - 0.5px), rgb(var(--bq-snow-rgb) / 0.55) calc(33.333% - 0.5px), rgb(var(--bq-snow-rgb) / 0.55) calc(33.333% + 0.5px), transparent calc(33.333% + 0.5px), transparent calc(66.666% - 0.5px), rgb(var(--bq-snow-rgb) / 0.55) calc(66.666% - 0.5px), rgb(var(--bq-snow-rgb) / 0.55) calc(66.666% + 0.5px), transparent calc(66.666% + 0.5px));
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+  pointer-events: none;
+}
+
+.dish-focus-frame:hover .dish-focus-grid,
+.dish-focus-frame:focus-visible .dish-focus-grid {
+  opacity: 0.6;
+}
+
+.dish-focus-frame.is-dragging .dish-focus-grid {
+  opacity: 1;
+}
+
+.dish-focus-frame:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--border), 0 0 0 3px var(--focus);
+}
+
+.dish-focus-help {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* så här blir den runda tallriken på gästsajten */
+.dish-focus-plate {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 2px var(--glass-surface), 0 0 0 3px var(--border);
+}
+
+.dish-focus-hint {
+  margin: 0;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* --- Listan: hela raden öppnar redigeringen (DishRow.tsx) ----------------- */
+
+/* separata kanter (utan mellanrum ser det likadant ut): i collapse-läget
+   ritas radens fokusring ihop med cellkanterna och blir tjockare upptill */
+.meny-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.meny-table th:first-child,
+.meny-table td:first-child {
+  padding-left: 10px;
+}
+
+.meny-table th:last-child,
+.meny-table td:last-child {
+  padding-right: 10px;
+}
+
+.meny-table .dish-cell-image {
+  width: 56px;
+}
+
+.meny-table .cell-price {
+  white-space: nowrap;
+}
+
+.dish-row {
+  cursor: pointer;
+}
+
+.dish-row > td {
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.dish-row:hover > td,
+.dish-row:focus-visible > td {
+  background-color: color-mix(in srgb, var(--glass-highlight) 55%, transparent);
+}
+
+.dish-row:hover > td:first-child,
+.dish-row:focus-visible > td:first-child {
+  border-radius: var(--r-md) 0 0 var(--r-md);
+}
+
+.dish-row:hover > td:last-child,
+.dish-row:focus-visible > td:last-child {
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+}
+
+/* Fokus: en ring runt hela raden (konturen, inte den globala skuggan som
+   en tabellrad bara ritar upptill och nertill). */
+.dish-row:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+/* Bilden: en knapp som visar den i stort. */
+.dish-thumb {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-md);
+  background: none;
+  overflow: hidden;
+  cursor: zoom-in;
+  /* Safari: overflow + border-radius klipper inte en skalad bild utan eget lager */
+  isolation: isolate;
+}
+
+.dish-thumb .dish-photo {
+  transition: scale var(--dur-base) var(--ease-out), filter var(--dur-base) var(--ease-out);
+}
+
+.dish-thumb:hover .dish-photo {
+  scale: 1.08;
+  filter: brightness(1.06) saturate(1.06);
+}
+
+.dish-thumb:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+@media (max-width: 600px) {
+  /* raden blir ett kort: markeringen följer kortet */
+  .dish-row {
+    margin: 0 -10px;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    border-radius: var(--r-md);
+    transition: background-color var(--dur-fast) var(--ease-out);
+  }
+
+  .dish-row:hover,
+  .dish-row:focus-visible {
+    background-color: color-mix(in srgb, var(--glass-highlight) 55%, transparent);
+  }
+
+  /* raden är ett kort (flex) här, så ringen kan följa de runda hörnen */
+  .dish-row:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--focus);
+  }
+
+  .meny-table .dish-cell-image {
+    width: auto;
+  }
+}
+
+@media (hover: none) {
+  .dish-thumb:hover .dish-photo {
+    scale: none;
+    filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dish-row,
+  .dish-row > td,
+  .dish-thumb .dish-photo,
+  .dish-focus-grid {
+    transition: none;
+  }
 }

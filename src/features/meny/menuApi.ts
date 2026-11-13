@@ -2,6 +2,8 @@ import { errorText as commonError } from '../../shared/errors'
 import { apiFetch, ApiError } from '../../shared/api'
 import { withBusy } from '../../shared/motion/busy'
 import type { Dish, DishCategory } from './data'
+import { clampFocus, isCentre, sameFocus } from './imageFocus'
+import type { ImageFocus } from './imageFocus'
 
 /**
  * Klient mot backendens meny-endpoints (openapi.yaml, Menu/Media-taggarna):
@@ -50,6 +52,8 @@ export interface MenuItem {
   /** Schema i UTC; null eller saknas = ingen gräns. Slutet är exklusivt. */
   availableFrom?: string | null
   availableUntil?: string | null
+  /** Bildens fokuspunkt i hela procent; saknas = mitten. */
+  imageFocus?: ImageFocus | null
   createdBy: string
   createdAt: string
   updatedBy: string
@@ -66,7 +70,7 @@ export type PublicMenuItem = Pick<
   MenuItem,
   'menuItemId' | 'name' | 'description' | 'price' | 'category' | 'imageKey'
 > &
-  Partial<Pick<MenuItem, 'active' | 'alcohol'>>
+  Partial<Pick<MenuItem, 'active' | 'alcohol' | 'imageFocus'>>
 
 /** Alla sex fälten krävs vid skapande enligt kontraktet. */
 export interface MenuItemCreate {
@@ -80,6 +84,8 @@ export interface MenuItemCreate {
   /** null rensar gränsen. */
   availableFrom?: string | null
   availableUntil?: string | null
+  /** null = mitten (rensar ett sparat värde). Skickas bara när det ändrats. */
+  imageFocus?: ImageFocus | null
 }
 
 /** Partiell uppdatering - minst ett fält krävs av API:t. */
@@ -114,6 +120,7 @@ export function toDish(item: MenuItem): Dish {
     alcohol: item.alcohol === true,
     imageKey: item.imageKey,
     image: menuImageUrl(item.imageKey),
+    imageFocus: item.imageFocus && !isCentre(item.imageFocus) ? clampFocus(item.imageFocus) : null,
     availableFrom: item.availableFrom ?? null,
     availableUntil: item.availableUntil ?? null,
   }
@@ -149,6 +156,9 @@ export function dishChanges(original: Dish, next: MenuItemCreate): MenuItemUpdat
   }
   if (next.availableUntil !== undefined && next.availableUntil !== original.availableUntil) {
     updates.availableUntil = next.availableUntil
+  }
+  if (next.imageFocus !== undefined && !sameFocus(next.imageFocus, original.imageFocus)) {
+    updates.imageFocus = isCentre(next.imageFocus) ? null : clampFocus(next.imageFocus)
   }
   if (next.imageKey.trim() && next.imageKey !== original.imageKey) {
     updates.imageKey = next.imageKey
@@ -241,7 +251,7 @@ function toFriendlyMenuError(err: unknown): Error {
 
 const MENU_FIELDS: Record<string, string> = {
   name: 'namnet', description: 'beskrivningen', price: 'priset', category: 'kategorin',
-  allergens: 'allergenerna', imageUrl: 'bilden', availableFrom: 'schemats start', availableUntil: 'schemats slut',
+  allergens: 'allergenerna', imageUrl: 'bilden', imageFocus: 'bildens fokus', availableFrom: 'schemats start', availableUntil: 'schemats slut',
   schedule: 'schemat', vatRate: 'momsen', options: 'tillvalen', sortOrder: 'ordningen',
 }
 

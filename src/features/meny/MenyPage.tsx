@@ -1,10 +1,8 @@
-import { RowActions } from '../../shared/RowActions'
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import { onPageAction, takePageAction } from '../../shared/nav'
 import { CtaButton } from '../../shared/CtaButton'
 import { StatTile } from '../../shared/motion/StatTile'
-import { Num } from '../../shared/motion/Num'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useLocationId } from '../../shared/location'
@@ -13,7 +11,6 @@ import { DEFAULT_TIMEZONE } from '../installningar/data'
 import { CATEGORY_LABEL } from './data'
 import type { Dish, DishCategory } from './data'
 import { DishModal } from './DishModal'
-import { Slot } from '../../shared/slots'
 import type { DishFormValues } from './DishModal'
 import {
   CATEGORY_TO_API,
@@ -30,47 +27,17 @@ import {
   uploadMenuImage,
 } from './menuApi'
 import type { MenuItemCreate } from './menuApi'
-import { dishStatus, dishStatusLabel, matchesStatus } from './schedule'
-import type { DishStatus, StatusFilter } from './schedule'
+import { dishStatus, matchesStatus } from './schedule'
+import type { StatusFilter } from './schedule'
 import './meny.css'
-import { Icon } from '../../shared/Icon'
+import { ImageLightbox } from '../../shared/ImageLightbox'
+import { DishRow } from './DishRow'
+import { isCentre } from './imageFocus'
 import { SkelBlock, SkelTableRows } from '../../shared/Skeleton'
 
 type ModalState = { mode: 'add' } | { mode: 'edit'; id: string } | null
 
-const STATUS_BADGE: Record<DishStatus, string> = {
-  active: 'reserved',
-  scheduled: 'arrived',
-  expired: 'waiting',
-  off: 'cancelled-free',
-}
-
 const ALL_CATEGORIES = Object.keys(CATEGORY_LABEL) as DishCategory[]
-
-/**
- * Rättens bild med platshållare som reserv. Bild-URL:en byggs från
- * VITE_MENU_IMAGE_BASE_URL + imageKey; pekar basen fel (eller saknas
- * CDN-regeln) svarar CDN:et med HTML och webbläsaren hade visat en trasig
- * ikon - då är platshållaren ärligare, och felet syns i nätverksfliken.
- */
-function DishImage({ src, alt }: { src: string | null; alt: string }) {
-  const [failed, setFailed] = useState(false)
-  if (!src || failed) {
-    return (
-      <span className="dish-placeholder" aria-hidden="true">
-        <Icon name="dish" size={22} />
-      </span>
-    )
-  }
-  return (
-    <img
-      className="dish-photo"
-      src={src}
-      alt={alt}
-      onError={() => setFailed(true)}
-    />
-  )
-}
 
 /**
  * Figma: admin-meny-page (34:2). Kopplad mot det riktiga meny-API:t
@@ -98,7 +65,17 @@ export default function MenyPage() {
   const [rowError, setRowError] = useState<string | null>(null)
   /** Sant när adminrutterna saknas och publika menyn visas i stället. */
   const [readOnly, setReadOnly] = useState(false)
-  const [busyId, setBusyId] = useState<string | null>(null)
+  /** Rader med ett pågående anrop (reglage eller radering). */
+  const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(() => new Set())
+  const markBusy = (id: string, on: boolean) =>
+    setBusyIds((prev) => {
+      const next = new Set(prev)
+      if (on) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  /** Rätten vars bild visas i stort (bildrutan). */
+  const [preview, setPreview] = useState<Dish | null>(null)
   const [modal, setModal] = useState<ModalState>(() => (takePageAction('new-dish') ? { mode: 'add' } : null))
   // Kommandopaletten (⌘K) kan öppna formuläret direkt.
   useEffect(() => onPageAction('new-dish', () => setModal({ mode: 'add' })), [])
@@ -207,19 +184,24 @@ export default function MenyPage() {
     setDishes((prev) => prev.map((d) => (d.id === updated.id ? updated : d)))
   }
 
+  /**
+   * Reglaget byter direkt (optimistiskt); svarar API:t med fel går raden
+   * tillbaka till hur den var och felet visas ovanför listan.
+   */
   async function toggleActive(dish: Dish) {
-    if (!locationId) return
+    if (!locationId || busyIds.has(dish.id)) return
+    const next = !dish.active
     setRowError(null)
-    setBusyId(dish.id)
+    markBusy(dish.id, true)
+    replaceDish({ ...dish, active: next })
     try {
-      const saved = await updateMenuItem(locationId, dish.id, {
-        active: !dish.active,
-      })
+      const saved = await updateMenuItem(locationId, dish.id, { active: next })
       replaceDish(toDish(saved))
     } catch (err) {
-      setRowError(errorText(err, 'Kunde inte spara.'))
+      setDishes((prev) => prev.map((d) => (d.id === dish.id && d.active === next ? { ...d, active: dish.active } : d)))
+      setRowError(errorText(err, `Kunde inte ${next ? 'aktivera' : 'pausa'} ${dish.name}.`))
     } finally {
-      setBusyId(null)
+      markBusy(dish.id, false)
     }
   }
 
@@ -227,14 +209,14 @@ export default function MenyPage() {
     if (!locationId) return
     if (!window.confirm(`Ta bort ${dish.name} permanent?`)) return
     setRowError(null)
-    setBusyId(dish.id)
+    markBusy(dish.id, true)
     try {
       await deleteMenuItem(locationId, dish.id)
       setDishes((prev) => prev.filter((d) => d.id !== dish.id))
     } catch (err) {
       setRowError(errorText(err, 'Kunde inte ta bort rätten.'))
     } finally {
-      setBusyId(null)
+      markBusy(dish.id, false)
     }
   }
 
@@ -261,6 +243,11 @@ export default function MenyPage() {
       alcohol: values.alcohol,
       availableFrom: values.availableFrom,
       availableUntil: values.availableUntil,
+    }
+    // Fokuspunkten skickas bara när den inte är mitten (ny rätt) eller när
+    // den ändrats (dishChanges), så äldre API:er utan fältet inte påverkas.
+    if (!isCentre(values.imageFocus) || editingDish?.imageFocus) {
+      desired.imageFocus = values.imageFocus
     }
 
     if (modal?.mode === 'edit' && editingDish) {
@@ -376,7 +363,7 @@ export default function MenyPage() {
             </p>
           )}
           <div className="table-scroll">
-            <table className="data-table">
+            <table className="data-table meny-table">
               <thead>
                 <tr>
                   <th aria-label="Bild" />
@@ -408,61 +395,20 @@ export default function MenyPage() {
                     </tr>
                   )}
                 {filteredDishes.map((d, index) => (
-                  <tr key={d.id}>
-                    <td>
-                      <DishImage src={d.image} alt={d.name} />
-                    </td>
-                    <td className="cell-strong">
-                      {d.name}
-                      {d.description && (
-                        <div className="cell-muted">{d.description}</div>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`status-badge cat-${d.category}`}>
-                        {CATEGORY_LABEL[d.category]}
-                      </span>
-                    </td>
-                    <td className="cell-price"><Num>{`${d.price} kr`}</Num></td>
-                    <td>
-                      <span className="dish-status">
-                        <button
-                          type="button"
-                          role="switch"
-                          data-tour={index === 0 ? 'menu-row-toggle' : undefined}
-                          aria-checked={d.active}
-                          aria-label={`${d.name} aktiv`}
-                          className="switch"
-                          disabled={!canEdit || busyId === d.id}
-                          onClick={() => toggleActive(d)}
-                        />
-                        <span className={`status-badge ${STATUS_BADGE[dishStatus(d, now)]}`}>
-                          {dishStatusLabel(d, now, timeZone)}
-                        </span>
-                      </span>
-                    </td>
-                    <td className="right">
-                      <RowActions label="Åtgärder för rätten" tour={index === 0 ? 'menu-row-actions' : undefined}>
-                        <button
-                          type="button"
-                          className="link-action"
-                          disabled={!canEdit || busyId === d.id}
-                          onClick={() => setModal({ mode: 'edit', id: d.id })}
-                        >
-                          Redigera
-                        </button>
-                        <button
-                          type="button"
-                          className="link-action danger"
-                          disabled={!canEdit || busyId === d.id}
-                          onClick={() => removeDish(d)}
-                        >
-                          Radera
-                        </button>
-                        {locationId && <Slot id="meny.dish.share" props={{ locationId, menuItemId: d.id }} />}
-                      </RowActions>
-                    </td>
-                  </tr>
+                  <DishRow
+                    key={d.id}
+                    dish={d}
+                    index={index}
+                    now={now}
+                    timeZone={timeZone}
+                    canEdit={canEdit}
+                    busy={busyIds.has(d.id)}
+                    locationId={locationId}
+                    onOpen={(dish) => setModal({ mode: 'edit', id: dish.id })}
+                    onToggle={toggleActive}
+                    onDelete={removeDish}
+                    onPreview={setPreview}
+                  />
                 ))}
               </tbody>
             </table>
@@ -479,6 +425,9 @@ export default function MenyPage() {
           onSave={handleSave}
           onCancel={() => setModal(null)}
         />
+      )}
+      {preview?.image && (
+        <ImageLightbox src={preview.image} alt={preview.name} onClose={() => setPreview(null)} />
       )}
     </>
   )

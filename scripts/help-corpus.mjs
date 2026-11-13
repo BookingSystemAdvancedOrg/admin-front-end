@@ -225,11 +225,16 @@ export function buildCorpus() {
     return hash && tabLabel[hash] ? `${page}, ${tabLabel[hash]}` : page
   }
 
-  // Menyvalen och inställningsflikarna.
+  // Menyvalen och inställningsflikarna. Två menyval kan leda till samma ställe
+  // (Ladda ner appen på datorn, Installera appen på mobilen): id:t får då valets tour.
+  const navIds = new Set()
   for (const item of nav) {
     const [route, hash] = item.to.split('#')
+    let navId = `nav${item.to === '/' ? ':oversikt' : item.to.replace(/[/#]/g, ':')}`
+    if (navIds.has(navId)) navId = `${navId}:${item.tour ?? navIds.size}`
+    navIds.add(navId)
     push({
-      id: `nav${item.to === '/' ? ':oversikt' : item.to.replace(/[/#]/g, ':')}`,
+      id: navId,
       kind: 'page', route, ...(hash ? { hash } : {}), title: item.label, where: 'vänstermenyn',
       text: `${item.label} finns i vänstermenyn.`,
       highlight: [`help:nav:${item.to}`],

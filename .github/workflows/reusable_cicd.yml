@@ -177,12 +177,14 @@ jobs:
             --exclude "index.html" \
             --exclude "whats-new.json"
 
+          # The "what's new" list in the update notice, read fresh every time.
+          # Uploaded before index.html so a tab that sees the new build also
+          # gets the new list.
+          aws s3 cp dist/whats-new.json "s3://$BUCKET/whats-new.json" \
+            --cache-control "no-cache,no-store,must-revalidate"
           # index.html is the one mutable entry point - never cache it, or
           # clients can get stuck on a stale build referencing gone assets.
           aws s3 cp dist/index.html "s3://$BUCKET/index.html" \
-            --cache-control "no-cache,no-store,must-revalidate"
-          # The "what's new" list in the update notice, read fresh every time.
-          aws s3 cp dist/whats-new.json "s3://$BUCKET/whats-new.json" \
             --cache-control "no-cache,no-store,must-revalidate"
 
       - name: Invalidate CloudFront

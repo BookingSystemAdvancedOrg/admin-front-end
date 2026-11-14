@@ -1788,3 +1788,22 @@
 .title-info > .card-title {
   margin: 0;
 }
+
+/* Brand cards (Card from @booqy/brand, surface "paper" by default) on admin
+   pages look like every other admin card: frosted glass with the liquid edge,
+   and stacked cards keep the same space as the rest of the page (owner
+   2026-11-14, Personalliggare). Cards inside cards keep their own look. */
+.admin-main .bq-card--paper:not(.bq-card .bq-card) {
+  border-radius: var(--radius-card);
+  background: var(--glass-text-bg) var(--liquid-sheen);
+  box-shadow: var(--liquid-edge), var(--elev-1);
+  padding: var(--space-6);
+}
+.admin-main .bq-card + .bq-card {
+  margin-top: 28px;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .admin-main .bq-card--paper:not(.bq-card .bq-card) {
+    background: var(--glass-surface);
+  }
+}

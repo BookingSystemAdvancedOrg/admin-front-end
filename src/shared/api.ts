@@ -175,6 +175,7 @@ export async function apiFetch<T>(
     },
   }))
   let res: Response
+  let ok = false
   try {
     // Servern nås inte för att förnya tokenen: samma fel som ett tappat
     // anrop, aldrig "utloggad" (sessionen gäller fortfarande).
@@ -186,12 +187,13 @@ export async function apiFetch<T>(
       const fresh = await refreshAfterUnauthorized(token)
       if (fresh) res = await send(fresh)
     }
+    ok = res.ok
   } catch (err) {
     // fetch() avvisar bara när svaret aldrig kom (offline, tappad anslutning).
     if (err instanceof TypeError || err instanceof AuthUnavailableError) throw new NetworkError()
     throw err
   } finally {
-    if (writing) busyEnd()
+    if (writing) busyEnd(ok)
   }
   if (!res.ok) {
     throw await toApiError(res)

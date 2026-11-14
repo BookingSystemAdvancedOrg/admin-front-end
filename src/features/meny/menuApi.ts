@@ -459,13 +459,15 @@ export async function uploadMenuImage(
   }
   const grant = await createMenuImageUploadUrl(locationId, contentType)
   // Själva uppladdningen går till S3, inte via apiFetch: visa den som pågående själv.
-  const res = await withBusy(() => fetch(grant.uploadUrl, {
-    method: 'PUT',
-    body: file,
-    headers: { 'Content-Type': grant.requiredHeaders['Content-Type'] },
-  }))
-  if (!res.ok) {
-    throw new Error('Bilduppladdningen misslyckades - försök igen.')
-  }
+  await withBusy(async () => {
+    const res = await fetch(grant.uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': grant.requiredHeaders['Content-Type'] },
+    })
+    if (!res.ok) {
+      throw new Error('Bilduppladdningen misslyckades - försök igen.')
+    }
+  })
   return grant.imageKey
 }

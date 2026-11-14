@@ -5,8 +5,8 @@ import type { BookingTimeRules } from './bookingTime'
 /**
  * Klient mot backendens /locations-endpoints (create-location/get-location).
  * Speglar valideringen i functions/create-location/app.py (dev-grenen):
- * alla sju veckodagar krävs, opensAt < closesAt, intervall får inte
- * överlappa, bookingDurationHours > 0, gracePeriodHours >= 0, email/
+ * alla sju veckodagar krävs, en stängningstid före öppningstiden betyder
+ * efter midnatt, intervall får inte överlappa, bookingDurationHours > 0, gracePeriodHours >= 0, email/
  * phoneNumber krävs vid skapande (se openapi.yaml på localhost:8081).
  *
  * `PUT /locations/{id}` är trots verbet en PARTIELL uppdatering: minst ett
@@ -28,6 +28,16 @@ export const WEEKDAYS = [
 ] as const
 
 export type Weekday = (typeof WEEKDAYS)[number]
+
+export const DAY_LABEL: Record<Weekday, string> = {
+  monday: 'Måndag',
+  tuesday: 'Tisdag',
+  wednesday: 'Onsdag',
+  thursday: 'Torsdag',
+  friday: 'Fredag',
+  saturday: 'Lördag',
+  sunday: 'Söndag',
+}
 
 export interface BusinessHoursInterval {
   opensAt: string
@@ -60,7 +70,7 @@ export interface GuaranteePolicy {
 /** Matbeställning (backend shared/orders.py). */
 export interface OrderingPolicy {
   enabled: boolean
-  /** Beställ online, hämta i kassan. */
+  /** Beställ online, hämta på restaurangen. */
   pickup: boolean
   /** Beställ via QR-koden på bordet, serveras vid bordet. */
   table: boolean
@@ -175,23 +185,43 @@ export function validateGracePeriod(hours: number): string | null {
   return null
 }
 
-/** Validerar en dags intervall: giltig tid, opensAt < closesAt, inget överlapp. */
+/**
+ * Stänger passet efter midnatt? En stängningstid före öppningstiden (eller
+ * 00:00) betyder nästa dag: Lördag 18:00-02:00 stänger söndag 02:00. Samma
+ * regel som servern (application shared/booking_rules.py). Bara när båda
+ * tiderna är hela HH:MM: ett tomt eller halvskrivet fält är inte natt.
+ */
+export function isOvernight({ opensAt, closesAt }: BusinessHoursInterval): boolean {
+  if (!TIME_PATTERN.test(opensAt) || !TIME_PATTERN.test(closesAt)) return false
+  return closesAt < opensAt || closesAt === '00:00'
+}
+
+/** Slutet inom öppningsdagen: "24:00" när passet går över midnatt. */
+function endOnDay(interval: BusinessHoursInterval): string {
+  return isOvernight(interval) ? '24:00' : interval.closesAt
+}
+
+/**
+ * Validerar en dags intervall: giltig tid, olika öppnings- och
+ * stängningstid, inget överlapp. Bara dagens sista pass får gå över midnatt.
+ */
 export function validateDayIntervals(
   day: Weekday,
   intervals: BusinessHoursInterval[],
 ): string | null {
+  const name = DAY_LABEL[day]
   for (const { opensAt, closesAt } of intervals) {
     if (!TIME_PATTERN.test(opensAt) || !TIME_PATTERN.test(closesAt)) {
-      return `${day}: tiderna måste anges som TT:MM.`
+      return `${name}: tiderna måste anges som TT:MM.`
     }
-    if (opensAt >= closesAt) {
-      return `${day}: öppningstiden måste vara före stängningstiden.`
+    if (opensAt === closesAt) {
+      return `${name}: öppnings- och stängningstiden kan inte vara samma.`
     }
   }
   const sorted = [...intervals].sort((a, b) => a.opensAt.localeCompare(b.opensAt))
   for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i - 1].closesAt > sorted[i].opensAt) {
-      return `${day}: tiderna får inte överlappa varandra.`
+    if (endOnDay(sorted[i - 1]) > sorted[i].opensAt) {
+      return `${name}: tiderna får inte överlappa varandra.`
     }
   }
   return null
@@ -201,6 +231,17 @@ export function validateBusinessHours(hours: BusinessHours): string | null {
   for (const day of WEEKDAYS) {
     const error = validateDayIntervals(day, hours[day])
     if (error) return error
+  }
+  // Det som går efter midnatt får inte krocka med nästa dags första pass.
+  for (let i = 0; i < WEEKDAYS.length; i++) {
+    const day = WEEKDAYS[i]
+    const next = WEEKDAYS[(i + 1) % WEEKDAYS.length]
+    const firstNext = [...hours[next]].sort((a, b) => a.opensAt.localeCompare(b.opensAt))[0]
+    for (const interval of hours[day]) {
+      if (isOvernight(interval) && firstNext && interval.closesAt > firstNext.opensAt) {
+        return `${DAY_LABEL[day]}: tiden efter midnatt (till ${interval.closesAt}) krockar med ${DAY_LABEL[next].toLowerCase()}ens första tid (${firstNext.opensAt}).`
+      }
+    }
   }
   return null
 }

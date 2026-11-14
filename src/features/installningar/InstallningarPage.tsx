@@ -493,6 +493,11 @@ export default function InstallningarPage() {
                 setBusinessHours(next)
               }}
             />
+            <div className="hours-hint">
+              <p className="cell-muted">
+                Har ni öppet efter midnatt? Ange stängningstiden som vanligt, t.ex. lördag 18:00-02:00. Passet räknas då in på natten till söndag.
+              </p>
+            </div>
           </section>
 
           {locationId && tab === 'profil' && (

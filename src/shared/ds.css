@@ -480,6 +480,15 @@
     transform: translateY(0);
     opacity: 1;
   }
+  /* Efter klicket: knappens riktiga text, ingen vinnarfras (CtaButton). */
+  .cta.is-clicked:hover:not(:disabled) .cta-text {
+    transform: none;
+    opacity: 1;
+  }
+  .cta.is-clicked:hover:not(:disabled) .cta-win {
+    transform: translateY(100%);
+    opacity: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

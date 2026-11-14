@@ -308,7 +308,7 @@ export function OfferTab() {
             <p className="form-section-label">Så ser det ut</p>
             <CardPreview s={draft} image={image} restaurant={tenant?.name ?? 'restaurangen'} />
             <p className="field-hint">
-              Gästen kryssar själv i att hen vill ha erbjudanden. Koden skickas med e-post och dras av i kassan. Gästen
+              Gästen kryssar själv i att hen vill ha erbjudanden. Koden skickas med e-post och dras av när gästen betalar. Gästen
               blir mottagare av era utskick först när hen bekräftat i mejlet eller använt koden (dubbel bekräftelse).
               Till dess står hen under Mottagare som "Väntar på bekräftelse".
             </p>

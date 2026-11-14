@@ -17,6 +17,7 @@ import {
   addDays,
   dayLabel,
   errorMessage,
+  LOCATION_NOT_BOOKABLE,
   feeSummary,
   isCancelled,
   listReservations,
@@ -81,7 +82,7 @@ export default function BokningarPage() {
           setLoaded((prev) => ({
             key,
             items: prev?.key === key ? prev.items : [],
-            error: errorMessage(err, 'Kunde inte hämta bokningarna.'),
+            error: errorMessage(err, 'Kunde inte hämta bokningarna.', LOCATION_NOT_BOOKABLE),
           }))
         },
       )

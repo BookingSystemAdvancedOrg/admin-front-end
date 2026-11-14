@@ -110,4 +110,18 @@ describe('FloorBooking', () => {
     renderIt()
     expect(await screen.findByText('Ingen bordskarta än')).toBeInTheDocument()
   })
+
+  it('treats the empty plan the API returns before any activation as no layout', async () => {
+    apiFetch.mockResolvedValue({ floors: [], elements: [] })
+    renderIt()
+    expect(await screen.findByText('Ingen bordskarta än')).toBeInTheDocument()
+    expect(getAvailability).not.toHaveBeenCalled()
+  })
+
+  it('says the restaurant takes no bookings when availability is 404, not that a booking is missing', async () => {
+    getAvailability.mockRejectedValue(new ApiError(404, 'location not found', { fromServer: true }))
+    renderIt()
+    expect(await screen.findByText(/tar inte emot bokningar just nu/)).toBeInTheDocument()
+    expect(screen.queryByText(/Bokningen hittades inte/)).toBeNull()
+  })
 })

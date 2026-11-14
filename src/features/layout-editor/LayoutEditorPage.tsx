@@ -39,6 +39,8 @@ import {
   saveLayout,
   toFloors,
 } from './layoutApi'
+import type { LayoutActivation, PublishedLayoutSnapshot } from './layoutApi'
+import { ApiError } from '../../shared/api'
 import {
   actionForKey,
   isTypingTarget,
@@ -1905,9 +1907,13 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
     }
   }, [])
 
-  async function refreshVersionLabel() {
+  /** Läser om versionerna, sätter etiketten och ger listan (null vid fel). */
+  async function refreshVersionLabel(): Promise<PublishedLayoutSnapshot[] | null> {
     const loc = getStoredLocationId()
-    if (loc) setVersionLabel(await versionLabelFor(loc))
+    if (!loc) return null
+    const versions = await listLayoutVersions(loc).catch(() => null)
+    setVersionLabel(versions ? labelFor(versions) : '')
+    return versions
   }
 
   /**
@@ -2039,32 +2045,40 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
     setPublishing(true)
     try {
       const snapshot = await publishLayout(loc)
+      let activation: LayoutActivation
       try {
-        const activation = await activateLayoutVersion(loc, snapshot.version)
-        setPublishCount((n) => n + 1)
-        await refreshVersionLabel()
-        setStatusText(
-          activation.status === 'active'
-            ? `Publicerad och aktiverad som version ${snapshot.version} - gäller nu.`
-            : `Publicerad som version ${snapshot.version}. En annan version gäller ` +
-                `redan, så bytet sker ${formatMoment(activation.cutoverAt)} istället för direkt.`,
-        )
+        activation = await activateWithRetry(loc, snapshot.version)
       } catch (activateErr) {
         // Versionen finns - bara aktiveringen misslyckades (t.ex. saknad
         // behörighet, eller ett annat versionsbyte redan inbokat). Säg det
-        // tydligt så ingen tror att publiceringen också gick fel; den kan
-        // fortfarande aktiveras manuellt. Felmeddelandet för "redan
-        // inbokat" (409) ger redan sin egen vägledning - dubblera den inte.
-        const detail =
-          errorText(activateErr, 'Okänt fel.')
-        const guidance = /aktivera/i.test(detail)
-          ? ''
-          : ' Aktivera den manuellt under Versioner.'
+        // tydligt så ingen tror att den gäller; den kan fortfarande
+        // aktiveras manuellt. Felmeddelandet för "redan inbokat" (409) ger
+        // redan sin egen vägledning - dubblera den inte.
+        setPublishCount((n) => n + 1)
+        await refreshVersionLabel()
+        const detail = errorText(activateErr, 'Okänt fel.')
+        const guidance = /aktivera/i.test(detail) ? '' : ' Aktivera den under Versioner.'
         setLayoutError(
-          `Publicerad som version ${snapshot.version}, men aktiveringen ` +
-            `misslyckades: ${detail}${guidance}`,
+          `Version ${snapshot.version} är publicerad men inte aktiverad: ${detail}${guidance}`,
         )
+        return
       }
+      setPublishCount((n) => n + 1)
+      // Statusraden ska säga samma sak som versionslistan, inte bara svaret.
+      const versions = await refreshVersionLabel()
+      const published = versions?.find((v) => v.version === snapshot.version)
+      if (activation.status === 'active' && published && !published.isCurrent) {
+        setLayoutError(
+          `Version ${snapshot.version} är publicerad men inte aktiverad. Aktivera den under Versioner.`,
+        )
+        return
+      }
+      setStatusText(
+        activation.status === 'active'
+          ? `Publicerad och aktiverad som version ${snapshot.version} - gäller nu.`
+          : `Publicerad som version ${snapshot.version}. En annan version gäller ` +
+              `redan, så bytet sker ${formatMoment(activation.cutoverAt)} istället för direkt.`,
+      )
     } catch (err) {
       setLayoutError(
         `Utkastet sparades, men publiceringen misslyckades: ${errorText(err, 'Kunde inte publicera layouten.')}`,
@@ -3014,15 +3028,32 @@ function formatMoment(iso: string): string {
  */
 async function versionLabelFor(locationId: string): Promise<string> {
   try {
-    const versions = await listLayoutVersions(locationId)
-    if (versions.length === 0) return 'Aldrig publicerad'
-    const current = versions.find((v) => v.isCurrent)
-    return current
-      ? `Gäller: ${current.label}`
-      : `${versions[0].label} · ej aktiverad`
+    return labelFor(await listLayoutVersions(locationId))
   } catch {
     // Utan versionslista är utkastet ändå inläst - visa inget hellre än fel.
     return ''
+  }
+}
+
+function labelFor(versions: PublishedLayoutSnapshot[]): string {
+  if (versions.length === 0) return 'Aldrig publicerad'
+  const current = versions.find((v) => v.isCurrent)
+  return current ? `Gäller: ${current.label}` : `${versions[0].label} · ej aktiverad`
+}
+
+/**
+ * Aktiverar en nypublicerad version, med ett nytt försök efter en sekund om
+ * första anropet faller på nätverk eller serverfel (5xx).
+ * Samma begäran två gånger är ofarlig enligt API:t.
+ */
+async function activateWithRetry(locationId: string, version: number): Promise<LayoutActivation> {
+  try {
+    return await activateLayoutVersion(locationId, version)
+  } catch (err) {
+    const transient = err instanceof ApiError && (err.status === 0 || err.status >= 500)
+    if (!transient) throw err
+    await new Promise((resolve) => window.setTimeout(resolve, 1000))
+    return activateLayoutVersion(locationId, version)
   }
 }
 

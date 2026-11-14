@@ -15,6 +15,7 @@ import {
   createManualReservation,
   dayNotice,
   errorMessage,
+  LOCATION_NOT_BOOKABLE,
   getAvailability,
   isStaleSlotError,
   normalizePhone,
@@ -47,6 +48,8 @@ async function loadActiveLayout(locationId: string): Promise<{ floors: Floor[]; 
     if (err instanceof ApiError && err.status === 404) return null
     throw err
   }
+  // Ingen aktiv layout än: servern svarar 200 med en tom plan.
+  if (layout.floors.length === 0 && layout.elements.length === 0) return null
   const stamp = { updatedBy: '', updatedAt: '' }
   const elements: LayoutElement[] = [
     ...layout.floors.map((f) => ({
@@ -147,7 +150,7 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
       (err) => {
         if (!live) return
         setPlan(null)
-        setPlanError(errorMessage(err, 'Kunde inte hämta bordskartan.'))
+        setPlanError(errorMessage(err, 'Kunde inte hämta bordskartan.', LOCATION_NOT_BOOKABLE))
         setPlanFor(locationId)
       },
     )
@@ -188,7 +191,7 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
         if (!live) return
         setSlots([])
         setDay(null)
-        setSlotsError(errorMessage(err, 'Kunde inte hämta lediga tider.'))
+        setSlotsError(errorMessage(err, 'Kunde inte hämta lediga tider.', LOCATION_NOT_BOOKABLE))
         setSlotsFor(slotsKey)
       },
     )
@@ -278,7 +281,7 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
       setNotes('')
       setTick((n) => n + 1)
     } catch (err) {
-      setError(errorMessage(err))
+      setError(errorMessage(err, undefined, LOCATION_NOT_BOOKABLE))
       if (isStaleSlotError(err)) {
         setStartTime('')
         setTick((n) => n + 1)

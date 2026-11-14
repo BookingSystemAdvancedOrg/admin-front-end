@@ -129,10 +129,12 @@ describe('Guide', () => {
 
     expect(screen.getByRole('dialog', { name: 'Välkommen till Booqy Admin' })).toBeInTheDocument()
     expect(screen.getByText(`1 av ${total}`)).toBeInTheDocument()
-    expect(screen.getByTestId('where')).toHaveTextContent('/')
+    // Startad av sig själv: stannar på sidan man öppnade (direktlänk).
+    expect(screen.getByTestId('where')).toHaveTextContent('/bokningar')
 
     await next(user, 'Visa mig')
     expect(screen.getByRole('dialog', { name: 'Översikt' })).toBeInTheDocument()
+    expect(screen.getByTestId('where')).toHaveTextContent(/^\/$/)
     await next(user)
     expect(screen.getByRole('dialog', { name: 'Kom igång' })).toBeInTheDocument()
 
@@ -237,6 +239,20 @@ describe('Guide', () => {
     expect(one.some((s) => s.id === 'location')).toBe(false)
     expect(two.some((s) => s.id === 'location')).toBe(true)
     expect(two.length).toBe(one.length + 1)
+  })
+
+  it('keeps a direct link open while auto-started, but Hjälp starts from Översikt', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    await renderGuide()
+    await settle(3500)
+    expect(screen.getByRole('dialog', { name: 'Välkommen till Booqy Admin' })).toBeInTheDocument()
+    expect(screen.getByTestId('where')).toHaveTextContent('/bokningar')
+    await user.click(screen.getByRole('button', { name: 'Hoppa över' }))
+    expect(screen.getByTestId('where')).toHaveTextContent('/bokningar')
+
+    await user.click(screen.getByRole('button', { name: 'Starta guiden' }))
+    await settle()
+    expect(screen.getByTestId('where')).toHaveTextContent(/^\/$/)
   })
 
   it('closes with Escape and does not start by itself when autoStart is off', async () => {

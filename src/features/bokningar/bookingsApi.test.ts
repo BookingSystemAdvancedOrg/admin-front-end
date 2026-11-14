@@ -7,6 +7,8 @@ import {
   changeStatus,
   dayLabel,
   errorMessage,
+  LOCATION_NOT_BOOKABLE,
+  RESERVATION_NOT_FOUND,
   feeSummary,
   formatKr,
   getAvailability,
@@ -78,6 +80,13 @@ describe('bookingsApi', () => {
     expect(feeSummary(booking())).toBeNull()
     expect(feeSummary(booking({ payment: { status: 'succeeded', amount: 20000 } }))).toBe('200 kr')
     expect(feeSummary(booking({ payment: { status: 'failed', amount: 20000 } }))).toBe('200 kr misslyckades')
+  })
+
+  it('says a 404 is the booking only where it is about a booking', () => {
+    const notFound = new ApiError(404, 'location not found', { fromServer: true })
+    expect(errorMessage(notFound)).toBe(RESERVATION_NOT_FOUND)
+    expect(errorMessage(notFound, 'Kunde inte hämta lediga tider.', LOCATION_NOT_BOOKABLE)).toBe(LOCATION_NOT_BOOKABLE)
+    expect(LOCATION_NOT_BOOKABLE).not.toMatch(/Bokningen hittades inte/)
   })
 
   it('maps server codes to Swedish messages', () => {

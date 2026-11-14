@@ -385,6 +385,26 @@ describe('staying signed in (transient failures, proactive refresh)', () => {
     expect(mod.isAuthUnreachable()).toBe(false)
   })
 
+  it('logging out during the in-lock retries marks the logout at once and does not wait for the backoff', async () => {
+    const mod = await signedInWithExpiredToken()
+    vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'))
+
+    const refresh = mod.getCurrentSession()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(refreshCalls()).toBe(1)
+
+    const out = mod.signOut()
+    // The marker is there before anything is awaited: quitting now still logs out on the next start.
+    expect(localStorage.getItem('booqy-logout-pending')).toBe('1')
+    await vi.advanceTimersByTimeAsync(0)
+
+    await expect(refresh).resolves.toBeNull()
+    await expect(out).resolves.toBe(false)
+    // No retry after the logout: only the first refresh, then the two logout tries.
+    expect(refreshCalls()).toBe(1)
+    expect(localStorage.getItem('booqy-logout-pending')).toBe('1')
+  })
+
   it('refreshes in the background a few minutes before the access token expires', async () => {
     const mod = await import('./cognito')
     const stop = mod.startSessionKeeper()

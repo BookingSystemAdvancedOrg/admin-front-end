@@ -390,7 +390,18 @@ export const REFRESH_AHEAD_MS = 5 * 60_000
 /** Marginal mot klockskillnad när en token används direkt. */
 const MIN_VALIDITY_MS = 30_000
 
-const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+// Väntan mellan försöken; en utloggning väcker den direkt.
+let wakeRetryWait: (() => void) | null = null
+const wait = (ms: number) =>
+  new Promise<void>((resolve) => {
+    const done = () => {
+      clearTimeout(timer)
+      if (wakeRetryWait === done) wakeRetryWait = null
+      resolve()
+    }
+    const timer = setTimeout(done, ms)
+    wakeRetryWait = done
+  })
 
 /** Ett försök mot /auth/refresh. null = utloggad; kastar AuthUnavailableError annars. */
 async function refreshOnce(): Promise<StoredSession | null> {
@@ -435,12 +446,18 @@ async function refreshSession(): Promise<StoredSession | null> {
     await revokeOnServer()
     return null
   }
+  // Utloggad (här eller i en annan flik) under försöken: sluta direkt, så
+  // att utloggningen inte väntar ut omförsöken.
+  const generation = signOutGeneration
+  const loggedOut = () => generation !== signOutGeneration || logoutPending()
   for (let attempt = 0; ; attempt += 1) {
     try {
       return await refreshOnce()
     } catch (err) {
+      if (loggedOut()) return null
       if (attempt >= REFRESH_RETRY_DELAYS_MS.length) throw err
       await wait(REFRESH_RETRY_DELAYS_MS[attempt])
+      if (loggedOut()) return null
     }
   }
 }
@@ -658,8 +675,9 @@ async function revokeOnServer(): Promise<boolean> {
  * Loggar ut: glömmer tokens i minnet, väntar ut en pågående förnyelse (så
  * att dess nya cookie inte landar efter raderingen), ber servern återkalla
  * refresh-tokenen och radera cookien, och säger sedan till andra flikar.
- * Når anropet inte fram sparas en markering, så att nästa start loggar ut
- * i stället för att logga in igen med cookien som blev kvar. false =
+ * En markering sparas direkt och tas bort först när servern svarat, så att
+ * nästa start loggar ut i stället för att logga in igen med cookien som
+ * blev kvar (även om appen stängs mitt i). false =
  * servern nåddes inte.
  */
 export async function signOut(): Promise<boolean> {
@@ -669,6 +687,10 @@ export async function signOut(): Promise<boolean> {
   clearTimeout(retryTimer)
   setUnreachable(false)
   if (!API_BASE_URL) return true
+  // Markeringen först: stängs appen innan servern nåtts loggar nästa start
+  // ut i stället för att förnya med cookien. revokeOnServer tar bort den.
+  setLogoutPending(true)
+  wakeRetryWait?.()
   if (refreshing) {
     await refreshing.catch(() => null)
   }

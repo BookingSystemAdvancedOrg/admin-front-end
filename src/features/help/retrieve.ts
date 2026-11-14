@@ -1,4 +1,4 @@
-import { parseWhen, todayIn } from './dates'
+import { namesDay, parseWhen, todayIn } from './dates'
 import { entryVisible } from './kb'
 import type { HelpAction, HelpAnswer, HelpCorpus, HelpDoc, HelpLive, HelpView } from './kb'
 
@@ -214,7 +214,8 @@ export function isWhereQuestion(question: string): boolean {
  */
 export function liveFor(live: HelpLive, question: string, today = todayIn()): HelpLive | null {
   const when = parseWhen(question, today)
-  if (!when) return live
+  // Två dagar ("1/2 imorgon"): ingen siffra alls, hellre än dagens.
+  if (!when) return namesDay(question, today) ? null : live
   const metric = live.metric.replace(/(Today|Week|Month)$/, '')
   if (!live.rangeText || metric === live.metric) return null
   const label = when.label.charAt(0).toUpperCase() + when.label.slice(1)

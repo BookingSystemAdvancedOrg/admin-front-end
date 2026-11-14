@@ -4,7 +4,10 @@
  * testade med samma exempel: imorgon, i övermorgon, igår, i förrgår, en
  * veckodag ("på fredag", "nästa fredag", "i fredags"), i helgen, förra och
  * nästa helg, nästa och förra vecka och datum ("20 november", "den 20:e nov
- * 2026", "20/11", "2026-11-20"). Dagarna räknas i Europe/Stockholm.
+ * 2026", "20/11", "2026-11-20"), datum från och till ("5 sep till 10 sep",
+ * "mellan 1 och 7 nov") och från en dag fram till idag ("sedan måndag",
+ * "sedan 1 november"). Två dagar som inte är en period ("1/2 imorgon") ger
+ * null, så att ingen fel dag gissas. Dagarna räknas i Europe/Stockholm.
  *
  * Svaret: from och to (åååå-mm-dd), label ("imorgon, lördag 15 november")
  * och query, frågan med dagen utbytt mot "idag" så att sökningen hittar
@@ -99,25 +102,101 @@ function onDay(d: Day, today: Day, word: string | null, query: string): When {
   return result(d, d, w ? `${w}, ${name}` : name, query)
 }
 
+export const MAX_DAYS = 31
+const ISO = /(?<!\d)(\d{4})-(\d{1,2})-(\d{1,2})(?!\d)/g
+const SLASH = /(?<![\d/])(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?(?![\d/])/g
+const DATE = `(?:den )?(\\d{1,2})(?: e| a)? (${MONTH})(?: (\\d{4}))?`
+/** "5 sep till 10 sep", "5 till 10 sep", "från 1/11 till 7/11", "mellan 1 och 7 nov". */
+const RANGE = [
+  new RegExp(` (?:fran (?:och med )?)?(?:den )?(\\d{1,2})(?: e| a)?(?: (${MONTH}))?(?: (\\d{4}))? (?:till(?: och med)?|t o m|tom) ${DATE}(?= )`),
+  new RegExp(` mellan (?:den )?(\\d{1,2})(?: e| a)?(?: (${MONTH}))?(?: (\\d{4}))? och ${DATE}(?= )`),
+]
+
+/** Datum med siffror utskrivna ("20/11" blir "20 november"), så att ett mönster läser alla; null för en månad som inte finns. */
+function spelled(raw: string): string | null {
+  let bad = false
+  const spell = (d: string, m: string, y: string | undefined) => {
+    if (Number(m) < 1 || Number(m) > 12) {
+      bad = true
+      return ' '
+    }
+    return ` ${Number(d)} ${MONTH_NAMES[Number(m) - 1]}${y ? ` ${y}` : ''} `
+  }
+  const out = raw.replace(ISO, (_, y: string, m: string, d: string) => spell(d, m, y)).replace(SLASH, (_, d: string, m: string, y?: string) => spell(d, m, y))
+  return bad ? null : out
+}
+
+function span(a: Day, b: Day, today: Day, query: string): When | null {
+  if (b < a || between(b, a) + 1 > MAX_DAYS) return null
+  if (a.getTime() === b.getTime()) return onDay(a, today, null, query)
+  return result(a, b, rangeLabel(a, b, today), query)
+}
+
+function since(a: Day, today: Day, query: string): When | null {
+  if (a.getTime() === today.getTime()) return onDay(a, today, null, query)
+  if (between(today, a) + 1 > MAX_DAYS) return null
+  return result(a, today, `sedan ${dayLabel(a, today)}`, query)
+}
+
 /** En dag eller period som inte är idag i frågan, eller null. today: åååå-mm-dd. */
 export function parseWhen(question: string, todayIso: string): When | null {
+  const found = parse1(question, todayIso)
+  // Två dagar som inte är en period ("1/2 imorgon"): ingen gissning.
+  return found && parse1(found.query, todayIso) ? null : found
+}
+
+/** Nämner frågan en dag eller period alls (också två, som parseWhen inte gissar mellan)? */
+export function namesDay(question: string, todayIso: string): boolean {
+  return parse1(question, todayIso) !== null
+}
+
+function parse1(question: string, todayIso: string): When | null {
   const today = parse(todayIso)
-  const raw = (question ?? '').toLowerCase()
-  const q = ` ${fold(question)} `
+  const raw = spelled((question ?? '').toLowerCase())
+  if (raw === null) return null
+  const q = ` ${fold(raw)} `
   let m: RegExpExecArray | null
 
+  // Datum från och till: slutet har månaden, början kan sakna den.
+  for (const pattern of RANGE) {
+    m = pattern.exec(q)
+    if (!m) continue
+    const [, d1, m1, y1, d2, m2, y2] = m
+    const first = MONTHS[m1 ?? m2]
+    const last = MONTHS[m2]
+    let a: Day | null
+    let b: Day | null
+    if (y1 || y2) {
+      a = day(Number(y1 ?? y2), first, Number(d1))
+      b = day(Number(y2 ?? y1), last, Number(d2))
+      // "30 dec till 2 jan 2027": året som inte står flyttas.
+      if (a && b && a > b) {
+        if (!y2) b = day(a.getUTCFullYear() + 1, last, Number(d2))
+        else a = day(b.getUTCFullYear() - 1, first, Number(d1))
+      }
+    } else {
+      a = nearest(first, Number(d1), today)
+      b = a ? day(a.getUTCFullYear(), last, Number(d2)) : null
+      if (a && b && b < a) b = day(a.getUTCFullYear() + 1, last, Number(d2))
+    }
+    return a && b ? span(a, b, today, swap(q, m)) : null
+  }
+
+  // "sedan måndag", "sedan 1 november", "sedan igår": från den dagen fram till idag.
+  m = new RegExp(` sedan (?:i )?(?:(?:forra|forriga) )?(${WD})(?:en|s)? `).exec(q)
+  if (m) return since(plus(today, -((weekday(today) - WEEKDAYS.indexOf(m[1]) + 7) % 7 || 7)), today, swap(q, m))
+  m = new RegExp(` sedan ${DATE}(?= )`).exec(q)
+  if (m) {
+    const month = MONTHS[m[2]]
+    let a = day(m[3] ? Number(m[3]) : today.getUTCFullYear(), month, Number(m[1]))
+    if (a && a > today && !m[3]) a = day(today.getUTCFullYear() - 1, month, Number(m[1]))
+    return a && a <= today ? since(a, today, swap(q, m)) : null
+  }
+  m = / sedan (i ?gar|i ?forrgar) /.exec(q)
+  if (m) return since(plus(today, m[1].includes('forrgar') ? -2 : -1), today, swap(q, m))
+
   // Datum: 2026-11-20, 20/11(/2026), 20 november (2026), den 20:e nov.
-  m = / (\d{4}) (\d{1,2}) (\d{1,2}) /.exec(q)
-  if (m && /\d{4}-\d{1,2}-\d{1,2}/.test(raw)) {
-    const d = day(Number(m[1]), Number(m[2]), Number(m[3]))
-    return d ? onDay(d, today, null, swap(q, m)) : null
-  }
-  const s = /(?<![\d/])(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?(?![\d/])/.exec(raw)
-  if (s) {
-    const d = s[3] ? day(Number(s[3]), Number(s[2]), Number(s[1])) : nearest(Number(s[2]), Number(s[1]), today)
-    return d ? onDay(d, today, null, fold(`${raw.slice(0, s.index)} idag ${raw.slice(s.index + s[0].length)}`)) : null
-  }
-  m = new RegExp(` (?:den )?(\\d{1,2})(?: e| a)? (${MONTH})(?: (\\d{4}))?(?= )`).exec(q)
+  m = new RegExp(` ${DATE}(?= )`).exec(q)
   if (m) {
     const month = MONTHS[m[2]]
     const d = m[3] ? day(Number(m[3]), month, Number(m[1])) : nearest(month, Number(m[1]), today)

@@ -2280,7 +2280,8 @@
       ],
       "live": {
         "metric": "guestsToday",
-        "text": "Idag har ni {value} {gäst|gäster} i bokningarna. Avbokade räknas inte.",
+        "text": "Idag har ni {value} gäster i bokningarna. Avbokade räknas inte.",
+        "countText": "Idag har ni {value} {gäst|gäster} i bokningarna. Avbokade räknas inte.",
         "rangeText": "{period}: {value} {gäst|gäster} i bokningarna. Avbokade räknas inte."
       }
     },
@@ -2314,7 +2315,8 @@
       ],
       "live": {
         "metric": "bookingsToday",
-        "text": "Idag har ni {value} {bokning|bokningar}. Avbokade räknas inte.",
+        "text": "Idag har ni {value} bokningar. Avbokade räknas inte.",
+        "countText": "Idag har ni {value} {bokning|bokningar}. Avbokade räknas inte.",
         "rangeText": "{period}: {value} {bokning|bokningar}. Avbokade räknas inte."
       }
     },
@@ -2347,7 +2349,8 @@
       ],
       "live": {
         "metric": "arrivedToday",
-        "text": "{value} {bokning är markerad|bokningar är markerade} som Kommit idag.",
+        "text": "{value} bokningar är markerade som Kommit idag.",
+        "countText": "{value} {bokning är markerad|bokningar är markerade} som Kommit idag.",
         "rangeText": "{period}: {value} {bokning är markerad|bokningar är markerade} som Kommit."
       }
     },
@@ -2412,7 +2415,8 @@
       ],
       "live": {
         "metric": "noShowsToday",
-        "text": "{value} {bokning uteblev|bokningar uteblev} idag.",
+        "text": "{value} bokningar uteblev idag.",
+        "countText": "{value} {bokning uteblev|bokningar uteblev} idag.",
         "rangeText": "{period}: {value} {bokning uteblev|bokningar uteblev}."
       }
     },
@@ -2427,6 +2431,9 @@
         "hur många beställningar",
         "beställningar idag",
         "antal beställningar",
+        "hur många ordrar",
+        "ordrar idag",
+        "antal ordrar",
         "idag",
         "dag",
         "dagens"
@@ -2442,7 +2449,8 @@
       ],
       "live": {
         "metric": "ordersToday",
-        "text": "Idag har ni fått {value} {beställning|beställningar}.",
+        "text": "Idag har ni fått {value} beställningar.",
+        "countText": "Idag har ni fått {value} {beställning|beställningar}.",
         "rangeText": "{period}: {value} {beställning|beställningar}."
       }
     },
@@ -2505,7 +2513,8 @@
       ],
       "live": {
         "metric": "guestsWeek",
-        "text": "Den här veckan har ni {value} {gäst|gäster} i bokningarna hittills.",
+        "text": "Den här veckan har ni {value} gäster i bokningarna hittills.",
+        "countText": "Den här veckan har ni {value} {gäst|gäster} i bokningarna hittills.",
         "rangeText": "{period}: {value} {gäst|gäster} i bokningarna. Avbokade räknas inte."
       }
     },
@@ -2538,7 +2547,8 @@
       ],
       "live": {
         "metric": "guestsMonth",
-        "text": "Den här månaden har ni {value} {gäst|gäster} i bokningarna hittills.",
+        "text": "Den här månaden har ni {value} gäster i bokningarna hittills.",
+        "countText": "Den här månaden har ni {value} {gäst|gäster} i bokningarna hittills.",
         "rangeText": "{period}: {value} {gäst|gäster} i bokningarna. Avbokade räknas inte."
       }
     },
@@ -2570,7 +2580,8 @@
       ],
       "live": {
         "metric": "bookingsMonth",
-        "text": "Den här månaden har ni {value} {bokning|bokningar} hittills.",
+        "text": "Den här månaden har ni {value} bokningar hittills.",
+        "countText": "Den här månaden har ni {value} {bokning|bokningar} hittills.",
         "rangeText": "{period}: {value} {bokning|bokningar}. Avbokade räknas inte."
       }
     },

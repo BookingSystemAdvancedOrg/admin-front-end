@@ -1,5 +1,6 @@
+import { parseWhen, todayIn } from './dates'
 import { entryVisible } from './kb'
-import type { HelpAction, HelpAnswer, HelpCorpus, HelpDoc, HelpView } from './kb'
+import type { HelpAction, HelpAnswer, HelpCorpus, HelpDoc, HelpLive, HelpView } from './kb'
 
 /**
  * Hittar delarna av kunskapsbasen som passar en fråga och bygger svaret
@@ -24,7 +25,7 @@ const HIDDEN_LEAD = 1.5
 const STOPWORDS = new Set(
   ('jag du vi ni man en ett och att det den de som hur var vad kan ska gor gora har hor till for pa i ' +
     'av med om fran nar dar min mitt mina er ert era sin sitt sina vill skulle mig dig oss ' +
-    'nagon nagot inte ar blir bli finns the a an how do i ' +
+    'nagon nagot inte ar blir bli finns hade the a an how do i ' +
     'hitta hittar ser se visa vart vilken vilka where is what can my our ' +
     // Vanliga verb säger inget om var något finns (ändra, byta, ställa in ...).
     'andra andrar byt byta byter stall stalla staller satt satta satter gor gora lagg lagga lagger ' +
@@ -205,8 +206,23 @@ export function isWhereQuestion(question: string): boolean {
   return /^ (var|vart|where) /.test(q) || / var (ser|hittar|finns|star|kan) /.test(q)
 }
 
+/**
+ * Den levande siffran för frågan. En annan dag eller period ("imorgon", "på
+ * fredag", "nästa vecka", "20 november") ger måttet utan period med datumen
+ * och delens rangeText; null när delen saknar text för andra dagar, så att
+ * en siffra för fel dag aldrig visas. Samma regel som servern (live_for).
+ */
+export function liveFor(live: HelpLive, question: string, today = todayIn()): HelpLive | null {
+  const when = parseWhen(question, today)
+  if (!when) return live
+  const metric = live.metric.replace(/(Today|Week|Month)$/, '')
+  if (!live.rangeText || metric === live.metric) return null
+  const label = when.label.charAt(0).toUpperCase() + when.label.slice(1)
+  return { metric, text: live.rangeText.replace('{period}', label), range: { from: when.from, to: when.to } }
+}
+
 /** Svaret utan språkmodell: den bästa delen, och fler ställen på samma sida lyses upp samtidigt. */
-export function composeAnswer(found: { doc: HelpDoc; score: number }[], question = ''): HelpAnswer {
+export function composeAnswer(found: { doc: HelpDoc; score: number }[], question = '', today = todayIn()): HelpAnswer {
   const [{ doc, score: top }] = found
   const actions = docActions(doc).slice(0, 2)
   if (actions[0]) {
@@ -224,13 +240,14 @@ export function composeAnswer(found: { doc: HelpDoc; score: number }[], question
       : doc.kind === 'page'
         ? (doc.text ?? doc.title)
         : `${doc.title} finns under ${doc.where ?? 'Booqy'}.${doc.text ? ` ${doc.text}` : ''}`
+  const live = doc.live && !isWhereQuestion(question) ? liveFor(doc.live, question, today) : null
   return {
     known: true,
     text,
     steps: (doc.steps ?? []).slice(0, 8),
     actions,
     sources: [doc.id],
-    ...(doc.live && !isWhereQuestion(question) ? { live: doc.live } : {}),
+    ...(live ? { live } : {}),
   }
 }
 
@@ -248,12 +265,30 @@ export function unknownAnswer(ownerOnly = false): HelpAnswer {
   }
 }
 
+/** Nämner frågan det delen räknar ("bokningar", "gäster"), inte bara dagen? */
+function about(doc: HelpDoc, asked: string): boolean {
+  const head = new Set(tokens([doc.title, ...(doc.keywords ?? [])].join(' ')))
+  return tokens(asked).some((q) => q !== 'idag' && [...head].some((d) => matchWeight(q, d) > 0))
+}
+
 /** Svaret utan språkmodell, med förra frågan som stöd för följdfrågor. */
-export function answerLocally(corpus: HelpCorpus, question: string, view: HelpView, previousQuestion = ''): HelpAnswer {
+export function answerLocally(corpus: HelpCorpus, question: string, view: HelpView, previousQuestion = '', today = todayIn()): HelpAnswer {
   if (isSecretQuestion(question)) return refusal()
-  // En kort följdfråga ("Och hur länge?") läses ihop med förra frågan.
+  // En kort följdfråga ("Och hur länge?", "Och imorgon?") läses ihop med förra frågan.
   const short = Boolean(previousQuestion) && tokens(question).length <= 2
-  let { found, ownerHit } = candidates(corpus, short ? `${previousQuestion} ${question}` : question, view)
-  if (found.length === 0 && previousQuestion) ({ found, ownerHit } = candidates(corpus, short ? question : `${previousQuestion} ${question}`, view))
-  return found.length ? composeAnswer(found, question) : unknownAnswer(ownerHit)
+  const lookup = (asked: string) => {
+    let hit = candidates(corpus, short ? `${previousQuestion} ${asked}` : asked, view)
+    if (hit.found.length === 0 && previousQuestion) hit = candidates(corpus, short ? asked : `${previousQuestion} ${asked}`, view)
+    return hit
+  }
+  // En annan dag ("imorgon", "på fredag") söks som idag när det ger en levande
+  // siffra (composeAnswer sätter dagen); andra frågor läses som de är.
+  const when = parseWhen(question, today)
+  const day = when ? lookup(when.query) : { found: [], ownerHit: false }
+  let { found, ownerHit } = day
+  if (!found[0]?.doc.live || !about(found[0].doc, short ? `${previousQuestion} ${when?.query}` : (when?.query ?? ''))) {
+    ;({ found, ownerHit } = lookup(question))
+    ownerHit = ownerHit || (found.length === 0 && day.ownerHit)
+  }
+  return found.length ? composeAnswer(found, question, today) : unknownAnswer(ownerHit)
 }

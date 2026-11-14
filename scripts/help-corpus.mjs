@@ -191,6 +191,31 @@ function hints(text) {
   return Object.fromEntries([...text.matchAll(/^\s*(\w+): '([^']{12,200})',?$/gm)].map((m) => [m[1], clean(m[2])]))
 }
 
+/**
+ * Inställningarnas flikar ur InstallningarPage.tsx: namn (TAB_LABEL), en rad
+ * om vad som finns där (TAB_HINT) och gruppen fliken ligger i (GROUPS), så som
+ * menyn visar dem: först gruppen (Verksamheten), sedan fliken (Restaurang).
+ */
+export function settingsSections() {
+  const text = readFileSync(join(SRC, 'features/installningar/InstallningarPage.tsx'), 'utf8')
+  const block = (name) => {
+    const start = text.indexOf(`const ${name}`)
+    if (start < 0) throw new Error(`InstallningarPage.tsx: hittar inte ${name}`)
+    return text.slice(start, text.indexOf('\n}', start) + 2)
+  }
+  const tabLabel = Object.fromEntries([...block('TAB_LABEL').matchAll(/^\s{2}(\w+): '([^']+)',$/gm)].map((m) => [m[1], m[2]]))
+  const tabHint = hints(block('TAB_HINT'))
+  const groups = text.slice(text.indexOf('const GROUPS'), text.indexOf('\n]', text.indexOf('const GROUPS')))
+  const groupOf = {}
+  for (const m of groups.matchAll(/label: '([^']+)'[^\n]*?tabs: \[([^\]]*)\]/g)) {
+    for (const t of m[2].matchAll(/'(\w+)'/g)) groupOf[t[1]] = m[1]
+  }
+  for (const tab of Object.keys(tabLabel)) {
+    if (!groupOf[tab]) throw new Error(`InstallningarPage.tsx: fliken ${tab} ligger inte i någon grupp (GROUPS)`)
+  }
+  return { tabLabel, tabHint, groupOf }
+}
+
 export function buildCorpus() {
   const files = walk(SRC).filter((f) => !SKIP_DIRS.some((d) => relative(SRC, f).startsWith(d)))
   const nav = parseNav()
@@ -202,9 +227,7 @@ export function buildCorpus() {
     const extra = EXTRA_PAGES[route]
     return extra ? { to: route, label: extra.label, feature: extra.feature ?? null, ownerOnly: Boolean(extra.ownerOnly), insights: false } : null
   }
-  const settingsText = readFileSync(join(SRC, 'features/installningar/InstallningarPage.tsx'), 'utf8')
-  const tabLabel = Object.fromEntries([...settingsText.matchAll(/^\s{2}(\w+): '([^']+)',$/gm)].filter((m) => m[2].length < 30).map((m) => [m[1], m[2]]))
-  const tabHint = hints(settingsText.slice(settingsText.indexOf('TAB_HINT')))
+  const { tabLabel, tabHint, groupOf } = settingsSections()
 
   const docs = []
   const seen = new Set()
@@ -222,7 +245,7 @@ export function buildCorpus() {
   }
   const where = (route, hash) => {
     const page = pageInfo(route)?.label ?? route
-    return hash && tabLabel[hash] ? `${page}, ${tabLabel[hash]}` : page
+    return hash && tabLabel[hash] ? `${page}, ${groupOf[hash]}, ${tabLabel[hash]}` : page
   }
 
   // Menyvalen och inställningsflikarna. Två menyval kan leda till samma ställe
@@ -244,7 +267,8 @@ export function buildCorpus() {
   for (const [tab, label] of Object.entries(tabLabel)) {
     push({
       id: `settings:${tab}`, kind: 'page', route: '/installningar', hash: tab, title: label,
-      where: `Inställningar, ${label}`, text: `${label} finns under Inställningar.${tabHint[tab] ? ` ${tabHint[tab]}.` : ''}`,
+      where: `Inställningar, ${groupOf[tab]}, ${label}`,
+      text: `${label} finns under Inställningar, ${groupOf[tab]}.${tabHint[tab] ? ` ${tabHint[tab]}.` : ''}`,
       highlight: [`help:settings-tab:${tab}`],
       ...access('/installningar', tab),
     })

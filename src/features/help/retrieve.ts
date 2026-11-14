@@ -272,19 +272,29 @@ function about(doc: HelpDoc, asked: string): boolean {
   return tokens(asked).some((q) => q !== 'idag' && [...head].some((d) => matchWeight(q, d) > 0))
 }
 
+const FOLLOW_UP = /^ (och|men|samma|an|and|but|what about|how about) /
+
+/** Hittar frågan ensam en del om det den nämner? */
+function standsAlone(corpus: HelpCorpus, asked: string, view: HelpView): boolean {
+  const { found } = candidates(corpus, asked, view)
+  return found.length > 0 && about(found[0].doc, asked)
+}
+
 /** Svaret utan språkmodell, med förra frågan som stöd för följdfrågor. */
 export function answerLocally(corpus: HelpCorpus, question: string, view: HelpView, previousQuestion = '', today = todayIn()): HelpAnswer {
   if (isSecretQuestion(question)) return refusal()
-  // En kort följdfråga ("Och hur länge?", "Och imorgon?") läses ihop med förra frågan.
-  const short = Boolean(previousQuestion) && tokens(question).length <= 2
+  // En annan dag ("imorgon", "på fredag") söks som idag när det ger en levande
+  // siffra (composeAnswer sätter dagen); andra frågor läses som de är.
+  const when = parseWhen(question, today)
+  // En kort följdfråga ("Och hur länge?", "Och imorgon?") läses ihop med förra frågan;
+  // en kort fråga som står för sig själv ("Var ändrar jag öppettiderna?") gör det inte.
+  const short = Boolean(previousQuestion) && tokens(question).length <= 2 &&
+    (FOLLOW_UP.test(` ${fold(question)} `) || !standsAlone(corpus, when?.query ?? question, view))
   const lookup = (asked: string) => {
     let hit = candidates(corpus, short ? `${previousQuestion} ${asked}` : asked, view)
     if (hit.found.length === 0 && previousQuestion) hit = candidates(corpus, short ? asked : `${previousQuestion} ${asked}`, view)
     return hit
   }
-  // En annan dag ("imorgon", "på fredag") söks som idag när det ger en levande
-  // siffra (composeAnswer sätter dagen); andra frågor läses som de är.
-  const when = parseWhen(question, today)
   const day = when ? lookup(when.query) : { found: [], ownerHit: false }
   let { found, ownerHit } = day
   if (!found[0]?.doc.live || !about(found[0].doc, short ? `${previousQuestion} ${when?.query}` : (when?.query ?? ''))) {

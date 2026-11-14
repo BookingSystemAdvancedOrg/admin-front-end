@@ -54,3 +54,23 @@ describe('help eval (admin)', () => {
     if (e.live !== undefined) expect(a.live?.metric ?? null).toBe(e.live)
   })
 })
+
+describe('follow-ups (admin)', () => {
+  const owner: HelpView = { role: 'owner_user', features: Object.fromEntries(FEATURE_KEYS.map((f) => [f, true])), staffInsights: true }
+  const today = '2026-11-14'
+
+  it.each(['', 'Hur många bokningar har vi imorgon?', 'Hur många bokningar har vi idag?'])(
+    'a where-question after "%s" finds the settings section', (previous) => {
+      const a = answerLocally(corpus, 'Var ändrar jag öppettiderna?', owner, previous, today)
+      expect(a.known).toBe(true)
+      expect(a.sources).toEqual(['inst-oppettider'])
+      expect(a.text).toContain('Inställningar, Verksamheten, Restaurang')
+      expect(a.live).toBeUndefined()
+    })
+
+  it('a short follow-up still reads the previous question', () => {
+    const a = answerLocally(corpus, 'Och imorgon?', owner, 'Hur många gäster har vi idag?', today)
+    expect(a.live?.metric).toBe('guests')
+    expect(a.live?.range).toEqual({ from: '2026-11-15', to: '2026-11-15' })
+  })
+})

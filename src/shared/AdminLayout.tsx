@@ -22,6 +22,7 @@ import { preloadPages } from '../pages'
 import { NAV_FOOTER, NAV_GROUPS, navVisible, onItem, recentPages, rememberPage, requestPageAction, visibleNav } from './nav'
 import type { NavItem } from './nav'
 import { Icon } from './Icon'
+import { RoleGate } from './RoleGate'
 import { CommandPalette } from './CommandPalette'
 import type { PaletteItem } from './CommandPalette'
 import './ds.css'
@@ -337,7 +338,9 @@ export function AdminLayout() {
             <DpaBanner />
             {/* Sidans kod hämtas när den öppnas (App.tsx); under tiden samma skelett som när restaurangen hämtas. */}
             <Suspense fallback={<div className="admin-main"><SkelPage label="Hämtar sidan"><SkelTiles /><SkelCard rows={5} /></SkelPage></div>}>
-              <Outlet key={locationId ?? 'no-location'} />
+              <RoleGate>
+                <Outlet key={locationId ?? 'no-location'} />
+              </RoleGate>
             </Suspense>
           </MotionScope>
         ) : (

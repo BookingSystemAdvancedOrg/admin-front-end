@@ -335,6 +335,12 @@ export default function InstallningarPage() {
       : t === 'bestallning' || t === 'skrivare'
         ? Boolean(tenant?.entitlements.features.ordering)
         : true
+  // Personalen som följer en länk till en ägarflik (#bokforing m.fl.) hamnar på Profil.
+  useEffect(() => {
+    if (tenant && !showTab(tab)) setTab('profil')
+    // showTab beror bara på tenant
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, tenant])
   const tabGroups = GROUPS.map((g) => ({ ...g, tabs: g.tabs.filter(showTab) })).filter((g) => g.tabs.length > 0)
   const activeGroup = tabGroups.find((g) => g.tabs.includes(tab))?.id ?? tabGroups[0]?.id
   const openGroup = tabGroups.find((g) => g.id === activeGroup)

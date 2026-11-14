@@ -27,8 +27,15 @@ export type HelpAction = {
   highlight?: string[]
 }
 
-/** En levande siffra ur restaurangens egna data (live.ts), t.ex. gäster idag. */
-export type HelpLive = { metric: string; text: string }
+/**
+ * En levande siffra ur restaurangens egna data (live.ts), t.ex. gäster idag.
+ * text: {value} är siffran (bara det, så läser äldre appar texten rätt).
+ * countText: samma text där {en|flera} väljer ental eller flertal efter
+ * siffran; den läses före text. rangeText: för en annan dag eller period
+ * ({period} = "Imorgon, lördag 15 november"); servern sätter då range och
+ * måttet utan period (guests).
+ */
+export type HelpLive = { metric: string; text: string; countText?: string; rangeText?: string; range?: { from: string; to: string } }
 
 export type HelpEntry = {
   id: string

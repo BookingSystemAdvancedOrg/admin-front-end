@@ -2,7 +2,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { FEATURE_KEYS } from '../../shared/contracts'
-import { buildCorpus, helpSlug } from '../../../scripts/help-corpus.mjs'
+import { buildCorpus, helpSlug, settingsSections } from '../../../scripts/help-corpus.mjs'
 import { KB, PAGE_ACTIONS, ROUTE_PATTERNS } from './kb'
 
 /**
@@ -89,5 +89,28 @@ describe('help knowledge base', () => {
     const used = buildCorpus().docs.flatMap((d) => [...(d.highlight ?? []), ...(d.actions ?? []).flatMap((a) => a.highlight ?? [])])
     const missing = [...new Set(used.filter((h) => h.startsWith('help:')).map((h) => h.slice(5)))].filter((id) => !known.has(id))
     expect(missing, `data-help som inte finns: ${missing.join(', ')}`).toEqual([])
+  })
+
+  it('names settings as the menu does: Inställningar, group, tab', () => {
+    // Menyn visar först grupperna (Verksamheten), sedan flikarna (Restaurang).
+    const { tabLabel, groupOf } = settingsSections()
+    const paths = new Set(Object.entries(tabLabel).map(([tab, label]) => `${groupOf[tab]}, ${label}`))
+    const groups = new Set(Object.values(groupOf))
+    const tabNames = Object.values(tabLabel).sort((a, b) => b.length - a.length)
+    const texts = buildCorpus().docs.flatMap((d) => [d.answer ?? '', d.where ?? '', d.text ?? '', ...(d.steps ?? [])])
+    for (const text of texts) {
+      for (const m of text.matchAll(/Inställningar, (?!välj |så )([^.:]+?)(?=[.:]|$| om | så )/g)) {
+        const rest = m[1].replace(/,$/, '')
+        const ok = [...paths].some((p) => rest === p || rest.startsWith(`${p}, `)) || groups.has(rest)
+        expect(ok, `"${text}" pekar inte på en grupp och flik i Inställningar`).toBe(true)
+      }
+      for (const m of text.matchAll(/Inställningar,? (?:och )?välj ([^.]+)\./g)) {
+        const pick = /^(.+) och sedan (.+)$/.exec(m[1])
+        expect(pick && paths.has(`${pick[1]}, ${pick[2]}`), `"${text}": skriv "Öppna Inställningar, välj <grupp> och sedan <flik>."`).toBe(true)
+      }
+      for (const name of tabNames) {
+        expect(text.includes(`Inställningar, ${name}`) && !groups.has(name), `"${text}" saknar gruppen före ${name}`).toBe(false)
+      }
+    }
   })
 })

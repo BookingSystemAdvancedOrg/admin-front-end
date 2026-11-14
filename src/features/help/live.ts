@@ -13,7 +13,8 @@ import { sampleInsights } from '../statistik/insightsSample'
  * som på Statistik.
  */
 
-type Period = 'today' | 'week' | 'month'
+/** 'range': bara med datumen som servern tolkat ur frågan (imorgon, på fredag, nästa vecka). */
+type Period = 'today' | 'week' | 'month' | 'range'
 type Metric = { period: Period; money?: boolean; value: (s: InsightsSummary) => number | null | undefined; format: 'int' | 'pct' | 'kr' }
 
 export const METRICS: Record<string, Metric> = {
@@ -29,6 +30,40 @@ export const METRICS: Record<string, Metric> = {
   guestsMonth: { period: 'month', value: (s) => s.guests, format: 'int' },
   bookingsMonth: { period: 'month', value: (s) => s.bookings, format: 'int' },
   revenueMonth: { period: 'month', money: true, value: (s) => s.revenue, format: 'kr' },
+  guests: { period: 'range', value: (s) => s.guests, format: 'int' },
+  bookings: { period: 'range', value: (s) => s.bookings, format: 'int' },
+  arrived: { period: 'range', value: (s) => s.arrived, format: 'int' },
+  occupancy: { period: 'range', value: (s) => s.occupancy, format: 'pct' },
+  noShows: { period: 'range', value: (s) => s.noShows, format: 'int' },
+  orders: { period: 'range', value: (s) => s.orders, format: 'int' },
+  revenue: { period: 'range', money: true, value: (s) => s.revenue, format: 'kr' },
+}
+
+/** Mått som finns för dagar som inte har varit: bokningarna som ligger kvar (GET /insights upcoming). */
+const AHEAD: Record<string, 'bookings' | 'guests'> = { bookings: 'bookings', guests: 'guests' }
+/** Så många dagar efter idag som /insights räknar bokningar (MAX_AHEAD i functions/insights). */
+export const MAX_AHEAD = 14
+export const NOT_YET = 'Den siffran finns först när dagen har varit. Fråga om bokningar eller gäster för dagar framåt.'
+export const TOO_FAR = `Jag kan räkna bokningar och gäster högst ${MAX_AHEAD} dagar framåt. Bokningar visar dagarna längre fram.`
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/
+/** Längsta perioden assistenten frågar efter (servern tolkar högst en vecka). */
+const MAX_RANGE_DAYS = 31
+
+const daysFrom = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000)
+
+function validRange(range: { from: string; to: string } | undefined): range is { from: string; to: string } {
+  if (!range || !DAY.test(range.from) || !DAY.test(range.to) || range.from > range.to) return false
+  const days = (Date.parse(`${range.to}T00:00:00Z`) - Date.parse(`${range.from}T00:00:00Z`)) / 86_400_000
+  return Number.isFinite(days) && days < MAX_RANGE_DAYS
+}
+
+/**
+ * Texten med siffran: {value} blir siffran och {en|flera} ental när siffran
+ * är 1, annars flertal ("1 bokning", "2 bokningar", "1 gäst är markerad").
+ */
+export function fillLive(text: string, value: number, shown: string): string {
+  return text.replace(/\{([^{}|]*)\|([^{}|]*)\}/g, (_, one: string, many: string) => (value === 1 ? one : many)).replace('{value}', shown)
 }
 
 function format(value: number, kind: Metric['format']): string {
@@ -37,9 +72,15 @@ function format(value: number, kind: Metric['format']): string {
   return kind === 'kr' ? `${n} kr` : n
 }
 
-/** Svarets text med siffran insatt ({value}), eller null när den inte går att få. */
+/**
+ * Svarets text med siffran insatt ({value}), eller null när den inte går att
+ * få. /insights räknar bara dagar fram till idag; dagar efter idag räknas ur
+ * bokningarna som ligger kvar (upcoming, högst MAX_AHEAD dagar), och mått som
+ * inte finns än (kommit, uteblivna, beställningar, omsättning, beläggning) ger
+ * en förklaring i stället för 0.
+ */
 export async function resolveLive(
-  live: { metric: string; text: string },
+  live: { metric: string; text: string; countText?: string; range?: { from: string; to: string } },
   ctx: { locationId: string | null; timezone: string | null; isOwner: boolean; fetch?: typeof fetchInsights },
 ): Promise<string | null> {
   const metric = METRICS[live.metric]
@@ -49,13 +90,28 @@ export async function resolveLive(
   if (!metric || !locationId) return null
   if (metric.money && !ctx.isOwner) return null
   const today = todayIn(ctx.timezone)
-  const range = metric.period === 'today' ? { from: today, to: today } : presetRange(metric.period, today)
-  const filters = { ...range, locationId, service: 'all' as const, channel: 'all' as const, compare: 'none' as const }
+  let range: { from: string; to: string }
+  if (metric.period === 'range') {
+    if (!validRange(live.range)) return null
+    range = { from: live.range.from, to: live.range.to }
+  } else range = metric.period === 'today' ? { from: today, to: today } : presetRange(metric.period, today)
+  const ahead = range.to > today ? daysFrom(today, range.to) : 0
+  const upcoming = AHEAD[live.metric]
+  if (ahead > 0 && !upcoming) return NOT_YET
+  if (ahead > MAX_AHEAD) return TOO_FAR
+  const filters = { ...range, locationId, service: 'all' as const, channel: 'all' as const, compare: 'none' as const, ...(ahead ? { ahead } : {}) }
   let data: InsightsResponse
-  if (mock) data = sampleInsights({ ...filters, preset: metric.period }, today, ctx.isOwner)
+  if (mock) data = sampleInsights({ ...filters, preset: metric.period === 'range' ? 'custom' : metric.period }, today, ctx.isOwner)
   else data = await (ctx.fetch ?? fetchInsights)(filters)
   if (metric.money && !data.money) return null
-  const value = metric.value(data.current)
+  let value = range.from <= today ? metric.value(data.current) : 0
   if (value === null || value === undefined) return null
-  return live.text.replace('{value}', format(value, metric.format))
+  if (upcoming && ahead) {
+    // Servern räknar current bara till idag; resten ur upcoming (dagarna efter idag).
+    const days = (data.upcoming ?? []).filter((d) => d.date > today && d.date >= range.from && d.date <= range.to)
+    // Ett svar utan upcoming (äldre server) eller med dagar som saknas ger ingen siffra hellre än en för låg.
+    if (days.length !== (range.from > today ? daysFrom(range.from, range.to) + 1 : ahead)) return null
+    value += days.reduce((sum, d) => sum + d[upcoming], 0)
+  }
+  return fillLive(live.countText ?? live.text, value, format(value, metric.format))
 }

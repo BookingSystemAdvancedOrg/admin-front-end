@@ -47,10 +47,10 @@
       "answer": "Checklistan Kom igång på Översikten tar dig igenom det som behövs innan gästerna kan boka och beställa.",
       "steps": [
         "Godkänn personuppgiftsbiträdesavtalet under Avtal.",
-        "Lägg in öppettider under Inställningar, Restaurang.",
+        "Lägg in öppettider under Inställningar, Verksamheten, Restaurang.",
         "Lägg upp menyn under Meny.",
         "Rita, publicera och aktivera en bordslayout under Layout.",
-        "Slutför Stripe under Inställningar, Betalningar, så att ni kan ta betalt med kort.",
+        "Slutför Stripe under Inställningar, Ekonomi, Betalningar, så att ni kan ta betalt med kort.",
         "Bjud in personalen under Personal."
       ],
       "actions": [
@@ -112,7 +112,7 @@
       ],
       "answer": "Du bestämmer om personalen ser driftsiffrorna på Statistik. Belopp och omsättning ser personalen aldrig.",
       "steps": [
-        "Öppna Inställningar och välj Statistik under Data och integritet.",
+        "Öppna Inställningar, välj Data och integritet och sedan Statistik.",
         "Välj om personalen ser statistik.",
         "Tryck Spara."
       ],
@@ -344,9 +344,9 @@
         "hålltid",
         "max antal i kö"
       ],
-      "answer": "Om gästerna kan ställa sig i kö från hemsidan, hur länge ett erbjudet bord hålls och hur lång kön får bli ställer du in under Inställningar, Bord.",
+      "answer": "Om gästerna kan ställa sig i kö från hemsidan, hur länge ett erbjudet bord hålls och hur lång kön får bli ställer du in under Inställningar, Verksamheten, Bord.",
       "steps": [
-        "Öppna Inställningar och välj Bord.",
+        "Öppna Inställningar, välj Verksamheten och sedan Bord.",
         "Under Kö slår du på kön och väljer om gäster kan ställa sig i kö från hemsidan.",
         "Ställ in Hålltid (minuter) och Max antal i kö.",
         "Tryck Spara bordsregler."
@@ -465,9 +465,9 @@
         "gästerna kan beställa",
         "kan beställa vid bordet"
       ],
-      "answer": "Avhämtning, beställning vid bordet och QR-koderna till borden ställer du in under Inställningar, Beställning.",
+      "answer": "Avhämtning, beställning vid bordet och QR-koderna till borden ställer du in under Inställningar, Gäster, Beställning.",
       "steps": [
-        "Öppna Inställningar och välj Beställning.",
+        "Öppna Inställningar, välj Gäster och sedan Beställning.",
         "Slå på Ta emot beställningar och välj Avhämtning och Beställning vid bordet (QR-kod).",
         "Ställ in tillagningstid som gästen ser och sista beställning före stängning.",
         "Tryck Spara beställning.",
@@ -497,9 +497,9 @@
         "testutskrift",
         "pappersbredd"
       ],
-      "answer": "En kökskrivare som skriver ut beställningarna lägger du till under Inställningar, Skrivare.",
+      "answer": "En kökskrivare som skriver ut beställningarna lägger du till under Inställningar, Gäster, Skrivare.",
       "steps": [
-        "Öppna Inställningar och välj Skrivare.",
+        "Öppna Inställningar, välj Gäster och sedan Skrivare.",
         "Tryck Lägg till skrivare och följ stegen. Uppgifterna som visas skriver du in i skrivaren direkt, de visas bara en gång.",
         "Tryck Testutskrift för att se att den fungerar.",
         "Slå på Skriv ut beställningar automatiskt, välj skrivare och pappersbredd och tryck Spara skrivare."
@@ -1568,7 +1568,7 @@
       ],
       "answer": "Ägaren ställer in när gästerna ombeds lämna omdöme under Marknadsföring, Omdömen.",
       "steps": [
-        "Koppla Google under Inställningar, Restaurang om det inte är gjort.",
+        "Koppla Google under Inställningar, Verksamheten, Restaurang om det inte är gjort.",
         "Öppna Marknadsföring och fliken Omdömen.",
         "Välj fördröjning och hur ofta en gäst får frågan och tryck Spara."
       ],
@@ -1649,9 +1649,9 @@
         "e-post restaurang",
         "grace period"
       ],
-      "answer": "Öppettider, adress och kontaktuppgifter ändrar ägaren under Inställningar, Restaurang.",
+      "answer": "Öppettider, adress och kontaktuppgifter ändrar ägaren under Inställningar, Verksamheten, Restaurang.",
       "steps": [
-        "Öppna Inställningar och välj Restaurang.",
+        "Öppna Inställningar, välj Verksamheten och sedan Restaurang.",
         "Ändra namn, telefon, adress, e-post eller öppettider.",
         "Tryck Spara ändringar."
       ],
@@ -1678,9 +1678,9 @@
         "specialtid",
         "hur länge bokning"
       ],
-      "answer": "Hur länge ett bord är bokat och sista sittning före stängning ställer ägaren in under Inställningar, Restaurang, Bokningstid.",
+      "answer": "Hur länge ett bord är bokat och sista sittning före stängning ställer ägaren in under Inställningar, Verksamheten, Restaurang, Bokningstid.",
       "steps": [
-        "Öppna Inställningar och välj Restaurang.",
+        "Öppna Inställningar, välj Verksamheten och sedan Restaurang.",
         "Under Bokningstid väljer du standardlängd och sista sittning före stängning.",
         "Lägg till specialtider vid behov.",
         "Tryck Spara bokningstid."
@@ -1717,9 +1717,9 @@
         "stänga onlinebokningen",
         "stäng onlinebokningen"
       ],
-      "answer": "Helgdagar, stängda dagar och andra öppettider lägger ägaren in under Inställningar, Avvikande dagar.",
+      "answer": "Helgdagar, stängda dagar och andra öppettider lägger ägaren in under Inställningar, Verksamheten, Avvikande dagar.",
       "steps": [
-        "Öppna Inställningar och välj Avvikande dagar.",
+        "Öppna Inställningar, välj Verksamheten och sedan Avvikande dagar.",
         "Tryck Lägg till dag, välj datum och typ (Stängt, Andra öppettider eller Ingen onlinebokning).",
         "Skriv gärna en anteckning till gästerna och tryck Lägg till.",
         "Tryck Spara dagar.",
@@ -1747,9 +1747,9 @@
         "onlinebokning bord",
         "kombinera bord"
       ],
-      "answer": "Vilka bord som kan bokas online, för hur många och vilka bord som kan slås ihop ställer ägaren in under Inställningar, Bord.",
+      "answer": "Vilka bord som kan bokas online, för hur många och vilka bord som kan slås ihop ställer ägaren in under Inställningar, Verksamheten, Bord.",
       "steps": [
-        "Öppna Inställningar och välj Bord.",
+        "Öppna Inställningar, välj Verksamheten och sedan Bord.",
         "Välj för varje bord om det kan bokas online och för hur många personer.",
         "Lägg till kombinationer under Ny kombination.",
         "Tryck Spara bordsregler."
@@ -1777,9 +1777,9 @@
         "mejl vid bokning",
         "avsändarnamn"
       ],
-      "answer": "Om gästerna får sms, när påminnelsen skickas och om ni får mejl vid nya bokningar ställer ägaren in under Inställningar, Notiser.",
+      "answer": "Om gästerna får sms, när påminnelsen skickas och om ni får mejl vid nya bokningar ställer ägaren in under Inställningar, Gäster, Notiser.",
       "steps": [
-        "Öppna Inställningar och välj Notiser.",
+        "Öppna Inställningar, välj Gäster och sedan Notiser.",
         "Slå på eller av SMS till gästen (kostar per sms) och välj avsändarnamn.",
         "Välj påminnelse före besöket.",
         "Välj om restaurangen får e-post vid nya bokningar.",
@@ -1808,9 +1808,9 @@
         "garanti",
         "policy"
       ],
-      "answer": "Kortgaranti och avgifter för sen avbokning och no-show ställer ägaren in under Inställningar, Avbokning. Stripe måste vara klart först.",
+      "answer": "Kortgaranti och avgifter för sen avbokning och no-show ställer ägaren in under Inställningar, Gäster, Avbokning. Stripe måste vara klart först.",
       "steps": [
-        "Öppna Inställningar och välj Avbokning.",
+        "Öppna Inställningar, välj Gäster och sedan Avbokning.",
         "Slå på Kortgaranti vid onlinebokning och välj från hur många personer.",
         "Ange när en avbokning räknas som sen och avgifterna per person.",
         "Tryck Spara policy."
@@ -1838,9 +1838,9 @@
         "ta emot betalning",
         "betalkonto"
       ],
-      "answer": "Kortbetalningar går via Stripe. Ägaren slutför kontot under Inställningar, Betalningar.",
+      "answer": "Kortbetalningar går via Stripe. Ägaren slutför kontot under Inställningar, Ekonomi, Betalningar.",
       "steps": [
-        "Öppna Inställningar och välj Betalningar.",
+        "Öppna Inställningar, välj Ekonomi och sedan Betalningar.",
         "Tryck Slutför Stripe-konfigurationen (eller Komplettera uppgifter hos Stripe).",
         "Fyll i uppgifterna hos Stripe och kom tillbaka hit.",
         "När det står Redo att ta emot betalningar är allt klart."
@@ -1870,9 +1870,9 @@
         "visma",
         "redovisning"
       ],
-      "answer": "Försäljningen för en period laddar ägaren ner som SIE- eller CSV-fil under Inställningar, Bokföring.",
+      "answer": "Försäljningen för en period laddar ägaren ner som SIE- eller CSV-fil under Inställningar, Ekonomi, Bokföring.",
       "steps": [
-        "Öppna Inställningar och välj Bokföring.",
+        "Öppna Inställningar, välj Ekonomi och sedan Bokföring.",
         "Välj period och filformat.",
         "Tryck Ladda ner SIE-fil eller Ladda ner CSV-fil.",
         "Konton och verifikationsserie kan ändras på samma sida."
@@ -1900,9 +1900,9 @@
         "integritetstext",
         "dataskydd"
       ],
-      "answer": "Integritetstexten och förfrågningar från gäster om att radera sina uppgifter hanterar ägaren under Inställningar, Integritet.",
+      "answer": "Integritetstexten och förfrågningar från gäster om att radera sina uppgifter hanterar ägaren under Inställningar, Data och integritet, Integritet.",
       "steps": [
-        "Öppna Inställningar och välj Integritet.",
+        "Öppna Inställningar, välj Data och integritet och sedan Integritet.",
         "Ändra texten och tryck Spara text.",
         "Sök fram gästen med e-post eller telefon.",
         "Tryck Återkalla samtycke eller Radera gästens uppgifter."
@@ -1931,9 +1931,9 @@
         "volym",
         "dark mode"
       ],
-      "answer": "Ljust eller mörkt läge och klickljudet väljer du själv under Inställningar, Utseende och ljud. Valet gäller den här webbläsaren.",
+      "answer": "Ljust eller mörkt läge och klickljudet väljer du själv under Inställningar, Den här enheten, Utseende och ljud. Valet gäller den här webbläsaren.",
       "steps": [
-        "Öppna Inställningar och välj Utseende och ljud.",
+        "Öppna Inställningar, välj Den här enheten och sedan Utseende och ljud.",
         "Välj ljust eller mörkt läge.",
         "Slå på eller av ljudet och välj volym."
       ],
@@ -1959,9 +1959,9 @@
         "google maps",
         "koppla google"
       ],
-      "answer": "Restaurangens Google-profil kopplar ägaren under Inställningar, Restaurang.",
+      "answer": "Restaurangens Google-profil kopplar ägaren under Inställningar, Verksamheten, Restaurang.",
       "steps": [
-        "Öppna Inställningar och välj Restaurang.",
+        "Öppna Inställningar, välj Verksamheten och sedan Restaurang.",
         "Tryck Koppla Google och logga in hos Google.",
         "Välj rätt plats."
       ],
@@ -2263,7 +2263,8 @@
         "gästerna idag",
         "idag",
         "dag",
-        "dagens"
+        "dagens",
+        "gäster hade vi"
       ],
       "answer": "Gäster idag står överst på Statistik, under Idag.",
       "steps": [],
@@ -2279,7 +2280,9 @@
       ],
       "live": {
         "metric": "guestsToday",
-        "text": "Idag har ni {value} gäster i bokningarna. Avbokade räknas inte."
+        "text": "Idag har ni {value} gäster i bokningarna. Avbokade räknas inte.",
+        "countText": "Idag har ni {value} {gäst|gäster} i bokningarna. Avbokade räknas inte.",
+        "rangeText": "{period}: {value} {gäst|gäster} i bokningarna. Avbokade räknas inte."
       }
     },
     {
@@ -2294,7 +2297,9 @@
         "bokningar har vi",
         "idag",
         "dag",
-        "dagens"
+        "dagens",
+        "hur många bokningar",
+        "bokningar hade vi"
       ],
       "answer": "Bokningar idag står överst på Statistik, under Idag.",
       "steps": [],
@@ -2310,7 +2315,9 @@
       ],
       "live": {
         "metric": "bookingsToday",
-        "text": "Idag har ni {value} bokningar. Avbokade räknas inte."
+        "text": "Idag har ni {value} bokningar. Avbokade räknas inte.",
+        "countText": "Idag har ni {value} {bokning|bokningar}. Avbokade räknas inte.",
+        "rangeText": "{period}: {value} {bokning|bokningar}. Avbokade räknas inte."
       }
     },
     {
@@ -2342,7 +2349,9 @@
       ],
       "live": {
         "metric": "arrivedToday",
-        "text": "{value} bokningar är markerade som Kommit idag."
+        "text": "{value} bokningar är markerade som Kommit idag.",
+        "countText": "{value} {bokning är markerad|bokningar är markerade} som Kommit idag.",
+        "rangeText": "{period}: {value} {bokning är markerad|bokningar är markerade} som Kommit."
       }
     },
     {
@@ -2374,7 +2383,8 @@
       ],
       "live": {
         "metric": "occupancyToday",
-        "text": "Beläggningen idag är {value} av bordstiden under öppettiderna."
+        "text": "Beläggningen idag är {value} av bordstiden under öppettiderna.",
+        "rangeText": "{period}: beläggningen är {value} av bordstiden under öppettiderna."
       }
     },
     {
@@ -2405,7 +2415,9 @@
       ],
       "live": {
         "metric": "noShowsToday",
-        "text": "{value} bokningar uteblev idag."
+        "text": "{value} bokningar uteblev idag.",
+        "countText": "{value} {bokning uteblev|bokningar uteblev} idag.",
+        "rangeText": "{period}: {value} {bokning uteblev|bokningar uteblev}."
       }
     },
     {
@@ -2419,6 +2431,9 @@
         "hur många beställningar",
         "beställningar idag",
         "antal beställningar",
+        "hur många ordrar",
+        "ordrar idag",
+        "antal ordrar",
         "idag",
         "dag",
         "dagens"
@@ -2434,7 +2449,9 @@
       ],
       "live": {
         "metric": "ordersToday",
-        "text": "Idag har ni fått {value} beställningar."
+        "text": "Idag har ni fått {value} beställningar.",
+        "countText": "Idag har ni fått {value} {beställning|beställningar}.",
+        "rangeText": "{period}: {value} {beställning|beställningar}."
       }
     },
     {
@@ -2463,7 +2480,8 @@
       ],
       "live": {
         "metric": "revenueToday",
-        "text": "Omsättningen idag är {value}."
+        "text": "Omsättningen idag är {value}.",
+        "rangeText": "{period}: omsättningen är {value}."
       }
     },
     {
@@ -2495,7 +2513,9 @@
       ],
       "live": {
         "metric": "guestsWeek",
-        "text": "Den här veckan har ni {value} gäster i bokningarna hittills."
+        "text": "Den här veckan har ni {value} gäster i bokningarna hittills.",
+        "countText": "Den här veckan har ni {value} {gäst|gäster} i bokningarna hittills.",
+        "rangeText": "{period}: {value} {gäst|gäster} i bokningarna. Avbokade räknas inte."
       }
     },
     {
@@ -2527,7 +2547,9 @@
       ],
       "live": {
         "metric": "guestsMonth",
-        "text": "Den här månaden har ni {value} gäster i bokningarna hittills."
+        "text": "Den här månaden har ni {value} gäster i bokningarna hittills.",
+        "countText": "Den här månaden har ni {value} {gäst|gäster} i bokningarna hittills.",
+        "rangeText": "{period}: {value} {gäst|gäster} i bokningarna. Avbokade räknas inte."
       }
     },
     {
@@ -2558,7 +2580,9 @@
       ],
       "live": {
         "metric": "bookingsMonth",
-        "text": "Den här månaden har ni {value} bokningar hittills."
+        "text": "Den här månaden har ni {value} bokningar hittills.",
+        "countText": "Den här månaden har ni {value} {bokning|bokningar} hittills.",
+        "rangeText": "{period}: {value} {bokning|bokningar}. Avbokade räknas inte."
       }
     },
     {
@@ -2589,7 +2613,8 @@
       ],
       "live": {
         "metric": "revenueMonth",
-        "text": "Omsättningen den här månaden är {value} hittills."
+        "text": "Omsättningen den här månaden är {value} hittills.",
+        "rangeText": "{period}: omsättningen är {value}."
       }
     },
     {

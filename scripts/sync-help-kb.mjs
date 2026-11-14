@@ -4,6 +4,7 @@
 // och för serverns tester:
 //   (byggd)                              -> ../application/shared/help_corpus_admin.json
 //   src/features/help/helpKbCases.json   -> ../application/shared/help_cases_admin.json
+//   src/features/help/helpDateCases.json -> ../application/tests/help_dates_cases.json
 //
 //   node scripts/sync-help-kb.mjs           # skriv
 //   node scripts/sync-help-kb.mjs --check   # skriv inget, exit 1 om de skiljer sig
@@ -21,6 +22,7 @@ if (!existsSync(app)) {
 const files = [
   ['help_corpus_admin.json', buildCorpus()],
   ['help_cases_admin.json', JSON.parse(readFileSync(resolve(root, 'src/features/help/helpKbCases.json'), 'utf8'))],
+  ['../tests/help_dates_cases.json', JSON.parse(readFileSync(resolve(root, 'src/features/help/helpDateCases.json'), 'utf8'))],
 ]
 const check = process.argv.includes('--check')
 let diff = false

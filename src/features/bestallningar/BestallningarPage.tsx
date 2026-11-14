@@ -293,6 +293,9 @@ export default function BestallningarPage() {
           {order.lines.map((line, i) => (
             <li key={`${line.menuItemId}-${i}`}>
               <strong>{line.quantity} ×</strong> {line.name}
+              {line.options?.map((o) => (
+                <span key={`${o.group}-${o.choice}`} className="order-line-note">+ {o.group}: {o.choice}</span>
+              ))}
               {line.note && <span className="order-line-note">{line.note}</span>}
               {line.allergy && <span className="order-line-allergy">Allergi: {line.allergy}</span>}
             </li>

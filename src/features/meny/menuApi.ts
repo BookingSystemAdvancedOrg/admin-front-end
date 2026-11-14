@@ -1,7 +1,8 @@
 import { errorText as commonError } from '../../shared/errors'
 import { apiFetch, ApiError } from '../../shared/api'
 import { withBusy } from '../../shared/motion/busy'
-import type { Dish, DishCategory, DishComponent } from './data'
+import { ALLERGENS } from './data'
+import type { Allergen, Dish, DishComponent, MenuCategoryEntry, OptionGroup } from './data'
 import { clampFocus, isCentre, sameFocus } from './imageFocus'
 import type { ImageFocus } from './imageFocus'
 
@@ -13,31 +14,20 @@ import type { ImageFocus } from './imageFocus'
  *   POST   /locations/{id}/menu/items              - skapa
  *   PUT    /locations/{id}/menu/items/{menuItemId} - partiell uppdatering
  *   DELETE /locations/{id}/menu/items/{menuItemId} - ta bort
+ *   GET    /locations/{id}/menu/categories         - platsens kategorier
+ *   PUT    /locations/{id}/menu/categories         - spara hela listan
  *   GET    /menu-images/presigned-url              - S3-uppladdnings-URL (5 min)
  *
  * Speglar kontraktets validering: namn krävs, pris >= 0 med högst två
- * decimaler, kategori ur enum:en, imageKey krävs vid skapande (och kan
- * aldrig tömmas - bara ersättas). Beskrivningen får vara tom.
+ * decimaler, kategori ur platsens kategorier, bild frivillig (null tar bort
+ * den). Beskrivningen får vara tom.
  *
  * OBS enligt kontraktet verifierar meny-Lambdan INTE att platsen finns -
  * en tom lista kan alltså också betyda "fel plats-id".
  */
 
-export type MenuCategory = 'starters' | 'mains' | 'desserts' | 'drinks'
-
-/** API:ts kategorier <-> gränssnittets svenska värden. */
-export const CATEGORY_TO_API: Record<DishCategory, MenuCategory> = {
-  forratter: 'starters',
-  varmratter: 'mains',
-  efterratter: 'desserts',
-  drycker: 'drinks',
-}
-export const CATEGORY_FROM_API: Record<MenuCategory, DishCategory> = {
-  starters: 'forratter',
-  mains: 'varmratter',
-  desserts: 'efterratter',
-  drinks: 'drycker',
-}
+/** Ett categoryId bland platsens kategorier. */
+export type MenuCategory = string
 
 export interface MenuItem {
   menuItemId: string
@@ -45,8 +35,11 @@ export interface MenuItem {
   description: string
   price: number
   category: MenuCategory
-  imageKey: string
+  /** null = ingen bild. */
+  imageKey: string | null
   active: boolean
+  allergens?: Allergen[]
+  options?: OptionGroup[]
   /** Innehåller alkohol (backend: 25 % moms, inte till avhämtning). Saknas = false. */
   alcohol?: boolean
   /** Schema i UTC; null eller saknas = ingen gräns. Slutet är exklusivt. */
@@ -73,16 +66,20 @@ export type PublicMenuItem = Pick<
   MenuItem,
   'menuItemId' | 'name' | 'description' | 'price' | 'category' | 'imageKey'
 > &
-  Partial<Pick<MenuItem, 'active' | 'alcohol' | 'imageFocus'>>
+  Partial<Pick<MenuItem, 'active' | 'alcohol' | 'imageFocus' | 'allergens' | 'options'>>
 
-/** Alla sex fälten krävs vid skapande enligt kontraktet. */
+/** Namn, beskrivning, pris, kategori och aktiv krävs vid skapande; bilden är frivillig. */
 export interface MenuItemCreate {
   name: string
   description: string
   price: number
   category: MenuCategory
-  imageKey: string
+  /** null = ingen bild (tar bort en sparad bild vid ändring). */
+  imageKey: string | null
   active: boolean
+  /** null eller tom rensar. */
+  allergens?: Allergen[] | null
+  options?: OptionGroup[] | null
   alcohol?: boolean
   /** null rensar gränsen. */
   availableFrom?: string | null
@@ -97,6 +94,14 @@ export interface MenuItemCreate {
 /** Partiell uppdatering - minst ett fält krävs av API:t. */
 export type MenuItemUpdate = Partial<MenuItemCreate>
 
+/** 409 när någon annan sparat rätten efter att den laddades. */
+export const STALE_DISH_MESSAGE =
+  'Någon annan har ändrat rätten medan du redigerade. Ladda om för att se den senaste versionen.'
+
+export function isStaleDish(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 409 && err.code === 'stale_item'
+}
+
 /* --- Bildvisning ---------------------------------------------------------- */
 
 /**
@@ -108,8 +113,8 @@ export const MENU_IMAGE_BASE_URL = (
   import.meta.env.VITE_MENU_IMAGE_BASE_URL as string | undefined
 )?.replace(/\/+$/, '')
 
-export function menuImageUrl(imageKey: string): string | null {
-  if (!imageKey.trim() || !MENU_IMAGE_BASE_URL) return null
+export function menuImageUrl(imageKey: string | null | undefined): string | null {
+  if (!imageKey?.trim() || !MENU_IMAGE_BASE_URL) return null
   return `${MENU_IMAGE_BASE_URL}/${imageKey}`
 }
 
@@ -120,17 +125,20 @@ export function toDish(item: MenuItem): Dish {
     id: item.menuItemId,
     name: item.name,
     description: item.description,
-    category: CATEGORY_FROM_API[item.category],
+    category: item.category,
     price: item.price,
     active: item.active,
     alcohol: item.alcohol === true,
-    imageKey: item.imageKey,
+    imageKey: item.imageKey ?? '',
     image: menuImageUrl(item.imageKey),
     imageFocus: item.imageFocus && !isCentre(item.imageFocus) ? clampFocus(item.imageFocus) : null,
     availableFrom: item.availableFrom ?? null,
     availableUntil: item.availableUntil ?? null,
     station: item.station ?? null,
     components: item.components ?? [],
+    allergens: (item.allergens ?? []).filter((a): a is Allergen => (ALLERGENS as readonly string[]).includes(a)),
+    options: item.options ?? [],
+    ...(item.updatedAt ? { updatedAt: item.updatedAt } : {}),
   }
 }
 
@@ -142,8 +150,7 @@ export function publicToDish(item: PublicMenuItem): Dish {
 /**
  * Ändrade fält jämfört med den sparade rätten, för PUT:en. API:t kräver
  * minst ett fält, så en tom diff ska aldrig skickas - anroparen kan skilja
- * "inget ändrat" från ett riktigt anrop. En tom imageKey skickas aldrig
- * (fältet kan inte tömmas enligt kontraktet).
+ * "inget ändrat" från ett riktigt anrop. imageKey null tar bort bilden.
  */
 export function dishChanges(original: Dish, next: MenuItemCreate): MenuItemUpdate {
   const updates: MenuItemUpdate = {}
@@ -152,7 +159,7 @@ export function dishChanges(original: Dish, next: MenuItemCreate): MenuItemUpdat
     updates.description = next.description
   }
   if (next.price !== original.price) updates.price = next.price
-  if (next.category !== CATEGORY_TO_API[original.category]) {
+  if (next.category !== original.category) {
     updates.category = next.category
   }
   if (next.active !== original.active) updates.active = next.active
@@ -172,7 +179,15 @@ export function dishChanges(original: Dish, next: MenuItemCreate): MenuItemUpdat
   if (next.imageFocus !== undefined && !sameFocus(next.imageFocus, original.imageFocus)) {
     updates.imageFocus = isCentre(next.imageFocus) ? null : clampFocus(next.imageFocus)
   }
-  if (next.imageKey.trim() && next.imageKey !== original.imageKey) {
+  if (next.allergens !== undefined && JSON.stringify(next.allergens ?? []) !== JSON.stringify(original.allergens ?? [])) {
+    updates.allergens = next.allergens?.length ? next.allergens : null
+  }
+  if (next.options !== undefined && JSON.stringify(next.options ?? []) !== JSON.stringify(original.options ?? [])) {
+    updates.options = next.options?.length ? next.options : null
+  }
+  if (next.imageKey === null) {
+    if (original.imageKey) updates.imageKey = null
+  } else if (next.imageKey.trim() && next.imageKey !== original.imageKey) {
     updates.imageKey = next.imageKey
   }
   return updates
@@ -187,6 +202,24 @@ export function validateDishName(name: string): string | null {
 /** Högsta pris på en produkt (rätt eller cateringrad) - samma skrivfelsspärr
  * som servern (application shared/prices.py). */
 export const MAX_ITEM_PRICE_KR = 10_000
+
+/**
+ * Pris som gästen ser, inmatat som text: "89", "89,50", "89.50" och
+ * "1 250" går bra. Allt annat ("abc", "-10", "12,345", tomt) ger ett
+ * svenskt felmeddelande i stället för ett tyst 0 eller 10 kr.
+ */
+export function parsePrice(text: string): { value: number; error: null } | { value: null; error: string } {
+  const raw = text.trim().replace(/[\s\u00a0]/g, '').replace(/kr$/i, '')
+  if (!raw) return { value: null, error: 'Pris krävs.' }
+  if (/^[-\u2212]/.test(raw)) return { value: null, error: 'Priset kan inte vara negativt.' }
+  if (!/^\d+([.,]\d+)?$/.test(raw)) {
+    return { value: null, error: 'Skriv priset med siffror, till exempel 89 eller 89,50.' }
+  }
+  if (/[.,]\d{3,}$/.test(raw)) return { value: null, error: 'Pris får ha högst två decimaler.' }
+  const value = Number(raw.replace(',', '.'))
+  const error = validateDishPrice(value)
+  return error ? { value: null, error } : { value, error: null }
+}
 
 export function validateDishPrice(price: number): string | null {
   if (!Number.isFinite(price) || price < 0) {
@@ -250,9 +283,17 @@ function toFriendlyMenuError(err: unknown): Error {
         ? new ApiError(404, MENU_ROUTES_MISSING_MESSAGE)
         : new ApiError(404, 'Rätten finns inte längre - ladda om sidan.')
     case 409:
+      if (err.code === 'stale_item') return new ApiError(409, STALE_DISH_MESSAGE, { code: 'stale_item' })
+      if (err.code === 'category_in_use') {
+        return new ApiError(409, 'Kategorin har rätter. Flytta rätterna till en annan kategori först.', { code: err.code })
+      }
+      if (err.code === 'stale_categories') {
+        return new ApiError(409, 'Kategorierna ändrades av någon annan. Ladda om och försök igen.', { code: err.code })
+      }
       return new ApiError(
         409,
         'Menyn ändrades samtidigt av någon annan. Ladda om och försök igen.',
+        { code: 'stale_item' },
       )
     case 503:
       return new ApiError(503, 'Menytjänsten är tillfälligt otillgänglig. Försök igen.')
@@ -311,16 +352,49 @@ export function createMenuItem(
   )
 }
 
+/**
+ * `expectedUpdatedAt`: rättens updatedAt som den laddades. Har någon annan
+ * sparat sedan dess svarar API:t 409 (isStaleDish) och inget sparas.
+ */
 export function updateMenuItem(
   locationId: string,
   menuItemId: string,
   updates: MenuItemUpdate,
+  expectedUpdatedAt?: string,
 ): Promise<MenuItem> {
   return call(() =>
     apiFetch<MenuItem>(
       `${itemsPath(locationId)}/${encodeURIComponent(menuItemId)}`,
-      { method: 'PUT', body: JSON.stringify(updates) },
+      { method: 'PUT', body: JSON.stringify(expectedUpdatedAt ? { ...updates, expectedUpdatedAt } : updates) },
     ),
+  )
+}
+
+export interface MenuCategories {
+  categories: MenuCategoryEntry[]
+  version: number
+}
+
+function categoriesPath(locationId: string): string {
+  return `/locations/${encodeURIComponent(locationId)}/menu/categories`
+}
+
+/** Platsens kategorier i visningsordning (de fyra standard tills ägaren ändrar). */
+export function getMenuCategories(locationId: string): Promise<MenuCategories> {
+  return call(() => apiFetch<MenuCategories>(categoriesPath(locationId)))
+}
+
+/** Hela listan: ny kategori utan categoryId, byt namn, ordning, ta bort. */
+export function putMenuCategories(
+  locationId: string,
+  categories: { categoryId?: string; name: string }[],
+  version: number,
+): Promise<MenuCategories> {
+  return call(() =>
+    apiFetch<MenuCategories>(categoriesPath(locationId), {
+      method: 'PUT',
+      body: JSON.stringify({ categories, version }),
+    }),
   )
 }
 

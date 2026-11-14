@@ -721,22 +721,22 @@
   color: var(--warning-ink);
 }
 
-.status-badge.cat-forratter {
+.status-badge.cat-tone-0 {
   background: var(--tint-orange);
   color: var(--warning-ink);
 }
 
-.status-badge.cat-varmratter {
+.status-badge.cat-tone-1 {
   background: var(--tint-red);
   color: var(--danger-ink);
 }
 
-.status-badge.cat-efterratter {
+.status-badge.cat-tone-2 {
   background: var(--tint-purple);
   color: var(--purple-ink);
 }
 
-.status-badge.cat-drycker {
+.status-badge.cat-tone-3 {
   background: var(--tint-blue);
   color: var(--accent-ink);
 }

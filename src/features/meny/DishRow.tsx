@@ -3,7 +3,6 @@ import { RowActions } from '../../shared/RowActions'
 import { Num } from '../../shared/motion/Num'
 import { Slot } from '../../shared/slots'
 import { Icon } from '../../shared/Icon'
-import { CATEGORY_LABEL } from './data'
 import type { Dish } from './data'
 import { dishStatus, dishStatusLabel } from './schedule'
 import type { DishStatus } from './schedule'
@@ -71,8 +70,14 @@ export function DishRow({
   onToggle,
   onDelete,
   onPreview,
+  categoryLabel,
+  categoryTone = -1,
 }: {
   dish: Dish
+  /** Kategorins namn (platsens egna kategorier). */
+  categoryLabel: string
+  /** Kategorins plats i listan, för färgen; -1 = neutral. */
+  categoryTone?: number
   index: number
   now: Date
   timeZone: string
@@ -109,7 +114,7 @@ export function DishRow({
         {dish.description && <div className="cell-muted">{dish.description}</div>}
       </td>
       <td>
-        <span className={`status-badge cat-${dish.category}`}>{CATEGORY_LABEL[dish.category]}</span>
+        <span className={`status-badge${categoryTone >= 0 ? ` cat-tone-${categoryTone % 4}` : ''}`}>{categoryLabel}</span>
       </td>
       <td className="cell-price">
         <Num>{`${dish.price} kr`}</Num>

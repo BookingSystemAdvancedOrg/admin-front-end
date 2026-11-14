@@ -1,11 +1,14 @@
 import { errorText, focusErrorField } from '../../shared/errors'
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import { CATEGORY_LABEL } from './data'
-import type { Dish, DishCategory, DishComponent } from './data'
+import { ALLERGENS, ALLERGEN_LABEL, categoryName } from './data'
+import type { Allergen, Dish, DishCategory, DishComponent, MenuCategoryEntry, OptionGroup } from './data'
 import { getRouting, NO_TICKET } from '../bestallningar/printApi'
 import type { Station } from '../bestallningar/printApi'
-import { validateDishName, validateDishPrice } from './menuApi'
+import { isStaleDish, parsePrice, validateDishName } from './menuApi'
+import { OptionsEditor } from './OptionsEditor'
+import { draftToGroups, toDraft } from './menuForm'
+import type { DraftGroup } from './menuForm'
 import { utcToZonedInput, zonedInputToUtc } from './schedule'
 import { DateTimeInput } from '../../shared/DateInput'
 import { Icon } from '../../shared/Icon'
@@ -30,6 +33,8 @@ export interface DishFormValues {
    * skapas av sidan via uploadMenuImage när rätten sparas.
    */
   imageFile: File | null
+  /** Sant när den sparade bilden ska tas bort (rätten visas med platshållare). */
+  removeImage: boolean
   /** Vilken del av bilden som syns i beskurna ramar; CENTRE = mitten. */
   imageFocus: ImageFocus
   /** Schemat i UTC ("...Z"), null = ingen gräns. */
@@ -39,6 +44,8 @@ export interface DishFormValues {
   station: string | null
   /** Meny/combo: delarna (tomma namn är borttagna). */
   components: DishComponent[]
+  allergens: Allergen[]
+  options: OptionGroup[]
 }
 
 const GAP_ERROR =
@@ -64,18 +71,18 @@ function scheduleValue(
  * Popup för att lägga till eller redigera en rätt: bild, namn, beskrivning,
  * kategori, pris och aktiv-status. Samma dialog för båda flödena.
  *
- * API:t kräver en bild när en rätt skapas (imageKey är obligatoriskt och
- * kan inte vara tomt), så "Lägg till rätt" är spärrad tills en bild valts.
- * Vid redigering kan bilden bara bytas, inte tas bort - kontraktet tillåter
- * inte en tom imageKey.
+ * Bilden är frivillig för alla rätter (en dryck behöver ingen); utan bild
+ * visas en neutral platshållare i listan och på sajten.
  */
 export function DishModal({
   title,
   initial,
   timeZone,
   locationId = null,
+  categories,
   onSave,
   onCancel,
+  onReload,
 }: {
   title: string
   initial: Dish | null
@@ -83,14 +90,23 @@ export function DishModal({
   timeZone: string
   /** Platsen rätten hör till; behövs för planfunktionernas fält (Slot). */
   locationId?: string | null
+  /** Platsens kategorier i visningsordning. */
+  categories: MenuCategoryEntry[]
   onSave: (values: DishFormValues) => Promise<void>
   onCancel: () => void
+  /** Laddar om rätten efter att någon annan sparat den (409). */
+  onReload?: () => void
 }) {
   const [name, setName] = useState(initial?.name ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [category, setCategory] = useState<DishCategory>(
-    initial?.category ?? 'varmratter',
+    initial?.category ??
+      (categories.some((c) => c.categoryId === 'mains') ? 'mains' : categories[0]?.categoryId ?? 'mains'),
   )
+  const [allergens, setAllergens] = useState<Allergen[]>(initial?.allergens ?? [])
+  const [optionDrafts, setOptionDrafts] = useState<DraftGroup[]>(() => toDraft(initial?.options))
+  const [removeImage, setRemoveImage] = useState(false)
+  const [stale, setStale] = useState(false)
   const [price, setPrice] = useState(initial ? String(initial.price) : '')
   const [active, setActive] = useState(initial?.active ?? true)
   const [alcohol, setAlcohol] = useState(initial?.alcohol ?? false)
@@ -136,6 +152,7 @@ export function DishModal({
     const file = e.target.files?.[0]
     if (!file) return
     setImageFile(file)
+    setRemoveImage(false)
     // ett nytt foto börjar i mitten
     setImageFocus(CENTRE)
     const reader = new FileReader()
@@ -145,15 +162,12 @@ export function DishModal({
     e.target.value = ''
   }
 
-  // Tillåt både "195" och "129,50"/"129.50" - API:t tar högst två decimaler.
-  const parsedPrice = Number(price.replace(/[^\d.,]/g, '').replace(',', '.'))
-  const priceError =
-    price.trim() === '' ? 'Pris krävs.' : validateDishPrice(parsedPrice)
+  // "195", "129,50" och "129.50" går bra; "abc", "-10" och tre decimaler ger fel.
+  const priceResult = parsePrice(price)
+  const parsedPrice = priceResult.value ?? 0
+  const priceError = priceResult.error
   const nameError = validateDishName(name)
-  // En helt ny rätt kan inte skapas utan bild (API-kravet); en befintlig
-  // rätt har redan sin imageKey och behöver ingen ny fil.
-  const imageError =
-    !initial && !imageFile ? 'En bild krävs för att skapa rätten.' : null
+  const optionsResult = draftToGroups(optionDrafts)
   const availableFrom = scheduleValue(fromInput, initialFrom, initial?.availableFrom ?? null, timeZone)
   const availableUntil = scheduleValue(untilInput, initialUntil, initial?.availableUntil ?? null, timeZone)
   const orderError =
@@ -165,11 +179,12 @@ export function DishModal({
       ? 'Sluttiden har redan passerat - rätten visas inte för gäster.'
       : null
   const scheduleValid = availableFrom !== undefined && availableUntil !== undefined && !orderError
-  const valid = !nameError && !priceError && !imageError && scheduleValid
+  const valid = !nameError && !priceError && !optionsResult.error && scheduleValid
 
   async function save() {
-    if (busy || !valid || availableFrom === undefined || availableUntil === undefined) return
+    if (busy || !valid || availableFrom === undefined || availableUntil === undefined || !optionsResult.groups) return
     setError(null)
+    setStale(false)
     setBusy(true)
     try {
       await onSave({
@@ -180,6 +195,7 @@ export function DishModal({
         active,
         alcohol,
         imageFile,
+        removeImage: removeImage && !imageFile,
         imageFocus,
         availableFrom,
         availableUntil,
@@ -187,8 +203,11 @@ export function DishModal({
         components: parts
           .map((p) => ({ name: p.name.trim(), ...(p.station ? { station: p.station } : {}) }))
           .filter((p) => p.name),
+        allergens: ALLERGENS.filter((a) => allergens.includes(a)),
+        options: optionsResult.groups,
       })
     } catch (err) {
+      setStale(isStaleDish(err))
       setError(errorText(err, 'Kunde inte spara.'))
       focusErrorField(err, {
         name: 'dish-name', description: 'dish-description', category: 'dish-category', price: 'dish-price',
@@ -206,7 +225,7 @@ export function DishModal({
         <h2>{title}</h2>
 
         <div className="form-field">
-          <label>{initial ? 'Bild' : 'Bild (krävs)'}</label>
+          <label>Bild (frivilligt)</label>
           <div className="dish-upload">
             {preview ? (
               <FocusFrame
@@ -231,6 +250,20 @@ export function DishModal({
                 >
                   {preview ? 'Byt bild' : 'Ladda upp bild'}
                 </button>
+                {preview && (
+                  <button
+                    type="button"
+                    className="btn outline square"
+                    onClick={() => {
+                      setPreview(null)
+                      setImageFile(null)
+                      setImageFocus(CENTRE)
+                      setRemoveImage(Boolean(initial?.imageKey))
+                    }}
+                  >
+                    Ta bort bild
+                  </button>
+                )}
                 {preview && (
                   <button
                     type="button"
@@ -297,11 +330,14 @@ export function DishModal({
               value={category}
               onChange={(e) => setCategory(e.target.value as DishCategory)}
             >
-              {(Object.keys(CATEGORY_LABEL) as DishCategory[]).map((c) => (
-                <option key={c} value={c}>
-                  {CATEGORY_LABEL[c]}
+              {categories.map((c) => (
+                <option key={c.categoryId} value={c.categoryId}>
+                  {c.name}
                 </option>
               ))}
+              {!categories.some((c) => c.categoryId === category) && (
+                <option value={category}>Övrigt</option>
+              )}
             </select>
           </div>
           <div className="form-field">
@@ -325,6 +361,29 @@ export function DishModal({
             id="meny.dish.cost"
             props={{ locationId, menuItemId: initial.id, priceSek: parsedPrice, alcohol }}
           />
+        )}
+
+        <fieldset className="dish-allergens">
+          <legend>Allergener</legend>
+          <div className="meny-checks">
+            {ALLERGENS.map((a) => (
+              <label key={a} className="meny-check">
+                <input
+                  type="checkbox"
+                  checked={allergens.includes(a)}
+                  onChange={() =>
+                    setAllergens((prev) => (prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]))
+                  }
+                />
+                {ALLERGEN_LABEL[a]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <OptionsEditor value={optionDrafts} onChange={setOptionDrafts} />
+        {optionDrafts.length > 0 && optionsResult.error && (
+          <p className="form-error">{optionsResult.error}</p>
         )}
 
         <div className="toggle-row">
@@ -360,7 +419,7 @@ export function DishModal({
           <div className="form-field">
             <label htmlFor="dish-station">Vart går rätten?</label>
             <select id="dish-station" value={station} onChange={(e) => setStation(e.target.value)}>
-              <option value="">Som kategorin {CATEGORY_LABEL[category].toLowerCase()}</option>
+              <option value="">Som kategorin {categoryName(categories, category).toLowerCase()}</option>
               {stations.map((s) => (
                 <option key={s.stationId} value={s.stationId}>{s.name}</option>
               ))}
@@ -469,9 +528,14 @@ export function DishModal({
         )}
 
         {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
+          <div className="dish-save-error" role="alert">
+            <p className="form-error">{error}</p>
+            {stale && onReload && (
+              <button type="button" className="btn outline square" onClick={onReload}>
+                Ladda om rätten
+              </button>
+            )}
+          </div>
         )}
 
         <div className="modal-actions">

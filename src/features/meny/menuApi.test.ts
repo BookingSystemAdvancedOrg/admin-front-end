@@ -3,8 +3,6 @@ import { ApiError } from '../../shared/api'
 import * as api from '../../shared/api'
 import type { Dish } from './data'
 import {
-  CATEGORY_FROM_API,
-  CATEGORY_TO_API,
   MENU_IMAGE_BASE_URL,
   MENU_ROUTES_MISSING_MESSAGE,
   menuImageUrl,
@@ -17,6 +15,8 @@ import {
   updateMenuItem,
   uploadMenuImage,
   validateDishPrice,
+  parsePrice,
+  isStaleDish,
 } from './menuApi'
 import type { MenuItem, MenuItemCreate } from './menuApi'
 
@@ -49,13 +49,6 @@ beforeEach(() => {
   mockedApiFetch.mockReset()
 })
 
-describe('category mapping', () => {
-  it('round-trips every category between UI and API values', () => {
-    for (const [ui, apiValue] of Object.entries(CATEGORY_TO_API)) {
-      expect(CATEGORY_FROM_API[apiValue]).toBe(ui)
-    }
-  })
-})
 
 describe('toDish', () => {
   it('reads the focal point, with the centre and junk as null', () => {
@@ -71,7 +64,7 @@ describe('toDish', () => {
       id: 'm1',
       name: 'Toast Skagen',
       description: 'Klassikern',
-      category: 'forratter',
+      category: 'starters',
       price: 145,
       active: true,
       imageKey: 'locations/loc-1/menu/img-1.webp',
@@ -107,7 +100,7 @@ describe('toDish', () => {
       imageKey: 'k',
     })
     expect(dish.active).toBe(true)
-    expect(dish.category).toBe('drycker')
+    expect(dish.category).toBe('drinks')
   })
 
   it('respects an explicit active flag when the menu route returns one', () => {
@@ -153,7 +146,7 @@ describe('dishChanges', () => {
       name: original.name,
       description: original.description,
       price: original.price,
-      category: CATEGORY_TO_API[original.category],
+      category: original.category,
       imageKey: original.imageKey,
       active: original.active,
       ...over,
@@ -274,5 +267,60 @@ describe('uploadMenuImage', () => {
       }),
     )
     fetchSpy.mockRestore()
+  })
+})
+
+describe('parsePrice', () => {
+  it('accepts whole kronor, comma and point decimals and spaces', () => {
+    expect(parsePrice('89')).toEqual({ value: 89, error: null })
+    expect(parsePrice('89,50')).toEqual({ value: 89.5, error: null })
+    expect(parsePrice('89.5')).toEqual({ value: 89.5, error: null })
+    expect(parsePrice(' 1 250 kr')).toEqual({ value: 1250, error: null })
+    expect(parsePrice('0')).toEqual({ value: 0, error: null })
+  })
+
+  it('refuses text, negative numbers, empty and three decimals in Swedish', () => {
+    expect(parsePrice('abc').error).toMatch(/siffror/)
+    expect(parsePrice('-10').error).toBe('Priset kan inte vara negativt.')
+    expect(parsePrice('').error).toBe('Pris krävs.')
+    expect(parsePrice('12,345').error).toBe('Pris får ha högst två decimaler.')
+    expect(parsePrice('1,2,3').error).toMatch(/siffror/)
+    expect(parsePrice('10e3').error).toMatch(/siffror/)
+    expect(parsePrice('10001').error).toMatch(/högst/)
+  })
+})
+
+describe('allergens, options and photo in dishChanges', () => {
+  const original: Dish = toDish(menuItem({ allergens: ['milk'], options: [] }))
+  const base: MenuItemCreate = {
+    name: original.name, description: original.description, price: original.price,
+    category: original.category, imageKey: original.imageKey, active: original.active,
+  }
+
+  it('sends allergens and options only when changed, empty clears', () => {
+    expect(dishChanges(original, { ...base, allergens: ['milk'] })).toEqual({})
+    expect(dishChanges(original, { ...base, allergens: [] })).toEqual({ allergens: null })
+    const groups = [{ name: 'Storlek', required: true, maxChoices: 1, choices: [{ name: 'Stor', price: 30 }] }]
+    expect(dishChanges(original, { ...base, options: groups })).toEqual({ options: groups })
+  })
+
+  it('removes the photo with null, never sends an empty key', () => {
+    expect(dishChanges(original, { ...base, imageKey: null })).toEqual({ imageKey: null })
+    const noPhoto = toDish(menuItem({ imageKey: null }))
+    expect(noPhoto.imageKey).toBe('')
+    expect(noPhoto.image).toBeNull()
+    expect(dishChanges(noPhoto, { ...base, imageKey: null })).toEqual({})
+  })
+})
+
+describe('stale saves', () => {
+  it('sends expectedUpdatedAt and says in Swedish that someone else changed the dish', async () => {
+    mockedApiFetch.mockRejectedValueOnce(new ApiError(409, 'menu item was changed by someone else', { code: 'stale_item' }))
+    const err = await updateMenuItem('loc-1', 'm1', { price: 99 }, '2026-09-01T10:00:00Z').catch((e: unknown) => e)
+    expect(mockedApiFetch).toHaveBeenCalledWith('/locations/loc-1/menu/items/m1', {
+      method: 'PUT', body: JSON.stringify({ price: 99, expectedUpdatedAt: '2026-09-01T10:00:00Z' }),
+    })
+    expect(isStaleDish(err)).toBe(true)
+    expect((err as Error).message).toMatch(/Någon annan har ändrat rätten/)
   })
 })

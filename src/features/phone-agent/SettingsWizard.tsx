@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Bar, Button, Card, Field, Input, Select, toast } from '@booqy/brand'
+import { Bar, Button, Card, Field, Input, Printing, Select, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
 import { useTenant } from '../../shared/tenant'
 import SimulatorPanel from './SimulatorPanel'
@@ -22,8 +22,10 @@ export default function SettingsWizard({ locationId, onSaved }: { locationId: st
   const [others, setOthers] = useState<Overview['locations']>([])
   const [share, setShare] = useState('')
   const [saving, setSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
+    setLoadError(null)
     try {
       const [overview, location] = await Promise.all([getOverview(), getLocation(locationId)])
       setConfig(overview.config)
@@ -31,13 +33,21 @@ export default function SettingsWizard({ locationId, onSaved }: { locationId: st
       setLoc(location)
       setOthers(overview.locations.filter((l) => l.locationId !== locationId && l.enabled && l.number))
     } catch (err) {
-      toast(errorText(err, 'Kunde inte hämta inställningarna.', ERRORS), { tone: 'danger' })
+      // Utan detta stod fliken på "Hämtar…" för alltid när hämtningen misslyckades.
+      setLoadError(errorText(err, 'Kunde inte hämta inställningarna.', ERRORS))
     }
   }, [locationId])
 
   useEffect(() => { void load() }, [load])
 
-  if (!config || !loc) return <p className="cell-muted">Hämtar…</p>
+  if (loadError) {
+    return (
+      <Bar variant="banner" tone="danger">
+        {loadError} <Button variant="secondary" onClick={() => void load()}>Försök igen</Button>
+      </Bar>
+    )
+  }
+  if (!config || !loc) return <Printing label="Hämtar inställningarna" />
 
   async function storeConfig(next: Config) {
     setSaving(true)

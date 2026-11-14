@@ -63,11 +63,18 @@ describe('EvenemangPage', () => {
   it('lists the events and lets the owner create one', async () => {
     tenant = OWNER
     at('/evenemang')
-    expect(await screen.findByRole('link', { name: 'Vinmiddag' })).toBeInTheDocument()
+    expect(await screen.findByText('Vinmiddag')).toBeInTheDocument()
     expect(screen.getByText('12 av 40')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Nytt evenemang' }))
     expect(screen.getByRole('heading', { name: 'Nytt evenemang' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /12 % \(middag/ })).toBeInTheDocument()
+  })
+
+  it('opens an event by clicking anywhere on its row', async () => {
+    tenant = OWNER
+    at('/evenemang')
+    fireEvent.click(await screen.findByText('12 av 40'))
+    expect(await screen.findByRole('heading', { name: 'Vinmiddag' })).toBeInTheDocument()
   })
 
   it('sends a new event with prices in öre and the chosen VAT rate', async () => {

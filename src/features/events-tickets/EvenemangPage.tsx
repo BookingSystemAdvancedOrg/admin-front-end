@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Bar, Button, Card, Field, Input, Modal, Printing, toast } from '@booqy/brand'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { errorText } from '../../shared/errors'
+import { isRowOpenKey, shouldOpenRow } from '../meny/rowClick'
 import { useTenant } from '../../shared/tenant'
 import {
   ERRORS, STATUS_LABEL, cancelOccurrence, eventEditable, getEvent, getJob, kr, listEvents, listOrders,
@@ -78,8 +79,15 @@ function EventList({ locationId, isOwner }: { locationId: string; isOwner: boole
             <thead><tr><th scope="col">Evenemang</th><th scope="col">Nästa tillfälle</th><th scope="col">Sålda</th><th scope="col">Status</th></tr></thead>
             <tbody>
               {events.map((e) => (
-                <tr key={e.eventId}>
-                  <td><Link to={`/evenemang/${encodeURIComponent(e.eventId)}`}>{e.title}</Link></td>
+                <tr
+                  key={e.eventId}
+                  className="person-row"
+                  tabIndex={0}
+                  aria-label={`${e.title}, öppna`}
+                  onClick={(ev) => { if (shouldOpenRow(ev.target, ev.currentTarget)) navigate(`/evenemang/${encodeURIComponent(e.eventId)}`) }}
+                  onKeyDown={(ev) => { if (isRowOpenKey(ev)) { ev.preventDefault(); navigate(`/evenemang/${encodeURIComponent(e.eventId)}`) } }}
+                >
+                  <td className="cell-strong">{e.title}</td>
                   <td>{e.nextOccurrence ? when(e.nextOccurrence) : '-'}</td>
                   <td>{e.sold} av {e.capacity}</td>
                   <td><span className="status-badge">{STATUS_LABEL[e.status]}</span></td>

@@ -68,6 +68,14 @@ describe('TelefonPage', () => {
     expect(screen.queryByRole('tab', { name: 'Inställningar' })).not.toBeInTheDocument()
   })
 
+  it('opens a call by clicking anywhere on its row', async () => {
+    tenant = OWNER
+    vi.mocked(api.getCall).mockResolvedValue({ ...CALL, billedMinutes: 3, recordingUrl: undefined, turns: [], disclosure: { text: 'Hej', playedAt: '2026-11-05T18:00:02Z', repeats: 0 } })
+    renderAt()
+    fireEvent.click(await screen.findByText('Bokade bord'))
+    await waitFor(() => expect(api.getCall).toHaveBeenCalled())
+  })
+
   it('lets staff turn the assistant off with one tap', async () => {
     tenant = STAFF
     vi.mocked(api.setKillSwitch).mockResolvedValue({ ...LOC, killSwitch: true, version: 3 })
@@ -101,6 +109,17 @@ describe('TelefonPage', () => {
     expect(await screen.findByText(/en AI-assistent för Bistro/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('tab', { name: '5. Nummer' }))
     expect(screen.getByText('**21*+46100000001#')).toBeInTheDocument()
+  })
+
+  it('shows an error with a retry instead of loading forever when the settings fail', async () => {
+    tenant = OWNER
+    vi.mocked(api.getOverview).mockRejectedValueOnce(new Error('boom')).mockResolvedValue({ config: { agentName: 'Sara', tone: 'friendly', languages: ['sv'],
+      recording: { enabled: false }, minutesCapPerMonth: 300, version: 1 }, locations: [],
+      usage: { minutes: 0, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
+    renderAt()
+    fireEvent.click(await screen.findByRole('tab', { name: 'Inställningar' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    expect(await screen.findByText(/en AI-assistent för Bistro/)).toBeInTheDocument()
   })
 
   it('sends the recording choice with the config save (the notice is shown first)', async () => {

@@ -90,7 +90,7 @@ export function NotificationsCard({ tenant, isOwner }: { tenant: Tenant; isOwner
           <div>
             <p className="toggle-row-label" id="notif-sms-label">SMS till gästen</p>
             <p className="cell-muted">
-              Bekräftelse och påminnelse även som SMS. Kostar per SMS. Skickas till nordiska nummer
+              Bekräftelse och påminnelse även som SMS. Ingår i priset. Skickas till nordiska nummer
               (+46, +45, +47, +358, +354) - andra gäster får e-posten.
             </p>
           </div>

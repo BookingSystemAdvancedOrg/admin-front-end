@@ -1780,7 +1780,7 @@
       "answer": "Om gästerna får sms, när påminnelsen skickas och om ni får mejl vid nya bokningar ställer ägaren in under Inställningar, Gäster, Notiser.",
       "steps": [
         "Öppna Inställningar, välj Gäster och sedan Notiser.",
-        "Slå på eller av SMS till gästen (kostar per sms) och välj avsändarnamn.",
+        "Slå på eller av SMS till gästen (ingår i priset) och välj avsändarnamn.",
         "Välj påminnelse före besöket.",
         "Välj om restaurangen får e-post vid nya bokningar.",
         "Tryck Spara notiser."

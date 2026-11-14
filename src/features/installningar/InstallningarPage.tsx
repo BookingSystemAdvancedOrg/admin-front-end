@@ -27,6 +27,7 @@ import { BusinessHoursEditor } from './BusinessHoursEditor'
 import { BokforingCard } from './BokforingCard'
 import { AppearanceCard } from './AppearanceCard'
 import { DesktopAppCard } from './DesktopAppCard'
+import { PlanCard } from './PlanCard'
 import {
   createLocation,
   getLocation,
@@ -508,6 +509,12 @@ export default function InstallningarPage() {
 
           {locationId && tab === 'profil' && (
             <Slot id="installningar.verksamhet.google" props={{ locationId }} />
+          )}
+
+          {tenant && isOwner && (
+            <div className="settings-row" data-help="settings:profil:PlanCard" hidden={tab !== 'profil'}>
+              <PlanCard tenant={tenant} />
+            </div>
           )}
 
           <div data-help="settings:profil:BookingTimeCard" hidden={tab !== 'profil'}>

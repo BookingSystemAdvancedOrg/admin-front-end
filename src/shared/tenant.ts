@@ -39,7 +39,7 @@ export interface TenantStripeStatus {
 
 /** Gäst- och restaurangnotiser (bokningsbekräftelser, påminnelser m.m.). */
 export interface TenantNotifications {
-  /** SMS till gästen (utöver e-post). Kostar per SMS. */
+  /** SMS till gästen (utöver e-post). Ingår i priset. */
   sms: boolean
   /** E-post till restaurangen vid ny onlinebokning och avbokning. */
   staffEmails: boolean
@@ -70,6 +70,8 @@ export interface Tenant {
   slug: string | null
   status: 'active'
   planId: string | null
+  /** Gratisplanen (planId "free"): sista gratisdagen, null = inget slutdatum. Saknas på andra planer. */
+  free?: { until: string | null } | null
   entitlements: {
     maxLocations: number | null
     features: Record<string, boolean>

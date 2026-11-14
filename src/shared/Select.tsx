@@ -150,6 +150,7 @@ export function Select({
   const list = useRef<HTMLUListElement>(null)
   const layer = useRef<HTMLDivElement>(null)
   const typed = useRef({ text: '', at: 0 })
+  const anchor = useRef<{ top: number; left: number } | null>(null)
 
   const enabled = useCallback((i: number) => i >= 0 && i < options.length && !options[i].disabled, [options])
 
@@ -166,6 +167,8 @@ export function Select({
     setTitle(labelText(trigger.current, ariaLabel, ariaLabelledBy))
     const sel = selected && enabled(selected.index) ? selected.index : first()
     setActive(at ?? sel)
+    const r = trigger.current?.getBoundingClientRect()
+    anchor.current = r ? { top: r.top, left: r.left } : null
     setOpen(true)
     // Safari fokuserar inte knappar vid klick: utan fokus når piltangenterna aldrig listan.
     if (document.activeElement !== trigger.current) trigger.current?.focus({ preventScroll: true })
@@ -185,6 +188,8 @@ export function Select({
     if (value === undefined) setInner(o.value)
     const target = { value: o.value, name }
     onChange?.({ target, currentTarget: target })
+    // Som ett riktigt fält: ett input-event, så att en felmarkering (focusErrorField) släpper.
+    trigger.current?.dispatchEvent(new Event('input', { bubbles: true }))
   }
 
   // Placering under/ovanför knappen, och ny placering när fönstret ändras.
@@ -209,10 +214,16 @@ export function Select({
       if (trigger.current?.contains(t) || layer.current?.contains(t)) return
       close(false)
     }
+    // Stäng bara när knappen faktiskt har flyttat sig: ett rull-event som redan var
+    // på väg när listan öppnades (sidan glider fortfarande) ska inte stänga den.
+    // Arket på telefon sitter fast i fönstret, där är sidan låst i stället.
     const scroll = (e: Event) => {
       const t = e.target
-      if (t instanceof Node && list.current?.contains(t)) return
-      if (t === document || (t instanceof Node && trigger.current && t.contains(trigger.current))) close(false)
+      if (isPhone() || (t instanceof Node && list.current?.contains(t))) return
+      const a = anchor.current
+      const r = trigger.current?.getBoundingClientRect()
+      if (!a || !r) return
+      if (Math.abs(r.top - a.top) > 2 || Math.abs(r.left - a.left) > 2) close(false)
     }
     const resize = () => position()
     document.addEventListener('pointerdown', down, true)
@@ -225,6 +236,17 @@ export function Select({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, position])
+
+  // Arket på telefon: sidan under rullar inte medan det är öppet.
+  useEffect(() => {
+    if (!open || !phone) return
+    const html = document.documentElement
+    const before = html.style.overflow
+    html.style.overflow = 'hidden'
+    return () => {
+      html.style.overflow = before
+    }
+  }, [open, phone])
 
   // Raden man står på syns alltid (det valda när listan öppnas).
   useLayoutEffect(() => {

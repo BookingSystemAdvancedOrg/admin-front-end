@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { watch } from '../lib/watch'
 import { ready } from '../lib/ui'
+import { pick, waitForOptions } from '../lib/select'
 import { Api, stockholmDate } from '../lib/api'
 import { RUN } from '../lib/data'
 
@@ -27,8 +28,8 @@ test.describe('Chaos', () => {
     await dlg.getByLabel('Antal personer').fill('2')
     await dlg.getByLabel('Datum').fill(date)
     await dlg.getByLabel('Datum').press('Tab')
-    await expect(dlg.getByLabel('Tid').locator('option').nth(1)).toBeAttached({ timeout: 20000 })
-    await dlg.getByLabel('Tid').selectOption({ index: 3 })
+    await waitForOptions(dlg.getByLabel('Tid'))
+    await pick(dlg.getByLabel('Tid'), { index: 3 })
     await dlg.locator('.table-chip').first().click()
     const name = `E2E Dubbelklick ${RUN}${Math.random().toString(36).slice(2, 5)}`
     await dlg.getByLabel('Namn').fill(name)

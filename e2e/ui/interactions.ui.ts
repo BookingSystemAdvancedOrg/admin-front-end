@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { VIEWPORTS, fullAudit, layoutAudit, axeIssues, assertNoIssues, record, setTheme, STABLE_CSS, type Issue } from '../lib/ui-audit'
+import { options, pick, valueOf } from '../lib/select'
 
 /** Key interactions at phone (390) and desktop (1440) size, light and dark. */
 const SIZES = VIEWPORTS.filter((v) => ['390', '1440'].includes(v.name))
@@ -117,6 +118,23 @@ for (const vp of SIZES) {
       await page.keyboard.press('Escape')
       await expect(page.getByRole('listbox')).toHaveCount(0)
       await expect(box).toBeFocused()
+      // Ett rull-event som redan var på väg när listan öppnades stänger den inte.
+      await page.evaluate(() => window.scrollBy(0, 1))
+      await box.click()
+      await page.evaluate(() => document.dispatchEvent(new Event('scroll')))
+      await page.waitForTimeout(200)
+      if ((await box.getAttribute('aria-expanded')) !== 'true') issues.push({ kind: 'dropdown-scroll', severity: 'high', message: 'List closed by a scroll that did not move the field' })
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('listbox')).toHaveCount(0)
+      // Hjälparna som e2e-specarna mot dev använder.
+      const texts = await options(box)
+      if (texts.length < 2) issues.push({ kind: 'dropdown-helpers', severity: 'high', message: `options() read ${texts.length} options` })
+      await pick(box, { label: texts[1] ?? '' })
+      const second = await valueOf(box)
+      await pick(box, { index: 0 })
+      if ((await valueOf(box)) === second) issues.push({ kind: 'dropdown-helpers', severity: 'high', message: 'pick({ index }) did not change the value' })
+      await pick(box, second)
+      if ((await valueOf(box)) !== second) issues.push({ kind: 'dropdown-helpers', severity: 'high', message: 'pick(value) did not choose the value' })
       finish(info, 'dropdown', vp.name, theme, issues)
     })
 

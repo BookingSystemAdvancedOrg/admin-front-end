@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { watch } from '../lib/watch'
 import { ready } from '../lib/ui'
+import { options, pick } from '../lib/select'
 import { RUN, uniq } from '../lib/data'
 import { Api } from '../lib/api'
 
@@ -26,13 +27,13 @@ async function addDish(page: Page, d: { name: string; category: string; price: s
   await dlg.locator('input[type=file]').setInputFiles(d.image ?? IMG)
   await dlg.getByLabel('Namn').fill(d.name)
   if (d.desc) await dlg.getByLabel('Beskrivning (frivilligt)').fill(d.desc)
-  await dlg.getByLabel('Kategori').selectOption({ label: d.category })
+  await pick(dlg.getByLabel('Kategori'), { label: d.category })
   await dlg.getByLabel('Pris (kr)').fill(d.price)
   if (d.alcohol) await dlg.getByRole('switch', { name: 'Innehåller alkohol' }).click()
   for (const [i, [part, station]] of (d.parts ?? []).entries()) {
     await dlg.getByRole('button', { name: i === 0 ? 'Dela upp som meny/combo' : 'Lägg till del' }).click()
     await dlg.locator(`#dish-part-${i}`).fill(part)
-    if (station) await dlg.locator(`#dish-part-station-${i}`).selectOption({ label: station })
+    if (station) await pick(dlg.locator(`#dish-part-station-${i}`), { label: station })
   }
   await dlg.getByRole('button', { name: 'Lägg till rätt' }).click()
   await expect(dlg).toBeHidden({ timeout: 30000 })
@@ -75,9 +76,9 @@ test.describe('Admin: Meny', () => {
     await cats.getByRole('button', { name: 'Spara kategorier' }).click()
     await expect(cats).toBeHidden({ timeout: 20000 })
     await page.getByRole('button', { name: '+ Lägg till rätt' }).click()
-    const options = await dlg.getByLabel('Kategori').locator('option').allTextContents()
-    test.info().annotations.push({ type: 'categories', description: options.join(', ') })
-    expect.soft(options, 'restaurant can add its own categories').toContain(cat)
+    const catNames = await options(dlg.getByLabel('Kategori'))
+    test.info().annotations.push({ type: 'categories', description: catNames.join(', ') })
+    expect.soft(catNames, 'restaurant can add its own categories').toContain(cat)
     await dlg.getByRole('button', { name: 'Avbryt' }).click()
     cats = await openCats()
     await cats.getByRole('button', { name: `Ta bort ${cat}` }).click()

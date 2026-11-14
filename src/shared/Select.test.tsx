@@ -158,15 +158,26 @@ describe('Select', () => {
     expect(box).toHaveAttribute('aria-expanded', 'false')
   })
 
-  it('closes when the page scrolls under it', async () => {
+  it('closes when the page scrolls the field away', async () => {
     const user = userEvent.setup()
     render(<Fruit />)
     const box = screen.getByRole('combobox')
     await user.click(box)
     fireEvent.scroll(listbox())
     expect(box).toHaveAttribute('aria-expanded', 'true')
+    vi.spyOn(box, 'getBoundingClientRect').mockReturnValue({ top: -40, left: 0, width: 200, height: 40, bottom: 0, right: 200, x: 0, y: -40, toJSON() {} } as DOMRect)
     fireEvent.scroll(document)
     expect(box).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('stays open on a scroll event that does not move the field', async () => {
+    const user = userEvent.setup()
+    render(<Fruit />)
+    const box = screen.getByRole('combobox')
+    await user.click(box)
+    fireEvent.scroll(document)
+    fireEvent.scroll(window)
+    expect(box).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('does not fire onChange when the same option is picked again', async () => {
@@ -263,10 +274,16 @@ describe('Select', () => {
     expect(list.closest('.b-select-sheet')).not.toBeNull()
     expect(list).toHaveAccessibleName('Frukt')
     expect(document.querySelector('.b-select-title')).toHaveTextContent('Frukt')
+    // Sidan under är låst och ett rull-event stänger inte arket.
+    expect(document.documentElement.style.overflow).toBe('hidden')
+    vi.spyOn(box, 'getBoundingClientRect').mockReturnValue({ top: -400, left: 0, width: 200, height: 40, bottom: -360, right: 200, x: 0, y: -400, toJSON() {} } as DOMRect)
+    fireEvent.scroll(document)
+    expect(box).toHaveAttribute('aria-expanded', 'true')
     // Ett tryck på bakgrunden stänger arket.
     const scrim = document.querySelector('.b-select-scrim') as HTMLElement
     act(() => scrim.click())
     expect(box).toHaveAttribute('aria-expanded', 'false')
+    expect(document.documentElement.style.overflow).toBe('')
   })
 })
 

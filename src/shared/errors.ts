@@ -235,10 +235,12 @@ export function focusErrorField(err: unknown, ids: Record<string, string>): bool
   if (typeof field !== 'string') return false
   const id = ids[field] ?? ids[field.split(/[.[]/)[0]]
   const el = id ? document.getElementById(id) : null
-  if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement)) return false
+  // Rullistan (shared/Select) är en knapp med role="combobox".
+  const combobox = el instanceof HTMLButtonElement && el.getAttribute('role') === 'combobox'
+  if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement || combobox)) return false
   el.setAttribute('aria-invalid', 'true')
   el.focus()
-  if (!(el instanceof HTMLSelectElement)) el.select()
+  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) el.select()
   el.addEventListener('input', () => el.removeAttribute('aria-invalid'), { once: true })
   return true
 }

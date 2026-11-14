@@ -75,6 +75,23 @@ describe('focusErrorField', () => {
     expect(focusErrorField(new Error('x'), { price: 'dish-price' })).toBe(false)
     expect(focusErrorField(new ApiError(400, 'x', { field: 'other' }), { price: 'dish-price' })).toBe(false)
   })
+
+  it('markerar och fokuserar en rullista (combobox-knapp) tills ett nytt val görs', () => {
+    document.body.innerHTML = '<button id="dish-category" role="combobox" type="button">Förrätt</button>'
+    const err = new ApiError(400, 'unknown category', { fromServer: true, field: 'category' })
+    expect(focusErrorField(err, { category: 'dish-category' })).toBe(true)
+    const box = document.getElementById('dish-category') as HTMLButtonElement
+    expect(document.activeElement).toBe(box)
+    expect(box).toHaveAttribute('aria-invalid', 'true')
+    box.dispatchEvent(new Event('input', { bubbles: true }))
+    expect(box).not.toHaveAttribute('aria-invalid')
+  })
+
+  it('tar inte en vanlig knapp som fält', () => {
+    document.body.innerHTML = '<button id="dish-category" type="button">Spara</button>'
+    const err = new ApiError(400, 'x', { fromServer: true, field: 'category' })
+    expect(focusErrorField(err, { category: 'dish-category' })).toBe(false)
+  })
 })
 
 describe('vem gör något', () => {

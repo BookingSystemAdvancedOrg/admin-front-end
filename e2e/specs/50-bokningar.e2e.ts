@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { watch } from '../lib/watch'
 import { ready } from '../lib/ui'
+import { pick, waitForOptions } from '../lib/select'
 import { Api, stockholmDate } from '../lib/api'
 import { mail, PHONE } from '../lib/data'
 
@@ -26,8 +27,8 @@ test.describe('Admin: Bokningar', () => {
     await dlg.getByLabel('Datum').fill(TOMORROW)
     await dlg.getByLabel('Datum').press('Tab')
     const time = dlg.getByLabel('Tid')
-    await expect(time.locator('option').nth(1)).toBeAttached({ timeout: 20000 })
-    await time.selectOption({ index: 4 })
+    await waitForOptions(time)
+    await pick(time, { index: 4 })
     await dlg.locator('.table-chip').first().click()
     await dlg.getByLabel('Namn').fill('E2E Åsa Öberg')
     await dlg.getByLabel('Telefon (valfritt)').fill(PHONE)
@@ -49,8 +50,8 @@ test.describe('Admin: Bokningar', () => {
     await dlg.getByRole('radio', { name: 'Drop-in' }).click()
     await dlg.getByLabel('Antal personer').fill('2')
     const time = dlg.getByLabel('Tid')
-    await expect(time.locator('option').nth(1)).toBeAttached({ timeout: 20000 })
-    await time.selectOption({ index: 1 })
+    await waitForOptions(time)
+    await pick(time, { index: 1 })
     await dlg.locator('.table-chip').first().click()
     await dlg.getByLabel('Namn').fill('E2E Drop-in')
     await dlg.getByRole('button', { name: 'Boka' }).click()

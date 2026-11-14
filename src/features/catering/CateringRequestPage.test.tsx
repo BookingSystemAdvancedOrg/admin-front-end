@@ -234,6 +234,26 @@ describe('CateringRequestPage', () => {
     expect(getRequest).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps the typed offer and marks the dropdown the server refused', async () => {
+    const user = userEvent.setup()
+    getRequest.mockResolvedValue(request({ settings: { cleaningFee: 500 } }))
+    sendOffer.mockRejectedValue(new ApiError(400, 'equipmentReturn is not allowed here',
+      { field: 'equipmentReturn', fromServer: true }))
+    renderAt()
+    const delivery = await screen.findByLabelText('Leverans (kr)')
+    await user.clear(delivery)
+    await user.type(delivery, '250')
+    await user.click(screen.getByRole('button', { name: 'Skicka offert' }))
+    await screen.findByRole('alert')
+    const ret = screen.getByRole('combobox', { name: 'Retur av utrustning' })
+    expect(ret).toHaveFocus()
+    expect(ret).toHaveAttribute('aria-invalid', 'true')
+    expect(getRequest).toHaveBeenCalledTimes(1)
+    expect(delivery).toHaveValue('250')
+    await chooseOption(ret, 'not_cleaned')
+    expect(ret).not.toHaveAttribute('aria-invalid')
+  })
+
   it('staff cannot edit the offer', async () => {
     role = 'staff_user'
     getRequest.mockResolvedValue(request())

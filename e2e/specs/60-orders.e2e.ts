@@ -2,6 +2,7 @@ import { test, expect, type Page, type Browser } from '@playwright/test'
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs'
 import { watch } from '../lib/watch'
 import { ready } from '../lib/ui'
+import { pick, valueOf } from '../lib/select'
 import { optEnv } from '../lib/env'
 import { mail, RUN } from '../lib/data'
 
@@ -87,11 +88,11 @@ test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', 
   await ready(page)
   const r1 = JSON.parse(readFileSync(RESTORE, 'utf8'))
   if (r1.drinks === undefined) {
-    writeFileSync(RESTORE, JSON.stringify({ ...r1, drinks: await page.getByLabel('Drycker').inputValue(), mains: await page.getByLabel('Varmrätter').inputValue(),
+    writeFileSync(RESTORE, JSON.stringify({ ...r1, drinks: await valueOf(page.getByLabel('Drycker')), mains: await valueOf(page.getByLabel('Varmrätter')),
       allergy: await page.locator('[role=switch][aria-labelledby=allergy-ticket-label]').getAttribute('aria-checked') }))
   }
-  await page.getByLabel('Drycker').selectOption({ label: 'Bar' })
-  await page.getByLabel('Varmrätter').selectOption({ label: 'Kök' })
+  await pick(page.getByLabel('Drycker'), { label: 'Bar' })
+  await pick(page.getByLabel('Varmrätter'), { label: 'Kök' })
   const allergy = page.locator('[role=switch][aria-labelledby=allergy-ticket-label]')
   if ((await allergy.getAttribute('aria-checked')) !== 'true') await allergy.click()
   await page.getByRole('button', { name: 'Spara stationer' }).click()
@@ -115,14 +116,14 @@ test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', 
     const dlg = page.getByRole('dialog', { name: 'Lägg till rätt' })
     await dlg.locator('input[type=file]').setInputFiles('fixtures/dish.jpg')
     await dlg.getByLabel('Namn').fill(d.name)
-    await dlg.getByLabel('Kategori').selectOption({ label: d.cat })
+    await pick(dlg.getByLabel('Kategori'), { label: d.cat })
     await dlg.getByLabel('Pris (kr)').fill(d.price)
     if (d.alcohol) await dlg.getByRole('switch', { name: 'Innehåller alkohol' }).click()
-    if (d.station) await dlg.locator('#dish-station').selectOption({ label: d.station })
+    if (d.station) await pick(dlg.locator('#dish-station'), { label: d.station })
     for (const [i, [part, st]] of (d.parts ?? []).entries()) {
       await dlg.getByRole('button', { name: i === 0 ? 'Dela upp som meny/combo' : 'Lägg till del' }).click()
       await dlg.locator(`#dish-part-${i}`).fill(part)
-      await dlg.locator(`#dish-part-station-${i}`).selectOption({ label: st })
+      await pick(dlg.locator(`#dish-part-station-${i}`), { label: st })
     }
     await dlg.getByRole('button', { name: 'Lägg till rätt' }).click()
     await expect(dlg).toBeHidden({ timeout: 30000 })
@@ -223,8 +224,8 @@ test.afterAll('restore: hours back, ordering off, E2E dishes off', async ({ brow
   if (r.drinks !== undefined) {
     await page.goto('/installningar#skrivare')
     await ready(page)
-    await page.getByLabel('Drycker').selectOption(r.drinks)
-    await page.getByLabel('Varmrätter').selectOption(r.mains)
+    await pick(page.getByLabel('Drycker'), r.drinks)
+    await pick(page.getByLabel('Varmrätter'), r.mains)
     const al = page.locator('[role=switch][aria-labelledby=allergy-ticket-label]')
     if ((await al.getAttribute('aria-checked')) !== r.allergy) await al.click()
     await page.getByRole('button', { name: 'Spara stationer' }).click()

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { watch } from '../lib/watch'
 import { ready } from '../lib/ui'
+import { options, pick } from '../lib/select'
 import { mail, RUN } from '../lib/data'
 import { optEnv } from '../lib/env'
 import { adminLogin } from '../lib/login'
@@ -52,9 +53,9 @@ test.describe('Admin: Personal', () => {
     await dlg.getByLabel('Namn').fill('E2E Servitör Åke')
     await dlg.getByLabel('E-post').fill(mail('staff'))
     await dlg.getByLabel('Telefon').fill('070-174 06 06')
-    const roles = await dlg.getByLabel('Roll').locator('option').allTextContents()
+    const roles = await options(dlg.getByLabel('Roll'))
     info.annotations.push({ type: 'roles', description: roles.join(', ') })
-    if (await dlg.getByLabel('Roll').isEnabled()) await dlg.getByLabel('Roll').selectOption({ index: 0 })
+    if (await dlg.getByLabel('Roll').isEnabled()) await pick(dlg.getByLabel('Roll'), { index: 0 })
     await dlg.getByRole('button', { name: 'Skicka inbjudan' }).click()
     await expect(dlg).toBeHidden({ timeout: 20000 })
     await expect(page.getByText(mail('staff')).first()).toBeVisible()

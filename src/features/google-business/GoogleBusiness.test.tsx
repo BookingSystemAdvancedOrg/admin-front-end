@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import GoogleProfileCard from './GoogleProfileCard'
@@ -14,7 +14,7 @@ vi.mock('./api', async (orig) => ({
   ...(await orig<typeof import('./api')>()),
   getConnection: vi.fn(), finishConnect: vi.fn(), startConnect: vi.fn(), disconnect: vi.fn(),
   listGoogleLocations: vi.fn(), getLocationView: vi.fn(), linkLocation: vi.fn(), unlinkLocation: vi.fn(),
-  syncNow: vi.fn(), saveReviewSettings: vi.fn(),
+  syncNow: vi.fn(), saveReviewSettings: vi.fn(), skipGoogle: vi.fn(),
 }))
 
 const preview: api.Preview = {
@@ -77,6 +77,96 @@ describe('GoogleProfileCard', () => {
     renderCard()
     fireEvent.click(await screen.findByRole('button', { name: 'Synka nu' }))
     await waitFor(() => expect(api.syncNow).toHaveBeenCalledWith('loc-1'))
+  })
+})
+
+const steps = () => within(screen.getByRole('list', { name: 'Så kopplar ni Google' })).getAllByRole('listitem')
+const current = () => steps().find((li) => li.getAttribute('aria-current') === 'step')
+
+describe('Google guide', () => {
+  it('shows the five steps with step 1 current before Google, and the help panel', async () => {
+    vi.mocked(api.getConnection).mockResolvedValue({ status: 'disconnected' })
+    renderCard()
+    await screen.findByRole('button', { name: 'Koppla Google' })
+    expect(steps().map((li) => li.textContent)).toEqual(api.GUIDE_STEPS.map((t, i) => `${i + 1}${t}`))
+    expect(current()?.textContent).toContain('Tryck på Koppla Google.')
+    const help = screen.getByText('Fungerade det inte?')
+    expect(help.closest('details')).not.toBeNull()
+    for (const h of ['Fel Google-konto', 'Restaurangen finns inte i listan', 'Google har inte verifierat appen', 'Koppla bort']) {
+      expect(screen.getByRole('heading', { name: h })).toBeInTheDocument()
+    }
+    expect(screen.getByText(/Personer och åtkomst, Lägg till/)).toBeInTheDocument()
+    expect(screen.getByText(/Avancerat och sedan på Fortsätt/)).toBeInTheDocument()
+  })
+
+  it('after the Google return marks 1-3 done and step 4, then 5, current', async () => {
+    vi.mocked(api.finishConnect).mockResolvedValue({ status: 'connected' })
+    vi.mocked(api.getConnection).mockResolvedValue({ status: 'connected' })
+    renderCard('/installningar?google=1&code=abc&state=xyz')
+    const select = await screen.findByRole('combobox')
+    await waitFor(() => expect(current()?.textContent).toContain('Välj er restaurang i listan.'))
+    expect(steps().slice(0, 3).every((li) => li.classList.contains('is-done'))).toBe(true)
+    chooseOption(select, 'locations/1')
+    expect(current()?.textContent).toContain('Tryck på Koppla platsen.')
+    expect(screen.getByText('Fungerade det inte?')).toBeInTheDocument()
+  })
+
+  it('hides the guide once a place is linked', async () => {
+    vi.mocked(api.getConnection).mockResolvedValue({ status: 'connected' })
+    vi.mocked(api.getLocationView).mockResolvedValue({
+      ...view, link: { googleLocation: 'locations/1', title: 'Bistro', syncStatus: 'ok', lastSyncAt: null, version: 1 },
+    })
+    renderCard()
+    await screen.findByRole('button', { name: 'Synka nu' })
+    expect(screen.queryByRole('list', { name: 'Så kopplar ni Google' })).toBeNull()
+  })
+
+  it('skips Google, collapses to one line with a profile link, and undoes it', async () => {
+    vi.mocked(api.getConnection).mockResolvedValue({ status: 'disconnected' })
+    vi.mocked(api.skipGoogle).mockImplementation(async () => {
+      vi.mocked(api.getLocationView).mockResolvedValue({ ...view, skipped: true })
+      return { skipped: true }
+    })
+    vi.mocked(api.unlinkLocation).mockImplementation(async () => {
+      vi.mocked(api.getLocationView).mockResolvedValue(view)
+    })
+    renderCard()
+    fireEvent.click(await screen.findByRole('button', { name: 'Vi har ingen Google-profil' }))
+    await waitFor(() => expect(api.skipGoogle).toHaveBeenCalledWith('loc-1'))
+    expect(await screen.findByText('Google är inte kopplat.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Skapa en gratis profil' })).toHaveAttribute('href', 'https://business.google.com')
+    expect(screen.queryByRole('list', { name: 'Så kopplar ni Google' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Koppla Google ändå' }))
+    await waitFor(() => expect(api.unlinkLocation).toHaveBeenCalledWith('loc-1'))
+    expect(await screen.findByRole('button', { name: 'Koppla Google' })).toBeInTheDocument()
+  })
+
+  it('stays skipped after a reload (server side flag)', async () => {
+    vi.mocked(api.getConnection).mockResolvedValue({ status: 'connected' })
+    vi.mocked(api.getLocationView).mockResolvedValue({ ...view, skipped: true })
+    renderCard()
+    expect(await screen.findByText('Google är inte kopplat.')).toBeInTheDocument()
+    expect(api.listGoogleLocations).not.toHaveBeenCalled()
+  })
+
+  it('offers Hoppa över while picking a place', async () => {
+    vi.mocked(api.getConnection).mockResolvedValue({ status: 'connected' })
+    vi.mocked(api.skipGoogle).mockResolvedValue({ skipped: true })
+    renderCard()
+    await screen.findByRole('combobox')
+    fireEvent.click(screen.getByRole('button', { name: 'Hoppa över' }))
+    await waitFor(() => expect(api.skipGoogle).toHaveBeenCalledWith('loc-1'))
+  })
+})
+
+describe('googleDone', () => {
+  it('is done when connected and linked, or skipped', () => {
+    const link = { googleLocation: 'locations/1', title: 'B', syncStatus: 'ok' as const, lastSyncAt: null, version: 1 }
+    expect(api.googleDone({ status: 'disconnected' }, view)).toBe(false)
+    expect(api.googleDone({ status: 'connected' }, view)).toBe(false)
+    expect(api.googleDone({ status: 'connected' }, { ...view, link })).toBe(true)
+    expect(api.googleDone({ status: 'needs_reauth' }, { ...view, link })).toBe(false)
+    expect(api.googleDone({ status: 'disconnected' }, { ...view, skipped: true })).toBe(true)
   })
 })
 

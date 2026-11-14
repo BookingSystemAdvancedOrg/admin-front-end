@@ -47,6 +47,7 @@ import { Disclosure } from '../../shared/Disclosure'
 import { SkelRows } from '../../shared/Skeleton'
 import { getLocation as getPhoneLocation, getOverview as getPhoneOverview } from '../phone-agent/api'
 import { progress as phoneProgress, type Progress } from '../phone-agent/setup'
+import { getConnection as getGoogleConnection, getLocationView as getGoogleView, googleDone } from '../google-business/api'
 import './setup.css'
 
 // Genvägskorten längst ned som länkar till de andra sidorna. Ägaren får
@@ -79,6 +80,8 @@ interface OverviewData {
   print: PrintStatus | null
   /** Telefonassistentens fem steg; null = ingår inte i planen eller kunde inte hämtas. */
   phone: Progress | null
+  /** Google-profilen klar (kopplad eller överhoppad); null = ingår inte i planen eller kunde inte hämtas. */
+  google: boolean | null
 }
 
 const EMPTY: OverviewData = {
@@ -93,6 +96,7 @@ const EMPTY: OverviewData = {
   catering: null,
   print: null,
   phone: null,
+  google: null,
 }
 
 /** Ett anrop som misslyckas ger `null` (okänt) i stället för att fälla sidan. */
@@ -142,6 +146,8 @@ export default function OversiktPage() {
   const hasCatering = sample || Boolean(tenant?.entitlements.features.catering)
   // Telefonassistenten i planen: ägarens Kom igång får ett steg med fem delsteg.
   const hasPhone = isOwner && Boolean(tenant?.entitlements.features.phoneAgent)
+  // Google-profilen i planen: ett valfritt steg som går att hoppa över.
+  const hasGoogle = isOwner && Boolean(tenant?.entitlements.features.googleBusiness)
   const tableLabels = sample ? (SAMPLE_TABLE_LABELS as Map<string, string>) : labels
 
   const fetchOverview = useCallback((locationId: string): Promise<OverviewData> =>
@@ -158,7 +164,10 @@ export default function OversiktPage() {
       hasPhone
         ? orNull(Promise.all([getPhoneOverview(), getPhoneLocation(locationId)]).then(([o, l]) => phoneProgress(o.config, l)))
         : Promise.resolve(null),
-    ]).then(([loc, menu, versions, users, today, orders, catering, lastWeek, print, phone]) => ({
+      hasGoogle
+        ? orNull(Promise.all([getGoogleConnection(), getGoogleView(locationId)]).then(([c, v]) => googleDone(c, v)))
+        : Promise.resolve(null),
+    ]).then(([loc, menu, versions, users, today, orders, catering, lastWeek, print, phone, google]) => ({
         forLocation: locationId,
         location: loc,
         activeMenuItems: menu ? menu.filter((m) => m.active).length : null,
@@ -170,8 +179,9 @@ export default function OversiktPage() {
         catering,
         print,
         phone,
+        google,
       })),
-  [isOwner, timezoneSetting, hasOrdering, hasCatering, hasPhone])
+  [isOwner, timezoneSetting, hasOrdering, hasCatering, hasPhone, hasGoogle])
 
   useEffect(() => {
     if (!locationId) return
@@ -200,6 +210,7 @@ export default function OversiktPage() {
     stripeStage: stage,
     staffCount: data.staffCount,
     dpaAccepted: tenant?.dpa ? tenant.dpa.upToDate : undefined,
+    google: hasGoogle ? data.google : undefined,
     phone: hasPhone ? data.phone : undefined,
   })
   const remaining = steps.filter((s) => s.done === false).length

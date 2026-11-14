@@ -65,3 +65,116 @@
 .omdomen-actions {
   grid-column: 1 / -1;
 }
+
+/* Kom igång länkar till #google: rullas fram under den fasta toppraden. */
+.google-card {
+  scroll-margin-top: calc(var(--bq-space-16) + var(--bq-space-6));
+  min-width: 0;
+}
+
+/* Guiden: en numrerad rad per sak att göra; där ägaren är nu lyser upp. */
+.google-guide {
+  display: grid;
+  gap: var(--bq-space-2);
+  margin: var(--bq-space-3) 0 var(--bq-space-4);
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+.google-guide__step {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--bq-space-3);
+  padding: var(--bq-space-2) var(--bq-space-3);
+  border: var(--bq-bar-hairline) solid transparent;
+  border-radius: var(--bq-radius-inner);
+  color: var(--bq-muted);
+  transition: background-color var(--bq-duration-fast) var(--bq-ease-out), border-color var(--bq-duration-fast) var(--bq-ease-out);
+}
+.google-guide__step.is-now {
+  border-color: var(--bq-line-strong);
+  background: var(--bq-glass-hi, var(--bq-surface));
+  color: var(--bq-ink);
+  box-shadow: var(--bq-shadow-sm);
+}
+.google-guide__n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--bq-radius-pill);
+  border: var(--bq-bar-hairline) solid var(--bq-line-strong);
+  color: var(--bq-muted);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.google-guide__step.is-now .google-guide__n {
+  border-color: var(--bq-ink);
+  background: var(--bq-ink);
+  color: var(--bq-surface);
+}
+.google-guide__step.is-done .google-guide__n {
+  border-color: var(--bq-success);
+  background: var(--bq-success-bg);
+  color: var(--bq-success-ink);
+}
+.google-guide__text {
+  min-width: 0;
+  padding-top: var(--bq-space-1);
+  font-size: var(--bq-text-base);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.google-guide__step.is-now .google-guide__text {
+  font-weight: 600;
+}
+@media (prefers-reduced-motion: reduce) {
+  .google-guide__step { transition: none; }
+}
+
+/* Fungerade det inte? */
+.google-help {
+  margin-top: var(--bq-space-3);
+}
+.google-help h3 {
+  margin: var(--bq-space-3) 0 var(--bq-space-1);
+  font-size: var(--bq-text-base);
+  color: var(--bq-ink);
+}
+.google-help h3:first-child {
+  margin-top: 0;
+}
+.google-help p {
+  margin: 0;
+  color: var(--bq-muted);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* Hoppat över: kortet är en rad, med vägen tillbaka och en länk till Google. */
+.google-skipped__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bq-space-2) var(--bq-space-3);
+}
+.google-skipped__text {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bq-space-2);
+  color: var(--bq-ink);
+  font-weight: 600;
+}
+.google-skipped__hint {
+  margin: var(--bq-space-2) 0 0;
+  color: var(--bq-muted);
+  font-size: var(--bq-text-sm);
+}
+.google-skipped__hint a {
+  color: var(--bq-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

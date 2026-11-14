@@ -32,6 +32,8 @@ export interface Preview {
 }
 export interface LocationView {
   link?: Link
+  /** Ägaren valde "Vi har ingen Google-profil" (Google är valfritt). */
+  skipped?: boolean
   preview: Preview
   reviewSettings: ReviewSettings
   stats: { sent30d: number; skipped30d: number; clicks30d: number }
@@ -51,10 +53,27 @@ export const getLocationView = (locationId: string) => apiFetch<LocationView>(lo
 export const linkLocation = (locationId: string, googleLocation: string, version?: number) =>
   apiFetch<Link>(`${loc(locationId)}/link`, { method: 'PUT', body: JSON.stringify({ googleLocation, ...(version ? { version } : {}) }) })
 export const unlinkLocation = (locationId: string) => apiFetch<void>(`${loc(locationId)}/link`, { method: 'DELETE' })
+/** "Vi har ingen Google-profil": Google räknas som klart i Kom igång. Ångras med unlinkLocation. */
+export const skipGoogle = (locationId: string) =>
+  apiFetch<{ skipped: true }>(`${loc(locationId)}/link`, { method: 'PUT', body: JSON.stringify({ skipped: true }) })
+
+/** Kom igång: klart när en plats är kopplad, eller när ägaren hoppat över Google. */
+export function googleDone(connection: Connection, view: LocationView): boolean {
+  return Boolean(view.skipped) || (connection.status === 'connected' && Boolean(view.link))
+}
 export const syncNow = (locationId: string) =>
   apiFetch<{ syncStatus: string; changed: boolean; lastSyncAt: string | null }>(`${loc(locationId)}/sync`, { method: 'POST', body: '{}' })
 export const saveReviewSettings = (locationId: string, body: ReviewSettings) =>
   apiFetch<ReviewSettings>(`${loc(locationId)}/review-settings`, { method: 'PUT', body: JSON.stringify(body) })
+
+/** Guiden: en sak att göra per rad. 1-3 sker hos Google, 4-5 här efter återkomsten. */
+export const GUIDE_STEPS = [
+  'Tryck på Koppla Google.',
+  'Välj det Google-konto som äger restaurangens Google-profil (det ni använder i Google Maps).',
+  'Tryck på Tillåt.',
+  'Välj er restaurang i listan.',
+  'Tryck på Koppla platsen. Klart! Öppettiderna skickas till Google.',
+]
 
 export const ERRORS: Record<string, string> = {
   not_connected: 'Koppla Google först.',

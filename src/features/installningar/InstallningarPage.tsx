@@ -124,7 +124,7 @@ export const TAB_HINT: Record<SettingsTab, string> = {
 }
 
 /** Delar som har egen länk (#del) och fliken de ligger i. */
-const SECTION_TAB: Record<string, SettingsTab> = { skrivbordsappen: 'utseende' }
+const SECTION_TAB: Record<string, SettingsTab> = { skrivbordsappen: 'utseende', google: 'profil' }
 
 /** #flik eller #del ur adressen, som flik; null om den inte finns. */
 function tabFromHash(hash: string): SettingsTab | null {

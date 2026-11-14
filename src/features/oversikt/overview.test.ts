@@ -130,3 +130,21 @@ describe('Telefonassistent in Kom igång', () => {
     expect(setupSteps({ ...owner, phone: null }).at(-1)?.done).toBeNull()
   })
 })
+
+describe('Google-profil in Kom igång', () => {
+  const owner = { isOwner: true, hasOpeningHours: true, activeMenuItems: 3, hasLiveLayout: true, stripeStage: 'ready' as const, staffCount: 1 }
+
+  it('is a step only when the plan has Google, linking straight to the card, before the phone step', () => {
+    expect(setupSteps(owner).some((s) => s.id === 'google')).toBe(false)
+    const steps = setupSteps({ ...owner, google: false, phone: { namn: true, tider: true, nummer: true, koppla: true, prova: true } })
+    const google = steps.find((s) => s.id === 'google')
+    expect(google).toEqual({ id: 'google', label: 'Google-profil (valfritt)', done: false, to: '/installningar#google' })
+    expect(steps.at(-1)?.id).toBe('phone')
+  })
+
+  it('is done when linked or skipped, and unknown when it could not be fetched', () => {
+    expect(setupSteps({ ...owner, google: true }).find((s) => s.id === 'google')?.done).toBe(true)
+    expect(setupSteps({ ...owner, google: null }).find((s) => s.id === 'google')?.done).toBeNull()
+    expect(setupSteps({ ...owner, google: true }).every((s) => s.done === true)).toBe(true)
+  })
+})

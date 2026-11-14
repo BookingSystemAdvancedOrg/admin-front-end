@@ -48,7 +48,7 @@ export function hasAnyOpeningHours(hours: BusinessHours | undefined): boolean {
 }
 
 export interface SetupStep {
-  id: 'dpa' | 'hours' | 'menu' | 'layout' | 'stripe' | 'staff' | 'phone'
+  id: 'dpa' | 'hours' | 'menu' | 'layout' | 'stripe' | 'staff' | 'google' | 'phone'
   label: string
   /** null = okänt (data kunde inte hämtas) - visas varken som klart eller ej. */
   done: boolean | null
@@ -81,6 +81,11 @@ export interface SetupInput {
   staffCount: number | null
   /** Personuppgiftsbiträdesavtalet: undefined = API:t saknar det (inget steg). */
   dpaAccepted?: boolean
+  /**
+   * Google-profilen (valfri): klart när en plats är kopplad eller ägaren
+   * hoppat över. undefined = ingår inte i planen (inget steg), null = kunde inte hämtas.
+   */
+  google?: boolean | null
   /** Telefonassistentens steg: undefined = ingår inte i planen (inget steg), null = kunde inte hämtas. */
   phone?: Progress | null
 }
@@ -129,6 +134,9 @@ export function setupSteps(input: SetupInput): SetupStep[] {
       done: input.staffCount === null ? null : input.staffCount > 0,
       to: '/personal',
     },
+    ...(input.google === undefined
+      ? []
+      : [{ id: 'google' as const, label: 'Google-profil (valfritt)', done: input.google, to: '/installningar#google' }]),
     ...(input.phone === undefined ? [] : [phoneSetupStep(input.phone)]),
   ]
 }

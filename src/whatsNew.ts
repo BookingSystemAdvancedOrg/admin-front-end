@@ -22,6 +22,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
   { n: 10, text: 'Abonnemang kort' },
   { n: 11, text: 'Nya rullistor' },
   { n: 12, text: 'Telefon guide' },
+  { n: 13, text: 'Google guide' },
 ]
 
 declare const __WHATS_NEW_N__: number | undefined

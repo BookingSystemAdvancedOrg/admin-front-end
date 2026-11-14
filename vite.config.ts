@@ -1,8 +1,32 @@
 /// <reference types="vitest/config" />
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import { configDefaults } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { helpCorpusPlugin } from './scripts/help-corpus.mjs'
+import { WHATS_NEW, latestN } from './src/whatsNew.ts'
+
+/**
+ * "Nytt i versionen" / "What's new": bäddar in högsta n som __WHATS_NEW_N__
+ * och lägger hela listan som whats-new.json i dist (deployen laddar upp den
+ * med no-cache). I dev serveras samma fil av dev-servern.
+ */
+function whatsNewPlugin(): Plugin {
+  const json = JSON.stringify({ entries: WHATS_NEW })
+  return {
+    name: 'booqy-whats-new',
+    config: () => ({ define: { __WHATS_NEW_N__: JSON.stringify(latestN(WHATS_NEW)) } }),
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'whats-new.json', source: json })
+    },
+    configureServer(server) {
+      server.middlewares.use('/whats-new.json', (_req, res) => {
+        res.setHeader('Content-Type', 'application/json')
+        res.setHeader('Cache-Control', 'no-cache')
+        res.end(json)
+      })
+    },
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -16,7 +40,7 @@ export default defineConfig(({ mode }) => {
   const useDevProxy = mode === 'development' && /^https?:/.test(apiTarget)
 
   return {
-    plugins: [react(), helpCorpusPlugin()],
+    plugins: [react(), helpCorpusPlugin(), whatsNewPlugin()],
     // Egen cache-mapp för testkörningar - annars kan `npm test` krocka med en
     // samtidigt körande `npm run dev` som skriver till samma node_modules/.vite.
     cacheDir: mode === 'test' ? 'node_modules/.vitest' : 'node_modules/.vite',

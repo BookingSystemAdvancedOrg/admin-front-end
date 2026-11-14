@@ -18,6 +18,15 @@ proxied through the dev server (`/api/*` → `VITE_API_BASE_URL`, see
 backend API's CORS policy allows. Production builds call the API directly,
 so the deployed domains still need to be in the API's `allowOrigins`.
 
+## What's new (rule)
+
+Every user-visible change adds one entry to `src/whatsNew.ts`: the next `n`,
+newest last, and only where the change is, two to four Swedish words, no
+verbs (for example `Personal profilbild`, `Meny allergener`). The build
+embeds the highest `n` and ships the list as `/whats-new.json` (no-cache);
+the "Ny version finns" notice lists what is newer than the running build
+(at most five, then `+N till`). `src/whatsNew.test.ts` checks the file.
+
 ## Project structure
 
 Each feature lives in its own folder under `src/features/`; shared UI (the

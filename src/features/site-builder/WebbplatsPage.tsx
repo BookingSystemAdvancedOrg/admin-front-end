@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Bar, Button, Card, Field, Input, Modal, Select, toast } from '@booqy/brand'
 import { ApiError } from '../../shared/api'
 import { AdminTopbar } from '../../shared/AdminTopbar'
+import { useUnsavedGuard } from '../../shared/unsaved'
 import { errorText } from '../../shared/errors'
 import { currentLocation, useTenant } from '../../shared/tenant'
 import './webbplats.css'
@@ -78,6 +79,8 @@ function Editor() {
   const [doc, setDoc] = useState<SiteDoc | null>(null)
   const [version, setVersion] = useState(0)
   const [dirty, setDirty] = useState(false)
+  // Osparat utkast: uppdateringsrutan frågar innan den laddar om.
+  useUnsavedGuard(dirty)
   const [pageIndex, setPageIndex] = useState(0)
   const [error, setError] = useState<{ text: string; page?: number; block?: number; slug?: boolean } | null>(null)
   const [saving, setSaving] = useState(false)

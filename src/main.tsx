@@ -8,6 +8,7 @@ import { installGlide } from './shared/glide'
 import { installGlassFilter } from './shared/glassFilter'
 import { installDesktopGlass } from './shared/desktopGlass'
 import { startUpdateNotice } from './shared/updateNotice'
+import { hasUnsaved } from './shared/unsaved'
 import { installPwa } from './shared/pwa'
 import App from './App.tsx'
 import { AuthProvider } from './features/auth/AuthContext.tsx'
@@ -28,7 +29,8 @@ installGlide()
 installGlassFilter()
 installDesktopGlass()
 // "Ny version finns" efter en deploy (bara i bygget, inte i npm run dev).
-if (import.meta.env.PROD) startUpdateNotice()
+// Osparade utkast (webbplats, bordskarta) frågas om innan omladdningen.
+if (import.meta.env.PROD) startUpdateNotice({ hasUnsaved })
 // Appen på telefonen: service worker och installationsknappen (bara i bygget).
 if (import.meta.env.PROD) installPwa()
 

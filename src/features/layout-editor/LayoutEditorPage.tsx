@@ -5,6 +5,7 @@ import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { FloorBooking } from './FloorBooking'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
+import { useUnsavedGuard } from '../../shared/unsaved'
 import { getStoredLocationId, useLocationId } from '../../shared/location'
 import { LayoutVersionsModal } from './LayoutVersionsModal'
 import { TableQrModal, TableQrPanel } from '../table-qr/TableQr'
@@ -320,6 +321,14 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
   const [groundDraft, setGroundDraft] = useState<GroundDraft | null>(null)
   const [drawWarning, setDrawWarning] = useState<string | null>(null)
   const [statusText, setStatusText] = useState('Hämtar layout…')
+  // Osparat utkast: uppdateringsrutan frågar innan den laddar om. Läget följer
+  // statusraden; "Kopierat" ändrar inget, allt annat (inläst, sparat) är rent.
+  const unsavedDraft = useRef(false)
+  useEffect(() => {
+    if (statusText.startsWith('Osparade ändringar')) unsavedDraft.current = true
+    else if (!statusText.startsWith('Kopierat')) unsavedDraft.current = false
+  }, [statusText])
+  useUnsavedGuard(() => unsavedDraft.current)
   const [versionLabel, setVersionLabel] = useState('')
   // Utan en sparad plats finns inget layout-API att prata med - då kör
   // editorn vidare på mockdatan som förut.

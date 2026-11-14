@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { watch } from '../lib/watch'
 import { ready } from '../lib/ui'
 import { optEnv } from '../lib/env'
-import { mail, RUN, TENANT_NAME, TENANT_SLUG } from '../lib/data'
+import { fictionPhone, mail, RUN, TENANT_NAME, TENANT_SLUG, uniq } from '../lib/data'
 
 /** Guest side of the E2E restaurant: its own site, booking online, ordering state, QR sticker. */
 const GUEST = optEnv('E2E_GUEST_LOCAL_URL') ?? 'http://localhost:7181'
@@ -33,10 +33,12 @@ test.describe('Guest site for the E2E restaurant', () => {
     // dev uses Cloudflare's always-pass Turnstile test key; give the widget time to load
     await guest.waitForTimeout(4000)
     await guest.getByRole('button', { name: 'Bekräfta bord' }).click()
-    const name = `E2E Webbgäst ${RUN}`
+    // phone and e-mail vary per run: the API allows 5 online bookings per phone/e-mail per 24 h
+    const tag = uniq()
+    const name = `E2E Webbgäst ${RUN} ${tag}`
     await guest.locator('label', { hasText: 'Namn' }).locator('input').fill(name)
-    await guest.locator('label', { hasText: 'E-post' }).locator('input').fill(mail('webguest'))
-    await guest.locator('label', { hasText: 'Telefon' }).locator('input').fill('070-174 06 05')
+    await guest.locator('label', { hasText: 'E-post' }).locator('input').fill(mail(`webguest-${RUN}-${tag}`))
+    await guest.locator('label', { hasText: 'Telefon' }).locator('input').fill(fictionPhone())
     await guest.getByRole('checkbox', { name: /Jag godkänner/ }).check()
     await guest.waitForTimeout(2500)
     await guest.getByRole('button', { name: /Boka bordet|Fortsätt/ }).click()

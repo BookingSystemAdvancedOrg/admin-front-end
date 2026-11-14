@@ -1,15 +1,29 @@
 import { test, expect, type Page } from '@playwright/test'
 import { watch } from '../lib/watch'
 import { ready } from '../lib/ui'
-import { RUN } from '../lib/data'
+import { RUN, uniq } from '../lib/data'
+import { Api } from '../lib/api'
 
 const IMG = 'fixtures/dish.jpg'
+/** 2:1, wider than the 4:3 focus frame. */
+const WIDE_IMG = 'fixtures/dish-wide.jpg'
 
-async function addDish(page: Page, d: { name: string; category: string; price: string; desc?: string; alcohol?: boolean; parts?: [string, string][] }) {
+type Item = { menuItemId: string; name: string }
+
+/** Reloads Meny and reads the location's menu items with the page's own token. */
+async function menuItems(page: Page): Promise<{ api: Api; items: Item[] }> {
+  const api = await Api.attach(page, '/meny')
+  await ready(page, 'Meny')
+  const res = await api.get('/menu/items')
+  expect(res.ok(), `list menu items: ${res.status()}`).toBe(true)
+  return { api, items: ((await res.json()).items ?? []) as Item[] }
+}
+
+async function addDish(page: Page, d: { name: string; category: string; price: string; desc?: string; alcohol?: boolean; parts?: [string, string][]; image?: string }) {
   await page.getByRole('button', { name: '+ Lägg till rätt' }).click()
   const dlg = page.getByRole('dialog', { name: 'Lägg till rätt' })
   await expect(dlg).toBeVisible()
-  await dlg.locator('input[type=file]').setInputFiles(IMG)
+  await dlg.locator('input[type=file]').setInputFiles(d.image ?? IMG)
   await dlg.getByLabel('Namn').fill(d.name)
   if (d.desc) await dlg.getByLabel('Beskrivning (frivilligt)').fill(d.desc)
   await dlg.getByLabel('Kategori').selectOption({ label: d.category })
@@ -97,25 +111,42 @@ test.describe('Admin: Meny', () => {
   })
 
   test('row click opens edit, focal point drag, lightbox, save @webkit', async ({ page }) => {
-    await page.getByRole('row', { name: /E2E Toast Skagen/ }).first().click()
-    const dlg = page.getByRole('dialog', { name: 'Redigera rätt' })
-    await expect(dlg).toBeVisible()
-    const frame = dlg.locator('.dish-focus-frame')
-    const box = await frame.boundingBox()
-    if (box) {
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
-      await page.mouse.down()
-      await page.mouse.move(box.x + box.width / 4, box.y + box.height / 4, { steps: 8 })
-      await page.mouse.up()
+    // Own dish per run (and project), removed again at the end, so earlier runs never leave
+    // two rows or two lightbox buttons with the same name. The photo is 2:1 in a 4:3 frame,
+    // so there is room to drag the focal point sideways.
+    const name = `E2E Toast ${RUN} ${uniq()}`
+    try {
+      await addDish(page, { name, category: 'Förrätter', price: '145', image: WIDE_IMG })
+      await page.getByRole('row', { name: new RegExp(name) }).click()
+      const dlg = page.getByRole('dialog', { name: 'Redigera rätt' })
+      await expect(dlg).toBeVisible()
+      const frame = dlg.locator('.dish-focus-frame')
+      await expect(frame.locator('img')).toHaveJSProperty('complete', true)
+      const box = await frame.boundingBox()
+      expect(box, 'focus frame is on screen').toBeTruthy()
+      if (box) {
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+        await page.mouse.down()
+        await page.mouse.move(box.x + box.width / 4, box.y + box.height / 4, { steps: 8 })
+        await page.mouse.up()
+      }
+      await expect(dlg.getByRole('button', { name: 'Återställ' }), 'dragging the photo moves the focal point').toBeEnabled({ timeout: 3000 })
+      await dlg.getByLabel('Pris (kr)').fill('149')
+      await dlg.getByRole('button', { name: 'Spara ändringar' }).click()
+      await expect(dlg).toBeHidden({ timeout: 20000 })
+      await expect(page.getByRole('row', { name: new RegExp(name) })).toContainText('149')
+      await page.getByRole('button', { name: `Visa bilden på ${name}` }).click()
+      await expect(page.locator('.lightbox, [class*=lightbox]').first()).toBeVisible()
+      await page.keyboard.press('Escape')
+    } finally {
+      const { api, items } = await menuItems(page)
+      const mine = items.filter((d) => d.name === name)
+      expect.soft(mine, 'the dish this test made').toHaveLength(1)
+      for (const d of mine) {
+        const res = await api.del(`/menu/items/${encodeURIComponent(d.menuItemId)}`)
+        expect.soft(res.ok(), `delete ${d.name}: ${res.status()}`).toBe(true)
+      }
     }
-    await expect.soft(dlg.getByRole('button', { name: 'Återställ' }), 'dragging the photo moves the focal point').toBeEnabled({ timeout: 3000 })
-    await dlg.getByLabel('Pris (kr)').fill('149')
-    await dlg.getByRole('button', { name: 'Spara ändringar' }).click()
-    await expect(dlg).toBeHidden({ timeout: 20000 })
-    await expect(page.getByRole('row', { name: /E2E Toast Skagen/ }).first()).toContainText('149')
-    await page.getByRole('button', { name: 'Visa bilden på E2E Toast Skagen' }).click()
-    await expect(page.locator('.lightbox, [class*=lightbox]').first()).toBeVisible()
-    await page.keyboard.press('Escape')
   })
 
   test('toggle status off and on persists @webkit', async ({ page }) => {

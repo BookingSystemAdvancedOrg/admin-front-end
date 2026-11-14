@@ -45,6 +45,9 @@ export class Api {
   patch(p: string, data: unknown): Promise<APIResponse> {
     return this.page.request.patch(this.loc(p), { headers: this.h(), data })
   }
+  del(p: string): Promise<APIResponse> {
+    return this.page.request.delete(this.loc(p), { headers: this.h() })
+  }
 }
 
 /** Date in Stockholm, n days ahead, YYYY-MM-DD. */

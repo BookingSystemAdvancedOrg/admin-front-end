@@ -43,5 +43,7 @@ The E2E restaurant is created by the console suite
   on a localhost page. `E2E_NO_GUEST=1` skips that server.
 - `60-orders.e2e.ts` opens ordering and today's hours on the order-test
   restaurant for the run, adds E2E dishes, and puts everything back after.
-- Phone numbers are from the PTS range reserved for fiction (070-174 06 05);
+- Phone numbers are from the PTS range reserved for fiction (070-174 06 05..99,
+  random per booking, since the API allows 5 online bookings per phone and
+  e-mail per 24 h);
   e-mails go to the SES mailbox simulator. No real person is contacted.

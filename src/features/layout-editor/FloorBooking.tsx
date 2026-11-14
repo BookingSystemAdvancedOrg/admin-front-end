@@ -463,8 +463,9 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
                             <rect className="floor-map-top" x={-t.w / 2} y={-t.h / 2} width={t.w} height={t.h} rx={6} />
                           )}
                           <g transform={`rotate(${-t.rotation})`}>
+                            {/* Trailing space: screen readers and axe join the two texts, "T1 4 pl" not "T14 pl". */}
                             <text className="floor-map-label" y={-4}>
-                              {label(t)}
+                              {label(t)}{' '}
                             </text>
                             <text className="floor-map-seats" y={14}>
                               {t.seats} pl

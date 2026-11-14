@@ -91,6 +91,13 @@ describe('FloorBooking', () => {
     expect(await screen.findByText('Bokat: Anna, bord 1 kl 18:30.')).toBeInTheDocument()
   })
 
+  it('keeps the visible table text inside the accessible name (axe label-content-name-mismatch)', async () => {
+    renderIt()
+    const first = await screen.findByRole('button', { name: /Bord 1, 4 pl, 2 lediga tider/ })
+    // axe joins the two <text> nodes without a separator; "14 pl" would not be part of "Bord 1, 4 pl"
+    expect(first.textContent).toBe('1 4 pl')
+  })
+
   it('a phone booking that lost the race shows the server error and refetches the times', async () => {
     const user = userEvent.setup()
     createManualReservation.mockRejectedValue(new ApiError(409, 'table_taken'))

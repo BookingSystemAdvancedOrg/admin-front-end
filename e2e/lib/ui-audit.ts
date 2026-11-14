@@ -226,13 +226,21 @@ export async function layoutAudit(page: Page, opts: AuditOpts): Promise<Issue[]>
 /** Audit at the top and at the bottom of the page (fixed bars sit over the end of content). */
 export async function fullAudit(page: Page, opts: AuditOpts): Promise<Issue[]> {
   const a = await layoutAudit(page, { ...opts, atBottom: false })
-  await page.evaluate(() => {
-    window.scrollTo(0, document.documentElement.scrollHeight)
-    for (const el of Array.from(document.querySelectorAll('main, [class*=content], [class*=page]'))) {
-      const s = getComputedStyle(el)
-      if (/(auto|scroll)/.test(s.overflowY) && el.scrollHeight > el.clientHeight) el.scrollTop = el.scrollHeight
-    }
-  })
+  // scroll to the end until the page stops growing: sections that load when scrolled into view
+  // (Översikt's month card) make the first "end" mid-page, where content may sit under the help button
+  for (let i = 0, prev = -1; i < 5; i++) {
+    const height = await page.evaluate(() => {
+      window.scrollTo(0, document.documentElement.scrollHeight)
+      for (const el of Array.from(document.querySelectorAll('main, [class*=content], [class*=page]'))) {
+        const s = getComputedStyle(el)
+        if (/(auto|scroll)/.test(s.overflowY) && el.scrollHeight > el.clientHeight) el.scrollTop = el.scrollHeight
+      }
+      return document.documentElement.scrollHeight
+    })
+    if (height === prev) break
+    prev = height
+    await page.waitForTimeout(700)
+  }
   // a help button that hides while scrolling comes back after about 1 s of rest; audit it once it is back,
   // otherwise a button that would cover the end of the page is skipped as hidden
   await page.waitForTimeout(opts.helpSelector ? 1300 : 150)

@@ -5,7 +5,7 @@ import { ERRORS, langLabel, newId, simulate, type Lang } from './api'
 
 interface Line { who: 'du' | 'assistenten'; text: string; lang?: Lang }
 
-/** "Prova": skriv som om du ringde och läs assistentens svar. Ingenting bokas på riktigt. */
+/** "Prova att skriva" (under Fler inställningar): skriv som om du ringde och läs assistentens svar. Ingenting bokas på riktigt. */
 export default function SimulatorPanel({ locationId }: { locationId: string }) {
   const [session, setSession] = useState(newId)
   const [lines, setLines] = useState<Line[]>([])
@@ -32,7 +32,6 @@ export default function SimulatorPanel({ locationId }: { locationId: string }) {
 
   return (
     <div className="telefon-sim">
-      <p className="cell-muted">Skriv som om du ringde, på vilket språk du vill. Assistenten kollar riktiga lediga tider men bokar ingenting här.</p>
       {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
       <ol className="telefon-transcript" aria-live="polite">
         {lines.map((l, i) => (

@@ -6,7 +6,6 @@ import CallbacksPanel from './CallbacksPanel'
 import TelefonPage from './TelefonPage'
 import * as api from './api'
 import { resetCallBadgeCacheForTests } from './callBadgeCache'
-import { ApiError } from '../../shared/api'
 
 let tenant: Record<string, unknown>
 vi.mock('../../shared/tenant', () => ({
@@ -16,7 +15,7 @@ vi.mock('../../shared/tenant', () => ({
 vi.mock('../../shared/AdminTopbar', () => ({ AdminTopbar: ({ title }: { title: string }) => <h1>{title}</h1> }))
 vi.mock('./api', async (orig) => ({
   ...(await orig<typeof import('./api')>()),
-  getOverview: vi.fn(), saveConfig: vi.fn(), getLocation: vi.fn(), saveLocation: vi.fn(), setKillSwitch: vi.fn(),
+  getOverview: vi.fn(), saveConfig: vi.fn(), getLocation: vi.fn(), saveLocation: vi.fn(), setKillSwitch: vi.fn(), getPlaceBasics: vi.fn(),
   simulate: vi.fn(), listCalls: vi.fn(), getCall: vi.fn(), deleteRecording: vi.fn(), listCallbacks: vi.fn(), closeCallback: vi.fn(),
 }))
 
@@ -26,7 +25,7 @@ const LOC: api.LocationConfig = {
   locationId: 'loc-1', enabled: true, killSwitch: false, mode: 'after_hours', agentHours: { mon: [{ from: '17:00', to: '23:00' }] },
   greetingExtraSv: '', greetingExtraEn: '', transferTo: '+46812345678', maxCallSeconds: 480,
   counterOffers: { nearbyTables: true, phoneOnlyTables: true }, number: '+46100000001', version: 2,
-  forwarding: { number: '+46100000001', codes: [{ operator: 'Telia', label: 'Vidarekoppla alla samtal', on: '**21*+46100000001#', off: '##21#' }] },
+  forwarding: { number: '+46100000001', codes: [{ label: 'Vidarekoppla när ni inte svarar', on: '**004*+46100000001#', off: '##004#' }] },
 }
 const CALL: api.CallRow = { callId: '20261105abc', startedAt: '2026-11-05T18:00:00Z', durationSec: 125, language: 'sv', outcome: 'booked',
   counterOffer: 'other_time', reservationId: 'r1', callbackId: null, summary: 'Bord för fyra 19:30', from: '+46701112233' }
@@ -99,102 +98,26 @@ describe('TelefonPage', () => {
     expect(screen.getByText('+46701112233')).toBeInTheDocument()          // the owner sees the number
   })
 
-  it('walks the owner through the wizard: the disclosure is fixed text, the number step shows codes', async () => {
+  it('tells the owner the assistant is not on and opens the setup with Kom igång', async () => {
     tenant = OWNER
-    vi.mocked(api.getOverview).mockResolvedValue({ config: { agentName: 'Sara', tone: 'friendly', languages: ['sv', 'en'],
-      recording: { enabled: false }, minutesCapPerMonth: 300, version: 1 }, locations: [],
-      usage: { minutes: 10, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
+    vi.mocked(api.getLocation).mockResolvedValue({ ...LOC, enabled: false, number: null, version: 0 })
+    vi.mocked(api.getOverview).mockResolvedValue({ config: { agentName: 'Booqy', tone: 'friendly', languages: ['sv'],
+      recording: { enabled: false }, minutesCapPerMonth: 300, version: 0 }, locations: [],
+      usage: { minutes: 0, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
+    vi.mocked(api.getPlaceBasics).mockResolvedValue({ businessHours: null, phoneNumber: null })
     renderAt()
-    fireEvent.click(await screen.findByRole('tab', { name: 'Inställningar' }))
-    expect(await screen.findByText(/en AI-assistent för Bistro/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('tab', { name: '5. Nummer' }))
-    expect(screen.getByText('**21*+46100000001#')).toBeInTheDocument()
+    expect(await screen.findByText('Assistenten är inte på än.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Kom igång' }))
+    expect(await screen.findByRole('heading', { name: 'Kom igång med telefonassistenten' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kom igång' })).not.toBeInTheDocument()
   })
 
-  it('shows an error with a retry instead of loading forever when the settings fail', async () => {
-    tenant = OWNER
-    vi.mocked(api.getOverview).mockRejectedValueOnce(new Error('boom')).mockResolvedValue({ config: { agentName: 'Sara', tone: 'friendly', languages: ['sv'],
-      recording: { enabled: false }, minutesCapPerMonth: 300, version: 1 }, locations: [],
-      usage: { minutes: 0, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
+  it('tells staff the assistant is off without a setup button', async () => {
+    tenant = STAFF
+    vi.mocked(api.getLocation).mockResolvedValue({ ...LOC, enabled: false, number: null })
     renderAt()
-    fireEvent.click(await screen.findByRole('tab', { name: 'Inställningar' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
-    expect(await screen.findByText(/en AI-assistent för Bistro/)).toBeInTheDocument()
-  })
-
-  it('sends the recording choice with the config save (the notice is shown first)', async () => {
-    tenant = OWNER
-    vi.mocked(api.getOverview).mockResolvedValue({ config: { agentName: 'Sara', tone: 'friendly', languages: ['sv'],
-      recording: { enabled: false }, minutesCapPerMonth: 300, version: 1 }, locations: [],
-      usage: { minutes: 0, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
-    vi.mocked(api.saveConfig).mockRejectedValue(new ApiError(400, 'purpose_required', { fromServer: true }))
-    renderAt()
-    fireEvent.click(await screen.findByRole('tab', { name: 'Inställningar' }))
-    fireEvent.click(await screen.findByRole('tab', { name: '4. Inspelning' }))
-    fireEvent.click(screen.getByLabelText(/Spela in samtalen/))
-    expect(screen.getByText(/Samtalet spelas in/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    await waitFor(() => expect(api.saveConfig).toHaveBeenCalled())
-    expect(vi.mocked(api.saveConfig).mock.calls[0][0].recording.enabled).toBe(true)
-  })
-
-  it('runs the text simulator', async () => {
-    tenant = OWNER
-    vi.mocked(api.getOverview).mockResolvedValue({ config: { agentName: 'Sara', tone: 'friendly', languages: ['sv'],
-      recording: { enabled: false }, minutesCapPerMonth: 300, version: 1 }, locations: [],
-      usage: { minutes: 0, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
-    vi.mocked(api.simulate).mockResolvedValue({ reply: 'Hej, du pratar med Sara, en AI-assistent för Bistro. Jag håller ett bord.',
-      toolCalls: [{ name: 'hold_table', ok: true }], state: {}, disclosure: true })
-    renderAt()
-    fireEvent.click(await screen.findByRole('tab', { name: 'Inställningar' }))
-    fireEvent.click(await screen.findByRole('tab', { name: '6. Prova' }))
-    fireEvent.change(screen.getByLabelText('Du säger'), { target: { value: 'Ett bord för fyra imorgon' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
-    expect(await screen.findByText(/Jag håller ett bord/)).toBeInTheDocument()
-  })
-
-  it('explains that the assistant follows the caller\'s language', async () => {
-    tenant = OWNER
-    vi.mocked(api.getOverview).mockResolvedValue({ config: { agentName: 'Sara', tone: 'friendly', languages: ['sv', 'en'],
-      recording: { enabled: false }, minutesCapPerMonth: 300, version: 1 }, locations: [],
-      usage: { minutes: 0, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
-    renderAt()
-    fireEvent.click(await screen.findByRole('tab', { name: 'Inställningar' }))
-    expect(await screen.findByText(/börjar alltid på svenska/)).toBeInTheDocument()
-  })
-
-  it('turns a location on with the number of another location (shared number)', async () => {
-    tenant = { ...OWNER, locations: [{ locationId: 'loc-1', name: 'Bistro Norrmalm' }, { locationId: 'loc-2', name: 'Bistro Malmö' }] }
-    vi.mocked(api.getLocation).mockResolvedValue({ ...LOC, enabled: false, number: null, forwarding: { number: null, codes: [] } })
-    vi.mocked(api.getOverview).mockResolvedValue({ config: { agentName: 'Sara', tone: 'friendly', languages: ['sv'],
-      recording: { enabled: false }, minutesCapPerMonth: 300, version: 1 },
-      locations: [{ locationId: 'loc-2', name: 'Bistro Malmö', enabled: true, killSwitch: false, mode: 'always', number: '+46100000002', minutesThisPeriod: 0 }],
-      usage: { minutes: 0, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
-    vi.mocked(api.saveLocation).mockResolvedValue({ ...LOC, number: '+46100000002', numberSharedWith: 'loc-2' })
-    renderAt()
-    fireEvent.click(await screen.findByRole('tab', { name: 'Inställningar' }))
-    fireEvent.click(await screen.findByRole('tab', { name: '5. Nummer' }))
-    fireEvent.change(screen.getByLabelText(/^Nummer/), { target: { value: 'loc-2' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Slå på med delat nummer' }))
-    await waitFor(() => expect(api.saveLocation).toHaveBeenCalled())
-    expect(vi.mocked(api.saveLocation).mock.calls[0][1]).toMatchObject({ enabled: true, shareNumberWith: 'loc-2' })
-    expect(await screen.findByText(/samma nummer som Bistro Malmö/)).toBeInTheDocument()
-  })
-
-  it('shows when the simulated call switched language', async () => {
-    tenant = OWNER
-    vi.mocked(api.getOverview).mockResolvedValue({ config: { agentName: 'Sara', tone: 'friendly', languages: ['sv', 'en'],
-      recording: { enabled: false }, minutesCapPerMonth: 300, version: 1 }, locations: [],
-      usage: { minutes: 0, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
-    vi.mocked(api.simulate).mockResolvedValue({ reply: 'I am an AI assistant for Bistro. I can offer 18:00.', language: 'en',
-      toolCalls: [], state: {}, disclosure: false })
-    renderAt()
-    fireEvent.click(await screen.findByRole('tab', { name: 'Inställningar' }))
-    fireEvent.click(await screen.findByRole('tab', { name: '6. Prova' }))
-    fireEvent.change(screen.getByLabelText('Du säger'), { target: { value: 'A table for four tomorrow at 7 pm' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
-    expect(await screen.findByText(/I can offer 18:00/)).toBeInTheDocument()
-    expect(screen.getByText(/på engelska/)).toBeInTheDocument()
+    expect(await screen.findByText('Assistenten är inte på för den här platsen.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kom igång' })).not.toBeInTheDocument()
   })
 })
 

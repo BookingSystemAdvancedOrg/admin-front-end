@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Bar, Button, toast } from '@booqy/brand'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { errorText } from '../../shared/errors'
+import { formatPhone } from '../../shared/phone'
 import { currentLocation, useTenant } from '../../shared/tenant'
 import CallDetail from './CallDetail'
 import CallbacksTab from './CallbacksTab'
@@ -16,7 +17,7 @@ type Tab = 'samtal' | 'uppringningar' | 'installningar'
 /**
  * Telefon (planfunktionen "phoneAgent", ägare och personal): samtalen med
  * utskrift, vem som vill bli uppringd och en knapp som stänger av assistenten
- * direkt. Inställningarna ("Så svarar vi i telefon") är ägarens.
+ * direkt. Inställningarna (kom igång och Fler inställningar) är ägarens.
  */
 export default function TelefonPage() {
   const { tenant } = useTenant()
@@ -92,11 +93,12 @@ function Telefon() {
           </Button>
         }>
           {config.killSwitch ? 'Assistenten är avstängd. Samtalen går som vanligt till er.'
-            : `Assistenten svarar på ${config.number ?? 'ert Booqy-nummer'}.`}
+            : `Assistenten svarar på ${config.number ? formatPhone(config.number) : 'ert Booqy-nummer'}.`}
         </Bar>
       ) : (
-        <Bar variant="banner" tone="info">
-          {owner ? 'Assistenten är inte på än. Ställ in den under Inställningar.' : 'Assistenten är inte på för den här platsen.'}
+        <Bar variant="banner" tone="info" action={owner && tab !== 'installningar'
+          ? <Button size="sm" variant="primary" onClick={() => setTab('installningar')}>Kom igång</Button> : undefined}>
+          {owner ? 'Assistenten är inte på än.' : 'Assistenten är inte på för den här platsen.'}
         </Bar>
       )}
       <div className="telefon-section">

@@ -1,7 +1,7 @@
 /* Telefon i admin. Bara @booqy/brand-tokens. */
 .telefon-section {
   margin: var(--bq-space-3) 0;
-  /* The six wizard steps scroll sideways on a phone instead of widening the card. */
+  /* The tabs scroll sideways on a phone instead of widening the card. */
   min-width: 0;
   max-width: 100%;
   overflow-x: auto;
@@ -120,4 +120,261 @@
 }
 .telefon-turn__lang {
   font-style: italic;
+}
+
+/* --- Kom igång: checklistan --------------------------------------------------------- */
+.telefon-checklist {
+  margin: 0 0 var(--bq-space-4);
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--bq-space-1);
+}
+.telefon-checklist__row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--bq-space-3);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--bq-space-2) var(--bq-space-3);
+  border: 0;
+  border-radius: var(--bq-radius-inner);
+  background: transparent;
+  color: var(--bq-ink);
+  font: inherit;
+  font-size: var(--bq-text-base);
+  text-align: left;
+  cursor: pointer;
+}
+.telefon-checklist__row:hover,
+.telefon-checklist__row:focus-visible {
+  background: var(--bq-surface-2, var(--bq-linen));
+}
+.telefon-checklist__icon {
+  color: var(--bq-muted);
+}
+.telefon-checklist__row.is-done .telefon-checklist__icon {
+  color: var(--bq-success);
+}
+.telefon-checklist__label {
+  font-weight: 600;
+}
+.telefon-checklist__value {
+  min-width: 0;
+  color: var(--bq-muted);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.telefon-big {
+  min-height: 52px;
+  font-size: var(--bq-text-lg);
+}
+.telefon-done {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bq-space-2);
+}
+.telefon-more {
+  margin-top: var(--bq-space-5);
+}
+.telefon-groups {
+  display: grid;
+  gap: var(--bq-space-6);
+}
+.telefon-group {
+  display: grid;
+  gap: var(--bq-space-3);
+  min-width: 0;
+}
+.telefon-group h3 {
+  margin: 0;
+  font-size: var(--bq-text-base);
+}
+.telefon-group__save {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* --- Kom igång: guiden ---------------------------------------------------------------- */
+.telefon-wizard__form {
+  display: grid;
+  gap: var(--bq-space-5);
+  min-width: 0;
+}
+.telefon-steps {
+  margin: 0 0 var(--bq-space-2);
+  font-size: var(--bq-text-xs);
+  font-variant: all-small-caps;
+  letter-spacing: 0.08em;
+  color: var(--bq-muted);
+}
+.telefon-stepline {
+  margin-bottom: var(--bq-space-5);
+}
+/* Fem delar: luckor i spåret, samma Bar som överallt. */
+.telefon-stepline .bq-bar__track {
+  -webkit-mask: repeating-linear-gradient(90deg, var(--bq-ink) 0 calc(20% - 4px), transparent calc(20% - 4px) 20%);
+  mask: repeating-linear-gradient(90deg, var(--bq-ink) 0 calc(20% - 4px), transparent calc(20% - 4px) 20%);
+}
+.telefon-q {
+  display: flex;
+  align-items: center;
+  gap: var(--bq-space-2);
+  min-width: 0;
+}
+.telefon-q h2 {
+  margin: 0;
+  font-size: var(--bq-text-xl);
+  line-height: 1.25;
+  outline: none;
+}
+.telefon-step-body {
+  display: grid;
+  gap: var(--bq-space-3);
+  min-width: 0;
+}
+.telefon-line {
+  margin: 0;
+  color: var(--bq-ink);
+  font-size: var(--bq-text-base);
+}
+.telefon-hint {
+  margin: 0;
+  color: var(--bq-muted);
+  font-size: var(--bq-text-sm);
+}
+.telefon-preview {
+  margin: 0;
+  color: var(--bq-muted);
+  font-style: italic;
+}
+.telefon-cards {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--bq-space-2);
+  min-width: 0;
+}
+.telefon-card {
+  display: flex;
+  align-items: center;
+  gap: var(--bq-space-3);
+  min-height: 56px;
+  padding: var(--bq-space-3) var(--bq-space-4);
+  border: var(--bq-bar-hairline) solid var(--bq-line-strong);
+  border-radius: var(--bq-radius-inner);
+  background: var(--bq-surface);
+  color: var(--bq-ink);
+  font-size: var(--bq-text-base);
+  cursor: pointer;
+}
+.telefon-card input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--bq-accent);
+}
+.telefon-card:has(input:checked) {
+  border-color: var(--bq-ink);
+  box-shadow: inset 0 0 0 1px var(--bq-ink);
+}
+.telefon-card:has(input:focus-visible) {
+  outline: 2px solid var(--bq-focus);
+  outline-offset: 2px;
+}
+.telefon-card.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.telefon-bignumber {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bq-space-3);
+}
+.telefon-bignumber__value {
+  font-size: clamp(22px, 6vw, 30px);
+  color: var(--bq-ink);
+  overflow-wrap: anywhere;
+}
+.telefon-tag {
+  padding: var(--bq-space-1) var(--bq-space-2);
+  border-radius: var(--bq-radius-pill);
+  background: var(--bq-surface-2, var(--bq-linen));
+  color: var(--bq-muted);
+  font-size: var(--bq-text-xs);
+}
+.telefon-code {
+  display: block;
+  padding: var(--bq-space-4);
+  border-radius: var(--bq-radius-inner);
+  background: var(--bq-surface);
+  color: var(--bq-ink);
+  font-size: clamp(28px, 9vw, 44px);
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  word-break: break-all;
+  border: var(--bq-bar-hairline) solid var(--bq-line-strong);
+}
+.telefon-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bq-space-3);
+}
+.telefon-call {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bq-space-2);
+}
+.telefon-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bq-accent-ink);
+  font: inherit;
+  font-size: var(--bq-text-sm);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.telefon-checks {
+  margin: var(--bq-space-2) 0;
+  padding-left: var(--bq-space-5);
+  display: grid;
+  gap: var(--bq-space-1);
+}
+.telefon-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--bq-space-3);
+}
+.telefon-tolist {
+  margin-top: var(--bq-space-4);
+}
+@media (max-width: 479px) {
+  .telefon-foot {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .telefon-foot > .bq-btn,
+  .telefon-row > .bq-btn,
+  .telefon-group__save > .bq-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .telefon-foot > span:empty {
+    display: none;
+  }
+  .telefon-checklist__row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .telefon-checklist__value {
+    grid-column: 2;
+    text-align: left;
+  }
 }

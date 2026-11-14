@@ -178,3 +178,21 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* Vi har ingen Google-profil / Hoppa över: en lugn textknapp under knappraden, så att Koppla Google är det tydliga valet. */
+.google-skip {
+  display: flex;
+  justify-content: flex-end;
+  margin: var(--bq-space-1) 0 0;
+}
+.google-skip .link-action,
+.google-skipped__hint .link-action {
+  color: var(--bq-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: normal;
+}
+.google-skipped__hint .link-action {
+  min-height: 0;
+  padding: var(--bq-space-1) 0;
+}

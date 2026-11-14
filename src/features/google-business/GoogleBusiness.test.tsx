@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import GoogleProfileCard from './GoogleProfileCard'
 import OmdomenTab from './OmdomenTab'
 import * as api from './api'
+import { ApiError } from '../../shared/api'
 import { chooseOption, optionTexts } from '../../test/select'
 
 vi.mock('../../shared/tenant', () => ({
@@ -92,11 +93,17 @@ describe('Google guide', () => {
     expect(current()?.textContent).toContain('Tryck på Koppla Google.')
     const help = screen.getByText('Fungerade det inte?')
     expect(help.closest('details')).not.toBeNull()
-    for (const h of ['Fel Google-konto', 'Restaurangen finns inte i listan', 'Google har inte verifierat appen', 'Koppla bort']) {
+    for (const h of ['Fel Google-konto', 'Restaurangen finns inte i listan', 'Google har inte verifierat appen']) {
       expect(screen.getByRole('heading', { name: h })).toBeInTheDocument()
     }
+    // Inget att koppla bort innan Google är kopplat.
+    expect(screen.queryByRole('heading', { name: 'Koppla bort' })).toBeNull()
     expect(screen.getByText(/Personer och åtkomst, Lägg till/)).toBeInTheDocument()
-    expect(screen.getByText(/Avancerat och sedan på Fortsätt/)).toBeInTheDocument()
+    expect(screen.getByText(/tryck på Acceptera/)).toBeInTheDocument()
+    expect(screen.getByText(/Avancerat och sedan på Gå till Booqy \(osäkert\)/)).toBeInTheDocument()
+    // Koppla Google först i ordningen; att hoppa över är en lugn textknapp efter.
+    const buttons = screen.getAllByRole('button').map((b) => b.textContent)
+    expect(buttons.indexOf('Koppla Google')).toBeLessThan(buttons.indexOf('Vi har ingen Google-profil'))
   })
 
   it('after the Google return marks 1-3 done and step 4, then 5, current', async () => {
@@ -109,6 +116,37 @@ describe('Google guide', () => {
     chooseOption(select, 'locations/1')
     expect(current()?.textContent).toContain('Tryck på Koppla platsen.')
     expect(screen.getByText('Fungerade det inte?')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Koppla bort' })).toBeInTheDocument()
+  })
+
+  it('shows a Google account without a profile inside the card, with the way out', async () => {
+    vi.mocked(api.finishConnect).mockRejectedValue(new ApiError(409, 'x', { code: 'no_google_account', fromServer: true }))
+    vi.mocked(api.getConnection).mockResolvedValue({ status: 'disconnected' })
+    vi.mocked(api.skipGoogle).mockResolvedValue({ skipped: true })
+    renderCard('/installningar?google=1&code=abc&state=xyz')
+    expect(await screen.findByText(/Det här Google-kontot har ingen Google-profil/)).toBeInTheDocument()
+    expect(await screen.findByRole('list', { name: 'Så kopplar ni Google' })).toBeInTheDocument()
+    expect(screen.getByText('Fungerade det inte?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Vi har ingen Google-profil' }))
+    await waitFor(() => expect(api.skipGoogle).toHaveBeenCalledWith('loc-1'))
+  })
+
+  it('maps google_rejected to a text with the way out', async () => {
+    vi.mocked(api.finishConnect).mockRejectedValue(new ApiError(409, 'x', { code: 'google_rejected', fromServer: true }))
+    vi.mocked(api.getConnection).mockResolvedValue({ status: 'disconnected' })
+    renderCard('/installningar?google=1&code=abc&state=xyz')
+    expect(await screen.findByText(/Google sa nej/)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Koppla Google' })).toBeInTheDocument()
+  })
+
+  it('hides the skip choice when a place is linked but the login ran out', async () => {
+    vi.mocked(api.getConnection).mockResolvedValue({ status: 'needs_reauth' })
+    vi.mocked(api.getLocationView).mockResolvedValue({
+      ...view, link: { googleLocation: 'locations/1', title: 'Bistro', syncStatus: 'ok', lastSyncAt: null, version: 1 },
+    })
+    renderCard()
+    await screen.findByRole('button', { name: 'Koppla Google' })
+    expect(screen.queryByRole('button', { name: 'Vi har ingen Google-profil' })).toBeNull()
   })
 
   it('hides the guide once a place is linked', async () => {
@@ -147,6 +185,19 @@ describe('Google guide', () => {
     renderCard()
     expect(await screen.findByText('Google är inte kopplat.')).toBeInTheDocument()
     expect(api.listGoogleLocations).not.toHaveBeenCalled()
+  })
+
+  it('lets a skipped but connected owner remove the Google login', async () => {
+    vi.mocked(api.getConnection).mockResolvedValue({ status: 'connected' })
+    vi.mocked(api.getLocationView).mockResolvedValue({ ...view, skipped: true })
+    vi.mocked(api.disconnect).mockImplementation(async () => {
+      vi.mocked(api.getConnection).mockResolvedValue({ status: 'disconnected' })
+    })
+    renderCard()
+    fireEvent.click(await screen.findByRole('button', { name: 'Koppla bort Google' }))
+    await waitFor(() => expect(api.disconnect).toHaveBeenCalled())
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Koppla bort Google' })).toBeNull())
+    expect(screen.getByText('Google är inte kopplat.')).toBeInTheDocument()
   })
 
   it('offers Hoppa över while picking a place', async () => {

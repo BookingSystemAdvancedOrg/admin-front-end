@@ -70,7 +70,7 @@ export const saveReviewSettings = (locationId: string, body: ReviewSettings) =>
 export const GUIDE_STEPS = [
   'Tryck på Koppla Google.',
   'Välj det Google-konto som äger restaurangens Google-profil (det ni använder i Google Maps).',
-  'Tryck på Tillåt.',
+  'Tryck på Tillåt (ibland heter knappen Fortsätt).',
   'Välj er restaurang i listan.',
   'Tryck på Koppla platsen. Klart! Öppettiderna skickas till Google.',
 ]
@@ -79,6 +79,8 @@ export const ERRORS: Record<string, string> = {
   not_connected: 'Koppla Google först.',
   not_linked: 'Välj vilken Google-plats restaurangen är först.',
   already_linked: 'Den Google-platsen är redan kopplad till en annan restaurang.',
+  no_google_account: 'Det här Google-kontot har ingen Google-profil. Välj ett annat konto, eller tryck på Vi har ingen Google-profil.',
+  google_rejected: 'Google sa nej. Försök igen om en stund, eller tryck på Vi har ingen Google-profil.',
   google_unavailable: 'Google svarar inte just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
   invalid_state: 'Kopplingen gick ut. Försök koppla igen.',
   invalid_delay: 'Fördröjningen ska vara mellan 30 minuter och 3 dygn.',

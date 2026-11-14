@@ -42,8 +42,10 @@ function codesFor(l: LocationConfig): LocationConfig['forwarding'] {
   const operator = l.setup?.operator ?? 'other'
   if (!n || operator === 'vaxel') return { number: n, operator, reset: [], codes: [] }
   if (operator === 'telia_fast') {
+    // Som servern: en fast telefon har ingen +, så numret står nationellt.
+    const desk = n.startsWith('+46') ? `0${n.slice(3)}` : `00${n.slice(1)}`
     return { number: n, operator, reset: ['#21#', '#61#', '#67#'].map((on) => ({ label: OFF, on })),
-      codes: [{ label: 'Ej svar', on: `*61*${n}#`, off: '#61#' }, { label: 'Upptaget', on: `*67*${n}#`, off: '#67#' }] }
+      codes: [{ label: 'Ej svar', on: `*61*${desk}#`, off: '#61#' }, { label: 'Upptaget', on: `*67*${desk}#`, off: '#67#' }] }
   }
   return { number: n, operator, reset: [{ label: OFF, on: '##002#' }],
     codes: [l.mode === 'always' ? { label: 'Alla', on: `**21*${n}#`, off: '##21#' } : { label: 'Ej svar', on: `**004*${n}#`, off: '##004#' }] }
@@ -271,7 +273,8 @@ describe('wizard', () => {
     renderWizard()
     fireEvent.click(await screen.findByRole('button', { name: 'Fortsätt: Vidarekoppling' }))
     expect(await screen.findByRole('heading', { name: 'Vilken operatör har restaurangens telefon?' })).toBeInTheDocument()
-    expect(screen.getByText('Vet du inte? Det står på fakturan eller i telefonens inställningar.')).toBeInTheDocument()
+    expect(screen.getByText(/Vet du inte\? Det står på fakturan/)).toBeInTheDocument()
+    expect(screen.getByText('Till exempel Comviq, Hallon, Vimla eller Fello')).toBeInTheDocument()
     for (const op of ['Telia', 'Tele2', 'Telenor', 'Tre', 'Annan']) expect(screen.getByLabelText(op)).toBeInTheDocument()
     fireEvent.click(nextButton())
     expect(await screen.findByText('Välj operatör i listan.')).toBeInTheDocument()
@@ -280,6 +283,8 @@ describe('wizard', () => {
     expect(await screen.findByText('Kod 1 av 2: Först: stäng av gammal vidarekoppling')).toBeInTheDocument()
     expect(screen.getByLabelText('Koden ##002#')).toBeInTheDocument()
     expect(screen.getByText(/Det gör inget: då fanns ingen gammal/)).toBeInTheDocument()
+    expect(screen.getByText('Det här stänger av gammal vidarekoppling, om ni har någon.')).toBeInTheDocument()
+    expect(screen.getByText('Telefonen visar ett meddelande. Det spelar ingen roll vad det står. Tryck på Nästa nedan.')).toBeInTheDocument()
     fireEvent.click(nextButton())
     expect(await screen.findByText(/Kod 2 av 2/)).toBeInTheDocument()
     const steps = [...screen.getAllByRole('list', { name: 'Så gör du' })[0].querySelectorAll(':scope > li')]
@@ -290,45 +295,107 @@ describe('wizard', () => {
       expect.stringContaining('Tryck på den gröna lur-knappen'),
       expect.stringContaining('Vänta tills telefonen visar'),
     ])
-    // Koden i bitar, och bitarna ihop är exakt koden. På en dator: ingen Ring-knapp.
-    expect(screen.getByLabelText('Koden **004*+46100000001#').textContent).toBe('**004*+46100000001#')
+    // Koden i bitar, och bitarna ihop är exakt koden; # sitter ihop med sista biten.
+    // På en dator skriver man av den: ingen fråga, ingen Ring-knapp, ingen Kopiera vid koden.
+    const box = screen.getByLabelText('Koden **004*+46100000001#')
+    expect(box.textContent).toBe('**004*+46100000001#')
+    expect([...box.children].at(-1)!.textContent).toBe('01#')
+    expect(screen.getAllByText('Skriv utan mellanrum.').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Har du öppnat den här sidan/)).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Ring koden/ })).not.toBeInTheDocument()
+    expect(within(box.closest('.telefon-codebox')!).queryByRole('button', { name: 'Kopiera' })).not.toBeInTheDocument()
     expect(screen.getByText(/håll fingret på/)).toBeInTheDocument()
+    expect(screen.getByText('Samtal som ni inte svarar på går vidare till assistenten. Ert nummer är detsamma.')).toBeInTheDocument()
     expect(sent('POST', '/locations/loc-1/phone-agent/setup')[0].body).toEqual({ operator: 'telia', version: 2 })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Kopiera' })[0])
-    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('**004*+46100000001#'))
     // Fungerade det inte: samma kod med 00 i stället för +, klar att kopiera.
     const help = screen.getByText('Fungerade det inte?').closest('details')!
     expect(within(help).getByText(/Setting Registration Failed/)).toBeInTheDocument()
     expect(within(help).getByLabelText('Koden **004*0046100000001#')).toBeInTheDocument()
-    fireEvent.click(within(help).getAllByRole('button', { name: 'Kopiera' })[0])
-    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('**004*0046100000001#'))
     expect(within(help).getByText(/Ring operatörens kundtjänst och be dem slå på vidarekoppling/)).toBeInTheDocument()
+    // Numret som man läser upp det för kundtjänst; Kopiera ger hela numret.
+    expect(within(help).getByText('010-000 00 01')).toBeInTheDocument()
+    fireEvent.click(within(help).getByRole('button', { name: 'Kopiera' }))
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('+46100000001'))
     fireEvent.click(screen.getByRole('button', { name: 'Klart' }))
     await step(5)
     expect(sent('POST', '/locations/loc-1/phone-agent/setup')[1].body).toEqual({ forwarded: true, version: 3 })
   })
 
-  it('on Android the code has a Ring koden button with # as %23; on iPhone only Kopiera and how to paste', async () => {
+  it('asks if the page is open on the restaurant phone; Ring koden and Kopiera only after Ja', async () => {
     const ua = navigator.userAgent
     const setUa = (v: string) => Object.defineProperty(navigator, 'userAgent', { configurable: true, value: v })
+    const open = async () => {
+      const r = render(<MemoryRouter><SettingsWizard locationId="loc-1" onSaved={vi.fn()} /></MemoryRouter>)
+      fireEvent.click(await screen.findByRole('button', { name: 'Fortsätt: Vidarekoppling' }))
+      expect(await screen.findByText('Har du öppnat den här sidan på restaurangens telefon?')).toBeInTheDocument()
+      return r
+    }
     try {
       setUa('Mozilla/5.0 (Linux; Android 14; Pixel 8) Mobile')
       server.config = { ...server.config, version: 1 }
       setLoc({ version: 2, enabled: true, number: '+46100000001', agentHours: NIGHTS, setup: { operator: 'tele2', forwardedAt: null, testedAt: null } })
-      const { unmount } = render(<MemoryRouter><SettingsWizard locationId="loc-1" onSaved={vi.fn()} /></MemoryRouter>)
-      fireEvent.click(await screen.findByRole('button', { name: 'Fortsätt: Vidarekoppling' }))
-      expect(await screen.findByRole('link', { name: 'Ring koden ##002#' })).toHaveAttribute('href', 'tel:%23%23002%23')
+      // Nej: Admin är öppet på en annan telefon, så bara koden att skriva av.
+      let r = await open()
+      expect(screen.queryByRole('list', { name: 'Så gör du' })).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Nej, jag skriver av koden' }))
+      expect(screen.getByText('Ta fram restaurangens telefon (den som kunderna ringer till).')).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /Ring koden/ })).not.toBeInTheDocument()
+      r.unmount()
+      // Ja på Android: Ring koden från den här telefonen, med # som %23.
+      r = await open()
+      fireEvent.click(screen.getByRole('button', { name: 'Ja' }))
+      expect(screen.getByRole('link', { name: 'Ring koden ##002# från den här telefonen' })).toHaveAttribute('href', 'tel:%23%23002%23')
+      expect(screen.getByText('Ring koden från den här telefonen')).toBeInTheDocument()
       fireEvent.click(nextButton())
-      expect(await screen.findByRole('link', { name: 'Ring koden **004*+46100000001#' })).toHaveAttribute('href', 'tel:**004*+46100000001%23')
-      unmount()
+      expect(await screen.findByRole('link', { name: 'Ring koden **004*+46100000001# från den här telefonen' })).toHaveAttribute('href', 'tel:**004*+46100000001%23')
+      r.unmount()
+      // Ja på iPhone: Kopiera och Klistra in, en sak per rad, ingen Ring-länk.
       setUa('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)')
-      render(<MemoryRouter><SettingsWizard locationId="loc-1" onSaved={vi.fn()} /></MemoryRouter>)
-      fireEvent.click(await screen.findByRole('button', { name: 'Fortsätt: Vidarekoppling' }))
-      expect(await screen.findByText(/På iPhone: tryck på Kopiera/)).toBeInTheDocument()
+      await open()
+      fireEvent.click(screen.getByRole('button', { name: 'Ja' }))
+      const lines = [...screen.getByRole('list', { name: 'Så gör du' }).querySelectorAll(':scope > li')].map((li) => li.textContent)
+      expect(lines).toEqual([
+        expect.stringContaining('Tryck på Kopiera'),
+        'Öppna appen Telefon och gå till knappsatsen.',
+        'Håll fingret på den tomma raden ovanför siffrorna.',
+        'Tryck på Klistra in.',
+        'Tryck på den gröna lur-knappen.',
+        expect.stringContaining('Det spelar ingen roll'),
+      ].map((t, i) => (typeof t === 'string' ? `${i + 1}${t}` : t)))
       expect(screen.queryByRole('link', { name: /Ring koden/ })).not.toBeInTheDocument()
     } finally {
       setUa(ua)
+    }
+  })
+
+  it('gives a desk phone (Telia fast telefon) lift, dial, listen, hang up: no +, no app, no Kopiera', async () => {
+    const ua = navigator.userAgent
+    Object.defineProperty(navigator, 'userAgent', { configurable: true, value: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) Mobile' })
+    try {
+      server.config = { ...server.config, version: 1 }
+      setLoc({ version: 2, enabled: true, number: '+46100000001', agentHours: NIGHTS, setup: { operator: 'telia_fast', forwardedAt: null, testedAt: null } })
+      renderWizard()
+      fireEvent.click(await screen.findByRole('button', { name: 'Fortsätt: Vidarekoppling' }))
+      expect(await screen.findByText(/Kod 1 av/)).toBeInTheDocument()
+      expect(screen.queryByText(/Har du öppnat den här sidan/)).not.toBeInTheDocument()
+      for (let i = 0; i < 3; i++) fireEvent.click(nextButton())
+      expect(await screen.findByLabelText('Koden *61*0100000001#')).toBeInTheDocument()
+      const lines = [...screen.getAllByRole('list', { name: 'Så gör du' })[0].querySelectorAll(':scope > li')].map((li) => li.textContent)
+      expect(lines).toEqual([
+        '1Lyft luren på restaurangens fasta telefon.',
+        expect.stringContaining('Slå koden'),
+        '3Lyssna efter en ton eller ett meddelande.',
+        '4Lägg på. Tryck sedan på Nästa nedan.',
+      ])
+      expect(screen.queryByText(/håll fingret på/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/appen Telefon/)).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /Ring koden/ })).not.toBeInTheDocument()
+      expect(within(screen.getByLabelText('Koden *61*0100000001#').closest('.telefon-codebox')!).queryByRole('button')).not.toBeInTheDocument()
+      fireEvent.click(nextButton())
+      expect(await screen.findByLabelText('Koden *67*0100000001#')).toBeInTheDocument()
+      expect(screen.getByText('Lägg på. Tryck sedan på Klart nedan.')).toBeInTheDocument()
+    } finally {
+      Object.defineProperty(navigator, 'userAgent', { configurable: true, value: ua })
     }
   })
 
@@ -370,11 +437,11 @@ describe('wizard', () => {
     fireEvent.click(nextButton())
     fireEvent.click(nextButton())
     expect(await screen.findByText(/Kod 4 av 5/)).toBeInTheDocument()
-    expect(screen.getByLabelText('Koden *61*+46100000001#')).toBeInTheDocument()
-    // Av senare: en Kopiera per kod, aldrig två koder i ett.
+    expect(screen.getByLabelText('Koden *61*0100000001#')).toBeInTheDocument()
+    // Av senare: en kod per rad, aldrig två koder i ett.
     const later = screen.getByText('Stänga av senare?').closest('details')!
-    fireEvent.click(within(later).getAllByRole('button', { name: 'Kopiera' })[1])
-    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('#67#'))
+    expect(within(later).getByText('#61#')).toBeInTheDocument()
+    expect(within(later).getByText('#67#')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Tillbaka' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Tillbaka' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Tillbaka' }))
@@ -457,67 +524,73 @@ describe('test call', () => {
     await step(5)
   }
 
-  it('calls the restaurant number in prod and marks the step done when the call shows up', async () => {
+  const ANSWERED = (over: Partial<CallRow> = {}): CallRow => ({ callId: 'c1', startedAt: new Date().toISOString(), durationSec: 20, language: 'sv',
+    outcome: 'info', counterOffer: 'none', reservationId: null, callbackId: null, summary: '', ...over })
+
+  it('starts waiting as soon as step 5 opens and marks it done when the call shows up, with no button to tap', async () => {
+    server.calls = [ANSWERED()]
     await openTest()
-    const call = screen.getByRole('link', { name: /Ring nu/ })
-    expect(call).toHaveAttribute('href', 'tel:+46812345678')
-    expect(screen.getByRole('link', { name: /Eller ring Booqy-numret direkt/ })).toHaveAttribute('href', 'tel:+46100000001')
-    server.calls = [{ callId: 'c1', startedAt: new Date().toISOString(), durationSec: 20, language: 'sv', outcome: 'info', counterOffer: 'none',
-      reservationId: null, callbackId: null, summary: '' }]
-    fireEvent.click(screen.getByRole('button', { name: 'Jag ringer nu' }))
+    expect(screen.queryByRole('button', { name: /Jag ringer nu/ })).not.toBeInTheDocument()
     expect(await screen.findByText('Det fungerar!')).toBeInTheDocument()
     await waitFor(() => expect(sent('POST', '/locations/loc-1/phone-agent/setup')[0]?.body).toEqual({ tested: true, version: 3 }))
     fireEvent.click(screen.getByRole('button', { name: 'Klar' }))
     expect(await screen.findByText(doneText)).toBeInTheDocument()
   })
 
-  it('uses the dev test line while the telephony provider is simulated', async () => {
-    await openTest({ simulated: true, testNumber: '+358759899876' })
-    expect(screen.getByRole('link', { name: /Ring nu/ })).toHaveAttribute('href', 'tel:+358759899876')
-    expect(screen.getByText('Testlinje i dev')).toBeInTheDocument()
-    expect(screen.queryByText(/Svara inte i restaurangens telefon/)).not.toBeInTheDocument()
-  })
-
-  it('has no Klar in the foot before it works: Hoppa över is the only way out', async () => {
+  it('says to let it ring before speaking, one action per line, with the restaurant number', async () => {
     await openTest()
     expect(screen.queryByRole('button', { name: 'Klar' })).not.toBeInTheDocument()
-    expect(screen.getByText('Ring det här numret från en annan telefon (inte restaurangens):')).toBeInTheDocument()
-    expect(screen.getByText(/Säg hej och fråga till exempel ”När har ni öppet\?”/)).toBeInTheDocument()
-    expect(screen.getByText('Lägg på. Vi visar här när samtalet har kommit in.')).toBeInTheDocument()
+    const lines = [...screen.getByRole('list', { name: 'Så gör du' }).querySelectorAll(':scope > li')].map((li) => li.textContent)
+    expect(lines).toEqual([
+      expect.stringMatching(/^1Ring det här numret från en annan telefon:08-123 456 78/),
+      '2Låt det ringa. Svara inte i restaurangens telefon. Assistenten svarar efter en stund.',
+      '3Säg hej och fråga till exempel ”När har ni öppet?”.',
+      '4Lägg på.',
+    ])
+    expect(await screen.findByText('Väntar på samtalet…')).toBeInTheDocument()
+    expect(screen.getByText('Vi visar här när samtalet har kommit in.')).toBeInTheDocument()
+    // Ingen Ring-knapp: den här enheten kan vara restaurangens telefon.
+    expect(screen.queryByRole('link', { name: /Ring från den här telefonen/ })).not.toBeInTheDocument()
+  })
+
+  it('uses the dev test line while simulated, and on a phone offers to call it from here', async () => {
+    const ua = navigator.userAgent
+    Object.defineProperty(navigator, 'userAgent', { configurable: true, value: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) Mobile' })
+    try {
+      await openTest({ simulated: true, testNumber: '+358759899876' })
+      expect(screen.getByRole('link', { name: /Ring från den här telefonen/ })).toHaveAttribute('href', 'tel:+358759899876')
+      expect(screen.getByText('Testlinje i dev')).toBeInTheDocument()
+      expect(screen.queryByText(/Svara inte i restaurangens telefon/)).not.toBeInTheDocument()
+    } finally {
+      Object.defineProperty(navigator, 'userAgent', { configurable: true, value: ua })
+    }
   })
 
   it('counts a call refused for the hours as working: the forwarding reached Booqy', async () => {
-    server.calls = [{ callId: 'old', startedAt: '2026-11-14T06:00:00Z', durationSec: 20, language: 'sv', outcome: 'info', counterOffer: 'none',
-      reservationId: null, callbackId: null, summary: '' }]
+    server.calls = [ANSWERED({ callId: 'new', outcome: 'refused', refusedReason: 'hours' }), ANSWERED({ callId: 'old', startedAt: '2026-11-14T06:00:00Z' })]
     await openTest()
-    server.calls = [{ ...server.calls[0], callId: 'new', startedAt: new Date().toISOString(), outcome: 'refused', refusedReason: 'hours' }, ...server.calls]
-    fireEvent.click(screen.getByRole('button', { name: 'Jag ringer nu' }))
     expect(await screen.findByText('Det fungerar!')).toBeInTheDocument()
     expect(screen.getByText('Assistenten svarar när ni har stängt.')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Ändra tider' })).not.toBeInTheDocument()
     await waitFor(() => expect(sent('POST', '/locations/loc-1/phone-agent/setup')[0]?.body).toEqual({ tested: true, version: 3 }))
   })
 
   it('warns about any other refusal and saves nothing', async () => {
+    server.calls = [ANSWERED({ callId: 'new', durationSec: 5, outcome: 'refused', refusedReason: 'cap' })]
     await openTest()
-    server.calls = [{ callId: 'new', startedAt: new Date().toISOString(), durationSec: 5, language: 'sv', outcome: 'refused', refusedReason: 'cap',
-      counterOffer: 'none', reservationId: null, callbackId: null, summary: '' }]
-    fireEvent.click(screen.getByRole('button', { name: 'Jag ringer nu' }))
     expect(await screen.findByText(/Samtalet kom fram men assistenten svarade inte: minuterna för perioden var slut/)).toBeInTheDocument()
     expect(sent('POST', '/locations/loc-1/phone-agent/setup')).toHaveLength(0)
   })
 
-  it('after three minutes without a call lists what to check', async () => {
-    await openTest()
+  it('after five minutes without a call lists what to check', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
-    fireEvent.click(screen.getByRole('button', { name: 'Jag ringer nu' }))
+    await openTest()
     expect(await screen.findByText('Väntar på samtalet…')).toBeInTheDocument()
-    await act(async () => { await vi.advanceTimersByTimeAsync(3 * 60 * 1000 + 5000) })
+    await act(async () => { await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 5000) })
     expect(await screen.findByText('Inget samtal ännu?')).toBeInTheDocument()
     expect(screen.getByText(/Ringde du rätt nummer\?/)).toBeInTheDocument()
     expect(screen.getByText('Har ni gjort steg 4, Vidarekoppling?')).toBeInTheDocument()
     expect(screen.getByText('Svarade någon i restaurangens telefon? Låt den ringa tills assistenten svarar.')).toBeInTheDocument()
-    expect(screen.getByText('Ring en gång till och tryck sedan på Vänta igen.')).toBeInTheDocument()
+    expect(screen.getByText('Tryck på Vänta igen och ring en gång till.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Vänta igen' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Hoppa över' }))
     expect(await screen.findByRole('button', { name: 'Fortsätt: Provsamtal' })).toBeInTheDocument()
@@ -525,11 +598,10 @@ describe('test call', () => {
   })
 
   it('says it is our fault after three failed polls', async () => {
-    await openTest()
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const down = () => new ApiError(503, 'service_unavailable', { fromServer: true })
     server.fail['GET /locations/loc-1/phone-agent/calls'] = [down(), down(), down()]
-    fireEvent.click(screen.getByRole('button', { name: 'Jag ringer nu' }))
+    await openTest()
     await act(async () => { await vi.advanceTimersByTimeAsync(9000) })
     expect(await screen.findByText('Vi kan inte se samtalen just nu. Det är vårt fel.')).toBeInTheDocument()
   })

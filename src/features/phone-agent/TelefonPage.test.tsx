@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CallBadge from './CallBadge'
 import CallbacksPanel from './CallbacksPanel'
@@ -31,9 +31,17 @@ const LOC: api.LocationConfig = {
 const CALL: api.CallRow = { callId: '20261105abc', startedAt: '2026-11-05T18:00:00Z', durationSec: 125, language: 'sv', outcome: 'booked',
   counterOffer: 'other_time', reservationId: 'r1', callbackId: null, summary: 'Bord för fyra 19:30', from: '+46701112233' }
 
+let seen = ''
+function Where() {
+  const l = useLocation()
+  seen = l.pathname + l.search
+  return null
+}
+
 function renderAt(path = '/telefon') {
   return render(
     <MemoryRouter initialEntries={[path]}>
+      <Where />
       <Routes>
         <Route path="/telefon" element={<TelefonPage />} />
         <Route path="/telefon/samtal/:callId" element={<TelefonPage />} />
@@ -67,6 +75,9 @@ describe('TelefonPage', () => {
     renderAt('/telefon?flik=installningar&steg=prova')
     expect(await screen.findByText('Steg 5 av 5')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Ring och prova' })).toBeInTheDocument()
+    // Länken är läst och borttagen: en omladdning öppnar inte guiden på ett gammalt steg.
+    await waitFor(() => expect(seen).toBe('/telefon'))
+    expect(screen.getByRole('tab', { name: 'Inställningar' })).toHaveAttribute('aria-selected', 'true')
   })
 
   it('lists the calls with outcome and counter-offer, staff without caller numbers or settings', async () => {

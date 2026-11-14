@@ -1,5 +1,5 @@
 import type { BusinessHours } from '../installningar/locationApi'
-import { formatPhone } from '../../shared/phone'
+import { formatPhone, formatPhoneNational } from '../../shared/phone'
 import type { Config, Day, LocationConfig, Mode, Span } from './api'
 
 /** Telefonassistentens kom igång: fem steg, en fråga per skärm. Rena hjälpfunktioner (testade i setup.test.ts). */
@@ -68,8 +68,12 @@ export function zeroZeroVariant(code: string): string | null {
   return code.includes('+') ? code.replace('+', '00') : null
 }
 
-/** Ett nummer i små bitar: "+46100000001" -> ["+46", "10", "000", "00", "01"], "0046..." -> ["0046", ...]. */
+/**
+ * Ett nummer i små bitar: "+46100000001" -> ["+46", "10", "000", "00", "01"],
+ * "0046..." -> ["0046", ...], nationellt (fast telefon) "0101234567" -> ["010", "123", "45", "67"].
+ */
 function numberChunks(n: string): string[] {
+  if (/^0[1-9]/.test(n)) return formatPhoneNational(`+46${n.slice(1)}`).split(/[ -]/)
   const plus = n.startsWith('+')
   const parts = formatPhone(plus ? n : `+${n.slice(2)}`).split(' ')
   if (!plus) parts[0] = `00${parts[0].slice(1)}`
@@ -82,7 +86,7 @@ function numberChunks(n: string): string[] {
  * exakt koden; en kod utan nummer ("##002#") är en bit.
  */
 export function codeChunks(code: string): string[] {
-  const m = /^([*#]+\d+[*#])(\+\d+|00\d+)(#)$/.exec(code)
+  const m = /^([*#]+\d+[*#])(\+\d+|0\d+)(#)$/.exec(code)
   if (!m) return [code]
   const parts = [m[1], ...numberChunks(m[2]), m[3]]
   return parts.join('') === code ? parts : [code]

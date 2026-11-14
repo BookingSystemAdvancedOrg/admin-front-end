@@ -9,7 +9,7 @@ import { withBusy } from '../../shared/motion/busy'
 import { useTenant } from '../../shared/tenant'
 import type { BusinessHours } from '../installningar/locationApi'
 import AdvancedSettings from './AdvancedSettings'
-import ForwardingStep, { BigNumber } from './ForwardingStep'
+import ForwardingStep, { BigNumber, forwardingMeaning } from './ForwardingStep'
 import SetupChecklist from './SetupChecklist'
 import TestCallStep, { type TestState } from './TestCallStep'
 import {
@@ -98,6 +98,8 @@ interface Draft {
   mode: Mode
   share: string
   operator: Operator | ''
+  /** Är sidan öppen på restaurangens telefon? Frågas i steg 4, används i steg 4 och 5. */
+  here: boolean | null
   errors: Partial<Record<string, string>>
   saving: boolean
   bannerError: string | null
@@ -131,6 +133,7 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
     mode: !hasHours ? 'always' : hoursSet(loc) ? loc.mode : 'after_hours',
     share: '',
     operator: loc.setup?.operator ?? '',
+    here: null,
     errors: {},
     saving: false,
     bannerError: null,
@@ -262,12 +265,14 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
       includedMinutes > 0 ? `Numret ingår i er plan, med ${includedMinutes} samtalsminuter per månad.` : 'Numret ingår i er plan.',
       others.length && !(loc.enabled && loc.number) ? 'Med samma nummer frågar assistenten först vilken restaurang det gäller.' : '',
     ].filter(Boolean).join(' '),
+    // Under frågan om operatör: vad vidarekopplingen gör (på kodskärmen står det som raden under frågan).
+    koppla: testLine || d.sub !== 'operator' ? '' : forwardingMeaning(loc.mode),
   }
   const question = d.step === 'koppla' && d.sub === 'operator' && !testLine ? 'Vilken operatör har restaurangens telefon?' : SETUP.QUESTIONS[n - 1]
   // En rad under frågan: vad man gör här, med ord ett barn förstår.
   const hasNumber = Boolean(loc.enabled && loc.number)
   const lead = d.step === 'koppla'
-    ? (!loc.forwarding?.number || testLine ? null : d.sub === 'operator' ? 'Tryck på er operatör. Tryck sedan på Nästa.' : SETUP.LEADS[3])
+    ? (!loc.forwarding?.number || testLine ? null : d.sub === 'operator' ? 'Tryck på er operatör. Tryck sedan på Nästa.' : forwardingMeaning(loc.mode))
     : d.step === 'nummer' && hasNumber ? 'Det här är ert Booqy-nummer. Tryck på Nästa.'
       : d.step === 'nummer' && others.length ? 'Välj nummer. Tryck sedan på Skaffa nummer.'
         : d.step === 'tider' && !hasHours ? null : SETUP.LEADS[n - 1]
@@ -336,11 +341,12 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
 
         {d.step === 'koppla' ? (
           <ForwardingStep loc={loc} sub={d.sub} codeIndex={d.codeIndex} operator={d.operator} error={d.errors.operator} testLine={testLine}
+            here={d.here} onHere={(here) => set({ here })}
             onOperator={(operator) => set({ operator, errors: {} })} onGetNumber={() => go('nummer')} />
         ) : null}
 
         {d.step === 'prova' ? (
-          <TestCallStep locationId={locationId} loc={loc} restaurantPhone={data.restaurantPhone} test={d.test}
+          <TestCallStep locationId={locationId} loc={loc} restaurantPhone={data.restaurantPhone} test={d.test} here={d.here}
             onTest={(test) => setD((prev) => ({ ...prev, test }))} onTested={onLoc} onGoStep={go} onDone={onExit} />
         ) : null}
 

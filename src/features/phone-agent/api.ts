@@ -220,15 +220,15 @@ export const SETUP = {
     'Skriv ett namn, eller behåll Booqy. Tryck sedan på Nästa.',
     'Tryck på det som passar er. Tryck sedan på Nästa.',
     'Tryck på Skaffa nummer. Det tar några sekunder.',
-    'Följ stegen med restaurangens telefon i handen.',
+    'Samtal som ni inte svarar på går vidare till assistenten. Ert nummer är detsamma.',
     'Följ stegen. Det tar en minut.',
   ],
   progress: (n: number) => `Steg ${n} av 5`,
   buttons: {
     next: 'Nästa', back: 'Tillbaka', done: 'Klar', saving: 'Sparar…', start: 'Börja', cont: (l: string) => `Fortsätt: ${l}`,
     getNumber: 'Skaffa nummer', gettingNumber: 'Skaffar nummer…', copy: 'Kopiera', copied: 'Kopierad',
-    called: 'Klart', doneSwitch: 'Klart', callNow: 'Ring nu', callCode: 'Ring koden',
-    callingOther: 'Jag ringer nu', waitAgain: 'Vänta igen', skip: 'Hoppa över', retry: 'Försök igen',
+    called: 'Klart', doneSwitch: 'Klart', callNow: 'Ring från den här telefonen', callCode: 'Ring koden från den här telefonen',
+    waitAgain: 'Vänta igen', skip: 'Hoppa över', retry: 'Försök igen',
     toList: 'Till checklistan',
   },
 }

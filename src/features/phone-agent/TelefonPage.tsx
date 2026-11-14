@@ -1,5 +1,5 @@
 import { useLiveRefresh } from '../../shared/live'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Bar, Button, toast } from '@booqy/brand'
 import { AdminTopbar } from '../../shared/AdminTopbar'
@@ -47,12 +47,28 @@ function Telefon() {
   const { callId } = useParams()
   const navigate = useNavigate()
   // Från Kom igång på Översikt: /telefon?flik=installningar&steg=koppla öppnar guiden på steget.
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const linkedStep = STEPS.find((s) => s === params.get('steg')) ?? null
   const [tab, setTab] = useState<Tab>(owner && params.get('flik') === 'installningar' ? 'installningar' : 'samtal')
   const [startAt] = useState<Step | null>(linkedStep)
   const [config, setConfig] = useState<LocationConfig | null>(null)
   const [busy, setBusy] = useState(false)
+  const tabs = useRef<HTMLDivElement>(null)
+
+  // Länken är läst: ta bort flik och steg, så att en omladdning inte öppnar guiden på ett gammalt steg.
+  useEffect(() => {
+    if (params.has('flik') || params.has('steg')) setParams({}, { replace: true })
+  }, [params, setParams])
+
+  // På en smal skärm rullar flikarna i sidled: visa den valda helt.
+  useEffect(() => {
+    // Flikraden själv rullar (brand), annars rutan runt den.
+    const el = tabs.current?.querySelector<HTMLElement>('[aria-selected="true"]')
+    const bar = [el?.closest<HTMLElement>('[role="tablist"]'), tabs.current].find((b) => b && b.scrollWidth > b.clientWidth)
+    if (!el || !bar) return
+    const at = el.getBoundingClientRect().left - bar.getBoundingClientRect().left + bar.scrollLeft
+    bar.scrollLeft = at - (bar.clientWidth - el.offsetWidth) / 2
+  }, [tab, config])
 
   const load = useCallback(async () => {
     if (!locationId) return
@@ -110,7 +126,7 @@ function Telefon() {
           {owner ? (config?.enabled ? 'Assistenten är inte klar än.' : 'Assistenten är inte på än.') : 'Assistenten är inte på för den här platsen.'}
         </Bar>
       )}
-      <div className="telefon-section">
+      <div className="telefon-section" ref={tabs}>
         <Bar variant="tab" kind="track" label="Telefon" items={items} value={tab} onChange={(k) => setTab(k as Tab)}
           panelId={(k) => `telefon-panel-${k}`} />
       </div>

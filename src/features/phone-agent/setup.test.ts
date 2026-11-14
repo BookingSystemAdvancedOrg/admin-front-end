@@ -125,6 +125,8 @@ describe('the simple forwarding step', () => {
     expect(codeChunks('*61*+4681234567#')).toEqual(['*61*', '+46', '8', '123', '45', '67', '#'])
     expect(codeChunks('**004*0046100000001#')).toEqual(['**004*', '0046', '10', '000', '00', '01', '#'])
     expect(codeChunks('##002#')).toEqual(['##002#'])
+    expect(codeChunks('*61*0101234567#')).toEqual(['*61*', '010', '123', '45', '67', '#'])
+    expect(codeChunks('*67*0812345678#')).toEqual(['*67*', '08', '123', '456', '78', '#'])
     for (const c of ['**004*+3587598999876#', '**21*+46100000001#', '#21#']) expect(codeChunks(c).join('')).toBe(c)
   })
 

@@ -314,9 +314,14 @@
   gap: var(--bq-space-3);
 }
 .telefon-bignumber__value {
-  font-size: clamp(22px, 6vw, 30px);
+  font-size: clamp(20px, 6vw, 30px);
   color: var(--bq-ink);
   overflow-wrap: anywhere;
+}
+/* I stegen: numret på en rad, som man läser upp det. */
+.telefon-howto .telefon-bignumber__value {
+  font-size: clamp(18px, 5.4vw, 30px);
+  white-space: nowrap;
 }
 .telefon-tag {
   padding: var(--bq-space-1) var(--bq-space-2);
@@ -471,6 +476,26 @@
 .telefon-code__chunk {
   white-space: nowrap;
 }
+/* Två rader på 320 px: koden får aldrig bli fyra rader med # ensam sist. */
+.telefon-codebox .telefon-code {
+  font-size: clamp(21px, 6.4vw, 44px);
+}
+.telefon-code__note {
+  color: var(--bq-muted);
+  font-size: var(--bq-text-sm);
+  text-align: center;
+}
+.telefon-here {
+  display: grid;
+  gap: var(--bq-space-3);
+  padding: var(--bq-space-4);
+  border-radius: var(--bq-radius-inner);
+  border: var(--bq-bar-hairline) solid var(--bq-line-strong);
+  background: var(--bq-surface);
+}
+.telefon-here .telefon-line {
+  margin: 0;
+}
 .telefon-keys {
   margin: 0;
   padding: 0;
@@ -545,4 +570,18 @@
     width: 100%;
     justify-content: center;
   }
+  .telefon-codebox .telefon-code {
+    padding: var(--bq-space-3) var(--bq-space-2);
+  }
+  .telefon-here .telefon-row > .bq-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+/* I hjälpen är raden smalare: 00-koden ska också rymmas på två rader på 320 px. */
+.telefon-help .telefon-codebox .telefon-code {
+  font-size: clamp(17px, 5.3vw, 44px);
+}
+.telefon-card > input {
+  flex-shrink: 0;
 }

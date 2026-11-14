@@ -5,11 +5,11 @@ import { HowTo } from './ForwardingStep'
 import { formatPhoneNational } from '../../shared/phone'
 import { errorText } from '../../shared/errors'
 import { ERRORS, MODE_LABEL, REFUSED_LABEL, SETUP, listCalls, postSetupPatch, today, type LocationConfig } from './api'
-import type { Step } from './setup'
+import { currentPlatform, type Platform, type Step } from './setup'
 
 /** Hur ofta och hur länge steg 5 tittar efter provsamtalet. */
 export const POLL_MS = 4000
-export const WAIT_MS = 3 * 60 * 1000
+export const WAIT_MS = 5 * 60 * 1000
 /** Ett samtal som började strax innan man tryckte räknas också. */
 const EARLY_MS = 30000
 
@@ -19,13 +19,17 @@ export interface TestState { since: number | null; status: TestStatus; reason?: 
 /**
  * Steg 5: ring och se att det fungerar. I prod ringer man restaurangens eget
  * nummer (då provas vidarekopplingen också), i dev testlinjen. Samtalslistan
- * hämtas var fjärde sekund i högst tre minuter, bara medan fliken syns.
+ * hämtas var fjärde sekund i högst fem minuter, bara medan fliken syns.
+ * Väntan börjar när steget öppnas, så att det räcker att följa raderna.
  */
-export default function TestCallStep({ locationId, loc, restaurantPhone, test, onTest, onTested, onGoStep, onDone }: {
+export default function TestCallStep({ locationId, loc, restaurantPhone, test, here = null, platform = currentPlatform(), onTest, onTested, onGoStep, onDone }: {
   locationId: string
   loc: LocationConfig
   restaurantPhone: string | null
   test: TestState
+  /** Svaret i steg 4: är sidan öppen på restaurangens telefon? */
+  here?: boolean | null
+  platform?: Platform
   onTest: (t: TestState) => void
   onTested: (loc: LocationConfig) => void
   onGoStep: (s: Step) => void
@@ -49,6 +53,14 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, o
       setSaveError(errorText(err, 'Vi kunde inte spara att det fungerar.', ERRORS))
     }
   }
+
+  // Börja vänta direkt när steget öppnas: raderna säger bara ring, och sedan visas samtalet här.
+  const opened = useRef(false)
+  useEffect(() => {
+    if (opened.current) return
+    opened.current = true
+    if (test.status === 'idle' && target) start()
+  })
 
   const { status, since } = test
   const waiting = status === 'waiting'
@@ -113,7 +125,7 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, o
       if (timer) clearTimeout(timer)
       document.removeEventListener('visibilitychange', onVisible)
     }
-    // Startas om bara när man trycker Ring nu, Jag ringer nu eller Vänta igen.
+    // Startas när steget öppnas och om när man trycker Vänta igen.
   }, [waiting, since, round, locationId])
 
   if (status === 'ok') {
@@ -137,37 +149,40 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, o
 
   // Restaurangens telefon ringer först: ring från en annan och svara inte.
   const ringsFirst = !dev && loc.mode !== 'always'
+  // Ring härifrån bara när den här telefonen inte är restaurangens (eller i dev, där testlinjen rings).
+  const callHere = platform !== 'other' && (dev || here === false)
+  const number = target ? (
+    <span className="telefon-bignumber">
+      <span className="telefon-bignumber__value telefon-mono">{formatPhoneNational(target)}</span>
+      {dev ? <span className="telefon-tag">Testlinje i dev</span> : null}
+    </span>
+  ) : null
+  const say = { text: <>Säg hej och fråga till exempel ”När har ni öppet?”.</> }
+  const hangUp = { text: 'Lägg på.' }
 
   return (
     <div className="telefon-step-body">
       {target ? (
         <>
-          <HowTo label="Så gör du" steps={[
-            {
-              icon: 'phone',
-              text: (
-                <>
-                  {ringsFirst ? 'Ring det här numret från en annan telefon (inte restaurangens):' : 'Ring det här numret från valfri telefon:'}
-                  <span className="telefon-bignumber">
-                    <span className="telefon-bignumber__value telefon-mono">{formatPhoneNational(target)}</span>
-                    {dev ? <span className="telefon-tag">Testlinje i dev</span> : null}
-                  </span>
-                </>
-              ),
-            },
-            { text: <>Säg hej och fråga till exempel ”När har ni öppet?”.{ringsFirst ? ' Svara inte i restaurangens telefon.' : ''}</> },
-            { text: 'Lägg på. Vi visar här när samtalet har kommit in.' },
+          <HowTo label="Så gör du" steps={ringsFirst ? [
+            { icon: 'phone', text: <>Ring det här numret från en annan telefon:{number}</> },
+            { text: 'Låt det ringa. Svara inte i restaurangens telefon. Assistenten svarar efter en stund.' },
+            say,
+            hangUp,
+          ] : [
+            { icon: 'phone', text: <>Ring det här numret från valfri telefon:{number}</> },
+            say,
+            hangUp,
           ]} />
-          {status !== 'waiting' ? (
+          {callHere ? (
             <div className="telefon-row">
-              <LinkButton variant="primary" className="telefon-call" href={`tel:${target}`} onClick={start}>
+              <LinkButton variant="secondary" className="telefon-call" href={`tel:${target}`}>
                 <Icon name="phone" size={18} /> {SETUP.buttons.callNow}
               </LinkButton>
-              <Button type="button" variant="secondary" onClick={start}>{SETUP.buttons.callingOther}</Button>
             </div>
           ) : null}
-          {status !== 'waiting' && !dev && loc.number && target !== loc.number ? (
-            <a className="telefon-link" href={`tel:${loc.number}`} onClick={start}>
+          {callHere && !dev && loc.number && target !== loc.number ? (
+            <a className="telefon-link" href={`tel:${loc.number}`}>
               Eller ring Booqy-numret direkt: {formatPhoneNational(loc.number)}
             </a>
           ) : null}
@@ -177,7 +192,12 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, o
         <Button type="button" variant="secondary" onClick={() => onGoStep('nummer')}>Skaffa ert Booqy-nummer först</Button>
       ) : null}
 
-      {status === 'waiting' ? <Printing label="Väntar på samtalet" /> : null}
+      {status === 'waiting' && target ? (
+        <>
+          <Printing label="Väntar på samtalet" />
+          <p className="telefon-hint">Vi visar här när samtalet har kommit in.</p>
+        </>
+      ) : null}
 
       {status === 'refused' ? (
         <Bar variant="banner" tone="warning">
@@ -197,7 +217,7 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, o
               </li>
             )}
             {ringsFirst ? <li>Svarade någon i restaurangens telefon? Låt den ringa tills assistenten svarar.</li> : null}
-            <li>Ring en gång till och tryck sedan på Vänta igen.</li>
+            <li>Tryck på Vänta igen och ring en gång till.</li>
           </ul>
           <span className="telefon-row">
             <Button size="sm" variant="primary" onClick={start}>{SETUP.buttons.waitAgain}</Button>

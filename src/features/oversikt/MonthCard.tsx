@@ -184,7 +184,10 @@ function KpiValue({ trend, index, warn = false, children }: { trend: Trend; inde
       <dd ref={ref} className={toneClass(tone).trim() || undefined}>
         <Num>{children}</Num>
       </dd>
-      <TrendBadge trend={trend} chip className="month-kpi-trend" />
+      {/* Chipet i en egen dd: en dl får bara ha dt och dd i sina grupper. */}
+      <dd className="month-kpi-trend-cell">
+        <TrendBadge trend={trend} chip className="month-kpi-trend" />
+      </dd>
     </>
   )
 }

@@ -10,6 +10,7 @@ import { GuideProvider, useGuide } from '../features/guide/Guide'
 import { LogoutConfirm } from './LogoutConfirm'
 import { syncBackdropImage } from './backdropStore'
 import { MyAvatarButton } from './ProfilePicture'
+import { DesktopHint } from './DesktopHint'
 import type { TenantErrorCode } from './tenant'
 import './admin.css'
 import './brand.css'
@@ -28,6 +29,7 @@ import { RoleGate } from './RoleGate'
 import { CommandPalette } from './CommandPalette'
 import type { PaletteItem } from './CommandPalette'
 import './ds.css'
+import './tapTargets.css'
 import { HelpChat } from '../features/help/HelpChat'
 import { helpChatEnabled, openHelpChat } from '../features/help/chatState'
 import { ErrorNote } from './ErrorNote'
@@ -292,6 +294,8 @@ export function AdminLayout() {
         <nav className="admin-nav admin-nav--bottom" aria-label="Inställningar och hjälp">
           {NAV_FOOTER.filter((item) => navVisible(item, tenant)).map(link)}
         </nav>
+
+        <DesktopHint />
 
         <div className="admin-user">
           <div className="admin-user-row" title={email ?? undefined}>

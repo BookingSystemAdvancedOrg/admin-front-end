@@ -168,7 +168,7 @@ export function TableRulesCard({
         <p className="cell-muted">Publicera en layout först.</p>
       ) : (
         <form onSubmit={save} className="notifications-form">
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0}>
             <table className="data-table rules-table">
               <thead>
                 <tr>

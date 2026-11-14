@@ -6,7 +6,6 @@
  * CSS:en gör sidan genomskinlig så att skrivbordet syns igenom. I en vanlig
  * webbläsare händer ingenting.
  */
-import { showDesktopHint } from './desktopHint'
 import { installGlassBackdrop } from './glassBackdrop'
 
 export type DesktopGlass = 'vibrancy' | 'acrylic' | 'tint'
@@ -26,11 +25,8 @@ export function installDesktopGlass(): DesktopGlass | null {
   }
   if (typeof document === 'undefined' || typeof navigator === 'undefined') return null
   const mode = desktopGlassMode(navigator.userAgent)
-  if (!mode) {
-    // I webbläsaren: en gång, ett tips om appen (den ser skrivbordet, sidan kan inte).
-    window.setTimeout(showDesktopHint, 2500)
-    return null
-  }
+  // I webbläsaren står ett tips om appen i sidomenyn (DesktopHint.tsx).
+  if (!mode) return null
   const root = document.documentElement
   root.classList.add('is-desktop-glass')
   root.dataset.desktopGlass = mode

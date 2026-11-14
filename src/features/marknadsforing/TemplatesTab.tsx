@@ -120,7 +120,7 @@ export function TemplatesTab() {
           <p className="cell-muted">Inga mallar än.</p>
         )}
         {templates && templates.length > 0 && (
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0}>
             <table className="data-table">
               <thead>
                 <tr>

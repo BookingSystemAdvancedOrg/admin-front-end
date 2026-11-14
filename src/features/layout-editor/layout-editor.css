@@ -86,6 +86,10 @@
   color: var(--muted);
 }
 
+.tool-key::before {
+  content: attr(data-key);
+}
+
 .tool-btn.active .tool-key {
   color: inherit;
   opacity: 0.85;
@@ -846,15 +850,17 @@
   transform: translateZ(calc(var(--th) / 2));
 }
 
+/* Bordsskivan är ljus i båda lägena (.table-top), så texten på den har fasta
+   färger: med temats bläck blev den ljus på ljust i mörkt läge. */
 .table-label {
   font: 700 11px/1.1 var(--sans);
-  color: var(--ink);
+  color: var(--bq-espresso);
 }
 
 .table-seats {
   font: 700 10px/1.1 var(--sans);
-  color: var(--on-accent);
-  background: var(--ink, #1d1d1f);
+  color: var(--bq-snow);
+  background: var(--bq-espresso);
   border-radius: var(--r-md);
   padding: 1px 6px;
 }
@@ -878,7 +884,7 @@
 }
 
 .table-el.selected .table-seats {
-  color: var(--accent-ink);
+  color: var(--bq-bronze);
   background: var(--bq-snow);
 }
 

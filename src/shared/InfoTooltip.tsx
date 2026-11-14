@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 
 /**
@@ -17,6 +17,26 @@ export function InfoTooltip({
 }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLSpanElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  // Bubblan stannar inom fönstret: flyttas i sidled om den skulle gå utanför.
+  useLayoutEffect(() => {
+    const panel = panelRef.current
+    if (!open || !panel) return
+    const place = () => {
+      panel.style.translate = ''
+      const r = panel.getBoundingClientRect()
+      const vw = document.documentElement.clientWidth
+      const gap = 8
+      let dx = 0
+      if (r.right > vw - gap) dx = vw - gap - r.right
+      if (r.left + dx < gap) dx = gap - r.left
+      if (dx) panel.style.translate = `${Math.round(dx)}px 0`
+    }
+    place()
+    window.addEventListener('resize', place)
+    return () => window.removeEventListener('resize', place)
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -48,7 +68,7 @@ export function InfoTooltip({
         i
       </button>
       {open && (
-        <div className="info-tooltip-panel" role="dialog" aria-label={label}>
+        <div className="info-tooltip-panel" ref={panelRef} role="dialog" aria-label={label}>
           <button
             type="button"
             className="info-tooltip-close"

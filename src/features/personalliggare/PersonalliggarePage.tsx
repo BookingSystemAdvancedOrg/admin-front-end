@@ -209,7 +209,7 @@ function Today({ locationId, owner, persons }: { locationId: string; owner: bool
 function Rows({ rows, identity = false }: { rows: Row[]; identity?: boolean }) {
   if (rows.length === 0) return <p className="admin-empty">Inga registreringar.</p>
   return (
-    <div className="table-scroll">
+    <div className="table-scroll" tabIndex={0}>
       <table className="data-table pl-table">
         <thead>
           <tr>
@@ -278,7 +278,7 @@ function Persons({ persons, onSaved }: { persons: Person[]; onSaved: () => Promi
   return (
     <Card title="Personer" actions={<Button onClick={() => setEditing(blank)}>Lägg till person</Button>}>
       {persons.length === 0 ? <p className="admin-empty">Inga personer än.</p> : (
-        <div className="table-scroll">
+        <div className="table-scroll" tabIndex={0}>
           <table className="data-table">
             <thead><tr><th scope="col">Namn</th><th scope="col">Personnummer</th><th scope="col">Inloggning</th><th scope="col">Status</th></tr></thead>
             <tbody>

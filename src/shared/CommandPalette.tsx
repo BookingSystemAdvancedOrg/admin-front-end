@@ -214,10 +214,17 @@ export function CommandPalette({ items }: { items: () => PaletteItem[] }) {
 /** Den lilla sökrutan i sidhuvudet: öppnar paletten. */
 export function PaletteTrigger() {
   return (
-    <button type="button" className="palette-trigger" onClick={openPalette} aria-label={`Sök (${paletteShortcut()})`}>
+    <button
+      type="button"
+      className="palette-trigger"
+      onClick={openPalette}
+      aria-label="Sök"
+      aria-keyshortcuts={paletteShortcut() === '⌘K' ? 'Meta+K' : 'Control+K'}
+    >
       <Icon name="search" size={16} />
       <span className="palette-trigger-text">Sök</span>
-      <kbd className="palette-trigger-kbd">{paletteShortcut()}</kbd>
+      {/* Genvägen ritas med CSS: namnet är "Sök", genvägen står i aria-keyshortcuts. */}
+      <kbd className="palette-trigger-kbd" data-key={paletteShortcut()} aria-hidden="true" />
     </button>
   )
 }

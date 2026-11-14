@@ -3188,7 +3188,6 @@ function ToolButton({
       type="button"
       className={active ? 'tool-btn active' : 'tool-btn'}
       title={full}
-      aria-label={full}
       aria-keyshortcuts={shortcut}
       aria-pressed={active}
       disabled={disabled}
@@ -3197,7 +3196,9 @@ function ToolButton({
     >
       <Icon name={icon} size={20} />
       <small>{caption}</small>
-      {shortcut && <kbd className="tool-key" aria-hidden="true">{shortcut}</kbd>}
+      {/* Namnet är bildtexten (det man ser), förklaringen står i title och
+          bokstaven i aria-keyshortcuts; själva bokstaven ritas med CSS. */}
+      {shortcut && <kbd className="tool-key" data-key={shortcut} aria-hidden="true" />}
     </button>
   )
 }

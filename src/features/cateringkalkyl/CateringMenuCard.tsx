@@ -127,7 +127,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
           Inga rätter än.
         </p>
       ) : (
-        <div className="table-scroll">
+        <div className="table-scroll" tabIndex={0}>
           <table className="data-table">
             <thead>
               <tr>
@@ -189,7 +189,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
       {packages.length === 0 ? (
         <p className="cm-empty">Inga paket än.</p>
       ) : (
-        <div className="table-scroll">
+        <div className="table-scroll" tabIndex={0}>
           <table className="data-table">
             <thead>
               <tr>

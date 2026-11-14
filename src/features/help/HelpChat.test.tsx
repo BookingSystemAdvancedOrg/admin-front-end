@@ -66,7 +66,7 @@ describe('HelpChat', () => {
     renderChat()
     await openPanel(user)
     await user.type(screen.getByRole('textbox', { name: 'Din fråga' }), 'Hur många gäster har vi haft idag?{Enter}')
-    await waitFor(() => expect(screen.getByRole('log')).toHaveTextContent(/Idag har ni \d+ gäster i bokningarna/))
+    await waitFor(() => expect(screen.getByRole('list', { name: 'Samtal' })).toHaveTextContent(/Idag har ni \d+ gäster i bokningarna/))
     expect(screen.getByTestId('where')).toHaveTextContent('/statistik')
     await waitFor(() => expect(document.querySelector('[data-help="kpi:gaster-idag"]')).toHaveClass('help-spotlight'))
     // Panelen står kvar och sidan lämnas där den är.
@@ -81,7 +81,7 @@ describe('HelpChat', () => {
     expect(input).toHaveFocus()
     await user.type(input, 'Var skapar jag en ny rätt i menyn och hur gör jag?{Enter}')
 
-    const log = screen.getByRole('log', { name: 'Samtal' })
+    const log = screen.getByRole('list', { name: 'Samtal' })
     await waitFor(() => expect(log).toHaveTextContent('Tryck Lägg till rätt.'))
     const steps = screen.getAllByRole('listitem').filter((li) => li.closest('.help-steps'))
     expect(steps[0]).toHaveTextContent('Öppna Meny')
@@ -108,7 +108,7 @@ describe('HelpChat', () => {
     renderChat()
     await openPanel(user)
     await user.type(screen.getByRole('textbox', { name: 'Din fråga' }), 'Hur bjuder jag in personal?{Enter}')
-    await waitFor(() => expect(screen.getByRole('log')).toHaveTextContent(OWNER_TEXT))
+    await waitFor(() => expect(screen.getByRole('list', { name: 'Samtal' })).toHaveTextContent(OWNER_TEXT))
     expect(screen.queryByRole('button', { name: /Bjud in/ })).toBeNull()
     expect(document.querySelector('.help-steps')).toBeNull()
   })

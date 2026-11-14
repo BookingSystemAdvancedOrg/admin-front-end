@@ -117,7 +117,7 @@ describe('PersonalPage', () => {
     renderPage()
     fireEvent.click(await screen.findByRole('button', { name: 'Visa profilbilden för Anna Servis' }))
     const box = screen.getByRole('dialog', { name: 'Profilbild: Anna Servis' })
-    expect(box.querySelector('.avatar--xl')?.textContent).toBe('AS')
+    expect(box.querySelector('.avatar--xl .avatar-initials')?.getAttribute('data-initials')).toBe('AS')
     expect(within(box).getByText('anna@example.com')).toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: 'Redigera medarbetare' })).not.toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })

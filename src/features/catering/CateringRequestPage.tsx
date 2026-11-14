@@ -372,7 +372,7 @@ export default function CateringRequestPage() {
                 )}
               </div>
             </div>
-            <div className="table-scroll">
+            <div className="table-scroll" tabIndex={0}>
               <table className="data-table offer-table">
                 <thead>
                   <tr><th>Rad</th><th>Á-pris (kr)</th><th>Antal</th><th>Summa</th><th /></tr>

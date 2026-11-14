@@ -109,7 +109,7 @@ export default function CateringPage() {
               </p>
             )}
             {visible.length > 0 && (
-              <div className="table-scroll">
+              <div className="table-scroll" tabIndex={0}>
                 <table className="data-table">
                   <thead>
                     <tr>

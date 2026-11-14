@@ -396,7 +396,7 @@ export default function CateringkalkylPage() {
               Inga intervall. {orderRules.advanceDays} dagar gäller alla.
             </p>
           ) : (
-            <div className="table-scroll">
+            <div className="table-scroll" tabIndex={0}>
               <table className="data-table lead-table">
                 <thead>
                   <tr>
@@ -569,7 +569,7 @@ export default function CateringkalkylPage() {
             </button>
           </div>
           <ErrorNote text={tierError} />
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0}>
             <table className="data-table">
               <thead>
                 <tr>

@@ -21,12 +21,21 @@
   cursor: pointer;
   /* --dodge (dodge.ts): floats up above a sticky or fixed bar under the button. */
   translate: calc(-1 * var(--dodge-x, 0px)) calc(-1 * var(--dodge, 0px));
-  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), translate var(--dur-base, 220ms) var(--ease-out);
+  transition: transform var(--dur-base, 220ms) var(--ease-out), opacity var(--dur-base, 220ms) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), translate var(--dur-base, 220ms) var(--ease-out);
 }
 
 .help-launcher:hover {
   transform: translateY(-1px);
   box-shadow: var(--glass-edge), var(--elev-3);
+}
+
+/* Bort medan man rullar nedåt, tillbaka uppåt eller efter en stund, och
+   när den annars skulle ligga på en knapp eller ett fält (dodge.ts). */
+.help-launcher.help-launcher--away,
+.help-launcher.help-launcher--yield {
+  transform: translateY(calc(100% + var(--space-6)));
+  opacity: 0;
+  pointer-events: none;
 }
 
 .help-launcher:focus-visible,
@@ -252,8 +261,8 @@
   cursor: default;
 }
 
-/* Telefon: hela skärmen, knappen ovanför hemindikatorn. */
-@media (max-width: 600px) {
+/* Telefon: bara ikonen i en rund knapp på 48 px (namnet i aria-label). */
+@media (max-width: 640px) {
   .help-launcher-text {
     display: none;
   }
@@ -264,7 +273,10 @@
     justify-content: center;
     padding: 0;
   }
+}
 
+/* Telefon: panelen tar hela skärmen. */
+@media (max-width: 600px) {
   .help-panel {
     inset: 0;
     width: 100%;
@@ -281,7 +293,14 @@
     transition: none;
   }
 
-  .help-launcher:hover {
+  /* Ingen glidning: knappen tonar bara bort och tillbaka. */
+  .help-launcher {
+    transition: opacity var(--dur-fast) linear;
+  }
+
+  .help-launcher:hover,
+  .help-launcher.help-launcher--away,
+  .help-launcher.help-launcher--yield {
     transform: none;
   }
 }

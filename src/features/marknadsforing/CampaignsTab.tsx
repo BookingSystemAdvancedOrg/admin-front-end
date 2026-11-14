@@ -324,7 +324,7 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
           <p className="cell-muted">Inga kampanjer än.</p>
         )}
         {campaigns && campaigns.length > 0 && (
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0}>
             <table className="data-table mk-campaigns">
               <thead>
                 <tr>

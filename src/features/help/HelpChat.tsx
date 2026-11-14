@@ -8,7 +8,7 @@ import { useTenant } from '../../shared/tenant'
 import { HelpLimited, askHelp, getHelpStatus } from './helpApi'
 import { METRICS, resolveLive } from './live'
 import { spotlight } from './spotlight'
-import { useDodge } from './dodge'
+import { useDodge, useHideOnScroll } from './dodge'
 import type { HelpTurn } from './helpApi'
 import { OPEN_EVENT, helpChatEnabled, setHelpChatEnabled } from './chatState'
 import { KB, actionAllowed, actionHref, entryVisible, viewOf } from './kb'
@@ -44,6 +44,7 @@ export function HelpChat() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const launcherRef = useRef<HTMLButtonElement>(null)
   useDodge(launcherRef, enabled && status === 'ready' && !open)
+  useHideOnScroll(launcherRef, enabled && status === 'ready' && !open)
   const logRef = useRef<HTMLOListElement>(null)
   const returnTo = useRef<HTMLElement | null>(null)
   const titleId = useId()
@@ -187,12 +188,13 @@ export function HelpChat() {
           ref={launcherRef}
           type="button"
           className="help-launcher"
+          aria-label="Fråga Booqy"
           aria-expanded={false}
           aria-controls={panelId}
           onClick={show}
         >
           <Icon name="help" size={18} />
-          <span className="help-launcher-text">Fråga Booqy</span>
+          <span className="help-launcher-text" aria-hidden="true">Fråga Booqy</span>
         </button>
       )}
       {open && (
@@ -229,7 +231,7 @@ export function HelpChat() {
             </div>
           </header>
 
-          <ol className="help-log" ref={logRef} role="log" aria-live="polite" aria-label="Samtal">
+          <ol className="help-log" ref={logRef} aria-live="polite" aria-label="Samtal">
             {messages.length === 0 && (
               <li className="help-empty">
                 <p>Fråga hur något fungerar.</p>
@@ -251,8 +253,8 @@ export function HelpChat() {
                   {m.text}
                 </li>
               ) : m.role === 'notice' ? (
-                <li key={m.id} className="help-msg help-msg--notice" role="status">
-                  {m.text}
+                <li key={m.id} className="help-msg help-msg--notice">
+                  <span role="status">{m.text}</span>
                 </li>
               ) : (
                 <li key={m.id} className="help-msg help-msg--bot">

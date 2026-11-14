@@ -250,7 +250,7 @@ function Campaigns({ locationId, blocked }: { locationId: string; blocked: boole
         <p className="admin-empty">Inga annonser än.</p>
       ) : null}
       {campaigns && campaigns.length > 0 ? (
-        <div className="table-scroll">
+        <div className="table-scroll" tabIndex={0}>
           <table className="data-table">
             <thead>
               <tr><th scope="col">Annons</th><th scope="col">Period</th><th scope="col">Budget</th><th scope="col">Status</th></tr>

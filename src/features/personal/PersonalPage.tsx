@@ -236,7 +236,7 @@ export default function PersonalPage() {
           {(loadError ?? rowError) && (
             <ErrorNote text={loadError ?? rowError} />
           )}
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0}>
             <table className="data-table" style={{ minWidth: 600 }}>
               <thead>
                 <tr>

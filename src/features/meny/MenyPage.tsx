@@ -458,7 +458,7 @@ export default function MenyPage() {
           {(loadError ?? rowError) && (
             <ErrorNote text={loadError ?? rowError} />
           )}
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0}>
             <table className="data-table meny-table">
               <thead>
                 <tr>

@@ -217,7 +217,7 @@ export default function BokningarPage() {
             <ErrorNote text={error} />
           )}
 
-          <div className="table-scroll" data-tour="booking-list">
+          <div className="table-scroll" tabIndex={0} data-tour="booking-list">
             <table className="data-table bookings-table">
               <thead>
                 <tr>

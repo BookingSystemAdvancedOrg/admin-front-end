@@ -166,7 +166,7 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
           </p>
         ) : null}
         {guests && guests.length > 0 ? (
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0}>
             <table className="data-table">
               <caption className="bq-sr-only">Gäster, senast här först</caption>
               <thead>
@@ -343,7 +343,7 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
           </dl>
           <h3 className="form-section-label">Historik</h3>
           {guest.history.length === 0 ? <p className="cell-muted">Ingen historik.</p> : (
-            <div className="table-scroll">
+            <div className="table-scroll" tabIndex={0}>
               <table className="data-table">
                 <thead>
                   <tr><th scope="col">Datum</th><th scope="col">Vad</th><th scope="col">Restaurang</th>{guest.spendSek ? <th scope="col">Belopp</th> : null}</tr>

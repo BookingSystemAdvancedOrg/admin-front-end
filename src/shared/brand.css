@@ -2005,6 +2005,10 @@ html.is-busy * {
   block-size: var(--avatar-lg);
   font-size: 1.125rem;
 }
+.avatar-initials::before {
+  content: attr(data-initials);
+}
+
 .avatar img {
   display: block;
   inline-size: 100%;

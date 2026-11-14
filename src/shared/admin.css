@@ -671,6 +671,12 @@
   overflow-x: auto;
 }
 
+/* Tabellen rullar i sidled också med tangentbordet (fokus, sedan pilarna). */
+.table-scroll:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
 .data-table {
   width: 100%;
   min-width: 900px;
@@ -876,7 +882,7 @@
   top: calc(100% + 8px);
   left: 0;
   z-index: 20;
-  width: max(240px, min(300px, 80vw));
+  width: min(300px, calc(100vw - 16px));
   padding: 14px 16px;
   border-radius: var(--r-md);
   border: 1px solid var(--border);
@@ -1668,7 +1674,17 @@
 
 /* Rött betyder sämre än innan (shared/trend), så talen är bläck tills
    jämförelsen säger grönt eller rött. Varningen (många uteblivna) står kvar. */
-.month-kpi--warn dd {
+.month-kpi dd.month-kpi-trend-cell {
+  font: inherit;
+  letter-spacing: normal;
+  color: inherit;
+}
+
+.month-kpi dd.month-kpi-trend-cell:empty {
+  display: none;
+}
+
+.month-kpi--warn dd:not(.month-kpi-trend-cell) {
   color: var(--accent-ink);
 }
 

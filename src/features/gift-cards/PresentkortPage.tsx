@@ -80,7 +80,7 @@ function GiftCards() {
         </Field>
         {listing && cards.length === 0 ? <p className="admin-empty">Inga presentkort än.</p> : null}
         {cards.length ? (
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0}>
             <table className="data-table">
               <thead><tr><th scope="col">Kort</th><th scope="col">Saldo</th><th scope="col">Status</th><th scope="col">Gäller till</th></tr></thead>
               <tbody>

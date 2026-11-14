@@ -23,7 +23,7 @@ test.describe('Admin: Layout', () => {
       }
       for (let i = 0; i < 4; i++) {
         // A click on the tool puts the table on the nearest free spot.
-        await page.getByRole('button', { name: /^Fyrkantigt bord/ }).click()
+        await page.getByRole('button', { name: /^Fyrkant/ }).click()
         await page.waitForTimeout(300)
         if (i === 0) {
           // first table: 2 seats (for the "party too big" test)

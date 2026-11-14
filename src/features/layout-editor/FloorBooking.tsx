@@ -255,6 +255,19 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
     })
   }
 
+  /** Ett bords läge i kartan (ledigt, för litet, fullbokat) och vad ett tryck gör. */
+  function tableState(t: { id: string; seats: number }) {
+    const free = (freeTimes.get(t.id) ?? []).length
+    const fits = !sizeOk || t.seats >= size
+    const state = slotsLoading ? 'loading' : free === 0 ? 'full' : fits ? 'free' : 'small'
+    const stateText =
+      state === 'loading' ? 'hämtar tider' : state === 'full' ? 'fullbokat' : state === 'small' ? `${free} lediga tider, för litet` : `${free} lediga tider`
+    const pick = () => {
+      if (state !== 'full' && state !== 'loading') pickTable(t.id)
+    }
+    return { state, stateText, pick }
+  }
+
   async function submit(e: FormEvent) {
     e.preventDefault()
     if (!valid || busy || !table || !locationId) return
@@ -402,13 +415,24 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
                       y2={w.dir === 'v' ? w.y + w.length : w.y}
                     />
                   ))}
+                  {/* Träffytorna runt borden ligger under alla bord: en grannes
+                      träffyta täcker aldrig ett bord (man träffar det man trycker på). */}
                   {floor.tables.map((t) => {
-                    const free = (freeTimes.get(t.id) ?? []).length
-                    const fits = !sizeOk || t.seats >= size
-                    const state = slotsLoading ? 'loading' : free === 0 ? 'full' : fits ? 'free' : 'small'
-                    const stateText =
-                      state === 'loading' ? 'hämtar tider' : state === 'full' ? 'fullbokat' : state === 'small' ? `${free} lediga tider, för litet` : `${free} lediga tider`
-                    const pick = () => state !== 'full' && state !== 'loading' && pickTable(t.id)
+                    const { pick } = tableState(t)
+                    return (
+                      <circle
+                        key={`hit-${t.id}`}
+                        className="floor-map-hit"
+                        cx={t.x}
+                        cy={t.y}
+                        r={Math.max(t.w, t.h) / 2 + 18}
+                        aria-hidden="true"
+                        onClick={pick}
+                      />
+                    )
+                  })}
+                  {floor.tables.map((t) => {
+                    const { state, stateText, pick } = tableState(t)
                     return (
                       <g
                         key={t.id}
@@ -418,7 +442,7 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
                         tabIndex={state === 'full' || state === 'loading' ? -1 : 0}
                         aria-disabled={state === 'full' || state === 'loading' || undefined}
                         aria-pressed={t.id === tableId}
-                        aria-label={`Bord ${label(t)}, ${t.seats} platser, ${stateText}`}
+                        aria-label={`Bord ${label(t)}, ${t.seats} pl (platser), ${stateText}`}
                         onClick={pick}
                         onKeyDown={(e: ReactKeyboardEvent) => {
                           if (e.key === 'Enter' || e.key === ' ') {
@@ -428,7 +452,6 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
                         }}
                       >
                         <g className="floor-map-body">
-                          <circle className="floor-map-hit" r={Math.max(t.w, t.h) / 2 + 18} />
                           {t.shape === 'round' ? (
                             <circle className="floor-map-top" r={Math.max(t.w, t.h) / 2} />
                           ) : (

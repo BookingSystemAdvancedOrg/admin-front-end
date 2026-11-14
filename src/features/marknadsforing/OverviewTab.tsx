@@ -210,7 +210,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
               {data.channels.length === 0 ? (
                 <p className="cell-muted">Inget att visa än.</p>
               ) : (
-                <div className="table-scroll">
+                <div className="table-scroll" tabIndex={0}>
                   <table className="data-table">
                     <thead>
                       <tr>
@@ -247,7 +247,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
                   Inga kampanjbesök än.
                 </p>
               ) : (
-                <div className="table-scroll">
+                <div className="table-scroll" tabIndex={0}>
                   <table className="data-table">
                     <thead>
                       <tr>

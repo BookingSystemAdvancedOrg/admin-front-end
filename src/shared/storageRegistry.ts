@@ -111,7 +111,7 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     name: APP_HINT_KEY,
     kind: 'localStorage',
     setBy: 'Booqy',
-    purpose: 'Att tipset om skrivbordsappen redan visats i den här webbläsaren, så att det bara syns en gång. Inga personuppgifter.',
+    purpose: 'Att tipset om skrivbordsappen är stängt i den här webbläsaren, så att det inte visas igen. Inga personuppgifter.',
     lifetime: 'Tills du rensar webbläsaren',
     category: 'nödvändig',
   },

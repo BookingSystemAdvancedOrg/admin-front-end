@@ -497,7 +497,7 @@ export function DishModal({
             type="button"
             role="switch"
             aria-checked={scheduleOn}
-            aria-controls="dish-schedule"
+            aria-controls={scheduleOn ? 'dish-schedule' : undefined}
             aria-label="Bara under en viss tid"
             className="switch"
             onClick={() => {

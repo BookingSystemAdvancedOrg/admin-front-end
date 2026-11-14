@@ -42,7 +42,7 @@ export default function CallsTab({ locationId, owner }: { locationId: string; ow
       {!calls ? <p className="cell-muted">Hämtar…</p> : calls.length === 0 ? (
         <p className="admin-empty">Inga samtal senaste veckan.</p>
       ) : (
-        <div className="table-scroll">
+        <div className="table-scroll" tabIndex={0}>
           <table className="data-table">
             <thead>
               <tr>

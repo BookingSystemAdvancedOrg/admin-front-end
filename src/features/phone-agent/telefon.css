@@ -96,10 +96,26 @@
   display: grid;
   gap: var(--bq-space-2);
 }
+.telefon-hours__day {
+  display: grid;
+  gap: var(--bq-space-2);
+  padding-bottom: var(--bq-space-2);
+  border-bottom: var(--bq-bar-hairline) solid var(--bq-line);
+}
+.telefon-hours__day > .bq-btn {
+  justify-self: start;
+}
+.telefon-hours__label {
+  font-weight: 600;
+}
 .telefon-hours__row {
   display: grid;
-  grid-template-columns: minmax(5rem, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   align-items: center;
+  gap: var(--bq-space-2);
+}
+.telefon-confirm {
+  display: grid;
   gap: var(--bq-space-2);
 }
 .telefon-codes {
@@ -174,6 +190,9 @@
   display: inline-flex;
   align-items: center;
   gap: var(--bq-space-2);
+}
+.telefon-nowrap {
+  white-space: nowrap;
 }
 .telefon-more {
   margin-top: var(--bq-space-5);

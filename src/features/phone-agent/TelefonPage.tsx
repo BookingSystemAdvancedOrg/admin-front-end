@@ -3,13 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Bar, Button, toast } from '@booqy/brand'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { errorText } from '../../shared/errors'
-import { formatPhone } from '../../shared/phone'
 import { currentLocation, useTenant } from '../../shared/tenant'
 import CallDetail from './CallDetail'
 import CallbacksTab from './CallbacksTab'
 import CallsTab from './CallsTab'
 import SettingsWizard from './SettingsWizard'
-import { ERRORS, getLocation, setKillSwitch, type LocationConfig } from './api'
+import { ERRORS, MODE_LABEL, getLocation, setKillSwitch, type LocationConfig } from './api'
 import './telefon.css'
 
 type Tab = 'samtal' | 'uppringningar' | 'installningar'
@@ -86,19 +85,20 @@ function Telefon() {
   ]
   return (
     <>
-      {config?.enabled ? (
+      {/* På först när numret är vidarekopplat: innan dess når inga samtal assistenten. */}
+      {config?.enabled && (config.setup?.forwardedAt || config.killSwitch) ? (
         <Bar variant="banner" tone={config.killSwitch ? 'warning' : 'info'} action={
           <Button size="sm" variant={config.killSwitch ? 'primary' : 'danger'} busy={busy} busyLabel="Sparar…" onClick={() => void toggleKill()}>
             {config.killSwitch ? 'Slå på assistenten' : 'Stäng av assistenten nu'}
           </Button>
         }>
           {config.killSwitch ? 'Assistenten är avstängd. Samtalen går som vanligt till er.'
-            : `Assistenten svarar på ${config.number ? formatPhone(config.number) : 'ert Booqy-nummer'}.`}
+            : `Assistenten svarar ${MODE_LABEL[config.mode].toLowerCase()}.`}
         </Bar>
       ) : (
         <Bar variant="banner" tone="info" action={owner && tab !== 'installningar'
           ? <Button size="sm" variant="primary" onClick={() => setTab('installningar')}>Kom igång</Button> : undefined}>
-          {owner ? 'Assistenten är inte på än.' : 'Assistenten är inte på för den här platsen.'}
+          {owner ? (config?.enabled ? 'Assistenten är inte klar än.' : 'Assistenten är inte på än.') : 'Assistenten är inte på för den här platsen.'}
         </Bar>
       )}
       <div className="telefon-section">

@@ -15,7 +15,7 @@ import {
   ERRORS, MODE_LABEL, SETUP, getLocation, getOverview, getPlaceBasics, postSetupPatch, saveConfigPatch, saveLocationPatch,
   type Config, type LocationConfig, type Mode, type Operator, type Overview,
 } from './api'
-import { STEPS, hasBusinessHours, hoursFor, hoursSummary, type Step } from './setup'
+import { STEPS, dialSteps, forwardTarget, hasBusinessHours, hoursFor, hoursSet, hoursSummary, type Step } from './setup'
 
 interface Data {
   config: Config
@@ -35,6 +35,8 @@ export default function SettingsWizard({ locationId, onSaved }: { locationId: st
   const [data, setData] = useState<Data | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [wizardAt, setWizardAt] = useState<Step | null>(null)
+  // Fler inställningar förblir utfällt efter Spara och efter guiden.
+  const [moreOpen, setMoreOpen] = useState(false)
 
   const load = useCallback(async () => {
     setLoadError(false)
@@ -74,8 +76,8 @@ export default function SettingsWizard({ locationId, onSaved }: { locationId: st
     )
   }
   return (
-    <SetupChecklist config={data.config} loc={data.loc} onOpen={setWizardAt}>
-      <AdvancedSettings key={`${data.config.version}-${data.loc.version}`} locationId={locationId} config={data.config} loc={data.loc}
+    <SetupChecklist config={data.config} loc={data.loc} restaurantPhone={data.restaurantPhone} onOpen={setWizardAt}>
+      <AdvancedSettings key={locationId} locationId={locationId} config={data.config} loc={data.loc} open={moreOpen} onOpenChange={setMoreOpen}
         restaurantPhone={data.restaurantPhone} includedMinutes={data.includedMinutes} onConfig={setConfig} onLoc={setLoc} />
     </SetupChecklist>
   )
@@ -109,14 +111,15 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
 }) {
   const { tenant } = useTenant()
   const restaurant = tenant?.locations?.find((l) => l.locationId === locationId)?.name ?? 'restaurangen'
-  const { config, loc, others, businessHours } = data
+  const { config, loc, others, businessHours, includedMinutes } = data
   const hasHours = hasBusinessHours(businessHours)
+  const target = forwardTarget(loc)
   const [d, setD] = useState<Draft>(() => ({
     step: start,
     sub: loc.setup?.operator ? 'code' : 'operator',
     codeIndex: 0,
     name: config.agentName || 'Booqy',
-    mode: !hasHours ? 'always' : loc.version > 0 ? loc.mode : 'after_hours',
+    mode: !hasHours ? 'always' : hoursSet(loc) ? loc.mode : 'after_hours',
     share: '',
     operator: loc.setup?.operator ?? '',
     errors: {},
@@ -188,7 +191,10 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
       case 'nummer':
         if (loc.enabled && loc.number) return after('nummer')
         return void run(async () => {
-          onLoc(await saveLocationPatch(locationId, loc, { enabled: true, shareNumberWith: d.share || null }, onLoc))
+          // Tider hoppades över: spara läget och tiderna nu, annars svarar assistenten aldrig.
+          const mode = !hasHours ? 'always' : d.mode
+          const hours = hoursSet(loc) ? {} : { mode, agentHours: hoursFor(mode, businessHours) }
+          onLoc(await saveLocationPatch(locationId, loc, { ...hours, enabled: true, shareNumberWith: d.share || null }, onLoc))
           after('nummer')
         })
       case 'koppla': {
@@ -201,7 +207,7 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
             set({ sub: 'code', codeIndex: 0 })
           })
         }
-        const codes = loc.forwarding?.codes ?? []
+        const codes = dialSteps(loc)
         if (d.codeIndex < codes.length - 1) return set({ codeIndex: d.codeIndex + 1 })
         return void run(async () => {
           onLoc(await postSetupPatch(locationId, loc, { forwarded: true }, onLoc))
@@ -228,16 +234,19 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
   let busyLabel: string = SETUP.buttons.saving
   if (d.step === 'nummer' && !(loc.enabled && loc.number)) { primary = SETUP.buttons.getNumber; busyLabel = SETUP.buttons.gettingNumber }
   if (d.step === 'koppla' && d.sub === 'code' && loc.forwarding?.number) {
-    const codes = loc.forwarding?.codes ?? []
+    const codes = dialSteps(loc)
     primary = vaxel ? SETUP.buttons.doneSwitch : d.codeIndex < codes.length - 1 ? SETUP.buttons.next : SETUP.buttons.called
   }
-  if (d.step === 'prova') primary = SETUP.buttons.done
-  const hidePrimary = (d.step === 'koppla' && !loc.forwarding?.number) || (d.step === 'prova' && d.test.status === 'ok')
+  // Steg 5 har ingen Klar i foten: man kommer ut genom att det fungerar (Klar där) eller med Hoppa över.
+  const hidePrimary = (d.step === 'koppla' && !loc.forwarding?.number) || d.step === 'prova'
 
   const info: Partial<Record<Step, string>> = {
     namn: `Assistenten säger alltid: Hej, du pratar med ${d.name.trim() || 'Booqy'}, en AI-assistent för ${restaurant}.`,
     tider: 'Ni kan ändra tiderna under Fler inställningar.',
-    nummer: others.length && !(loc.enabled && loc.number) ? 'Med samma nummer frågar assistenten först vilken restaurang det gäller.' : undefined,
+    nummer: [
+      includedMinutes > 0 ? `Numret ingår i er plan, med ${includedMinutes} samtalsminuter per månad.` : 'Numret ingår i er plan.',
+      others.length && !(loc.enabled && loc.number) ? 'Med samma nummer frågar assistenten först vilken restaurang det gäller.' : '',
+    ].filter(Boolean).join(' '),
   }
   const question = d.step === 'koppla' && d.sub === 'operator' ? 'Vilken operatör har restaurangens telefon?' : SETUP.QUESTIONS[n - 1]
 
@@ -286,8 +295,8 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
 
         {d.step === 'nummer' ? (
           <div className="telefon-step-body">
-            {loc.enabled && loc.number ? (
-              <BigNumber number={loc.number} extra={loc.simulated ? <span className="telefon-tag">Testnummer i dev</span> : null} />
+            {loc.enabled && loc.number && target ? (
+              <BigNumber number={target} extra={loc.simulated ? <span className="telefon-tag">Testnummer i dev</span> : null} />
             ) : others.length ? (
               <Field label="Nummer" error={d.errors.shareNumberWith}>
                 <Select id="pa-share" value={d.share} onChange={(e) => set({ share: e.target.value })}>

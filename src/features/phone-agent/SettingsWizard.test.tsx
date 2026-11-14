@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../shared/api'
 import type { BusinessHours } from '../installningar/locationApi'
+import { formatPhone } from '../../shared/phone'
 import SettingsWizard from './SettingsWizard'
 import type { CallRow, Config, LocationConfig } from './api'
 
@@ -34,15 +35,21 @@ interface Server {
 }
 let server: Server
 
+const OFF = 'Stäng av gammal vidarekoppling'
 function codesFor(l: LocationConfig): LocationConfig['forwarding'] {
-  const n = l.number
+  const n = l.simulated && l.testNumber ? l.testNumber : l.number
   const operator = l.setup?.operator ?? 'other'
-  if (!n || operator === 'vaxel') return { number: n, operator, codes: [] }
+  if (!n || operator === 'vaxel') return { number: n, operator, reset: [], codes: [] }
   if (operator === 'telia_fast') {
-    return { number: n, operator, codes: [{ label: 'Ej svar', on: `*61*${n}#`, off: '#61#' }, { label: 'Upptaget', on: `*67*${n}#`, off: '#67#' }] }
+    return { number: n, operator, reset: ['#21#', '#61#', '#67#'].map((on) => ({ label: OFF, on })),
+      codes: [{ label: 'Ej svar', on: `*61*${n}#`, off: '#61#' }, { label: 'Upptaget', on: `*67*${n}#`, off: '#67#' }] }
   }
-  return { number: n, operator, codes: [l.mode === 'always' ? { label: 'Alla', on: `**21*${n}#`, off: '##21#' } : { label: 'Ej svar', on: `**004*${n}#`, off: '##004#' }] }
+  return { number: n, operator, reset: [{ label: OFF, on: '##002#' }],
+    codes: [l.mode === 'always' ? { label: 'Alla', on: `**21*${n}#`, off: '##21#' } : { label: 'Ej svar', on: `**004*${n}#`, off: '##004#' }] }
 }
+
+/** Natt och morgon på måndagar: Tider är klart. */
+const NIGHTS = { mon: [{ from: '00:00', to: '11:00' }, { from: '22:00', to: '23:59' }] }
 
 function freshServer(over: Partial<Server> = {}): Server {
   const loc: LocationConfig = {
@@ -81,7 +88,12 @@ async function handle(path: string, init: RequestInit = {}) {
     case 'PUT /locations/loc-1/phone-agent': {
       if (body.version !== server.loc.version) stale()
       const { shareNumberWith: _s, ...rest } = body
+      const before = codesFor(server.loc)?.codes.map((c) => c.on)
       setLoc({ ...rest, number: body.enabled ? (server.loc.number ?? '+46100000001') : server.loc.number, version: body.version + 1 })
+      // Som servern: en annan kod betyder att vidarekopplingen måste göras om.
+      if (server.loc.setup?.forwardedAt && JSON.stringify(before) !== JSON.stringify(server.loc.forwarding?.codes.map((c) => c.on))) {
+        setLoc({ setup: { ...server.loc.setup, forwardedAt: null, testedAt: null } })
+      }
       return server.loc
     }
     case 'POST /locations/loc-1/phone-agent/setup': {
@@ -111,6 +123,8 @@ function renderWizard() {
   return onSaved
 }
 
+/** En klar rad i checklistan: "Tider När ni har stängt, klart". */
+const doneRow = (label: string) => (name: string) => name.startsWith(label) && name.endsWith(', klart')
 const step = (n: number) => screen.findByText(`Steg ${n} av 5`)
 const nextButton = () => screen.getByRole('button', { name: 'Nästa' })
 
@@ -122,6 +136,10 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers()
 })
+
+/** "Klart! Samtal till <restaurangens nummer> går till assistenten när ni har stängt." */
+const doneText = (_: string, el: Element | null) => Boolean(el?.classList.contains('telefon-done')
+  && /^ ?Klart! Samtal till .+ går till assistenten när ni har stängt\.$/.test(el.textContent ?? ''))
 
 describe('checklist', () => {
   it('starts with Börja and every step open', async () => {
@@ -135,7 +153,7 @@ describe('checklist', () => {
 
   it('continues at the first open step and shows the done values', async () => {
     server.config = { ...server.config, version: 1, agentName: 'Sara' }
-    setLoc({ version: 3, enabled: true, number: '+46100000001' })
+    setLoc({ version: 3, enabled: true, number: '+46100000001', agentHours: NIGHTS })
     renderWizard()
     expect(await screen.findByRole('button', { name: 'Fortsätt: Vidarekoppling' })).toBeInTheDocument()
     expect(screen.getByText('Sara')).toBeInTheDocument()
@@ -144,10 +162,11 @@ describe('checklist', () => {
 
   it('shows the success bar and the off code when everything is done', async () => {
     server.config = { ...server.config, version: 1 }
-    setLoc({ version: 5, enabled: true, number: '+46100000001',
+    setLoc({ version: 5, enabled: true, number: '+46100000001', agentHours: NIGHTS,
       setup: { operator: 'telia', forwardedAt: '2026-11-14T10:00:00Z', testedAt: '2026-11-14T10:05:00Z' } })
     renderWizard()
-    expect(await screen.findByText(/Klart! Assistenten svarar på \+46 10 000 00 01/)).toBeInTheDocument()
+    expect(await screen.findByText(doneText)).toBeInTheDocument()
+    expect(screen.queryByText(/Klart! Assistenten svarar på/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^(Börja$|Fortsätt)/ })).not.toBeInTheDocument()
     expect(screen.getByText('##004#')).toBeInTheDocument()
     expect(screen.getByText('Fungerar')).toBeInTheDocument()
@@ -232,7 +251,7 @@ describe('wizard', () => {
 
   it('gets a number only on the button, and shows a Booqy fault with a retry', async () => {
     server.config = { ...server.config, version: 1 }
-    setLoc({ version: 1 })
+    setLoc({ version: 1, agentHours: NIGHTS })
     server.fail['PUT /locations/loc-1/phone-agent'] = [new ApiError(502, 'telephony_unavailable', { code: 'telephony_unavailable', fromServer: true })]
     renderWizard()
     fireEvent.click(await screen.findByRole('button', { name: 'Fortsätt: Booqy-nummer' }))
@@ -245,9 +264,9 @@ describe('wizard', () => {
     expect(sent('PUT', '/locations/loc-1/phone-agent').at(-1)!.body).toMatchObject({ enabled: true })
   })
 
-  it('walks the forwarding: operator, the code as a tel: link, then Klart', async () => {
+  it('walks the forwarding: operator, the off code, the code as a tel: link, then Klart', async () => {
     server.config = { ...server.config, version: 1 }
-    setLoc({ version: 2, enabled: true, number: '+46100000001' })
+    setLoc({ version: 2, enabled: true, number: '+46100000001', agentHours: NIGHTS })
     renderWizard()
     fireEvent.click(await screen.findByRole('button', { name: 'Fortsätt: Vidarekoppling' }))
     expect(await screen.findByRole('heading', { name: 'Vilken operatör har restaurangens telefon?' })).toBeInTheDocument()
@@ -255,7 +274,11 @@ describe('wizard', () => {
     expect(await screen.findByText('Välj operatör i listan.')).toBeInTheDocument()
     fireEvent.click(screen.getByLabelText('Telia (mobil)'))
     fireEvent.click(nextButton())
-    const link = await screen.findByRole('link', { name: 'Ring koden **004*+46100000001#' })
+    expect(await screen.findByText('Kod 1 av 2: Stäng av gammal vidarekoppling')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ring koden ##002#' })).toHaveAttribute('href', 'tel:%23%23002%23')
+    fireEvent.click(nextButton())
+    expect(await screen.findByText(/Kod 2 av 2/)).toBeInTheDocument()
+    const link = screen.getByRole('link', { name: 'Ring koden **004*+46100000001#' })
     expect(link).toHaveAttribute('href', 'tel:**004*+46100000001%23')
     expect(sent('POST', '/locations/loc-1/phone-agent/setup')[0].body).toEqual({ operator: 'telia', version: 2 })
     expect(screen.getByText('På iPhone: skriv koden i knappsatsen och tryck på luren.')).toBeInTheDocument()
@@ -268,20 +291,78 @@ describe('wizard', () => {
 
   it('shows fixed Telia two codes one at a time, and a switchboard no code', async () => {
     server.config = { ...server.config, version: 1 }
-    setLoc({ version: 2, enabled: true, number: '+46100000001', setup: { operator: 'telia_fast', forwardedAt: null, testedAt: null } })
+    setLoc({ version: 2, enabled: true, number: '+46100000001', agentHours: NIGHTS, setup: { operator: 'telia_fast', forwardedAt: null, testedAt: null } })
     renderWizard()
     fireEvent.click(await screen.findByRole('button', { name: 'Fortsätt: Vidarekoppling' }))
-    expect(await screen.findByText(/Kod 1 av 2/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Ring koden *61*+46100000001#' })).toBeInTheDocument()
+    expect(await screen.findByText(/Kod 1 av 5/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ring koden #21#' })).toBeInTheDocument()
     fireEvent.click(nextButton())
-    expect(await screen.findByText(/Kod 2 av 2/)).toBeInTheDocument()
+    expect(await screen.findByText(/Kod 2 av 5/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ring koden #61#' })).toBeInTheDocument()
+    fireEvent.click(nextButton())
+    fireEvent.click(nextButton())
+    expect(await screen.findByText(/Kod 4 av 5/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ring koden *61*+46100000001#' })).toBeInTheDocument()
+    // Av senare: en Kopiera per kod, aldrig två koder i ett.
+    const later = screen.getByText('Stänga av senare?').closest('details')!
+    fireEvent.click(within(later).getAllByRole('button', { name: 'Kopiera' })[1])
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('#67#'))
     fireEvent.click(screen.getByRole('button', { name: 'Tillbaka' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Tillbaka' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Tillbaka' }))
+    expect(await screen.findByText(/Kod 1 av 5/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Tillbaka' }))
     fireEvent.click(await screen.findByLabelText('Växel eller IP-telefoni'))
     fireEvent.click(nextButton())
     expect(await screen.findByText('Ställ in vidarekoppling i växeln till:')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Ring koden/ })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Klart, jag har gjort det' })).toBeInTheDocument()
+  })
+
+  it('saves the hours with the number when Tider was skipped, so the assistant answers', async () => {
+    server.config = { ...server.config, version: 1 }
+    renderWizard()
+    fireEvent.click(await screen.findByRole('button', { name: /Booqy-nummer, inte klart/ }))
+    await step(3)
+    fireEvent.click(screen.getByRole('button', { name: 'Skaffa nummer' }))
+    await step(4)
+    const put = sent('PUT', '/locations/loc-1/phone-agent')[0].body!
+    expect(put).toMatchObject({ enabled: true, mode: 'after_hours' })
+    expect((put.agentHours as Record<string, unknown>).mon).toEqual([{ from: '00:00', to: '11:00' }, { from: '22:00', to: '23:59' }])
+    fireEvent.click(screen.getByRole('button', { name: 'Till checklistan' }))
+    expect(await screen.findByRole('button', { name: doneRow('Tider') })).toBeInTheDocument()
+  })
+
+  it('shows the dev test line as the Booqy number everywhere, the same as in the code', async () => {
+    server.config = { ...server.config, version: 1 }
+    setLoc({ version: 2, enabled: true, number: '+46100000001', agentHours: NIGHTS, simulated: true, testNumber: '+358759899876' })
+    renderWizard()
+    expect(await screen.findByText(formatPhone('+358759899876'))).toBeInTheDocument()
+    expect(screen.queryByText('+46 10 000 00 01')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: doneRow('Booqy-nummer') }))
+    await step(3)
+    expect(screen.getByText(formatPhone('+358759899876'))).toBeInTheDocument()
+    expect(screen.getByText('Testnummer i dev')).toBeInTheDocument()
+  })
+
+  it('from Alltid to När ni har stängt: asks to forward again and turns the old forwarding off first', async () => {
+    server.config = { ...server.config, version: 1 }
+    setLoc({ version: 4, enabled: true, number: '+46100000001', mode: 'always', agentHours: {},
+      setup: { operator: 'telia', forwardedAt: '2026-11-14T10:00:00Z', testedAt: '2026-11-14T10:05:00Z' } })
+    renderWizard()
+    fireEvent.click(await screen.findByRole('button', { name: doneRow('Tider') }))
+    await step(2)
+    expect(screen.getByLabelText('Alltid')).toBeChecked()
+    fireEvent.click(screen.getByLabelText('När ni har stängt'))
+    fireEvent.click(nextButton())
+    await step(3)
+    expect(server.loc.setup?.forwardedAt).toBeNull()
+    fireEvent.click(nextButton())
+    await step(4)
+    expect(await screen.findByText('Kod 1 av 2: Stäng av gammal vidarekoppling')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ring koden ##002#' })).toBeInTheDocument()
+    fireEvent.click(nextButton())
+    expect(await screen.findByRole('link', { name: 'Ring koden **004*+46100000001#' })).toBeInTheDocument()
   })
 
   it('keeps the draft when going back', async () => {
@@ -302,7 +383,7 @@ describe('wizard', () => {
 describe('test call', () => {
   async function openTest(over: Partial<LocationConfig> = {}) {
     server.config = { ...server.config, version: 1 }
-    setLoc({ version: 3, enabled: true, number: '+46100000001', setup: { operator: 'telia', forwardedAt: '2026-11-14T10:00:00Z', testedAt: null }, ...over })
+    setLoc({ version: 3, enabled: true, number: '+46100000001', agentHours: NIGHTS, setup: { operator: 'telia', forwardedAt: '2026-11-14T10:00:00Z', testedAt: null }, ...over })
     renderWizard()
     fireEvent.click(await screen.findByRole('button', { name: 'Fortsätt: Provsamtal' }))
     await step(5)
@@ -319,24 +400,41 @@ describe('test call', () => {
     expect(await screen.findByText('Det fungerar!')).toBeInTheDocument()
     await waitFor(() => expect(sent('POST', '/locations/loc-1/phone-agent/setup')[0]?.body).toEqual({ tested: true, version: 3 }))
     fireEvent.click(screen.getByRole('button', { name: 'Klar' }))
-    expect(await screen.findByText(/Klart! Assistenten svarar på/)).toBeInTheDocument()
+    expect(await screen.findByText(doneText)).toBeInTheDocument()
   })
 
   it('uses the dev test line while the telephony provider is simulated', async () => {
     await openTest({ simulated: true, testNumber: '+358759899876' })
     expect(screen.getByRole('link', { name: /Ring nu/ })).toHaveAttribute('href', 'tel:+358759899876')
     expect(screen.getByText('Testlinje i dev')).toBeInTheDocument()
+    expect(screen.queryByText(/Svara inte i restaurangens telefon/)).not.toBeInTheDocument()
   })
 
-  it('ignores calls from before and explains a refused call', async () => {
+  it('has no Klar in the foot before it works: Hoppa över is the only way out', async () => {
+    await openTest()
+    expect(screen.queryByRole('button', { name: 'Klar' })).not.toBeInTheDocument()
+    expect(screen.getByText('Ring från en annan telefon. Svara inte i restaurangens telefon.')).toBeInTheDocument()
+  })
+
+  it('counts a call refused for the hours as working: the forwarding reached Booqy', async () => {
     server.calls = [{ callId: 'old', startedAt: '2026-11-14T06:00:00Z', durationSec: 20, language: 'sv', outcome: 'info', counterOffer: 'none',
       reservationId: null, callbackId: null, summary: '' }]
     await openTest()
     server.calls = [{ ...server.calls[0], callId: 'new', startedAt: new Date().toISOString(), outcome: 'refused', refusedReason: 'hours' }, ...server.calls]
     fireEvent.click(screen.getByRole('button', { name: 'Jag ringer nu' }))
-    expect(await screen.findByText(/Samtalet kom fram men assistenten svarade inte: utanför assistentens tider/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Ändra tider' }))
-    await step(2)
+    expect(await screen.findByText('Det fungerar!')).toBeInTheDocument()
+    expect(screen.getByText('Assistenten svarar när ni har stängt.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ändra tider' })).not.toBeInTheDocument()
+    await waitFor(() => expect(sent('POST', '/locations/loc-1/phone-agent/setup')[0]?.body).toEqual({ tested: true, version: 3 }))
+  })
+
+  it('warns about any other refusal and saves nothing', async () => {
+    await openTest()
+    server.calls = [{ callId: 'new', startedAt: new Date().toISOString(), durationSec: 5, language: 'sv', outcome: 'refused', refusedReason: 'cap',
+      counterOffer: 'none', reservationId: null, callbackId: null, summary: '' }]
+    fireEvent.click(screen.getByRole('button', { name: 'Jag ringer nu' }))
+    expect(await screen.findByText(/Samtalet kom fram men assistenten svarade inte: minuterna för perioden var slut/)).toBeInTheDocument()
+    expect(sent('POST', '/locations/loc-1/phone-agent/setup')).toHaveLength(0)
   })
 
   it('after three minutes without a call lists what to check', async () => {
@@ -347,6 +445,7 @@ describe('test call', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(3 * 60 * 1000 + 5000) })
     expect(await screen.findByText('Inget samtal ännu')).toBeInTheDocument()
     expect(screen.getByText('Har ni ringt koden i steg 4?')).toBeInTheDocument()
+    expect(screen.getByText('Svarade någon i restaurangens telefon? Låt den ringa tills Booqy svarar.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Vänta igen' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Hoppa över' }))
     expect(await screen.findByRole('button', { name: 'Fortsätt: Provsamtal' })).toBeInTheDocument()
@@ -390,5 +489,52 @@ describe('Fler inställningar', () => {
     fireEvent.click(within(group).getByRole('button', { name: 'Spara' }))
     await waitFor(() => expect(sent('PUT', '/tenant/phone-agent/config')[0]?.body).toMatchObject({
       recording: { enabled: true, purpose: 'Kvalitet och utbildning', retentionDays: 30 } }))
+  })
+
+  it('stays open and keeps unsaved edits in other groups after Spara', async () => {
+    renderWizard()
+    await screen.findByRole('button', { name: 'Börja' })
+    const more = screen.getByText('Fler inställningar').closest('details')!
+    fireEvent.click(within(more).getByText('Fler inställningar'))
+    await waitFor(() => expect(more.open).toBe(true))
+    const greet = screen.getByRole('form', { name: 'Hälsning' })
+    fireEvent.change(within(greet).getByLabelText('Svenska'), { target: { value: 'Vad kan jag hjälpa dig med?' } })
+    const tone = screen.getByRole('form', { name: 'Ton' })
+    fireEvent.change(within(tone).getByLabelText('Ton'), { target: { value: 'formal' } })
+    fireEvent.click(within(tone).getByRole('button', { name: 'Spara' }))
+    await waitFor(() => expect(server.config.tone).toBe('formal'))
+    await waitFor(() => expect(server.config.version).toBe(1))
+    const after = screen.getByText('Fler inställningar').closest('details')!
+    expect(after.open).toBe(true)
+    expect((within(screen.getByRole('form', { name: 'Hälsning' })).getByLabelText('Svenska') as HTMLInputElement).value).toBe('Vad kan jag hjälpa dig med?')
+  })
+
+  it('shows and keeps every span of a day: editing the morning never drops the evening', async () => {
+    setLoc({ version: 2, agentHours: NIGHTS })
+    renderWizard()
+    await screen.findByRole('button', { name: /Fortsätt/ })
+    const group = screen.getByRole('form', { name: 'Tider' })
+    expect((within(group).getByLabelText('Måndag till (2)') as HTMLInputElement).value).toBe('23:59')
+    fireEvent.change(within(group).getByLabelText('Måndag till'), { target: { value: '10:00' } })
+    fireEvent.click(within(group).getByRole('button', { name: 'Lägg till tid tisdag' }))
+    fireEvent.click(within(group).getByRole('button', { name: 'Spara' }))
+    await waitFor(() => expect(sent('PUT', '/locations/loc-1/phone-agent')[0]?.body?.agentHours).toEqual({
+      mon: [{ from: '00:00', to: '10:00' }, { from: '22:00', to: '23:59' }], tue: [{ from: '17:00', to: '23:00' }] }))
+    fireEvent.click(within(group).getByRole('button', { name: 'Ta bort måndag 22:00-23:59' }))
+    expect(within(group).queryByLabelText('Måndag till (2)')).not.toBeInTheDocument()
+    expect(within(group).getByLabelText('Måndag till')).toBeInTheDocument()
+  })
+
+  it('asks before turning the assistant off', async () => {
+    server.config = { ...server.config, version: 1 }
+    setLoc({ version: 2, enabled: true, number: '+46100000001', agentHours: NIGHTS })
+    renderWizard()
+    fireEvent.click(await screen.findByRole('button', { name: 'Stäng av assistenten för platsen' }))
+    expect(screen.getByText('Stäng av? Numret sparas i 30 dagar.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Avbryt' }))
+    expect(sent('PUT', '/locations/loc-1/phone-agent')).toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Stäng av assistenten för platsen' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Stäng av' }))
+    await waitFor(() => expect(sent('PUT', '/locations/loc-1/phone-agent')[0]?.body).toMatchObject({ enabled: false }))
   })
 })

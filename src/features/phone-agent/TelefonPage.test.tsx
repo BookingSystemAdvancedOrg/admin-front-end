@@ -25,6 +25,7 @@ const LOC: api.LocationConfig = {
   locationId: 'loc-1', enabled: true, killSwitch: false, mode: 'after_hours', agentHours: { mon: [{ from: '17:00', to: '23:00' }] },
   greetingExtraSv: '', greetingExtraEn: '', transferTo: '+46812345678', maxCallSeconds: 480,
   counterOffers: { nearbyTables: true, phoneOnlyTables: true }, number: '+46100000001', version: 2,
+  setup: { operator: 'telia', forwardedAt: '2026-11-14T10:00:00Z', testedAt: null },
   forwarding: { number: '+46100000001', codes: [{ label: 'Vidarekoppla när ni inte svarar', on: '**004*+46100000001#', off: '##004#' }] },
 }
 const CALL: api.CallRow = { callId: '20261105abc', startedAt: '2026-11-05T18:00:00Z', durationSec: 125, language: 'sv', outcome: 'booked',
@@ -110,6 +111,22 @@ describe('TelefonPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Kom igång' }))
     expect(await screen.findByRole('heading', { name: 'Kom igång med telefonassistenten' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Kom igång' })).not.toBeInTheDocument()
+  })
+
+  it('says the assistant is not ready, without the off button, until the number is forwarded', async () => {
+    tenant = OWNER
+    vi.mocked(api.getLocation).mockResolvedValue({ ...LOC, setup: { operator: 'telia', forwardedAt: null, testedAt: null } })
+    renderAt()
+    expect(await screen.findByText('Assistenten är inte klar än.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Kom igång' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Stäng av assistenten nu' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/\+46 10 000 00 01/)).not.toBeInTheDocument()
+  })
+
+  it('names when the assistant answers once forwarded, never the Booqy number', async () => {
+    tenant = STAFF
+    renderAt()
+    expect(await screen.findByText('Assistenten svarar när ni har stängt.')).toBeInTheDocument()
   })
 
   it('tells staff the assistant is off without a setup button', async () => {

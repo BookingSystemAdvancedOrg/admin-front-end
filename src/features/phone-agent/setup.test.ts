@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BusinessHours } from '../installningar/locationApi'
-import { encodeTel, firstOpen, hasBusinessHours, hoursFor, hoursSummary, insideHours, progress } from './setup'
+import { dialSteps, encodeTel, firstOpen, forwardTarget, hasBusinessHours, hoursFor, hoursSet, hoursSummary, insideHours, progress } from './setup'
 
 const weekdays = (opensAt: string, closesAt: string) => [{ opensAt, closesAt }]
 const BH: BusinessHours = {
@@ -10,19 +10,42 @@ const BH: BusinessHours = {
 const EMPTY: BusinessHours = { monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: [] }
 
 describe('progress', () => {
-  const loc = { version: 0, enabled: false, number: null, setup: { operator: null, forwardedAt: null, testedAt: null } }
+  const loc = { mode: 'after_hours' as const, agentHours: {}, enabled: false, number: null, setup: { operator: null, forwardedAt: null, testedAt: null } }
+  const nights = { mon: [{ from: '00:00', to: '11:00' }, { from: '22:00', to: '23:59' }] }
   it('counts nothing done for a new tenant and starts at the name', () => {
     const p = progress({ version: 0 }, loc)
     expect(p).toEqual({ namn: false, tider: false, nummer: false, koppla: false, prova: false })
     expect(firstOpen(p)).toBe('namn')
   })
   it('needs a number on an enabled location, then forwarding and the test call', () => {
-    const p = progress({ version: 1 }, { ...loc, version: 2, enabled: true, number: '+46100000001' })
+    const p = progress({ version: 1 }, { ...loc, agentHours: nights, enabled: true, number: '+46100000001' })
     expect(firstOpen(p)).toBe('koppla')
-    const all = progress({ version: 1 }, { ...loc, version: 4, enabled: true, number: '+46100000001',
+    const all = progress({ version: 1 }, { ...loc, agentHours: nights, enabled: true, number: '+46100000001',
       setup: { operator: 'telia', forwardedAt: '2026-11-14T10:00:00Z', testedAt: '2026-11-14T10:05:00Z' } })
     expect(firstOpen(all)).toBeNull()
-    expect(progress({ version: 1 }, { ...loc, version: 2, enabled: false, number: '+46100000001' }).nummer).toBe(false)
+    expect(progress({ version: 1 }, { ...loc, agentHours: nights, enabled: false, number: '+46100000001' }).nummer).toBe(false)
+  })
+})
+
+describe('hoursSet', () => {
+  it('counts Tider done only with a span or in Alltid, never just because something was saved', () => {
+    const base = { mode: 'after_hours' as const, agentHours: {} }
+    expect(hoursSet(base)).toBe(false)
+    expect(hoursSet({ ...base, agentHours: { mon: [] } })).toBe(false)
+    expect(hoursSet({ ...base, agentHours: { sat: [{ from: '00:00', to: '23:59' }] } })).toBe(true)
+    expect(hoursSet({ ...base, mode: 'always' })).toBe(true)
+    // Steg 3 sparat utan steg 2 (version > 0, inga tider): Tider är inte klart.
+    expect(progress({ version: 1 }, { ...base, enabled: true, number: '+46100000001', setup: undefined }).tider).toBe(false)
+  })
+})
+
+describe('dialSteps and forwardTarget', () => {
+  it('dials the reset first, then the codes, and forwards to the dev test line when there is one', () => {
+    const forwarding = { number: '+358759899876', reset: [{ label: 'Av', on: '##002#' }], codes: [{ label: 'På', on: '**004*+358759899876#', off: '##004#' }] }
+    expect(dialSteps({ forwarding }).map((c) => c.on)).toEqual(['##002#', '**004*+358759899876#'])
+    expect(dialSteps({ forwarding: { ...forwarding, codes: [] } })).toEqual([])
+    expect(forwardTarget({ forwarding, number: '+46100000001' })).toBe('+358759899876')
+    expect(forwardTarget({ number: '+46100000001' })).toBe('+46100000001')
   })
 })
 
@@ -86,5 +109,11 @@ describe('insideHours', () => {
     const h = hoursFor('after_hours', BH)
     expect(insideHours(h, new Date('2026-11-16T22:30:00Z'))).toBe(true)   // Monday 23:30 in Stockholm
     expect(insideHours(h, new Date('2026-11-16T12:00:00Z'))).toBe(false)  // Monday 13:00, open
+  })
+  it('covers the minute 23:59 when a span ends at 23:59', () => {
+    const h = hoursFor('after_hours', BH)
+    expect(h.mon?.at(-1)).toEqual({ from: '22:00', to: '23:59' })
+    expect(insideHours(h, new Date('2026-11-16T22:59:30Z'))).toBe(true)   // Monday 23:59:30 in Stockholm
+    expect(insideHours({ mon: [{ from: '22:00', to: '23:30' }] }, new Date('2026-11-16T22:45:00Z'))).toBe(false)
   })
 })

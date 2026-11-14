@@ -3,15 +3,17 @@ import { Bar, Button, Card } from '@booqy/brand'
 import { Icon } from '../../shared/Icon'
 import { formatPhone } from '../../shared/phone'
 import { MODE_LABEL, OPERATORS, SETUP, type Config, type LocationConfig } from './api'
-import { STEPS, firstOpen, progress, type Step } from './setup'
+import { STEPS, firstOpen, forwardTarget, progress, type Step } from './setup'
 
 /**
  * Vy A: "Kom igång med telefonassistenten". En rad per steg med bock eller
  * ring; en rad öppnar guiden på det steget. Under listan: Fler inställningar.
  */
-export default function SetupChecklist({ config, loc, onOpen, children }: {
+export default function SetupChecklist({ config, loc, restaurantPhone, onOpen, children }: {
   config: Config
   loc: LocationConfig
+  /** Restaurangens eget nummer, det gästerna ringer. */
+  restaurantPhone: string | null
   onOpen: (step: Step) => void
   /** Fler inställningar (hopfällt). */
   children?: ReactNode
@@ -19,10 +21,12 @@ export default function SetupChecklist({ config, loc, onOpen, children }: {
   const done = progress(config, loc)
   const next = firstOpen(done)
   const offCodes = (loc.forwarding?.codes ?? []).map((c) => c.off).join(' och ')
+  const target = forwardTarget(loc)
+  const when = MODE_LABEL[loc.mode].toLowerCase()
   const values: Record<Step, ReactNode> = {
     namn: config.agentName,
     tider: MODE_LABEL[loc.mode],
-    nummer: loc.number ? <span className="telefon-mono">{formatPhone(loc.number)}</span> : null,
+    nummer: target ? <span className="telefon-mono">{formatPhone(target)}</span> : null,
     koppla: (
       <>
         {OPERATORS[loc.setup?.operator ?? 'other']}
@@ -53,7 +57,7 @@ export default function SetupChecklist({ config, loc, onOpen, children }: {
         </Button>
       ) : (
         <Bar variant="banner" tone="success">
-          <span className="telefon-done"><Icon name="check" size={20} /> Klart! Assistenten svarar på {loc.number ? formatPhone(loc.number) : 'ert Booqy-nummer'}.</span>
+          <span className="telefon-done"><Icon name="check" size={20} /> <span>Klart! {restaurantPhone ? <>Samtal till <span className="telefon-mono telefon-nowrap">{formatPhone(restaurantPhone)}</span></> : 'Era samtal'} går till assistenten {when}.</span></span>
         </Bar>
       )}
       {children}

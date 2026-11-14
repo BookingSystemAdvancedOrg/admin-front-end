@@ -10,7 +10,7 @@ import { ApiError } from '../../shared/api'
 import SimulatorPanel from './SimulatorPanel'
 import {
   DAYS, ERRORS, saveConfigPatch, saveLocationPatch,
-  type Config, type Day, type LocationConfig,
+  type Config, type Day, type LocationConfig, type Span,
 } from './api'
 
 type Errors = Record<string, string | undefined>
@@ -68,11 +68,17 @@ function Group({ title, info, onSave, children, setFieldErrors }: {
   )
 }
 
-/** "Fler inställningar": dagens fält, var och en med egen Spara. */
-export default function AdvancedSettings({ locationId, config, loc, restaurantPhone, includedMinutes, onConfig, onLoc }: {
+/**
+ * "Fler inställningar": dagens fält, var och en med egen Spara. Monteras inte
+ * om efter Spara: det som skrivits i de andra avsnitten och att avsnittet är
+ * utfällt (`open`, hålls av föräldern) finns kvar.
+ */
+export default function AdvancedSettings({ locationId, config, loc, open, onOpenChange, restaurantPhone, includedMinutes, onConfig, onLoc }: {
   locationId: string
   config: Config
   loc: LocationConfig
+  open: boolean
+  onOpenChange: (open: boolean) => void
   restaurantPhone: string | null
   includedMinutes: number | null
   onConfig: (c: Config) => void
@@ -89,6 +95,7 @@ export default function AdvancedSettings({ locationId, config, loc, restaurantPh
   const [rec, setRec] = useState(config.recording)
   const [errors, setErrors] = useState<Record<string, Errors>>({})
   const [stopping, setStopping] = useState(false)
+  const [confirmStop, setConfirmStop] = useState(false)
   const [stopError, setStopError] = useState<string | null>(null)
 
   const errs = (group: string) => errors[group] ?? {}
@@ -96,9 +103,18 @@ export default function AdvancedSettings({ locationId, config, loc, restaurantPh
   const saveLoc = async (patch: Parameters<typeof saveLocationPatch>[2]) => onLoc(await saveLocationPatch(locationId, loc, patch, onLoc))
   const saveCfg = async (patch: Parameters<typeof saveConfigPatch>[1]) => onConfig(await saveConfigPatch(config, patch, onConfig))
 
-  function setDay(day: Day, field: 'from' | 'to', value: string) {
-    const span = { from: '17:00', to: '23:00', ...(hours[day]?.[0] ?? {}), [field]: value }
-    setHours({ ...hours, [day]: value ? [span] : [] })
+  // Alla perioder per dag visas och ändras; en ändring rör bara sin egen period.
+  const spansOf = (day: Day): Span[] => hours[day] ?? []
+  function setSpan(day: Day, i: number, field: 'from' | 'to', value: string) {
+    setHours({ ...hours, [day]: spansOf(day).map((s, j) => (j === i ? { ...s, [field]: value } : s)) })
+  }
+  function addSpan(day: Day) {
+    const last = spansOf(day).at(-1)
+    const span = !last ? { from: '17:00', to: '23:00' } : last.to < '23:00' ? { from: last.to, to: '23:59' } : { from: '00:00', to: '06:00' }
+    setHours({ ...hours, [day]: [...spansOf(day), span] })
+  }
+  function removeSpan(day: Day, i: number) {
+    setHours({ ...hours, [day]: spansOf(day).filter((_, j) => j !== i) })
   }
 
   async function stop() {
@@ -106,6 +122,7 @@ export default function AdvancedSettings({ locationId, config, loc, restaurantPh
     setStopError(null)
     try {
       onLoc(await withBusy(() => saveLocationPatch(locationId, loc, { enabled: false }, onLoc)))
+      setConfirmStop(false)
       toast('Assistenten är avstängd. Numret sparas i 30 dagar.', { tone: 'success' })
     } catch (err) {
       setStopError(errorText(err, 'Kunde inte stänga av.', ERRORS))
@@ -115,7 +132,7 @@ export default function AdvancedSettings({ locationId, config, loc, restaurantPh
   }
 
   return (
-    <Disclosure title="Fler inställningar" className="telefon-more">
+    <Disclosure title="Fler inställningar" className="telefon-more" defaultOpen={open} onToggle={onOpenChange}>
       <div className="telefon-groups">
         <Group title="Ton" setFieldErrors={setErrs('tone')} onSave={() => saveCfg({ tone })}>
           <Field label="Ton">
@@ -138,15 +155,34 @@ export default function AdvancedSettings({ locationId, config, loc, restaurantPh
         </Group>
 
         <Group title="Tider" info="Tomt betyder att assistenten inte svarar den dagen. Läget Alltid svarar dygnet runt."
-          setFieldErrors={setErrs('hours')} onSave={() => saveLoc({ agentHours: hours })}>
+          setFieldErrors={setErrs('hours')} onSave={async () => {
+            if (Object.values(hours).some((spans) => (spans ?? []).some((x) => !x.from || !x.to || x.from >= x.to))) {
+              return { agentHours: ERRORS.invalid_hours }
+            }
+            const saved = await saveLocationPatch(locationId, loc, { agentHours: hours }, onLoc)
+            onLoc(saved)
+            setHours(saved.agentHours)              // servern sorterar perioderna
+          }}>
           {loc.mode === 'always' ? <p className="telefon-hint">Läget är Alltid: assistenten svarar dygnet runt.</p> : (
             <fieldset className="telefon-hours">
               <legend className="bq-sr-only">Assistentens tider</legend>
               {DAYS.map((d) => (
-                <div key={d.key} className="telefon-hours__row">
-                  <span>{d.label}</span>
-                  <Input type="time" aria-label={`${d.label} från`} value={hours[d.key]?.[0]?.from ?? ''} onChange={(e) => setDay(d.key, 'from', e.target.value)} />
-                  <Input type="time" aria-label={`${d.label} till`} value={hours[d.key]?.[0]?.to ?? ''} onChange={(e) => setDay(d.key, 'to', e.target.value)} />
+                <div key={d.key} className="telefon-hours__day">
+                  <span className="telefon-hours__label">{d.label}</span>
+                  {spansOf(d.key).length ? spansOf(d.key).map((span, i) => (
+                    <div key={i} className="telefon-hours__row">
+                      <Input type="time" aria-label={`${d.label} från${i ? ` (${i + 1})` : ''}`} value={span.from}
+                        onChange={(e) => setSpan(d.key, i, 'from', e.target.value)} />
+                      <Input type="time" aria-label={`${d.label} till${i ? ` (${i + 1})` : ''}`} value={span.to}
+                        onChange={(e) => setSpan(d.key, i, 'to', e.target.value)} />
+                      <Button type="button" size="sm" variant="secondary" aria-label={`Ta bort ${d.label.toLowerCase()} ${span.from}-${span.to}`}
+                        onClick={() => removeSpan(d.key, i)}>Ta bort</Button>
+                    </div>
+                  )) : <span className="telefon-hint">Svarar inte</span>}
+                  {spansOf(d.key).length < 3 ? (
+                    <Button type="button" size="sm" variant="secondary" aria-label={`Lägg till tid ${d.label.toLowerCase()}`}
+                      onClick={() => addSpan(d.key)}>Lägg till tid</Button>
+                  ) : null}
                 </div>
               ))}
               {errs('hours').agentHours ? <span className="bq-field__msg">{errs('hours').agentHours}</span> : null}
@@ -246,7 +282,17 @@ export default function AdvancedSettings({ locationId, config, loc, restaurantPh
             {stopError ? (
               <Bar variant="banner" tone="danger" action={<Button size="sm" variant="secondary" onClick={() => void stop()}>Försök igen</Button>}>{stopError}</Bar>
             ) : null}
-            <Button variant="danger" busy={stopping} busyLabel="Sparar…" onClick={() => void stop()}>Stäng av assistenten för platsen</Button>
+            {confirmStop ? (
+              <div className="telefon-confirm" role="group" aria-label="Stäng av?">
+                <p className="telefon-line"><strong>Stäng av? Numret sparas i 30 dagar.</strong></p>
+                <div className="telefon-row">
+                  <Button variant="danger" busy={stopping} busyLabel="Sparar…" onClick={() => void stop()}>Stäng av</Button>
+                  <Button variant="secondary" disabled={stopping} onClick={() => setConfirmStop(false)}>Avbryt</Button>
+                </div>
+              </div>
+            ) : (
+              <Button variant="danger" onClick={() => setConfirmStop(true)}>Stäng av assistenten för platsen</Button>
+            )}
           </section>
         ) : null}
       </div>

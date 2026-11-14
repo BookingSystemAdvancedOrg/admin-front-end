@@ -9,14 +9,33 @@ export const STEPS: Step[] = ['namn', 'tider', 'nummer', 'koppla', 'prova']
 export type Progress = Record<Step, boolean>
 
 /** Vilka steg som är klara, delas av checklistan och guiden. */
-export function progress(config: Pick<Config, 'version'>, loc: Pick<LocationConfig, 'version' | 'enabled' | 'number' | 'setup'>): Progress {
+export function progress(config: Pick<Config, 'version'>, loc: Pick<LocationConfig, 'mode' | 'agentHours' | 'enabled' | 'number' | 'setup'>): Progress {
   return {
     namn: config.version > 0,
-    tider: loc.version > 0,
+    tider: hoursSet(loc),
     nummer: Boolean(loc.enabled && loc.number),
     koppla: Boolean(loc.setup?.forwardedAt),
     prova: Boolean(loc.setup?.testedAt),
   }
+}
+
+/**
+ * Har assistenten tider? `always` svarar dygnet runt; annars behövs minst en
+ * period, utan den svarar assistenten aldrig (servern nekar med `hours`).
+ */
+export function hoursSet(loc: Pick<LocationConfig, 'mode' | 'agentHours'>): boolean {
+  return loc.mode === 'always' || Object.values(loc.agentHours ?? {}).some((spans) => (spans ?? []).length > 0)
+}
+
+/** Numret restaurangen kopplar sitt nummer till (testlinjen i dev). */
+export function forwardTarget(loc: Pick<LocationConfig, 'forwarding' | 'number'>): string | null {
+  return loc.forwarding?.number ?? loc.number ?? null
+}
+
+/** Koderna att ringa i tur och ordning: först av med gammal vidarekoppling, sedan på. */
+export function dialSteps(loc: Pick<LocationConfig, 'forwarding'>): { label: string; on: string }[] {
+  const codes = loc.forwarding?.codes ?? []
+  return codes.length ? [...(loc.forwarding?.reset ?? []), ...codes] : []
 }
 
 /** Första steget som inte är klart, eller null när allt är klart. */
@@ -176,5 +195,6 @@ export function insideHours(hours: Partial<Record<Day, Span[]>>, at: Date): bool
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
   const day = (['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(get('weekday')))
   const clock = `${get('hour')}:${get('minute')}`
-  return (hours[AGENT_DAYS[day]] ?? []).some((s) => s.from <= clock && clock < s.to)
+  // En period som slutar 23:59 gäller till midnatt (minuten 23:59 också).
+  return (hours[AGENT_DAYS[day]] ?? []).some((s) => s.from <= clock && (clock < s.to || s.to === END))
 }

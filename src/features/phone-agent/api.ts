@@ -9,6 +9,8 @@ import { getLocation as getPlace, type BusinessHours } from '../installningar/lo
 export type Mode = 'after_hours' | 'overflow' | 'always'
 export type Operator = 'telia' | 'tele2' | 'telenor' | 'tre' | 'telia_fast' | 'vaxel' | 'other'
 export interface ForwardingCode { label: string; on: string; off: string }
+/** En kod som stänger av en äldre vidarekoppling; ringas före koderna. */
+export interface ResetCode { label: string; on: string }
 export interface Setup { operator: Operator | null; forwardedAt: string | null; testedAt: string | null }
 export type Outcome = 'booked' | 'moved' | 'cancelled' | 'info' | 'transferred' | 'callback' | 'abandoned' | 'refused' | 'error'
 export type CounterOffer = 'none' | 'other_time' | 'next_day' | 'nearby_table'
@@ -56,7 +58,7 @@ export interface LocationConfig {
   simulated?: boolean
   /** Testlinjen i dev som går till platsen (aldrig i prod). */
   testNumber?: string
-  forwarding?: { number: string | null; operator?: Operator; codes: ForwardingCode[] }
+  forwarding?: { number: string | null; operator?: Operator; reset?: ResetCode[]; codes: ForwardingCode[] }
 }
 export interface CallRow {
   callId: string
@@ -210,7 +212,7 @@ export const SETUP = {
 
 export const ERRORS: Record<string, string> = {
   agent_name_required: 'Skriv ett namn, till exempel Booqy.',
-  changed_retry: 'Någon annan ändrade samtidigt. Vi har hämtat det senaste, tryck Nästa igen.',
+  changed_retry: 'Någon annan ändrade samtidigt. Vi har hämtat det senaste. Försök igen.',
   transfer_is_forwarded: 'Det numret skickas till Booqy. Välj ett annat, till exempel en mobil.',
   invalid_operator: 'Välj operatör i listan.',
   purpose_required: 'Skriv varför samtalen spelas in.',
@@ -263,7 +265,10 @@ export function resetPhoneMock(over: Partial<MockState> = {}): void {
 function mockCodes(l: LocationConfig): LocationConfig['forwarding'] {
   const number = l.number
   const operator = l.setup?.operator ?? 'other'
-  if (!number || operator === 'vaxel') return { number, operator, codes: [] }
+  if (!number || operator === 'vaxel') return { number, operator, reset: [], codes: [] }
+  const off = 'Stäng av gammal vidarekoppling'
+  // Delad i två: brand-lint läser annars "#002" som en färg.
+  const reset = operator === 'telia_fast' ? ['#21#', '#61#', '#67#'].map((on) => ({ label: off, on })) : [{ label: off, on: '##' + '002#' }]
   const always = l.mode === 'always'
   const conditional = '004'
   const codes = operator === 'telia_fast'
@@ -271,7 +276,7 @@ function mockCodes(l: LocationConfig): LocationConfig['forwarding'] {
       : [{ label: 'Vidarekoppla vid ej svar', on: `*61*${number}#`, off: '#61#' }, { label: 'Vidarekoppla vid upptaget', on: `*67*${number}#`, off: '#67#' }])
     : [always ? { label: 'Vidarekoppla alla samtal', on: `**21*${number}#`, off: '##21#' }
       : { label: 'Vidarekoppla när ni inte svarar', on: `**${conditional}*${number}#`, off: `##${conditional}#` }]
-  return { number, operator, codes }
+  return { number, operator, reset, codes }
 }
 const later = <T,>(value: T) => new Promise<T>((resolve) => setTimeout(() => resolve(structuredClone(value)), 150))
 const stale = () => Promise.reject(new ApiError(409, 'changed_retry', { code: 'changed_retry', fromServer: true }))

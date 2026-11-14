@@ -3,8 +3,8 @@ import { Bar, Button, LinkButton, Printing } from '@booqy/brand'
 import { Icon } from '../../shared/Icon'
 import { formatPhone } from '../../shared/phone'
 import { errorText } from '../../shared/errors'
-import { ERRORS, REFUSED_LABEL, SETUP, listCalls, postSetupPatch, today, type LocationConfig } from './api'
-import { insideHours, type Step } from './setup'
+import { ERRORS, MODE_LABEL, REFUSED_LABEL, SETUP, listCalls, postSetupPatch, today, type LocationConfig } from './api'
+import type { Step } from './setup'
 
 /** Hur ofta och hur länge steg 5 tittar efter provsamtalet. */
 export const POLL_MS = 4000
@@ -70,7 +70,12 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, o
         fails = 0
         const hit = calls.find((c) => Date.parse(c.startedAt) >= (since as number))
         if (hit) {
-          if (hit.outcome === 'refused') {
+          // Nekad för att det var utanför assistentens tider: samtalet kom ändå
+          // fram till Booqy, så vidarekopplingen fungerar.
+          if (hit.outcome === 'refused' && hit.refusedReason === 'hours') {
+            report({ since, status: 'ok', reason: 'hours' })
+            void latest.current.markTested(latest.current.loc)
+          } else if (hit.outcome === 'refused') {
             report({ since, status: 'refused', reason: hit.refusedReason ?? undefined })
           } else {
             report({ since, status: 'ok' })
@@ -116,7 +121,9 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, o
         <Bar variant="banner" tone="success">
           <span className="telefon-done"><Icon name="check" size={22} /> <strong>Det fungerar!</strong></span>
         </Bar>
-        <p className="telefon-line">Samtalet syns under Samtal.</p>
+        <p className="telefon-line">
+          {test.reason === 'hours' ? `Assistenten svarar ${MODE_LABEL[loc.mode].toLowerCase()}.` : 'Samtalet syns under Samtal.'}
+        </p>
         {saveError ? (
           <Bar variant="banner" tone="danger" action={<Button size="sm" variant="secondary" onClick={() => void markTested(loc)}>{SETUP.buttons.retry}</Button>}>
             {saveError}
@@ -127,7 +134,8 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, o
     )
   }
 
-  const offHint = loc.mode === 'after_hours' && !insideHours(loc.agentHours, new Date())
+  // Restaurangens telefon ringer först: ring från en annan och svara inte.
+  const ringsFirst = !dev && loc.mode !== 'always'
 
   return (
     <div className="telefon-step-body">
@@ -140,6 +148,7 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, o
                 <span className="telefon-bignumber__value telefon-mono">{formatPhone(target)}</span>
                 {dev ? <span className="telefon-tag">Testlinje i dev</span> : null}
               </div>
+              {ringsFirst ? <p className="telefon-hint">Ring från en annan telefon. Svara inte i restaurangens telefon.</p> : null}
               <div className="telefon-row">
                 <LinkButton variant="primary" className="telefon-call" href={`tel:${target}`} onClick={start}>
                   <Icon name="phone" size={18} /> {SETUP.buttons.callNow}
@@ -166,8 +175,7 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, o
       ) : null}
 
       {status === 'refused' ? (
-        <Bar variant="banner" tone="warning" action={test.reason === 'hours'
-          ? <Button size="sm" variant="secondary" onClick={() => onGoStep('tider')}>Ändra tider</Button> : undefined}>
+        <Bar variant="banner" tone="warning">
           Samtalet kom fram men assistenten svarade inte: {REFUSED_LABEL[test.reason ?? ''] ?? 'okänd orsak'}.
         </Bar>
       ) : null}
@@ -180,8 +188,7 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, o
               Har ni ringt koden i steg 4?{' '}
               <button type="button" className="telefon-link" onClick={() => onGoStep('koppla')}>Till steg 4</button>
             </li>
-            <li>Ringde ni från en annan telefon än restaurangens?</li>
-            {offHint ? <li>Står läget på När ni har stängt? Då svarar den bara när ni har stängt.</li> : null}
+            {ringsFirst ? <li>Svarade någon i restaurangens telefon? Låt den ringa tills Booqy svarar.</li> : null}
           </ul>
           <span className="telefon-row">
             <Button size="sm" variant="primary" onClick={start}>{SETUP.buttons.waitAgain}</Button>

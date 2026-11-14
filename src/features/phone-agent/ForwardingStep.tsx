@@ -2,8 +2,8 @@ import type { ReactNode } from 'react'
 import { Button, toast } from '@booqy/brand'
 import { Disclosure } from '../../shared/Disclosure'
 import { formatPhone } from '../../shared/phone'
-import { OPERATORS, SETUP, type ForwardingCode, type LocationConfig, type Operator } from './api'
-import { encodeTel } from './setup'
+import { OPERATORS, SETUP, type LocationConfig, type Operator } from './api'
+import { dialSteps, encodeTel } from './setup'
 
 /** "Kopiera": lägger texten i urklipp och säger "Kopierad". */
 export function CopyButton({ text, label = SETUP.buttons.copy }: { text: string; label?: string }) {
@@ -33,7 +33,8 @@ const ORDER: Operator[] = ['telia', 'tele2', 'telenor', 'tre', 'telia_fast', 'va
 
 /**
  * Steg 4: koppla restaurangens nummer till Booqy. 4a: vilken operatör.
- * 4b: en kod i taget att ringa (eller, för en växel, numret att ställa in).
+ * 4b: en kod i taget att ringa, först den som stänger av en gammal
+ * vidarekoppling (eller, för en växel, numret att ställa in).
  * Knapparna (Nästa, Klart, jag har ringt) ligger i guidens fot.
  */
 export default function ForwardingStep({ loc, sub, codeIndex, operator, error, onOperator, onGetNumber }: {
@@ -80,25 +81,29 @@ export default function ForwardingStep({ loc, sub, codeIndex, operator, error, o
     )
   }
 
-  const codes: ForwardingCode[] = loc.forwarding?.codes ?? []
-  const code = codes[Math.min(codeIndex, codes.length - 1)]
+  const steps = dialSteps(loc)
+  const code = steps[Math.min(codeIndex, steps.length - 1)]
   if (!code) return null
-  const offCodes = codes.map((c) => c.off).join(' och ')
+  const offCodes = (loc.forwarding?.codes ?? []).map((c) => c.off)
   return (
     <div className="telefon-step-body">
       <p className="telefon-line">
-        {codes.length > 1 ? `Kod ${codeIndex + 1} av ${codes.length}: ` : ''}Ring koden från restaurangens telefon
+        <strong>{steps.length > 1 ? `Kod ${codeIndex + 1} av ${steps.length}: ` : ''}{code.label}</strong>
       </p>
+      <p className="telefon-hint">Ring koden från restaurangens telefon.</p>
       <a className="telefon-code telefon-mono" href={encodeTel(code.on)} aria-label={`Ring koden ${code.on}`}>{code.on}</a>
       <div className="telefon-row">
         <CopyButton text={code.on} />
       </div>
       <p className="telefon-hint">På iPhone: skriv koden i knappsatsen och tryck på luren.</p>
       <Disclosure title="Stänga av senare?" className="telefon-later">
-        <div className="telefon-row">
-          <span>Ring <span className="telefon-mono">{offCodes}</span> från samma telefon.</span>
-          <CopyButton text={codes.map((c) => c.off).join(' ')} />
-        </div>
+        <p className="telefon-line">Ring från samma telefon:</p>
+        {offCodes.map((off) => (
+          <div key={off} className="telefon-row">
+            <span className="telefon-mono">{off}</span>
+            <CopyButton text={off} />
+          </div>
+        ))}
       </Disclosure>
     </div>
   )

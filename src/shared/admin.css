@@ -1753,3 +1753,19 @@
 .data-table td.right {
   text-align: right;
 }
+
+/* Spara-rader (Bar variant="action"): ingen egen ruta, bara knapparna till
+   höger under formuläret. I ett form-grid tar raden hela bredden och följer
+   inte grannfältets höjd (ägaren 2026-11-14: Telefon > Inställningar).
+   Den klistrade raden (sticky, t.ex. Webbplats) behåller glaset eftersom den
+   ligger ovanpå innehållet. */
+.bq-bar--action:not(.bq-bar--stuck) {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+.form-grid > .bq-bar--action {
+  grid-column: 1 / -1;
+  align-self: start;
+}

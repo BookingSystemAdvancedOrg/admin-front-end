@@ -188,9 +188,11 @@ export function validateGracePeriod(hours: number): string | null {
 /**
  * Stänger passet efter midnatt? En stängningstid före öppningstiden (eller
  * 00:00) betyder nästa dag: Lördag 18:00-02:00 stänger söndag 02:00. Samma
- * regel som servern (application shared/booking_rules.py).
+ * regel som servern (application shared/booking_rules.py). Bara när båda
+ * tiderna är hela HH:MM: ett tomt eller halvskrivet fält är inte natt.
  */
 export function isOvernight({ opensAt, closesAt }: BusinessHoursInterval): boolean {
+  if (!TIME_PATTERN.test(opensAt) || !TIME_PATTERN.test(closesAt)) return false
   return closesAt < opensAt || closesAt === '00:00'
 }
 

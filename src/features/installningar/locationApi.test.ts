@@ -122,6 +122,13 @@ describe('validateDayIntervals / validateBusinessHours', () => {
     expect(isOvernight({ opensAt: '11:00', closesAt: '22:00' })).toBe(false)
   })
 
+  it('isOvernight: an empty or half typed time is not overnight', () => {
+    expect(isOvernight({ opensAt: '18:00', closesAt: '' })).toBe(false)
+    expect(isOvernight({ opensAt: '18:00', closesAt: '0' })).toBe(false)
+    expect(isOvernight({ opensAt: '18:00', closesAt: '01:' })).toBe(false)
+    expect(isOvernight({ opensAt: '', closesAt: '02:00' })).toBe(false)
+  })
+
   it('rejects malformed time strings', () => {
     expect(
       validateDayIntervals('monday', [{ opensAt: '9:00', closesAt: '17:00' }]),

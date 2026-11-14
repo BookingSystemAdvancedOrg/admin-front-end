@@ -1,3 +1,5 @@
+import { ChangedNote } from '../../shared/ChangedNote'
+import { dedupe, useLiveForm } from '../../shared/live'
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
@@ -79,6 +81,20 @@ export function CancellationPolicyCard({
     }
   }, [locationId])
 
+  // Levande: sparar en kollega eller en annan plats inställningen syns den av sig själv;
+  // har du börjat ändra står ditt kvar med en rad om det andra.
+  const live = useLiveForm<GuaranteePolicy | null, FormState>({
+    enabled: Boolean(locationId) && !loading && !busy,
+    fetch: async () => (await dedupe(`location:${locationId}`, () => getLocation(locationId as string))).guarantee ?? null,
+    saved,
+    form,
+    toForm: (s) => toForm(s ?? DEFAULTS),
+    adopt: (s) => {
+      setSaved(s)
+      setForm(toForm(s ?? DEFAULTS))
+    },
+  })
+
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }))
     setNotice(null)
@@ -130,6 +146,7 @@ export function CancellationPolicyCard({
   return (
     <section id="avbokningspolicy" className="admin-card table-card">
       <h2 className="card-title">Avbokningspolicy</h2>
+      {live.there !== null && <ChangedNote onUse={live.takeThere} />}
       <div style={{ height: 8 }} />
       <p className="cell-muted">
         Med kortgaranti sparar gästen sitt kort när hen bokar online - inget dras då. Uteblir

@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { Bar, Button, Card, Field, Input, Modal, Select, toast } from '@booqy/brand'
 import { AdminTopbar } from '../../shared/AdminTopbar'
@@ -71,6 +72,9 @@ function Ledger() {
   }, [owner])
 
   useEffect(() => { void loadPersons() }, [loadPersons])
+  useLiveRefresh(async () => {
+    if (owner) setPersons(await listPersons())
+  }, { enabled: owner })
 
   if (!location) return <p className="cell-muted">Hämtar…</p>
   const items = [
@@ -116,6 +120,8 @@ function Today({ locationId, owner, persons }: { locationId: string; owner: bool
   }, [locationId, day])
 
   useEffect(() => { void load() }, [load])
+  // Levande: in- och utcheckningar från en annan enhet syns av sig själva.
+  useLiveRefresh(async () => setData(await getDay(locationId, day)), { enabled: busy === null })
 
   async function register(kind: Kind, personId?: string) {
     setBusy(`${kind}:${personId ?? 'me'}`)
@@ -388,6 +394,7 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
   }, [locationId, day])
 
   useEffect(() => { void load() }, [load])
+  useLiveRefresh(async () => setData(await getDay(locationId, day)), { enabled: !saving })
 
   function pick(row: Row | null) {
     setTarget(row)

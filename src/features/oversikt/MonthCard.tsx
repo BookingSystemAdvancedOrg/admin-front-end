@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../statistik/live'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { isApiConfigured } from '../../shared/api'
@@ -72,6 +73,9 @@ export function MonthCard({
   const sampleResponse = useSample ? sampleInsights({ ...filters, from, to }, today, true) : null
   const sampleSummary = sampleResponse?.current ?? null
 
+  // Levande som Statistik: efter egna ändringar, vid fokus och varje minut medan fliken syns.
+  const [tick, setTick] = useState(0)
+  useLiveRefresh(() => setTick((n) => n + 1), visible && !useSample)
   useEffect(() => {
     if (!visible || useSample) return
     let cancelled = false
@@ -81,7 +85,7 @@ export function MonthCard({
     return () => {
       cancelled = true
     }
-  }, [visible, useSample, key, from, to, locationId])
+  }, [visible, useSample, key, from, to, locationId, tick])
 
   const s = sampleSummary ?? (loaded?.key === key ? loaded.summary : null)
   const p = sampleResponse ? sampleResponse.previous : loaded?.key === key ? loaded.previous : null

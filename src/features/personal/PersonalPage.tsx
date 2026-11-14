@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { Avatar } from '../../shared/Avatar'
 import { AvatarLightbox } from '../../shared/AvatarLightbox'
 import { isRowOpenKey, shouldOpenRow } from '../meny/rowClick'
@@ -89,6 +90,11 @@ export default function PersonalPage() {
       cancelled = true
     }
   }, [isOwner])
+  // Levande: inbjudningar som accepteras och ändringar från en annan plats syns av sig själva.
+  useLiveRefresh(async () => {
+    setStaff(await listUsers())
+    setLoadError(null)
+  }, { enabled: isOwner && !loading })
 
   if (tenant && !isOwner) {
     return (

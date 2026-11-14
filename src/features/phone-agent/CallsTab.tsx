@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Card, toast } from '@booqy/brand'
@@ -12,7 +13,9 @@ export default function CallsTab({ locationId, owner }: { locationId: string; ow
   const [busy, setBusy] = useState(false)
   const navigate = useNavigate()
 
+  const [paged, setPaged] = useState(false)
   const load = useCallback(async (after?: string | null) => {
+    setPaged(Boolean(after))
     setBusy(true)
     try {
       const page = await listCalls(locationId, daysAgo(6), today(), after)
@@ -27,6 +30,12 @@ export default function CallsTab({ locationId, owner }: { locationId: string; ow
   }, [locationId])
 
   useEffect(() => { void load() }, [load])
+  // Levande bara för första sidan (inte efter "Visa fler").
+  useLiveRefresh(async () => {
+    const page = await listCalls(locationId, daysAgo(6), today(), null)
+    setCalls(page.calls)
+    setCursor(page.cursor)
+  }, { enabled: calls !== null && !busy && !paged })
 
   return (
     <Card title="Samtal senaste veckan">

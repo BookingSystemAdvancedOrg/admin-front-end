@@ -146,7 +146,7 @@ export const ERRORS: Record<string, string> = {
   invalid_series: 'Upprepningen kan sträcka sig högst ett år framåt.',
   invalid_state: 'Det går inte i det här läget.',
   has_sales: 'Biljettypen har redan sålts och kan inte tas bort.',
-  changed_retry: 'Någon annan ändrade samtidigt. Ladda om och försök igen.',
+  changed_retry: 'Någon annan ändrade samtidigt. Det senaste visas nu; försök igen.',
   stripe_unavailable: 'Betalningen kunde inte återbetalas just nu. Försök igen om en stund.',
   owner_only: 'Bara ägaren kan göra det här.',
   too_many_tickets: 'Max antal biljetter per köp ska vara 1-20.',

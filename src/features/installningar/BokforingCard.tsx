@@ -83,7 +83,7 @@ function kr(ore: number): string {
 const ERRORS: Record<string, string> = {
   stripe_refused: 'Stripe svarade inte på frågan om avgifter och utbetalningar. Kontakta Booqy.',
   stripe_unavailable: 'Stripe går inte att nå just nu. Försök igen om en stund.',
-  changed_retry: 'Någon annan sparade samtidigt. Ladda om sidan och försök igen.',
+  changed_retry: 'Någon annan sparade samtidigt. Det senaste visas nu; spara igen om ändringen fortfarande behövs.',
 }
 
 const FIELDS: Record<string, string> = {

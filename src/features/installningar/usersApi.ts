@@ -191,8 +191,9 @@ function toFriendlyUserError(err: unknown): Error {
       if (err.message.includes('already exists')) {
         return new Error('Det finns redan en användare med den e-postadressen.')
       }
-      return new Error(
-        'Användaren ändrades samtidigt av någon annan. Ladda om och försök igen.',
+      return Object.assign(
+        new Error('Användaren ändrades samtidigt av någon annan. Det senaste visas nu; spara igen om ändringen fortfarande behövs.'),
+        { conflict: true },
       )
     case 429:
       return new Error('För många förfrågningar. Vänta en stund och försök igen.')
@@ -261,16 +262,27 @@ export function inviteUser(input: UserInviteRequest): Promise<User> {
   )
 }
 
-export function updateUserProfile(
+/**
+ * Bara de ändrade fälten skickas. Krockade sparningen med en ändring på annat
+ * håll (409) skickas samma fält en gång till ovanpå det som nu är sparat.
+ */
+export async function updateUserProfile(
   cognitoSub: string,
   updates: UserProfileUpdate,
 ): Promise<User> {
-  return userCall(() =>
-    apiFetch<User>(`/users/${encodeURIComponent(cognitoSub)}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    }),
-  )
+  const send = () =>
+    userCall(() =>
+      apiFetch<User>(`/users/${encodeURIComponent(cognitoSub)}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      }),
+    )
+  try {
+    return await send()
+  } catch (err) {
+    if (!(err as { conflict?: boolean }).conflict) throw err
+    return send()
+  }
 }
 
 export function changeUserGroup(

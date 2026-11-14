@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { errorText } from '../../shared/errors'
 import { currentLocation, useTenant } from '../../shared/tenant'
@@ -38,6 +39,10 @@ export function useTableCodes(locationId: string | null, mockTables: MockTable[]
       cancelled = true
     }
   }, [locationId, mockKey, version])
+  // Levande: bord som läggs till eller koder som byts på en annan enhet syns av sig själva.
+  useLiveRefresh(async () => {
+    if (locationId) setCodes(await listTableCodes(locationId, JSON.parse(mockKey) as MockTable[]))
+  }, { enabled: Boolean(locationId) && codes !== null })
 
   const replace = useCallback((next: TableCode) => {
     setCodes((prev) => (prev ?? []).map((c) => (c.tableId === next.tableId ? next : c)))

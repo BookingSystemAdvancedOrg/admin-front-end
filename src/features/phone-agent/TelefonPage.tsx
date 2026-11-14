@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Bar, Button, toast } from '@booqy/brand'
@@ -58,6 +59,9 @@ function Telefon() {
   }, [locationId])
 
   useEffect(() => { void load() }, [load])
+  useLiveRefresh(async () => {
+    if (locationId) setConfig(await getLocation(locationId))
+  }, { enabled: Boolean(locationId) })
 
   if (!locationId) return <p className="cell-muted">Hämtar…</p>
 

@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { RowActions } from '../../shared/RowActions'
 import { useCallback, useEffect, useState } from 'react'
 import { ApiError, isApiConfigured } from '../../shared/api'
@@ -77,6 +78,8 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
   useEffect(() => {
     reload().catch((err: unknown) => setError(errorText(err, 'Kunde inte hämta cateringmenyn.')))
   }, [reload])
+  // Levande: rätter och paket som en kollega ändrar syns av sig själva (dialogen har sin egen kopia).
+  useLiveRefresh(reload, { enabled: Boolean(locationId) })
 
   async function run(action: () => Promise<unknown>): Promise<boolean> {
     setError(null)

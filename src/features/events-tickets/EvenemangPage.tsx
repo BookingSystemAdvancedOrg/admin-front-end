@@ -1,3 +1,4 @@
+import { sameData, useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Bar, Button, Card, Field, Input, Modal, Printing, toast } from '@booqy/brand'
@@ -62,6 +63,8 @@ function EventList({ locationId, isOwner }: { locationId: string; isOwner: boole
       .catch((err) => toast(errorText(err, 'Kunde inte hämta evenemangen.', ERRORS), { tone: 'danger' }))
     return () => { live = false }
   }, [locationId])
+  // Levande: försäljning och ändringar från en annan plats syns av sig själva.
+  useLiveRefresh(async () => setEvents((await listEvents(locationId)).events), { enabled: events !== null && !creating })
 
   if (creating) {
     return <EventEditor locationId={locationId} onCancel={() => setCreating(false)}
@@ -104,7 +107,8 @@ function EventList({ locationId, isOwner }: { locationId: string; isOwner: boole
 function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId: string; eventId: string; isOwner: boolean; primaryDomain?: string | null }) {
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [missing, setMissing] = useState(false)
-  const [editing, setEditing] = useState(false)
+  /** Evenemanget som det såg ut när ändringen började (formuläret utgår från det). */
+  const [editing, setEditing] = useState<EventDetail | null>(null)
   const [busy, setBusy] = useState(false)
   const [cancelling, setCancelling] = useState<Occurrence | null>(null)
   const [editingType, setEditingType] = useState<TicketType | null>(null)
@@ -123,12 +127,18 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
   }, [eventId, locationId])
 
   useEffect(() => { void load() }, [load])
+  // Levande: sålda biljetter och ändringar från en kollega syns av sig själva.
+  useLiveRefresh(async () => {
+    const next = await getEvent(locationId, eventId)
+    setEvent((cur) => (sameData(cur, next) ? cur : next))
+  }, { enabled: event !== null && !busy })
 
   if (missing && !event) return <p className="admin-empty"><Link to="/evenemang">Tillbaka till evenemangen</Link></p>
   if (!event) return <Printing label="Hämtar evenemanget" />
   if (editing) {
-    return <EventEditor locationId={locationId} existing={event} onCancel={() => setEditing(false)}
-      onSaved={(e) => { setEvent(e); setEditing(false) }} />
+    return <EventEditor locationId={locationId} existing={editing} fetchLatest={() => getEvent(locationId, eventId)}
+      onCancel={() => setEditing(null)}
+      onSaved={(e) => { setEvent(e); setEditing(null) }} />
   }
 
   async function publish() {
@@ -156,7 +166,7 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
   const actions = isOwner ? (
     <div className="evenemang-actions">
       {event.status === 'draft' ? <Button variant="primary" busy={busy} onClick={() => { void publish() }}>Publicera</Button> : null}
-      {event.status !== 'cancelled' ? <Button variant="secondary" onClick={() => setEditing(true)}>Ändra</Button> : null}
+      {event.status !== 'cancelled' ? <Button variant="secondary" onClick={() => setEditing(event)}>Ändra</Button> : null}
       {event.status === 'published' ? <Button variant="ghost" onClick={() => { void poster() }}>Skriv ut affisch</Button> : null}
     </div>
   ) : undefined
@@ -227,6 +237,8 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
       {isOwner && event.status !== 'draft' ? <Orders locationId={locationId} eventId={event.eventId} onChanged={() => void load()} /> : null}
       {editingType ? (
         <TypeEditModal locationId={locationId} eventId={event.eventId} type={editingType}
+          latest={event.ticketTypes.find((t) => t.typeId === editingType.typeId) ?? null}
+          fetchLatest={async () => (await getEvent(locationId, eventId)).ticketTypes.find((t) => t.typeId === editingType.typeId) ?? null}
           onClose={() => { setEditingType(null); refocus(); void load() }}
           onSaved={(t) => {
             setEditingType(null)
@@ -236,6 +248,8 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
       ) : null}
       {editingOcc ? (
         <CapacityModal locationId={locationId} eventId={event.eventId} occurrence={editingOcc}
+          latest={event.occurrences.find((o) => o.occurrenceId === editingOcc.occurrenceId) ?? null}
+          fetchLatest={async () => (await getEvent(locationId, eventId)).occurrences.find((o) => o.occurrenceId === editingOcc.occurrenceId) ?? null}
           onClose={() => { setEditingOcc(null); refocus(); void load() }}
           onSaved={(o) => {
             setEditingOcc(null)
@@ -338,6 +352,7 @@ function Orders({ locationId, eventId, onChanged }: { locationId: string; eventI
   }, [eventId, locationId])
 
   useEffect(() => { void load() }, [load])
+  useLiveRefresh(async () => setOrders((await listOrders(locationId, eventId)).orders), { enabled: orders !== null && !busy })
 
   async function refund() {
     if (!refunding) return

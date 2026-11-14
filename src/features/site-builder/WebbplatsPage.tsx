@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { sameData, useLiveRefresh } from '../../shared/live'
+import { isConflict, mergeDeep } from '../../shared/merge'
 import { Bar, Button, Card, Field, Input, Modal, Select, toast } from '@booqy/brand'
 import { ApiError } from '../../shared/api'
 import { AdminTopbar } from '../../shared/AdminTopbar'
@@ -78,6 +80,8 @@ function Editor() {
   const [site, setSite] = useState<SiteState | null>(null)
   const [doc, setDoc] = useState<SiteDoc | null>(null)
   const [version, setVersion] = useState(0)
+  /** Utkastet som det var sparat när du började ändra (för att lägga ihop vid en krock). */
+  const [baseDoc, setBaseDoc] = useState<SiteDoc | null>(null)
   const [dirty, setDirty] = useState(false)
   // Osparat utkast: uppdateringsrutan frågar innan den laddar om.
   useUnsavedGuard(dirty)
@@ -95,6 +99,7 @@ function Editor() {
       const s = await getSite()
       setSite(s)
       setDoc(s.draft.doc)
+      setBaseDoc(s.draft.doc)
       setVersion(s.draft.version)
       setDirty(false)
     } catch (err) {
@@ -103,6 +108,22 @@ function Editor() {
   }, [])
 
   useEffect(() => { void load() }, [load])
+  // Levande: publiceringar och ändringar från en kollega syns av sig själva.
+  // Har du osparade ändringar skrivs utkastet inte över; de läggs ovanpå det
+  // senaste när du sparar.
+  const dirtyRef = useRef(dirty)
+  useEffect(() => {
+    dirtyRef.current = dirty
+  }, [dirty])
+  useLiveRefresh(async () => {
+    const s = await getSite()
+    setSite((cur) => (sameData(cur, s) ? cur : s))
+    if (!dirtyRef.current) {
+      setDoc((cur) => (sameData(cur, s.draft.doc) ? cur : s.draft.doc))
+      setBaseDoc(s.draft.doc)
+      setVersion(s.draft.version)
+    }
+  }, { enabled: site !== null && !saving && !publishing })
   useEffect(() => {
     if (location) listMenuItems(location.locationId).then((items) => setImages(items.filter((i): i is MenuItem & { imageKey: string } => Boolean(i.imageKey)))).catch(() => setImages([]))
   }, [location])
@@ -124,8 +145,28 @@ function Editor() {
     setSaving(true)
     setError(null)
     try {
-      const saved = await saveDraft(doc, version)
+      let sent = doc
+      let saved
+      try {
+        saved = await saveDraft(doc, version)
+      } catch (err) {
+        if (!isConflict(err) || !baseDoc) throw err
+        // Någon annan sparade utkastet emellan: dina ändringar ovanpå det senaste, en gång till.
+        const latest = await getSite()
+        const { merged, conflicts } = mergeDeep(baseDoc, doc, latest.draft.doc)
+        setSite(latest)
+        setBaseDoc(latest.draft.doc)
+        setVersion(latest.draft.version)
+        setDoc(merged)
+        if (conflicts.length) {
+          setError({ text: 'Samma text ändrades nyss på en annan plats. Din version står kvar; spara igen för att använda den, eller ändra först.' })
+          return null
+        }
+        sent = merged
+        saved = await saveDraft(merged, latest.draft.version)
+      }
       setVersion(saved.version)
+      setBaseDoc(sent)
       setDirty(false)
       return saved.version
     } catch (err) {

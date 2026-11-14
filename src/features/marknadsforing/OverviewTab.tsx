@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useEffect, useState } from 'react'
 import { ChartTip } from '../../shared/ChartTip'
 import { useChartTip } from '../../shared/chartTipState'
@@ -119,6 +120,12 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
       cancelled = true
     }
   }, [days, forLocation, key])
+  // Levande: nya prenumeranter och utskick räknas in av sig själva.
+  useLiveRefresh(async () => {
+    const { from, to } = range(days)
+    const d = await getOverview(from, to, forLocation)
+    setResult((cur) => (cur?.key === key ? { key, data: d } : cur))
+  }, { enabled: result?.key === key && !result?.error })
 
   const t = data?.totals
   const p = data?.previous

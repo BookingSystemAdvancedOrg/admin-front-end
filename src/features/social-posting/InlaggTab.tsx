@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Bar, Button, Card, Field, Input, toast } from '@booqy/brand'
@@ -36,6 +37,7 @@ export default function InlaggTab() {
   }, [])
 
   useEffect(() => { void load() }, [load])
+  useLiveRefresh(async () => setListing(await listPosts()))
 
   // Medan något publiceras: fråga igen tills det är klart.
   useEffect(() => {

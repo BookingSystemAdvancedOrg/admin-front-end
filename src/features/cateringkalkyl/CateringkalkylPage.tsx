@@ -1,5 +1,7 @@
 import { RowActions } from '../../shared/RowActions'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { sameData, useLiveRefresh } from '../../shared/live'
+import { ChangedNote } from '../../shared/ChangedNote'
 import { useAuth } from '../auth/useAuth'
 import { CtaButton } from '../../shared/CtaButton'
 import { AdminTopbar } from '../../shared/AdminTopbar'
@@ -89,6 +91,7 @@ export default function CateringkalkylPage() {
         const saved = withBands({ ...DEFAULT_SETTINGS, ...stored })
         setSettings(saved)
         setOrderRules(rulesOf(saved))
+        savedSettings.current = saved
         setTiers(loadedTiers.map(tierOf))
         setLoaded(true)
       })
@@ -97,6 +100,36 @@ export default function CateringkalkylPage() {
       cancelled = true
     }
   }, [locationId])
+
+  // Levande: rabatter och inställningar som en kollega sparar syns av sig själva.
+  // Inställningar du har börjat ändra skrivs inte över (bara orörda följer med).
+  const savedSettings = useRef<CateringSettings | null>(null)
+  const [changedThere, setChangedThere] = useState<CateringSettings | null>(null)
+  useLiveRefresh(async () => {
+    if (!locationId) return
+    const [loc, loadedTiers] = await Promise.all([getLocation(locationId), listTiers(locationId)])
+    setTiers(loadedTiers.map(tierOf))
+    const stored = (loc as { cateringSettings?: Partial<CateringSettings> }).cateringSettings ?? {}
+    const next = withBands({ ...DEFAULT_SETTINGS, ...stored })
+    const base = savedSettings.current
+    if (!base || sameData(next, base)) return
+    if (sameData(settings, base) && sameData(orderRules, rulesOf(base))) {
+      setSettings(next)
+      setOrderRules(rulesOf(next))
+      savedSettings.current = next
+      setChangedThere(null)
+    } else {
+      setChangedThere(next)
+    }
+  }, { enabled: Boolean(locationId) && loaded && isApiConfigured() && !saving })
+
+  function takeTheirs() {
+    if (!changedThere) return
+    setSettings(changedThere)
+    setOrderRules(rulesOf(changedThere))
+    savedSettings.current = changedThere
+    setChangedThere(null)
+  }
 
   function updateOrderRules(patch: Partial<OrderRules>) {
     setOrderRules((prev) => ({ ...prev, ...patch }))
@@ -148,6 +181,8 @@ export default function CateringkalkylPage() {
       const { originFound, ...stored } = await saveSettings(locationId, next)
       const saved = withBands({ ...DEFAULT_SETTINGS, ...stored })
       setSettings(saved)
+      savedSettings.current = saved
+      setChangedThere(null)
       setSaveNotice(saved.enabled ? 'Sparat. Kalkylen visas på webbplatsen.' : 'Sparat. Kalkylen är dold för gäster.')
       if (originFound === false) {
         setSaveError('Leveransernas startadress hittades inte på kartan. Leveranspriset får då sättas för hand i varje offert. Kontrollera adressen.')
@@ -212,6 +247,7 @@ export default function CateringkalkylPage() {
       <main className="admin-main">
         {saveError && <p className="form-error" role="alert">{saveError}</p>}
         {saveNotice && <p className="save-notice" role="status">{saveNotice}</p>}
+        {changedThere && <ChangedNote onUse={takeTheirs} />}
         {/* Huvudreglaget först: syns catering på webbplatsen eller inte. */}
         <section className="admin-card table-card catering-visibility">
           <div className="toggle-row">

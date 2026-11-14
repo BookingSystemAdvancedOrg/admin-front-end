@@ -1,3 +1,5 @@
+import { ChangedNote } from '../../shared/ChangedNote'
+import { serverChanges } from '../../shared/merge'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { SlotTablePicker } from './SlotTablePicker'
@@ -540,7 +542,7 @@ function PanelButtons({
 }
 
 function EditForm({
-  reservation: r,
+  reservation: latest,
   today,
   onSaved,
   onCancel,
@@ -550,6 +552,10 @@ function EditForm({
   onSaved: (r: Reservation) => void
   onCancel: () => void
 }) {
+  // Bokningen som formuläret öppnades med: bara det du ändrar mot den skickas,
+  // så en ändring en kollega gjort under tiden (listan är levande) står kvar.
+  const [r] = useState(latest)
+  const drift = serverChanges(r, latest, ['customerName', 'customerPhone', 'customerEmail', 'notes', 'partySize'])
   const [name, setName] = useState(r.customerName ?? '')
   const [phone, setPhone] = useState(r.customerPhone ?? '')
   const [email, setEmail] = useState(r.customerEmail ?? '')
@@ -627,6 +633,9 @@ function EditForm({
       <div className="form-field">
         <label htmlFor="ed-name">Namn</label>
         <input id="ed-name" maxLength={NAME_MAX} value={name} onChange={(e) => setName(e.target.value)} />
+        {drift.customerName !== undefined && (drift.customerName ?? '') !== name.trim() && (
+          <ChangedNote value={drift.customerName ?? ''} onUse={() => setName(drift.customerName ?? '')} />
+        )}
       </div>
       <div className="form-grid">
         <div className="form-field">
@@ -642,6 +651,9 @@ function EditForm({
             <p id="ed-phone-error" className="field-hint error">
               {phone.trim() ? 'Skriv ett giltigt nummer, t.ex. 070-123 45 67.' : 'En onlinebokning måste ha telefon.'}
             </p>
+          )}
+          {drift.customerPhone !== undefined && (drift.customerPhone ?? '') !== (normalizedPhone ?? '') && (
+            <ChangedNote value={drift.customerPhone ?? ''} onUse={() => setPhone(drift.customerPhone ?? '')} />
           )}
         </div>
         <div className="form-field">
@@ -660,6 +672,9 @@ function EditForm({
               {email.trim() ? 'Ange en giltig e-postadress.' : 'En onlinebokning måste ha e-post.'}
             </p>
           )}
+          {drift.customerEmail !== undefined && (drift.customerEmail ?? '') !== email.trim().toLowerCase() && (
+            <ChangedNote value={drift.customerEmail ?? ''} onUse={() => setEmail(drift.customerEmail ?? '')} />
+          )}
         </div>
       </div>
       <div className="form-field">
@@ -676,6 +691,9 @@ function EditForm({
           <p id="ed-size-error" className="field-hint error">
             Borden rymmer {r.seats} - ångra Anlänt först för att byta till större bord.
           </p>
+        )}
+        {drift.partySize !== undefined && drift.partySize !== size && (
+          <ChangedNote value={`${drift.partySize} personer`} onUse={() => setPartySize(String(drift.partySize))} />
         )}
       </div>
       {!arrived && (
@@ -698,6 +716,9 @@ function EditForm({
       <div className="form-field">
         <label htmlFor="ed-notes">Meddelande / anteckning</label>
         <textarea id="ed-notes" rows={2} maxLength={NOTES_MAX} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        {drift.notes !== undefined && (drift.notes ?? '') !== notes.trim() && (
+          <ChangedNote value={drift.notes ?? ''} onUse={() => setNotes(drift.notes ?? '')} />
+        )}
       </div>
       {moved && (r.customerEmail || r.customerPhone) && (
         <label className="check-row">

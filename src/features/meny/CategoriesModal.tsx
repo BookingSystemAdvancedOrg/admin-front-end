@@ -3,36 +3,58 @@ import { errorText } from '../../shared/errors'
 import { Icon } from '../../shared/Icon'
 import ModalOverlay from '../../shared/ModalOverlay'
 import type { MenuCategoryEntry } from './data'
-import { isStaleCategories } from './menuApi'
-import { categoryListError, MAX_CATEGORIES, NAME_MAX } from './menuForm'
+import type { MenuCategories } from './menuApi'
+import { isConflict } from '../../shared/merge'
+import { ChangedNote } from '../../shared/ChangedNote'
+import { categoryListError, MAX_CATEGORIES, mergeCategoryRows, NAME_MAX } from './menuForm'
 import type { CategoryRow as Row } from './menuForm'
 
 /**
  * Restaurangens egna kategorier: lägg till, byt namn, flytta upp och ner,
  * ta bort. En kategori med rätter kan inte tas bort (servern säger samma
  * sak); flytta rätterna först. Hela listan sparas på en gång.
+ *
+ * Sparade någon annan listan under tiden (409) hämtas den senaste och dina
+ * ändringar läggs ovanpå (mergeCategoryRows); sparningen görs en gång till.
+ * Bara ett namn som bytts på båda hållen stannar, med deras namn under fältet.
  */
 export function CategoriesModal({
   categories,
+  version,
   dishCounts,
   onSave,
-  onReload,
+  fetchLatest,
   onCancel,
 }: {
+  /** Listan som den ser ut nu (hämtas levande medan dialogen är öppen). */
   categories: MenuCategoryEntry[]
+  /** Listans version när dialogen öppnades. */
+  version: number
   /** Antal rätter per categoryId. */
   dishCounts: Record<string, number>
-  onSave: (rows: Row[]) => Promise<void>
-  /** Hämtar den sparade listan igen efter 409 stale_categories (dialogen börjar om). */
-  onReload: () => Promise<void>
+  onSave: (rows: Row[], version: number) => Promise<void>
+  /** Den senaste sparade listan (efter 409). */
+  fetchLatest: () => Promise<MenuCategories>
   onCancel: () => void
 }) {
+  // Listan och versionen som dina ändringar utgår från.
+  const [base, setBase] = useState<{ categories: MenuCategoryEntry[]; version: number }>(() => ({ categories, version }))
   const [rows, setRows] = useState<Row[]>(() => categories.map((c) => ({ ...c })))
   const [newName, setNewName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [stale, setStale] = useState(false)
   const listError = categoryListError(rows)
+  /** Namn som bytts på båda hållen vid sparningen: deras namn per categoryId. */
+  const [conflicts, setConflicts] = useState<Record<string, string>>({})
+  /** Namnet på annat håll, per categoryId, när det skiljer sig från både utgångsläget och ditt. */
+  const changedThere = (id: string | undefined, mine: string): string | null => {
+    if (!id) return null
+    const clash = conflicts[id]
+    if (clash !== undefined) return clash.trim() !== mine.trim() ? clash : null
+    const was = base.categories.find((c) => c.categoryId === id)?.name
+    const now = categories.find((c) => c.categoryId === id)?.name
+    return now !== undefined && was !== undefined && now.trim() !== was.trim() && now.trim() !== mine.trim() ? now : null
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel()
@@ -56,27 +78,32 @@ export function CategoriesModal({
     setNewName('')
   }
 
+  const payload = (list: Row[]) => list.map((r) => ({ ...(r.categoryId ? { categoryId: r.categoryId } : {}), name: r.name.trim() }))
+
   async function save() {
     if (busy || listError) return
     setBusy(true)
     setError(null)
     try {
-      await onSave(rows.map((r) => ({ ...(r.categoryId ? { categoryId: r.categoryId } : {}), name: r.name.trim() })))
+      try {
+        await onSave(payload(rows), base.version)
+      } catch (err) {
+        if (!isConflict(err)) throw err
+        // Någon annan sparade emellan: lägg dina ändringar ovanpå det senaste.
+        const latest = await fetchLatest()
+        const merged = mergeCategoryRows(base.categories, rows, latest.categories)
+        setBase({ categories: latest.categories, version: latest.version })
+        setRows(merged.rows)
+        setConflicts(Object.fromEntries(merged.conflicts.map((c) => [c.categoryId, c.theirs])))
+        if (merged.conflicts.length) {
+          setError('Samma kategori fick ett annat namn på en annan plats. Välj namn och spara igen.')
+          return
+        }
+        await onSave(payload(merged.rows), latest.version)
+      }
     } catch (err) {
-      setStale(isStaleCategories(err))
       setError(errorText(err, 'Kategorierna kunde inte sparas.'))
     } finally {
-      setBusy(false)
-    }
-  }
-
-  async function reload() {
-    if (busy) return
-    setBusy(true)
-    try {
-      await onReload()
-    } catch (err) {
-      setError(errorText(err, 'Kunde inte hämta kategorierna.'))
       setBusy(false)
     }
   }
@@ -97,6 +124,13 @@ export function CategoriesModal({
                   <label htmlFor={`cat-${i}`} className="sr-only">Kategori {i + 1}</label>
                   <input id={`cat-${i}`} value={r.name} maxLength={NAME_MAX}
                     onChange={(e) => setRows((prev) => prev.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))} />
+                  {(() => {
+                    const there = changedThere(r.categoryId, r.name)
+                    return there === null ? null : (
+                      <ChangedNote value={there}
+                        onUse={() => setRows((prev) => prev.map((x, k) => (k === i ? { ...x, name: there } : x)))} />
+                    )
+                  })()}
                 </div>
                 <span className="cell-muted meny-category-count">{count} {count === 1 ? 'rätt' : 'rätter'}</span>
                 <button type="button" className="btn outline square meny-icon-btn" aria-label={`Flytta ${r.name || 'kategorin'} upp`}
@@ -138,15 +172,9 @@ export function CategoriesModal({
         {(listError ?? error) && <p className="form-error" role="alert">{listError ?? error}</p>}
         <div className="modal-actions">
           <button type="button" className="btn outline square" onClick={onCancel}>Avbryt</button>
-          {stale ? (
-            <button type="button" className="btn primary square" disabled={busy} onClick={() => void reload()}>
-              Ladda om kategorierna
-            </button>
-          ) : (
-            <button type="button" className="btn primary square" disabled={Boolean(listError) || busy} onClick={() => void save()}>
-              {busy ? 'Sparar…' : 'Spara kategorier'}
-            </button>
-          )}
+          <button type="button" className="btn primary square" disabled={Boolean(listError) || busy} onClick={() => void save()}>
+            {busy ? 'Sparar…' : 'Spara kategorier'}
+          </button>
         </div>
       </div>
     </ModalOverlay>

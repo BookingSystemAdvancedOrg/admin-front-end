@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { Bar, Button, Card, Field, Input, Modal, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
@@ -17,7 +18,6 @@ import {
 } from './api'
 import './waitlist.css'
 
-const REFRESH_MS = 30_000
 
 /** Bokningar > Kö: dagens kö, förslag när ett bord är ledigt, erbjud, placera och ta bort. */
 export default function QueuePanel({ locationId, date }: { locationId: string; date: string }) {
@@ -36,9 +36,9 @@ export default function QueuePanel({ locationId, date }: { locationId: string; d
 
   useEffect(() => {
     void load()
-    const timer = window.setInterval(() => void load(), REFRESH_MS)
-    return () => window.clearInterval(timer)
   }, [load])
+  // Levande: gäster som ställer sig i kön online eller hos en kollega syns av sig själva.
+  useLiveRefresh(async () => setQueue(await getQueue(locationId, date)), { enabled: busy === null })
 
   async function run(id: string, fn: () => Promise<unknown>, fallback: string) {
     setBusy(id)

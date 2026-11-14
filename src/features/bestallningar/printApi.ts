@@ -356,7 +356,7 @@ export function printErrorText(err: unknown): string {
   if (err instanceof ApiError) {
     if (PRINT_ERRORS[err.message]) return PRINT_ERRORS[err.message]
     if (err.status === 403) return 'Bara restaurangens ägare kan ändra skrivarna.'
-    if (err.status === 404) return 'Hittades inte längre. Ladda om sidan.'
+    if (err.status === 404) return 'Hittades inte längre; den har tagits bort på en annan plats.'
   }
   return commonError(err, 'Kunde inte nå skrivartjänsten.')
 }

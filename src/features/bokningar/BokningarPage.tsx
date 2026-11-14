@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { sameData, useLiveRefresh } from '../../shared/live'
 import { StatTile } from '../../shared/motion/StatTile'
 import { onPageAction, takePageAction } from '../../shared/nav'
 import { CtaButton } from '../../shared/CtaButton'
@@ -30,13 +31,12 @@ import { DateInput } from '../../shared/DateInput'
 import { Icon } from '../../shared/Icon'
 import { SkelBlock, SkelTableRows } from '../../shared/Skeleton'
 
-const REFRESH_MS = 60_000
-
 /**
  * Bokningar för vald plats och dag (GET /locations/{id}/reservations).
  * Klick på en rad öppnar bokningen: anlänt/ångra, ändra/flytta, uteblev
  * (med eller utan no-show-avgift), avboka, debitera igen och återbetala.
- * Listan hämtas om varje minut så nya onlinebokningar dyker upp av sig själva.
+ * Listan är levande (shared/live.ts): nya onlinebokningar och ändringar från
+ * kollegor eller andra platser dyker upp av sig själva.
  */
 export default function BokningarPage() {
   const tenantState = useTenant()
@@ -67,33 +67,42 @@ export default function BokningarPage() {
   const items = !loading && loaded ? loaded.items : []
   const error = !loading && loaded ? loaded.error : null
 
+  // Hämtar dagens lista. `quiet`: en levande omhämtning, som inte visar ett
+  // fel när listan redan syns (nästa puls försöker igen).
+  const seq = useRef(0)
+  const current = useRef(key)
   useEffect(() => {
-    if (!key || !locationId || !isApiConfigured()) return
-    let cancelled = false
-    const fetchList = () => {
-      const at = edits.current
-      listReservations(locationId, date).then(
-        (list) => {
-          if (cancelled || edits.current !== at) return
-          setLoaded({ key, items: list, error: null })
-        },
-        (err) => {
-          if (cancelled) return
-          setLoaded((prev) => ({
-            key,
-            items: prev?.key === key ? prev.items : [],
-            error: errorMessage(err, 'Kunde inte hämta bokningarna.', LOCATION_NOT_BOOKABLE),
-          }))
-        },
-      )
+    current.current = key
+  }, [key])
+  const fetchList = useCallback(async (quiet: boolean): Promise<boolean> => {
+    if (!key || !locationId || !isApiConfigured()) return true
+    const at = edits.current
+    // Bara det senast startade svaret gäller: ett äldre som kommer sist skriver inte över.
+    const id = ++seq.current
+    try {
+      const list = await listReservations(locationId, date)
+      if (current.current !== key || edits.current !== at || id !== seq.current) return true
+      setLoaded((prev) => (prev?.key === key && !prev.error && sameData(prev.items, list) ? prev : { key, items: list, error: null }))
+      return true
+    } catch (err) {
+      if (current.current !== key || id !== seq.current) return false
+      setLoaded((prev) => {
+        if (quiet && prev?.key === key) return prev
+        return {
+          key,
+          items: prev?.key === key ? prev.items : [],
+          error: errorMessage(err, 'Kunde inte hämta bokningarna.', LOCATION_NOT_BOOKABLE),
+        }
+      })
+      return false
     }
-    fetchList()
-    const timer = window.setInterval(fetchList, REFRESH_MS)
-    return () => {
-      cancelled = true
-      window.clearInterval(timer)
-    }
-  }, [key, locationId, date, reload])
+  }, [key, locationId, date])
+
+  useEffect(() => {
+    void fetchList(false)
+  }, [fetchList, reload])
+  // Levande: bokningar från gäster, kollegor och andra platser syns av sig själva.
+  useLiveRefresh(() => fetchList(true), { enabled: Boolean(key) && isApiConfigured() })
 
   function replace(updated: Reservation) {
     const moved = updated.date !== date || updated.locationId !== locationId

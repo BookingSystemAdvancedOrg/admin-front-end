@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { sameData, useLiveRefresh } from '../../shared/live'
+import { ChangedNote } from '../../shared/ChangedNote'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useTenant } from '../../shared/tenant'
@@ -78,6 +80,8 @@ export default function CateringRequestPage() {
   const isOwner = tenant?.role === 'owner_user'
   const [request, setRequest] = useState<CateringRequest | null>(null)
   const [offer, setOffer] = useState<OfferInput | null>(null)
+  /** Förfrågan som offerten i formuläret utgår från. */
+  const [offerBase, setOfferBase] = useState<CateringRequest | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -92,6 +96,7 @@ export default function CateringRequestPage() {
       const r = await getRequest(locationId, requestId)
       setRequest(r)
       setOffer(offerFromRequest(r))
+      setOfferBase(r)
       setLoadError(null)
     } catch (err) {
       setLoadError(errorText(err))
@@ -105,6 +110,7 @@ export default function CateringRequestPage() {
         if (!active) return
         setRequest(r)
         setOffer(offerFromRequest(r))
+        setOfferBase(r)
         setLoadError(null)
       },
       (err: unknown) => {
@@ -115,6 +121,27 @@ export default function CateringRequestPage() {
       active = false
     }
   }, [locationId, requestId])
+
+  // Levande: kundens svar, signeringar och ändringar från en kollega syns av sig
+  // själva. Offerten du håller på med skrivs inte över: bara en orörd offert
+  // följer med; annars visas en rad om att den ändrats på annat håll.
+  const requestRef = useRef(request)
+  const offerRef = useRef(offer)
+  useEffect(() => {
+    requestRef.current = request
+    offerRef.current = offer
+  })
+  useLiveRefresh(async () => {
+    const r = await getRequest(locationId, requestId)
+    const prev = requestRef.current
+    const draft = offerRef.current
+    if (!prev || !draft || sameData(draft, offerFromRequest(prev))) {
+      setOffer(offerFromRequest(r))
+      setOfferBase(r)
+    }
+    setRequest((cur) => (sameData(cur, r) ? cur : r))
+    setLoadError(null)
+  }, { enabled: request !== null && !busy })
 
   // Paket och rätter att lägga till i offerten (bara ägaren redigerar).
   useEffect(() => {
@@ -133,6 +160,7 @@ export default function CateringRequestPage() {
     if (r) {
       setRequest(r)
       setOffer(offerFromRequest(r))
+      setOfferBase(r)
     } else void load()
   }, [load])
 
@@ -208,6 +236,10 @@ export default function CateringRequestPage() {
   const nextVersion = (request.currentOfferVersion ?? 0) + 1
   const setLine = (i: number, patch: Partial<OfferInput['lines'][number]>) =>
     setOffer({ ...offer, lines: offer.lines.map((l, n) => (n === i ? { ...l, ...patch } : l)) })
+  // Offerten sparades på annat håll medan du ändrade din: din står kvar, deras visas på en rad.
+  const offerChangedThere = Boolean(offerBase) && offerBase !== request &&
+    !sameData(offerFromRequest(request), offerFromRequest(offerBase as CateringRequest)) &&
+    !sameData(offer, offerFromRequest(request))
   const overPriced = offer.lines.some((l) => l.unitPrice > MAX_ITEM_PRICE_KR)
   const offerValid =
     offer.lines.length > 0 &&
@@ -328,6 +360,15 @@ export default function CateringRequestPage() {
                 <p className="cell-muted">
                   Justera fritt - priser i kronor inkl. moms. Kunden signerar exakt den version du skickar.
                 </p>
+                {offerChangedThere && (
+                  <ChangedNote
+                    value={`offert på ${kronor(offerTotals(offerFromRequest(request), request.deliveryDate).total)}`}
+                    onUse={() => {
+                      setOffer(offerFromRequest(request))
+                      setOfferBase(request)
+                    }}
+                  />
+                )}
               </div>
             </div>
             <div className="table-scroll">

@@ -1,3 +1,4 @@
+import { sameData } from './live'
 import { useEffect, useSyncExternalStore } from 'react'
 import { useAuth } from '../features/auth/useAuth'
 import { ApiError, apiFetch, isApiConfigured } from './api'
@@ -289,6 +290,8 @@ export function loadTenant(
   const request = (isApiConfigured() ? getTenant() : Promise.resolve(LOCAL_DEMO_TENANT))
     .then((tenant) => {
       if (inflight !== request) return tenant
+      // En levande omhämtning utan ändring: samma objekt, inget ritas om.
+      if (state.status === 'ready' && sameData(state.tenant, tenant)) return state.tenant
       const preferred = state.locationId ?? readStoredLocation(tenant.tenantId)
       const locationId = pickLocation(tenant, preferred)
       if (locationId) writeStoredLocation(tenant.tenantId, locationId)

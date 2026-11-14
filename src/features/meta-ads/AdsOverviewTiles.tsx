@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useEffect, useState } from 'react'
 import { StatTile } from '@booqy/brand'
 import { getInsights, type Insights } from './api'
@@ -12,6 +13,9 @@ export default function AdsOverviewTiles({ locationId, from, to }: { locationId:
     getInsights(locationId, from, to).then((d) => { if (!cancelled) setData(d) }).catch(() => { if (!cancelled) setData(null) })
     return () => { cancelled = true }
   }, [locationId, from, to])
+  useLiveRefresh(async () => {
+    if (locationId) setData(await getInsights(locationId, from, to))
+  }, { enabled: Boolean(locationId) })
 
   if (!locationId || !data || data.rows.length === 0) return null
   const kr = (v: number | null) => (v === null ? '-' : `${v.toLocaleString('sv-SE')} kr`)

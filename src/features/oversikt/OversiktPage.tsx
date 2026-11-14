@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { sameData, useLiveRefresh } from '../../shared/live'
 import type { CSSProperties } from 'react'
 import { Num } from '../../shared/motion/Num'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -135,9 +136,7 @@ export default function OversiktPage() {
   const hasCatering = sample || Boolean(tenant?.entitlements.features.catering)
   const tableLabels = sample ? (SAMPLE_TABLE_LABELS as Map<string, string>) : labels
 
-  useEffect(() => {
-    if (!locationId) return
-    let cancelled = false
+  const fetchOverview = useCallback((locationId: string): Promise<OverviewData> =>
     Promise.all([
       orNull(getLocation(locationId)),
       orNull(listMenuItems(locationId)),
@@ -148,9 +147,7 @@ export default function OversiktPage() {
       hasCatering ? orNull(listRequests(locationId)) : Promise.resolve(null),
       hasOrdering ? orNull(listOrders(locationId, addDays(todayIn(timezoneSetting), -7))) : Promise.resolve(null),
       hasOrdering ? orNull(getPrintStatus(locationId)) : Promise.resolve(null),
-    ]).then(([loc, menu, versions, users, today, orders, catering, lastWeek, print]) => {
-      if (cancelled) return
-      setFetched({
+    ]).then(([loc, menu, versions, users, today, orders, catering, lastWeek, print]) => ({
         forLocation: locationId,
         location: loc,
         activeMenuItems: menu ? menu.filter((m) => m.active).length : null,
@@ -161,12 +158,25 @@ export default function OversiktPage() {
         ordersLastWeek: lastWeek ? lastWeek.orders : null,
         catering,
         print,
-      })
+      })),
+  [isOwner, timezoneSetting, hasOrdering, hasCatering])
+
+  useEffect(() => {
+    if (!locationId) return
+    let cancelled = false
+    void fetchOverview(locationId).then((d) => {
+      if (!cancelled) setFetched(d)
     })
     return () => {
       cancelled = true
     }
-  }, [locationId, isOwner, timezoneSetting, hasOrdering, hasCatering])
+  }, [locationId, fetchOverview])
+  // Levande: dagens bokningar, beställningar och förfrågningar uppdateras av sig själva.
+  useLiveRefresh(async () => {
+    if (!locationId) return
+    const d = await fetchOverview(locationId)
+    setFetched((prev) => (prev.forLocation === d.forLocation && !sameData(prev, d) ? d : prev))
+  }, { enabled: Boolean(locationId) && !loading && !sample })
 
   const stage = tenant ? stripeStage(tenant.stripe) : 'missing'
   const timezone = data.location?.timezone ?? location?.timezone ?? null

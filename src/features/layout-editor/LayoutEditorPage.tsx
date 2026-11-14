@@ -1,5 +1,7 @@
+import type { LayoutElement } from './layoutApi'
 import { errorText } from '../../shared/errors'
 import { useEffect, useRef, useState } from 'react'
+import { sameData, useLiveRefresh } from '../../shared/live'
 import { LayoutPrep } from './LayoutPrep'
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { FloorBooking } from './FloorBooking'
@@ -262,6 +264,10 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
   // Editorn startar tom och fylls av serverns layout. Ingen mockdata visas
   // först - den hann annars blinka förbi innan inläsningen var klar.
   const [floors, setFloors] = useState<Floor[]>(() => [emptyFloor(1)])
+  const floorsRef = useRef(floors)
+  useEffect(() => {
+    floorsRef.current = floors
+  }, [floors])
   const [currentFloorId, setCurrentFloorId] = useState(() => floors[0].id)
   // Allt som är markerat (Shift-klick och ruta väljer flera). `selection`
   // nedan är det ENDA valda elementet när bara ett är valt - egenskapspanelen,
@@ -403,6 +409,13 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
     }
   }, [])
 
+  // Layouten som den senast lästes in eller sparades: dina ändringar räknas
+  // mot den, så det en kollega sparat under tiden står kvar när du sparar.
+  const baseElements = useRef<LayoutElement[] | null>(null)
+  const savedFloors = useRef<Floor[] | null>(null)
+  /** Utkastet sparades på annat håll medan du hade osparade ändringar. */
+  const [changedThere, setChangedThere] = useState(false)
+
   // Läs in den sparade layouten: våningar med sitt innehåll.
   useEffect(() => {
     if (!locationId) return
@@ -411,6 +424,8 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       .then((elements) => {
         if (cancelled) return
         const loaded = toFloors(elements)
+        baseElements.current = elements
+        savedFloors.current = loaded
         setFloors(loaded)
         setCurrentFloorId(loaded[0].id)
         setSelection(null)
@@ -439,6 +454,26 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       cancelled = true
     }
   }, [locationId])
+
+  // Levande: utan osparade ändringar följer utkastet med det som sparas på
+  // annat håll; med osparade ändringar visas bara en rad (de läggs ovanpå när du sparar).
+  useLiveRefresh(async () => {
+    if (!locationId || drag.current) return
+    const elements = await listLayoutElements(locationId)
+    if (sameData(elements, baseElements.current)) return
+    const clean = savedFloors.current !== null && sameData(floorsRef.current, savedFloors.current)
+    if (!clean) {
+      setChangedThere(true)
+      return
+    }
+    const loaded = toFloors(elements)
+    baseElements.current = elements
+    savedFloors.current = loaded
+    setFloors(loaded)
+    resetHistory(loaded)
+    setCurrentFloorId((id) => (loaded.some((f) => f.id === id) ? id : loaded[0].id))
+    setSelection(null)
+  }, { enabled: Boolean(locationId) && loadedFor === locationId && !readOnly && !saving })
 
   function patchFloor(patch: (f: Floor) => Partial<Floor>) {
     // Nästan all redigering går via den här funktionen - en enda spärr här
@@ -1950,7 +1985,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
     setLayoutError(null)
     setSaving(true)
     try {
-      const result = await saveLayout(loc, floors)
+      const result = await saveLayout(loc, floors, baseElements.current ?? undefined)
       const serverId = (localId: string) => result.idMap.get(localId) ?? localId
       // Läs in serverns svar igen: nyskapade element (och våningar) får sina
       // riktiga elementId, vilket nästa sparning behöver för att se dem som
@@ -1959,6 +1994,9 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       // I platt reservläge finns bara första våningen på servern - de andra
       // behålls lokalt så att inget ritat försvinner.
       const next = result.flat ? [reloaded[0], ...floors.slice(1)] : reloaded
+      baseElements.current = result.elements
+      savedFloors.current = next
+      setChangedThere(false)
       setFloors(next)
       // Elementen har fått serverns id:n - äldre ångra-steg har de lokala
       // och skulle återskapa dubbletter vid nästa sparning. Historiken
@@ -2851,7 +2889,9 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
 
         <div className="editor-statusbar">
           <span className="grow" role={shownLayoutError ? 'alert' : undefined}>
-            {shownLayoutError ?? statusText}
+            {shownLayoutError ?? (changedThere
+              ? 'Layouten ändrades nyss på en annan plats. Dina ändringar läggs ovanpå när du sparar.'
+              : statusText)}
           </span>
           <span>
             {floor.name}

@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { clock } from './ordersApi'
 import { tableTitle } from '../table-qr/tableQrApi'
@@ -48,15 +49,16 @@ export function KitchenDisplay({ locationId, station, onStation }: {
       setLoadError(false)
     } catch {
       setLoadError(true)
+      return false
     }
   }, [locationId])
 
   useEffect(() => {
     getRouting(locationId).then((r) => setStations(r.stations)).catch(() => setStations([]))
     void refresh()
-    const timer = window.setInterval(() => void refresh(), KDS_POLL_MS)
-    return () => window.clearInterval(timer)
   }, [locationId, refresh])
+  // Levande: var femte sekund medan skärmen syns, direkt vid fokus och efter egna ändringar.
+  useLiveRefresh(refresh, { everyMs: KDS_POLL_MS })
 
   // Webbläsarens utskrift: bara bongen syns på papperet (bestallningar.css @media print).
   useEffect(() => {

@@ -27,14 +27,14 @@ describe('errorText', () => {
       .toBe('Kunde inte spara. Tjänsten är tillfälligt otillgänglig. Försök igen om en stund.')
     expect(errorText(server(400, 'name is required', { code: 'required', field: 'name' }), 'Kunde inte spara.'))
       .toMatch(/obligatoriskt fält/)
-    expect(errorText(server(404, 'not found', { code: 'not_found' }), 'Kunde inte spara.')).toMatch(/Ladda om sidan/)
+    expect(errorText(server(404, 'not found', { code: 'not_found' }), 'Kunde inte spara.')).toMatch(/tagits bort på annat håll/)
   })
 
   it('gemensamma koder har samma text överallt', () => {
     expect(errorText(new NetworkError())).toMatch(/^Ingen kontakt med servern/)
     expect(errorText(server(403, 'tenant_inactive'))).toMatch(/pausat/)
     expect(errorText(server(429, 'too_many_requests'))).toMatch(/Vänta en minut/)
-    expect(errorText(server(409, 'changed_retry'))).toMatch(/Ladda om/)
+    expect(errorText(server(409, 'changed_retry'))).toMatch(/Det senaste visas nu/)
     expect(errorText(server(401, 'Unauthorized', { code: 'unauthorized' }))).toMatch(/Logga in igen/)
   })
 

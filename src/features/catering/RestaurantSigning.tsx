@@ -64,7 +64,7 @@ export function RestaurantSigning({ request, onSigned, returned }: {
         setBankid(null)
         if (r.state === 'signed') onSigned(r.request)
         else if (r.state === 'failed') setError(HINT[r.hint ?? ''] ?? 'Signeringen avbröts. Försök igen.')
-        else setError('Signeringen är inte klar än. Ladda om sidan om en liten stund.')
+        else setError('Signeringen är inte klar än. Sidan visar den av sig själv så fort den är registrerad.')
       } catch (err) {
         setBankid(null)
         // no_signing_started: ingen signering väntar (t.ex. sidan laddades om), knappen räcker

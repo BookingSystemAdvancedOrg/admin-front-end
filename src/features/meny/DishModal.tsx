@@ -5,7 +5,9 @@ import { ALLERGENS, ALLERGEN_LABEL, categoryName } from './data'
 import type { Allergen, Dish, DishCategory, DishComponent, MenuCategoryEntry, OptionGroup } from './data'
 import { getRouting, NO_TICKET } from '../bestallningar/printApi'
 import type { Station } from '../bestallningar/printApi'
-import { isStaleDish, parsePrice, validateDishName } from './menuApi'
+import { parsePrice, validateDishName } from './menuApi'
+import { ChangedNote } from '../../shared/ChangedNote'
+import { serverChanges } from '../../shared/merge'
 import { OptionsEditor } from './OptionsEditor'
 import { draftToGroups, toDraft } from './menuForm'
 import type { DraftGroup } from './menuForm'
@@ -82,7 +84,7 @@ export function DishModal({
   categories,
   onSave,
   onCancel,
-  onReload,
+  latest = null,
 }: {
   title: string
   initial: Dish | null
@@ -94,8 +96,12 @@ export function DishModal({
   categories: MenuCategoryEntry[]
   onSave: (values: DishFormValues) => Promise<void>
   onCancel: () => void
-  /** Laddar om rätten efter att någon annan sparat den (409). */
-  onReload?: () => void
+  /**
+   * Rätten som den ser ut på servern just nu (listan hämtas levande). Skiljer
+   * den sig från `initial`, som formuläret öppnades med, har någon annan
+   * ändrat den under tiden: fälten får en rad med det nya värdet, ditt står kvar.
+   */
+  latest?: Dish | null
 }) {
   const [name, setName] = useState(initial?.name ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
@@ -106,7 +112,6 @@ export function DishModal({
   const [allergens, setAllergens] = useState<Allergen[]>(initial?.allergens ?? [])
   const [optionDrafts, setOptionDrafts] = useState<DraftGroup[]>(() => toDraft(initial?.options))
   const [removeImage, setRemoveImage] = useState(false)
-  const [stale, setStale] = useState(false)
   const [price, setPrice] = useState(initial ? String(initial.price) : '')
   const [active, setActive] = useState(initial?.active ?? true)
   const [alcohol, setAlcohol] = useState(initial?.alcohol ?? false)
@@ -180,11 +185,17 @@ export function DishModal({
       : null
   const scheduleValid = availableFrom !== undefined && availableUntil !== undefined && !orderError
   const valid = !nameError && !priceError && !optionsResult.error && scheduleValid
+  // Ändrat på annat håll sedan dialogen öppnades (bara fält som skiljer sig från formuläret).
+  const drift = initial ? serverChanges(initial, latest, ['name', 'description', 'price', 'category', 'active']) : {}
+  const driftName = drift.name !== undefined && drift.name !== name.trim() ? drift.name : undefined
+  const driftDescription = drift.description !== undefined && drift.description !== description.trim() ? drift.description : undefined
+  const driftPrice = drift.price !== undefined && drift.price !== parsedPrice ? drift.price : undefined
+  const driftCategory = drift.category !== undefined && drift.category !== category ? drift.category : undefined
+  const driftActive = drift.active !== undefined && drift.active !== active ? drift.active : undefined
 
   async function save() {
     if (busy || !valid || availableFrom === undefined || availableUntil === undefined || !optionsResult.groups) return
     setError(null)
-    setStale(false)
     setBusy(true)
     try {
       await onSave({
@@ -207,7 +218,6 @@ export function DishModal({
         options: optionsResult.groups,
       })
     } catch (err) {
-      setStale(isStaleDish(err))
       setError(errorText(err, 'Kunde inte spara.'))
       focusErrorField(err, {
         name: 'dish-name', description: 'dish-description', category: 'dish-category', price: 'dish-price',
@@ -310,6 +320,7 @@ export function DishModal({
             placeholder="t.ex. Smörstekt Torskrygg"
             onChange={(e) => setName(e.target.value)}
           />
+          {driftName !== undefined && <ChangedNote value={driftName} onUse={() => setName(driftName)} />}
         </div>
 
         <div className="form-field">
@@ -320,6 +331,9 @@ export function DishModal({
             placeholder="t.ex. Serveras med brynt smör och pepparrot"
             onChange={(e) => setDescription(e.target.value)}
           />
+          {driftDescription !== undefined && (
+            <ChangedNote value={driftDescription} onUse={() => setDescription(driftDescription)} />
+          )}
         </div>
 
         <div className="form-grid">
@@ -339,6 +353,9 @@ export function DishModal({
                 <option value={category}>Övrigt</option>
               )}
             </select>
+            {driftCategory !== undefined && (
+              <ChangedNote value={categoryName(categories, driftCategory)} onUse={() => setCategory(driftCategory)} />
+            )}
           </div>
           <div className="form-field">
             <label htmlFor="dish-price">Pris (kr)</label>
@@ -353,6 +370,9 @@ export function DishModal({
             />
             {price.trim() !== '' && priceError && (
               <p id="dish-price-error" className="form-error">{priceError}</p>
+            )}
+            {driftPrice !== undefined && (
+              <ChangedNote value={`${driftPrice.toLocaleString('sv-SE')} kr`} onUse={() => setPrice(String(driftPrice))} />
             )}
           </div>
         </div>
@@ -399,6 +419,9 @@ export function DishModal({
             onClick={() => setActive((a) => !a)}
           />
         </div>
+        {driftActive !== undefined && (
+          <ChangedNote value={driftActive ? 'aktiv' : 'pausad'} onUse={() => setActive(driftActive)} />
+        )}
 
         <div className="toggle-row">
           <span className="toggle-row-label">
@@ -530,11 +553,6 @@ export function DishModal({
         {error && (
           <div className="dish-save-error" role="alert">
             <p className="form-error">{error}</p>
-            {stale && onReload && (
-              <button type="button" className="btn outline square" onClick={onReload}>
-                Ladda om rätten
-              </button>
-            )}
           </div>
         )}
 

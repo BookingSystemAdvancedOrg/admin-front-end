@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useEffect, useState } from 'react'
 import { StatTile } from '../../shared/motion/StatTile'
 import { Num } from '../../shared/motion/Num'
@@ -35,6 +36,12 @@ export default function CateringPage() {
       cancelled = true
     }
   }, [locationId])
+  // Levande: nya förfrågningar och ändringar från kollegor syns av sig själva.
+  useLiveRefresh(async () => {
+    if (!locationId) return
+    setRows(await listRequests(locationId))
+    setError(false)
+  }, { enabled: Boolean(locationId) })
 
   const visible = (rows ?? [])
     .filter((r) => filter === 'alla' || ACTIVE.includes(r.status))

@@ -1,3 +1,5 @@
+import { isApiConfigured } from './api'
+import { useLiveRefresh } from './live'
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { BrandMark, BrandWordmark } from './BrandMark'
@@ -72,6 +74,9 @@ export function AdminLayout() {
   useEffect(() => syncBackdropImage(), [])
   const { email, sub, groups, logout } = useAuth()
   const { tenant, status, error, locationId, refresh } = useTenant()
+  // Restaurangen (platser, Stripe-läget, avtalet, abonnemanget) är levande som
+  // sidorna: ändras den på annat håll syns det av sig självt.
+  useLiveRefresh(() => refresh(), { enabled: status === 'ready' && isApiConfigured() })
   const { pathname } = useLocation()
   // Sidomenyns grupper är öppna från början; en grupp man fäller ihop förblir
   // hopfälld i den här webbläsaren.

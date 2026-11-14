@@ -129,7 +129,7 @@ export const ERRORS: Record<string, string> = {
   cap_exceeded: 'Budgeten skulle gå över ert månadstak. Sänk budgeten eller höj taket.',
   kill_switch: 'Annonser är pausade av Booqy just nu. Försök igen senare.',
   invalid_status: 'Annonsen kan inte ändras just nu.',
-  changed_retry: 'Annonsen ändrades samtidigt. Ladda om och försök igen.',
+  changed_retry: 'Annonsen ändrades samtidigt. Det senaste visas nu; försök igen.',
   alcohol_not_allowed: 'Rätter med alkohol kan inte annonseras.',
   quota_exceeded: 'Månadens textförslag är slut. Skriv texten själv.',
   ai_unavailable: 'Textförslagen fungerar inte just nu. Skriv texten själv.',

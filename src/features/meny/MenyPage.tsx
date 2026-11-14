@@ -1,5 +1,8 @@
 import { errorText } from '../../shared/errors'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useLiveRefresh } from '../../shared/live'
+import { ConflictError, isConflict } from '../../shared/merge'
+import { ApiError } from '../../shared/api'
 import { onPageAction, takePageAction } from '../../shared/nav'
 import { CtaButton } from '../../shared/CtaButton'
 import { StatTile } from '../../shared/motion/StatTile'
@@ -16,6 +19,7 @@ import { CategoriesModal } from './CategoriesModal'
 import {
   createMenuItem,
   deleteMenuItem,
+  dishAsCreate,
   dishChanges,
   getMenuCategories,
   getPublicMenu,
@@ -37,7 +41,12 @@ import { DishRow } from './DishRow'
 import { isCentre } from './imageFocus'
 import { SkelBlock, SkelTableRows } from '../../shared/Skeleton'
 
-type ModalState = { mode: 'add' } | { mode: 'edit'; id: string } | null
+/**
+ * `base` är rätten som dialogen öppnades med (dina ändringar räknas mot den,
+ * även när listan hämtas om under tiden); `updatedAt` den version som skickas
+ * med sparningen (byts när en krock har lagts ihop med det senaste).
+ */
+type ModalState = { mode: 'add' } | { mode: 'edit'; id: string; base: Dish; updatedAt: string | undefined } | null
 
 /**
  * Figma: admin-meny-page (34:2). Kopplad mot det riktiga meny-API:t
@@ -64,9 +73,6 @@ export default function MenyPage() {
   const [categories, setCategories] = useState<MenuCategoryEntry[]>(DEFAULT_CATEGORIES)
   const [categoriesVersion, setCategoriesVersion] = useState(0)
   const [categoriesOpen, setCategoriesOpen] = useState(false)
-  const [categoriesKey, setCategoriesKey] = useState(0)
-  /** Byts när en rätt laddats om efter en krock, så att dialogen börjar om med de nya värdena. */
-  const [modalKey, setModalKey] = useState(0)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [rowError, setRowError] = useState<string | null>(null)
@@ -141,6 +147,26 @@ export default function MenyPage() {
     }
   }, [locationId])
 
+  // Levande: rätter och kategorier som en kollega eller en annan plats ändrar
+  // syns av sig själva. Ett svar som hämtades före en egen ändring härifrån
+  // (reglaget, en radering) skriver inte över den.
+  const edits = useRef(0)
+  useLiveRefresh(async () => {
+    if (!locationId) return
+    const at = edits.current
+    const [items, cats] = await Promise.all([
+      listMenuItems(locationId),
+      getMenuCategories(locationId).catch(() => null),
+    ])
+    if (edits.current !== at) return
+    setDishes(items.map(toDish))
+    setLoadError(null)
+    if (cats?.categories?.length) {
+      setCategories(cats.categories)
+      setCategoriesVersion(cats.version ?? 0)
+    }
+  }, { enabled: Boolean(locationId) && !readOnly && !loading })
+
   // Härledd i stället för att sättas synkront i effekten: "hämtar" gäller
   // medan platsen letas upp eller medan menyn för en känd plats laddas.
   const fetching = resolvingLocation || (Boolean(locationId) && loading)
@@ -157,8 +183,10 @@ export default function MenyPage() {
     { label: 'Med bild', value: String(withImage), note: dishes.length ? `${Math.round((withImage / dishes.length) * 100)} % av rätterna` : '-' },
     { label: 'Snittpris', value: activeCount ? `${avgPrice} kr` : '-', note: 'Aktiva rätter' },
   ]
+  /** Rätten som den ser ut i listan nu (kan ha ändrats på annat håll sedan dialogen öppnades). */
   const editingDish =
     modal?.mode === 'edit' ? dishes.find((d) => d.id === modal.id) ?? null : null
+  const editBase = modal?.mode === 'edit' ? modal.base : null
   const canEdit = Boolean(locationId) && !readOnly
 
   const dishCounts = dishes.reduce<Record<string, number>>((acc, d) => {
@@ -167,32 +195,23 @@ export default function MenyPage() {
   }, {})
   const toneOf = (id: string) => categories.findIndex((c) => c.categoryId === id)
 
-  async function saveCategories(rows: { categoryId?: string; name: string }[]) {
+  async function saveCategories(rows: { categoryId?: string; name: string }[], version: number) {
     if (!locationId) return
-    const saved = await putMenuCategories(locationId, rows, categoriesVersion)
+    const saved = await putMenuCategories(locationId, rows, version)
+    edits.current += 1
     setCategories(saved.categories)
     setCategoriesVersion(saved.version)
     setCategoriesOpen(false)
   }
 
-  /** Hämtar kategorierna igen efter att någon annan sparat (409) och börjar om dialogen. */
-  async function reloadCategories() {
-    if (!locationId) return
+  /** Den senaste sparade kategorilistan (CategoriesModal lägger ihop vid 409). */
+  async function latestCategories() {
+    if (!locationId) throw new Error('Ingen plats vald.')
     const res = await getMenuCategories(locationId)
-    setCategories(res.categories?.length ? res.categories : DEFAULT_CATEGORIES)
-    setCategoriesVersion(res.version ?? 0)
-    setCategoriesKey((k) => k + 1)
-  }
-
-  /** Hämtar rätterna igen efter att någon annan sparat (409) och börjar om dialogen. */
-  async function reloadDishes() {
-    if (!locationId) return
-    try {
-      setDishes((await listMenuItems(locationId)).map(toDish))
-      setModalKey((k) => k + 1)
-    } catch (err) {
-      setRowError(errorText(err, 'Kunde inte hämta menyn.'))
-    }
+    const latest = { categories: res.categories?.length ? res.categories : DEFAULT_CATEGORIES, version: res.version ?? 0 }
+    setCategories(latest.categories)
+    setCategoriesVersion(latest.version)
+    return latest
   }
 
   const priceMin = filterPriceMin.trim() ? Number(filterPriceMin) : null
@@ -230,6 +249,7 @@ export default function MenyPage() {
   }
 
   function replaceDish(updated: Dish) {
+    edits.current += 1
     setDishes((prev) => prev.map((d) => (d.id === updated.id ? updated : d)))
   }
 
@@ -261,6 +281,7 @@ export default function MenyPage() {
     markBusy(dish.id, true)
     try {
       await deleteMenuItem(locationId, dish.id)
+      edits.current += 1
       setDishes((prev) => prev.filter((d) => d.id !== dish.id))
     } catch (err) {
       setRowError(errorText(err, 'Kunde inte ta bort rätten.'))
@@ -279,7 +300,7 @@ export default function MenyPage() {
     // Ny bild laddas upp till S3 först; rätten sparas med nyckeln vi får
     // tillbaka. Utan ny fil behålls den befintliga nyckeln; bilden är
     // frivillig, så en ny rätt utan bild sparas utan nyckel.
-    let imageKey: string | null = values.removeImage ? null : editingDish?.imageKey || null
+    let imageKey: string | null = values.removeImage ? null : editBase?.imageKey || null
     if (values.imageFile) {
       imageKey = await uploadMenuImage(locationId, values.imageFile)
     }
@@ -300,21 +321,40 @@ export default function MenyPage() {
     }
     // Fokuspunkten skickas bara när den inte är mitten (ny rätt) eller när
     // den ändrats (dishChanges), så äldre API:er utan fältet inte påverkas.
-    if (!isCentre(values.imageFocus) || editingDish?.imageFocus) {
+    if (!isCentre(values.imageFocus) || editBase?.imageFocus) {
       desired.imageFocus = values.imageFocus
     }
 
-    if (modal?.mode === 'edit' && editingDish) {
-      // API:t kräver minst ett fält - en tom diff skickas aldrig.
-      const updates = dishChanges(editingDish, desired)
+    if (modal?.mode === 'edit') {
+      const base = modal.base
+      // Bara det du ändrat sedan dialogen öppnades; API:t kräver minst ett fält.
+      const updates = dishChanges(base, desired)
       if (Object.keys(updates).length > 0) {
-        // updatedAt som dialogen laddade: har någon annan sparat sedan dess blir det 409.
-        const saved = await updateMenuItem(locationId, editingDish.id, updates, editingDish.updatedAt)
-        replaceDish(toDish(saved))
+        try {
+          // updatedAt som dialogen laddade: har någon annan sparat sedan dess blir det 409.
+          replaceDish(toDish(await updateMenuItem(locationId, base.id, updates, modal.updatedAt)))
+        } catch (err) {
+          if (!isConflict(err)) throw err
+          // Någon annan sparade rätten emellan: hämta den, lägg dina fält ovanpå och spara en gång till.
+          const latest = (await listMenuItems(locationId)).map(toDish).find((d) => d.id === base.id)
+          if (!latest) throw new ApiError(404, 'Rätten finns inte längre; den har tagits bort på en annan plats.')
+          replaceDish(latest)
+          const theirs = dishChanges(base, dishAsCreate(latest)) as Record<string, unknown>
+          const clashes = Object.entries(updates)
+            .filter(([field, mine]) => field in theirs && JSON.stringify(theirs[field]) !== JSON.stringify(mine))
+            .map(([field, mine]) => ({ field, mine, theirs: theirs[field] }))
+          if (clashes.length) {
+            // Nästa sparning går mot den senaste versionen; ditt värde står kvar i fältet.
+            setModal({ ...modal, updatedAt: latest.updatedAt })
+            throw new ConflictError(clashes, latest)
+          }
+          replaceDish(toDish(await updateMenuItem(locationId, base.id, updates, latest.updatedAt)))
+        }
       }
     } else {
       const { imageKey: key, ...rest } = desired
       const created = await createMenuItem(locationId, key ? desired : (rest as MenuItemCreate))
+      edits.current += 1
       setDishes((prev) => [...prev, toDish(created)])
     }
     setModal(null)
@@ -465,7 +505,7 @@ export default function MenyPage() {
                     canEdit={canEdit}
                     busy={busyIds.has(d.id)}
                     locationId={locationId}
-                    onOpen={(dish) => setModal({ mode: 'edit', id: dish.id })}
+                    onOpen={(dish) => setModal({ mode: 'edit', id: dish.id, base: dish, updatedAt: dish.updatedAt })}
                     onToggle={toggleActive}
                     onDelete={removeDish}
                     onPreview={setPreview}
@@ -481,24 +521,24 @@ export default function MenyPage() {
 
       {modal && (
         <DishModal
-          key={modalKey}
+          key={modal.mode === 'edit' ? modal.id : 'new'}
           title={modal.mode === 'add' ? 'Lägg till rätt' : 'Redigera rätt'}
-          initial={editingDish}
+          initial={editBase}
+          latest={editingDish}
           timeZone={timeZone}
           locationId={locationId}
           categories={categories}
           onSave={handleSave}
           onCancel={() => setModal(null)}
-          onReload={() => void reloadDishes()}
         />
       )}
       {categoriesOpen && (
         <CategoriesModal
-          key={categoriesKey}
           categories={categories}
+          version={categoriesVersion}
           dishCounts={dishCounts}
           onSave={saveCategories}
-          onReload={reloadCategories}
+          fetchLatest={latestCategories}
           onCancel={() => setCategoriesOpen(false)}
         />
       )}

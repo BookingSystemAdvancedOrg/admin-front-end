@@ -1,3 +1,4 @@
+import { sameData, useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { Bar, Button, Card, Field, Input, StatTile, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
@@ -46,6 +47,14 @@ export default function OmdomenTab() {
   }, [locationId])
 
   useEffect(() => { void load() }, [load])
+  // Levande: nya omdömen syns av sig själva; inställningarna du ändrar i skrivs inte över.
+  useLiveRefresh(async () => {
+    if (!locationId) return
+    const [c, v] = await Promise.all([getConnection(), getLocationView(locationId)])
+    setConnected(c.status === 'connected')
+    if (view && draft && sameData(draft, view.reviewSettings)) setDraft(v.reviewSettings)
+    setView(v)
+  }, { enabled: Boolean(locationId) && view !== null && !saving })
 
   if (error) return <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng">{error}</Bar>
   if (!locationId || !view || !draft) return <p className="cell-muted">Hämtar…</p>

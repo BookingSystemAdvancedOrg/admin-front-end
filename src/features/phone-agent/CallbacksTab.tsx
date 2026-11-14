@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { Button, Card, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
@@ -22,6 +23,7 @@ export function CallbackList({ locationId, title, compact = false }: { locationI
   }, [locationId, compact])
 
   useEffect(() => { void load() }, [load])
+  useLiveRefresh(async () => setItems(await listCallbacks(locationId)))
 
   async function close(cb: Callback) {
     setBusy(cb.callbackId)

@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
@@ -90,6 +91,18 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
       setLoadError(true)
     }
   }
+
+  // Levande: skrivare som kopplas in eller tappar kontakten syns av sig själva.
+  // Inställningarna du håller på att ändra skrivs inte över.
+  useLiveRefresh(async () => {
+    if (!locationId) return
+    const next = await getPrinting(locationId)
+    const s = data?.settings
+    const untouched = !s || (autoPrint === s.autoPrint && printerId === (s.printerId ?? '') && paperWidth === s.paperWidth)
+    if (untouched) apply(next)
+    else setData(next)
+    setLoadError(false)
+  }, { enabled: Boolean(locationId) && data !== null && !busy })
 
   useEffect(() => {
     if (!locationId) return
@@ -197,7 +210,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
         {!locationId ? (
           <p className="cell-muted">Välj en plats först.</p>
         ) : loadError && !data ? (
-          <p className="form-error" role="alert">Kunde inte hämta skrivarna. Ladda om sidan om en stund.</p>
+          <p className="form-error" role="alert">Kunde inte hämta skrivarna. Sidan försöker igen av sig själv om en stund.</p>
         ) : !data ? (
           <SkelLines n={3} />
         ) : (

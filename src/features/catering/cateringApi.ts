@@ -607,7 +607,7 @@ const ERRORS: Record<string, string> = {
   signing_document_canceled: 'Den här offertversionen går inte längre att signera. Skicka offerten igen.',
   signing_document_rejected: 'Signeringen avbröts hos signeringstjänsten. Skicka offerten igen.',
   signing_authentication_to_sign_method_disabled: 'BankID-signering är inte påslagen hos signeringstjänsten ännu. Kontakta Booqy.',
-  signing_document_closed: 'Offerten är redan färdigsignerad. Ladda om sidan.',
+  signing_document_closed: 'Offerten är redan färdigsignerad. Sidan visar det nu.',
   no_signing_started: 'Ingen signering pågår. Tryck på Signera med BankID.',
   offer_expired: 'Offerten har gått ut. Ändra giltighetstiden och skicka den igen.',
   'validUntil must not be after the delivery date': 'Giltig till och med kan inte vara efter leveransdagen. Välj leveransdagen eller ett tidigare datum.',
@@ -621,7 +621,7 @@ export function errorText(err: unknown, action = 'Kunde inte spara.'): string {
     if (/^price may be at most/.test(err.message)) return 'Pris per rad får vara högst 10 000 kr.'
     if (/^offer total may be at most/.test(err.message)) return 'Offerten är för stor (högst 500 000 kr totalt).'
     if (err.status === 403 && err.code === 'forbidden') return 'Bara restaurangens ägare kan göra det.'
-    if (err.status === 404) return 'Förfrågan finns inte längre. Gå tillbaka till listan och ladda om.'
+    if (err.status === 404) return 'Förfrågan finns inte längre. Gå tillbaka till listan, den visar det som finns kvar.'
     if (err.status === 409 && err.message.startsWith('signing_')) {
       return 'Signeringstjänsten tog inte emot offerten. Försök igen om en stund eller kontakta Booqy.'
     }

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useLiveRefresh } from '../../shared/live'
+import { isConflict, mergeEdits } from '../../shared/merge'
 import { Bar, Button, Card, Field, Input, Select, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
 import { useTenant } from '../../shared/tenant'
@@ -24,7 +26,14 @@ export default function SegmentsPanel() {
   const [segments, setSegments] = useState<Segment[] | null>(null)
   const [templates, setTemplates] = useState<SegmentTemplate[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [draft, setDraft] = useState<Draft | null>(null)
+  const [draft, setDraftState] = useState<Draft | null>(null)
+  /** Målgruppen som formuläret öppnades med (dina ändringar räknas mot den). */
+  const [draftBase, setDraftBase] = useState<Draft | null>(null)
+  /** Öppnar eller stänger formuläret: utgångsläget följer med. */
+  const setDraft = (next: Draft | null) => {
+    setDraftState(next)
+    setDraftBase(next)
+  }
   const [saving, setSaving] = useState(false)
   const [counts, setCounts] = useState<Record<string, { total: number; reachable: number }>>({})
 
@@ -39,6 +48,12 @@ export default function SegmentsPanel() {
   }
 
   useEffect(() => { void load() }, [])
+  // Levande: målgrupper som en kollega ändrar syns av sig själva (formuläret du skriver i rörs inte).
+  useLiveRefresh(async () => {
+    const out = await listSegments()
+    setSegments(out.segments)
+    setTemplates(out.templates)
+  }, { enabled: segments !== null && !saving })
 
   async function count(segmentId: string) {
     try {
@@ -53,10 +68,29 @@ export default function SegmentsPanel() {
     e.preventDefault()
     if (!draft) return
     setSaving(true)
+    const send = (d: Draft) => saveSegment(d.segmentId, {
+      name: d.name.trim(), rules: rulesFrom(d), ...(d.version ? { version: d.version } : {}),
+    })
     try {
-      const saved = await saveSegment(draft.segmentId, {
-        name: draft.name.trim(), rules: rulesFrom(draft), ...(draft.version ? { version: draft.version } : {}),
-      })
+      let saved
+      try {
+        saved = await send(draft)
+      } catch (err) {
+        if (!isConflict(err) || !draftBase) throw err
+        // Någon annan sparade målgruppen emellan: dina ändrade fält ovanpå den senaste, en gång till.
+        const latest = (await listSegments()).segments.find((x) => x.segmentId === draft.segmentId)
+        if (!latest) throw err
+        const theirs = draftFrom(latest.segmentId, latest.name, latest.rules, latest.version)
+        const { merged, conflicts } = mergeEdits(draftBase, draft, theirs, ['version', 'segmentId'])
+        const next = { ...merged, version: latest.version }
+        if (conflicts.length) {
+          setDraftState(next)
+          setDraftBase(theirs)
+          toast('Samma regel ändrades nyss på en annan plats. Dina värden står kvar; spara igen för att använda dem.', { tone: 'danger' })
+          return
+        }
+        saved = await send(next)
+      }
       setDraft(null)
       await load()
       void count(saved.segmentId)
@@ -64,7 +98,7 @@ export default function SegmentsPanel() {
     } catch (err) {
       toast(errorText(err, 'Kunde inte spara målgruppen.', {
         invalid_rules: 'Kontrollera reglerna: till exempel minst 7 dagar sedan senaste besöket.',
-        changed_retry: 'Målgruppen ändrades samtidigt. Ladda om sidan och försök igen.',
+        changed_retry: 'Målgruppen ändrades samtidigt. Det senaste visas nu; spara igen om ändringen fortfarande behövs.',
       }, { name: 'namnet' }), { tone: 'danger' })
     } finally {
       setSaving(false)
@@ -81,7 +115,7 @@ export default function SegmentsPanel() {
   }
 
   const locationName = (id: string) => locations.find((l) => l.locationId === id)?.name ?? ''
-  const set = (patch: Partial<Draft>) => setDraft((d) => (d ? { ...d, ...patch } : d))
+  const set = (patch: Partial<Draft>) => setDraftState((d) => (d ? { ...d, ...patch } : d))
 
   return (
     <Card title="Målgrupper" actions={

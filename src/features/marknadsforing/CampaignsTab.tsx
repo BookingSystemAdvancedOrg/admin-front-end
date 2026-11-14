@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { RowActions } from '../../shared/RowActions'
 import { useCallback, useEffect, useState } from 'react'
 import { Num } from '../../shared/motion/Num'
@@ -265,13 +266,13 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
 
   useEffect(load, [load])
 
-  // Medan något skickas: hämta om då och då så siffrorna rör sig.
-  const active = (campaigns ?? []).some((c) => c.status === 'sending' || c.status === 'scheduled')
-  useEffect(() => {
-    if (!active) return
-    const id = setInterval(load, 30_000)
-    return () => clearInterval(id)
-  }, [active, load])
+  // Levande: utskick som pågår och kampanjer en kollega ändrar syns av sig själva
+  // (formuläret du skriver i rörs inte; det har sin egen kopia).
+  useLiveRefresh(async () => {
+    const [c, t] = await Promise.all([listCampaigns(), listTemplates()])
+    setCampaigns(c)
+    setTemplates(t)
+  }, { enabled: campaigns !== null && busy === null })
 
   const act = async (c: Campaign, what: 'test' | 'cancel' | 'resume' | 'delete') => {
     setBusy(`${c.campaignId}:${what}`)

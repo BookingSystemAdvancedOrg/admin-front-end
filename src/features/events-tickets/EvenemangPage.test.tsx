@@ -305,7 +305,7 @@ describe('editing ticket types and occurrences after sales', () => {
     expect(api.updateOccurrence).not.toHaveBeenCalled()
     fireEvent.change(screen.getByLabelText(/^Antal platser/), { target: { value: '12' } })
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    expect(await screen.findByText(/Fler platser såldes medan du ändrade/)).toBeInTheDocument()
+    expect(await screen.findByText(/Fler platser hann säljas medan du ändrade/)).toBeInTheDocument()
     expect(vi.mocked(api.updateOccurrence).mock.calls[0].slice(2)).toEqual([OCC, { capacity: 12, version: 1 }])
   })
 
@@ -372,7 +372,7 @@ describe('editing ticket types and occurrences after sales', () => {
     at('/evenemang/EVENT1AAAAAAAA')
     fireEvent.click(await screen.findByRole('button', { name: 'Ändra Middag' }))
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    expect(await screen.findByText(/Fler biljetter såldes medan du ändrade/)).toBeInTheDocument()
+    expect(await screen.findByText(/Fler biljetter hann säljas medan du ändrade/)).toBeInTheDocument()
     expect(screen.getByLabelText(/^Antal av typen/)).toHaveAttribute('aria-invalid', 'true')
     expect(screen.getByLabelText(/^Säljs till/)).not.toHaveAttribute('aria-invalid')
   })

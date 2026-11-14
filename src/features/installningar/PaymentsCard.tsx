@@ -116,7 +116,7 @@ export function PaymentsCard({
         <p className="cell-muted" role="status">
           {polling
             ? 'Tillbaka från Stripe. Hämtar den nya statusen…'
-            : 'Tillbaka från Stripe. Stripe behandlar fortfarande uppgifterna - ladda om sidan om en stund.'}
+            : 'Tillbaka från Stripe. Stripe behandlar fortfarande uppgifterna; statusen här uppdateras av sig själv när de är klara.'}
         </p>
       )}
       {stripeReturn === 'refresh' && (

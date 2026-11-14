@@ -1,3 +1,5 @@
+import { ChangedNote } from '../../shared/ChangedNote'
+import { dedupe, useLiveForm } from '../../shared/live'
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
@@ -89,6 +91,20 @@ export function OrderingCard({
     }
   }, [locationId])
 
+  // Levande: sparar en kollega eller en annan plats inställningen syns den av sig själv;
+  // har du börjat ändra står ditt kvar med en rad om det andra.
+  const live = useLiveForm<OrderingPolicy | null, FormState>({
+    enabled: Boolean(locationId) && !loading && !busy,
+    fetch: async () => (await dedupe(`location:${locationId}`, () => getLocation(locationId as string))).ordering ?? null,
+    saved,
+    form,
+    toForm: (s) => toForm(s ?? DEFAULTS),
+    adopt: (s) => {
+      setSaved(s)
+      setForm(toForm(s ?? DEFAULTS))
+    },
+  })
+
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }))
     setNotice(null)
@@ -131,6 +147,7 @@ export function OrderingCard({
   return (
     <section id="bestallning" className="admin-card table-card">
       <h2 className="card-title">Beställning</h2>
+      {live.there !== null && <ChangedNote onUse={live.takeThere} />}
       <div style={{ height: 8 }} />
       <p className="cell-muted">
         Gästerna beställer och betalar online. Avhämtning: sms när maten är klar. Vid bordet: QR-koden

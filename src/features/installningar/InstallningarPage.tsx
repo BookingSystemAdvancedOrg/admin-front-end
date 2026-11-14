@@ -1,5 +1,7 @@
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
+import { dedupe, sameData, useLiveRefresh } from '../../shared/live'
+import { ChangedNote } from '../../shared/ChangedNote'
 import { CtaButton } from '../../shared/CtaButton'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
@@ -243,6 +245,48 @@ export default function InstallningarPage() {
     }
   }, [locationId])
 
+  // Levande: ändrar en kollega eller en annan enhet platsen syns det av sig
+  // självt. Fält du inte rört följer med; fält du ändrat står kvar och får en
+  // rad med det andra värdet.
+  const [drift, setDrift] = useState<Partial<LocationCreateRequest>>({})
+  useLiveRefresh(async () => {
+    if (!locationId || !savedLocation) return
+    const loc = await dedupe(`location:${locationId}`, () => getLocation(locationId))
+    const next: LocationCreateRequest = {
+      name: loc.name, address: loc.address, email: loc.email ?? '', phoneNumber: loc.phoneNumber ?? '', timezone: loc.timezone,
+      businessHours: loc.businessHours, bookingDurationHours: loc.bookingDurationHours, gracePeriodHours: loc.gracePeriodHours,
+    }
+    if (sameData(next, savedLocation)) return
+    const current: LocationCreateRequest = {
+      name: profile.name, address: profile.address, email: profile.email, phoneNumber: profile.phone, timezone,
+      businessHours, bookingDurationHours, gracePeriodHours,
+    }
+    const notes: Partial<LocationCreateRequest> = {}
+    for (const k of Object.keys(next) as (keyof LocationCreateRequest)[]) {
+      if (sameData(next[k], savedLocation[k])) continue
+      if (!sameData(current[k], savedLocation[k])) {
+        if (!sameData(current[k], next[k])) (notes as Record<string, unknown>)[k] = next[k]
+        continue
+      }
+      // Orört fält: ta det nya värdet.
+      if (k === 'name' || k === 'address' || k === 'email') setProfile((p) => ({ ...p, [k]: next[k] }))
+      else if (k === 'phoneNumber') setProfile((p) => ({ ...p, phone: next.phoneNumber ?? '' }))
+      else if (k === 'timezone') setTimezone(next.timezone)
+      else if (k === 'businessHours') setBusinessHours(next.businessHours)
+      else if (k === 'bookingDurationHours') setBookingDurationHours(next.bookingDurationHours ?? DEFAULT_BOOKING_DURATION_HOURS)
+      else if (k === 'gracePeriodHours') setGracePeriodHours(clampGraceHours(next.gracePeriodHours ?? DEFAULT_GRACE_PERIOD_HOURS))
+    }
+    setSavedLocation(next)
+    setDrift((d) => ({ ...d, ...notes }))
+  }, { enabled: Boolean(locationId) && savedLocation !== null && !savingLocation })
+  /** Raden under ett fält du ändrat som också ändrats på annat håll. */
+  const driftNote = (k: 'name' | 'address' | 'email' | 'phoneNumber', mine: string, use: (v: string) => void) => {
+    const v = drift[k]
+    return typeof v === 'string' && v !== mine
+      ? <ChangedNote value={v} onUse={() => { use(v); setDrift((d) => ({ ...d, [k]: undefined })) }} />
+      : null
+  }
+
   function updateProfile(field: keyof RestaurantProfile, value: string) {
     setSaved(false)
     setProfile((prev) => ({ ...prev, [field]: value }))
@@ -288,7 +332,7 @@ export default function InstallningarPage() {
           // Platsen finns men uppgifterna kunde inte hämtas - att ramla ner
           // i skapa-grenen här var det som gav dubblettplatser förr.
           setLocationError(
-            'Platsens sparade uppgifter kunde inte hämtas - ladda om sidan och försök igen.',
+            'Platsens sparade uppgifter kunde inte hämtas än. Sidan försöker igen av sig själv; spara igen om en stund.',
           )
           return
         }
@@ -301,6 +345,7 @@ export default function InstallningarPage() {
         }
         await updateLocation(locationId, updates)
         setSavedLocation(values)
+        setDrift({})
       } else {
         // Sista koll mot servern innan något skapas: har restaurangen redan
         // en plats (t.ex. sparad från en annan enhet) ska den återanvändas,
@@ -444,10 +489,12 @@ export default function InstallningarPage() {
                   value={profile.name}
                   onChange={(e) => updateProfile('name', e.target.value)}
                 />
+                {driftNote('name', profile.name, (v) => updateProfile('name', v))}
               </div>
               <div className="form-field">
                 <label htmlFor="rp-phone">Telefon</label>
                 <PhoneInput id="rp-phone" value={profile.phone} onChange={(v) => updateProfile('phone', v)} />
+                {driftNote('phoneNumber', profile.phone, (v) => updateProfile('phone', v))}
               </div>
               <div className="form-field">
                 <label htmlFor="rp-address">Adress</label>
@@ -456,6 +503,7 @@ export default function InstallningarPage() {
                   value={profile.address}
                   onChange={(e) => updateProfile('address', e.target.value)}
                 />
+                {driftNote('address', profile.address, (v) => updateProfile('address', v))}
               </div>
               <div className="form-field">
                 <label htmlFor="rp-email">E-post</label>
@@ -465,6 +513,7 @@ export default function InstallningarPage() {
                   value={profile.email}
                   onChange={(e) => updateProfile('email', e.target.value)}
                 />
+                {driftNote('email', profile.email, (v) => updateProfile('email', v))}
               </div>
               <div className="form-field">
                 <span className="form-field-label-row">
@@ -492,6 +541,12 @@ export default function InstallningarPage() {
             </div>
             <div style={{ height: 20 }} />
             <p className="form-section-label">Öppettider</p>
+            {drift.businessHours && !sameData(drift.businessHours, businessHours) ? (
+              <ChangedNote onUse={() => {
+                setBusinessHours(drift.businessHours as BusinessHours)
+                setDrift((d) => ({ ...d, businessHours: undefined }))
+              }} />
+            ) : null}
             <div style={{ height: 8 }} />
             <BusinessHoursEditor
               value={businessHours}

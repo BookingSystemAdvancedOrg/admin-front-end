@@ -147,9 +147,10 @@ async function fetchWithRetry(method: string, send: () => Promise<Response>): Pr
  *   })
  */
 /**
- * Skickas på window efter varje lyckad skrivning (detail.path), så att sidor
- * som visar summor (Statistik, Översikt) räknar om direkt efter en ny
- * bokning eller beställning, utan att någon laddar om sidan.
+ * Skickas på window efter varje lyckad skrivning (detail.path), och efter en
+ * skrivning som fick 409 (detail.conflict), så att sidorna hämtar det
+ * senaste direkt (shared/live.ts) och summor (Statistik, Översikt) räknar
+ * om, utan att någon laddar om sidan.
  */
 export const DATA_CHANGED_EVENT = 'booqy:data-changed'
 
@@ -196,7 +197,12 @@ export async function apiFetch<T>(
     if (writing) busyEnd(ok)
   }
   if (!res.ok) {
-    throw await toApiError(res)
+    const err = await toApiError(res)
+    // Någon annan sparade emellan: sidorna hämtar det senaste direkt (shared/live.ts).
+    if (writing && res.status === 409 && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT, { detail: { path, conflict: true } }))
+    }
+    throw err
   }
   if (writing && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT, { detail: { path } }))
   if (res.status === 204) {

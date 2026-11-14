@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { Bar, Button, Card, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
@@ -20,6 +21,7 @@ export default function CallDetail({ locationId, callId, owner, onBack }: { loca
   }, [locationId, callId])
 
   useEffect(() => { void load() }, [load])
+  useLiveRefresh(async () => setCall(await getCall(locationId, callId)))
 
   async function removeRecording() {
     setBusy(true)

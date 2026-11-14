@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Bar, Button, Card, Field, Input, Select, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
+import { ChangedNote } from '../../shared/ChangedNote'
+import { isConflict, mergeEdits, type FieldConflict } from '../../shared/merge'
 import { ERRORS, VAT_OPTIONS, createEvent, newId, updateEvent, type EventDetail, type NewEvent, type VatRate } from './api'
 
 interface TypeRow { typeId: string; name: string; priceKr: string; vatRate: VatRate; perOrderMax: string; capacity: string; includes: string }
@@ -26,9 +28,29 @@ export function occurrenceWindow(date: string, start: string, end: string): { st
  * och tillfällen skapas här; efter publicering ändras tillfällena ett och ett.
  * Momssatsen per biljettyp väljs ur en lista som revisorn ska godkänna.
  */
-export default function EventEditor({ locationId, existing, onSaved, onCancel }: {
-  locationId: string; existing?: EventDetail; onSaved: (e: EventDetail) => void; onCancel: () => void
+/** Fälten som ändras på ett befintligt evenemang (för att lägga ihop med en ändring på annat håll). */
+interface EventForm { title: string; description: string; perOrderMax: string; transferAllowed: boolean; resaleAllowed: boolean; refundPolicy: string }
+
+function eventForm(e: EventDetail): EventForm {
+  return {
+    title: e.title, description: e.description ?? '', perOrderMax: String(e.settings.perOrderMax ?? 10),
+    transferAllowed: e.settings.transferAllowed ?? true, resaleAllowed: e.settings.resaleAllowed ?? false, refundPolicy: e.settings.refundPolicy ?? '',
+  }
+}
+
+export default function EventEditor({ locationId, existing, fetchLatest, onSaved, onCancel }: {
+  locationId: string
+  /** Evenemanget som det såg ut när ändringen började. */
+  existing?: EventDetail
+  /** Det senaste sparade (efter 409 changed_retry): dina fält läggs ovanpå och sparas igen. */
+  fetchLatest?: () => Promise<EventDetail>
+  onSaved: (e: EventDetail) => void
+  onCancel: () => void
 }) {
+  // Evenemanget som dina ändringar utgår från (byts mot det senaste efter en krock).
+  const [base, setBase] = useState(existing)
+  const [clashes, setClashes] = useState<FieldConflict[]>([])
+  const clash = (field: keyof EventForm) => clashes.find((c) => c.field === field)
   const [title, setTitle] = useState(existing?.title ?? '')
   const [description, setDescription] = useState(existing?.description ?? '')
   const [date, setDate] = useState('')
@@ -56,11 +78,36 @@ export default function EventEditor({ locationId, existing, onSaved, onCancel }:
     const settings = { perOrderMax: Number(perOrderMax), transferAllowed, resaleAllowed, refundPolicy: refundPolicy.trim() || undefined }
     setBusy(true)
     try {
-      if (existing) {
-        onSaved(await updateEvent(locationId, existing.eventId, {
-          title: title.trim(), description, settings, version: existing.version,
-          ...(existing.status === 'draft' && repeat && until ? { series: { freq: repeat, until } } : {}),
-        }))
+      if (existing && base) {
+        const mine: EventForm = { title, description, perOrderMax, transferAllowed, resaleAllowed, refundPolicy }
+        const send = (v: EventForm, on: EventDetail) => updateEvent(locationId, existing.eventId, {
+          title: v.title.trim(), description: v.description, version: on.version,
+          settings: { perOrderMax: Number(v.perOrderMax), transferAllowed: v.transferAllowed, resaleAllowed: v.resaleAllowed, refundPolicy: v.refundPolicy.trim() || undefined },
+          ...(on.status === 'draft' && repeat && until ? { series: { freq: repeat, until } } : {}),
+        })
+        setClashes([])
+        try {
+          onSaved(await send(mine, base))
+        } catch (err) {
+          if (!isConflict(err) || !fetchLatest) throw err
+          // Någon annan sparade emellan: dina ändrade fält ovanpå det senaste, en gång till.
+          const latest = await fetchLatest()
+          const { merged, conflicts } = mergeEdits(eventForm(base), mine, eventForm(latest))
+          if (conflicts.length) {
+            // Fält du inte rört tar det senaste; dina står kvar och nästa sparning går mot den nya versionen.
+            setTitle(merged.title)
+            setDescription(merged.description)
+            setPerOrderMax(merged.perOrderMax)
+            setTransferAllowed(merged.transferAllowed)
+            setResaleAllowed(merged.resaleAllowed)
+            setRefundPolicy(merged.refundPolicy)
+            setBase(latest)
+            setClashes(conflicts)
+            setError('Samma fält ändrades nyss på en annan plats. Välj vilket värde som ska gälla och spara igen.')
+            return
+          }
+          onSaved(await send(merged, latest))
+        }
       } else {
         if (!date) {
           setError('Välj ett datum.')
@@ -90,13 +137,19 @@ export default function EventEditor({ locationId, existing, onSaved, onCancel }:
   return (
     <Card title={existing ? 'Ändra evenemanget' : 'Nytt evenemang'}>
       <form className="evenemang-form" onSubmit={(e) => { void save(e) }}>
-        <Field label="Namn" required>
+        <Field label="Namn" required hint={clash('title') && title !== clash('title')?.theirs
+          ? <ChangedNote as="span" value={String(clash('title')?.theirs)} onUse={() => setTitle(String(clash('title')?.theirs))} />
+          : undefined}>
           <Input value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} required />
         </Field>
-        <Field label="Beskrivning" hint="Visas på er webbplats. Gör ni reklam för alkohol är det ert ansvar att följa alkohollagen.">
+
+        <Field label="Beskrivning" hint={clash('description') && description !== clash('description')?.theirs
+          ? <ChangedNote as="span" value={String(clash('description')?.theirs)} onUse={() => setDescription(String(clash('description')?.theirs))} />
+          : 'Visas på er webbplats. Gör ni reklam för alkohol är det ert ansvar att följa alkohollagen.'}>
           <textarea className="evenemang-text" value={description} maxLength={4000} rows={4}
             onChange={(e) => setDescription(e.target.value)} />
         </Field>
+
         {!existing ? (
           <>
             <div className="evenemang-row">

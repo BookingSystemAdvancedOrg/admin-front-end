@@ -426,11 +426,12 @@ function toFriendlyLayoutError(err: unknown): Error {
     case 403:
       return new ApiError(403, 'Du har inte behörighet att ändra layouten.')
     case 404:
-      return new ApiError(404, 'Elementet finns inte längre - ladda om sidan.')
+      return new ApiError(404, 'Elementet har tagits bort på en annan plats. Spara igen, så läggs dina ändringar ovanpå det som finns nu.')
     case 409:
       return new ApiError(
         409,
-        'Layouten ändrades samtidigt av någon annan. Ladda om och försök igen.',
+        'Layouten ändrades samtidigt av någon annan. Spara igen, så läggs dina ändringar ovanpå det senaste.',
+        { code: err.code },
       )
     case 503:
       return new ApiError(
@@ -640,7 +641,7 @@ export async function cancelPendingLayoutActivation(
     if (err instanceof ApiError && err.status === 409) {
       throw new ApiError(
         409,
-        'Bytet hann redan genomföras eller ändrades samtidigt. Ladda om listan.',
+        'Bytet hann redan genomföras eller ändrades samtidigt. Listan visar nu läget.',
       )
     }
     throw toFriendlyLayoutError(err)
@@ -755,20 +756,44 @@ class FloorsUnsupportedError extends Error {
 }
 
 /**
+ * Dina ändringar (`desired` mot `base`, layouten som den lästes in) lagda
+ * ovanpå serverns lista nu (`stored`). Det någon annan lagt till, ändrat
+ * eller tagit bort under tiden står kvar; bara det du själv ändrat skrivs.
+ * Ett element du ändrat som tagits bort på annat håll skapas igen.
+ */
+export function diffOnto(
+  desired: Map<string, LayoutElementCreate>,
+  base: LayoutElement[],
+  stored: LayoutElement[],
+): LayoutDiff {
+  const mine = diffLayout(desired, base)
+  const onServer = new Set(stored.map((e) => e.elementId))
+  const recreate = mine.updated.filter(([id]) => !onServer.has(id)).map(([id]) => [id, desired.get(id) as LayoutElementCreate] as [string, LayoutElementCreate])
+  return {
+    created: [...mine.created, ...recreate],
+    updated: mine.updated.filter(([id]) => onServer.has(id)),
+    deleted: mine.deleted.filter((id) => onServer.has(id)),
+  }
+}
+
+/**
  * Sparar hela layouten med våningar. Skulle servern avvisa `floor`-typen
  * (äldre backend) görs om sparningen i det gamla platta läget, så att
- * åtminstone första våningen alltid går att spara.
+ * åtminstone första våningen alltid går att spara. Med `base` (layouten som
+ * den lästes in) skrivs bara det du ändrat, ovanpå det som sparats på annat
+ * håll under tiden (diffOnto); utan den blir servern exakt som editorn.
  */
 export async function saveLayout(
   locationId: string,
   floors: Floor[],
+  base?: LayoutElement[],
 ): Promise<LayoutSaveResult> {
   try {
-    return await saveElements(locationId, toApiLayout(floors), false)
+    return await saveElements(locationId, toApiLayout(floors), false, base)
   } catch (err) {
     if (!(err instanceof FloorsUnsupportedError)) throw err
     console.warn(`[Layout] Servern saknar våningsstöd - sparar platt: ${err.message}`)
-    return saveElements(locationId, toApiElements(floors[0]), true)
+    return saveElements(locationId, toApiElements(floors[0]), true, base)
   }
 }
 
@@ -786,9 +811,10 @@ async function saveElements(
   locationId: string,
   desired: Map<string, LayoutElementCreate>,
   flat: boolean,
+  base?: LayoutElement[],
 ): Promise<LayoutSaveResult> {
   const stored = await listLayoutElements(locationId)
-  const diff = diffLayout(desired, stored)
+  const diff = base ? diffOnto(desired, base, stored) : diffLayout(desired, stored)
 
   for (const elementId of diff.deleted) {
     await deleteLayoutElement(locationId, elementId)

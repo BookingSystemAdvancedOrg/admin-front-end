@@ -96,7 +96,7 @@ export type MenuItemUpdate = Partial<MenuItemCreate>
 
 /** 409 när någon annan sparat rätten efter att den laddades. */
 export const STALE_DISH_MESSAGE =
-  'Någon annan har ändrat rätten medan du redigerade. Ladda om för att se den senaste versionen.'
+  'Någon annan har ändrat rätten medan du redigerade. Det senaste visas nu; spara igen om din ändring fortfarande behövs.'
 
 export function isStaleDish(err: unknown): boolean {
   return err instanceof ApiError && err.status === 409 && err.code === 'stale_item'
@@ -157,6 +157,16 @@ export function publicToDish(item: PublicMenuItem): Dish {
  * minst ett fält, så en tom diff ska aldrig skickas - anroparen kan skilja
  * "inget ändrat" från ett riktigt anrop. imageKey null tar bort bilden.
  */
+/** Rätten som ett fullt sparobjekt (för att jämföra två versioner med dishChanges). */
+export function dishAsCreate(d: Dish): MenuItemCreate {
+  return {
+    name: d.name, description: d.description, price: d.price, category: d.category, imageKey: d.imageKey ?? null,
+    active: d.active, alcohol: d.alcohol, availableFrom: d.availableFrom ?? null, availableUntil: d.availableUntil ?? null,
+    station: d.station ?? null, components: d.components ?? [], allergens: d.allergens ?? [], options: d.options ?? [],
+    ...(d.imageFocus ? { imageFocus: d.imageFocus } : {}),
+  }
+}
+
 export function dishChanges(original: Dish, next: MenuItemCreate): MenuItemUpdate {
   const updates: MenuItemUpdate = {}
   if (next.name !== original.name) updates.name = next.name
@@ -286,18 +296,18 @@ function toFriendlyMenuError(err: unknown): Error {
     case 404:
       return err.message === 'Not Found'
         ? new ApiError(404, MENU_ROUTES_MISSING_MESSAGE)
-        : new ApiError(404, 'Rätten finns inte längre - ladda om sidan.')
+        : new ApiError(404, 'Rätten finns inte längre; den har tagits bort på en annan plats.')
     case 409:
       if (err.code === 'stale_item') return new ApiError(409, STALE_DISH_MESSAGE, { code: 'stale_item' })
       if (err.code === 'category_in_use') {
         return new ApiError(409, 'Kategorin har rätter. Flytta rätterna till en annan kategori först.', { code: err.code })
       }
       if (err.code === 'stale_categories') {
-        return new ApiError(409, 'Någon annan har ändrat kategorierna medan du redigerade. Ladda om för att se den senaste versionen.', { code: err.code })
+        return new ApiError(409, 'Någon annan har ändrat kategorierna medan du redigerade. Det senaste visas nu; spara igen om din ändring fortfarande behövs.', { code: err.code })
       }
       return new ApiError(
         409,
-        'Menyn ändrades samtidigt av någon annan. Ladda om och försök igen.',
+        'Menyn ändrades samtidigt av någon annan. Det senaste visas nu; försök igen.',
         { code: 'stale_item' },
       )
     case 503:

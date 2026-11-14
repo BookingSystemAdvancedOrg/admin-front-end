@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { RowActions } from '../../shared/RowActions'
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
@@ -40,7 +41,7 @@ export function SubscribersTab() {
   const [view, setView] = useState<View>({ filter: 'subscribed', email: null })
   const [query, setQuery] = useState('')
   // Listan hör till en vy; en annan vy visar laddning direkt.
-  const [list, setList] = useState<{ view: View; rows: Subscriber[]; cursor: string | null } | null>(null)
+  const [list, setList] = useState<{ view: View; rows: Subscriber[]; cursor: string | null; more?: boolean } | null>(null)
   const [reload, setReload] = useState(0)
   const rows = list?.view === view ? list.rows : null
   const cursor = list?.view === view ? list.cursor : null
@@ -63,6 +64,11 @@ export function SubscribersTab() {
       cancelled = true
     }
   }, [view, reload])
+  // Levande för första sidan (inte efter "Visa fler"): nya mottagare syns av sig själva.
+  useLiveRefresh(async () => {
+    const p = await (view.email ? findSubscriber(view.email) : listSubscribers(view.filter))
+    setList((cur) => (cur && cur.view === view && !cur.more ? { view, rows: p.subscribers, cursor: p.cursor } : cur))
+  }, { enabled: list !== null })
 
   const closeConfirm = useCallback(() => !erasing && setConfirmErase(null), [erasing])
   const closeHistory = useCallback(() => setHistory(null), [])
@@ -97,7 +103,7 @@ export function SubscribersTab() {
     setLoadingMore(true)
     try {
       const page = await listSubscribers(view.filter, cursor)
-      setList((l) => ({ view, rows: [...(l?.rows ?? []), ...page.subscribers], cursor: page.cursor }))
+      setList((l) => ({ view, rows: [...(l?.rows ?? []), ...page.subscribers], cursor: page.cursor, more: true }))
     } catch (err) {
       setError(errorText(err, 'Kunde inte hämta fler.'))
     } finally {

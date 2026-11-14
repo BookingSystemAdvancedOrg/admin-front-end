@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { errorText } from '../../shared/errors'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { StatTile } from '../../shared/motion/StatTile'
@@ -115,6 +116,7 @@ export default function BestallningarPage() {
       setLoadError(false)
     } catch {
       setLoadError(true)
+      return false
     }
     // Skrivarens läge är en bonus: om det inte går att hämta visas ingen skrivarrad.
     getPrintStatus(locationId).then(setPrint).catch(() => setPrint(null))
@@ -123,9 +125,9 @@ export default function BestallningarPage() {
   useEffect(() => {
     if (!locationId) return
     void refresh()
-    const timer = window.setInterval(() => void refresh(), POLL_MS)
-    return () => window.clearInterval(timer)
   }, [locationId, refresh])
+  // Levande: var tionde sekund medan fliken syns, direkt vid fokus och efter egna ändringar.
+  useLiveRefresh(refresh, { enabled: Boolean(locationId), everyMs: POLL_MS })
 
   // Förra veckans dag hämtas en gång per dag, inte var tionde sekund.
   useEffect(() => {

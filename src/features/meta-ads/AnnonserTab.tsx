@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Bar, Button, Card, Field, Input, Select, toast } from '@booqy/brand'
@@ -39,6 +40,7 @@ export default function AnnonserTab() {
       setError(errorText(err, 'Kunde inte hämta annonserna.', ERRORS))
     }
   }, [])
+  useLiveRefresh(async () => setConnection(await getConnection()))
 
   // Meta skickar tillbaka hit med ?code=&state= efter inloggningen.
   const started = useRef(false)
@@ -218,6 +220,7 @@ function Campaigns({ locationId, blocked }: { locationId: string; blocked: boole
   }, [locationId])
 
   useEffect(() => { void load() }, [load])
+  useLiveRefresh(async () => setCampaigns((await listCampaigns(locationId)).campaigns))
 
   // Medan en annons skapas hos Meta: fråga igen tills den är klar.
   useEffect(() => {

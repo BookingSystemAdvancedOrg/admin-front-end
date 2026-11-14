@@ -24,14 +24,14 @@ const COMMON: Record<string, string> = {
   feature_not_in_plan: 'Funktionen ingår inte i ert abonnemang. Kontakta Booqy om ni vill lägga till den.',
   plan_limit_reached: 'Ni har nått gränsen i ert abonnemang. Kontakta Booqy för att utöka det.',
   dpa_version_outdated: 'Biträdesavtalet har uppdaterats. Godkänn det nya avtalet under Avtal först.',
-  changed_retry: 'Någon annan ändrade samtidigt. Ladda om sidan och gör ändringen igen.',
-  conflict: 'Någon annan ändrade samtidigt. Ladda om sidan och gör ändringen igen.',
+  changed_retry: 'Någon annan ändrade samtidigt. Det senaste visas nu; gör ändringen igen om den fortfarande behövs.',
+  conflict: 'Någon annan ändrade samtidigt. Det senaste visas nu; gör ändringen igen om den fortfarande behövs.',
   too_many_requests: 'För många försök på kort tid. Vänta en minut och försök igen.',
   too_many_attempts: 'För många försök på kort tid. Vänta en minut och försök igen.',
   too_large: 'Det du skickade är för stort. Gör det mindre och försök igen.',
-  invalid_json: 'Uppgifterna kunde inte läsas. Ladda om sidan och försök igen.',
-  unsupported_fields: 'Sidan är inaktuell. Ladda om den och försök igen.',
-  method_not_allowed: 'Sidan är inaktuell. Ladda om den och försök igen.',
+  invalid_json: 'Uppgifterna kunde inte läsas. Försök igen om en stund.',
+  unsupported_fields: 'Den här versionen av appen är för gammal för ändringen. Byt till den nya versionen när rutan om den visas och försök igen.',
+  method_not_allowed: 'Den här versionen av appen är för gammal för ändringen. Byt till den nya versionen när rutan om den visas och försök igen.',
   stripe_unavailable: 'Stripe svarar inte just nu. Försök igen om en stund.',
   stripe_refused: 'Stripe avvisade begäran. Kontrollera betalinställningarna och försök igen.',
   payment_unavailable: 'Betaltjänsten svarar inte just nu. Försök igen om en stund.',
@@ -45,10 +45,10 @@ function statusReason(status: number, code: string): string {
   if (code.endsWith('_unavailable') || code.endsWith('service_unavailable')) return 'Tjänsten är tillfälligt otillgänglig. Försök igen om en stund.'
   if (code === 'required') return 'Ett obligatoriskt fält saknas. Fyll i det markerade och försök igen.'
   if (code === 'invalid_value' || code === 'invalid_request') return 'Något av fälten har ett värde som inte godtas. Kontrollera uppgifterna och försök igen.'
-  if (status === 404 || code.endsWith('not_found')) return 'Det finns inte längre. Ladda om sidan.'
-  if (status === 409) return 'Läget har ändrats sedan sidan laddades. Ladda om och försök igen.'
+  if (status === 404 || code.endsWith('not_found')) return 'Det har tagits bort på annat håll. Sidan visar nu det som finns kvar.'
+  if (status === 409) return 'Läget ändrades på annat håll. Det senaste visas nu; försök igen.'
   if (status === 402) return 'Betalningen gick inte igenom. Försök igen eller använd ett annat kort.'
-  if (status >= 500) return 'Servern svarar inte just nu. Försök igen om en stund; efter en ändring, ladda om först och se om den gick igenom.'
+  if (status >= 500) return 'Servern svarar inte just nu. Försök igen om en stund; sidan visar själv om ändringen hann gå igenom.'
   return 'Kontrollera uppgifterna och försök igen.'
 }
 

@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { Bar, Button, Card, Field, Input, Modal, StatTile, toast } from '@booqy/brand'
 import { AdminTopbar } from '../../shared/AdminTopbar'
@@ -60,6 +61,8 @@ function GiftCards() {
   }, [])
 
   useEffect(() => { void load() }, [load])
+  // Levande: kort som säljs eller löses in på en annan plats syns av sig själva.
+  useLiveRefresh(async () => setListing(await listCards()))
 
   const cards = (listing?.cards ?? []).filter((c) => !search.trim() || c.last4.endsWith(search.trim().toUpperCase()))
   return (
@@ -115,6 +118,7 @@ function CardModal({ cardId, onClose, onChanged }: { cardId: string; onClose: ()
   }, [cardId])
 
   useEffect(() => { void load() }, [load])
+  useLiveRefresh(async () => setCard(await getCard(cardId)))
 
   async function run(name: string, fn: () => Promise<unknown>, ok: string) {
     setBusy(name)

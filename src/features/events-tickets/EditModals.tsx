@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Bar, Button, Field, Input, Modal, Select, toast } from '@booqy/brand'
 import { errorCode, errorText } from '../../shared/errors'
+import { ChangedNote } from '../../shared/ChangedNote'
+import { isConflict, mergeEdits } from '../../shared/merge'
 import {
   ERRORS, VAT_OPTIONS, kr, updateOccurrence, updateTicketType, when,
   type Occurrence, type TicketType, type TicketTypeEdit, type VatRate,
@@ -21,10 +23,33 @@ const SERVER_FIELD: Record<string, keyof TypeForm> = {
  * som redan är sålt eller reserverat; servern kontrollerar det i samma
  * skrivning som ändrar antalet, så en försäljning under tiden aldrig översäljs.
  */
-export function TypeEditModal({ locationId, eventId, type, onClose, onSaved }: {
-  locationId: string; eventId: string; type: TicketType; onClose: () => void; onSaved: (t: TicketType) => void
+export function TypeEditModal({ locationId, eventId, type: opened, latest = null, fetchLatest, onClose, onSaved }: {
+  locationId: string; eventId: string
+  /** Biljettypen när dialogen öppnades. */
+  type: TicketType
+  /** Biljettypen som den ser ut nu (sidan hämtas levande); skiljer den sig visas det andra värdet under fältet. */
+  latest?: TicketType | null
+  /** Den senaste sparade (efter 409 changed_retry). */
+  fetchLatest?: () => Promise<TicketType | null>
+  onClose: () => void; onSaved: (t: TicketType) => void
 }) {
-  const [form, setForm] = useState<TypeForm>(() => typeForm(type))
+  // Biljettypen dina ändringar utgår från (byts mot den senaste efter en krock).
+  const [type, setType] = useState(opened)
+  const [form, setForm] = useState<TypeForm>(() => typeForm(opened))
+  // Ändrat på annat håll: deras värde per fält, när det skiljer sig från både utgångsläget och ditt.
+  const there = latest ? typeForm(latest) : null
+  const baseForm = typeForm(type)
+  // Fält som ändrats på båda håll vid sparningen: deras värde (står kvar tills du valt).
+  const [clashes, setClashes] = useState<Partial<Record<keyof TypeForm, string>>>({})
+  const changedThere = (f: keyof TypeForm): string | null => {
+    const clash = clashes[f]
+    if (clash !== undefined) return clash !== String(form[f]) ? clash : null
+    return there && there[f] !== baseForm[f] && there[f] !== form[f] ? String(there[f]) : null
+  }
+  const note = (f: keyof TypeForm, show: (v: string) => string = (v) => v) => {
+    const v = changedThere(f)
+    return v === null ? null : <ChangedNote as="span" value={show(v)} onUse={() => set({ [f]: f === 'vatRate' ? Number(v) : v } as Partial<TypeForm>)} />
+  }
   const [errors, setErrors] = useState<Partial<Record<keyof TypeForm, string>>>({})
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -58,21 +83,40 @@ export function TypeEditModal({ locationId, eventId, type, onClose, onSaved }: {
       focusFirst(found)
       return
     }
-    const tier = {
-      ...(form.from ? { availableFrom: toUtc(form.from) } : {}),
-      ...(form.until ? { availableUntil: toUtc(form.until) } : {}),
-      ...(type.tier?.untilSold ? { untilSold: type.tier.untilSold } : {}),
-    }
-    const body: TicketTypeEdit = {
-      name: form.name.trim(), priceOre: price ?? type.priceOre, vatRate: form.vatRate, perOrderMax: Number(form.perOrderMax),
-      sortOrder: type.sortOrder, version: type.version,
-      ...(form.capacity.trim() ? { capacity: Number(form.capacity) } : {}),
-      ...(form.includes.trim() ? { includes: form.includes.trim() } : {}),
-      ...(Object.keys(tier).length ? { tier } : {}),
+    const bodyOf = (f: TypeForm, on: TicketType): TicketTypeEdit => {
+      const tier = {
+        ...(f.from ? { availableFrom: toUtc(f.from) } : {}),
+        ...(f.until ? { availableUntil: toUtc(f.until) } : {}),
+        ...(on.tier?.untilSold ? { untilSold: on.tier.untilSold } : {}),
+      }
+      return {
+        name: f.name.trim(), priceOre: priceOre(f.priceKr) ?? on.priceOre, vatRate: f.vatRate, perOrderMax: Number(f.perOrderMax),
+        sortOrder: on.sortOrder, version: on.version,
+        ...(f.capacity.trim() ? { capacity: Number(f.capacity) } : {}),
+        ...(f.includes.trim() ? { includes: f.includes.trim() } : {}),
+        ...(Object.keys(tier).length ? { tier } : {}),
+      }
     }
     setBusy(true)
     try {
-      onSaved(await updateTicketType(locationId, eventId, type.typeId, body))
+      let saved: TicketType
+      try {
+        saved = await updateTicketType(locationId, eventId, type.typeId, bodyOf(form, type))
+      } catch (err) {
+        const fresh = isConflict(err) && fetchLatest ? await fetchLatest() : null
+        if (!fresh) throw err
+        // Någon annan sparade biljettypen emellan: dina ändrade fält ovanpå den senaste, en gång till.
+        const { merged, conflicts } = mergeEdits(typeForm(type), form, typeForm(fresh))
+        if (conflicts.length) {
+          setType(fresh)
+          setForm(merged)
+          setClashes(Object.fromEntries(conflicts.map((c) => [c.field, String(c.theirs)])))
+          setError('Samma fält ändrades nyss på en annan plats. Välj vilket värde som ska gälla och spara igen.')
+          return
+        }
+        saved = await updateTicketType(locationId, eventId, type.typeId, bodyOf(merged, fresh))
+      }
+      onSaved(saved)
       toast(vatChanged ? 'Biljettypen är sparad. Momsändringen är markerad för revisorn.' : 'Biljettypen är sparad.', { tone: 'success' })
     } catch (err) {
       const field = (err as { field?: string }).field
@@ -80,7 +124,7 @@ export function TypeEditModal({ locationId, eventId, type, onClose, onSaved }: {
       const local = errorCode(err) === 'invalid_capacity' ? 'capacity' : field ? SERVER_FIELD[field.split('.')[0]] : undefined
       const text = errorText(err, 'Kunde inte spara biljettypen.', {
         ...ERRORS,
-        invalid_capacity: 'Fler biljetter såldes medan du ändrade. Stäng, ladda om och välj ett större antal.',
+        invalid_capacity: 'Fler biljetter hann säljas medan du ändrade. Välj ett större antal.',
         invalid_state: 'Evenemanget är inställt eller har redan passerat, så biljettypen kan inte ändras.',
       })
       if (local && errorCode(err) !== 'changed_retry') {
@@ -109,14 +153,14 @@ export function TypeEditModal({ locationId, eventId, type, onClose, onSaved }: {
           </p>
         ) : null}
         <div className="evenemang-row">
-          <Field label="Namn" required error={errors.name}>
+          <Field label="Namn" required error={errors.name} hint={note('name')}>
             <Input id={id('name')} value={form.name} maxLength={80} onChange={(e) => set({ name: e.target.value })} required />
           </Field>
           <Field label="Pris (kr inkl. moms)" required error={errors.priceKr}
-            hint={priceChanged && sold ? `Nya priset gäller bara nya köp. Sålda biljetter kostade ${kr(type.priceOre)}.` : undefined}>
+            hint={note('priceKr', (v) => `${v} kr`) ?? (priceChanged && sold ? `Nya priset gäller bara nya köp. Sålda biljetter kostade ${kr(type.priceOre)}.` : undefined)}>
             <Input id={id('priceKr')} inputMode="decimal" value={form.priceKr} onChange={(e) => set({ priceKr: e.target.value })} required />
           </Field>
-          <Field label="Moms" error={errors.vatRate} hint="Revisorn ska godkänna momssatsen.">
+          <Field label="Moms" error={errors.vatRate} hint={note('vatRate', (v) => `${v} %`) ?? 'Revisorn ska godkänna momssatsen.'}>
             <Select id={id('vatRate')} value={String(form.vatRate)} onChange={(e) => set({ vatRate: Number(e.target.value) as VatRate })}>
               {VAT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </Select>
@@ -129,16 +173,16 @@ export function TypeEditModal({ locationId, eventId, type, onClose, onSaved }: {
               + ' Ändringen sparas och markeras för granskning av revisorn.'}
           </Bar>
         ) : null}
-        <Field label="Beskrivning" error={errors.includes} hint="Visas för gästen, till exempel vad som ingår.">
+        <Field label="Beskrivning" error={errors.includes} hint={note('includes') ?? 'Visas för gästen, till exempel vad som ingår.'}>
           <Input id={id('includes')} value={form.includes} maxLength={300} onChange={(e) => set({ includes: e.target.value })} />
         </Field>
         <div className="evenemang-row">
           <Field label="Antal av typen" error={errors.capacity}
-            hint={sold ? `Minst ${Math.max(1, takenOf(type))}. Tomt = så många som platserna räcker till.` : 'Tomt = så många som platserna räcker till.'}>
+            hint={note('capacity', (v) => v || 'så många som platserna räcker till') ?? (sold ? `Minst ${Math.max(1, takenOf(type))}. Tomt = så många som platserna räcker till.` : 'Tomt = så många som platserna räcker till.')}>
             <Input id={id('capacity')} type="number" inputMode="numeric" min={Math.max(1, takenOf(type))} max={MAX_PLACES}
               value={form.capacity} onChange={(e) => set({ capacity: e.target.value })} />
           </Field>
-          <Field label="Max per köp" error={errors.perOrderMax}>
+          <Field label="Max per köp" error={errors.perOrderMax} hint={note('perOrderMax')}>
             <Input id={id('perOrderMax')} type="number" inputMode="numeric" min={1} max={20} value={form.perOrderMax}
               onChange={(e) => set({ perOrderMax: e.target.value })} />
           </Field>
@@ -162,10 +206,22 @@ export function TypeEditModal({ locationId, eventId, type, onClose, onSaved }: {
  * reserverade; sänks det till exakt det blir tillfället slutsålt, höjs det
  * öppnar försäljningen igen.
  */
-export function CapacityModal({ locationId, eventId, occurrence, onClose, onSaved }: {
-  locationId: string; eventId: string; occurrence: Occurrence; onClose: () => void; onSaved: (o: Occurrence) => void
+export function CapacityModal({ locationId, eventId, occurrence: opened, latest = null, fetchLatest, onClose, onSaved }: {
+  locationId: string; eventId: string
+  /** Tillfället när dialogen öppnades. */
+  occurrence: Occurrence
+  /** Tillfället som det ser ut nu (sidan hämtas levande). */
+  latest?: Occurrence | null
+  /** Det senaste sparade (efter 409 changed_retry eller fler sålda). */
+  fetchLatest?: () => Promise<Occurrence | null>
+  onClose: () => void; onSaved: (o: Occurrence) => void
 }) {
-  const [capacity, setCapacity] = useState(String(occurrence.capacity))
+  // Tillfället ändringen utgår från: sålda och reserverade följer med när sidan hämtas om.
+  const [base, setBase] = useState(opened)
+  const occurrence = latest ? { ...latest, capacity: base.capacity, version: base.version } : base
+  const [capacity, setCapacity] = useState(String(opened.capacity))
+  const [clash, setClash] = useState<number | null>(null)
+  const there = clash ?? (latest && latest.capacity !== base.capacity ? latest.capacity : null)
   const [fieldError, setFieldError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -183,12 +239,27 @@ export function CapacityModal({ locationId, eventId, occurrence, onClose, onSave
     }
     setBusy(true)
     try {
-      onSaved(await updateOccurrence(locationId, eventId, occurrence.occurrenceId, { capacity: Number(capacity), version: occurrence.version }))
+      let saved: Occurrence
+      try {
+        saved = await updateOccurrence(locationId, eventId, occurrence.occurrenceId, { capacity: Number(capacity), version: base.version })
+      } catch (err) {
+        const fresh = isConflict(err) && fetchLatest ? await fetchLatest() : null
+        if (!fresh) throw err
+        setBase(fresh)
+        // Antalet ändrades också på annat håll, till något annat: visa deras och låt dig välja.
+        if (fresh.capacity !== base.capacity && fresh.capacity !== Number(capacity)) {
+          setClash(fresh.capacity)
+          setError('Antalet platser ändrades nyss på en annan plats. Välj vilket antal som ska gälla och spara igen.')
+          return
+        }
+        saved = await updateOccurrence(locationId, eventId, occurrence.occurrenceId, { capacity: Number(capacity), version: fresh.version })
+      }
+      onSaved(saved)
       toast('Antalet platser är ändrat.', { tone: 'success' })
     } catch (err) {
       const text = errorText(err, 'Kunde inte ändra antalet platser.', {
         ...ERRORS,
-        invalid_capacity: 'Fler platser såldes medan du ändrade. Stäng, ladda om och välj ett större antal.',
+        invalid_capacity: 'Fler platser hann säljas medan du ändrade. Välj ett större antal.',
         invalid_state: 'Tillfället är inställt eller har redan passerat och kan inte ändras.',
       })
       if (errorCode(err) === 'invalid_capacity') {
@@ -213,7 +284,9 @@ export function CapacityModal({ locationId, eventId, occurrence, onClose, onSave
       <form id={`${inputId}-form`} className="evenemang-form" noValidate onSubmit={(e) => { void save(e) }}>
         <p>{when(occurrence.startAt)}: {takenText(occurrence.sold, occurrence.held)} av {occurrence.capacity} platser.</p>
         <Field label="Antal platser" required error={fieldError ?? undefined}
-          hint={`Minst ${min}. Sätter du exakt ${min} blir tillfället slutsålt.`}>
+          hint={there !== null && String(there) !== capacity
+            ? <ChangedNote as="span" value={`${there} platser`} onUse={() => { setCapacity(String(there)); setFieldError(null) }} />
+            : `Minst ${min}. Sätter du exakt ${min} blir tillfället slutsålt.`}>
           <Input id={inputId} type="number" inputMode="numeric" min={min} max={MAX_PLACES} value={capacity}
             onChange={(e) => { setCapacity(e.target.value); setFieldError(null) }} required />
         </Field>

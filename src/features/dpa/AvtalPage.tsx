@@ -26,7 +26,7 @@ function formatDate(iso: string): string {
  * nästa steg, så att ingen blir stående här med en knapp som försvann.
  */
 export default function AvtalPage() {
-  const { tenant } = useTenant()
+  const { tenant, refresh } = useTenant()
   const [checked, setChecked] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -46,9 +46,15 @@ export default function AvtalPage() {
       replaceTenant(updated)
       navigate('/', { state: { dpaAccepted: true, sitePublished: Boolean(updated.dpa?.required) } })
     } catch (err) {
+      const updatedMeanwhile = err instanceof ApiError && err.status === 409
+      if (updatedMeanwhile) {
+        // En ny version kom medan sidan var öppen: hämta den och låt ägaren läsa och kryssa igen.
+        setChecked(false)
+        void refresh()
+      }
       setError(
-        err instanceof ApiError && err.status === 409
-          ? 'Avtalet har uppdaterats sedan sidan laddades. Ladda om sidan och läs den nya versionen.'
+        updatedMeanwhile
+          ? 'Avtalet har uppdaterats sedan du öppnade sidan. Den nya versionen visas nu; läs den och godkänn igen.'
           : err instanceof ApiError && err.status === 403
             ? 'Bara restaurangens ägare kan godkänna avtalet.'
             : 'Kunde inte spara just nu. Försök igen om en stund.',

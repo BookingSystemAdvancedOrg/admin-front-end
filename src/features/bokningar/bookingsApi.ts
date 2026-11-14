@@ -313,12 +313,12 @@ const VALIDATION_TEXT: [RegExp, string][] = [
 ]
 
 /** 404 från en bokning (ändra, status, betalning): bokningen finns inte längre. */
-export const RESERVATION_NOT_FOUND = 'Bokningen hittades inte. Den kan ha tagits bort; ladda om listan.'
+export const RESERVATION_NOT_FOUND = 'Bokningen hittades inte. Den kan ha tagits bort på en annan plats; listan visar det som finns kvar.'
 
 /** 404 från platsens bokningsrutter (lediga tider, ny bokning, listan): det
  * är platsen, inte en bokning, som saknas eller inte tar emot bokningar. */
 export const LOCATION_NOT_BOOKABLE =
-  'Restaurangen tar inte emot bokningar just nu. Kontrollera att bokning ingår i abonnemanget och ladda om sidan.'
+  'Restaurangen tar inte emot bokningar just nu. Kontrollera att bokning ingår i abonnemanget; sidan hämtar listan igen av sig själv.'
 
 export function errorMessage(
   err: unknown,

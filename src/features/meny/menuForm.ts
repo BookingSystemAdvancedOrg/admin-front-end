@@ -89,3 +89,53 @@ export function categoryListError(rows: CategoryRow[]): string | null {
   return null
 }
 
+
+/**
+ * Kategorilistan sparades på annat håll medan dialogen var öppen (409
+ * stale_categories): lägg dina ändringar ovanpå den senaste listan.
+ * - Namn du bytt behålls; byttes samma kategori till ett annat namn där
+ *   också blir det en konflikt (ditt namn står kvar, deras visas under).
+ * - Kategorier du tog bort tas bort; de som togs bort där försvinner.
+ * - Nya kategorier från båda hållen kommer med (dina sist).
+ * - Flyttade du om gäller din ordning, annars deras.
+ */
+export function mergeCategoryRows(
+  base: readonly CategoryRow[],
+  mine: readonly CategoryRow[],
+  theirs: readonly CategoryRow[],
+): { rows: CategoryRow[]; conflicts: { categoryId: string; theirs: string }[] } {
+  const baseById = new Map(base.filter((r) => r.categoryId).map((r) => [r.categoryId as string, r]))
+  const theirsById = new Map(theirs.filter((r) => r.categoryId).map((r) => [r.categoryId as string, r]))
+  const mineIds = new Set(mine.filter((r) => r.categoryId).map((r) => r.categoryId as string))
+  const conflicts: { categoryId: string; theirs: string }[] = []
+
+  const named = (id: string): CategoryRow | null => {
+    const t = theirsById.get(id)
+    if (!t) return null // borttagen där
+    const b = baseById.get(id)
+    const m = mine.find((r) => r.categoryId === id)
+    if (!m || !b || m.name.trim() === b.name.trim()) return { categoryId: id, name: t.name }
+    if (t.name.trim() !== b.name.trim() && t.name.trim() !== m.name.trim()) conflicts.push({ categoryId: id, theirs: t.name })
+    return { categoryId: id, name: m.name }
+  }
+
+  const baseOrder = base.filter((r) => r.categoryId && mineIds.has(r.categoryId)).map((r) => r.categoryId)
+  const myOrder = mine.filter((r) => r.categoryId && baseById.has(r.categoryId)).map((r) => r.categoryId)
+  const reordered = baseOrder.join('|') !== myOrder.join('|')
+  const removedByMe = (id: string) => baseById.has(id) && !mineIds.has(id)
+
+  const rows: CategoryRow[] = []
+  if (reordered) {
+    for (const r of mine) if (r.categoryId) { const row = named(r.categoryId); if (row) rows.push(row) }
+    for (const t of theirs) if (t.categoryId && !baseById.has(t.categoryId)) rows.push({ ...t })
+  } else {
+    for (const t of theirs) {
+      const id = t.categoryId as string
+      if (removedByMe(id)) continue
+      const row = baseById.has(id) ? named(id) : { ...t }
+      if (row) rows.push(row)
+    }
+  }
+  for (const r of mine) if (!r.categoryId) rows.push({ name: r.name })
+  return { rows, conflicts }
+}

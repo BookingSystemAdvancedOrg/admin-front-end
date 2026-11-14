@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AdminLayout } from './AdminLayout'
 
@@ -95,5 +95,35 @@ describe('AdminLayout sidebar', () => {
     const labels = navLabels()
     expect(labels).toContain('Telefon')
     expect(labels).toContain('Evenemang')
+  })
+})
+
+describe('AdminLayout role gate', () => {
+  function renderAt(path: string) {
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route element={<AdminLayout />}>
+            <Route index element={<p>Översiktssidan</p>} />
+            <Route path="personal" element={<p>Personalsidan</p>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+  }
+
+  it('sends staff from an owner page to Översikt with a notice', () => {
+    owner({}, 'staff_user')
+    renderAt('/personal')
+    expect(screen.queryByText('Personalsidan')).toBeNull()
+    expect(screen.getByText('Översiktssidan')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('bara för restaurangens ägare')
+  })
+
+  it('lets the owner open the page, without a notice', () => {
+    owner({})
+    renderAt('/personal')
+    expect(screen.getByText('Personalsidan')).toBeInTheDocument()
+    expect(screen.queryByText(/bara för restaurangens ägare/)).toBeNull()
   })
 })

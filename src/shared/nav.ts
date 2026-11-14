@@ -106,6 +106,20 @@ export function navVisible(item: NavItem, tenant: Tenant | null): boolean {
   )
 }
 
+/**
+ * Får rollen öppna sidan? Ägarsidor (ownerOnly) och Statistik när ägaren har
+ * stängt av den för personalen. Menyn döljer länkarna; det här stoppar den
+ * som skriver adressen själv. Servern svarar ändå 403 på ägarens data.
+ */
+export function roleAllows(pathname: string, tenant: Tenant | null): boolean {
+  if (!tenant) return true
+  return NAV_GROUPS.flatMap((g) => g.items).every(
+    (item) =>
+      !onItem(pathname, item) ||
+      ((!item.ownerOnly || tenant.role === 'owner_user') && (!item.insights || canSeeInsights(tenant))),
+  )
+}
+
 /** Är sidan länkens? */
 export function onItem(pathname: string, item: NavItem): boolean {
   return item.end ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`)

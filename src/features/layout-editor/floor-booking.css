@@ -104,7 +104,9 @@
 
 @media (hover: hover) {
   .floor-map-table.is-free:hover .floor-map-top,
-  .floor-map-table.is-small:hover .floor-map-top {
+  .floor-map-table.is-small:hover .floor-map-top,
+  .floor-map-table.is-free.is-hover .floor-map-top,
+  .floor-map-table.is-small.is-hover .floor-map-top {
     stroke-width: 3.5;
   }
 }
@@ -132,9 +134,15 @@
   fill: var(--surface);
 }
 
-/* större yta att träffa med fingret än själva bordet */
+/* större yta att träffa med fingret än själva bordet; ett fullbokat eller
+   laddande bord tar inte emot tryck, varken på bordet eller runt det */
 .floor-map-hit {
   fill: transparent;
+}
+
+.floor-map-hit.is-full,
+.floor-map-hit.is-loading {
+  pointer-events: none;
 }
 
 .floor-map-legend {

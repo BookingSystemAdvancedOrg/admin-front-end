@@ -66,12 +66,12 @@ describe('FloorBooking', () => {
     createManualReservation.mockResolvedValue({ customerName: 'Anna', startTime: '18:30' })
     renderIt()
     // tables are numbered like the guest site: 1, 2, 3 in drawing order
-    const first = await screen.findByRole('button', { name: /Bord 1, 4 pl \(platser\), 2 lediga tider/ })
-    expect(screen.getByRole('button', { name: /Bord 3, 6 pl \(platser\), fullbokat/ })).toHaveAttribute('aria-disabled', 'true')
+    const first = await screen.findByRole('button', { name: /Bord 1, 4 pl, 2 lediga tider/ })
+    expect(screen.getByRole('button', { name: /Bord 3, 6 pl, fullbokat/ })).toHaveAttribute('aria-disabled', 'true')
 
     await user.click(screen.getByRole('radio', { name: 'Drop-in' }))
     expect(getAvailability).toHaveBeenLastCalledWith('loc-1', '2026-11-13', { walkIn: true })
-    await user.click(await screen.findByRole('button', { name: /Bord 1, 4 pl \(platser\), 2 lediga tider/ }))
+    await user.click(await screen.findByRole('button', { name: /Bord 1, 4 pl, 2 lediga tider/ }))
     expect(first).toBeTruthy()
     const times = screen.getByRole('radiogroup', { name: 'Tid' })
     expect(within(times).getAllByRole('radio').map((r) => r.textContent)).toEqual(['18:00', '18:30'])
@@ -95,7 +95,7 @@ describe('FloorBooking', () => {
     const user = userEvent.setup()
     createManualReservation.mockRejectedValue(new ApiError(409, 'table_taken'))
     renderIt()
-    await user.click(await screen.findByRole('button', { name: /Bord 2, 2 pl \(platser\)/ }))
+    await user.click(await screen.findByRole('button', { name: /Bord 2, 2 pl/ }))
     await user.click(screen.getByRole('radio', { name: '18:00' }))
     await user.type(screen.getByLabelText('Namn'), 'Bo')
     const calls = getAvailability.mock.calls.length

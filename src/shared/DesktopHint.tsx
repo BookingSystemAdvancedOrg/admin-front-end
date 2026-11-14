@@ -6,13 +6,10 @@ import { APP_HINT_KEY } from './storageRegistry'
 /**
  * Tipset om skrivbordsappen (den ser skrivbordet genom glaset, en webbsida
  * kan inte). Visas bara i en webbläsare på en dator, i flödet längst ned i
- * sidomenyn, aldrig svävande över innehållet, tills man
- * stänger det eller öppnar länken.
+ * sidomenyn under "Ladda ner appen" (som är länken), aldrig svävande över
+ * innehållet, tills man stänger det. En rad, och dolt i låga fönster så att
+ * Logga ut alltid syns utan att rulla sidomenyn.
  */
-function desktopHintHref(hostname: string = location.hostname): string {
-  return /\.dev\.booqy\.se$|localhost|127\.0\.0\.1/.test(hostname) ? 'https://dev.booqy.se/ladda-ner' : 'https://booqy.se/ladda-ner'
-}
-
 function dismissed(): boolean {
   try {
     return localStorage.getItem(APP_HINT_KEY) === '1'
@@ -45,12 +42,7 @@ export function DesktopHint() {
   }
   return (
     <div className="admin-app-hint" role="note">
-      <p>
-        Vill du se ditt skrivbord genom glaset?{' '}
-        <a href={desktopHintHref()} target="_blank" rel="noopener" onClick={hide}>
-          Ladda ner appen
-        </a>
-      </p>
+      <p>Appen ser genom glaset.</p>
       <button type="button" className="admin-app-hint-close" aria-label="Stäng tipset" onClick={hide}>
         <Icon name="close" size={14} />
       </button>

@@ -111,6 +111,8 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
   const location = currentLocation(tenantState)
   const today = todayIn(location?.timezone)
   const [plan, setPlan] = useState<{ floors: Floor[]; labels: Map<string, string> } | null>(null)
+  // Bordet vars träffyta pekaren står på: ytorna ligger under borden, så bordets :hover räcker inte.
+  const [hoverId, setHoverId] = useState<string | null>(null)
   // Vilken plats planen hämtades för, och hur det gick.
   const [planFor, setPlanFor] = useState<string | null>(null)
   const [planError, setPlanError] = useState<string | null>(null)
@@ -418,16 +420,19 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
                   {/* Träffytorna runt borden ligger under alla bord: en grannes
                       träffyta täcker aldrig ett bord (man träffar det man trycker på). */}
                   {floor.tables.map((t) => {
-                    const { pick } = tableState(t)
+                    const { state, pick } = tableState(t)
                     return (
                       <circle
                         key={`hit-${t.id}`}
-                        className="floor-map-hit"
+                        className={`floor-map-hit is-${state}`}
+                        data-table={t.id}
                         cx={t.x}
                         cy={t.y}
                         r={Math.max(t.w, t.h) / 2 + 18}
                         aria-hidden="true"
                         onClick={pick}
+                        onPointerEnter={() => setHoverId(t.id)}
+                        onPointerLeave={() => setHoverId((h) => (h === t.id ? null : h))}
                       />
                     )
                   })}
@@ -436,13 +441,13 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
                     return (
                       <g
                         key={t.id}
-                        className={`floor-map-table is-${state}${t.id === tableId ? ' is-selected' : ''}`}
+                        className={`floor-map-table is-${state}${t.id === tableId ? ' is-selected' : ''}${t.id === hoverId ? ' is-hover' : ''}`}
                         transform={`translate(${t.x} ${t.y}) rotate(${t.rotation})`}
                         role="button"
                         tabIndex={state === 'full' || state === 'loading' ? -1 : 0}
                         aria-disabled={state === 'full' || state === 'loading' || undefined}
                         aria-pressed={t.id === tableId}
-                        aria-label={`Bord ${label(t)}, ${t.seats} pl (platser), ${stateText}`}
+                        aria-label={`Bord ${label(t)}, ${t.seats} pl, ${stateText}`}
                         onClick={pick}
                         onKeyDown={(e: ReactKeyboardEvent) => {
                           if (e.key === 'Enter' || e.key === ' ') {

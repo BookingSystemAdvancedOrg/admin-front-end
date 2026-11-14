@@ -49,13 +49,23 @@ export function draftToGroups(drafts: DraftGroup[]): { groups: OptionGroup[]; er
       if (cname.length > NAME_MAX) return { groups: null, error: `${cname} får vara högst ${NAME_MAX} tecken.` }
       if (choiceNames.has(cname.toLowerCase())) return { groups: null, error: `${label} har två val som heter ${cname}.` }
       choiceNames.add(cname.toLowerCase())
-      const price = c.price.trim() === '' ? { value: 0, error: null } : parsePrice(c.price)
+      const price = parseAddonPrice(c.price)
       if (price.error !== null) return { groups: null, error: `${label}, ${cname}: ${price.error}` }
       choices.push({ name: cname, price: price.value })
     }
     groups.push({ name, required: d.required, maxChoices: Math.min(Math.max(1, d.maxChoices), choices.length), choices })
   }
   return { groups, error: null }
+}
+
+/**
+ * Tillvalets pristillägg: tomt är gratis och ett inledande "+" ("+10",
+ * "+ 10 kr") godtas, eftersom det är så tillägg brukar skrivas. Annars
+ * samma regler som rättens pris (parsePrice).
+ */
+export function parseAddonPrice(text: string): ReturnType<typeof parsePrice> {
+  if (text.trim() === '') return { value: 0, error: null }
+  return parsePrice(text.trim().replace(/^\+/, ''))
 }
 
 export interface CategoryRow {

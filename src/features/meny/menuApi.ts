@@ -102,6 +102,11 @@ export function isStaleDish(err: unknown): boolean {
   return err instanceof ApiError && err.status === 409 && err.code === 'stale_item'
 }
 
+/** 409 när någon annan sparat kategorierna efter att de laddades. */
+export function isStaleCategories(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 409 && err.code === 'stale_categories'
+}
+
 /* --- Bildvisning ---------------------------------------------------------- */
 
 /**
@@ -288,7 +293,7 @@ function toFriendlyMenuError(err: unknown): Error {
         return new ApiError(409, 'Kategorin har rätter. Flytta rätterna till en annan kategori först.', { code: err.code })
       }
       if (err.code === 'stale_categories') {
-        return new ApiError(409, 'Kategorierna ändrades av någon annan. Ladda om och försök igen.', { code: err.code })
+        return new ApiError(409, 'Någon annan har ändrat kategorierna medan du redigerade. Ladda om för att se den senaste versionen.', { code: err.code })
       }
       return new ApiError(
         409,

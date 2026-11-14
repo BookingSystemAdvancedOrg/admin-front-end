@@ -64,6 +64,7 @@ export default function MenyPage() {
   const [categories, setCategories] = useState<MenuCategoryEntry[]>(DEFAULT_CATEGORIES)
   const [categoriesVersion, setCategoriesVersion] = useState(0)
   const [categoriesOpen, setCategoriesOpen] = useState(false)
+  const [categoriesKey, setCategoriesKey] = useState(0)
   /** Byts när en rätt laddats om efter en krock, så att dialogen börjar om med de nya värdena. */
   const [modalKey, setModalKey] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -172,6 +173,15 @@ export default function MenyPage() {
     setCategories(saved.categories)
     setCategoriesVersion(saved.version)
     setCategoriesOpen(false)
+  }
+
+  /** Hämtar kategorierna igen efter att någon annan sparat (409) och börjar om dialogen. */
+  async function reloadCategories() {
+    if (!locationId) return
+    const res = await getMenuCategories(locationId)
+    setCategories(res.categories?.length ? res.categories : DEFAULT_CATEGORIES)
+    setCategoriesVersion(res.version ?? 0)
+    setCategoriesKey((k) => k + 1)
   }
 
   /** Hämtar rätterna igen efter att någon annan sparat (409) och börjar om dialogen. */
@@ -484,9 +494,11 @@ export default function MenyPage() {
       )}
       {categoriesOpen && (
         <CategoriesModal
+          key={categoriesKey}
           categories={categories}
           dishCounts={dishCounts}
           onSave={saveCategories}
+          onReload={reloadCategories}
           onCancel={() => setCategoriesOpen(false)}
         />
       )}

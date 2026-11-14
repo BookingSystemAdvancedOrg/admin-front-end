@@ -1,7 +1,6 @@
 import { Icon } from '../../shared/Icon'
-import { MAX_CHOICES, MAX_GROUPS, NAME_MAX } from './menuForm'
+import { MAX_CHOICES, MAX_GROUPS, NAME_MAX, parseAddonPrice } from './menuForm'
 import type { DraftGroup } from './menuForm'
-import { parsePrice } from './menuApi'
 
 /**
  * Tillval för en rätt: grupper som Storlek (krävs, ett val) eller Extra
@@ -56,8 +55,8 @@ export function OptionsEditor({ value, onChange }: { value: DraftGroup[]; onChan
               </div>
               <div className="form-field dish-option-price">
                 <label htmlFor={`opt-price-${i}-${j}`} className="sr-only">Pristillägg för val {j + 1} (kr)</label>
-                <input id={`opt-price-${i}-${j}`} inputMode="decimal" value={c.price} placeholder="+0 kr"
-                  aria-invalid={c.price.trim() !== '' && parsePrice(c.price).error !== null ? true : undefined}
+                <input id={`opt-price-${i}-${j}`} inputMode="decimal" value={c.price} placeholder="0 kr"
+                  aria-invalid={parseAddonPrice(c.price).error !== null ? true : undefined}
                   onChange={(e) => setChoice(i, j, { price: e.target.value })} />
               </div>
               <button type="button" className="btn outline square meny-icon-btn" aria-label={`Ta bort val ${j + 1} i grupp ${i + 1}`}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { categoryListError, draftToGroups, toDraft } from './menuForm'
+import { categoryListError, draftToGroups, parseAddonPrice, toDraft } from './menuForm'
 
 describe('draftToGroups', () => {
   it('turns drafts into option groups; empty price is free', () => {
@@ -23,6 +23,17 @@ describe('draftToGroups', () => {
       { name: 'S', required: false, maxChoices: 1, choices: [{ name: 'A', price: '' }] },
       { name: 's', required: false, maxChoices: 1, choices: [{ name: 'A', price: '' }] },
     ]).error).toMatch(/Två tillvalsgrupper/)
+  })
+
+  it('accepts a leading plus on add-on prices', () => {
+    expect(parseAddonPrice('+10')).toEqual({ value: 10, error: null })
+    expect(parseAddonPrice(' + 12,50 kr')).toEqual({ value: 12.5, error: null })
+    expect(parseAddonPrice('')).toEqual({ value: 0, error: null })
+    expect(parseAddonPrice('+').error).toBe('Pris krävs.')
+    expect(parseAddonPrice('+-5').error).toMatch(/negativt/)
+    expect(parseAddonPrice('++5').error).toMatch(/Skriv priset med siffror/)
+    expect(draftToGroups([{ name: 'Extra', required: false, maxChoices: 1, choices: [{ name: 'Ost', price: '+10' }] }]).groups?.[0].choices[0].price)
+      .toBe(10)
   })
 
   it('round-trips through toDraft and caps maxChoices at the number of choices', () => {

@@ -3,6 +3,7 @@ import { errorText } from '../../shared/errors'
 import { Icon } from '../../shared/Icon'
 import ModalOverlay from '../../shared/ModalOverlay'
 import type { MenuCategoryEntry } from './data'
+import { isStaleCategories } from './menuApi'
 import { categoryListError, MAX_CATEGORIES, NAME_MAX } from './menuForm'
 import type { CategoryRow as Row } from './menuForm'
 
@@ -15,18 +16,22 @@ export function CategoriesModal({
   categories,
   dishCounts,
   onSave,
+  onReload,
   onCancel,
 }: {
   categories: MenuCategoryEntry[]
   /** Antal rätter per categoryId. */
   dishCounts: Record<string, number>
   onSave: (rows: Row[]) => Promise<void>
+  /** Hämtar den sparade listan igen efter 409 stale_categories (dialogen börjar om). */
+  onReload: () => Promise<void>
   onCancel: () => void
 }) {
   const [rows, setRows] = useState<Row[]>(() => categories.map((c) => ({ ...c })))
   const [newName, setNewName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [stale, setStale] = useState(false)
   const listError = categoryListError(rows)
 
   useEffect(() => {
@@ -58,8 +63,20 @@ export function CategoriesModal({
     try {
       await onSave(rows.map((r) => ({ ...(r.categoryId ? { categoryId: r.categoryId } : {}), name: r.name.trim() })))
     } catch (err) {
+      setStale(isStaleCategories(err))
       setError(errorText(err, 'Kategorierna kunde inte sparas.'))
     } finally {
+      setBusy(false)
+    }
+  }
+
+  async function reload() {
+    if (busy) return
+    setBusy(true)
+    try {
+      await onReload()
+    } catch (err) {
+      setError(errorText(err, 'Kunde inte hämta kategorierna.'))
       setBusy(false)
     }
   }
@@ -121,9 +138,15 @@ export function CategoriesModal({
         {(listError ?? error) && <p className="form-error" role="alert">{listError ?? error}</p>}
         <div className="modal-actions">
           <button type="button" className="btn outline square" onClick={onCancel}>Avbryt</button>
-          <button type="button" className="btn primary square" disabled={Boolean(listError) || busy} onClick={() => void save()}>
-            {busy ? 'Sparar…' : 'Spara kategorier'}
-          </button>
+          {stale ? (
+            <button type="button" className="btn primary square" disabled={busy} onClick={() => void reload()}>
+              Ladda om kategorierna
+            </button>
+          ) : (
+            <button type="button" className="btn primary square" disabled={Boolean(listError) || busy} onClick={() => void save()}>
+              {busy ? 'Sparar…' : 'Spara kategorier'}
+            </button>
+          )}
         </div>
       </div>
     </ModalOverlay>

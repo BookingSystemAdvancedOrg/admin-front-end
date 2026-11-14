@@ -44,6 +44,7 @@ export const SOUND_VOLUME_KEY = 'booqy-sound-volume'
 export const NAV_CLOSED_KEY = 'booqy-nav-closed'
 export const SAMPLE_DATA_KEY = 'booqy-sample-data'
 export const STATISTIK_OPEN_KEY_PREFIX = 'booqy-statistik-open:'
+export const UPDATED_FLAG_KEY = 'booqy-updated'
 /** IndexedDB-databasen för insläpp vid dörren, en per tillfälle (CONTRACTS.md 10). */
 export const EVENT_SCAN_KEY_PREFIX = STORAGE_KEYS.EVENT_SCAN_KEY_PREFIX
 
@@ -160,6 +161,14 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     setBy: 'Booqy (Evenemang, insläpp)',
     purpose: 'Sparar gästlistan och insläpp som gjorts utan nät vid dörren, tills de har skickats till servern.',
     lifetime: 'Tills insläppen är synkade, senast dagen efter evenemanget',
+    category: 'nödvändig',
+  },
+  {
+    name: UPDATED_FLAG_KEY,
+    kind: 'sessionStorage',
+    setBy: 'Booqy',
+    purpose: 'Sätts en kort stund när du laddar om för en ny version, så att den nya sidan kan visa "Uppdaterad" en gång. Tas bort direkt efter. Inga personuppgifter.',
+    lifetime: 'Tills sidan laddats om',
     category: 'nödvändig',
   },
 ]

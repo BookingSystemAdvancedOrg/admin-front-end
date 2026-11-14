@@ -63,6 +63,8 @@ export interface TicketEntry {
   course: Course | null
   /** Rätten i menyn när raden är en del av en meny/combo. */
   partOf?: string
+  /** Gästens tillval, "Storlek: Stor". */
+  options?: string[]
   note?: string
   allergy?: string
 }

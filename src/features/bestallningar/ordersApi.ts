@@ -29,6 +29,8 @@ export interface OrderLine {
   quantity: number
   total: number
   vatRate: number
+  /** Gästens tillval med pristillägg (öre per styck, ingår i unitPrice). */
+  options?: { group: string; choice: string; price: number }[]
   /** Gästens önskemål på raden ("ingen lök"); följer rätten till bongen. */
   note?: string
   /** Allergi på raden ("jordnötsallergi"): fet på bongen, egen allergibong. */

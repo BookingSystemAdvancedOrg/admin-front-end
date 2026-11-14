@@ -83,7 +83,7 @@ function Editor() {
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [width, setWidth] = useState<'mobile' | 'desktop'>('mobile')
-  const [images, setImages] = useState<MenuItem[]>([])
+  const [images, setImages] = useState<(MenuItem & { imageKey: string })[]>([])
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [versionsOpen, setVersionsOpen] = useState(false)
 
@@ -101,7 +101,7 @@ function Editor() {
 
   useEffect(() => { void load() }, [load])
   useEffect(() => {
-    if (location) listMenuItems(location.locationId).then((items) => setImages(items.filter((i) => i.imageKey))).catch(() => setImages([]))
+    if (location) listMenuItems(location.locationId).then((items) => setImages(items.filter((i): i is MenuItem & { imageKey: string } => Boolean(i.imageKey)))).catch(() => setImages([]))
   }, [location])
 
   function change(next: SiteDoc) {
@@ -332,7 +332,7 @@ function Editor() {
 
 function BlockEditor({ block, images, pages, invalid, onChange, actions }: {
   block: Block
-  images: MenuItem[]
+  images: (MenuItem & { imageKey: string })[]
   pages: { id: string; title: string }[]
   invalid: boolean
   onChange: (b: Block) => void

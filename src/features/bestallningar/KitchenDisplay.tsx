@@ -128,6 +128,7 @@ export function KitchenDisplay({ locationId, station, onStation }: {
                 <li key={i}>
                   <strong>{e.quantity} ×</strong> {e.name}
                   {e.partOf && <span className="cell-muted"> ({e.partOf})</span>}
+                  {e.options?.map((o) => <span key={o} className="kds-note">+ {o}</span>)}
                   {e.note && <span className="kds-note">{e.note}</span>}
                   {e.allergy && <span className="kds-line-allergy">Allergi: {e.allergy}</span>}
                 </li>
@@ -203,6 +204,7 @@ export function KitchenDisplay({ locationId, station, onStation }: {
                 <p key={i}>
                   <b>{e.quantity} x {e.name}</b>
                   {e.partOf ? ` (${e.partOf})` : ''}
+                  {e.options?.map((o) => <span key={o}><br /><b>+ {o}</b></span>)}
                   {e.note && <><br /><b>{e.note}</b></>}
                   {e.allergy && <><br /><b>ALLERGI: {e.allergy}</b></>}
                 </p>

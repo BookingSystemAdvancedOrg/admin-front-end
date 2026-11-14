@@ -9,7 +9,7 @@ const dish: Dish = {
   id: 'm1',
   name: 'Toast Skagen',
   description: 'Klassikern',
-  category: 'forratter',
+  category: 'starters',
   price: 145,
   active: true,
   alcohol: false,
@@ -33,6 +33,8 @@ function setup(over: Partial<Parameters<typeof DishRow>[0]> = {}) {
     onToggle: vi.fn(),
     onDelete: vi.fn(),
     onPreview: vi.fn(),
+    categoryLabel: 'Förrätter',
+    categoryTone: 0,
     ...over,
   }
   render(

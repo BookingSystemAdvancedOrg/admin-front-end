@@ -8,20 +8,22 @@ import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useLocationId } from '../../shared/location'
 import { currentLocation, useTenant } from '../../shared/tenant'
 import { DEFAULT_TIMEZONE } from '../installningar/data'
-import { CATEGORY_LABEL } from './data'
-import type { Dish, DishCategory } from './data'
+import { categoryName, DEFAULT_CATEGORIES } from './data'
+import type { Dish, DishCategory, MenuCategoryEntry } from './data'
 import { DishModal } from './DishModal'
 import type { DishFormValues } from './DishModal'
+import { CategoriesModal } from './CategoriesModal'
 import {
-  CATEGORY_TO_API,
   createMenuItem,
   deleteMenuItem,
   dishChanges,
+  getMenuCategories,
   getPublicMenu,
   isMenuRoutesMissing,
   listMenuItems,
   MENU_ROUTES_MISSING_MESSAGE,
   publicToDish,
+  putMenuCategories,
   toDish,
   updateMenuItem,
   uploadMenuImage,
@@ -36,8 +38,6 @@ import { isCentre } from './imageFocus'
 import { SkelBlock, SkelTableRows } from '../../shared/Skeleton'
 
 type ModalState = { mode: 'add' } | { mode: 'edit'; id: string } | null
-
-const ALL_CATEGORIES = Object.keys(CATEGORY_LABEL) as DishCategory[]
 
 /**
  * Figma: admin-meny-page (34:2). Kopplad mot det riktiga meny-API:t
@@ -60,6 +60,13 @@ export default function MenyPage() {
     return () => window.clearInterval(id)
   }, [])
   const [dishes, setDishes] = useState<Dish[]>([])
+  /** Platsens kategorier i visningsordning; standard tills de hämtats. */
+  const [categories, setCategories] = useState<MenuCategoryEntry[]>(DEFAULT_CATEGORIES)
+  const [categoriesVersion, setCategoriesVersion] = useState(0)
+  const [categoriesOpen, setCategoriesOpen] = useState(false)
+  const [categoriesKey, setCategoriesKey] = useState(0)
+  /** Byts när en rätt laddats om efter en krock, så att dialogen börjar om med de nya värdena. */
+  const [modalKey, setModalKey] = useState(0)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [rowError, setRowError] = useState<string | null>(null)
@@ -89,6 +96,14 @@ export default function MenyPage() {
   useEffect(() => {
     if (!locationId) return
     let cancelled = false
+    // Kategorierna: utan svar (äldre API) gäller de fyra standard.
+    getMenuCategories(locationId)
+      .then((res) => {
+        if (cancelled || !res.categories?.length) return
+        setCategories(res.categories)
+        setCategoriesVersion(res.version ?? 0)
+      })
+      .catch(() => undefined)
     listMenuItems(locationId)
       .then((items) => {
         if (cancelled) return
@@ -137,7 +152,7 @@ export default function MenyPage() {
     ? Math.round(visibleDishes.reduce((sum, d) => sum + d.price, 0) / activeCount)
     : 0
   const tiles = [
-    { label: 'Rätter på menyn', value: String(dishes.length), note: `${new Set(dishes.map((d) => d.category)).size} kategorier` },
+    { label: 'Rätter på menyn', value: String(dishes.length), note: `${new Set(dishes.map((d) => d.category)).size} av ${categories.length} kategorier` },
     { label: 'Aktiva', value: String(activeCount), note: dishes.length ? `${dishes.length - activeCount} dolda för gästerna` : 'Lägg till din första rätt' },
     { label: 'Med bild', value: String(withImage), note: dishes.length ? `${Math.round((withImage / dishes.length) * 100)} % av rätterna` : '-' },
     { label: 'Snittpris', value: activeCount ? `${avgPrice} kr` : '-', note: 'Aktiva rätter' },
@@ -145,6 +160,40 @@ export default function MenyPage() {
   const editingDish =
     modal?.mode === 'edit' ? dishes.find((d) => d.id === modal.id) ?? null : null
   const canEdit = Boolean(locationId) && !readOnly
+
+  const dishCounts = dishes.reduce<Record<string, number>>((acc, d) => {
+    acc[d.category] = (acc[d.category] ?? 0) + 1
+    return acc
+  }, {})
+  const toneOf = (id: string) => categories.findIndex((c) => c.categoryId === id)
+
+  async function saveCategories(rows: { categoryId?: string; name: string }[]) {
+    if (!locationId) return
+    const saved = await putMenuCategories(locationId, rows, categoriesVersion)
+    setCategories(saved.categories)
+    setCategoriesVersion(saved.version)
+    setCategoriesOpen(false)
+  }
+
+  /** Hämtar kategorierna igen efter att någon annan sparat (409) och börjar om dialogen. */
+  async function reloadCategories() {
+    if (!locationId) return
+    const res = await getMenuCategories(locationId)
+    setCategories(res.categories?.length ? res.categories : DEFAULT_CATEGORIES)
+    setCategoriesVersion(res.version ?? 0)
+    setCategoriesKey((k) => k + 1)
+  }
+
+  /** Hämtar rätterna igen efter att någon annan sparat (409) och börjar om dialogen. */
+  async function reloadDishes() {
+    if (!locationId) return
+    try {
+      setDishes((await listMenuItems(locationId)).map(toDish))
+      setModalKey((k) => k + 1)
+    } catch (err) {
+      setRowError(errorText(err, 'Kunde inte hämta menyn.'))
+    }
+  }
 
   const priceMin = filterPriceMin.trim() ? Number(filterPriceMin) : null
   const priceMax = filterPriceMax.trim() ? Number(filterPriceMax) : null
@@ -228,8 +277,9 @@ export default function MenyPage() {
       )
     }
     // Ny bild laddas upp till S3 först; rätten sparas med nyckeln vi får
-    // tillbaka. Utan ny fil behålls den befintliga nyckeln.
-    let imageKey = editingDish?.imageKey ?? ''
+    // tillbaka. Utan ny fil behålls den befintliga nyckeln; bilden är
+    // frivillig, så en ny rätt utan bild sparas utan nyckel.
+    let imageKey: string | null = values.removeImage ? null : editingDish?.imageKey || null
     if (values.imageFile) {
       imageKey = await uploadMenuImage(locationId, values.imageFile)
     }
@@ -237,7 +287,7 @@ export default function MenyPage() {
       name: values.name,
       description: values.description,
       price: values.price,
-      category: CATEGORY_TO_API[values.category],
+      category: values.category,
       imageKey,
       active: values.active,
       alcohol: values.alcohol,
@@ -245,6 +295,8 @@ export default function MenyPage() {
       availableUntil: values.availableUntil,
       station: values.station,
       components: values.components,
+      allergens: values.allergens,
+      options: values.options,
     }
     // Fokuspunkten skickas bara när den inte är mitten (ny rätt) eller när
     // den ändrats (dishChanges), så äldre API:er utan fältet inte påverkas.
@@ -256,11 +308,13 @@ export default function MenyPage() {
       // API:t kräver minst ett fält - en tom diff skickas aldrig.
       const updates = dishChanges(editingDish, desired)
       if (Object.keys(updates).length > 0) {
-        const saved = await updateMenuItem(locationId, editingDish.id, updates)
+        // updatedAt som dialogen laddade: har någon annan sparat sedan dess blir det 409.
+        const saved = await updateMenuItem(locationId, editingDish.id, updates, editingDish.updatedAt)
         replaceDish(toDish(saved))
       }
     } else {
-      const created = await createMenuItem(locationId, desired)
+      const { imageKey: key, ...rest } = desired
+      const created = await createMenuItem(locationId, key ? desired : (rest as MenuItemCreate))
       setDishes((prev) => [...prev, toDish(created)])
     }
     setModal(null)
@@ -271,6 +325,10 @@ export default function MenyPage() {
       <AdminTopbar
         title="Meny"
         actions={
+          <>
+          <button type="button" className="btn outline square" disabled={!canEdit} onClick={() => setCategoriesOpen(true)}>
+            Kategorier
+          </button>
           <CtaButton
             label="+ Lägg till rätt"
             win="Kör!"
@@ -278,6 +336,7 @@ export default function MenyPage() {
             disabled={!canEdit}
             onClick={() => setModal({ mode: 'add' })}
           />
+          </>
         }
       />
       <div className="admin-main">
@@ -329,9 +388,9 @@ export default function MenyPage() {
                 }
               >
                 <option value="alla">Alla kategorier</option>
-                {ALL_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {CATEGORY_LABEL[c]}
+                {categories.map((c) => (
+                  <option key={c.categoryId} value={c.categoryId}>
+                    {c.name}
                   </option>
                 ))}
               </select>
@@ -410,6 +469,8 @@ export default function MenyPage() {
                     onToggle={toggleActive}
                     onDelete={removeDish}
                     onPreview={setPreview}
+                    categoryLabel={categoryName(categories, d.category)}
+                    categoryTone={toneOf(d.category)}
                   />
                 ))}
               </tbody>
@@ -420,12 +481,25 @@ export default function MenyPage() {
 
       {modal && (
         <DishModal
+          key={modalKey}
           title={modal.mode === 'add' ? 'Lägg till rätt' : 'Redigera rätt'}
           initial={editingDish}
           timeZone={timeZone}
           locationId={locationId}
+          categories={categories}
           onSave={handleSave}
           onCancel={() => setModal(null)}
+          onReload={() => void reloadDishes()}
+        />
+      )}
+      {categoriesOpen && (
+        <CategoriesModal
+          key={categoriesKey}
+          categories={categories}
+          dishCounts={dishCounts}
+          onSave={saveCategories}
+          onReload={reloadCategories}
+          onCancel={() => setCategoriesOpen(false)}
         />
       )}
       {preview?.image && (

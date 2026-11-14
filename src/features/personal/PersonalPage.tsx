@@ -28,6 +28,7 @@ import {
   updateUserProfile,
 } from '../installningar/usersApi'
 import type { User } from '../installningar/usersApi'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 const ROLE_LABEL: Record<User['role'], string> = {
   staff: 'Personal',
@@ -239,9 +240,7 @@ export default function PersonalPage() {
             )}
           </div>
           {(loadError ?? rowError) && (
-            <p className="form-error" role="alert">
-              {loadError ?? rowError}
-            </p>
+            <ErrorNote text={loadError ?? rowError} />
           )}
           <div className="table-scroll">
             <table className="data-table" style={{ minWidth: 600 }}>

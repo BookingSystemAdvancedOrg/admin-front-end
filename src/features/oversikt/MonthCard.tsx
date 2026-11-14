@@ -15,6 +15,8 @@ import { sampleInsights } from '../statistik/insightsSample'
 import { daysBetween, fmtInt, fmtKr, fmtPct, shortDate } from '../statistik/stats'
 import '../statistik/statistik.css'
 import { SkelLines } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { booqyFaultText } from '../../shared/errors'
 
 /**
  * "Den här månaden" på Översikt: månaden hittills i fyra siffror och en
@@ -115,7 +117,7 @@ export function MonthCard({
       </div>
 
       {error ? (
-        <p className="admin-empty">Kunde inte hämta månadens siffror. Försök igen om en stund, eller öppna Statistik.</p>
+        <ErrorNote text={booqyFaultText('Kunde inte hämta månadens siffror.')} />
       ) : !s ? (
         <div className="month-card-loading" role="status">
           <SkelLines n={4} />

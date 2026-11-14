@@ -25,6 +25,7 @@ import type {
 } from './privacyApi'
 import './privacy.css'
 import ModalOverlay from '../../shared/ModalOverlay'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /**
  * Integritet: restaurangen är personuppgiftsansvarig för sina gäster.
@@ -193,7 +194,7 @@ function NoticeEditor() {
       setText(n.body)
       setNotice('Sparat. Gästerna ser den nya texten direkt.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara just nu. Försök igen om en stund.'))
+      setError(errorText(err, 'Kunde inte spara.'))
     } finally {
       setBusy(false)
     }
@@ -252,9 +253,7 @@ function NoticeEditor() {
           </p>
         </div>
         {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
+          <ErrorNote text={error} />
         )}
         <span className="row-actions">
           <button type="submit" className="btn primary square" disabled={busy || !dirty}>
@@ -306,7 +305,7 @@ function ConsentTool() {
       setAsked(q)
     } catch (err) {
       setResult(null)
-      setError(errorText(err, 'Kunde inte söka just nu. Försök igen om en stund.'))
+      setError(errorText(err, 'Kunde inte söka.'))
     } finally {
       setBusy(false)
     }
@@ -324,7 +323,7 @@ function ConsentTool() {
       setResult(r)
       setNotice(r.withdrawn.length ? `Samtycket via ${label} är återkallat.` : 'Det fanns inget samtycke att återkalla.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte återkalla just nu. Försök igen om en stund.'))
+      setError(errorText(err, 'Kunde inte återkalla.'))
     } finally {
       setBusy(false)
     }
@@ -339,7 +338,7 @@ function ConsentTool() {
       downloadJson(await exportGuest(asked.email, asked.phone), `gastdata-${new Date().toISOString().slice(0, 10)}.json`)
       setNotice('Filen är nedladdad. Skicka den till gästen på ett säkert sätt.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte exportera just nu. Försök igen om en stund.'))
+      setError(errorText(err, 'Kunde inte exportera.'))
     } finally {
       setBusy(false)
     }
@@ -357,7 +356,7 @@ function ConsentTool() {
       setResult(await lookupConsent(asked.email, asked.phone))
     } catch (err) {
       setConfirmErase(false)
-      setError(errorText(err, 'Kunde inte radera just nu. Försök igen om en stund.'))
+      setError(errorText(err, 'Kunde inte radera.'))
     } finally {
       setBusy(false)
     }
@@ -392,9 +391,7 @@ function ConsentTool() {
         </button>
       </form>
       {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
+        <ErrorNote text={error} />
       )}
       {notice && (
         <p className="save-notice" role="status">

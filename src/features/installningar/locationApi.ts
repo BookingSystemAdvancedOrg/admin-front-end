@@ -285,7 +285,7 @@ function toFriendlyLocationError(err: unknown): Error {
     case 503:
       return new ApiError(
         503,
-        'Tjänsten är tillfälligt otillgänglig. Försök igen om en stund.',
+        'Tjänsten är tillfälligt otillgänglig. Felet ligger hos Booqy, inte hos er. Försök igen; kvarstår det, rapportera det till Booqy.',
       )
     default:
       return new ApiError(err.status, commonError(err, 'Kunde inte spara platsen.'), { code: err.code })

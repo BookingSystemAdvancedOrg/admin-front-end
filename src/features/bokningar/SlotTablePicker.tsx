@@ -3,6 +3,7 @@ import { addDays, dayNotice, errorMessage, getAvailability, LOCATION_NOT_BOOKABL
 import type { AvailabilitySlot, DayStatus } from './bookingsApi'
 import { useTables } from '../../shared/tables'
 import { DateInput } from '../../shared/DateInput'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /** Hur ofta listan med lediga tider hämtas om medan formuläret är öppet. */
 export const SLOT_REFRESH_MS = 60_000
@@ -211,9 +212,7 @@ export function SlotTablePicker({
         </p>
       )}
       {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
+        <ErrorNote text={error} />
       )}
       {startTime && !loading && (
         <fieldset className="table-picker">

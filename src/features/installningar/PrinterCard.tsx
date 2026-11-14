@@ -16,6 +16,8 @@ import { clock } from '../bestallningar/ordersApi'
 import './printer.css'
 import { SkelLines } from '../../shared/Skeleton'
 import { StationsCard } from './StationsCard'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { booqyFaultText } from '../../shared/errors'
 
 /**
  * Inställningar > Skrivare: bongskrivarna för matbeställningar.
@@ -210,7 +212,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
         {!locationId ? (
           <p className="cell-muted">Välj en plats först.</p>
         ) : loadError && !data ? (
-          <p className="form-error" role="alert">Kunde inte hämta skrivarna. Sidan försöker igen av sig själv om en stund.</p>
+          <ErrorNote text={booqyFaultText('Kunde inte hämta skrivarna. Sidan försöker igen av sig själv.')} />
         ) : !data ? (
           <SkelLines n={3} />
         ) : (
@@ -356,7 +358,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
               </form>
             )}
 
-            {error && <p className="form-error" role="alert">{error}</p>}
+            <ErrorNote text={error} />
             {notice && <p className="save-notice" role="status">{notice}</p>}
           </div>
         )}

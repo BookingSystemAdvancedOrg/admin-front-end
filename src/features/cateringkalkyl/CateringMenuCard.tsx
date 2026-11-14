@@ -28,6 +28,7 @@ import type {
 import { Num } from '../../shared/motion/Num'
 import { parseKronor } from './data'
 import ModalOverlay from '../../shared/ModalOverlay'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 const kr = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 2 })
 
@@ -120,7 +121,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
           </span>
         )}
       </div>
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <ErrorNote text={error} />
 
       <h3 className="cm-subtitle">Rätter</h3>
       {dishes.length === 0 ? (

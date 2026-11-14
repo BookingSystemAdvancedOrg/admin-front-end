@@ -597,9 +597,9 @@ const ERRORS: Record<string, string> = {
   not_cancellable: 'Beställningen kan inte avbokas i den här statusen.',
   not_confirmed: 'Bara bekräftade beställningar kan markeras som levererade.',
   payment_provider_rejected: 'Stripe nekade åtgärden. Kontrollera i Stripe och försök igen.',
-  payment_unavailable: 'Stripe svarar inte just nu. Försök igen om en stund.',
-  signing_unavailable: 'Signeringstjänsten svarar inte just nu. Försök igen om en stund.',
-  document_unavailable: 'Offerten kunde inte skapas som PDF just nu. Försök igen om en stund.',
+  payment_unavailable: 'Stripe svarar inte just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
+  signing_unavailable: 'Signeringstjänsten svarar inte just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
+  document_unavailable: 'Offerten kunde inte skapas som PDF just nu. Felet ligger hos Booqy, inte hos er. Försök igen; kvarstår det, rapportera det till Booqy.',
   not_signable: 'Den här offertversionen kan inte signeras. Skicka offerten igen.',
   already_signed: 'Offerten är redan signerad av restaurangen.',
   signing_alreadyInProgress: 'En BankID-signering pågår redan. Avbryt den i appen och försök igen.',
@@ -623,7 +623,7 @@ export function errorText(err: unknown, action = 'Kunde inte spara.'): string {
     if (err.status === 403 && err.code === 'forbidden') return 'Bara restaurangens ägare kan göra det.'
     if (err.status === 404) return 'Förfrågan finns inte längre. Gå tillbaka till listan, den visar det som finns kvar.'
     if (err.status === 409 && err.message.startsWith('signing_')) {
-      return 'Signeringstjänsten tog inte emot offerten. Försök igen om en stund eller kontakta Booqy.'
+      return 'Signeringstjänsten tog inte emot offerten. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.'
     }
   }
   return commonError(err, action, {}, CATERING_FIELDS)

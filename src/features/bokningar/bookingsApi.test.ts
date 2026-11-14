@@ -94,7 +94,7 @@ describe('bookingsApi', () => {
     expect(errorMessage(new ApiError(402, 'authentication_required'))).toMatch(/godkänner/)
     expect(errorMessage(new ApiError(402, 'weird', { fromServer: true }))).toMatch(/^Betalningen gick inte igenom\. /)
     expect(errorMessage(new ApiError(402, 'weird', { fromServer: true }))).not.toMatch(/weird/)
-    expect(errorMessage(new Error('x'))).toBe('Det gick inte att spara bokningen. Försök igen om en stund.')
+    expect(errorMessage(new Error('x'))).toBe('Det gick inte att spara bokningen. Felet ligger hos Booqy, inte hos er. Försök igen; kvarstår det, rapportera det till Booqy.')
     expect(errorMessage(new ApiError(400, 'name must be at most 80 characters', { fromServer: true }))).toMatch(/högst/)
     expect(errorMessage(new ApiError(400, 'tags must be a list', { fromServer: true, code: 'invalid_value', field: 'tags' })))
       .toBe('Det gick inte att spara bokningen. Något av fälten har ett värde som inte godtas. Kontrollera uppgifterna och försök igen.')

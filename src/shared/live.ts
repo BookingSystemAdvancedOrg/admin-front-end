@@ -101,6 +101,11 @@ export function subscribeLive(listener: Listener): () => void {
   }
 }
 
+/** Hämta om allt som syns nu (felrutans Försök igen), som när fönstret får fokus. */
+export function refreshNow(): void {
+  emit('focus')
+}
+
 /** Väntetid efter `failures` misslyckade hämtningar i rad. */
 export function backoffMs(failures: number): number {
   if (failures <= 0) return 0

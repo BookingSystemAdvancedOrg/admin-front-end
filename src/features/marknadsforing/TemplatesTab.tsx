@@ -14,6 +14,7 @@ import type { Starter, Template, TemplateInput } from './marketingApi'
 import { useEscape } from './useEscape'
 import { SkelRows } from '../../shared/Skeleton'
 import ModalOverlay from '../../shared/ModalOverlay'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 type Editing = { mode: 'new'; initial: TemplateInput; title: string } | { mode: 'edit'; template: Template }
 
@@ -82,7 +83,7 @@ export function TemplatesTab() {
   if (editing) {
     return (
       <div className="mk-stack">
-        {error && <p className="form-error" role="alert">{error}</p>}
+        <ErrorNote text={error} />
         <TemplateEditor
           key={editing.mode === 'edit' ? editing.template.templateId : editing.title}
           title={editing.mode === 'edit' ? `Redigera ${editing.template.name}` : editing.title}
@@ -98,7 +99,7 @@ export function TemplatesTab() {
   return (
     <div className="mk-stack">
       {notice && <p className="save-notice" role="status">{notice}</p>}
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <ErrorNote text={error} />
 
       <section className="admin-card table-card">
         <div className="card-head">

@@ -212,7 +212,7 @@ async function toFriendlyError(res: Response): Promise<Error> {
       return new Error('För många försök. Vänta en stund och försök igen.')
     case 502:
       return new Error(
-        'Ingen kontakt med autentiseringstjänsten just nu. Försök igen om en stund.',
+        'Ingen kontakt med inloggningstjänsten just nu. Felet ligger hos Booqy, inte hos dig: försök igen om en liten stund.',
       )
     case 400:
       return new Error(
@@ -311,7 +311,7 @@ function resetErrorText(status: number, code: string): string {
     return 'Kontot är avstängt. Kontakta restaurangens ägare.'
   }
   if (status === 429) return 'För många försök. Vänta en stund och försök igen.'
-  return 'Ingen kontakt med inloggningstjänsten just nu. Försök igen om en stund.'
+  return 'Ingen kontakt med inloggningstjänsten just nu. Felet ligger hos Booqy, inte hos dig: försök igen om en liten stund.'
 }
 
 async function resetRequest(path: string, body: unknown): Promise<void> {

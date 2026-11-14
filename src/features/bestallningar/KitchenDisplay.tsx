@@ -5,6 +5,8 @@ import { tableTitle } from '../table-qr/tableQrApi'
 import { byCourse, getRouting, listTickets, printErrorText, reprintTicket, setTicketStatus, TICKET_TEXT } from './printApi'
 import type { Station, StationTicket } from './printApi'
 import { SkelBlock, SkelBox } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { booqyFaultText } from '../../shared/errors'
 
 /**
  * Köksskärmen (KDS): varje stations bongar på skärmen, samma som skrivaren
@@ -168,9 +170,9 @@ export function KitchenDisplay({ locationId, station, onStation }: {
           ))}
         </div>
       )}
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <ErrorNote text={error} />
       {notice && <p className="save-notice" role="status">{notice}</p>}
-      {loadError && <p className="form-error" role="alert">Kunde inte hämta bongarna. Försöker igen…</p>}
+      {loadError && <ErrorNote text={booqyFaultText('Kunde inte hämta bongarna. Skärmen försöker igen av sig själv.')} />}
       {tickets === null || stations === null ? (
         <div className="kds-grid" aria-hidden="true">
           {[0, 1, 2].map((i) => (

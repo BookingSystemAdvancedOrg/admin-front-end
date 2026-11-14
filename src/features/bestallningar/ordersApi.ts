@@ -160,7 +160,7 @@ export function clock(iso: string | undefined): string {
 const MOVE_ERRORS: Record<string, string> = {
   changed_retry: 'Beställningen har just ändrats av någon annan. Listan är uppdaterad.',
   refund_failed: 'Stripe kunde inte återbetala beställningen. Den är inte avbruten - försök igen eller kontakta support.',
-  payment_unavailable: 'Stripe svarar inte just nu. Försök igen om en stund.',
+  payment_unavailable: 'Stripe svarar inte just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
 }
 
 export function moveErrorText(err: unknown): string {

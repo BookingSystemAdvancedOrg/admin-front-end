@@ -25,6 +25,8 @@ import type { JobState, PrintStatus } from './printApi'
 import { KitchenDisplay } from './KitchenDisplay'
 import './bestallningar.css'
 import { SkelBlock, SkelBox, SkelPage, SkelTiles } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { booqyFaultText } from '../../shared/errors'
 
 /** Hur ofta listan hämtas om (köksskärmen står öppen hela kvällen). */
 export const POLL_MS = 10_000
@@ -394,14 +396,10 @@ export default function BestallningarPage() {
               </p>
             )}
             {actionError && (
-              <p className="form-error" role="alert">
-                {actionError}
-              </p>
+              <ErrorNote text={actionError} />
             )}
             {loadError && (
-              <p className="form-error" role="alert">
-                Kunde inte hämta beställningarna. Försöker igen…
-              </p>
+              <ErrorNote text={booqyFaultText('Kunde inte hämta beställningarna. Sidan försöker igen av sig själv.')} />
             )}
             <section className="stats-row" aria-label="Dagens siffror">
               {tiles.map((t, i) => (

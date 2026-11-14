@@ -4,6 +4,7 @@ import { errorText } from '../../shared/errors'
 import { ChangedNote } from '../../shared/ChangedNote'
 import { isConflict, mergeEdits, type FieldConflict } from '../../shared/merge'
 import { ERRORS, VAT_OPTIONS, createEvent, newId, updateEvent, type EventDetail, type NewEvent, type VatRate } from './api'
+import { ErrorActions } from '../../shared/ErrorNote'
 
 interface TypeRow { typeId: string; name: string; priceKr: string; vatRate: VatRate; perOrderMax: string; capacity: string; includes: string }
 
@@ -218,7 +219,7 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
         <Field label="Villkor för återbetalning" hint="Visas vid köpet och i biljettmejlet.">
           <textarea className="evenemang-text" value={refundPolicy} maxLength={1000} rows={2} onChange={(e) => setRefundPolicy(e.target.value)} />
         </Field>
-        {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
+        {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
         <Bar variant="action" label="Spara evenemanget">
           <Button type="button" variant="ghost" onClick={onCancel}>Avbryt</Button>
           <Button type="submit" variant="primary" busy={busy}>Spara</Button>

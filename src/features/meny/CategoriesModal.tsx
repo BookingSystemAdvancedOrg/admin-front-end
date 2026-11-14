@@ -8,6 +8,7 @@ import { isConflict } from '../../shared/merge'
 import { ChangedNote } from '../../shared/ChangedNote'
 import { categoryListError, MAX_CATEGORIES, mergeCategoryRows, NAME_MAX } from './menuForm'
 import type { CategoryRow as Row } from './menuForm'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /**
  * Restaurangens egna kategorier: lägg till, byt namn, flytta upp och ner,
@@ -169,7 +170,7 @@ export function CategoriesModal({
             </button>
           </div>
         )}
-        {(listError ?? error) && <p className="form-error" role="alert">{listError ?? error}</p>}
+        <ErrorNote text={listError ?? error} />
         <div className="modal-actions">
           <button type="button" className="btn outline square" onClick={onCancel}>Avbryt</button>
           <button type="button" className="btn primary square" disabled={Boolean(listError) || busy} onClick={() => void save()}>

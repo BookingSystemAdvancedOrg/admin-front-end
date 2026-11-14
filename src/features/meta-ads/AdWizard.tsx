@@ -4,6 +4,7 @@ import { errorText } from '../../shared/errors'
 import { listMenuItems, menuImageUrl, type MenuItem } from '../meny/menuApi'
 import { ERRORS, GOALS, createCampaign, newCampaignId, suggestCopy, type Goal } from './api'
 import './annonser.css'
+import { ErrorActions } from '../../shared/ErrorNote'
 
 const STEPS = ['Mål', 'Bild och text', 'Budget', 'Område', 'Förhandsvisning', 'Skapa'] as const
 const MAX_HEADLINE = 40
@@ -91,7 +92,7 @@ export default function AdWizard({ locationId, onClose, onCreated }: {
       </>
     }>
       <Bar variant="progress" value={(step + 1) / STEPS.length} label="Steg" valueText={`${step + 1} av ${STEPS.length}: ${STEPS[step]}`} />
-      {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
+      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
 
       {step === 0 ? (
         <fieldset className="annons-choices">

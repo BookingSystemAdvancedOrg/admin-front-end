@@ -3,10 +3,12 @@ import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { ApiError } from '../../shared/api'
+import { errorText } from '../../shared/errors'
 import { replaceTenant, useTenant } from '../../shared/tenant'
 import { acceptDpa, dpaBlocksSite } from './dpaApi'
 import { DPA_INTRO, DPA_SECTIONS, DPA_TITLE, DPA_VERSION } from './dpaText'
 import './dpa.css'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
@@ -57,7 +59,7 @@ export default function AvtalPage() {
           ? 'Avtalet har uppdaterats sedan du öppnade sidan. Den nya versionen visas nu; läs den och godkänn igen.'
           : err instanceof ApiError && err.status === 403
             ? 'Bara restaurangens ägare kan godkänna avtalet.'
-            : 'Kunde inte spara just nu. Försök igen om en stund.',
+            : errorText(err, 'Kunde inte spara.'),
       )
     } finally {
       setBusy(false)
@@ -123,9 +125,7 @@ export default function AvtalPage() {
                   </span>
                 </label>
                 {error && (
-                  <p className="form-error" role="alert">
-                    {error}
-                  </p>
+                  <ErrorNote text={error} />
                 )}
                 <div className="row-actions">
                   <button type="submit" className="btn primary square" disabled={!checked || busy}>

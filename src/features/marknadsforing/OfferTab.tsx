@@ -8,6 +8,7 @@ import { errorText, getOfferSettings, kronorFromOre, offerErrors, percent, saveO
 import type { OfferSettings, OfferView } from './marketingApi'
 import { DateInput } from '../../shared/DateInput'
 import { SkelCard, SkelPage } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 const PERCENTS = [5, 10, 15, 20, 25, 30, 40, 50]
 const VALID_DAYS = [7, 14, 30, 60, 90]
@@ -106,7 +107,7 @@ export function OfferTab() {
   }, [locationId])
 
   if (!view || !draft) {
-    return error ? <p className="form-error" role="alert">{error}</p> : (
+    return error ? <ErrorNote text={error} /> : (
       <SkelPage label="Hämtar erbjudandet">
         <SkelCard aside={false} lines={6} />
       </SkelPage>
@@ -157,7 +158,7 @@ export function OfferTab() {
       </section>
 
       {notice && <p className="save-notice" role="status">{notice}</p>}
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <ErrorNote text={error} />
       {!hasOrdering && (
         <p className="form-error" role="alert">
           Koden används vid onlinebeställning, och beställning ingår inte i er plan. Gäster kan anmäla sig, men inte

@@ -27,6 +27,7 @@ import {
   type Row,
 } from './api'
 import './personalliggare.css'
+import { ErrorActions } from '../../shared/ErrorNote'
 
 type Tab = 'idag' | 'personer' | 'rattelser' | 'exportera'
 
@@ -245,7 +246,7 @@ function InspectionView({ locationId, day, onClose }: { locationId: string; day:
 
   return (
     <Modal open size="wide" title="Personalliggare" onClose={onClose} closeLabel="Stäng">
-      {error ? <Bar variant="banner" tone="danger">{error}</Bar> : !view ? <p className="cell-muted">Hämtar…</p> : (
+      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : !view ? <p className="cell-muted">Hämtar…</p> : (
         <div className="pl-inspection">
           <dl className="pl-facts">
             <dt>Arbetsgivare</dt><dd>{view.employer.legalName} ({view.employer.orgNumber || 'organisationsnummer saknas'})</dd>
@@ -335,7 +336,7 @@ function PersonForm({ person, onClose, onSaved }: { person: Person; onClose: () 
   return (
     <Modal open title={person.personId ? person.name : 'Ny person'} onClose={onClose} closeLabel="Stäng">
       <form className="form-grid" onSubmit={save} aria-label="Person">
-        {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
+        {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
         <Field label="Namn" required>
           <Input value={draft.name} maxLength={80} autoComplete="off" onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
         </Field>
@@ -446,7 +447,7 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
           <Field label="Rätt tid" required>
             <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
           </Field>
-          <Field label="Orsak" hint="5–300 tecken. Sparas i liggaren." required>
+          <Field label="Orsak" hint="5-300 tecken. Sparas i liggaren." required>
             <Input value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} />
           </Field>
           <Bar variant="action" label="Spara rättelse"

@@ -9,6 +9,7 @@ import {
 import type { LayoutActivation, PublishedLayoutSnapshot } from './layoutApi'
 import { SkelRows } from '../../shared/Skeleton'
 import ModalOverlay from '../../shared/ModalOverlay'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /** "2026-10-05T01:00:00Z" -> "5 oktober 2026, 03:00" i lokal tid. */
 function formatMoment(iso: string): string {
@@ -171,9 +172,7 @@ export function LayoutVersionsModal({
         <h2>Publicerade versioner</h2>
 
         {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
+          <ErrorNote text={error} />
         )}
 
         {result && (

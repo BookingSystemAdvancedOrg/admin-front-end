@@ -10,6 +10,7 @@ import { regenerateTableCode } from './tableQrApi'
 import { useCardName, useTableCodes } from './useTableCodes'
 import type { TableCode } from './tableQrApi'
 import './table-qr.css'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 type MockTable = { tableId: string; label: string; seats?: number }
 
@@ -128,7 +129,7 @@ function CodeCard({
           </button>
         )}
         {notice && <p className="save-notice" role="status">{notice}</p>}
-        {error && <p className="form-error" role="alert">{error}</p>}
+        <ErrorNote text={error} />
       </div>
     </figure>
   )
@@ -158,7 +159,7 @@ export function TableQrPanel({
   return (
     <div className="props-field tqr-panel">
       <p className="props-label">QR-KOD FÖR BESTÄLLNING</p>
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <ErrorNote text={error} />
       {!codes && !error && <Loading label="Hämtar QR-koden" variant="inline" />}
       {codes && !code && (
         <p className="props-empty">
@@ -207,7 +208,7 @@ export function TableQrModal({
           Ett kort per bord i den publicerade layouten. Gästen skannar, ser sitt bord och beställer; personalen
           ser bordet på varje beställning. Byter ett bord namn eller plats gäller samma dekal.
         </p>
-        {error && <p className="form-error" role="alert">{error}</p>}
+        <ErrorNote text={error} />
         {!codes && !error && <Loading label="Hämtar QR-koderna" />}
         {codes && codes.length === 0 && (
           <p className="cell-muted">Publicera en layout med bord först, så får varje bord en QR-kod.</p>

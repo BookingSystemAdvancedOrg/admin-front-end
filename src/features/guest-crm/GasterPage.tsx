@@ -18,6 +18,7 @@ import {
   type GuestSummary,
 } from './api'
 import './gaster.css'
+import { ErrorActions } from '../../shared/ErrorNote'
 
 const KIND_LABEL = { booking: 'Bokning', order: 'Beställning', catering: 'Catering' } as const
 const CONSENT_LABEL = { granted: 'Ja', withdrawn: 'Nej, återkallat', none: 'Inget svar' } as const
@@ -157,7 +158,7 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
             ) : null}
           </div>
         </form>
-        {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
+        {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
         {guests === null && !error ? <p className="cell-muted">Hämtar gäster…</p> : null}
         {guests && guests.length === 0 ? (
           <p className="admin-empty">
@@ -322,7 +323,7 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
         <Button busy={saving} busyLabel="Sparar…" onClick={save}>Spara</Button>
       ) : undefined}
     >
-      {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
+      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
       {!guest && !error ? <p className="cell-muted">Hämtar…</p> : null}
       {guest ? (
         <>
@@ -378,7 +379,7 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
               {clash('excluded') !== undefined && (
                 <ChangedNote value={clash('excluded') ? 'ingår inte i utskick' : 'ingår i utskick'} onUse={() => set({ excluded: Boolean(clash('excluded')) })} />
               )}
-              {saveError ? <Bar variant="banner" tone="danger">{saveError}</Bar> : null}
+              {saveError ? <Bar variant="banner" tone="danger" action={<ErrorActions text={saveError} />}>{saveError}</Bar> : null}
             </div>
           ) : (
             guest.note ? <p><strong>Anteckning:</strong> {guest.note}</p> : null

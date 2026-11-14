@@ -18,6 +18,7 @@ import {
 } from './marketingApi'
 import type { Overview } from './marketingApi'
 import type { TabId } from './MarknadsforingPage'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 const PERIODS = [
   { days: 7, label: '7 dagar' },
@@ -168,7 +169,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
         )}
       </div>
 
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <ErrorNote text={error} />
       {!data && !error && <OverviewSkeleton />}
 
       {data && (

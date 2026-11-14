@@ -30,6 +30,7 @@ import { PhoneInput } from '../../shared/PhoneInput'
 import { ApiError } from '../../shared/api'
 import { minutesLabel } from '../installningar/bookingTime'
 import ModalOverlay from '../../shared/ModalOverlay'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 type Panel = null | 'no_show' | 'cancel' | 'refund' | 'edit' | 'extend'
 
@@ -351,9 +352,7 @@ export function ReservationModal({
             )}
 
             {error && (
-              <p className="form-error" role="alert">
-                {error}
-              </p>
+              <ErrorNote text={error} />
             )}
 
             {r.history && r.history.length > 0 && (
@@ -486,9 +485,7 @@ function ExtendPanel({
       )}
       <p className="cell-muted">Borden kontrolleras igen; nästa bokning på samma bord stoppar förlängningen.</p>
       {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
+        <ErrorNote text={error} />
       )}
       <div className="modal-actions">
         <button type="button" className="btn outline square" onClick={onCancel}>
@@ -727,9 +724,7 @@ function EditForm({
         </label>
       )}
       {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
+        <ErrorNote text={error} />
       )}
       <div className="modal-actions">
         <button type="button" className="btn outline square" onClick={onCancel}>

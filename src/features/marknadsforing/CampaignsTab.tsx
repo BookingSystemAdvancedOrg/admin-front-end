@@ -31,6 +31,7 @@ import { useEscape } from './useEscape'
 import { DateTimeInput } from '../../shared/DateInput'
 import { SkelRows } from '../../shared/Skeleton'
 import ModalOverlay from '../../shared/ModalOverlay'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 const DAY_CHOICES = [30, 60, 90, 180, 365]
 
@@ -154,7 +155,7 @@ function CampaignForm({
           Bara gäster som själva kryssat i att de vill få erbjudanden. Den som avregistrerat sig får aldrig utskick.
         </p>
 
-        {error && <p className="form-error" role="alert">{error}</p>}
+        <ErrorNote text={error} />
         <div className="modal-actions">
           <button type="button" className="btn outline square" onClick={onClose} disabled={saving}>Avbryt</button>
           <button type="submit" className="btn primary square" disabled={saving}>{saving ? 'Sparar…' : 'Spara utkast'}</button>
@@ -234,7 +235,7 @@ function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone:
             <DateTimeInput id="mk-send-at" timeLabel="Tid" value={at} min={toLocalInput(new Date())} onChange={(e) => setAt(e.target.value)} />
           </div>
         )}
-        {error && <p className="form-error" role="alert">{error}</p>}
+        <ErrorNote text={error} />
         <div className="modal-actions">
           <button type="button" className="btn outline square" onClick={onClose} disabled={busy}>Avbryt</button>
           <button type="button" className="btn primary square" onClick={() => void go()} disabled={busy || count === 0}>
@@ -305,7 +306,7 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
   return (
     <div className="mk-stack">
       {notice && <p className="save-notice" role="status">{notice}</p>}
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <ErrorNote text={error} />
 
       <section className="admin-card table-card">
         <div className="card-head">

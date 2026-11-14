@@ -10,6 +10,8 @@ import { NEEDS_OWNER, formatDate, kronor, listRequests, statusClass, statusLabel
 import type { CateringStatus, RequestSummary } from './cateringApi'
 import './catering.css'
 import { SkelCard, SkelPage, SkelRows, SkelTiles } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { booqyFaultText } from '../../shared/errors'
 
 type Filter = 'aktiva' | 'alla'
 const ACTIVE: CateringStatus[] = ['requested', 'offer_sent', 'change_requested', 'signed', 'confirmed', 'delivered']
@@ -99,7 +101,7 @@ export default function CateringPage() {
                 <option value="alla">Alla</option>
               </select>
             </div>
-            {error && <p className="form-error" role="alert">Kunde inte hämta förfrågningarna.</p>}
+            {error && <ErrorNote text={booqyFaultText('Kunde inte hämta förfrågningarna.')} />}
             {rows === null && !error && <SkelRows n={5} cols={4} />}
             {rows !== null && visible.length === 0 && (
               <p className="cell-muted">

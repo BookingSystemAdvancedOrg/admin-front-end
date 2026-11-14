@@ -6,6 +6,7 @@ import { useAuth } from './useAuth'
 import { AuthLayout } from './AuthLayout'
 import { meetsAllRules, passwordProblem } from './passwordRules'
 import { PasswordRulesList } from './PasswordRulesList'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /** Figma: nytt-losenord-page (41:26). */
 export default function NewPasswordPage() {
@@ -86,9 +87,7 @@ export default function NewPasswordPage() {
         <PasswordRulesList password={password} />
 
         {error && (
-          <p className="auth-error" role="alert">
-            {error}
-          </p>
+          <ErrorNote className="auth-error" text={error} />
         )}
 
         <button

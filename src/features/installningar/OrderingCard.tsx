@@ -8,6 +8,8 @@ import { TableQrModal } from '../table-qr/TableQr'
 import { getLocation, updateLocation } from './locationApi'
 import type { OrderingPolicy } from './locationApi'
 import '../bestallningar/bestallningar.css'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { booqyFaultText } from '../../shared/errors'
 
 /**
  * Matbeställning för den valda platsen.
@@ -208,9 +210,7 @@ export function OrderingCard({
             på avhämtning (t.o.m. 2027), 12 % vid bordet, 25 % på alkohol.
           </p>
           {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
+            <ErrorNote text={error} />
           )}
           {isOwner && (
             <span className="row-actions">
@@ -237,7 +237,7 @@ export function OrderingCard({
         <div className="qr-section">
           <div style={{ height: 20 }} />
           <h3 className="card-title">QR-koder för borden</h3>
-          {tablesError && <p className="form-error" role="alert">Kunde inte hämta borden.</p>}
+          {tablesError && <ErrorNote text={booqyFaultText('Kunde inte hämta borden.')} />}
           {tables && tables.length === 0 && (
             <p className="cell-muted">Publicera en planritning med bord först (Layout).</p>
           )}

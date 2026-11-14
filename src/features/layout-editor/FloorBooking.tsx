@@ -30,6 +30,7 @@ import type { LayoutElement } from './layoutApi'
 import type { Floor, TableElement } from './data'
 import '../bokningar/bokningar.css'
 import './floor-booking.css'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /** Längst fram personalen kan boka (servern: 21 dagar). */
 const HORIZON_DAYS = 20
@@ -300,9 +301,7 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
         {notice}
         {planState === 'loading' && <Loading label="Hämtar bordskartan" />}
         {planState === 'error' && (
-          <p className="form-error" role="alert">
-            {planError}
-          </p>
+          <ErrorNote text={planError} />
         )}
         {planState === 'none' && (
           <section className="admin-card table-card">
@@ -351,9 +350,7 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
                 </p>
               )}
               {slotsError && (
-                <p className="form-error" role="alert">
-                  {slotsError}
-                </p>
+                <ErrorNote text={slotsError} />
               )}
             </section>
 
@@ -550,9 +547,7 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
                       </label>
                     )}
                     {error && (
-                      <p className="form-error" role="alert">
-                        {error}
-                      </p>
+                      <ErrorNote text={error} />
                     )}
                     <div className="modal-actions">
                       <button type="button" className="btn outline square" onClick={() => setTableId(null)}>

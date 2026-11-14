@@ -11,6 +11,8 @@ import { Card, Tile, Tip } from './parts'
 import { useLiveRefresh } from './live'
 import { addDays, datesIn, fmtDecimal, fmtInt, fmtPct, shortDate, weekdayOf } from './stats'
 import { WEEKS, byWeek } from './weeks'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { booqyFaultText } from '../../shared/errors'
 
 /**
  * Det viktigaste för ägaren och personalen, alltid överst och alltid live,
@@ -67,9 +69,7 @@ export function Overview({ locationId, today, money, sample, sampleName }: {
 
   if (error) {
     return (
-      <div className="form-error" role="alert">
-        Kunde inte hämta dagens siffror. Försök igen om en stund.
-      </div>
+      <ErrorNote text={booqyFaultText('Kunde inte hämta dagens siffror.')} />
     )
   }
   if (!data) {

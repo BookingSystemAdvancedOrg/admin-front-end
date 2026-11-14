@@ -20,6 +20,7 @@ import {
   type Post,
 } from './api'
 import './inlagg.css'
+import { ErrorActions } from '../../shared/ErrorNote'
 
 /** Marknadsföring > Inlägg: utkast från menyn, förhandsvisning, publicera nu, schemalägg, avbryt. */
 export default function InlaggTab() {
@@ -46,7 +47,7 @@ export default function InlaggTab() {
     return () => window.clearTimeout(timer)
   }, [listing, load])
 
-  if (error) return <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng">{error}</Bar>
+  if (error) return <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng" action={<ErrorActions text={error} />}>{error}</Bar>
   if (!listing) return <p className="cell-muted">Hämtar…</p>
   const notConnected = !listing.connection.page
 

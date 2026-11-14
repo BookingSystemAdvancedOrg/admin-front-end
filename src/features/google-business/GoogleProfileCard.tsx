@@ -21,6 +21,7 @@ import {
   type LocationView,
 } from './api'
 import './google.css'
+import { ErrorActions } from '../../shared/ErrorNote'
 
 /** Inställningar > Profil: koppla Google, välj Google-plats, synka öppettider (Booqy styr). */
 export default function GoogleProfileCard({ locationId }: { locationId: string }) {
@@ -102,7 +103,7 @@ export default function GoogleProfileCard({ locationId }: { locationId: string }
     await load()
   }, 'Kunde inte koppla bort Google.')
 
-  if (error) return <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng">{error}</Bar>
+  if (error) return <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng" action={<ErrorActions text={error} />}>{error}</Bar>
   if (!connection || !view) return null
 
   if (connection.status !== 'connected') {

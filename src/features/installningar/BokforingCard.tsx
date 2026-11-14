@@ -13,6 +13,7 @@ import {
 } from './accountingApi'
 import type { AccountRole, Accounts, AccountingSettings, ExportFormat, ExportResult } from './accountingApi'
 import './bokforing.css'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /**
  * Bokföring: dagens försäljning som en verifikation per dag, till Fortnox,
@@ -82,7 +83,7 @@ function kr(ore: number): string {
 
 const ERRORS: Record<string, string> = {
   stripe_refused: 'Stripe svarade inte på frågan om avgifter och utbetalningar. Kontakta Booqy.',
-  stripe_unavailable: 'Stripe går inte att nå just nu. Försök igen om en stund.',
+  stripe_unavailable: 'Stripe går inte att nå just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
   changed_retry: 'Någon annan sparade samtidigt. Det senaste visas nu; spara igen om ändringen fortfarande behövs.',
 }
 
@@ -175,7 +176,7 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
       saveFile(res)
       setResult(res)
     } catch (err) {
-      setExportError(message(err, 'Kunde inte skapa filen just nu. Försök igen om en stund.'))
+      setExportError(message(err, 'Kunde inte skapa filen.'))
     } finally {
       setExporting(false)
     }
@@ -197,7 +198,7 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
       setCostCenter(next.costCenter)
       setNotice('Sparat.')
     } catch (err) {
-      setSaveError(message(err, 'Kunde inte spara just nu. Försök igen om en stund.'))
+      setSaveError(message(err, 'Kunde inte spara.'))
     } finally {
       setSaving(false)
     }
@@ -262,8 +263,8 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
               </>
             )}
           </div>
-          {rangeError && <p className="form-error" role="alert">{rangeError}</p>}
-          {exportError && <p className="form-error" role="alert">{exportError}</p>}
+          <ErrorNote text={rangeError} />
+          <ErrorNote text={exportError} />
           <span className="row-actions">
             <button type="submit" className="btn primary square" disabled={exporting || Boolean(rangeError)}>
               <Icon name="download" />
@@ -323,7 +324,7 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
           på andra konton.
         </p>
         <div style={{ height: 16 }} />
-        {loadError && <p className="form-error" role="alert">{loadError}</p>}
+        <ErrorNote text={loadError} />
         {!accounts && !loadError && <p className="cell-muted">Hämtar kontona…</p>}
         {accounts && settings && (
           <form onSubmit={save} className="notifications-form" noValidate>
@@ -401,7 +402,7 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
               </div>
             </div>
 
-            {saveError && <p className="form-error" role="alert">{saveError}</p>}
+            <ErrorNote text={saveError} />
             <span className="row-actions">
               <button type="submit" className="btn primary square" disabled={saving || !dirty}>
                 {saving ? 'Sparar…' : 'Spara'}

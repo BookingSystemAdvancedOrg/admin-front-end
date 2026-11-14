@@ -55,5 +55,5 @@ export const ERRORS: Record<string, string> = {
   invalid_validity: 'Giltigheten ska vara 12-60 månader.',
   invalid_amount: 'Beloppen ska vara 100-5 000 kr.',
   // E10: koden är redan bytt men mejlet gick inte ut; ett nytt försök byter koden igen och skickar den.
-  notification_unavailable: 'Mejlet kunde inte skickas just nu. Försök igen om en stund.',
+  notification_unavailable: 'Mejlet kunde inte skickas just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
 }

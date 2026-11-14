@@ -23,6 +23,7 @@ import {
   type Campaign,
   type Connection,
 } from './api'
+import { ErrorActions } from '../../shared/ErrorNote'
 
 /** Marknadsföring > Annonser: koppla Meta, skapa annonser på två minuter, starta och pausa. */
 export default function AnnonserTab() {
@@ -75,7 +76,7 @@ export default function AnnonserTab() {
 
   return (
     <>
-      {error ? <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng">{error}</Bar> : null}
+      {error ? <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng" action={<ErrorActions text={error} />}>{error}</Bar> : null}
       {connection?.killSwitch ? (
         <Bar variant="banner" tone="warning">Annonser är pausade av Booqy just nu. Inga nya annonser kan startas.</Bar>
       ) : null}

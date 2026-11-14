@@ -30,6 +30,7 @@ import './bokningar.css'
 import { DateInput } from '../../shared/DateInput'
 import { Icon } from '../../shared/Icon'
 import { SkelBlock, SkelTableRows } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /**
  * Bokningar för vald plats och dag (GET /locations/{id}/reservations).
@@ -214,9 +215,7 @@ export default function BokningarPage() {
           </div>
 
           {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
+            <ErrorNote text={error} />
           )}
 
           <div className="table-scroll" data-tour="booking-list">

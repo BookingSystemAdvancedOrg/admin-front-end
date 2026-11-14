@@ -133,7 +133,7 @@ export const ERRORS: Record<string, string> = {
   alcohol_not_allowed: 'Rätter med alkohol kan inte annonseras.',
   quota_exceeded: 'Månadens textförslag är slut. Skriv texten själv.',
   ai_unavailable: 'Textförslagen fungerar inte just nu. Skriv texten själv.',
-  meta_unavailable: 'Meta svarar inte just nu. Försök igen om en stund.',
+  meta_unavailable: 'Meta svarar inte just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
   invalid_state: 'Kopplingen gick ut. Försök koppla igen.',
   invalid_cap: 'Månadstaket är för högt eller för lågt.',
   unknown_asset: 'Välj ett konto och en sida från listan.',

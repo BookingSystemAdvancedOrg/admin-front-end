@@ -12,6 +12,7 @@ import {
 } from './usersApi'
 import { PhoneInput } from '../../shared/PhoneInput'
 import ModalOverlay from '../../shared/ModalOverlay'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 export interface StaffFormValues {
   name: string
@@ -195,9 +196,7 @@ export function StaffModal({
           </div>
 
           {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
+            <ErrorNote text={error} />
           )}
 
           <div className="modal-actions">

@@ -92,7 +92,7 @@ export const ERRORS: Record<string, string> = {
   changed_retry: 'Någon annan ändrade webbplatsen samtidigt. Det senaste visas nu; spara igen om din ändring fortfarande behövs.',
   publish_running: 'En publicering pågår redan. Vänta tills den är klar.',
   wrong_mode: 'Er webbplats sköts av Booqy och kan inte ändras här.',
-  render_missing: 'Sidan kunde inte byggas. Försök igen om en stund.',
+  render_missing: 'Sidan kunde inte byggas. Felet ligger hos Booqy, inte hos er. Försök igen; kvarstår det, rapportera det till Booqy.',
 }
 
 /**

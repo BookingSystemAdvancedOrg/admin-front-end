@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Bar, Button, Field, Input } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
 import { ERRORS, langLabel, newId, simulate, type Lang } from './api'
+import { ErrorActions } from '../../shared/ErrorNote'
 
 interface Line { who: 'du' | 'assistenten'; text: string; lang?: Lang }
 
@@ -32,7 +33,7 @@ export default function SimulatorPanel({ locationId }: { locationId: string }) {
 
   return (
     <div className="telefon-sim">
-      {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
+      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
       <ol className="telefon-transcript" aria-live="polite">
         {lines.map((l, i) => (
           <li key={i} className={`telefon-turn telefon-turn--${l.who === 'du' ? 'caller' : 'agent'}`}>

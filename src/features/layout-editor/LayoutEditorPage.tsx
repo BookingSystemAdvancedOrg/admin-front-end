@@ -67,6 +67,7 @@ import {
 import type { Clip, EditorAction, Guide, History, ShortcutTool } from './editorTools'
 import './layout-editor.css'
 import { Icon, type IconName } from '../../shared/Icon'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 const TILT_DEG = 55
 const PERSPECTIVE = 1600
@@ -2196,14 +2197,10 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
           </p>
         )}
         {shownLayoutError && (
-          <p className="form-error" role="alert">
-            {shownLayoutError}
-          </p>
+          <ErrorNote text={shownLayoutError} />
         )}
         {liveError && (
-          <p className="form-error" role="alert">
-            {liveError}
-          </p>
+          <ErrorNote text={liveError} />
         )}
         {readOnly && (
           <p className="layout-viewmode-banner">

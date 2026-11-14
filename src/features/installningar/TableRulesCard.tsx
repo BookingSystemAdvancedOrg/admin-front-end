@@ -15,6 +15,8 @@ import {
 import type { ComboDraft, RowState } from './bookingRules'
 import '../bokningar/bokningar.css'
 import { SkelRows } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { booqyFaultText } from '../../shared/errors'
 
 /**
  * Bord vid onlinebokning för den valda platsen (backend shared/booking_rules.py).
@@ -159,9 +161,7 @@ export function TableRulesCard({
       {!locationId ? (
         <p className="cell-muted">Välj en plats först.</p>
       ) : tablesError ? (
-        <p className="form-error" role="alert">
-          Kunde inte hämta planritningen.
-        </p>
+        <ErrorNote text={booqyFaultText('Kunde inte hämta planritningen.')} />
       ) : !tables || !saved ? (
         <SkelRows n={3} cols={3} />
       ) : tables.length === 0 ? (
@@ -306,9 +306,7 @@ export function TableRulesCard({
           </fieldset>
 
           {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
+            <ErrorNote text={error} />
           )}
           {isOwner && (
             <span className="row-actions">

@@ -22,6 +22,7 @@ import type { BookingExtension, BookingTimeRules, BookingTimeWindow } from './bo
 import './bookingTime.css'
 import { DateInput, TimeInput } from '../../shared/DateInput'
 import { SkelRows } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /**
  * Bokningstid (backend shared/booking_rules.py): standardlängd, om
@@ -184,9 +185,7 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
         <p className="cell-muted">Välj en plats först.</p>
       ) : !rules ? (
         error ? (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
+          <ErrorNote text={error} />
         ) : (
           <SkelRows n={3} cols={3} />
         )
@@ -394,9 +393,7 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
             </ul>
           )}
           {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
+            <ErrorNote text={error} />
           )}
           {isOwner ? (
             <span className="row-actions">

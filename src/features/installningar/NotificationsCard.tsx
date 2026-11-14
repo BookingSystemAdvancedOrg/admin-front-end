@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { REMINDER_HOURS, replaceTenant, updateTenant } from '../../shared/tenant'
 import type { Tenant, TenantNotifications } from '../../shared/tenant'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /**
  * Notiser: vad gäster och restaurangen får när någon bokar.
@@ -153,9 +154,7 @@ export function NotificationsCard({ tenant, isOwner }: { tenant: Tenant; isOwner
         </div>
 
         {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
+          <ErrorNote text={error} />
         )}
         {isOwner && (
           <span className="row-actions">

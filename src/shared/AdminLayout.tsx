@@ -30,6 +30,8 @@ import type { PaletteItem } from './CommandPalette'
 import './ds.css'
 import { HelpChat } from '../features/help/HelpChat'
 import { helpChatEnabled, openHelpChat } from '../features/help/chatState'
+import { ErrorNote } from './ErrorNote'
+import { booqyFaultText } from './errors'
 
 /** Grupperna i sidomenyn som användaren har fällt ihop (sparas i webbläsaren). */
 function storedClosedGroups(): string[] {
@@ -44,11 +46,11 @@ function storedClosedGroups(): string[] {
 const TENANT_ERROR: Record<TenantErrorCode, { title: string; text: string }> = {
   tenant_inactive: {
     title: 'Kontot är inte aktivt',
-    text: 'Restaurangens konto är pausat eller avslutat. Kontakta support om det inte stämmer.',
+    text: 'Restaurangens konto är pausat eller avslutat. Ägaren kontaktar Booqy (svara på senaste fakturan eller mejlet från oss) för att öppna det igen.',
   },
   no_tenant: {
     title: 'Inloggningen är inte kopplad till någon restaurang',
-    text: 'Be restaurangens ägare eller support att bjuda in dig på nytt, och logga sedan in igen.',
+    text: 'Be restaurangens ägare bjuda in dig på nytt under Personal, och logga sedan in igen.',
   },
   unauthorized: {
     title: 'Du är utloggad',
@@ -56,7 +58,7 @@ const TENANT_ERROR: Record<TenantErrorCode, { title: string; text: string }> = {
   },
   unavailable: {
     title: 'Kunde inte hämta restaurangen',
-    text: 'Tjänsten svarar inte just nu. Försök igen om en stund.',
+    text: 'Tjänsten svarar inte just nu.',
   },
 }
 
@@ -319,17 +321,12 @@ export function AdminLayout() {
           <div className="admin-main">
             <section className="admin-card table-card tenant-notice" role="alert">
               <h2 className="card-title">{TENANT_ERROR[error].title}</h2>
-              <p className="cell-muted">{TENANT_ERROR[error].text}</p>
+              {error === 'unavailable' ? (
+                <ErrorNote text={booqyFaultText(TENANT_ERROR[error].text)} onRetry={() => void refresh()} />
+              ) : (
+                <p className="cell-muted">{TENANT_ERROR[error].text}</p>
+              )}
               <div className="row-actions">
-                {error === 'unavailable' && (
-                  <button
-                    type="button"
-                    className="btn primary square"
-                    onClick={() => void refresh()}
-                  >
-                    Försök igen
-                  </button>
-                )}
                 {error !== 'unavailable' && (
                   <button type="button" className="btn outline square" onClick={logout}>
                     Logga ut

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { coverCrop, cropSquare, getMyAvatar, loadMyAvatar, removeMyAvatar, saveMyAvatar, subscribeMyAvatar } from './avatarStore'
 import { Avatar } from './Avatar'
 import ModalOverlay from './ModalOverlay'
+import { ErrorNote } from './ErrorNote'
 
 const VIEW = 240
 
@@ -54,7 +55,7 @@ function ProfilePictureDialog({ name, email, onClose }: { name?: string | null; 
               <Avatar url={mine.url} name={name} email={email} size="lg" />
               <p className="modal-text">Frivilligt. Bilden visas bredvid ditt namn i Personal. Utan bild visas dina initialer.</p>
             </div>
-            {error && <p className="form-error" role="alert">{error}</p>}
+            <ErrorNote text={error} />
             <div className="modal-actions">
               {mine.url && (
                 <button type="button" className="row-action danger" onClick={() => void removeMyAvatar().then((ok) => !ok && setError('Bilden kunde inte tas bort. Försök igen.'))}>

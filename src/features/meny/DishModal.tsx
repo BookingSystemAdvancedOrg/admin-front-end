@@ -20,6 +20,7 @@ import { ImageLightbox } from '../../shared/ImageLightbox'
 import { FocusFrame } from './FocusFrame'
 import { CENTRE, focusPosition, isCentre } from './imageFocus'
 import type { ImageFocus } from './imageFocus'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 export interface DishFormValues {
   name: string
@@ -551,8 +552,8 @@ export function DishModal({
         )}
 
         {error && (
-          <div className="dish-save-error" role="alert">
-            <p className="form-error">{error}</p>
+          <div className="dish-save-error">
+            <ErrorNote text={error} />
           </div>
         )}
 

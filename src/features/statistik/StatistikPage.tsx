@@ -45,6 +45,8 @@ import { addDays, daysBetween, deltaPct, fmtDecimal, fmtInt, fmtKr, fmtPct, insi
 import './statistik.css'
 import { DateInput } from '../../shared/DateInput'
 import { SkelBlock, SkelBox, SkelCard, SkelPage } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { booqyFaultText } from '../../shared/errors'
 
 /**
  * Statistik: överst det viktigaste, alltid live (Overview: idag, kommande
@@ -475,9 +477,7 @@ export default function StatistikPage() {
         )}
 
         {error && (
-          <div className="form-error" role="alert">
-            Kunde inte hämta siffrorna. Försök igen om en stund.
-          </div>
+          <ErrorNote text={booqyFaultText('Kunde inte hämta siffrorna.')} />
         )}
 
         {!s && !error && (

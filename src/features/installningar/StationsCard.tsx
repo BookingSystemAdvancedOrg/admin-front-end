@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { NO_TICKET, printErrorText, saveRouting } from '../bestallningar/printApi'
 import type { Course, Printer, Station, TicketRouting } from '../bestallningar/printApi'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /**
  * Inställningar > Skrivare > Stationer: vart bongarna går.
@@ -199,7 +200,7 @@ export function StationsCard({ locationId, isOwner, routing, devices, onSaved }:
         ) : (
           <p className="cell-muted">Bara restaurangens ägare kan ändra stationerna.</p>
         )}
-        {error && <p className="form-error" role="alert">{error.text}</p>}
+        {error && <ErrorNote text={error.text} />}
         {notice && <p className="save-notice" role="status">{notice}</p>}
       </form>
     </section>

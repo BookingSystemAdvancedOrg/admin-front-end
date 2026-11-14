@@ -19,6 +19,7 @@ import '../installningar/privacy.css'
 import { useEscape } from './useEscape'
 import { SkelRows } from '../../shared/Skeleton'
 import ModalOverlay from '../../shared/ModalOverlay'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 const CONSENT_SOURCE: Record<string, string> = {
   booking: 'Vid bokning',
@@ -173,7 +174,7 @@ export function SubscribersTab() {
           <KeptList items={erased.kept} />
         </div>
       )}
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <ErrorNote text={error} />
       <section className="admin-card table-card">
         <div className="card-head">
           <h2 className="card-title">Mottagare</h2>

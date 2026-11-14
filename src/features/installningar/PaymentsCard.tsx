@@ -1,7 +1,9 @@
 import { useEffect, useEffectEvent, useState } from 'react'
 import { ApiError } from '../../shared/api'
+import { errorText } from '../../shared/errors'
 import { createStripeAccountLink, stripeStage } from '../../shared/tenant'
 import type { StripeStage as Stage, Tenant } from '../../shared/tenant'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /**
  * Betalningar: restaurangens Stripe-konto, från GET /tenant.
@@ -92,11 +94,11 @@ export function PaymentsCard({
     } catch (err) {
       setBusy(false)
       if (err instanceof ApiError && err.message === 'no_stripe_account') {
-        setError('Restaurangen har inget Stripe-konto än. Kontakta support.')
+        setError(errorText(err, 'Kunde inte öppna Stripe.'))
       } else if (err instanceof ApiError && err.status === 403) {
         setError('Bara restaurangens ägare kan hantera Stripe-kontot.')
       } else {
-        setError('Kunde inte öppna Stripe just nu. Försök igen om en stund.')
+        setError(errorText(err, 'Kunde inte öppna Stripe.'))
       }
     }
   }
@@ -132,9 +134,7 @@ export function PaymentsCard({
         </div>
       </div>
       {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
+        <ErrorNote text={error} />
       )}
       <div style={{ height: 16 }} />
       {isOwner && stage !== 'missing' && (

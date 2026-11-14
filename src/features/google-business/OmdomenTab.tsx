@@ -14,6 +14,7 @@ import {
   type Source,
 } from './api'
 import './google.css'
+import { ErrorActions } from '../../shared/ErrorNote'
 
 const SOURCES: { id: Source; label: string }[] = [
   { id: 'booking', label: 'Efter bordsbokning (när gästen har kommit)' },
@@ -56,7 +57,7 @@ export default function OmdomenTab() {
     setView(v)
   }, { enabled: Boolean(locationId) && view !== null && !saving })
 
-  if (error) return <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng">{error}</Bar>
+  if (error) return <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng" action={<ErrorActions text={error} />}>{error}</Bar>
   if (!locationId || !view || !draft) return <p className="cell-muted">Hämtar…</p>
 
   function toggle<T extends string>(list: T[], value: T): T[] {

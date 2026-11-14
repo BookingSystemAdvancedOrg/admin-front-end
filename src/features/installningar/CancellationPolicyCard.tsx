@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { getLocation, updateLocation } from './locationApi'
 import type { GuaranteePolicy } from './locationApi'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /**
  * Avbokningspolicy / kortgaranti för den valda platsen.
@@ -233,9 +234,7 @@ export function CancellationPolicyCard({
             </p>
           )}
           {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
+            <ErrorNote text={error} />
           )}
           {isOwner && (
             <span className="row-actions">

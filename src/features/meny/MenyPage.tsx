@@ -40,6 +40,7 @@ import { ImageLightbox } from '../../shared/ImageLightbox'
 import { DishRow } from './DishRow'
 import { isCentre } from './imageFocus'
 import { SkelBlock, SkelTableRows } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /**
  * `base` är rätten som dialogen öppnades med (dina ändringar räknas mot den,
@@ -388,9 +389,7 @@ export default function MenyPage() {
           </p>
         )}
         {readOnly && (
-          <p className="form-error" role="alert">
-            {MENU_ROUTES_MISSING_MESSAGE}
-          </p>
+          <ErrorNote text={MENU_ROUTES_MISSING_MESSAGE} />
         )}
         <section className="stats-row" aria-label="Menyns siffror">
           {tiles.map((t, i) => (
@@ -459,9 +458,7 @@ export default function MenyPage() {
             )}
           </div>
           {(loadError ?? rowError) && (
-            <p className="form-error" role="alert">
-              {loadError ?? rowError}
-            </p>
+            <ErrorNote text={loadError ?? rowError} />
           )}
           <div className="table-scroll">
             <table className="data-table meny-table">

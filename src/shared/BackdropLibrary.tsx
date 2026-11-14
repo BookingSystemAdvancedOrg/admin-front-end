@@ -11,6 +11,7 @@ import {
   type UploadError,
 } from './backdropStore'
 import { BackdropPreview } from './BackdropPreview'
+import { ErrorNote } from './ErrorNote'
 
 const UPLOAD_ERRORS: Record<UploadError, string> = {
   'not-image': 'Det där är ingen bild. Välj en JPG-, PNG-, WebP- eller HEIC-bild.',
@@ -164,9 +165,7 @@ export function BackdropLibrary() {
       </ul>
 
       {error && (
-        <p id="bg-library-error" className="bg-library-error" role="alert">
-          {error}
-        </p>
+        <ErrorNote id="bg-library-error" className="bg-library-error" text={error} />
       )}
 
       {preview !== null && lib.items[preview] && (

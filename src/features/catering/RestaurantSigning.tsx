@@ -3,6 +3,7 @@ import QRCode from 'qrcode'
 import { tokens } from '@booqy/brand'
 import { errorText, restaurantSign, restaurantSignStatus } from './cateringApi'
 import type { CateringRequest } from './cateringApi'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /** BankID: status en gång i sekunden (QR-koden byts varje sekund). */
 export const SIGN_POLL_MS = 1_000
@@ -145,7 +146,7 @@ export function RestaurantSigning({ request, onSigned, returned }: {
           </button>
         </span>
       )}
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <ErrorNote text={error} />
     </section>
   )
 }

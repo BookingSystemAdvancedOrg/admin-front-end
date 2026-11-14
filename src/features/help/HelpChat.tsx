@@ -111,7 +111,7 @@ export function HelpChat() {
       const notice =
         err instanceof HelpLimited
           ? 'Du har ställt många frågor på kort tid. Vänta en stund och fråga igen.'
-          : 'Det gick inte att få ett svar just nu. Försök igen om en stund.'
+          : 'Det gick inte att få ett svar just nu. Felet ligger hos Booqy, inte hos dig: fråga igen, eller öppna hjälptexterna under Hjälp.'
       setMessages((ms) => [...ms, { id: nextId++, role: 'notice', text: notice }])
     } finally {
       setWaiting(false)

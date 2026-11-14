@@ -40,11 +40,13 @@ export class ApiError extends Error {
   code: string
   field?: string
   fromServer: boolean
+  /** API Gatewayns request id (svarshuvudet apigw-requestid), för Rapportera till Booqy. */
+  requestId?: string
 
   constructor(
     status: number,
     message: string,
-    opts: { code?: string; field?: string; fromServer?: boolean } = {},
+    opts: { code?: string; field?: string; fromServer?: boolean; requestId?: string } = {},
   ) {
     super(message)
     this.name = 'ApiError'
@@ -52,6 +54,7 @@ export class ApiError extends Error {
     this.code = opts.code ?? (CODE.test(message) ? message : statusCode(status))
     this.field = opts.field
     this.fromServer = opts.fromServer ?? false
+    if (opts.requestId) this.requestId = opts.requestId
   }
 }
 
@@ -77,18 +80,27 @@ function statusCode(status: number): string {
   return 'invalid_request'
 }
 
+const REQUEST_ID = /^[A-Za-z0-9=_.:-]{1,100}$/
+
+/** Anropets id hos API Gateway, så Booqy hittar det i loggarna. */
+function requestIdOf(res: Response, body?: { requestId?: unknown }): string | undefined {
+  const raw = res.headers?.get?.('apigw-requestid') ?? res.headers?.get?.('x-amzn-requestid')
+    ?? (typeof body?.requestId === 'string' ? body.requestId : null)
+  return raw && REQUEST_ID.test(raw) ? raw : undefined
+}
+
 async function toApiError(res: Response): Promise<ApiError> {
   const text = await res.text().catch(() => '')
   try {
-    const body = JSON.parse(text) as { error?: string; message?: string; code?: string; field?: string }
+    const body = JSON.parse(text) as { error?: string; message?: string; code?: string; field?: string; requestId?: unknown }
     const message = body.error ?? body.message ?? text
     const code = typeof body.code === 'string' && CODE.test(body.code) ? body.code
       : typeof body.error === 'string' && CODE.test(body.error) ? body.error
         : statusCode(res.status)
-    return new ApiError(res.status, message, { code, field: body.field, fromServer: true })
+    return new ApiError(res.status, message, { code, field: body.field, fromServer: true, requestId: requestIdOf(res, body) })
   } catch {
     // CloudFront/API Gateway kan svara med HTML eller tom text (502/504).
-    return new ApiError(res.status, text || res.statusText, { code: statusCode(res.status), fromServer: true })
+    return new ApiError(res.status, text || res.statusText, { code: statusCode(res.status), fromServer: true, requestId: requestIdOf(res) })
   }
 }
 

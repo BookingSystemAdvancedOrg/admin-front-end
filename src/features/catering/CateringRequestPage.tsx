@@ -34,6 +34,7 @@ import { DateInput } from '../../shared/DateInput'
 import { focusErrorField } from '../../shared/errors'
 import { Num } from '../../shared/motion/Num'
 import { SkelCard, SkelPage } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /** API:ts fältnamn i offerten -> fältets id, så ett fel flyttar fokus dit. */
 const OFFER_FIELD_IDS: Record<string, string> = {
@@ -199,7 +200,7 @@ export default function CateringRequestPage() {
       <>
         <AdminTopbar title="Catering" />
         <main className="admin-main">
-          <p className="form-error" role="alert">{loadError}</p>
+          <ErrorNote text={loadError} />
           <Link to="/catering">Till alla förfrågningar</Link>
         </main>
       </>
@@ -479,7 +480,7 @@ export default function CateringRequestPage() {
                 Pris per rad får vara högst {MAX_ITEM_PRICE_KR.toLocaleString('sv-SE')} kr.
               </p>
             )}
-            {error && <p className="form-error" role="alert">{error}</p>}
+            <ErrorNote text={error} />
             {notice && <p className="save-notice" role="status">{notice}</p>}
             <span className="row-actions">
               <button type="button" className="btn primary square" disabled={busy || !offerValid}
@@ -621,7 +622,7 @@ export default function CateringRequestPage() {
             {request.refundNote === 'refund_manually' && (
               <p className="form-error">Fakturan var betald via Bankgiro - betala tillbaka till kunden manuellt.</p>
             )}
-            {!editable && error && <p className="form-error" role="alert">{error}</p>}
+            {!editable && error && <ErrorNote text={error} />}
             {!editable && notice && <p className="save-notice" role="status">{notice}</p>}
           </section>
         )}

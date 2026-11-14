@@ -223,9 +223,9 @@ export const ERRORS: Record<string, string> = {
   invalid_max_call: 'Ett samtal får vara 2 till 15 minuter långt.',
   text_too_long: 'Texten är för lång.',
   number_unavailable: 'Det finns inget ledigt nummer just nu. Det är vårt fel, vi är på det. Försök igen senare.',
-  telephony_unavailable: 'Telefonileverantören svarar inte just nu. Det är inte ert fel. Försök igen om en stund.',
-  voice_provider_unavailable: 'Röstleverantören svarar inte just nu. Försök igen om en stund.',
-  ai_unavailable: 'Assistenten svarar inte just nu. Försök igen om en stund.',
+  telephony_unavailable: 'Telefonileverantören svarar inte just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
+  voice_provider_unavailable: 'Röstleverantören svarar inte just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
+  ai_unavailable: 'Assistenten svarar inte just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
   invalid_state: 'Återuppringningen ändrades nyss. Listan är uppdaterad.',
   share_unavailable: 'Den platsen har inget eget nummer att dela. Slå på assistenten där först.',
 }

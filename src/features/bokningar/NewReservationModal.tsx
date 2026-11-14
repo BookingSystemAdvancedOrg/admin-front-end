@@ -18,6 +18,7 @@ import {
 } from './bookingsApi'
 import type { Reservation } from './bookingsApi'
 import ModalOverlay from '../../shared/ModalOverlay'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /** Ett datum inom bokningsbara dagar (idag … idag + 20). */
 function clampDate(date: string, today: string): string {
@@ -198,9 +199,7 @@ export function NewReservationModal({
           )}
 
           {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
+            <ErrorNote text={error} />
           )}
           <div className="modal-actions">
             <button type="button" className="btn outline square" onClick={onCancel}>

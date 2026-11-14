@@ -27,6 +27,7 @@ import {
 } from '../catering/cateringApi'
 import type { CateringSettings, DeliveryBand, LeadTimeRule, Tier } from '../catering/cateringApi'
 import './cateringkalkyl.css'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 function rulesOf(s: CateringSettings): OrderRules {
   return {
@@ -245,7 +246,7 @@ export default function CateringkalkylPage() {
       />
 
       <main className="admin-main">
-        {saveError && <p className="form-error" role="alert">{saveError}</p>}
+        <ErrorNote text={saveError} />
         {saveNotice && <p className="save-notice" role="status">{saveNotice}</p>}
         {changedThere && <ChangedNote onUse={takeTheirs} />}
         {/* Huvudreglaget först: syns catering på webbplatsen eller inte. */}
@@ -600,7 +601,7 @@ export default function CateringkalkylPage() {
               + Ny rabattnivå
             </button>
           </div>
-          {tierError && <p className="form-error" role="alert">{tierError}</p>}
+          <ErrorNote text={tierError} />
           <div className="table-scroll">
             <table className="data-table">
               <thead>

@@ -5,6 +5,7 @@ import { replaceTenant, updateTenant } from '../../shared/tenant'
 import type { Tenant, TenantInsightsSettings } from '../../shared/tenant'
 import { clearInsightsCache } from '../statistik/insightsApi'
 import { getLocation, updateLocation } from './locationApi'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /**
  * Statistik: vad personalen får se och var lunchen slutar.
@@ -128,9 +129,7 @@ export function InsightsSettingsCard({ tenant, locationId }: { tenant: Tenant; l
         )}
 
         {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
+          <ErrorNote text={error} />
         )}
         <span className="row-actions">
           <button type="submit" className="btn primary square" disabled={busy || !dirty}>

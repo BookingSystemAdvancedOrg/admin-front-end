@@ -198,11 +198,9 @@ function toFriendlyUserError(err: unknown): Error {
     case 429:
       return new Error('För många förfrågningar. Vänta en stund och försök igen.')
     case 501:
-      return new Error(
-        'Den här funktionen är inte klar på serversidan än (manage-user är inte deployad).',
-      )
+      return new ApiError(501, 'Den här funktionen är inte klar på serversidan än. Felet ligger hos Booqy, inte hos er. Försök igen; kvarstår det, rapportera det till Booqy.')
     case 503:
-      return new Error('Tjänsten är tillfälligt otillgänglig. Försök igen om en stund.')
+      return new ApiError(503, 'Tjänsten är tillfälligt otillgänglig. Felet ligger hos Booqy, inte hos er. Försök igen; kvarstår det, rapportera det till Booqy.')
     default:
       return new Error(commonError(err, 'Kunde inte spara användaren.'))
   }

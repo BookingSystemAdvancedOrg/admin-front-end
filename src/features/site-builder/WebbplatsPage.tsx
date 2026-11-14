@@ -35,6 +35,7 @@ import {
   type SiteState,
   type Version,
 } from './api'
+import { ErrorActions } from '../../shared/ErrorNote'
 
 const POLL_MS = 2000
 /** Längsta väntan på en publicering eller återställning (cirka 5 minuter). */
@@ -219,7 +220,7 @@ function Editor() {
   }
 
   if (!doc || !site) {
-    return error ? <Bar variant="banner" tone="danger">{error.text}</Bar> : <p className="cell-muted">Hämtar webbplatsen…</p>
+    return error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error.text} />}>{error.text}</Bar> : <p className="cell-muted">Hämtar webbplatsen…</p>
   }
   if (site.mode === 'custom') {
     return <Card title="Webbplats"><p>Er webbplats byggs av Booqy. Kontakta oss om ni vill ändra något.</p></Card>
@@ -279,7 +280,7 @@ function Editor() {
             Länken är kopierad och fungerar i 7 dagar: {shareUrl}
           </Bar>
         ) : null}
-        {error ? <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng">{error.text}</Bar> : null}
+        {error ? <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng" action={<ErrorActions text={error.text} />}>{error.text}</Bar> : null}
         <Bar variant="tab" label="Sidor" value={page.id} onChange={(key) => setPageIndex(doc.pages.findIndex((p) => p.id === key))}
           items={doc.pages.map((p) => ({ key: p.id, label: p.title || 'Startsida' }))} />
         <div className="row-actions">

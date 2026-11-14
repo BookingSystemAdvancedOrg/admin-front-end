@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Bar, Field, Select } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
 import { exportSegment, listSegments, newId, type Segment } from './api'
+import { ErrorActions } from '../../shared/ErrorNote'
 
 interface Props {
   value: { type: 'segment'; exportId: string } | null
@@ -64,7 +65,7 @@ export default function SegmentAudienceOptions({ value, onChange }: Props) {
           {segments.map((s) => <option key={s.segmentId} value={s.segmentId}>{s.name}</option>)}
         </Select>
       </Field>
-      {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
+      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
     </>
   )
 }

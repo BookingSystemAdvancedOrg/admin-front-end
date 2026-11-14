@@ -10,6 +10,7 @@ import {
 import {
   MAX_PLACES, priceOre, takenOf, takenText, toUtc, typeForm, validateCapacity, validateType, type TypeForm,
 } from './edit'
+import { ErrorActions } from '../../shared/ErrorNote'
 
 const TYPE_FIELDS: (keyof TypeForm)[] = ['name', 'includes', 'priceKr', 'vatRate', 'perOrderMax', 'capacity', 'from', 'until']
 const SERVER_FIELD: Record<string, keyof TypeForm> = {
@@ -195,7 +196,7 @@ export function TypeEditModal({ locationId, eventId, type: opened, latest = null
             <Input id={id('until')} type="datetime-local" value={form.until} onChange={(e) => set({ until: e.target.value })} />
           </Field>
         </div>
-        {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
+        {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
       </form>
     </Modal>
   )
@@ -290,7 +291,7 @@ export function CapacityModal({ locationId, eventId, occurrence: opened, latest 
           <Input id={inputId} type="number" inputMode="numeric" min={min} max={MAX_PLACES} value={capacity}
             onChange={(e) => { setCapacity(e.target.value); setFieldError(null) }} required />
         </Field>
-        {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
+        {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
       </form>
     </Modal>
   )

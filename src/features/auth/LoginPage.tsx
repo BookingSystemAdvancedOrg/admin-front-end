@@ -5,6 +5,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { isMockAuthEnabled, MOCK_EMAIL, MOCK_PASSWORD } from './mockAuth'
 import { useAuth } from './useAuth'
 import { AuthLayout } from './AuthLayout'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /** Figma: personal-inloggning-page (41:2). */
 export default function LoginPage() {
@@ -86,9 +87,7 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <p className="auth-error" role="alert">
-            {error}
-          </p>
+          <ErrorNote className="auth-error" text={error} />
         )}
 
         <button className="auth-submit" type="submit" disabled={busy}>

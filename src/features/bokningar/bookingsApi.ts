@@ -271,7 +271,7 @@ const ERROR_TEXT: Record<string, string> = {
   not_chargeable: 'Den här bokningen kan inte debiteras.',
   not_refundable: 'Det finns inget att återbetala.',
   owner_only: 'Bara restaurangens ägare kan göra återbetalningar.',
-  payment_unavailable: 'Stripe svarar inte just nu. Försök igen om en stund - inget dras två gånger.',
+  payment_unavailable: 'Stripe svarar inte just nu (inget dras två gånger). Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
   card_declined: 'Kortet nekades.',
   authentication_required:
     'Gästens bank kräver att gästen godkänner betalningen. Kontakta gästen och lös avgiften direkt.',

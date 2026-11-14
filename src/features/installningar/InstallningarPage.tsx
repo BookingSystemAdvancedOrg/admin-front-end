@@ -53,6 +53,7 @@ import {
 import { hasFeature, useTenant } from '../../shared/tenant'
 import { Slot } from '../../shared/slots'
 import { PhoneInput } from '../../shared/PhoneInput'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 
 /**
@@ -477,9 +478,7 @@ export default function InstallningarPage() {
               </div>
             </div>
             {locationError && (
-              <p className="form-error" role="alert">
-                {locationError}
-              </p>
+              <ErrorNote text={locationError} />
             )}
             <div className="form-grid">
               <div className="form-field">

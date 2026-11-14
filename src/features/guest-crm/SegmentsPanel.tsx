@@ -18,6 +18,7 @@ import {
   type SegmentTemplate,
 } from './api'
 import './gaster.css'
+import { ErrorActions } from '../../shared/ErrorNote'
 
 /** Målgrupper på Marknadsföring > Mottagare (ägare): sparade regler, antal och "Använd i kampanj". */
 export default function SegmentsPanel() {
@@ -124,7 +125,7 @@ export default function SegmentsPanel() {
       <p className="cell-muted">
         Bara gäster som har sagt ja till erbjudanden kan få utskick. Gäster som inte vill ingå räknas aldrig med.
       </p>
-      {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
+      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
       {segments && segments.length === 0 && !draft ? (
         <div className="quick-links-row">
           {templates.map((t) => (

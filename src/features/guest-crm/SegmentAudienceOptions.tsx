@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bar, Field, Select } from '@booqy/brand'
+import { Bar, Field } from '@booqy/brand'
+import { BrandSelect as Select } from '../../shared/Select'
 import { errorText } from '../../shared/errors'
 import { exportSegment, listSegments, newId, type Segment } from './api'
 import { ErrorActions } from '../../shared/ErrorNote'

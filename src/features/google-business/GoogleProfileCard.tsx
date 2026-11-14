@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Bar, Button, Card, Field, Select, toast } from '@booqy/brand'
+import { Bar, Button, Card, Field, toast } from '@booqy/brand'
+import { BrandSelect as Select } from '../../shared/Select'
 import { errorText } from '../../shared/errors'
 import {
   ERRORS,

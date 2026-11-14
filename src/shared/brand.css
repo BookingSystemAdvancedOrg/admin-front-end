@@ -80,7 +80,7 @@
   color: var(--on-ox-3);
 }
 
-.admin-location-picker select {
+.admin-location-picker .b-select {
   border-radius: var(--r-md);
   background-color: rgba(246, 236, 233, 0.1);
   box-shadow: inset 0 0 0 1px rgba(246, 236, 233, 0.22);
@@ -643,13 +643,13 @@ html.is-saving .btn:disabled {
   border-radius: var(--r-pill);
   color: var(--on-ox-3);
 }
-.admin-location-picker select {
+.admin-location-picker .b-select {
   border-radius: var(--r-md);
   background-color: var(--wall-tint);
   box-shadow: none;
   color-scheme: light;
 }
-:root[data-theme='dark'] .admin-location-picker select {
+:root[data-theme='dark'] .admin-location-picker .b-select {
   color-scheme: dark;
 }
 .admin-nav-heading {

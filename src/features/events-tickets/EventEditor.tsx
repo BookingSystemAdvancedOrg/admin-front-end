@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Bar, Button, Card, Field, Input, Select, toast } from '@booqy/brand'
+import { Bar, Button, Card, Field, Input, toast } from '@booqy/brand'
+import { BrandSelect as Select } from '../../shared/Select'
 import { errorText } from '../../shared/errors'
 import { ChangedNote } from '../../shared/ChangedNote'
 import { isConflict, mergeEdits, type FieldConflict } from '../../shared/merge'

@@ -10,6 +10,7 @@ import { DateInput } from '../../shared/DateInput'
 import { SkelCard, SkelPage } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Select } from '../../shared/Select'
 
 const PERCENTS = [5, 10, 15, 20, 25, 30, 40, 50]
 const VALID_DAYS = [7, 14, 30, 60, 90]
@@ -188,9 +189,9 @@ export function OfferTab() {
             <div className="mk-field-row">
               <div className="form-field">
                 <label htmlFor="mk-o-pct">Rabatt</label>
-                <select id="mk-o-pct" value={draft.percent} onChange={(e) => set('percent', Number(e.target.value))}>
+                <Select id="mk-o-pct" value={draft.percent} onChange={(e) => set('percent', Number(e.target.value))}>
                   {PERCENTS.map((p) => <option key={p} value={p}>{p} %</option>)}
-                </select>
+                </Select>
               </div>
               <div className="form-field">
                 <label htmlFor="mk-o-min">Minsta beställning (kr)</label>
@@ -200,9 +201,9 @@ export function OfferTab() {
               </div>
               <div className="form-field">
                 <label htmlFor="mk-o-days">Koden gäller</label>
-                <select id="mk-o-days" value={draft.validDays} onChange={(e) => set('validDays', Number(e.target.value))}>
+                <Select id="mk-o-days" value={draft.validDays} onChange={(e) => set('validDays', Number(e.target.value))}>
                   {VALID_DAYS.map((d) => <option key={d} value={d}>{d} dagar</option>)}
-                </select>
+                </Select>
               </div>
             </div>
 
@@ -222,7 +223,7 @@ export function OfferTab() {
             </div>
             <div className="form-field">
               <label htmlFor="mk-o-dish">Bild från menyn</label>
-              <select
+              <Select
                 id="mk-o-dish"
                 value={draft.imageMenuItemId ?? ''}
                 disabled={!dishes}
@@ -232,22 +233,22 @@ export function OfferTab() {
               >
                 <option value="">Ingen bild</option>
                 {(dishes ?? []).map((d) => <option key={d.menuItemId} value={d.menuItemId}>{d.name}</option>)}
-              </select>
+              </Select>
             </div>
 
             <p className="form-section-label">När och hur ofta</p>
             <div className="mk-field-row">
               <div className="form-field">
                 <label htmlFor="mk-o-delay">Visa efter</label>
-                <select id="mk-o-delay" value={draft.delaySeconds} onChange={(e) => set('delaySeconds', Number(e.target.value))}>
+                <Select id="mk-o-delay" value={draft.delaySeconds} onChange={(e) => set('delaySeconds', Number(e.target.value))}>
                   {DELAYS.map((d) => <option key={d} value={d}>{d === 0 ? 'Direkt' : `${d} sekunder`}</option>)}
-                </select>
+                </Select>
               </div>
               <div className="form-field">
                 <label htmlFor="mk-o-scroll">Eller när besökaren scrollat</label>
-                <select id="mk-o-scroll" value={draft.scrollPercent} onChange={(e) => set('scrollPercent', Number(e.target.value))}>
+                <Select id="mk-o-scroll" value={draft.scrollPercent} onChange={(e) => set('scrollPercent', Number(e.target.value))}>
                   {SCROLLS.map((d) => <option key={d} value={d}>{d === 0 ? 'Används inte' : `${d} % av sidan`}</option>)}
-                </select>
+                </Select>
               </div>
             </div>
             <fieldset className="mk-radios">

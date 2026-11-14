@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Tenant } from '../../shared/tenant'
 import { NotificationsCard } from './NotificationsCard'
+import { chooseOption } from '../../test/select'
 
 const updateTenant = vi.fn()
 vi.mock('../../shared/tenant', async (orig) => ({
@@ -32,7 +33,7 @@ describe('NotificationsCard', () => {
 
     await user.click(screen.getByRole('switch', { name: 'SMS till gästen' }))
     await user.type(screen.getByLabelText('Avsändarnamn i SMS'), 'Roma')
-    await user.selectOptions(screen.getByLabelText('Påminnelse före besöket'), '2')
+    await chooseOption(screen.getByLabelText('Påminnelse före besöket'), '2')
     await user.click(screen.getByRole('button', { name: 'Spara notiser' }))
 
     expect(updateTenant).toHaveBeenCalledWith({

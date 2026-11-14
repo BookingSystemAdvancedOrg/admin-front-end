@@ -99,7 +99,7 @@
   color: var(--muted);
 }
 
-.admin-location-picker select {
+.admin-location-picker .b-select {
   width: 100%;
   min-height: 36px;
   padding: 0 10px;
@@ -828,7 +828,7 @@
 }
 
 .form-field input,
-.form-field select,
+.form-field .b-select,
 .form-field textarea {
   width: 100%;
   min-height: 44px;
@@ -837,7 +837,7 @@
   outline: none;
 }
 
-.form-field select {
+.form-field .b-select {
   cursor: default;
 }
 

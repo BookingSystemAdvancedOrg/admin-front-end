@@ -21,6 +21,7 @@ import { SkelRows } from '../../shared/Skeleton'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Select } from '../../shared/Select'
 
 const CONSENT_SOURCE: Record<string, string> = {
   booking: 'Vid bokning',
@@ -180,7 +181,7 @@ export function SubscribersTab() {
         <div className="card-head">
           <h2 className="card-title">Mottagare</h2>
           <div className="row-actions">
-            <select className="compact-select" aria-label="Visa" value={view.filter} onChange={(e) => {
+            <Select className="compact-select" aria-label="Visa" value={view.filter} onChange={(e) => {
                 setQuery('')
                 show({ filter: e.target.value as SubscriberFilter, email: null })
               }}>
@@ -189,7 +190,7 @@ export function SubscribersTab() {
               <option value="unsubscribed">Avregistrerade</option>
               <option value="suppressed">Spärrade</option>
               <option value="">Alla</option>
-            </select>
+            </Select>
             <button type="button" className="btn outline square" disabled={exporting} onClick={() => void doExport()}>
               {exporting ? 'Laddar ned…' : 'Ladda ned CSV'}
             </button>

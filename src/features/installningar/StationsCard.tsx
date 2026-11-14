@@ -4,6 +4,7 @@ import { NO_TICKET, printErrorText, saveRouting } from '../bestallningar/printAp
 import type { Course, Printer, Station, TicketRouting } from '../bestallningar/printApi'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Select } from '../../shared/Select'
 
 /**
  * Inställningar > Skrivare > Stationer: vart bongarna går.
@@ -174,13 +175,13 @@ export function StationsCard({ locationId, isOwner, routing, devices, onSaved }:
             {CATEGORIES.map(({ key, label }) => (
               <div key={key} className="form-field">
                 <label htmlFor={`route-${key}`}>{label}</label>
-                <select id={`route-${key}`} value={categories[key] ?? stations[0]?.stationId ?? ''} disabled={disabled}
+                <Select id={`route-${key}`} value={categories[key] ?? stations[0]?.stationId ?? ''} disabled={disabled}
                   onChange={(e) => { setCategories((prev) => ({ ...prev, [key]: e.target.value })); setNotice(null) }}>
                   {stations.filter((s) => s.stationId).map((s) => (
                     <option key={s.key} value={s.stationId}>{s.name || 'Namnlös station'}</option>
                   ))}
                   <option value={NO_TICKET}>Ingen bong</option>
-                </select>
+                </Select>
               </div>
             ))}
           </div>

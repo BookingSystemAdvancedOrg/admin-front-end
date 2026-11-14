@@ -54,6 +54,7 @@ import { hasFeature, useTenant } from '../../shared/tenant'
 import { Slot } from '../../shared/slots'
 import { PhoneInput } from '../../shared/PhoneInput'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { Select } from '../../shared/Select'
 
 
 /**
@@ -520,7 +521,7 @@ export default function InstallningarPage() {
                     ledigt igen.
                   </InfoTooltip>
                 </span>
-                <select
+                <Select
                   id="rp-grace"
                   value={graceMinutes}
                   onChange={(e) => {
@@ -533,7 +534,7 @@ export default function InstallningarPage() {
                       {m} min
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
             <div style={{ height: 20 }} />

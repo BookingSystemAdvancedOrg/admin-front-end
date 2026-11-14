@@ -6,6 +6,7 @@ import type { Tenant, TenantNotifications } from '../../shared/tenant'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
 import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Select } from '../../shared/Select'
 
 /**
  * Notiser: vad gäster och restaurangen får när någon bokar.
@@ -125,7 +126,7 @@ export function NotificationsCard({ tenant, isOwner }: { tenant: Tenant; isOwner
 
         <div className="form-field">
           <label htmlFor="notif-reminder">Påminnelse före besöket</label>
-          <select
+          <Select
             id="notif-reminder"
             value={values.reminderHours}
             disabled={disabled}
@@ -136,7 +137,7 @@ export function NotificationsCard({ tenant, isOwner }: { tenant: Tenant; isOwner
                 {hoursLabel(h)}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div className="toggle-row">

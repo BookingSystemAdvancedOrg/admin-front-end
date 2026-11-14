@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bar, Button, Field, Input, Modal, Select } from '@booqy/brand'
+import { Bar, Button, Field, Input, Modal } from '@booqy/brand'
+import { BrandSelect as Select } from '../../shared/Select'
 import { errorText } from '../../shared/errors'
 import { listMenuItems, menuImageUrl, type MenuItem } from '../meny/menuApi'
 import { ERRORS, GOALS, createCampaign, newCampaignId, suggestCopy, type Goal } from './api'

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Tenant } from '../../shared/tenant'
 import { InsightsSettingsCard } from './InsightsSettingsCard'
+import { chooseOption } from '../../test/select'
 
 const updateTenant = vi.fn()
 const updateLocation = vi.fn()
@@ -32,7 +33,7 @@ describe('InsightsSettingsCard', () => {
     const select = await screen.findByLabelText('Lunchen slutar')
     expect(select).toHaveValue('15:00')
     await user.click(screen.getByRole('switch', { name: 'Personalen ser statistik' }))
-    await user.selectOptions(select, '16:00')
+    await chooseOption(select, '16:00')
     await user.click(screen.getByRole('button', { name: 'Spara' }))
     expect(updateTenant).toHaveBeenCalledWith({ insights: { staffAccess: 'none' } })
     expect(updateLocation).toHaveBeenCalledWith('loc-1', { lunchUntil: '16:00' })
@@ -40,12 +41,11 @@ describe('InsightsSettingsCard', () => {
   })
 
   it('has nothing to save when the split is back where it was', async () => {
-    const user = userEvent.setup()
     updateLocation.mockResolvedValue({ locationId: 'loc-1' })
     render(<InsightsSettingsCard tenant={tenant} locationId="loc-1" />)
     const select = await screen.findByLabelText('Lunchen slutar')
-    await user.selectOptions(select, '14:00')
-    await user.selectOptions(select, '15:00')
+    await chooseOption(select, '14:00')
+    await chooseOption(select, '15:00')
     expect(screen.getByRole('button', { name: 'Spara' })).toBeDisabled()
   })
 })

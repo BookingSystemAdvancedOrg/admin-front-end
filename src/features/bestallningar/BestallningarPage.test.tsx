@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BestallningarPage, { POLL_MS } from './BestallningarPage'
 import { ApiError } from '../../shared/api'
 import type { Order, OrderList } from './ordersApi'
+import { chooseOption, optionTexts } from '../../test/select'
 
 const listOrders = vi.fn()
 const moveOrder = vi.fn()
@@ -120,7 +121,7 @@ describe('BestallningarPage', () => {
     pauseOrdering.mockResolvedValueOnce({ ordering: { open: false, reason: 'paused', pausedUntil: '2026-10-12T16:30:00Z' } })
     pauseOrdering.mockResolvedValueOnce({ ordering: { open: true } })
     render(<BestallningarPage />)
-    await user.selectOptions(await screen.findByLabelText('Pausa beställningar'), '30')
+    await chooseOption(await screen.findByLabelText('Pausa beställningar'), '30')
     expect(pauseOrdering).toHaveBeenCalledWith('loc-1', 30)
     expect(await screen.findByText(/Pausat till/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Ta emot beställningar igen' }))
@@ -171,9 +172,9 @@ describe('BestallningarPage', () => {
     ]))
     render(<BestallningarPage />)
     const select = await screen.findByLabelText('Visa')
-    expect([...(select as HTMLSelectElement).options].map((o) => o.text)).toEqual(
+    expect(optionTexts(select)).toEqual(
       ['Alla bord och avhämtning', 'Avhämtning', 'Bord 2', 'Terrassen'])
-    await user.selectOptions(select, 'table:t-2')
+    await chooseOption(select, 'table:t-2')
     expect(screen.getByRole('article', { name: 'Beställning 8, Bord 2' })).toBeInTheDocument()
     expect(screen.queryByRole('article', { name: /Beställning 7/ })).toBeNull()
     expect(screen.queryByRole('article', { name: /Beställning 9/ })).toBeNull()

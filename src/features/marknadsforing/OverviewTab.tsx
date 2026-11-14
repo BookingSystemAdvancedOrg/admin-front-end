@@ -19,6 +19,7 @@ import type { Overview } from './marketingApi'
 import type { TabId } from './MarknadsforingPage'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Select } from '../../shared/Select'
 
 const PERIODS = [
   { days: 7, label: '7 dagar' },
@@ -157,7 +158,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
           ))}
         </div>
         {multi && (
-          <select
+          <Select
             className="compact-select"
             aria-label="Platser"
             value={allLocations ? 'all' : 'one'}
@@ -165,7 +166,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
           >
             <option value="all">Alla platser</option>
             <option value="one">Bara vald plats</option>
-          </select>
+          </Select>
         )}
       </div>
 

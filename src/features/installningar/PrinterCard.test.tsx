@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PrinterCard } from './PrinterCard'
 import { ApiError } from '../../shared/api'
 import type { PrintOverview } from '../bestallningar/printApi'
+import { chooseOption } from '../../test/select'
 
 const api = {
   getPrinting: vi.fn(),
@@ -57,7 +58,7 @@ describe('PrinterCard', () => {
     api.savePrintSettings.mockImplementation(async (_l, s) => ({ ...s, version: s.version + 1 }))
     render(<PrinterCard locationId="loc-1" isOwner />)
     await user.click(await screen.findByRole('switch', { name: 'Skriv ut bongar automatiskt' }))
-    await user.selectOptions(screen.getByLabelText('Pappersbredd'), '58')
+    await chooseOption(screen.getByLabelText('Pappersbredd'), '58')
     await user.click(screen.getByRole('button', { name: 'Spara skrivare' }))
     expect(api.savePrintSettings).toHaveBeenCalledWith('loc-1',
       { autoPrint: true, printerId: PRINTER.deviceId, paperWidth: 58, version: 1 })

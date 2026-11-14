@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useLiveRefresh } from '../../shared/live'
 import { isConflict, mergeEdits } from '../../shared/merge'
-import { Bar, Button, Card, Field, Input, Select, toast } from '@booqy/brand'
+import { Bar, Button, Card, Field, Input, toast } from '@booqy/brand'
+import { BrandSelect as Select } from '../../shared/Select'
 import { errorText } from '../../shared/errors'
 import { useTenant } from '../../shared/tenant'
 import {

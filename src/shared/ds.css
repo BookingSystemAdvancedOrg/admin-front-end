@@ -1356,7 +1356,7 @@ html.is-desktop-glass .admin-main {
    piller (sök i sidhuvudet, kompakta rullistor) kan forma sig själva. */
 :where(
   input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='submit'], [type='button'], [type='reset'], [type='hidden'], [type='image']),
-  select,
+  .b-select,
   textarea
 ) {
   border: 1px solid var(--field-border);
@@ -1372,34 +1372,34 @@ html.is-desktop-glass .admin-main {
 }
 :where(
   input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='submit'], [type='button'], [type='reset'], [type='hidden'], [type='image']),
-  select,
+  .b-select,
   textarea
 ):hover {
   border-color: var(--field-border-hover);
 }
 :where(
   input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='submit'], [type='button'], [type='reset'], [type='hidden'], [type='image']),
-  select,
+  .b-select,
   textarea
 ):focus-visible,
-:where(.form-field) :where(input, select, textarea):focus {
+:where(.form-field) :where(input, .b-select, textarea):focus {
   outline: none;
   border-color: var(--ink);
   background-color: var(--field-bg-focus);
   box-shadow: var(--field-inset), 0 0 0 3px var(--field-ring);
 }
 @media (prefers-reduced-transparency: reduce) {
-  :where(input, select, textarea) {
+  :where(input, .b-select, textarea) {
     background-color: var(--surface);
   }
 }
-:where(input, select, textarea):disabled,
+:where(input, .b-select, textarea):disabled,
 :where(input, textarea)[readonly] {
   border-style: dashed;
   background-color: transparent;
   box-shadow: none;
 }
-:where(input, select, textarea):disabled {
+:where(input, .b-select, textarea):disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

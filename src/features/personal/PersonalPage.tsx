@@ -30,6 +30,7 @@ import {
 import type { User } from '../installningar/usersApi'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
+import { Select } from '../../shared/Select'
 
 const ROLE_LABEL: Record<User['role'], string> = {
   staff: 'Personal',
@@ -222,14 +223,14 @@ export default function PersonalPage() {
             {locations.length > 1 && (
               <div className="form-field">
                 <label htmlFor="personal-place">Plats</label>
-                <select id="personal-place" value={place} onChange={(e) => setPlace(e.target.value)}>
+                <Select id="personal-place" value={place} onChange={(e) => setPlace(e.target.value)}>
                   <option value="">Alla platser</option>
                   {locations.map((l) => (
                     <option key={l.locationId} value={l.locationId}>
                       {l.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             )}
           </div>

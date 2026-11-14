@@ -15,6 +15,7 @@ import {
 } from './marketingApi'
 import type { Block, BlockType, Destination, TemplateInput, TemplateTheme } from './marketingApi'
 import { Icon } from '../../shared/Icon'
+import { Select } from '../../shared/Select'
 
 const ADDABLE: BlockType[] = ['heading', 'text', 'button', 'image', 'dish', 'divider', 'spacer']
 const PREVIEW_DELAY_MS = 600
@@ -69,7 +70,7 @@ function BlockFields({
           </div>
           <div className="form-field">
             <label htmlFor={id('dest')}>Leder till</label>
-            <select
+            <Select
               id={id('dest')}
               value={block.destination}
               onChange={(e) => onChange({ ...block, destination: e.target.value as Destination })}
@@ -77,7 +78,7 @@ function BlockFields({
               {(Object.keys(DESTINATION_LABEL) as Destination[]).map((d) => (
                 <option key={d} value={d}>{DESTINATION_LABEL[d]}</option>
               ))}
-            </select>
+            </Select>
           </div>
           {block.destination === 'custom' && (
             <div className="form-field">
@@ -91,7 +92,7 @@ function BlockFields({
       return (
         <div className="form-field">
           <label htmlFor={id('dish')}>Rätt</label>
-          <select
+          <Select
             id={id('dish')}
             value={block.menuItemId}
             disabled={!dishes}
@@ -103,7 +104,7 @@ function BlockFields({
                 {d.name}{d.active ? '' : ' (inaktiv)'}
               </option>
             ))}
-          </select>
+          </Select>
           <p className="field-hint">Namn, bild och pris hämtas från menyn när utskicket skickas.</p>
         </div>
       )
@@ -111,11 +112,11 @@ function BlockFields({
       return (
         <div className="form-field">
           <label htmlFor={id('size')}>Storlek</label>
-          <select id={id('size')} value={block.size} onChange={(e) => onChange({ ...block, size: e.target.value as 's' | 'm' | 'l' })}>
+          <Select id={id('size')} value={block.size} onChange={(e) => onChange({ ...block, size: e.target.value as 's' | 'm' | 'l' })}>
             <option value="s">Liten</option>
             <option value="m">Mellan</option>
             <option value="l">Stor</option>
-          </select>
+          </Select>
         </div>
       )
     case 'divider':
@@ -253,11 +254,11 @@ export function TemplateEditor({
             ))}
           </ol>
           <div className="mk-add">
-            <select className="compact-select" aria-label="Typ av block" value={addType} onChange={(e) => setAddType(e.target.value as BlockType)}>
+            <Select className="compact-select" aria-label="Typ av block" value={addType} onChange={(e) => setAddType(e.target.value as BlockType)}>
               {ADDABLE.map((t) => (
                 <option key={t} value={t}>{BLOCK_LABEL[t]}</option>
               ))}
-            </select>
+            </Select>
             <button type="button" className="btn outline square" onClick={add} disabled={draft.blocks.length >= MAX_BLOCKS}>
               Lägg till block
             </button>

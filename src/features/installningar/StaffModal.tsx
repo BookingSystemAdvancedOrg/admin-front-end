@@ -13,6 +13,7 @@ import {
 import { PhoneInput } from '../../shared/PhoneInput'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { Select } from '../../shared/Select'
 
 export interface StaffFormValues {
   name: string
@@ -155,7 +156,7 @@ export function StaffModal({
           <div className="form-grid">
             <div className="form-field">
               <label htmlFor="staff-role">Roll</label>
-              <select
+              <Select
                 id="staff-role"
                 value={group}
                 disabled={lockRole || selectableGroups.length <= 1}
@@ -166,7 +167,7 @@ export function StaffModal({
                     {GROUP_LABEL[g]}
                   </option>
                 ))}
-              </select>
+              </Select>
               {lockRole ? (
                 <p className="cell-muted">Du kan inte ändra din egen roll.</p>
               ) : (
@@ -176,7 +177,7 @@ export function StaffModal({
             {group === 'staff_user' && (
               <div className="form-field">
                 <label htmlFor="staff-location">Plats</label>
-                <select
+                <Select
                   id="staff-location"
                   value={locationId}
                   disabled={locations.length === 0}
@@ -190,7 +191,7 @@ export function StaffModal({
                       {l.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             )}
           </div>

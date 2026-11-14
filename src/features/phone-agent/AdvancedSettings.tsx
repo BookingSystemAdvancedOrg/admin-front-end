@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { Bar, Button, Field, Input, Select, toast } from '@booqy/brand'
+import { Bar, Button, Field, Input, toast } from '@booqy/brand'
+import { BrandSelect as Select } from '../../shared/Select'
 import { Disclosure } from '../../shared/Disclosure'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { PhoneInput } from '../../shared/PhoneInput'

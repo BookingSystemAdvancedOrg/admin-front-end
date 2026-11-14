@@ -20,6 +20,7 @@ import { ErrorNote } from '../../shared/ErrorNote'
 import { booqyFaultText } from '../../shared/errors'
 import { TitleInfo } from '../../shared/TitleInfo'
 import { Disclosure } from '../../shared/Disclosure'
+import { Select } from '../../shared/Select'
 
 /**
  * Inställningar > Skrivare: bongskrivarna för matbeställningar.
@@ -299,11 +300,11 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
                 </div>
                 <div className="form-field">
                   <label htmlFor="printer-protocol">Märke</label>
-                  <select id="printer-protocol" value={protocol} disabled={busy}
+                  <Select id="printer-protocol" value={protocol} disabled={busy}
                     onChange={(e) => setProtocol(e.target.value as PrinterProtocol)}>
                     <option value="star">Star (CloudPRNT)</option>
                     <option value="epson">Epson (Server Direct Print)</option>
-                  </select>
+                  </Select>
                 </div>
                 <button type="submit" className="btn outline square" disabled={busy}>
                   Lägg till
@@ -323,21 +324,21 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
                 <div className="form-grid">
                   <div className="form-field">
                     <label htmlFor="print-printer">Orderskrivare (omtryck och makulering)</label>
-                    <select id="print-printer" value={printerId} disabled={disabled}
+                    <Select id="print-printer" value={printerId} disabled={disabled}
                       onChange={(e) => { setPrinterId(e.target.value); setNotice(null) }}>
                       <option value="">Ingen</option>
                       {devices.map((d) => (
                         <option key={d.deviceId} value={d.deviceId}>{d.name}</option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                   <div className="form-field">
                     <label htmlFor="print-width">Pappersbredd</label>
-                    <select id="print-width" value={paperWidth} disabled={disabled}
+                    <Select id="print-width" value={paperWidth} disabled={disabled}
                       onChange={(e) => { setPaperWidth(Number(e.target.value) as PaperWidth); setNotice(null) }}>
                       <option value={80}>80 mm (48 tecken per rad)</option>
                       <option value={58}>58 mm (32 tecken per rad)</option>
-                    </select>
+                    </Select>
                   </div>
                 </div>
                 {isOwner ? (

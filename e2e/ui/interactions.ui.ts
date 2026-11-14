@@ -87,6 +87,39 @@ for (const vp of SIZES) {
       finish(info, 'theme-toggle', vp.name, theme, issues)
     })
 
+    test(`dropdown opens the Booqy list ${vp.name} ${theme} @x`, async ({ page }, info) => {
+      await open(page, '/meny', vp, theme)
+      const issues: Issue[] = []
+      const box = page.getByRole('combobox', { name: 'Status' })
+      await box.scrollIntoViewIfNeeded()
+      const before = await box.getAttribute('value')
+      await box.click()
+      const list = page.getByRole('listbox')
+      await expect(list).toBeVisible()
+      await page.waitForTimeout(300)
+      const b = await list.boundingBox()
+      if (!b || b.x < -1 || b.x + b.width > vp.width + 1 || b.y < -1 || b.y + b.height > vp.height + 1) issues.push({ kind: 'dropdown-bounds', severity: 'high', message: `Dropdown list outside the window: ${JSON.stringify(b)}` })
+      const sheet = await page.locator('.b-select-sheet').count()
+      if (phone !== sheet > 0) issues.push({ kind: 'dropdown-sheet', severity: 'high', message: phone ? 'No bottom sheet on a phone' : 'Bottom sheet on a large screen' })
+      const rowH = (await list.getByRole('option').first().boundingBox())?.height ?? 0
+      if (phone && rowH < 47.5) issues.push({ kind: 'dropdown-rows', severity: 'medium', message: `Phone rows are ${rowH}px, want 48` })
+      issues.push(...(await axeIssues(page)))
+      await page.screenshot({ path: info.outputPath('dropdown-open.png') })
+      // Tangentbord: nedåt och Enter väljer nästa, Escape stänger utan att ändra.
+      await page.keyboard.press('ArrowDown')
+      await page.keyboard.press('Enter')
+      await expect(list).toHaveCount(0)
+      const after = await box.getAttribute('value')
+      if (after === before) issues.push({ kind: 'dropdown-keyboard', severity: 'high', message: 'ArrowDown + Enter did not change the value' })
+      await box.focus()
+      await page.keyboard.press('ArrowDown')
+      await expect(page.getByRole('listbox')).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('listbox')).toHaveCount(0)
+      await expect(box).toBeFocused()
+      finish(info, 'dropdown', vp.name, theme, issues)
+    })
+
     test(`help assistant panel ${vp.name} ${theme}`, async ({ page }, info) => {
       await open(page, '/', vp, theme)
       const issues: Issue[] = []

@@ -24,6 +24,7 @@ import { DateInput, TimeInput } from '../../shared/DateInput'
 import { SkelRows } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
+import { Select } from '../../shared/Select'
 
 /**
  * Bokningstid (backend shared/booking_rules.py): standardlängd, om
@@ -48,13 +49,13 @@ function MinutesSelect({
 }) {
   const all = options.includes(value) ? options : [...options, value].sort((a, b) => a - b)
   return (
-    <select id={id} value={value} onChange={(e) => onChange(Number(e.target.value))}>
+    <Select id={id} value={value} onChange={(e) => onChange(Number(e.target.value))}>
       {all.map((m) => (
         <option key={m} value={m}>
           {m === 0 && zeroLabel ? zeroLabel : minutesLabel(m)}
         </option>
       ))}
-    </select>
+    </Select>
   )
 }
 

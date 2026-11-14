@@ -1,6 +1,7 @@
 import { Icon } from '../../shared/Icon'
 import { MAX_CHOICES, MAX_GROUPS, NAME_MAX, parseAddonPrice } from './menuForm'
 import type { DraftGroup } from './menuForm'
+import { Select } from '../../shared/Select'
 
 /**
  * Tillval för en rätt: grupper som Storlek (krävs, ett val) eller Extra
@@ -29,12 +30,12 @@ export function OptionsEditor({ value, onChange }: { value: DraftGroup[]; onChan
             </div>
             <div className="form-field">
               <label htmlFor={`opt-max-${i}`}>Gästen väljer</label>
-              <select id={`opt-max-${i}`} value={Math.min(g.maxChoices, Math.max(1, g.choices.length))}
+              <Select id={`opt-max-${i}`} value={Math.min(g.maxChoices, Math.max(1, g.choices.length))}
                 onChange={(e) => setGroup(i, { maxChoices: Number(e.target.value) })}>
                 {Array.from({ length: Math.max(1, g.choices.length) }, (_, k) => k + 1).map((n) => (
                   <option key={n} value={n}>{n === 1 ? 'Ett val' : `Upp till ${n}`}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <label className="meny-check dish-option-required">
               <input type="checkbox" checked={g.required} onChange={(e) => setGroup(i, { required: e.target.checked })} />

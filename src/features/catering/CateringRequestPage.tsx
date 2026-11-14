@@ -35,6 +35,7 @@ import { focusErrorField } from '../../shared/errors'
 import { Num } from '../../shared/motion/Num'
 import { SkelCard, SkelPage } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { Select } from '../../shared/Select'
 
 /** API:ts fältnamn i offerten -> fältets id, så ett fel flyttar fokus dit. */
 const OFFER_FIELD_IDS: Record<string, string> = {
@@ -397,7 +398,7 @@ export default function CateringRequestPage() {
             </div>
             <div className="offer-add-row">
               {(menu.packages.length > 0 || menu.dishes.length > 0) && (
-                <select aria-label="Lägg till från cateringmenyn" value=""
+                <Select aria-label="Lägg till från cateringmenyn" value=""
                   onChange={(e) => addFromMenu(e.target.value)}>
                   <option value="">+ Lägg till från cateringmenyn</option>
                   {menu.packages.length > 0 && (
@@ -414,7 +415,7 @@ export default function CateringRequestPage() {
                       ))}
                     </optgroup>
                   )}
-                </select>
+                </Select>
               )}
               <button type="button" className="link-action"
                 onClick={() => setOffer({ ...offer, lines: [...offer.lines, { name: '', unitPrice: 0, quantity: 1 }] })}>
@@ -435,11 +436,11 @@ export default function CateringRequestPage() {
               </div>
               <div className="form-field">
                 <label htmlFor="offer-return">Retur av utrustning</label>
-                <select id="offer-return" value={offer.equipmentReturn}
+                <Select id="offer-return" value={offer.equipmentReturn}
                   onChange={(e) => setOffer({ ...offer, equipmentReturn: e.target.value as EquipmentReturn })}>
                   <option value="cleaned">{EQUIPMENT_RETURN_LABEL.cleaned} (ingen avgift)</option>
                   <option value="not_cleaned">{EQUIPMENT_RETURN_LABEL.not_cleaned} (rengöringsavgift)</option>
-                </select>
+                </Select>
               </div>
               {offer.equipmentReturn === 'not_cleaned' && (
                 <div className="form-field">
@@ -450,11 +451,11 @@ export default function CateringRequestPage() {
               )}
               <div className="form-field">
                 <label htmlFor="offer-service">Moms</label>
-                <select id="offer-service" value={offer.serviceIncluded ? 'service' : 'food'}
+                <Select id="offer-service" value={offer.serviceIncluded ? 'service' : 'food'}
                   onChange={(e) => setOffer({ ...offer, serviceIncluded: e.target.value === 'service' })}>
                   <option value="service">Med servering (12 %)</option>
                   <option value="food">Bara mat, utan servering ({vatRateFor(false, request.deliveryDate)} %)</option>
-                </select>
+                </Select>
               </div>
               <div className="form-field">
                 <label htmlFor="offer-valid">Giltig till och med</label>

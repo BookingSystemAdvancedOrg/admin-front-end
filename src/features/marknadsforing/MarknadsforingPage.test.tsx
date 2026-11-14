@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../shared/api'
 import MarknadsforingPage from './MarknadsforingPage'
 import type { Campaign, Overview, Template } from './marketingApi'
+import { chooseOption } from '../../test/select'
 
 const api = vi.hoisted(() => ({
   getOverview: vi.fn(),
@@ -188,7 +189,7 @@ describe('Välkomsterbjudande', () => {
     expect(within(results).getByText('Anmälningar')).toBeInTheDocument()
     expect(results).not.toHaveTextContent('av visningarna')
     await userEvent.click(screen.getByRole('switch', { name: 'Visa på webbplatsen' }))
-    await userEvent.selectOptions(screen.getByLabelText('Rabatt'), '15')
+    await chooseOption(screen.getByLabelText('Rabatt'), '15')
     await userEvent.clear(screen.getByLabelText('Minsta beställning (kr)'))
     await userEvent.type(screen.getByLabelText('Minsta beställning (kr)'), '200')
     await userEvent.click(screen.getByLabelText(/På varje sida tills gästen stänger det/))

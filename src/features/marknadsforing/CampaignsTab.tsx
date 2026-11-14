@@ -33,6 +33,7 @@ import { SkelRows } from '../../shared/Skeleton'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Select } from '../../shared/Select'
 
 const DAY_CHOICES = [30, 60, 90, 180, 365]
 
@@ -107,11 +108,11 @@ function CampaignForm({
         </div>
         <div className="form-field">
           <label htmlFor="mk-c-tpl">Mall</label>
-          <select id="mk-c-tpl" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+          <Select id="mk-c-tpl" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
             {templates.map((t) => (
               <option key={t.templateId} value={t.templateId}>{t.name}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="form-field">
           <label htmlFor="mk-c-subject">Ämnesrad (tom = mallens)</label>
@@ -121,31 +122,31 @@ function CampaignForm({
         <p className="form-section-label">Målgrupp</p>
         <div className="form-field">
           <label htmlFor="mk-c-aud">Vilka får utskicket</label>
-          <select id="mk-c-aud" value={type} onChange={(e) => setType(e.target.value as AudienceType)}>
+          <Select id="mk-c-aud" value={type} onChange={(e) => setType(e.target.value as AudienceType)}>
             {(Object.keys(AUDIENCE_LABEL) as AudienceType[]).map((a) => (
               <option key={a} value={a}>{AUDIENCE_LABEL[a]}</option>
             ))}
-          </select>
+          </Select>
         </div>
         {type !== 'all' && (
           <div className="form-field">
             <label htmlFor="mk-c-days">{type === 'recent' ? 'Senaste besöket inom' : 'Inget besök på minst'}</label>
-            <select id="mk-c-days" value={days} onChange={(e) => setDays(Number(e.target.value))}>
+            <Select id="mk-c-days" value={days} onChange={(e) => setDays(Number(e.target.value))}>
               {DAY_CHOICES.map((d) => (
                 <option key={d} value={d}>{d} dagar</option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
         {locations.length > 1 && (
           <div className="form-field">
             <label htmlFor="mk-c-loc">Plats</label>
-            <select id="mk-c-loc" value={loc} onChange={(e) => setLoc(e.target.value)}>
+            <Select id="mk-c-loc" value={loc} onChange={(e) => setLoc(e.target.value)}>
               <option value="">Alla platser</option>
               {locations.map((l) => (
                 <option key={l.locationId} value={l.locationId}>{l.name || 'Namnlös plats'}</option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
         <Slot id="marketing.kampanjer.audience" props={{ value: segment, onChange: setSegment }} />

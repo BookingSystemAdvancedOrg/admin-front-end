@@ -48,6 +48,7 @@ import { SkelBlock, SkelBox, SkelCard, SkelPage } from '../../shared/Skeleton'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { booqyFaultText } from '../../shared/errors'
+import { Select } from '../../shared/Select'
 
 /**
  * Statistik: överst det viktigaste, alltid live (Overview: idag, kommande
@@ -397,45 +398,45 @@ export default function StatistikPage() {
             {multi && (
               <label className="sk-field">
                 <span>Plats</span>
-                <select value={f.locationId} onChange={(e) => setFilters({ locationId: e.target.value })}>
+                <Select value={f.locationId} onChange={(e) => setFilters({ locationId: e.target.value })}>
                   <option value="all">Alla platser</option>
                   {locations.map((l) => (
                     <option key={l.locationId} value={l.locationId}>
                       {l.name || 'Namnlös plats'}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             )}
             <label className="sk-field">
               <span>Pass</span>
-              <select value={f.service} onChange={(e) => setFilters({ service: e.target.value as Filters['service'] })}>
+              <Select value={f.service} onChange={(e) => setFilters({ service: e.target.value as Filters['service'] })}>
                 {SERVICES.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="sk-field">
               <span>Bokningskanal</span>
-              <select value={f.channel} onChange={(e) => setFilters({ channel: e.target.value as Filters['channel'] })}>
+              <Select value={f.channel} onChange={(e) => setFilters({ channel: e.target.value as Filters['channel'] })}>
                 {CHANNELS.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="sk-field sk-wide">
               <span>Jämför med</span>
-              <select value={f.compare} onChange={(e) => setFilters({ compare: e.target.value as Filters['compare'] })}>
+              <Select value={f.compare} onChange={(e) => setFilters({ compare: e.target.value as Filters['compare'] })}>
                 {COMPARES.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <button
               type="button"

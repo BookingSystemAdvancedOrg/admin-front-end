@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SpecialDaysCard } from './SpecialDaysCard'
+import { chooseOption } from '../../test/select'
 
 const getLocation = vi.fn()
 const updateLocation = vi.fn()
@@ -72,7 +73,7 @@ describe('SpecialDaysCard', () => {
     render(<SpecialDaysCard locationId="loc-1" isOwner />)
     await screen.findByText('Inga avvikande dagar.')
     await user.type(screen.getByLabelText('Datum'), '30/10/2026')
-    await user.selectOptions(screen.getByLabelText('Typ'), 'hours')
+    await chooseOption(screen.getByLabelText('Typ'), 'hours')
     await user.clear(screen.getByLabelText('Stänger (tid 1)'))
     await user.type(screen.getByLabelText('Stänger (tid 1)'), '16:00')
     await user.click(screen.getByRole('button', { name: 'Lägg till' }))

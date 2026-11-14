@@ -22,6 +22,7 @@ import { CENTRE, focusPosition, isCentre } from './imageFocus'
 import type { ImageFocus } from './imageFocus'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Select } from '../../shared/Select'
 
 export interface DishFormValues {
   name: string
@@ -341,7 +342,7 @@ export function DishModal({
         <div className="form-grid">
           <div className="form-field">
             <label htmlFor="dish-category">Kategori</label>
-            <select
+            <Select
               id="dish-category"
               value={category}
               onChange={(e) => setCategory(e.target.value as DishCategory)}
@@ -354,7 +355,7 @@ export function DishModal({
               {!categories.some((c) => c.categoryId === category) && (
                 <option value={category}>Övrigt</option>
               )}
-            </select>
+            </Select>
             {driftCategory !== undefined && (
               <ChangedNote value={categoryName(categories, driftCategory)} onUse={() => setCategory(driftCategory)} />
             )}
@@ -449,13 +450,13 @@ export function DishModal({
           </legend>
           <div className="form-field">
             <label htmlFor="dish-station">Vart går rätten?</label>
-            <select id="dish-station" value={station} onChange={(e) => setStation(e.target.value)}>
+            <Select id="dish-station" value={station} onChange={(e) => setStation(e.target.value)}>
               <option value="">Som kategorin {categoryName(categories, category).toLowerCase()}</option>
               {stations.map((s) => (
                 <option key={s.stationId} value={s.stationId}>{s.name}</option>
               ))}
               <option value={NO_TICKET}>Ingen bong</option>
-            </select>
+            </Select>
           </div>
           {parts.map((part, i) => (
             <div key={i} className="dish-part">
@@ -466,14 +467,14 @@ export function DishModal({
               </div>
               <div className="form-field">
                 <label htmlFor={`dish-part-station-${i}`}>Bong</label>
-                <select id={`dish-part-station-${i}`} value={part.station ?? ''}
+                <Select id={`dish-part-station-${i}`} value={part.station ?? ''}
                   onChange={(e) => setParts((prev) => prev.map((p, j) => (j === i ? { ...p, station: e.target.value || null } : p)))}>
                   <option value="">Som rätten</option>
                   {stations.map((s) => (
                     <option key={s.stationId} value={s.stationId}>{s.name}</option>
                   ))}
                   <option value={NO_TICKET}>Ingen bong</option>
-                </select>
+                </Select>
               </div>
               <button type="button" className="btn outline square" aria-label={`Ta bort del ${i + 1}`}
                 onClick={() => setParts((prev) => prev.filter((_, j) => j !== i))}>

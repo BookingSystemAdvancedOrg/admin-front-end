@@ -7,6 +7,7 @@ import { NewReservationModal } from './NewReservationModal'
 import { SlotTablePicker, SLOT_REFRESH_MS } from './SlotTablePicker'
 import type { Reservation } from './bookingsApi'
 import { formatDate } from '../../shared/DateInput'
+import { chooseOption } from '../../test/select'
 
 const changeStatus = vi.fn()
 const paymentAction = vi.fn()
@@ -148,7 +149,7 @@ describe('ReservationModal', () => {
     const onChanged = vi.fn()
     render(<ReservationModal today={TODAY} reservation={booking()} isOwner onChanged={onChanged} onClose={() => {}} />)
     await user.click(screen.getByRole('button', { name: 'Ändra' }))
-    await user.selectOptions(await screen.findByLabelText('Tid'), '17:00')
+    await chooseOption(await screen.findByLabelText('Tid'), '17:00')
     await user.click(screen.getByLabelText(/Bord 5/))
     await user.click(screen.getByRole('button', { name: 'Spara' }))
     expect(updateReservation).toHaveBeenCalledWith('loc-1', 'r1', {
@@ -169,7 +170,7 @@ describe('NewReservationModal', () => {
     createManualReservation.mockResolvedValue(booking({ reservationId: 'new' }))
     const onCreated = vi.fn()
     render(<NewReservationModal locationId="loc-1" initialDate="2026-10-12" today={TODAY} onCreated={onCreated} onCancel={() => {}} />)
-    await user.selectOptions(await screen.findByLabelText('Tid'), '19:00')
+    await chooseOption(await screen.findByLabelText('Tid'), '19:00')
     await user.click(screen.getByLabelText(/Bord 2/))
     await user.type(screen.getByLabelText('Namn'), 'Anna')
     await user.type(screen.getByLabelText('Telefon (valfritt)'), '+46701234567')
@@ -291,7 +292,7 @@ describe('time rules in the forms', () => {
     ]))
     createManualReservation.mockRejectedValue(new ApiError(400, 'startTime is not a bookable time for this date'))
     render(<NewReservationModal locationId="loc-1" initialDate={TODAY} today={TODAY} onCreated={() => {}} onCancel={() => {}} />)
-    await user.selectOptions(await screen.findByLabelText('Tid'), '14:00')
+    await chooseOption(await screen.findByLabelText('Tid'), '14:00')
     await user.click(screen.getByLabelText(/Bord 2/))
     await user.type(screen.getByLabelText('Namn'), 'Anna')
     const calls = getAvailability.mock.calls.length
@@ -425,7 +426,7 @@ describe('ReservationModal extend', () => {
     updateReservation.mockResolvedValue(ruled({ endTime: '20:30' }))
     render(<ReservationModal today={TODAY} reservation={ruled()} isOwner onChanged={() => {}} onClose={() => {}} />)
     await user.click(screen.getByRole('button', { name: 'Förläng' }))
-    await user.selectOptions(screen.getByLabelText('Ny sluttid'), String(20 * 60 + 30))
+    await chooseOption(screen.getByLabelText('Ny sluttid'), String(20 * 60 + 30))
     await user.click(screen.getByRole('button', { name: 'Förläng' }))
     expect(screen.getByRole('alert')).toHaveTextContent('Bekräfta')
     expect(updateReservation).not.toHaveBeenCalled()
@@ -449,7 +450,7 @@ describe('ReservationModal extend', () => {
     updateReservation.mockResolvedValue(ruled({ endTime: '19:00' }))
     render(<ReservationModal today={TODAY} reservation={ruled()} isOwner onChanged={() => {}} onClose={() => {}} />)
     await user.click(screen.getByRole('button', { name: 'Förläng' }))
-    await user.selectOptions(screen.getByLabelText('Ny sluttid'), String(19 * 60))
+    await chooseOption(screen.getByLabelText('Ny sluttid'), String(19 * 60))
     await user.click(screen.getByRole('button', { name: 'Korta bokningen' }))
     expect(updateReservation).toHaveBeenCalledWith('loc-1', 'r1', { endTime: '19:00' })
   })

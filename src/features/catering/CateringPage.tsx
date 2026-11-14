@@ -12,6 +12,7 @@ import './catering.css'
 import { SkelCard, SkelPage, SkelRows, SkelTiles } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { booqyFaultText } from '../../shared/errors'
+import { Select } from '../../shared/Select'
 
 type Filter = 'aktiva' | 'alla'
 const ACTIVE: CateringStatus[] = ['requested', 'offer_sent', 'change_requested', 'signed', 'confirmed', 'delivered']
@@ -96,10 +97,10 @@ export default function CateringPage() {
           <section className="admin-card table-card" data-tour="catering-list">
             <div className="card-head">
               <h2 className="card-title">Förfrågningar och beställningar</h2>
-              <select className="compact-select" aria-label="Visa" value={filter} onChange={(e) => setFilter(e.target.value as Filter)}>
+              <Select className="compact-select" aria-label="Visa" value={filter} onChange={(e) => setFilter(e.target.value as Filter)}>
                 <option value="aktiva">Pågående</option>
                 <option value="alla">Alla</option>
-              </select>
+              </Select>
             </div>
             {error && <ErrorNote text={booqyFaultText('Kunde inte hämta förfrågningarna.')} />}
             {rows === null && !error && <SkelRows n={5} cols={4} />}

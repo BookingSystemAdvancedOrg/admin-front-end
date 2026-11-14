@@ -29,6 +29,7 @@ import type { CateringSettings, DeliveryBand, LeadTimeRule, Tier } from '../cate
 import './cateringkalkyl.css'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
+import { Select } from '../../shared/Select'
 
 function rulesOf(s: CateringSettings): OrderRules {
   return {
@@ -306,7 +307,7 @@ export default function CateringkalkylPage() {
               </div>
               <div className="form-field">
                 <label htmlFor="discount-scope">Rabatten gäller</label>
-                <select
+                <Select
                   id="discount-scope"
                   value={orderRules.discountScope}
                   onChange={(e) =>
@@ -320,7 +321,7 @@ export default function CateringkalkylPage() {
                       {label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
           </section>

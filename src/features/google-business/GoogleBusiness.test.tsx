@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import GoogleProfileCard from './GoogleProfileCard'
 import OmdomenTab from './OmdomenTab'
 import * as api from './api'
+import { chooseOption, optionTexts } from '../../test/select'
 
 vi.mock('../../shared/tenant', () => ({
   useTenant: () => ({}),
@@ -51,15 +52,15 @@ describe('GoogleProfileCard', () => {
     vi.mocked(api.getConnection).mockResolvedValue({ status: 'connected', googleAccount: 'accounts/1' })
     renderCard('/installningar?google=1&code=abc&state=xyz')
     await waitFor(() => expect(api.finishConnect).toHaveBeenCalledWith('abc', 'xyz'))
-    expect(await screen.findByRole('option', { name: 'Bistro, Gatan 1' })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: /Annan/ })).toBeNull()
+    await waitFor(() => expect(optionTexts(screen.getByRole('combobox'))).toContain('Bistro, Gatan 1'))
+    expect(optionTexts(screen.getByRole('combobox')).some((t) => /Annan/.test(t))).toBe(false)
   })
 
   it('links a place and shows the preview with the overwrite notice', async () => {
     vi.mocked(api.getConnection).mockResolvedValue({ status: 'connected' })
     vi.mocked(api.linkLocation).mockResolvedValue({ googleLocation: 'locations/1', title: 'Bistro', syncStatus: 'pending', lastSyncAt: null, version: 1 })
     renderCard()
-    fireEvent.change(await screen.findByRole('combobox'), { target: { value: 'locations/1' } })
+    chooseOption(await screen.findByRole('combobox'), 'locations/1')
     fireEvent.click(screen.getByRole('button', { name: 'Koppla platsen' }))
     await waitFor(() => expect(api.linkLocation).toHaveBeenCalledWith('loc-1', 'locations/1', undefined))
     expect(screen.getByText('Ändra öppettiderna här, inte i Google.')).toBeInTheDocument()

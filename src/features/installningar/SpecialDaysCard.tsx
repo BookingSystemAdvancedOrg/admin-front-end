@@ -20,6 +20,7 @@ import { DateInput, TimeInput } from '../../shared/DateInput'
 import { SkelRows } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
+import { Select } from '../../shared/Select'
 
 /**
  * Avvikande öppettider för den valda platsen (backend shared/booking_rules.py):
@@ -242,7 +243,7 @@ export function SpecialDaysCard({
                 </div>
                 <div className="form-field">
                   <label htmlFor="special-kind">Typ</label>
-                  <select
+                  <Select
                     id="special-kind"
                     value={draft.kind}
                     onChange={(e) => setDraft((d) => ({ ...d, kind: e.target.value as SpecialDayKind }))}
@@ -252,7 +253,7 @@ export function SpecialDaysCard({
                         {KIND_LABEL[k]}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               </div>
               {draft.kind === 'hours' && (

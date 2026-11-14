@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Bar, Button, Card, Field, Input, Printing, Select } from '@booqy/brand'
+import { Bar, Button, Card, Field, Input, Printing } from '@booqy/brand'
+import { BrandSelect as Select } from '../../shared/Select'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { ApiError } from '../../shared/api'
 import { errorText } from '../../shared/errors'

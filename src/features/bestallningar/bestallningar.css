@@ -7,7 +7,7 @@
   font: 600 13px/1.2 var(--sans);
 }
 
-.orders-pause select {
+.orders-pause .b-select {
   padding: 10px 12px;
   border-radius: var(--r-md);
   font: inherit;
@@ -212,7 +212,7 @@
   font: 600 13px/1.2 var(--sans);
 }
 
-.orders-filter select {
+.orders-filter .b-select {
   min-width: 220px;
   max-width: 100%;
 }
@@ -223,7 +223,7 @@
     align-items: stretch;
   }
 
-  .orders-filter select {
+  .orders-filter .b-select {
     flex: 1 1 100%;
     min-width: 0;
   }

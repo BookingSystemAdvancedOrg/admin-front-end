@@ -15,6 +15,7 @@ import type { AccountRole, Accounts, AccountingSettings, ExportFormat, ExportRes
 import './bokforing.css'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
+import { Select } from '../../shared/Select'
 
 /**
  * Bokföring: dagens försäljning som en verifikation per dag, till Fortnox,
@@ -231,21 +232,21 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
           <div className="form-grid">
             <div className="form-field">
               <label htmlFor="bokforing-period">Period</label>
-              <select id="bokforing-period" value={period} onChange={(e) => choosePeriod(e.target.value)}>
+              <Select id="bokforing-period" value={period} onChange={(e) => choosePeriod(e.target.value)}>
                 {months.map((m) => (
                   <option key={m.value} value={m.value}>
                     {m.label}
                   </option>
                 ))}
                 <option value={CUSTOM}>Egen period</option>
-              </select>
+              </Select>
             </div>
             <div className="form-field">
               <label htmlFor="bokforing-format">Filformat</label>
-              <select id="bokforing-format" value={format} onChange={(e) => setFormat(e.target.value as ExportFormat)}>
+              <Select id="bokforing-format" value={format} onChange={(e) => setFormat(e.target.value as ExportFormat)}>
                 <option value="sie">SIE-fil (Fortnox, Visma m.fl.)</option>
                 <option value="csv">CSV (Excel)</option>
-              </select>
+              </Select>
             </div>
             {period === CUSTOM && (
               <>
@@ -368,25 +369,25 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
             <div className="form-grid">
               <div className="form-field">
                 <label htmlFor="bokforing-serie">Verifikationsserie</label>
-                <select id="bokforing-serie" value={series} disabled={saving}
+                <Select id="bokforing-serie" value={series} disabled={saving}
                   onChange={(e) => { setSeries(e.target.value); setNotice(null) }}>
                   {LETTERS.map((l) => (
                     <option key={l} value={l}>
                       {l}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div className="form-field">
                 <label htmlFor="bokforing-ar">Räkenskapsåret börjar</label>
-                <select id="bokforing-ar" value={yearStart} disabled={saving}
+                <Select id="bokforing-ar" value={yearStart} disabled={saving}
                   onChange={(e) => { setYearStart(Number(e.target.value)); setNotice(null) }}>
                   {MONTHS.map((m, i) => (
                     <option key={m} value={i + 1}>
                       1 {m}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div className="form-field">
                 <label htmlFor="bokforing-kst">Kostnadsställe</label>

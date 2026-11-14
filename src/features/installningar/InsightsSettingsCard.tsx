@@ -8,6 +8,7 @@ import { getLocation, updateLocation } from './locationApi'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
 import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Select } from '../../shared/Select'
 
 /**
  * Statistik: vad personalen får se och var lunchen slutar.
@@ -111,7 +112,7 @@ export function InsightsSettingsCard({ tenant, locationId }: { tenant: Tenant; l
         {locationId && (
           <div className="form-field">
             <label htmlFor="insights-lunch">Lunchen slutar</label>
-            <select
+            <Select
               id="insights-lunch"
               value={lunch ?? DEFAULT_LUNCH}
               disabled={busy || lunch === null}
@@ -125,7 +126,7 @@ export function InsightsSettingsCard({ tenant, locationId }: { tenant: Tenant; l
                   {h}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
 

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PersonalPage from './PersonalPage'
 import * as users from '../installningar/usersApi'
 import type { User } from '../installningar/usersApi'
+import { chooseOption } from '../../test/select'
 
 let tenant: Record<string, unknown>
 vi.mock('../../shared/tenant', () => ({ useTenant: () => ({ tenant }) }))
@@ -51,7 +52,7 @@ describe('PersonalPage', () => {
     renderPage()
     expect(await screen.findByText('Anna Servis')).toBeInTheDocument()
     expect(screen.getByText('Bo Kock')).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('Plats'), { target: { value: 'loc-1' } })
+    chooseOption(screen.getByLabelText('Plats'), 'loc-1')
     expect(screen.queryByText('Bo Kock')).not.toBeInTheDocument()
     expect(screen.getByText('Anna Servis')).toBeInTheDocument()
   })
@@ -82,7 +83,7 @@ describe('PersonalPage', () => {
     fireEvent.change(within(dialog).getByLabelText('Namn'), { target: { value: 'Cia Ny' } })
     fireEvent.change(within(dialog).getByLabelText('E-post'), { target: { value: 'cia@example.com' } })
     fireEvent.change(within(dialog).getByLabelText('Telefon'), { target: { value: '+46701234560' } })
-    fireEvent.change(within(dialog).getByLabelText('Plats'), { target: { value: 'loc-2' } })
+    chooseOption(within(dialog).getByLabelText('Plats'), 'loc-2')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Skicka inbjudan' }))
     await waitFor(() => expect(screen.getByText('Cia Ny')).toBeInTheDocument())
     expect(users.inviteUser).toHaveBeenCalledWith(

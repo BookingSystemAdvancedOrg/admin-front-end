@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Bar, Button, Field, Input, Modal, Select, toast } from '@booqy/brand'
+import { Bar, Button, Field, Input, Modal, toast } from '@booqy/brand'
+import { BrandSelect as Select } from '../../shared/Select'
 import { errorCode, errorText } from '../../shared/errors'
 import { ChangedNote } from '../../shared/ChangedNote'
 import { isConflict, mergeEdits } from '../../shared/merge'

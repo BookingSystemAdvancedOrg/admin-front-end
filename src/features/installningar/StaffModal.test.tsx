@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { StaffModal } from './StaffModal'
 import type { User } from './usersApi'
+import { chooseOption, optionTexts } from '../../test/select'
 
 const LOCATIONS = [
   { locationId: 'loc-1', name: 'Hagastan' },
@@ -49,15 +50,16 @@ function renderInvite(overrides: Partial<Parameters<typeof StaffModal>[0]> = {})
 describe('StaffModal - invite mode', () => {
   it('lets an owner invite staff only (owners are added by the platform)', () => {
     renderInvite()
-    const roleSelect = screen.getByLabelText('Roll') as HTMLSelectElement
-    expect(Array.from(roleSelect.options).map((o) => o.textContent)).toEqual(['Personal'])
+    const roleSelect = screen.getByRole('combobox', { name: 'Roll' })
+    // Bara ett val, och det går inte att ändra.
+    expect(roleSelect).toHaveTextContent('Personal')
     expect(roleSelect).toBeDisabled()
   })
 
   it('picks the location by name, defaulting to the one selected in the app', () => {
     renderInvite()
-    const locationSelect = screen.getByLabelText('Plats') as HTMLSelectElement
-    expect(Array.from(locationSelect.options).map((o) => o.textContent)).toEqual([
+    const locationSelect = screen.getByRole('combobox', { name: 'Plats' })
+    expect(optionTexts(locationSelect)).toEqual([
       'Hagastan',
       'Södermalm',
     ])
@@ -70,7 +72,7 @@ describe('StaffModal - invite mode', () => {
     const user = userEvent.setup()
     const { onSave } = renderInvite()
     await fillValidInvite(user)
-    await user.selectOptions(screen.getByLabelText('Plats'), 'Södermalm')
+    await chooseOption(screen.getByLabelText('Plats'), 'Södermalm')
     await user.click(screen.getByRole('button', { name: 'Skicka inbjudan' }))
 
     await waitFor(() =>

@@ -27,6 +27,7 @@ import './bestallningar.css'
 import { SkelBlock, SkelBox, SkelPage, SkelTiles } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { booqyFaultText } from '../../shared/errors'
+import { Select } from '../../shared/Select'
 
 /** Hur ofta listan hämtas om (köksskärmen står öppen hela kvällen). */
 export const POLL_MS = 10_000
@@ -238,7 +239,7 @@ export default function BestallningarPage() {
       ) : (
         <>
           <label htmlFor="orders-pause">Pausa beställningar</label>
-          <select
+          <Select
             id="orders-pause"
             value=""
             disabled={!ordering?.open}
@@ -250,7 +251,7 @@ export default function BestallningarPage() {
                 {m} min
               </option>
             ))}
-          </select>
+          </Select>
         </>
       )}
     </div>
@@ -434,14 +435,14 @@ export default function BestallningarPage() {
             {placeOptions.length > 1 && (
               <div className="orders-filter">
                 <label htmlFor="orders-place">Visa</label>
-                <select id="orders-place" value={placeValue} onChange={(e) => setPlace(e.target.value)}>
+                <Select id="orders-place" value={placeValue} onChange={(e) => setPlace(e.target.value)}>
                   <option value={ALL}>Alla bord och avhämtning</option>
                   {placeOptions.map(([key, label]) => (
                     <option key={key} value={key}>
                       {label}
                     </option>
                   ))}
-                </select>
+                </Select>
                 {placeValue !== ALL && (
                   <button type="button" className="btn outline square" onClick={() => setPlace(ALL)}>
                     Visa alla

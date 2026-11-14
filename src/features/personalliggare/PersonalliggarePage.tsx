@@ -1,6 +1,7 @@
 import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
-import { Bar, Button, Card, Field, Input, Modal, Select, toast } from '@booqy/brand'
+import { Bar, Button, Card, Field, Input, Modal, toast } from '@booqy/brand'
+import { BrandSelect as Select } from '../../shared/Select'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { errorText } from '../../shared/errors'
 import { currentLocation, useTenant } from '../../shared/tenant'

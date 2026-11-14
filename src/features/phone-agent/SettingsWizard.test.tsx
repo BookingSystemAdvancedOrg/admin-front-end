@@ -6,6 +6,7 @@ import type { BusinessHours } from '../installningar/locationApi'
 import { formatPhone } from '../../shared/phone'
 import SettingsWizard from './SettingsWizard'
 import type { CallRow, Config, LocationConfig } from './api'
+import { chooseOption } from '../../test/select'
 
 vi.mock('../../shared/tenant', () => ({
   useTenant: () => ({ tenant: { role: 'owner_user', locations: [{ locationId: 'loc-1', name: 'Bistro' }] }, locationId: 'loc-1' }),
@@ -500,7 +501,7 @@ describe('Fler inställningar', () => {
     const greet = screen.getByRole('form', { name: 'Hälsning' })
     fireEvent.change(within(greet).getByLabelText('Svenska'), { target: { value: 'Vad kan jag hjälpa dig med?' } })
     const tone = screen.getByRole('form', { name: 'Ton' })
-    fireEvent.change(within(tone).getByLabelText('Ton'), { target: { value: 'formal' } })
+    chooseOption(within(tone).getByLabelText('Ton'), 'formal')
     fireEvent.click(within(tone).getByRole('button', { name: 'Spara' }))
     await waitFor(() => expect(server.config.tone).toBe('formal'))
     await waitFor(() => expect(server.config.version).toBe(1))

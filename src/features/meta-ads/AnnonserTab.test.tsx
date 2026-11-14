@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AdsOverviewTiles from './AdsOverviewTiles'
 import AnnonserTab from './AnnonserTab'
 import * as api from './api'
+import { chooseOption, optionTexts } from '../../test/select'
 
 vi.mock('../../shared/tenant', () => ({
   useTenant: () => ({}),
@@ -91,9 +92,9 @@ describe('AnnonserTab', () => {
     expect(goals.every((r) => r.closest('label')?.classList.contains('annons-choice') && !r.closest('.toggle-row'))).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Nästa' }))
     const dish = await screen.findByLabelText(/Rätt/)
-    await waitFor(() => expect(screen.getByRole('option', { name: 'Pasta' })).toBeInTheDocument())
-    expect(screen.queryByRole('option', { name: 'Vin' })).not.toBeInTheDocument()
-    fireEvent.change(dish, { target: { value: 'm1' } })
+    await waitFor(() => expect(optionTexts(dish)).toContain('Pasta'))
+    expect(optionTexts(dish)).not.toContain('Vin')
+    chooseOption(dish, 'm1')
     fireEvent.click(screen.getByRole('button', { name: 'Föreslå text' }))
     fireEvent.click(await screen.findByRole('button', { name: /Fredagspasta/ }))
     for (let i = 0; i < 4; i++) fireEvent.click(screen.getByRole('button', { name: 'Nästa' }))

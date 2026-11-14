@@ -4,6 +4,7 @@ import { tokens } from '@booqy/brand'
 import { DESTINATION_LABEL, LINK_SOURCES, campaignSlug, trackedLink } from './marketingApi'
 import type { Destination } from './marketingApi'
 import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Select } from '../../shared/Select'
 
 type Page = Exclude<Destination, 'custom'>
 const PAGES: Page[] = ['home', 'book', 'menu', 'order', 'catering']
@@ -61,19 +62,19 @@ export function LinksTab({ primaryDomain }: { primaryDomain: string | null }) {
             </div>
             <div className="form-field">
               <label htmlFor="mk-l-page">Sida</label>
-              <select id="mk-l-page" value={page} onChange={(e) => setPage(e.target.value as Page)}>
+              <Select id="mk-l-page" value={page} onChange={(e) => setPage(e.target.value as Page)}>
                 {PAGES.map((p) => (
                   <option key={p} value={p}>{DESTINATION_LABEL[p]}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="form-field">
               <label htmlFor="mk-l-src">Var länken delas</label>
-              <select id="mk-l-src" value={source} onChange={(e) => setSource(e.target.value)}>
+              <Select id="mk-l-src" value={source} onChange={(e) => setSource(e.target.value)}>
                 {LINK_SOURCES.map((s) => (
                   <option key={s.value} value={s.value}>{s.label}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="form-field">
               <label htmlFor="mk-l-cmp">Kampanjnamn</label>

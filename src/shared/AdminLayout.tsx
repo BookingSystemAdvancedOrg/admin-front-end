@@ -34,6 +34,7 @@ import { HelpChat } from '../features/help/HelpChat'
 import { helpChatEnabled, openHelpChat } from '../features/help/chatState'
 import { ErrorNote } from './ErrorNote'
 import { booqyFaultText } from './errors'
+import { Select } from './Select'
 
 /** Grupperna i sidomenyn som användaren har fällt ihop (sparas i webbläsaren). */
 function storedClosedGroups(): string[] {
@@ -234,7 +235,7 @@ export function AdminLayout() {
         {locations.length > 1 && (
           <div className="admin-location-picker" data-tour="location-picker">
             <label htmlFor="admin-location">Plats</label>
-            <select
+            <Select
               id="admin-location"
               value={locationId ?? ''}
               onChange={(e) => selectLocation(e.target.value)}
@@ -244,7 +245,7 @@ export function AdminLayout() {
                   {l.name || 'Namnlös plats'}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
 

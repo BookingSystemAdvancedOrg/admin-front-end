@@ -4,6 +4,7 @@ import type { AvailabilitySlot, DayStatus } from './bookingsApi'
 import { useTables } from '../../shared/tables'
 import { DateInput } from '../../shared/DateInput'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { Select } from '../../shared/Select'
 
 /** Hur ofta listan med lediga tider hämtas om medan formuläret är öppet. */
 export const SLOT_REFRESH_MS = 60_000
@@ -181,7 +182,7 @@ export function SlotTablePicker({
         </div>
         <div className="form-field">
           <label htmlFor="slot-time">Tid</label>
-          <select
+          <Select
             id="slot-time"
             value={startTime}
             disabled={loading || times.length === 0}
@@ -198,7 +199,7 @@ export function SlotTablePicker({
                 {t}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
       {notice && (

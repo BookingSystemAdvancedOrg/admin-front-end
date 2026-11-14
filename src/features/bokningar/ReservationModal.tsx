@@ -31,6 +31,7 @@ import { ApiError } from '../../shared/api'
 import { minutesLabel } from '../installningar/bookingTime'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { Select } from '../../shared/Select'
 
 type Panel = null | 'no_show' | 'cancel' | 'refund' | 'edit' | 'extend'
 
@@ -459,7 +460,7 @@ function ExtendPanel({
       </p>
       <div className="form-field">
         <label htmlFor="extend-end">Ny sluttid</label>
-        <select
+        <Select
           id="extend-end"
           value={end}
           onChange={(e) => {
@@ -475,7 +476,7 @@ function ExtendPanel({
               {m === current ? ', nu' : m > current && m > allowedEnd ? ', över regeln' : `, ${minutesLabel(m - start)}`}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
       {needsOverride && (
         <label className="check-row">

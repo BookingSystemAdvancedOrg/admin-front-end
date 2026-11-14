@@ -1,234 +1,287 @@
-/* Rullistor (alla <select> i admin): samma material som resten av märket.
-   Stängd: termopapper med tryckt pil. Öppen: ett rundat papper med rader,
-   en mjuk sandfärgad ruta under raden man pekar på och en bock vid det valda.
+/* Rullistor (shared/Select.tsx): knappen ser ut som adminens fält, listan
+   är Booqys glas med en mjuk sandruta under raden man står på och en bock
+   vid det valda. Aldrig systemets egen meny. På telefon ett ark nerifrån
+   med stora rader. Sidornas egna regler (.form-field .b-select,
+   .compact-select ...) formar knappen; här bara det gemensamma. */
 
-   Byggs på webbläsarens egen rullista (appearance: base-select), så
-   tangentbord, skärmläsare och mobilens väljare fungerar som vanligt. Där
-   den inte finns (äldre Safari/Firefox) visas webbläsarens lista, men med
-   läsbar text: alternativen ärver aldrig ljus text från sidomenyn.
-   Laddas efter admin.css och brand.css (AdminLayout). */
+/* --- Knappen ------------------------------------------------------------- */
 
-:root {
-  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.75 6 6.25l4.5-4.5' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  --select-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='m2.5 7.5 3 3 6-7' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-}
-
-/* Mörkt läge: pilen i ljust bläck (bara webbläsare utan base-select ser
-   färgen; med base-select används den som mask, i currentColor). */
-:root[data-theme='dark'] {
-  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.75 6 6.25l4.5-4.5' fill='none' stroke='%23f6ece9' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-}
-
-/* --- Stängd rullista ------------------------------------------------------ */
-
-select {
-  appearance: none;
-  background-image: none;
+:where(.b-select) {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0 12px;
+  min-height: 36px;
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
   cursor: default;
-  /* samma hörn som alla rutor i ett kort; sidornas egna regler kan ändå sätta piller */
   border-radius: var(--r-md);
 }
 
-/* Pilen för webbläsare utan base-select: ett pseudo-element går inte på
-   <select>, så den ritas som bakgrund i bläck. Sidomenyn får en ljus. */
-@supports not (appearance: base-select) {
-  /* Pilen ritas en gång till höger, oavsett vad sidans egen regel sätter
-     (en "background:"-förkortning nollställer annars upprepning och storlek). */
-  select,
-  .admin-location-picker select {
-    background-image: var(--select-chevron);
-    background-repeat: no-repeat;
-    background-position: right 14px center;
-    background-size: 11px 8px;
-  }
-
-  /* Plats för pilen: sidornas egna klasser sätter padding, så de nämns här. */
-  select,
-  .form-field select,
-  .compact-select,
-  .orders-pause select,
-  .admin-location-picker select {
-    padding-right: 36px;
-  }
-
-  /* Ljus pil bara i mörkt läge; i ljust läge den vanliga mörka (sidomenyn är ljust glas). */
-  :root[data-theme='dark'] .admin-location-picker select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.75 6 6.25l4.5-4.5' fill='none' stroke='%23f6ece9' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  }
+.b-select-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Alternativen är alltid bläck på papper, var listan än står. */
-select option,
-select optgroup {
-  color: var(--ink);
-  background-color: var(--glass-surface);
+.b-select-chevron {
+  flex: none;
+  margin-right: -2px;
+  opacity: 0.75;
+  transition: rotate 220ms var(--ease), opacity 160ms var(--ease);
 }
 
-select:disabled {
+.b-select:hover .b-select-chevron,
+.b-select[aria-expanded='true'] .b-select-chevron {
+  opacity: 1;
+}
+
+.b-select[aria-expanded='true'] .b-select-chevron {
+  rotate: 180deg;
+}
+
+.b-select:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
-.admin-location-picker select {
-  color-scheme: light;
+.b-select[aria-invalid='true'] {
+  border-color: var(--accent-ink);
+  box-shadow: 0 0 0 1.5px var(--accent-ink);
 }
 
-/* --- Öppen rullista (Chrome, Edge, nyare Safari) -------------------------- */
-
-@supports (appearance: base-select) {
-  select,
-  ::picker(select) {
-    appearance: base-select;
-  }
-
-  select {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  select::picker-icon {
-    content: '';
-    flex: none;
-    width: 11px;
-    height: 8px;
-    margin-left: auto;
-    background-color: currentColor;
-    mask: var(--select-chevron) center / contain no-repeat;
-    opacity: 0.75;
-    transition: rotate 220ms var(--ease), opacity 160ms var(--ease);
-  }
-
-  select:hover::picker-icon {
-    opacity: 1;
-  }
-
-  select:open::picker-icon {
-    rotate: 180deg;
-    opacity: 1;
-  }
-
-  ::picker(select) {
-    box-sizing: border-box;
-    min-width: anchor-size(width);
-    max-height: min(340px, 60svh);
-    margin-block: 6px;
-    padding: 6px;
-    overflow-y: auto;
-    border: 1px solid var(--border);
-    border-radius: var(--r-lg);
-    background: var(--glass-surface);
-    color: var(--ink);
-    box-shadow: var(--shadow-lg);
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
-    opacity: 0;
-    translate: 0 -4px;
-    transition:
-      opacity 160ms var(--ease),
-      translate 220ms var(--ease),
-      overlay 160ms allow-discrete,
-      display 160ms allow-discrete;
-  }
-
-  select:open::picker(select) {
-    opacity: 1;
-    translate: 0 0;
-  }
-
-  @starting-style {
-    select:open::picker(select) {
-      opacity: 0;
-      translate: 0 -4px;
-    }
-  }
-
-  select option {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-height: 38px;
-    padding: 8px 14px;
-    border-radius: var(--r-md);
-    background: transparent;
-    color: var(--ink);
-    font: 500 14px/1.3 var(--font);
-    cursor: default;
-    transition: background-color 120ms var(--ease);
-  }
-
-  /* Raden man pekar på: en mjuk sandruta i märkets bruna, rundad som listan. */
-  select option:hover,
-  select option:focus-visible {
-    background: rgba(168, 132, 98, 0.16);
-    color: var(--ink);
-    outline: none;
-  }
-
-  :root[data-theme='dark'] select option:hover,
-  :root[data-theme='dark'] select option:focus-visible {
-    background: rgba(213, 196, 174, 0.14);
-  }
-
-  select option:checked {
-    font-weight: 650;
-  }
-
-  /* Bocken vid det valda: i märkets bruna bläck, längst till höger. */
-  select option::checkmark {
-    content: '';
-    order: 1;
-    flex: none;
-    width: 13px;
-    height: 13px;
-    margin-left: auto;
-    background-color: var(--accent-ink);
-    mask: var(--select-check) center / contain no-repeat;
-  }
-
-  select option:disabled {
-    color: var(--muted);
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  select option:disabled:hover {
-    background: transparent;
-  }
-
-  select optgroup {
-    padding-top: 4px;
-    font: 500 10.5px/1.2 var(--mono);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--muted);
-    background: transparent;
-  }
-
-  /* Sidomenyns platsväljare: knappen i menyns ton, listan är papper. */
-  .admin-location-picker select:hover {
-    box-shadow: inset 0 0 0 1px rgba(168, 132, 98, 0.45);
-  }
-
-  .admin-location-picker select:open {
-    background-color: rgba(168, 132, 98, 0.12);
-    box-shadow: inset 0 0 0 1px rgba(168, 132, 98, 0.6);
-  }
-
-  .admin-location-picker select::picker(select) {
-    margin-block: 6px;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    ::picker(select),
-    select::picker-icon {
-      transition: none;
-    }
-  }
+/* Märkets fält (@booqy/brand Field): piller som Input, ingen extra pil. */
+.b-select.bq-select {
+  display: flex;
+  padding-right: 14px;
+  background-image: none;
 }
 
-/* Tangentbordsfokus på platsväljaren syns mot det vinröda. */
-.admin-location-picker select:focus-visible {
+/* Sidomenyns platsväljare: knappen i menyns ton. */
+.admin-location-picker .b-select:hover {
+  box-shadow: inset 0 0 0 1px rgba(168, 132, 98, 0.45);
+}
+
+.admin-location-picker .b-select[aria-expanded='true'] {
+  background-color: rgba(168, 132, 98, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(168, 132, 98, 0.6);
+}
+
+.admin-location-picker .b-select:focus-visible {
   outline: 2px solid var(--on-ox);
   outline-offset: 2px;
+}
+
+/* --- Listan -------------------------------------------------------------- */
+
+/* Över dialoger (280), ⌘K (300), kalendern (1000) och fasta fält. */
+.b-select-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  pointer-events: none;
+}
+
+.b-select-pop {
+  position: fixed;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  max-width: calc(100vw - 16px);
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--glass-pop);
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+  /* Safari läser inte var() i -webkit-backdrop-filter: fast värde där. */
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
+  pointer-events: auto;
+  visibility: hidden;
+}
+
+.b-select-pop.is-placed {
+  visibility: visible;
+}
+
+.b-select-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  outline: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.b-select-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 38px;
+  padding: 8px 12px 8px 14px;
+  border-radius: var(--r-md);
+  font: 500 14px/1.3 var(--font);
+  color: var(--ink);
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.b-select-option-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.b-select-option.in-group {
+  padding-left: 22px;
+}
+
+/* Raden man står på: en mjuk sandruta i märkets bruna. */
+.b-select-option.is-active {
+  background: rgba(168, 132, 98, 0.16);
+}
+
+:root[data-theme='dark'] .b-select-option.is-active {
+  background: rgba(213, 196, 174, 0.14);
+}
+
+.b-select-option[aria-selected='true'] {
+  font-weight: 650;
+}
+
+.b-select-check {
+  flex: none;
+  color: var(--accent-ink);
+}
+
+.b-select-option[aria-disabled='true'] {
+  color: var(--muted);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.b-select-option[aria-disabled='true'].is-active {
+  background: transparent;
+}
+
+.b-select-group {
+  padding: 10px 14px 4px;
+  font: 500 10.5px/1.2 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* --- Telefon: ett ark nerifrån ------------------------------------------- */
+
+.b-select-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 18, 14, 0.32);
+  pointer-events: auto;
+}
+
+.b-select-pop.b-select-sheet {
+  inset: auto 0 0 0;
+  max-width: none;
+  max-height: min(70svh, 560px);
+  padding: 10px 10px calc(12px + env(safe-area-inset-bottom));
+  border-width: 1px 0 0;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  /* Arket täcker sidan: nästan helt täckande, så att inget lyser igenom. */
+  background: rgb(var(--bq-snow-rgb) / 0.95);
+  visibility: visible;
+}
+
+:root[data-theme='dark'] .b-select-pop.b-select-sheet {
+  background: rgba(36, 25, 19, 0.96);
+}
+
+.b-select-sheet::before {
+  content: '';
+  align-self: center;
+  flex: none;
+  width: 40px;
+  height: 4px;
+  margin-bottom: 8px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.b-select-title {
+  flex: none;
+  margin: 0 0 6px;
+  padding: 0 14px;
+  font: 600 15px/1.3 var(--font);
+  color: var(--muted);
+}
+
+.b-select-sheet .b-select-option {
+  min-height: 48px;
+  font-size: 16px;
+}
+
+/* --- Rörelse: bara när den inte är avstängd ------------------------------ */
+
+@media (prefers-reduced-motion: no-preference) {
+  .b-select-pop.is-placed {
+    animation: b-select-in 180ms var(--ease) both;
+  }
+
+  .b-select-pop.is-above.is-placed {
+    animation-name: b-select-in-above;
+  }
+
+  .b-select-pop.b-select-sheet {
+    animation: b-select-sheet-in 260ms var(--ease) both;
+  }
+
+  .b-select-scrim {
+    animation: b-select-fade 200ms var(--ease) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .b-select-chevron {
+    transition: none;
+  }
+}
+
+@keyframes b-select-in {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
+
+@keyframes b-select-in-above {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+
+@keyframes b-select-sheet-in {
+  from {
+    translate: 0 100%;
+  }
+}
+
+@keyframes b-select-fade {
+  from {
+    opacity: 0;
+  }
 }

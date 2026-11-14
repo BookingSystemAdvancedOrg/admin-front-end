@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import StatistikPage from './StatistikPage'
 import { sampleInsights } from './insightsSample'
 import type { Filters } from './insights'
+import { chooseOption } from '../../test/select'
 
 const fetchInsights = vi.hoisted(() => vi.fn())
 vi.mock('./insightsApi', () => ({
@@ -113,8 +114,8 @@ describe('StatistikPage', () => {
     renderAt()
     await screen.findByText('Så gick det')
     await user.click(screen.getByRole('button', { name: 'Denna månad' }))
-    await user.selectOptions(screen.getByLabelText('Pass'), 'lunch')
-    await user.selectOptions(screen.getByLabelText('Jämför med'), 'year')
+    await chooseOption(screen.getByLabelText('Pass'), 'lunch')
+    await chooseOption(screen.getByLabelText('Jämför med'), 'year')
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('?period=month&service=lunch&compare=year'))
     expect(periodCalls().at(-1)?.[0]).toMatchObject({ from: '2026-10-01', to: '2026-10-22', service: 'lunch', compare: 'year' })
   })

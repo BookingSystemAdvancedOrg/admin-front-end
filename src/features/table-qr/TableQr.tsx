@@ -11,6 +11,7 @@ import { useCardName, useTableCodes } from './useTableCodes'
 import type { TableCode } from './tableQrApi'
 import './table-qr.css'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { Select } from '../../shared/Select'
 
 type MockTable = { tableId: string; label: string; seats?: number }
 
@@ -93,7 +94,7 @@ function CodeCard({
           <button type="button" className="btn primary square" onClick={() => printCards([card], code.title)}>
             <Icon name="printer" size={16} /> Skriv ut
           </button>
-          <select
+          <Select
               className="tqr-download"
               value=""
               aria-label={`Ladda ner ${code.title}`}
@@ -107,7 +108,7 @@ function CodeCard({
               <option value="pdf">PDF (för tryck)</option>
               <option value="png">PNG (bild)</option>
               <option value="svg">SVG (vektor)</option>
-            </select>
+            </Select>
         </div>
       )}
       <div className="tqr-regenerate">

@@ -41,6 +41,7 @@ import { DishRow } from './DishRow'
 import { isCentre } from './imageFocus'
 import { SkelBlock, SkelTableRows } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { Select } from '../../shared/Select'
 
 /**
  * `base` är rätten som dialogen öppnades med (dina ändringar räknas mot den,
@@ -417,7 +418,7 @@ export default function MenyPage() {
             </div>
             <div className="form-field">
               <label htmlFor="menu-filter-category">Kategori</label>
-              <select
+              <Select
                 id="menu-filter-category"
                 value={filterCategory}
                 onChange={(e) =>
@@ -430,11 +431,11 @@ export default function MenyPage() {
                     {c.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="form-field">
               <label htmlFor="menu-filter-status">Status</label>
-              <select
+              <Select
                 id="menu-filter-status"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}
@@ -444,7 +445,7 @@ export default function MenyPage() {
                 <option value="scheduled">Schemalagda</option>
                 <option value="expired">Utgångna</option>
                 <option value="inactive">Inaktiva</option>
-              </select>
+              </Select>
             </div>
             {hasActiveFilters && (
               <div className="form-field meny-filters-clear">

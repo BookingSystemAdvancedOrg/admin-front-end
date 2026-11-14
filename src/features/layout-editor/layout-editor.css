@@ -869,158 +869,17 @@
   color: var(--on-accent);
 }
 
+/* Bord som står ovanpå ett annat: röd kant (även när det är valt), och
+   publiceringen stoppas tills de flyttats isär. */
+.table-el.overlap .table-top,
+.table-el.overlap.selected .table-top {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger);
+}
+
 .table-el.selected .table-seats {
   color: var(--accent-ink);
   background: var(--bq-snow);
-}
-
-/* --- Inventarier (kassan) ----------------------------------------------- */
-
-.fixture {
-  position: absolute;
-  transform-style: preserve-3d;
-  cursor: grab;
-}
-
-.fixture:active {
-  cursor: grabbing;
-}
-
-.fixture .fx-face {
-  position: absolute;
-  background: #3a3a3c;
-}
-
-.fixture .fx-face.front {
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: var(--fh);
-  transform-origin: bottom center;
-  transform: rotateX(-90deg);
-  background: #2c2c2e;
-}
-
-.fixture .fx-face.back {
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: var(--fh);
-  transform-origin: top center;
-  transform: rotateX(90deg);
-}
-
-.fixture .fx-face.left {
-  left: 0;
-  top: 0;
-  width: var(--fh);
-  height: 100%;
-  transform-origin: center left;
-  transform: rotateY(-90deg);
-}
-
-.fixture .fx-face.right {
-  right: 0;
-  top: 0;
-  width: var(--fh);
-  height: 100%;
-  transform-origin: center right;
-  transform: rotateY(90deg);
-}
-
-.fixture .fx-top {
-  position: absolute;
-  inset: 0;
-  background: #58585c;
-  border: 1px solid #2c2c2e;
-  transform: translateZ(var(--fh));
-  transform-style: preserve-3d;
-  /* diskens träyta */
-  background-image: linear-gradient(
-    90deg,
-    rgb(var(--bq-snow-rgb) / 0.06) 0 2px,
-    transparent 2px 12px
-  );
-}
-
-/* Kassaapparaten som står på disken */
-.fixture .fx-register {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  width: 24px;
-  height: 16px;
-  margin-top: -8px;
-  transform: translateZ(var(--fh));
-  transform-style: preserve-3d;
-  --rh: 18px;
-  pointer-events: none;
-}
-
-.fxr-face {
-  position: absolute;
-  background: #2c2c2e;
-}
-
-.fxr-face.back {
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: var(--rh);
-  transform-origin: top center;
-  transform: rotateX(90deg);
-}
-
-.fxr-face.front {
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: var(--rh);
-  transform-origin: bottom center;
-  transform: rotateX(-90deg);
-  background: #1c1c1e;
-}
-
-.fxr-face.left {
-  left: 0;
-  top: 0;
-  width: var(--rh);
-  height: 100%;
-  transform-origin: center left;
-  transform: rotateY(-90deg);
-}
-
-.fxr-face.right {
-  right: 0;
-  top: 0;
-  width: var(--rh);
-  height: 100%;
-  transform-origin: center right;
-  transform: rotateY(90deg);
-}
-
-.fxr-top {
-  position: absolute;
-  inset: 0;
-  background: var(--accent);
-  border: 1px solid var(--accent-active);
-  transform: translateZ(var(--rh));
-}
-
-/* Flytande KASSA-skylt som alltid vänder sig mot kameran */
-.fixture .seg-tag.kassa-tag {
-  --tagz: 82px;
-}
-
-.fixture .seg-tag.kassa-tag span {
-  background: var(--green);
-  color: var(--on-accent);
-  letter-spacing: 0.1em;
-}
-
-.fixture.selected .fx-top {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent);
 }
 
 .floor-entry-label {
@@ -1352,7 +1211,7 @@
   margin-top: 8px;
 }
 
-/* Hjälplinje på golvet medan ett bord eller kassan dras (Figmas röda linje,
+/* Hjälplinje på golvet medan ett bord dras (Figmas röda linje,
    här i skrivarens röda). Lyft en pixel så den inte flimrar mot golvet. */
 .guide-line {
   position: absolute;

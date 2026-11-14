@@ -2,7 +2,6 @@ import { errorText as commonError } from '../../shared/errors'
 import { apiFetch, ApiError } from '../../shared/api'
 import { WORKSPACE, tableSize } from './data'
 import type {
-  Fixture,
   Floor,
   GroundRect,
   Opening,
@@ -23,7 +22,7 @@ type DoorKind = Exclude<OpeningKind, 'window'>
  * är översättningen mellan de två modellerna - se `toApiLayout`/`toFloors`.
  *
  * Våningar: en våning är ett `floor`-element (`name`, `level`), och varje
- * vägg/öppning/bord/markyta/kassa bär `floorId` till sin våning. Vid
+ * vägg/öppning/bord/markyta bär `floorId` till sin våning. Vid
  * publicering kräver API:t att alla element hör till en våning i samma
  * utkast. En äldre, platt layout (utan våningar) läses in som en enda
  * våning och migreras automatiskt vid nästa sparning.
@@ -31,9 +30,13 @@ type DoorKind = Exclude<OpeningKind, 'window'>
  * Vad som fortfarande INTE går att spara (API:ts datamodell saknar
  * fälten, och alla scheman är `additionalProperties: false`):
  *   - bordens etiketter (T1, T2 …) - återskapas vid inläsning
- * Markytor (`floorArea`), kassan (`cashRegister`) och skillnaden
- * entré/kökets ingång (`kind` på en `door`) fick stöd i API:t 2026-09-29
- * och sparas numera som riktiga element istället för i localStorage.
+ * Markytor (`floorArea`) och skillnaden entré/kökets ingång (`kind` på en
+ * `door`) fick stöd i API:t 2026-09-29 och sparas som riktiga element.
+ *
+ * Kassan (`cashRegister`) är borttagen ur editorn: Booqy är bara online.
+ * API:t kan fortfarande returnera en kassa från en äldre layout; den läses
+ * inte in, och eftersom den då saknas lokalt tas den bort på servern vid
+ * nästa sparning (se `diffLayout`).
  */
 
 export type ApiElementType =
@@ -43,6 +46,7 @@ export type ApiElementType =
   | 'door'
   | 'window'
   | 'table'
+  /** Bara äldre layouter: läses aldrig in och skapas aldrig. */
   | 'cashRegister'
 
 export interface LayoutElement {
@@ -61,7 +65,7 @@ export interface LayoutElement {
   wallId?: string
   /** Bara dörrar; fönster har ingen klassificering. Äldre dörrar saknar den. */
   kind?: DoorKind
-  /** Visningsetikett - bara bord och kassa. */
+  /** Visningsetikett (API:t tillåter den på bord). */
   label?: string
   /** Bara våningar: namn och signerad ordning (0 = entréplan). */
   name?: string
@@ -98,8 +102,6 @@ const DOOR_HEIGHT_M = 2
 const WINDOW_HEIGHT_M = 1.2
 /** En markyta är bara ett tunt, renderbart golvskikt - ingen egen volym. */
 const FLOOR_AREA_THICKNESS_M = 0.02
-/** Diskhöjd, ungefär som en bardisk. */
-const CASH_REGISTER_HEIGHT_M = 1
 /** Fönstrets underkant över golvet. */
 const WINDOW_SILL_M = 1
 const OPENING_THICKNESS_M = 0.28
@@ -187,21 +189,6 @@ function groundToApi(g: GroundRect): LayoutElementCreate | null {
   }
 }
 
-function fixtureToApi(f: Fixture): LayoutElementCreate | null {
-  if (f.w <= 0 || f.h <= 0) return null
-  return {
-    type: 'cashRegister',
-    x: toM(f.x),
-    y: 0,
-    z: toM(f.y),
-    width: toM(f.w),
-    height: CASH_REGISTER_HEIGHT_M,
-    depth: toM(f.h),
-    rotationY: 0,
-    label: f.label.trim() || 'Kassa',
-  }
-}
-
 function tableToApi(t: TableElement): LayoutElementCreate {
   // Måtten är satta manuellt (resize-handtagen) - API:t har egna width/
   // depth-fält för dem, så de läses tillbaka i tableFromApi nedan.
@@ -249,10 +236,6 @@ export function toApiElements(
     if (!wall) continue
     const el = openingToApi(o, wall)
     if (el) out.set(o.id, onFloor(el))
-  }
-  for (const f of floor.fixtures) {
-    const el = fixtureToApi(f)
-    if (el) out.set(f.id, onFloor(el))
   }
   for (const t of floor.tables) {
     out.set(t.id, onFloor(tableToApi(t)))
@@ -325,18 +308,6 @@ function groundFromApi(el: LayoutElement): GroundRect {
   }
 }
 
-function fixtureFromApi(el: LayoutElement): Fixture {
-  return {
-    id: el.elementId,
-    type: 'counter',
-    label: el.label ?? 'Kassa',
-    x: toUnits(el.x),
-    y: toUnits(el.z),
-    w: toUnits(el.width),
-    h: toUnits(el.depth),
-  }
-}
-
 function tableFromApi(el: LayoutElement, index: number): TableElement {
   return {
     id: el.elementId,
@@ -355,11 +326,12 @@ function tableFromApi(el: LayoutElement, index: number): TableElement {
 
 /**
  * Bygger en vånings innehåll ur en lista API-element. Våningselement
- * ignoreras (de har ingen 2D-motsvarighet).
+ * ignoreras (de har ingen 2D-motsvarighet), liksom en kassa från en äldre
+ * layout (`cashRegister`) - den tas bort på servern vid nästa sparning.
  */
 export function toFloorElements(
   elements: LayoutElement[],
-): Pick<Floor, 'walls' | 'openings' | 'tables' | 'grounds' | 'fixtures'> {
+): Pick<Floor, 'walls' | 'openings' | 'tables' | 'grounds'> {
   const walls = elements.filter((e) => e.type === 'wall').map(wallFromApi)
   const wallById = new Map(walls.map((w) => [w.id, w]))
 
@@ -376,11 +348,8 @@ export function toFloorElements(
     .filter((e) => e.type === 'table')
     .map((el, i) => tableFromApi(el, i))
   const grounds = elements.filter((e) => e.type === 'floorArea').map(groundFromApi)
-  const fixtures = elements
-    .filter((e) => e.type === 'cashRegister')
-    .map(fixtureFromApi)
 
-  return { walls, openings, tables, grounds, fixtures }
+  return { walls, openings, tables, grounds }
 }
 
 /** Editorns id för den enda våningen i en äldre, platt layout. */

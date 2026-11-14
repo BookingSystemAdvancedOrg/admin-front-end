@@ -56,9 +56,6 @@ const floor: Floor = {
   openings: [
     { id: 'o-1', kind: 'window', wallId: 'w-n', offset: 40, length: 60 },
   ],
-  fixtures: [
-    { id: 'f-1', type: 'counter', label: 'KASSA', x: 0, y: 0, w: 100, h: 36 },
-  ],
   tables: [
     {
       id: 't1',
@@ -121,11 +118,11 @@ describe('editor -> API mapping', () => {
     expect(table?.depth).toBe(0.9)
   })
 
-  it('includes grounds and fixtures as real floorArea/cashRegister elements', () => {
+  it('includes grounds as real floorArea elements and never writes a cashRegister', () => {
     const els = toApiElements(floor)
-    expect([...els.keys()]).toEqual(['g1', 'w-n', 'w-w', 'o-1', 'f-1', 't1'])
+    expect([...els.keys()]).toEqual(['g1', 'w-n', 'w-w', 'o-1', 't1'])
     expect(els.get('g1')).toMatchObject({ type: 'floorArea' })
-    expect(els.get('f-1')).toMatchObject({ type: 'cashRegister', label: 'KASSA' })
+    expect([...els.values()].some((e) => e.type === 'cashRegister')).toBe(false)
   })
 
   it('centres a floorArea on the ground rect, which is stored as a corner', () => {
@@ -176,7 +173,6 @@ describe('API -> editor mapping', () => {
     const back = toFloorElements(stored)
     expect(back.walls).toEqual(floor.walls)
     expect(back.grounds).toEqual(floor.grounds)
-    expect(back.fixtures).toEqual(floor.fixtures)
     expect(back.openings[0]).toMatchObject({
       wallId: 'w-n',
       offset: 40,
@@ -231,8 +227,8 @@ describe('API -> editor mapping', () => {
 describe('diffLayout', () => {
   it('creates elements that have no server counterpart', () => {
     const diff = diffLayout(toApiElements(floor), [])
-    // 1 markyta + 2 väggar + 1 öppning + 1 kassa + 1 bord.
-    expect(diff.created).toHaveLength(6)
+    // 1 markyta + 2 väggar + 1 öppning + 1 bord.
+    expect(diff.created).toHaveLength(5)
     expect(diff.updated).toEqual([])
     expect(diff.deleted).toEqual([])
   })
@@ -278,7 +274,6 @@ describe('floors: editor -> API', () => {
       grounds: [],
       walls: [{ id: 'w-up', dir: 'h', x: 0, y: 0, length: 100 }],
       openings: [],
-      fixtures: [],
       tables: [],
     }
     const out = toApiLayout([floor, upper])
@@ -327,7 +322,7 @@ describe('floors: API -> editor', () => {
     expect(floors[1].walls).toEqual([])
   })
 
-  it('reads a flat legacy layout as a single floor, grounds and fixtures included', () => {
+  it('reads a flat legacy layout as a single floor and drops an old cashRegister', () => {
     const stored: LayoutElement[] = [
       element({ elementId: 'w-1', type: 'wall' }),
       element({ elementId: 'g-1', type: 'floorArea', width: 2, depth: 2 }),
@@ -338,10 +333,22 @@ describe('floors: API -> editor', () => {
     expect(floors[0].id).toBe(LEGACY_FLOOR_ID)
     expect(floors[0].walls.map((w) => w.id)).toEqual(['w-1'])
     expect(floors[0].grounds.map((g) => g.id)).toEqual(['g-1'])
-    expect(floors[0].fixtures.map((f) => f.id)).toEqual(['fx-1'])
+    expect(floors[0]).not.toHaveProperty('fixtures')
+    expect(JSON.stringify(floors)).not.toContain('fx-1')
   })
 
-  it('assigns grounds and fixtures to the floor their floorId points at', () => {
+  it('deletes an old cashRegister on the server at the next save', () => {
+    const legacy = element({ elementId: 'fx-1', type: 'cashRegister', width: 2, depth: 0.7, label: 'Kassa' })
+    const floors = toFloors([element({ elementId: 'w-1', type: 'wall' }), legacy])
+    const diff = diffLayout(toApiElements(floors[0]), [
+      element({ elementId: 'w-1', type: 'wall' }),
+      legacy,
+    ])
+    expect(diff.deleted).toEqual(['fx-1'])
+    expect(diff.created.some(([, el]) => el.type === 'cashRegister')).toBe(false)
+  })
+
+  it('assigns grounds to the floor their floorId points at and drops cashRegisters', () => {
     const floors = toFloors([
       groundFloor,
       upperFloor,
@@ -356,20 +363,18 @@ describe('floors: API -> editor', () => {
       }),
     ])
     expect(floors[0].grounds.map((g) => g.id)).toEqual(['g-ground'])
-    expect(floors[0].fixtures).toEqual([])
-    expect(floors[1].fixtures.map((f) => f.id)).toEqual(['fx-upper'])
     expect(floors[1].grounds).toEqual([])
+    expect(JSON.stringify(floors)).not.toContain('fx-upper')
   })
 })
 
 describe('saveLayout', () => {
   // Testerna här handlar om skapandeordning (våning -> vägg -> resten), inte
-  // markytor/kassa - de nollställs för att inte krocka på delade lokala id:n
+  // markytor - de nollställs för att inte krocka på delade lokala id:n
   // med `floor`-fixturen och för att hålla de mockade anropssekvenserna korta.
   const fresh: Floor = {
     ...floor,
     grounds: [],
-    fixtures: [],
     walls: [{ id: 'local-wall', dir: 'h', x: 0, y: 0, length: 100 }],
     openings: [
       { id: 'local-op', kind: 'window', wallId: 'local-wall', offset: 0, length: 20 },
@@ -405,7 +410,6 @@ describe('saveLayout', () => {
     const existing: Floor = {
       ...floor,
       grounds: [],
-      fixtures: [],
       walls: [{ id: 'old-wall', dir: 'h', x: 0, y: 0, length: 100 }],
       openings: [],
       tables: [],

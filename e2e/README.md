@@ -34,14 +34,14 @@ the repos). Never commit that file.
 | `E2E_ORDER_SLUG` | that restaurant's slug, default `test-pizza` |
 
 The E2E restaurant is created by the console suite
-(`booqy-console/e2e`, `10-new-customer.spec.ts`).
+(`booqy-console/e2e`, `10-new-customer.e2e.ts`).
 
 ## Notes
 
 - The guest site runs locally from `../../customer-front-end` against the dev
   API (Playwright starts it on port 7181), so Stripe's test card is only typed
   on a localhost page. `E2E_NO_GUEST=1` skips that server.
-- `60-orders.spec.ts` opens ordering and today's hours on the order-test
+- `60-orders.e2e.ts` opens ordering and today's hours on the order-test
   restaurant for the run, adds E2E dishes, and puts everything back after.
 - Phone numbers are from the PTS range reserved for fiction (070-174 06 05);
   e-mails go to the SES mailbox simulator. No real person is contacted.

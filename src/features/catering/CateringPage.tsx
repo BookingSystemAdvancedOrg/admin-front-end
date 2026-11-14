@@ -61,10 +61,10 @@ export default function CateringPage() {
   const upcoming = ongoing.filter((r) => r.deliveryDate >= today && r.deliveryDate <= weekAhead).length
   const value = ongoing.reduce((sum, r) => sum + (r.total ?? 0), 0)
   const tiles = [
-    { label: 'Väntar på dig', value: String(waiting), note: waiting ? 'Nya eller ändring önskas' : 'Inget att svara på', tone: waiting ? ('attention' as const) : undefined },
-    { label: 'Pågående', value: String(ongoing.length), note: 'Offert, signerad eller bekräftad' },
-    { label: 'Kommande 7 dagar', value: String(upcoming), note: upcoming ? 'Leveranser att förbereda' : 'Inga leveranser' },
-    { label: 'Värde pågående', value: kronor(value), note: `${ongoing.length} ${ongoing.length === 1 ? 'beställning' : 'beställningar'}` },
+    { label: 'Väntar på dig', value: String(waiting), tone: waiting ? ('attention' as const) : undefined },
+    { label: 'Pågående', value: String(ongoing.length) },
+    { label: 'Kommande 7 dagar', value: String(upcoming) },
+    { label: 'Värde pågående', value: kronor(value) },
   ]
 
   return (

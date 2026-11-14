@@ -179,9 +179,9 @@ export default function MenyPage() {
     ? Math.round(visibleDishes.reduce((sum, d) => sum + d.price, 0) / activeCount)
     : 0
   const tiles = [
-    { label: 'Rätter på menyn', value: String(dishes.length), note: `${new Set(dishes.map((d) => d.category)).size} av ${categories.length} kategorier` },
-    { label: 'Aktiva', value: String(activeCount), note: dishes.length ? `${dishes.length - activeCount} dolda` : undefined },
-    { label: 'Med bild', value: String(withImage), note: dishes.length ? `${Math.round((withImage / dishes.length) * 100)} %` : undefined },
+    { label: 'Rätter på menyn', value: String(dishes.length) },
+    { label: 'Aktiva', value: String(activeCount) },
+    { label: 'Med bild', value: String(withImage) },
     { label: 'Snittpris', value: activeCount ? `${avgPrice} kr` : '-' },
   ]
   /** Rätten som den ser ut i listan nu (kan ha ändrats på annat håll sedan dialogen öppnades). */

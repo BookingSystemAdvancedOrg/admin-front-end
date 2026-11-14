@@ -4,7 +4,7 @@ import { Num } from '../../shared/motion/Num'
 import { useTrendPop } from '../../shared/motion/useTrendPop'
 import { toneClass } from '../../shared/trend'
 import type { Trend } from '../../shared/trend'
-import { Delta, Sparkline } from './charts'
+import { TrendBadge } from '../../shared/TrendBadge'
 import { helpSlug } from '../../shared/helpId'
 
 /**
@@ -16,39 +16,38 @@ import { helpSlug } from '../../shared/helpId'
 export function Tile({
   label,
   value,
-  sub,
   info,
+  detail,
   trend,
-  against,
-  spark,
   tone,
 }: {
   label: string
   value: string
-  sub?: string
   /** Vad siffran räknar, en rad i klartext. */
   info?: string
+  /** Uppdelningen bakom siffran; står i (i)-bubblan, aldrig under siffran. */
+  detail?: string
   /** Mot jämförelsen (shared/trend); null = ingen förra period, utelämnad = ingen jämförelse vald. */
   trend?: Trend | null
+  /** Från versus(); trendens uppläsning (trend.spoken) säger redan vad den jämförs med. */
   against?: string
-  spark?: { points: { label: string; value: number }[]; format: (v: number) => string }
   tone?: 'warn' | 'bad'
 }) {
   // En egen varningsfärg (t.ex. många uteblivna) går före tonen mot förra perioden.
   const trendTone = !tone && trend ? trend.tone : 'neutral'
   const valueRef = useTrendPop<HTMLElement>(trendTone, 700)
+  const tip = [info, detail && !/[.!?]$/.test(detail) ? `${detail}.` : detail].filter(Boolean).join(' ')
+  // Rutan visar bara rubrik och siffra; förändringen är ett litet chip (pil och procent).
   return (
     <div className={`admin-card sk-kpi${tone ? ` sk-kpi--${tone}` : ''}`} data-help={`kpi:${helpSlug(label)}`}>
       <span className="sk-kpi-head">
         <span className="sk-kpi-label">{label}</span>
-        {info && <InfoTooltip label={label}>{info}</InfoTooltip>}
+        {trend && <TrendBadge trend={trend} chip className="sk-kpi-delta" />}
+        {tip && <InfoTooltip label={label}>{tip}</InfoTooltip>}
       </span>
       <strong ref={valueRef} className={`sk-kpi-value${toneClass(trendTone)}`}>
         <Num>{value}</Num>
       </strong>
-      {spark && <Sparkline points={spark.points} format={spark.format} label={label} />}
-      {sub && <span className="sk-kpi-sub">{sub}</span>}
-      {trend !== undefined && <Delta trend={trend}>mot {against}</Delta>}
     </div>
   )
 }

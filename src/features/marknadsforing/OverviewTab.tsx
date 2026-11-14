@@ -14,7 +14,6 @@ import {
   getOverview,
   isoDay,
   kronorFromOre,
-  percent,
 } from './marketingApi'
 import type { Overview } from './marketingApi'
 import type { TabId } from './MarknadsforingPage'
@@ -134,10 +133,10 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
   const against = `de ${days} dagarna innan`
   const tiles = t && p
     ? [
-        { label: 'Besök', value: t.visits.toLocaleString('sv-SE'), trend: trendOf(t.visits, p.visits, 'visits', against), note: `${t.pageviews.toLocaleString('sv-SE')} sidvisningar` },
-        { label: 'Bokningar via webbplatsen', value: t.bookings.toLocaleString('sv-SE'), trend: trendOf(t.bookings, p.bookings, 'bookings', against), note: `${t.guests} gäster · ${percent(t.bookings, t.visits)} av besöken` },
-        { label: 'Beställningar', value: t.orders.toLocaleString('sv-SE'), trend: trendOf(t.orders, p.orders, 'orders', against), note: `${kronorFromOre(t.revenueOre)} i omsättning` },
-        { label: 'Prenumeranter', value: data.subscribers.toLocaleString('sv-SE'), trend: undefined, note: `${data.emailsThisMonth} av ${data.monthlyLimit} utskick denna månad` },
+        { label: 'Besök', value: t.visits.toLocaleString('sv-SE'), trend: trendOf(t.visits, p.visits, 'visits', against) },
+        { label: 'Bokningar via webbplatsen', value: t.bookings.toLocaleString('sv-SE'), trend: trendOf(t.bookings, p.bookings, 'bookings', against) },
+        { label: 'Beställningar', value: t.orders.toLocaleString('sv-SE'), trend: trendOf(t.orders, p.orders, 'orders', against) },
+        { label: 'Prenumeranter', value: data.subscribers.toLocaleString('sv-SE'), trend: undefined },
       ]
     : []
 
@@ -181,7 +180,6 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
                 key={tile.label}
                 label={tile.label}
                 value={tile.value}
-                note={tile.note}
                 index={i}
                 trend={tile.trend}
               />

@@ -207,8 +207,6 @@ export default function StatistikPage() {
   const versus = (cur: number | null | undefined, prev: number | null | undefined, metric: TrendMetric) =>
     comparing ? { trend: prev == null ? null : trendOf(cur, prev, metric, cmp), against: cmp } : {}
   const days = daysBetween(f.from, f.to)
-  const spark = (pick: (d: InsightsSummary['byDay'][number]) => number | null | undefined, format: (v: number) => string = fmtInt) =>
-    s && s.byDay.length >= 7 ? { points: s.byDay.map((d) => ({ label: shortDate(d.date), value: pick(d) ?? 0 })), format } : undefined
   const split = Number((ready?.locations.find((l) => l.locationId === f.locationId) ?? ready?.locations[0])?.lunchUntil?.slice(0, 2) ?? 15)
   const todo = s ? signals(s, p, { split, marketing: Boolean(features.marketing) }) : []
   const nothing = s !== null && s.bookings + s.cancelled + s.orders + s.catering.requests === 0
@@ -244,8 +242,7 @@ export default function StatistikPage() {
         label="Omsättning"
         value={fmtKr(s.revenue)}
         info="Betalda beställningar och levererad catering i perioden, inklusive moms. Bara ägaren ser beloppen."
-        sub={`Beställningar ${fmtKr(s.orderRevenue)}, catering ${fmtKr(s.cateringRevenue)}`}
-        spark={spark((d) => d.revenue, (v) => fmtKr(v))}
+        detail={`I perioden: beställningar ${fmtKr(s.orderRevenue)}, catering ${fmtKr(s.cateringRevenue)}`}
         {...versus(s.revenue, p?.revenue, 'revenue')}
       />
     ),
@@ -255,8 +252,7 @@ export default function StatistikPage() {
         label="Bokningar"
         value={fmtInt(s.bookings)}
         info="Bokningar för dagar i perioden som inte är avbokade (räknas på besöksdagen). Uteblivna räknas med, påbörjade bokningar som aldrig blev klara inte."
-        sub={`${fmtInt(s.cancelled)} avbokade, ${fmtInt(s.lateCancels)} sent`}
-        spark={spark((d) => d.bookings)}
+        detail={`I perioden: ${fmtInt(s.cancelled)} avbokade, ${fmtInt(s.lateCancels)} sent`}
         {...versus(s.bookings, p?.bookings, 'bookings')}
       />
     ),
@@ -266,8 +262,7 @@ export default function StatistikPage() {
         label="Gäster"
         value={fmtInt(s.guests)}
         info="Antal personer i bokningarna ovan (sällskapens storlek) på besöksdagen. Avbokade räknas inte."
-        sub={s.avgParty ? `${fmtDecimal(s.avgParty)} per sällskap` : undefined}
-        spark={spark((d) => d.guests)}
+        detail={s.avgParty ? `I perioden: ${fmtDecimal(s.avgParty)} per sällskap` : undefined}
         {...versus(s.guests, p?.guests, 'guests')}
       />
     ),
@@ -277,7 +272,7 @@ export default function StatistikPage() {
         label="Snittorder"
         value={fmtKr(s.avgOrder)}
         info="Betalt belopp per onlinebeställning (avhämtning och vid bordet) i perioden."
-        sub={`${fmtInt(s.orders)} betalda beställningar`}
+        detail={`I perioden: ${fmtInt(s.orders)} betalda beställningar`}
         {...versus(s.avgOrder, p?.avgOrder, 'avgOrder')}
       />
     ),
@@ -287,10 +282,10 @@ export default function StatistikPage() {
         label="Uteblivna"
         value={fmtPct(s.noShowPct ?? 0)}
         info="Bokningar som markerats som Kom inte, delat med alla bokningar i perioden som inte avbokats. Dagens kommande bokningar räknas med i nämnaren."
-        sub={
+        detail={
           money && s.feeCount > 0
-            ? `${fmtInt(s.noShows)} bokningar, ${fmtKr(s.feesCharged)} i avgifter`
-            : `${fmtInt(s.noShows)} av ${fmtInt(s.bookings)} bokningar`
+            ? `I perioden: ${fmtInt(s.noShows)} bokningar, ${fmtKr(s.feesCharged)} i avgifter`
+            : `I perioden: ${fmtInt(s.noShows)} av ${fmtInt(s.bookings)} bokningar`
         }
         tone={s.noShowPct !== null && s.noShowPct >= 10 ? 'bad' : s.noShowPct !== null && s.noShowPct >= 5 ? 'warn' : undefined}
         {...versus(s.noShowPct, p?.noShowPct, 'noShows')}
@@ -302,13 +297,12 @@ export default function StatistikPage() {
         label="Beläggning"
         value={fmtPct(s.occupancy)}
         info="Bokad bordstid delat med all bordstid under öppettiderna i perioden. 100 % betyder att alla bord var bokade hela tiden."
-        sub={s.seatFill !== null ? `${fmtPct(s.seatFill)} av stolarna` : undefined}
-        spark={spark((d) => d.occupancy, (v) => fmtPct(v))}
+        detail={s.seatFill !== null ? `I perioden: ${fmtPct(s.seatFill)} av stolarna` : undefined}
         {...versus(s.occupancy, p?.occupancy, 'occupancy')}
       />
     ),
     orders: (
-      <Tile key="orders" label="Beställningar" info="Betalda onlinebeställningar i perioden, avhämtning och vid bordet." value={fmtInt(s.orders)} sub={`${fmtInt(s.tableOrders)} vid bordet`} spark={spark((d) => d.orders)} {...versus(s.orders, p?.orders, 'orders')} />
+      <Tile key="orders" label="Beställningar" info="Betalda onlinebeställningar i perioden, avhämtning och vid bordet." value={fmtInt(s.orders)} detail={`I perioden: ${fmtInt(s.tableOrders)} vid bordet`} {...versus(s.orders, p?.orders, 'orders')} />
     ),
     prepTime: (
       <Tile
@@ -316,7 +310,7 @@ export default function StatistikPage() {
         label="Tillagningstid"
         value={s.prepMinutes !== null ? `${fmtDecimal(s.prepMinutes)} min` : '-'}
         info="Minuter från att köket bekräftade beställningen till att den markerades som klar, i snitt."
-        sub={s.latePct !== null ? `${fmtPct(s.latePct)} sena` : undefined}
+        detail={s.latePct !== null ? `I perioden: ${fmtPct(s.latePct)} sena` : undefined}
         {...versus(s.prepMinutes, p?.prepMinutes, 'prepTime')}
       />
     ),
@@ -492,7 +486,6 @@ export default function StatistikPage() {
                   <SkelBox key={i} className="admin-card sk-kpi">
                     <SkelBlock w="44%" h={12} />
                     <SkelBlock w="36%" h={36} style={{ borderRadius: 'var(--r-md)' }} />
-                    <SkelBlock w="62%" h={12} />
                   </SkelBox>
                 ))}
               </div>

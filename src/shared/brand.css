@@ -234,12 +234,6 @@
   transition-duration: 90ms;
 }
 
-.stat-tile-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
 /* En ruta som är en knapp: samma utseende som länkrutan. */
 button.stat-tile {
   border: 1px solid var(--border);
@@ -248,20 +242,19 @@ button.stat-tile {
   cursor: default;
 }
 
-.stat-tile-delta {
+.stat-tile-label .stat-tile-delta {
   float: right;
   margin-left: 8px;
   text-transform: none;
   letter-spacing: 0;
+  /* Inte högre än rubrikraden: rutor med och utan trend blir lika höga. */
+  font-size: 11px;
+  line-height: 1;
 }
 
-.stat-tile-action > span {
-  display: inline-block;
-  transition: transform 260ms var(--ease);
-}
-
-.stat-tile--link:hover .stat-tile-action > span {
-  transform: translateX(4px);
+.stat-tile-label .stat-tile-delta .icon {
+  width: 12px;
+  height: 12px;
 }
 
 .stat-tile--attention {

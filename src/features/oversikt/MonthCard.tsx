@@ -147,9 +147,6 @@ export function MonthCard({
                 <KpiValue trend={versus(s.revenue, p?.revenue, 'revenue')} index={0}>
                   {fmtKr(s.revenue)}
                 </KpiValue>
-                <span className="month-kpi-sub">
-                  {fmtInt(s.orders)} beställningar{(s.cateringRevenue ?? 0) > 0 ? ' och catering' : ''}
-                </span>
               </div>
             )}
             <div className="month-kpi">
@@ -157,23 +154,18 @@ export function MonthCard({
               <KpiValue trend={versus(s.bookings, p?.bookings, 'bookings')} index={1}>
                 {fmtInt(s.bookings)}
               </KpiValue>
-              <span className="month-kpi-sub">{fmtInt(s.cancelled)} avbokade</span>
             </div>
             <div className="month-kpi">
               <dt>Gäster</dt>
               <KpiValue trend={versus(s.guests, p?.guests, 'guests')} index={2}>
                 {fmtInt(s.guests)}
               </KpiValue>
-              <span className="month-kpi-sub">
-                {s.avgParty ? `${s.avgParty.toLocaleString('sv-SE', { maximumFractionDigits: 1 })} per bokning` : 'Inga bokningar än'}
-              </span>
             </div>
             <div className={`month-kpi${s.noShowPct !== null && s.noShowPct >= 5 ? ' month-kpi--warn' : ''}`}>
               <dt>Uteblivna</dt>
               <KpiValue trend={versus(s.noShowPct, p?.noShowPct, 'noShows')} index={3} warn={s.noShowPct !== null && s.noShowPct >= 5}>
                 {fmtPct(s.noShowPct)}
               </KpiValue>
-              <span className="month-kpi-sub">{fmtInt(s.noShows)} bokningar kom inte</span>
             </div>
           </dl>
         </div>
@@ -182,7 +174,7 @@ export function MonthCard({
   )
 }
 
-/** Ett av månadens tal: grönt eller rött mot dagarna innan, med förändringen under. */
+/** Ett av månadens tal: grönt eller rött mot dagarna innan, med förändringen som chip (pil och procent). */
 function KpiValue({ trend, index, warn = false, children }: { trend: Trend; index: number; warn?: boolean; children: string }) {
   // Varningen (många uteblivna) går före tonen.
   const tone = warn ? 'neutral' : trend.tone
@@ -192,7 +184,7 @@ function KpiValue({ trend, index, warn = false, children }: { trend: Trend; inde
       <dd ref={ref} className={toneClass(tone).trim() || undefined}>
         <Num>{children}</Num>
       </dd>
-      <TrendBadge trend={trend} className="month-kpi-trend" />
+      <TrendBadge trend={trend} chip className="month-kpi-trend" />
     </>
   )
 }

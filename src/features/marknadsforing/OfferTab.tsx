@@ -4,7 +4,7 @@ import type { FormEvent } from 'react'
 import { useTenant } from '../../shared/tenant'
 import { listMenuItems, menuImageUrl } from '../meny/menuApi'
 import type { MenuItem } from '../meny/menuApi'
-import { errorText, getOfferSettings, kronorFromOre, offerErrors, percent, saveOfferSettings, withPercent } from './marketingApi'
+import { errorText, getOfferSettings, kronorFromOre, offerErrors, saveOfferSettings, withPercent } from './marketingApi'
 import type { OfferSettings, OfferView } from './marketingApi'
 import { DateInput } from '../../shared/DateInput'
 import { SkelCard, SkelPage } from '../../shared/Skeleton'
@@ -149,12 +149,12 @@ export function OfferTab() {
     <div className="mk-stack">
       <section className="stats-row" aria-label="Resultat">
         {[
-          { label: 'Visningar', value: st.views.toLocaleString('sv-SE'), note: 'Gånger kortet visats' },
-          { label: 'Anmälningar', value: st.signups.toLocaleString('sv-SE'), note: `${percent(st.signups, st.views)} av visningarna` },
-          { label: 'Använda koder', value: st.redeemed.toLocaleString('sv-SE'), note: `${percent(st.redeemed, st.signups)} av anmälningarna` },
-          { label: 'Omsättning', value: kronorFromOre(st.revenueOre), note: `${kronorFromOre(st.discountOre)} i rabatt` },
+          { label: 'Visningar', value: st.views.toLocaleString('sv-SE') },
+          { label: 'Anmälningar', value: st.signups.toLocaleString('sv-SE') },
+          { label: 'Använda koder', value: st.redeemed.toLocaleString('sv-SE') },
+          { label: 'Omsättning', value: kronorFromOre(st.revenueOre) },
         ].map((t, i) => (
-          <StatTile key={t.label} label={t.label} value={t.value} note={t.note} index={i} />
+          <StatTile key={t.label} label={t.label} value={t.value} index={i} />
         ))}
       </section>
 

@@ -233,8 +233,6 @@ export default function OversiktPage() {
   const stats: {
     label: string
     value: string
-    note: string
-    action: string
     to: string
     tone?: 'attention'
     trend?: Trend
@@ -242,12 +240,6 @@ export default function OversiktPage() {
     {
       label: 'Att hantera',
       value: todo ? String(todo.total) : '-',
-      note: !todo
-        ? 'Kunde inte hämtas'
-        : todo.total === 0
-          ? 'Inget väntar'
-          : todo.items.map((i) => `${i.count} ${i.label}`).join(' · '),
-      action: todo && todo.total > 0 ? 'Ta det viktigaste först' : 'Allt är hanterat',
       // Till det mest brådskande först.
       to: todo?.items[0]?.to ?? '/bokningar',
       tone: todo && todo.total > 0 ? 'attention' : undefined,
@@ -255,12 +247,6 @@ export default function OversiktPage() {
     {
       label: 'Bokningar idag',
       value: bookings ? String(bookings.count) : '-',
-      note: !bookings
-        ? 'Kunde inte hämtas'
-        : bookings.next
-          ? `${bookings.guests} gäster · nästa ${bookings.next.startTime}, ${bookings.next.customerName || 'gäst'} (${bookings.next.partySize} pers)`
-          : `${bookings.guests} gäster`,
-      action: 'Se dagens bokningar',
       to: '/bokningar',
     },
     ...(hasOrdering
@@ -268,19 +254,11 @@ export default function OversiktPage() {
         {
           label: 'Aktiva beställningar',
           value: inProgress ? String(inProgress.count) : '-',
-          note: !inProgress
-            ? 'Kunde inte hämtas'
-            : inProgress.count === 0
-              ? 'Inga pågående just nu'
-              : `${inProgress.fresh} nya · ${inProgress.preparing} tillagas · ${inProgress.ready} klara`,
-          action: 'Öppna beställningar',
           to: '/bestallningar',
         },
         {
           label: 'Dagens omsättning',
           value: revenue ? kronor(revenue.amount) : '-',
-          note: revenue ? `${revenue.count} betalda beställningar` : 'Kunde inte hämtas',
-          action: 'Se försäljningen',
           to: '/bestallningar',
           trend: revenue ? trendOf(revenue.amount, revenueBefore, 'revenue', 'samma tid förra veckan') : undefined,
         },

@@ -135,8 +135,7 @@ export function SkelTiles({ n = 4 }: { n?: number }) {
         <div key={i} className="admin-card stat-tile skel-tile">
           <Sheen />
           <SkelBlock w="46%" h={12} />
-          <SkelBlock w="34%" h={40} style={{ borderRadius: 'var(--r-md)' }} />
-          <SkelBlock w="70%" h={12} style={{ marginTop: 'auto' }} />
+          <SkelBlock w="34%" h={36} style={{ borderRadius: 'var(--r-md)' }} />
         </div>
       ))}
     </section>

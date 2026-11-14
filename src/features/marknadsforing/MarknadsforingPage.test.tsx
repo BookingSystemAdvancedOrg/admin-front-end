@@ -183,8 +183,10 @@ describe('Välkomsterbjudande', () => {
     api.getOfferSettings.mockResolvedValue(view)
     api.saveOfferSettings.mockImplementation(async (s: Record<string, unknown>) => ({ ...view, ...s }))
     renderAt('/marknadsforing?flik=erbjudande')
-    expect(await screen.findByText('10 % av visningarna')).toBeInTheDocument()
-    expect(screen.getByText('25 % av anmälningarna')).toBeInTheDocument()
+    // Rutorna visar bara rubrik och siffra, ingen rad under.
+    const results = await screen.findByRole('region', { name: 'Resultat' })
+    expect(within(results).getByText('Anmälningar')).toBeInTheDocument()
+    expect(results).not.toHaveTextContent('av visningarna')
     await userEvent.click(screen.getByRole('switch', { name: 'Visa på webbplatsen' }))
     await userEvent.selectOptions(screen.getByLabelText('Rabatt'), '15')
     await userEvent.clear(screen.getByLabelText('Minsta beställning (kr)'))

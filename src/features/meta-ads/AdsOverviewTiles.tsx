@@ -21,9 +21,9 @@ export default function AdsOverviewTiles({ locationId, from, to }: { locationId:
   const kr = (v: number | null) => (v === null ? '-' : `${v.toLocaleString('sv-SE')} kr`)
   return (
     <div className="stats-row" aria-label="Annonser">
-      <StatTile index={0} label="Annonskostnad" value={kr(data.totals.spendSek)} note={`${data.totals.clicks} klick`} />
-      <StatTile index={1} label="Kostnad per bokning" value={kr(data.totals.costPerBookingSek)} note={`${data.totals.bookings} bokningar från annonser`} />
-      <StatTile index={2} label="Kostnad per beställning" value={kr(data.totals.costPerOrderSek)} note={`${data.totals.orders} beställningar från annonser`} />
+      <StatTile index={0} label="Annonskostnad" value={kr(data.totals.spendSek)} />
+      <StatTile index={1} label="Kostnad per bokning" value={kr(data.totals.costPerBookingSek)} />
+      <StatTile index={2} label="Kostnad per beställning" value={kr(data.totals.costPerOrderSek)} />
     </div>
   )
 }

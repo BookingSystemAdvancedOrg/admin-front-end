@@ -52,3 +52,18 @@ describe('StatTile with a trend', () => {
     expect(screen.getByText('0 kr').closest('p')).not.toHaveClass('trend-value--bad')
   })
 })
+
+describe('TrendBadge as a tile chip', () => {
+  it('shows only an arrow and a percent, never words', () => {
+    const { container } = render(
+      <>
+        <TrendBadge chip trend={trendOf(100, 100, 'orders', 'x')} />
+        <TrendBadge chip trend={trendOf(500_000, 0, 'revenue', 'x')} />
+      </>,
+    )
+    const shown = [...container.querySelectorAll('[aria-hidden="true"]')].map((e) => e.textContent).join(' ')
+    expect(shown).not.toMatch(/oförändrat|ny/)
+    expect(screen.getByText(/^0\s%$/)).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.getByText('upp från noll mot x')).toHaveClass('sr-only')
+  })
+})

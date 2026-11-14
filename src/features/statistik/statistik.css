@@ -98,12 +98,6 @@
   letter-spacing: -0.03em;
 }
 
-.sk-kpi-sub {
-  font: 400 12.5px/1.4 var(--mono);
-  font-stretch: 87.5%;
-  color: var(--muted);
-}
-
 .sk-kpi-insight {
   font: 500 14px/1.45 var(--font);
   color: var(--ink);
@@ -287,6 +281,7 @@
 .sk-kpis {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
   gap: 20px;
 }
 
@@ -309,51 +304,6 @@
 
 .sk-kpi--bad .sk-kpi-value .count-num {
   color: color-mix(in srgb, var(--danger-ink) calc(var(--count, 1) * 100%), var(--ink));
-}
-
-/* --- Förändringen: en stämpel ----------------------------------------------- */
-
-.sk-delta {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 2px 6px;
-  align-items: baseline;
-  align-self: flex-start;
-  margin-top: 2px;
-  padding: 3px 7px 2px;
-  border: 1.5px solid currentColor;
-  border-radius: var(--r-md);
-  font: 700 11px/1.3 var(--mono);
-  letter-spacing: 0.04em;
-  max-width: 100%;
-}
-
-.sk-delta--good {
-  color: var(--trend-good);
-}
-
-.sk-delta--bad {
-  color: var(--trend-bad);
-}
-
-.sk-delta--flat {
-  color: var(--muted);
-}
-
-.sk-delta--none {
-  color: var(--muted);
-  border-style: dashed;
-  font-weight: 500;
-}
-
-.sk-delta-icon {
-  align-self: center;
-}
-
-.sk-delta-label {
-  font-weight: 500;
-  letter-spacing: 0;
-  color: var(--muted);
 }
 
 /* --- Diagramkorten ------------------------------------------------------------ */
@@ -945,21 +895,6 @@
   color: var(--muted);
 }
 
-/* --- Gnistlinjen ------------------------------------------------------------ */
-
-.sk-spark {
-  display: block;
-  overflow: visible;
-}
-
-.sk-spark path {
-  fill: none;
-  stroke: var(--muted);
-  stroke-width: 1.5;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-
 /* --- Värmekartan: ett bläck, fem styrkor ------------------------------------ */
 
 .sk-heat-scroll {
@@ -1162,24 +1097,6 @@
   stroke-width: 2;
 }
 
-.sk-spark-wrap {
-  display: inline-block;
-  width: max-content;
-}
-
-.sk-spark-wrap .chart-tip {
-  min-width: 96px;
-}
-
-.sk-spark-dot {
-  fill: var(--ink);
-}
-
-.sk-spark-wrap .chart-tip {
-  width: max-content;
-  max-width: none;
-}
-
 /* Fördjupningen ("Varför") i hopfällda avsnitt: den första står öppen. */
 .sk-acc {
   scroll-margin-top: 90px;
@@ -1241,8 +1158,40 @@
 .sk-kpi-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 4px 8px;
+}
+
+/* Rubriken till vänster, trendchipet och (i) till höger. */
+.sk-kpi-head .sk-kpi-label {
+  margin-right: auto;
+  min-width: 0;
+}
+
+.sk-kpi-head .sk-kpi-delta {
+  flex: none;
+  font-size: 11px;
+}
+
+/* Telefon: rubrik och (i) får inte plats bredvid chipet, så chipet står på
+   en egen rad under rubriken. */
+@media (max-width: 600px) {
+  .sk-kpi-head:has(.sk-kpi-delta) {
+    flex-wrap: wrap;
+  }
+
+  .sk-kpi-head:has(.sk-kpi-delta) .sk-kpi-label {
+    flex: 1 1 0;
+  }
+
+  .sk-kpi-head:has(.sk-kpi-delta)::after {
+    content: '';
+    flex-basis: 100%;
+    order: 1;
+  }
+
+  .sk-kpi-head .sk-kpi-delta {
+    order: 2;
+  }
 }
 
 .sk-kpi-head .info-tooltip-trigger {

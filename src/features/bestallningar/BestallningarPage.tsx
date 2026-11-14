@@ -219,13 +219,12 @@ export default function BestallningarPage() {
   const revenueBefore = revenueUntil(lastWeekOrders, clockIn(null), null)
   const count = (status: string) => active.filter((o) => o.status === status).length
   const tiles = [
-    { label: 'Nya', value: String(count('confirmed')), note: undefined, tone: count('confirmed') ? ('attention' as const) : undefined },
+    { label: 'Nya', value: String(count('confirmed')), tone: count('confirmed') ? ('attention' as const) : undefined },
     { label: 'Tillagas', value: String(count('preparing')) },
     { label: 'Klara', value: String(count('ready')) },
     {
       label: 'Omsättning idag',
       value: revenue ? kronor(revenue.amount) : '-',
-      note: revenue ? `${revenue.count} betalda beställningar` : 'Kunde inte hämtas',
       trend: revenue ? trendOf(revenue.amount, revenueBefore, 'revenue', 'samma tid förra veckan') : undefined,
     },
   ]

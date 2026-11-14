@@ -82,7 +82,6 @@ export function Overview({ locationId, today, money, sample, sampleName }: {
               <SkelBox key={i} className="admin-card sk-kpi">
                 <SkelBlock w="44%" h={12} />
                 <SkelBlock w="36%" h={36} style={{ borderRadius: 'var(--r-md)' }} />
-                <SkelBlock w="62%" h={12} />
               </SkelBox>
             ))}
           </div>
@@ -115,19 +114,19 @@ export function Overview({ locationId, today, money, sample, sampleName }: {
         <Tile
           label="Bokningar idag"
           value={fmtInt(day.bookings)}
-          sub={day.cancelled ? `${fmtInt(day.cancelled)} avbokade` : undefined}
+          detail={day.cancelled ? `Idag: ${fmtInt(day.cancelled)} avbokade` : undefined}
           info="Dagens bokningar som inte är avbokade: de som väntas, de som har kommit och de som uteblev. Online, telefon och drop-in räknas lika."
         />
         <Tile
           label="Gäster idag"
           value={fmtInt(day.guests)}
-          sub={day.bookings ? `${fmtDecimal(day.guests / day.bookings)} per sällskap` : undefined}
+          detail={day.bookings ? `Idag: ${fmtDecimal(day.guests / day.bookings)} per sällskap` : undefined}
           info="Antal personer i dagens bokningar (sällskapens storlek), avbokade räknas inte."
         />
         <Tile
           label="Har kommit"
           value={fmtInt(day.arrived)}
-          sub={`av ${fmtInt(day.bookings)} bokningar`}
+          detail={`Idag: ${fmtInt(day.arrived)} av ${fmtInt(day.bookings)} bokningar.`}
           info="Bokningar som personalen har markerat som Kommit idag. Den som inte markeras räknas inte här."
         />
         <Tile

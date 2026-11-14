@@ -131,8 +131,8 @@ export default function BokningarPage() {
   const open = items.find((r) => r.reservationId === openId) ?? null
   const tiles = [
     { label: 'Bokningar', value: String(active.length) },
-    { label: 'Gäster', value: String(guests), note: active.length ? `${(guests / active.length).toFixed(1).replace('.', ',')} per bokning` : undefined },
-    { label: 'Anlända', value: String(arrived), note: active.length ? `${Math.round((arrived / active.length) * 100)} % av bokningarna` : undefined },
+    { label: 'Gäster', value: String(guests) },
+    { label: 'Anlända', value: String(arrived) },
     { label: 'Avbokade', value: String(cancelledCount) },
   ]
 

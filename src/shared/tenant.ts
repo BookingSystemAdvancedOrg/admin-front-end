@@ -65,6 +65,31 @@ export interface TenantDpa {
   upToDate: boolean
 }
 
+/** Allmänna villkor för restauranger: godkänd version. */
+export interface TenantTerms {
+  currentVersion: string
+  acceptedVersion: string | null
+  acceptedAt: string | null
+  upToDate: boolean
+}
+
+/**
+ * Restaurangen som Booqys kund (Booqys eget Stripe-konto, aldrig
+ * restaurangens): dras månadsavgiften från ett kort, eller kommer fakturan
+ * med e-post (10 dagars betalningstid utan kort, 30 om faktura är avtalat).
+ */
+export interface TenantBilling {
+  /** Booqy har startat avtalet (kunden finns hos Stripe). */
+  customer: boolean
+  hasCard: boolean
+  cardBrand: string | null
+  cardLast4: string | null
+  collection: 'card' | 'invoice'
+  preference: 'card' | 'invoice'
+  daysUntilDue: number | null
+  pastDue: boolean
+}
+
 export interface Tenant {
   tenantId: string
   name: string
@@ -89,6 +114,10 @@ export interface Tenant {
   insights?: TenantInsightsSettings
   /** Saknas från äldre API-versioner: då visas ingen avtalsruta. */
   dpa?: TenantDpa
+  /** Allmänna villkor för restauranger (features/dpa/termsText.ts). Saknas från äldre API-versioner. */
+  terms?: TenantTerms
+  /** Booqys abonnemang (bara ägare; null för personal, saknas från äldre API-versioner). */
+  billing?: TenantBilling | null
   role: TenantRole
   locations: TenantLocation[]
 }
@@ -165,6 +194,11 @@ const LOCAL_DEMO_TENANT: Tenant = {
   replyToEmail: null,
   notifications: { sms: false, staffEmails: true, reminderHours: 24 },
   dpa: { currentVersion: '2026-10-v1', acceptedVersion: null, acceptedAt: null, required: false, upToDate: false },
+  terms: { currentVersion: '2026-11-v1', acceptedVersion: null, acceptedAt: null, upToDate: false },
+  billing: {
+    customer: true, hasCard: false, cardBrand: null, cardLast4: null,
+    collection: 'invoice', preference: 'card', daysUntilDue: 10, pastDue: false,
+  },
   role: 'owner_user',
   locations: [],
 }

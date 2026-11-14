@@ -9,6 +9,7 @@ import { acceptDpa, dpaBlocksSite } from './dpaApi'
 import { DPA_INTRO, DPA_SECTIONS, DPA_TITLE, DPA_VERSION } from './dpaText'
 import './dpa.css'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { TermsSection } from './TermsSection'
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
@@ -138,6 +139,8 @@ export default function AvtalPage() {
             )}
           </section>
         )}
+
+        <TermsSection />
       </div>
     </>
   )

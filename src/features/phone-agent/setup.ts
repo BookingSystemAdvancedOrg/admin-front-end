@@ -1,4 +1,5 @@
 import type { BusinessHours } from '../installningar/locationApi'
+import { formatPhone } from '../../shared/phone'
 import type { Config, Day, LocationConfig, Mode, Span } from './api'
 
 /** Telefonassistentens kom igång: fem steg, en fråga per skärm. Rena hjälpfunktioner (testade i setup.test.ts). */
@@ -50,6 +51,55 @@ export function firstOpen(p: Progress): Step | null {
  */
 export function encodeTel(code: string): string {
   return `tel:${code.replace(/#/g, '%23')}`
+}
+
+/**
+ * Testläget i dev: samtalen går till testlinjen (Amazon Connect) eller till
+ * simulatorn, inte till ett svenskt Booqy-nummer. Då ska ingen vidarekoppling
+ * göras: svenska operatörer nekar koppling till ett utländskt testnummer
+ * ("Setting Registration Failed"), och simulatorns nummer går inte att ringa.
+ */
+export function isTestLine(loc: Pick<LocationConfig, 'simulated' | 'testNumber' | 'forwarding'>): boolean {
+  return Boolean(loc.simulated) || Boolean(loc.testNumber && loc.forwarding?.number === loc.testNumber)
+}
+
+/** Samma kod med 00 i stället för + (vissa operatörer vill ha det så). null när koden saknar +. */
+export function zeroZeroVariant(code: string): string | null {
+  return code.includes('+') ? code.replace('+', '00') : null
+}
+
+/** Ett nummer i små bitar: "+46100000001" -> ["+46", "10", "000", "00", "01"], "0046..." -> ["0046", ...]. */
+function numberChunks(n: string): string[] {
+  const plus = n.startsWith('+')
+  const parts = formatPhone(plus ? n : `+${n.slice(2)}`).split(' ')
+  if (!plus) parts[0] = `00${parts[0].slice(1)}`
+  return parts
+}
+
+/**
+ * Koden i bitar som är lätta att skriva av: "**004*+46100000001#" ->
+ * ["**004*", "+46", "10", "000", "00", "01", "#"]. Bitarna ihop är alltid
+ * exakt koden; en kod utan nummer ("##002#") är en bit.
+ */
+export function codeChunks(code: string): string[] {
+  const m = /^([*#]+\d+[*#])(\+\d+|00\d+)(#)$/.exec(code)
+  if (!m) return [code]
+  const parts = [m[1], ...numberChunks(m[2]), m[3]]
+  return parts.join('') === code ? parts : [code]
+}
+
+export type Platform = 'ios' | 'android' | 'other'
+
+/** iPhone ringer inga koder från länkar; Android gör det (med # som %23). */
+export function platformOf(ua: string, touchMac = false): Platform {
+  if (/iPhone|iPad|iPod/.test(ua) || touchMac) return 'ios'
+  if (/Android/.test(ua)) return 'android'
+  return 'other'
+}
+
+export function currentPlatform(): Platform {
+  if (typeof navigator === 'undefined') return 'other'
+  return platformOf(navigator.userAgent, navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
 const AGENT_DAYS: Day[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']

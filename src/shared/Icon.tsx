@@ -59,6 +59,8 @@ export type IconName =
   | 'chevron-down'
   | 'logout'
   | 'menu'
+  | 'keypad'
+  | 'mobile'
 
 // Egna ikoner, 24x24 med 1.8 px linje.
 const DRAWN: Record<IconName, string> = {
@@ -114,6 +116,8 @@ const DRAWN: Record<IconName, string> = {
   'chevron-down': '<path d="M6.5 9.5L12 15l5.5-5.5"/>',
   logout: '<path d="M14 4.5H6.5a1.5 1.5 0 0 0-1.5 1.5v12a1.5 1.5 0 0 0 1.5 1.5H14M10 12h10M16.5 8.5L20 12l-3.5 3.5"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  keypad: '<circle cx="7" cy="5" r="1.3"/><circle cx="12" cy="5" r="1.3"/><circle cx="17" cy="5" r="1.3"/><circle cx="7" cy="10" r="1.3"/><circle cx="12" cy="10" r="1.3"/><circle cx="17" cy="10" r="1.3"/><circle cx="7" cy="15" r="1.3"/><circle cx="12" cy="15" r="1.3"/><circle cx="17" cy="15" r="1.3"/><circle cx="12" cy="20" r="1.3"/>',
+  mobile: '<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/>',
 }
 
 // Noun Project-filer som finns i repot (läses in vid bygget).

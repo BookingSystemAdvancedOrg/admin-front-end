@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { editPhone, formatPhone, toE164 } from './phone'
+import { editPhone, formatPhone, formatPhoneNational, normalizePhone, toE164 } from './phone'
 import { PhoneInput } from './PhoneInput'
 
 describe('toE164', () => {
@@ -32,9 +32,38 @@ describe('formatPhone', () => {
     ['0311234567', '+46 31 123 45 67'],
     ['07', '+46 7'],
     ['0', '+46'],
-    ['+4712345678', '+47 123 456 78'],
+    ['+4712345678', '+47 12 34 56 78'],
+    ['+4791234567', '+47 912 34 567'],
+    ['+4512345678', '+45 12 34 56 78'],
+    ['+3587598999876', '+358 75 9899 9876'],
+    ['+358401234567', '+358 40 123 4567'],
+    ['+35891234567', '+358 9 123 4567'],
+    ['+12125551234', '+1 212 555 1234'],
+    ['+442079460958', '+44 207 946 0958'],
+    ['+4930123456', '+49 3012 3456'],
+    ['+3', '+3'],
+    ['+358', '+358'],
+    ['+3587', '+358 7'],
   ])('%s -> %s', (raw, expected) => {
     expect(formatPhone(raw)).toBe(expected)
+  })
+})
+
+describe('formatPhoneNational', () => {
+  it.each([
+    ['+46701234567', '070-123 45 67'],
+    ['+46101234567', '010-123 45 67'],
+    ['+4681234567', '08-123 45 67'],
+    ['+46311234567', '031-123 45 67'],
+    ['+3587598999876', '+358 75 9899 9876'],
+    ['inte ett nummer', 'inte ett nummer'],
+  ])('%s -> %s', (raw, expected) => {
+    expect(formatPhoneNational(raw)).toBe(expected)
+  })
+
+  it('normalizes what the server stores', () => {
+    expect(normalizePhone('070-123 45 67')).toBe('+46701234567')
+    expect(normalizePhone('12')).toBeNull()
   })
 })
 

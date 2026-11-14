@@ -45,6 +45,9 @@ import { Icon } from '../../shared/Icon'
 import type { IconName } from '../../shared/Icon'
 import { Disclosure } from '../../shared/Disclosure'
 import { SkelRows } from '../../shared/Skeleton'
+import { getLocation as getPhoneLocation, getOverview as getPhoneOverview } from '../phone-agent/api'
+import { progress as phoneProgress, type Progress } from '../phone-agent/setup'
+import './setup.css'
 
 // Genvägskorten längst ned som länkar till de andra sidorna. Ägaren får
 // Statistik i stället för "Se alla bokningar" (dagens bokningar har redan
@@ -74,6 +77,8 @@ interface OverviewData {
   catering: RequestSummary[] | null
   /** Köksskrivarens läge; null = ingen beställning i planen eller kunde inte hämtas. */
   print: PrintStatus | null
+  /** Telefonassistentens fem steg; null = ingår inte i planen eller kunde inte hämtas. */
+  phone: Progress | null
 }
 
 const EMPTY: OverviewData = {
@@ -87,6 +92,7 @@ const EMPTY: OverviewData = {
   ordersLastWeek: null,
   catering: null,
   print: null,
+  phone: null,
 }
 
 /** Ett anrop som misslyckas ger `null` (okänt) i stället för att fälla sidan. */
@@ -134,6 +140,8 @@ export default function OversiktPage() {
       : fetched
   const hasOrdering = sample || Boolean(tenant?.entitlements.features.ordering)
   const hasCatering = sample || Boolean(tenant?.entitlements.features.catering)
+  // Telefonassistenten i planen: ägarens Kom igång får ett steg med fem delsteg.
+  const hasPhone = isOwner && Boolean(tenant?.entitlements.features.phoneAgent)
   const tableLabels = sample ? (SAMPLE_TABLE_LABELS as Map<string, string>) : labels
 
   const fetchOverview = useCallback((locationId: string): Promise<OverviewData> =>
@@ -147,7 +155,10 @@ export default function OversiktPage() {
       hasCatering ? orNull(listRequests(locationId)) : Promise.resolve(null),
       hasOrdering ? orNull(listOrders(locationId, addDays(todayIn(timezoneSetting), -7))) : Promise.resolve(null),
       hasOrdering ? orNull(getPrintStatus(locationId)) : Promise.resolve(null),
-    ]).then(([loc, menu, versions, users, today, orders, catering, lastWeek, print]) => ({
+      hasPhone
+        ? orNull(Promise.all([getPhoneOverview(), getPhoneLocation(locationId)]).then(([o, l]) => phoneProgress(o.config, l)))
+        : Promise.resolve(null),
+    ]).then(([loc, menu, versions, users, today, orders, catering, lastWeek, print, phone]) => ({
         forLocation: locationId,
         location: loc,
         activeMenuItems: menu ? menu.filter((m) => m.active).length : null,
@@ -158,8 +169,9 @@ export default function OversiktPage() {
         ordersLastWeek: lastWeek ? lastWeek.orders : null,
         catering,
         print,
+        phone,
       })),
-  [isOwner, timezoneSetting, hasOrdering, hasCatering])
+  [isOwner, timezoneSetting, hasOrdering, hasCatering, hasPhone])
 
   useEffect(() => {
     if (!locationId) return
@@ -188,6 +200,7 @@ export default function OversiktPage() {
     stripeStage: stage,
     staffCount: data.staffCount,
     dpaAccepted: tenant?.dpa ? tenant.dpa.upToDate : undefined,
+    phone: hasPhone ? data.phone : undefined,
   })
   const remaining = steps.filter((s) => s.done === false).length
   // Kom igång (bara ägaren): direkt under nyckeltalen så länge något är kvar
@@ -203,7 +216,19 @@ export default function OversiktPage() {
         <span className={`setup-check ${step.done ? 'done' : ''}`} aria-hidden="true">
           {step.done ? <Icon name="check" size={14} /> : step.done === null ? '?' : ''}
         </span>
-        {step.label}
+        <span className="setup-step__label">
+          {step.label}
+          {step.sub ? (
+            <span className="setup-sub" aria-label={`${step.sub.filter((x) => x.done).length} av ${step.sub.length} delsteg klara`}>
+              {step.sub.map((x) => (
+                <span key={x.label} className={`setup-sub__item${x.done ? ' done' : ''}`}>
+                  {x.done ? <Icon name="check" size={12} /> : null}
+                  {x.label}
+                </span>
+              ))}
+            </span>
+          ) : null}
+        </span>
       </span>
       <span className="activity-time">
         {step.done ? 'Klart' : step.done === null ? 'Kunde inte kontrolleras' : 'Att göra'}

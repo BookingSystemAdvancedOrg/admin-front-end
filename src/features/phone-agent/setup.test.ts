@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BusinessHours } from '../installningar/locationApi'
-import { dialSteps, encodeTel, firstOpen, forwardTarget, hasBusinessHours, hoursFor, hoursSet, hoursSummary, insideHours, progress } from './setup'
+import { codeChunks, dialSteps, encodeTel, firstOpen, isTestLine, platformOf, zeroZeroVariant, forwardTarget, hasBusinessHours, hoursFor, hoursSet, hoursSummary, insideHours, progress } from './setup'
 
 const weekdays = (opensAt: string, closesAt: string) => [{ opensAt, closesAt }]
 const BH: BusinessHours = {
@@ -115,5 +115,37 @@ describe('insideHours', () => {
     expect(h.mon?.at(-1)).toEqual({ from: '22:00', to: '23:59' })
     expect(insideHours(h, new Date('2026-11-16T22:59:30Z'))).toBe(true)   // Monday 23:59:30 in Stockholm
     expect(insideHours({ mon: [{ from: '22:00', to: '23:30' }] }, new Date('2026-11-16T22:45:00Z'))).toBe(false)
+  })
+})
+
+describe('the simple forwarding step', () => {
+  it('splits a code into easy chunks that join back to exactly the code', () => {
+    expect(codeChunks('**004*+46100000001#')).toEqual(['**004*', '+46', '10', '000', '00', '01', '#'])
+    expect(codeChunks('**21*+46701234567#')).toEqual(['**21*', '+46', '70', '123', '45', '67', '#'])
+    expect(codeChunks('*61*+4681234567#')).toEqual(['*61*', '+46', '8', '123', '45', '67', '#'])
+    expect(codeChunks('**004*0046100000001#')).toEqual(['**004*', '0046', '10', '000', '00', '01', '#'])
+    expect(codeChunks('##002#')).toEqual(['##002#'])
+    for (const c of ['**004*+3587598999876#', '**21*+46100000001#', '#21#']) expect(codeChunks(c).join('')).toBe(c)
+  })
+
+  it('offers the same code with 00 instead of +, and nothing for a code without a number', () => {
+    expect(zeroZeroVariant('**004*+46100000001#')).toBe('**004*0046100000001#')
+    expect(zeroZeroVariant('*21*+46100000001#')).toBe('*21*0046100000001#')
+    expect(zeroZeroVariant('##002#')).toBeNull()
+  })
+
+  it('knows the dev test line and the simulator: no forwarding there', () => {
+    expect(isTestLine({ simulated: true, forwarding: { number: '+3587598999876', codes: [] }, testNumber: '+3587598999876' })).toBe(true)
+    expect(isTestLine({ simulated: true, forwarding: { number: '+46100000001', codes: [] } })).toBe(true)
+    expect(isTestLine({ simulated: false, testNumber: '+3587598999876', forwarding: { number: '+3587598999876', codes: [] } })).toBe(true)
+    expect(isTestLine({ simulated: false, testNumber: '+3587598999876', forwarding: { number: '+46100000001', codes: [] } })).toBe(false)
+    expect(isTestLine({ simulated: false, forwarding: { number: '+46100000001', codes: [] } })).toBe(false)
+  })
+
+  it('tells iPhone (no codes from links) from Android', () => {
+    expect(platformOf('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)')).toBe('ios')
+    expect(platformOf('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', true)).toBe('ios')
+    expect(platformOf('Mozilla/5.0 (Linux; Android 14; Pixel 8)')).toBe('android')
+    expect(platformOf('Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe('other')
   })
 })

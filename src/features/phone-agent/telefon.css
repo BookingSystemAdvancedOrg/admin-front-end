@@ -331,7 +331,7 @@
   border-radius: var(--bq-radius-inner);
   background: var(--bq-surface);
   color: var(--bq-ink);
-  font-size: clamp(28px, 9vw, 44px);
+  font-size: clamp(26px, 7.5vw, 44px);
   line-height: 1.2;
   text-align: center;
   text-decoration: none;
@@ -395,5 +395,154 @@
   .telefon-checklist__value {
     grid-column: 2;
     text-align: left;
+  }
+}
+
+/* --- Kom igång: enkla steg, en sak per rad -------------------------------------------- */
+.telefon-lead {
+  margin: calc(-1 * var(--bq-space-3)) 0 0;
+  color: var(--bq-ink);
+  font-size: var(--bq-text-base);
+}
+.telefon-howto {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--bq-space-4);
+  min-width: 0;
+  counter-reset: none;
+}
+.telefon-howto > li {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--bq-space-3);
+  min-width: 0;
+}
+.telefon-howto__n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--bq-radius-pill);
+  background: var(--bq-ink);
+  color: var(--bq-surface);
+  font-weight: 700;
+  font-size: var(--bq-text-lg);
+  font-variant-numeric: tabular-nums;
+}
+.telefon-howto__text {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--bq-space-2);
+  min-width: 0;
+  padding-top: var(--bq-space-1);
+  color: var(--bq-ink);
+  font-size: var(--bq-text-lg);
+  line-height: 1.4;
+}
+.telefon-howto__text > span:only-child {
+  grid-column: 1 / -1;
+}
+.telefon-howto__text > span {
+  display: grid;
+  gap: var(--bq-space-3);
+  min-width: 0;
+}
+.telefon-howto__icon {
+  color: var(--bq-muted);
+}
+.telefon-codebox {
+  display: grid;
+  gap: var(--bq-space-3);
+  min-width: 0;
+}
+.telefon-codebox .telefon-code {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 0.35em;
+  word-break: normal;
+}
+.telefon-code__chunk {
+  white-space: nowrap;
+}
+.telefon-keys {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--bq-space-1);
+  color: var(--bq-muted);
+  font-size: var(--bq-text-sm);
+}
+.telefon-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.8em;
+  height: 1.8em;
+  padding: 0 var(--bq-space-1);
+  border: var(--bq-bar-hairline) solid var(--bq-line-strong);
+  border-radius: var(--bq-radius-inner);
+  color: var(--bq-ink);
+  font-weight: 700;
+}
+.telefon-offcode {
+  font-size: var(--bq-text-xl);
+  color: var(--bq-ink);
+}
+.telefon-help,
+.telefon-later {
+  min-width: 0;
+}
+.telefon-help .telefon-howto,
+.telefon-later .telefon-howto {
+  margin-top: var(--bq-space-3);
+}
+.telefon-cards--grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr));
+}
+.telefon-operators {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.telefon-card--big {
+  min-height: 64px;
+  font-size: var(--bq-text-lg);
+  font-weight: 600;
+}
+.telefon-card__text {
+  display: grid;
+  gap: var(--bq-space-1);
+  min-width: 0;
+}
+.telefon-card__hint {
+  color: var(--bq-muted);
+  font-size: var(--bq-text-sm);
+  font-weight: 400;
+}
+@media (max-width: 479px) {
+  .telefon-howto > li {
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: var(--bq-space-2);
+  }
+  .telefon-howto__n {
+    width: 30px;
+    height: 30px;
+    font-size: var(--bq-text-base);
+  }
+  .telefon-howto__text {
+    padding-top: var(--bq-space-1);
+    font-size: var(--bq-text-base);
+  }
+  .telefon-codebox .telefon-row > .bq-btn {
+    width: 100%;
+    justify-content: center;
   }
 }

@@ -13,10 +13,10 @@ import ForwardingStep, { BigNumber } from './ForwardingStep'
 import SetupChecklist from './SetupChecklist'
 import TestCallStep, { type TestState } from './TestCallStep'
 import {
-  ERRORS, MODE_LABEL, SETUP, getLocation, getOverview, getPlaceBasics, postSetupPatch, saveConfigPatch, saveLocationPatch,
+  ERRORS, MODE_HINT, MODE_LABEL, SETUP, getLocation, getOverview, getPlaceBasics, postSetupPatch, saveConfigPatch, saveLocationPatch,
   type Config, type LocationConfig, type Mode, type Operator, type Overview,
 } from './api'
-import { STEPS, dialSteps, forwardTarget, hasBusinessHours, hoursFor, hoursSet, hoursSummary, type Step } from './setup'
+import { STEPS, dialSteps, forwardTarget, hasBusinessHours, hoursFor, hoursSet, hoursSummary, isTestLine, type Step } from './setup'
 
 interface Data {
   config: Config
@@ -32,10 +32,15 @@ interface Data {
  * klart, och guiden med en fråga per skärm. Fler inställningar ligger
  * hopfällt under checklistan.
  */
-export default function SettingsWizard({ locationId, onSaved }: { locationId: string; onSaved: (c: LocationConfig) => void }) {
+export default function SettingsWizard({ locationId, onSaved, startAt = null }: {
+  locationId: string
+  onSaved: (c: LocationConfig) => void
+  /** Öppna guiden direkt på ett steg (länken från Kom igång på Översikt). */
+  startAt?: Step | null
+}) {
   const [data, setData] = useState<Data | null>(null)
   const [loadError, setLoadError] = useState(false)
-  const [wizardAt, setWizardAt] = useState<Step | null>(null)
+  const [wizardAt, setWizardAt] = useState<Step | null>(startAt)
   // Fler inställningar förblir utfällt efter Spara och efter guiden.
   const [moreOpen, setMoreOpen] = useState(false)
 
@@ -115,9 +120,12 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
   const { config, loc, others, businessHours, includedMinutes } = data
   const hasHours = hasBusinessHours(businessHours)
   const target = forwardTarget(loc)
+  const testLine = isTestLine(loc)
+  // Operatören behövs inte i testläget: där kopplas ingenting om.
+  const kopplaSub = (): Sub => (testLine || loc.setup?.operator ? 'code' : 'operator')
   const [d, setD] = useState<Draft>(() => ({
     step: start,
-    sub: loc.setup?.operator ? 'code' : 'operator',
+    sub: kopplaSub(),
     codeIndex: 0,
     name: config.agentName || 'Booqy',
     mode: !hasHours ? 'always' : hoursSet(loc) ? loc.mode : 'after_hours',
@@ -141,7 +149,7 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
   }, [d.step, d.sub])
 
   function go(step: Step) {
-    set({ step, errors: {}, bannerError: null, sub: step === 'koppla' ? (loc.setup?.operator ? 'code' : 'operator') : d.sub, codeIndex: 0 })
+    set({ step, errors: {}, bannerError: null, sub: step === 'koppla' ? kopplaSub() : d.sub, codeIndex: 0 })
   }
 
   function after(step: Step) {
@@ -200,6 +208,12 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
         })
       case 'koppla': {
         if (!loc.forwarding?.number) return go('nummer')
+        if (testLine) {
+          return void run(async () => {
+            onLoc(await postSetupPatch(locationId, loc, { forwarded: true }, onLoc))
+            after('koppla')
+          })
+        }
         if (d.sub === 'operator') {
           if (!d.operator) return invalid('operator', ERRORS.invalid_operator)
           const operator = d.operator
@@ -221,7 +235,7 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
   }
 
   function back() {
-    if (d.step === 'koppla' && d.sub === 'code') {
+    if (d.step === 'koppla' && d.sub === 'code' && !testLine) {
       if (d.codeIndex > 0) return set({ codeIndex: d.codeIndex - 1 })
       return set({ sub: 'operator', errors: {}, bannerError: null })
     }
@@ -236,7 +250,7 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
   if (d.step === 'nummer' && !(loc.enabled && loc.number)) { primary = SETUP.buttons.getNumber; busyLabel = SETUP.buttons.gettingNumber }
   if (d.step === 'koppla' && d.sub === 'code' && loc.forwarding?.number) {
     const codes = dialSteps(loc)
-    primary = vaxel ? SETUP.buttons.doneSwitch : d.codeIndex < codes.length - 1 ? SETUP.buttons.next : SETUP.buttons.called
+    primary = testLine ? SETUP.buttons.called : vaxel ? SETUP.buttons.doneSwitch : d.codeIndex < codes.length - 1 ? SETUP.buttons.next : SETUP.buttons.called
   }
   // Steg 5 har ingen Klar i foten: man kommer ut genom att det fungerar (Klar där) eller med Hoppa över.
   const hidePrimary = (d.step === 'koppla' && !loc.forwarding?.number) || d.step === 'prova'
@@ -249,7 +263,14 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
       others.length && !(loc.enabled && loc.number) ? 'Med samma nummer frågar assistenten först vilken restaurang det gäller.' : '',
     ].filter(Boolean).join(' '),
   }
-  const question = d.step === 'koppla' && d.sub === 'operator' ? 'Vilken operatör har restaurangens telefon?' : SETUP.QUESTIONS[n - 1]
+  const question = d.step === 'koppla' && d.sub === 'operator' && !testLine ? 'Vilken operatör har restaurangens telefon?' : SETUP.QUESTIONS[n - 1]
+  // En rad under frågan: vad man gör här, med ord ett barn förstår.
+  const hasNumber = Boolean(loc.enabled && loc.number)
+  const lead = d.step === 'koppla'
+    ? (!loc.forwarding?.number || testLine ? null : d.sub === 'operator' ? 'Tryck på er operatör. Tryck sedan på Nästa.' : SETUP.LEADS[3])
+    : d.step === 'nummer' && hasNumber ? 'Det här är ert Booqy-nummer. Tryck på Nästa.'
+      : d.step === 'nummer' && others.length ? 'Välj nummer. Tryck sedan på Skaffa nummer.'
+        : d.step === 'tider' && !hasHours ? null : SETUP.LEADS[n - 1]
 
   return (
     <Card className="telefon-wizard">
@@ -260,6 +281,7 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
           <h2 ref={heading} tabIndex={-1}>{question}</h2>
           {info[d.step] ? <InfoTooltip label={SETUP.STEP_LABEL[n - 1]}>{info[d.step]}</InfoTooltip> : null}
         </div>
+        {lead ? <p className="telefon-lead">{lead}</p> : null}
 
         {d.step === 'namn' ? (
           <div className="telefon-step-body">
@@ -278,10 +300,13 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
               {(['after_hours', 'overflow', 'always'] as Mode[]).map((m) => {
                 const off = !hasHours && m !== 'always'
                 return (
-                  <label key={m} className={`telefon-card${off ? ' is-disabled' : ''}`}>
+                  <label key={m} className={`telefon-card telefon-card--big${off ? ' is-disabled' : ''}`}>
                     <input type="radio" name="pa-mode" value={m} id={m === 'after_hours' ? 'pa-mode' : undefined} disabled={off}
-                      checked={(hasHours ? d.mode : 'always') === m} onChange={() => set({ mode: m })} />
-                    <span>{MODE_LABEL[m]}</span>
+                      aria-label={MODE_LABEL[m]} checked={(hasHours ? d.mode : 'always') === m} onChange={() => set({ mode: m })} />
+                    <span className="telefon-card__text">
+                      <span>{MODE_LABEL[m]}</span>
+                      <span className="telefon-card__hint">{MODE_HINT[m]}</span>
+                    </span>
                   </label>
                 )
               })}
@@ -310,7 +335,7 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
         ) : null}
 
         {d.step === 'koppla' ? (
-          <ForwardingStep loc={loc} sub={d.sub} codeIndex={d.codeIndex} operator={d.operator} error={d.errors.operator}
+          <ForwardingStep loc={loc} sub={d.sub} codeIndex={d.codeIndex} operator={d.operator} error={d.errors.operator} testLine={testLine}
             onOperator={(operator) => set({ operator, errors: {} })} onGetNumber={() => go('nummer')} />
         ) : null}
 

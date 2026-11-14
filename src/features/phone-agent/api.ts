@@ -195,16 +195,39 @@ export const OPERATORS: Record<Operator, string> = {
   telia: 'Telia (mobil)', tele2: 'Tele2', telenor: 'Telenor', tre: 'Tre',
   telia_fast: 'Telia (fast telefon)', vaxel: 'Växel eller IP-telefoni', other: 'Annan',
 }
+/** Korten i steg 4: de fem vanliga stora, fast telefon och växel mindre under. */
+export const OPERATOR_CARDS: { main: Operator[]; more: Operator[]; label: Record<Operator, string> } = {
+  main: ['telia', 'tele2', 'telenor', 'tre', 'other'],
+  more: ['telia_fast', 'vaxel'],
+  label: {
+    telia: 'Telia', tele2: 'Tele2', telenor: 'Telenor', tre: 'Tre', other: 'Annan',
+    telia_fast: 'Telia fast telefon', vaxel: 'Växel eller IP-telefoni',
+  },
+}
+/** Vad assistenten gör i varje läge, en rad under kortet. */
+export const MODE_HINT: Record<Mode, string> = {
+  after_hours: 'Ni har stängt och ingen svarar: assistenten tar samtalet.',
+  overflow: 'Ni har öppet men hinner inte svara: assistenten tar samtalet.',
+  always: 'Assistenten tar alla samtal, dygnet runt.',
+}
 
 /** Kom igångs texter (en fråga per skärm). */
 export const SETUP = {
   STEP_LABEL: ['Namn', 'Tider', 'Booqy-nummer', 'Vidarekoppling', 'Provsamtal'],
   QUESTIONS: ['Vad ska assistenten heta?', 'När ska assistenten svara?', 'Skaffa ert Booqy-nummer', 'Koppla ert nummer till Booqy', 'Ring och prova'],
+  /** En kort rad under frågan: vad man gör på skärmen. */
+  LEADS: [
+    'Skriv ett namn, eller behåll Booqy. Tryck sedan på Nästa.',
+    'Tryck på det som passar er. Tryck sedan på Nästa.',
+    'Tryck på Skaffa nummer. Det tar några sekunder.',
+    'Följ stegen med restaurangens telefon i handen.',
+    'Följ stegen. Det tar en minut.',
+  ],
   progress: (n: number) => `Steg ${n} av 5`,
   buttons: {
     next: 'Nästa', back: 'Tillbaka', done: 'Klar', saving: 'Sparar…', start: 'Börja', cont: (l: string) => `Fortsätt: ${l}`,
     getNumber: 'Skaffa nummer', gettingNumber: 'Skaffar nummer…', copy: 'Kopiera', copied: 'Kopierad',
-    called: 'Klart, jag har ringt', doneSwitch: 'Klart, jag har gjort det', callNow: 'Ring nu',
+    called: 'Klart', doneSwitch: 'Klart', callNow: 'Ring nu', callCode: 'Ring koden',
     callingOther: 'Jag ringer nu', waitAgain: 'Vänta igen', skip: 'Hoppa över', retry: 'Försök igen',
     toList: 'Till checklistan',
   },

@@ -59,6 +59,16 @@ describe('TelefonPage', () => {
     expect(api.getLocation).not.toHaveBeenCalled()
   })
 
+  it('opens Inställningar at the linked step from Kom igång on Översikt', async () => {
+    tenant = OWNER
+    vi.mocked(api.getOverview).mockResolvedValue({ config: { agentName: 'Booqy', tone: 'friendly', languages: ['sv'], recording: { enabled: false },
+      minutesCapPerMonth: 300, version: 1 }, locations: [], usage: { minutes: 0, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
+    vi.mocked(api.getPlaceBasics).mockResolvedValue({ businessHours: null, phoneNumber: '+46812345678' })
+    renderAt('/telefon?flik=installningar&steg=prova')
+    expect(await screen.findByText('Steg 5 av 5')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Ring och prova' })).toBeInTheDocument()
+  })
+
   it('lists the calls with outcome and counter-offer, staff without caller numbers or settings', async () => {
     tenant = STAFF
     renderAt()

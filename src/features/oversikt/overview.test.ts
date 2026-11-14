@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { emptyBusinessHours } from '../installningar/locationApi'
-import { hasAnyOpeningHours, setupSteps, todaysHours, weekdayIn } from './overview'
+import { hasAnyOpeningHours, phoneSetupStep, setupSteps, todaysHours, weekdayIn } from './overview'
 
 // Fredag 9 okt 2026 23:30 UTC = lördag 01:30 i Stockholm.
 const FRIDAY_NIGHT_UTC = new Date('2026-10-09T23:30:00Z')
@@ -98,5 +98,35 @@ describe('setupSteps', () => {
     })
     expect(setupSteps({ ...owner, dpaAccepted: true })[0].done).toBe(true)
     expect(setupSteps({ ...owner, isOwner: false, dpaAccepted: false })).toEqual([])
+  })
+})
+
+describe('Telefonassistent in Kom igång', () => {
+  const owner = { isOwner: true, hasOpeningHours: true, activeMenuItems: 3, hasLiveLayout: true, stripeStage: 'ready' as const, staffCount: 1 }
+  const none = { namn: false, tider: false, nummer: false, koppla: false, prova: false }
+
+  it('is a step only when the plan has the phone assistant', () => {
+    expect(setupSteps(owner).some((s) => s.id === 'phone')).toBe(false)
+    expect(setupSteps({ ...owner, phone: none }).at(-1)?.id).toBe('phone')
+  })
+
+  it('lists the five sub-steps and links to the next open one', () => {
+    const step = phoneSetupStep({ ...none, namn: true, tider: true })
+    expect(step.label).toBe('Telefonassistent')
+    expect(step.done).toBe(false)
+    expect(step.to).toBe('/telefon?flik=installningar&steg=nummer')
+    expect(step.sub).toEqual([
+      { label: 'Namn', done: true }, { label: 'Tider', done: true }, { label: 'Booqy-nummer', done: false },
+      { label: 'Vidarekoppling', done: false }, { label: 'Provsamtal', done: false },
+    ])
+  })
+
+  it('is done only when all five are done, and unknown when it could not be fetched', () => {
+    expect(phoneSetupStep({ namn: true, tider: true, nummer: true, koppla: true, prova: false }).done).toBe(false)
+    const all = phoneSetupStep({ namn: true, tider: true, nummer: true, koppla: true, prova: true })
+    expect(all.done).toBe(true)
+    expect(all.to).toBe('/telefon?flik=installningar')
+    expect(phoneSetupStep(null).done).toBeNull()
+    expect(setupSteps({ ...owner, phone: null }).at(-1)?.done).toBeNull()
   })
 })

@@ -1,6 +1,6 @@
 import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Bar, Button, toast } from '@booqy/brand'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { errorText } from '../../shared/errors'
@@ -10,6 +10,7 @@ import CallbacksTab from './CallbacksTab'
 import CallsTab from './CallsTab'
 import SettingsWizard from './SettingsWizard'
 import { ERRORS, MODE_LABEL, getLocation, setKillSwitch, type LocationConfig } from './api'
+import { STEPS, type Step } from './setup'
 import './telefon.css'
 
 type Tab = 'samtal' | 'uppringningar' | 'installningar'
@@ -45,7 +46,11 @@ function Telefon() {
   const locationId = location?.locationId
   const { callId } = useParams()
   const navigate = useNavigate()
-  const [tab, setTab] = useState<Tab>('samtal')
+  // Från Kom igång på Översikt: /telefon?flik=installningar&steg=koppla öppnar guiden på steget.
+  const [params] = useSearchParams()
+  const linkedStep = STEPS.find((s) => s === params.get('steg')) ?? null
+  const [tab, setTab] = useState<Tab>(owner && params.get('flik') === 'installningar' ? 'installningar' : 'samtal')
+  const [startAt] = useState<Step | null>(linkedStep)
   const [config, setConfig] = useState<LocationConfig | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -112,7 +117,7 @@ function Telefon() {
       <div id={`telefon-panel-${tab}`} role="tabpanel">
         {tab === 'samtal' ? <CallsTab locationId={locationId} owner={owner} /> : null}
         {tab === 'uppringningar' ? <CallbacksTab locationId={locationId} /> : null}
-        {tab === 'installningar' && owner ? <SettingsWizard locationId={locationId} onSaved={(c) => setConfig(c)} /> : null}
+        {tab === 'installningar' && owner ? <SettingsWizard locationId={locationId} startAt={startAt} onSaved={(c) => setConfig(c)} /> : null}
       </div>
     </>
   )

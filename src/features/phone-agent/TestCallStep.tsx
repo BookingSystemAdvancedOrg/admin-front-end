@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Bar, Button, LinkButton, Printing } from '@booqy/brand'
 import { Icon } from '../../shared/Icon'
-import { formatPhone } from '../../shared/phone'
+import { HowTo } from './ForwardingStep'
+import { formatPhoneNational } from '../../shared/phone'
 import { errorText } from '../../shared/errors'
 import { ERRORS, MODE_LABEL, REFUSED_LABEL, SETUP, listCalls, postSetupPatch, today, type LocationConfig } from './api'
 import type { Step } from './setup'
@@ -139,40 +140,44 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, o
 
   return (
     <div className="telefon-step-body">
-      {status === 'idle' || status === 'none' || status === 'failed' || status === 'refused' ? (
+      {target ? (
         <>
-          {target ? (
-            <>
-              <p className="telefon-line">Ring det här numret</p>
-              <div className="telefon-bignumber">
-                <span className="telefon-bignumber__value telefon-mono">{formatPhone(target)}</span>
-                {dev ? <span className="telefon-tag">Testlinje i dev</span> : null}
-              </div>
-              {ringsFirst ? <p className="telefon-hint">Ring från en annan telefon. Svara inte i restaurangens telefon.</p> : null}
-              <div className="telefon-row">
-                <LinkButton variant="primary" className="telefon-call" href={`tel:${target}`} onClick={start}>
-                  <Icon name="phone" size={18} /> {SETUP.buttons.callNow}
-                </LinkButton>
-                <Button type="button" variant="secondary" onClick={start}>{SETUP.buttons.callingOther}</Button>
-              </div>
-              {!dev && loc.number && target !== loc.number ? (
-                <a className="telefon-link" href={`tel:${loc.number}`} onClick={start}>
-                  Eller ring Booqy-numret direkt: {formatPhone(loc.number)}
-                </a>
-              ) : null}
-            </>
-          ) : (
-            <Button type="button" variant="secondary" onClick={() => onGoStep('nummer')}>Skaffa ert Booqy-nummer först</Button>
-          )}
+          <HowTo label="Så gör du" steps={[
+            {
+              icon: 'phone',
+              text: (
+                <>
+                  {ringsFirst ? 'Ring det här numret från en annan telefon (inte restaurangens):' : 'Ring det här numret från valfri telefon:'}
+                  <span className="telefon-bignumber">
+                    <span className="telefon-bignumber__value telefon-mono">{formatPhoneNational(target)}</span>
+                    {dev ? <span className="telefon-tag">Testlinje i dev</span> : null}
+                  </span>
+                </>
+              ),
+            },
+            { text: <>Säg hej och fråga till exempel ”När har ni öppet?”.{ringsFirst ? ' Svara inte i restaurangens telefon.' : ''}</> },
+            { text: 'Lägg på. Vi visar här när samtalet har kommit in.' },
+          ]} />
+          {status !== 'waiting' ? (
+            <div className="telefon-row">
+              <LinkButton variant="primary" className="telefon-call" href={`tel:${target}`} onClick={start}>
+                <Icon name="phone" size={18} /> {SETUP.buttons.callNow}
+              </LinkButton>
+              <Button type="button" variant="secondary" onClick={start}>{SETUP.buttons.callingOther}</Button>
+            </div>
+          ) : null}
+          {status !== 'waiting' && !dev && loc.number && target !== loc.number ? (
+            <a className="telefon-link" href={`tel:${loc.number}`} onClick={start}>
+              Eller ring Booqy-numret direkt: {formatPhoneNational(loc.number)}
+            </a>
+          ) : null}
         </>
+      ) : null}
+      {!target ? (
+        <Button type="button" variant="secondary" onClick={() => onGoStep('nummer')}>Skaffa ert Booqy-nummer först</Button>
       ) : null}
 
-      {status === 'waiting' ? (
-        <>
-          <Printing label="Väntar på samtalet" />
-          <p className="telefon-line">Säg till exempel: Jag vill boka bord.</p>
-        </>
-      ) : null}
+      {status === 'waiting' ? <Printing label="Väntar på samtalet" /> : null}
 
       {status === 'refused' ? (
         <Bar variant="banner" tone="warning">
@@ -182,13 +187,17 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, o
 
       {status === 'none' ? (
         <Bar variant="banner" tone="warning">
-          <strong>Inget samtal ännu</strong>
+          <strong>Inget samtal ännu?</strong>
           <ul className="telefon-checks">
-            <li>
-              Har ni ringt koden i steg 4?{' '}
-              <button type="button" className="telefon-link" onClick={() => onGoStep('koppla')}>Till steg 4</button>
-            </li>
-            {ringsFirst ? <li>Svarade någon i restaurangens telefon? Låt den ringa tills Booqy svarar.</li> : null}
+            {target ? <li>Ringde du rätt nummer? <span className="telefon-mono telefon-nowrap">{formatPhoneNational(target)}</span></li> : null}
+            {dev ? null : (
+              <li>
+                Har ni gjort steg 4, Vidarekoppling?{' '}
+                <button type="button" className="telefon-link" onClick={() => onGoStep('koppla')}>Till steg 4</button>
+              </li>
+            )}
+            {ringsFirst ? <li>Svarade någon i restaurangens telefon? Låt den ringa tills assistenten svarar.</li> : null}
+            <li>Ring en gång till och tryck sedan på Vänta igen.</li>
           </ul>
           <span className="telefon-row">
             <Button size="sm" variant="primary" onClick={start}>{SETUP.buttons.waitAgain}</Button>

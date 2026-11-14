@@ -374,10 +374,17 @@ function BlockEditor({ block, images, pages, invalid, onChange, actions }: {
           </Field>
         ) : null}
         {block.type === 'contact' ? (
-          <label className="toggle-row">
-            <input type="checkbox" className="switch" checked={Boolean(block.showMap)} onChange={(e) => onChange({ ...block, showMap: e.target.checked })} />
+          <div className="toggle-row toggle-row--field">
             <span className="toggle-row-label">Visa karta</span>
-          </label>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={Boolean(block.showMap)}
+              aria-label="Visa karta"
+              className="switch"
+              onClick={() => onChange({ ...block, showMap: !block.showMap })}
+            />
+          </div>
         ) : null}
       </div>
     </div>

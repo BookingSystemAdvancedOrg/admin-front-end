@@ -1782,3 +1782,10 @@
 .admin-main {
   padding-bottom: calc(40px + 72px + env(safe-area-inset-bottom, 0px));
 }
+
+/* A switch that sits in a form grid next to inputs: same height as an input,
+   aligned with the input's bottom edge (Webbplats > Kontakt > Visa karta). */
+.toggle-row--field {
+  align-self: end;
+  min-height: 44px;
+}

@@ -1769,3 +1769,16 @@
   grid-column: 1 / -1;
   align-self: start;
 }
+
+/* The sticky save bar (Bar sticky, e.g. Webbplats) floats over the page:
+   frosted enough that the text under it never shows through. */
+.bq-bar--stuck {
+  background: var(--glass-pop);
+  -webkit-backdrop-filter: blur(var(--blur-pop, 24px)) saturate(1.4);
+  backdrop-filter: blur(var(--blur-pop, 24px)) saturate(1.4);
+}
+/* Room under the last thing on every page, so nothing ends up stuck behind
+   the floating Fråga Booqy button. */
+.admin-main {
+  padding-bottom: calc(40px + 72px + env(safe-area-inset-bottom, 0px));
+}

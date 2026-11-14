@@ -148,7 +148,7 @@ describe('cognito.ts (backend /auth/* client)', () => {
 
   it('never writes anything about the session to web storage', async () => {
     const { signIn, getCurrentSession } = await import('./cognito')
-    vi.mocked(fetch).mockResolvedValue(
+    vi.mocked(fetch).mockImplementation(async () =>
       jsonResponse(200, {
         status: 'authenticated',
         authenticationResult: {
@@ -299,6 +299,142 @@ describe('cognito.ts (backend /auth/* client)', () => {
     expect(session).toBeNull()
     await expect(getIdToken()).resolves.toBeNull()
     await expect(getAccessToken()).resolves.toBeNull()
+  })
+})
+
+describe('staying signed in (transient failures, proactive refresh)', () => {
+  const authenticated = (access: string, expiresIn = 3600) =>
+    jsonResponse(200, {
+      status: 'authenticated',
+      authenticationResult: { AccessToken: access, IdToken: idToken, ExpiresIn: expiresIn, TokenType: 'Bearer' },
+    })
+  const refreshCalls = () =>
+    vi.mocked(fetch).mock.calls.filter((c) => String(c[0]).endsWith('/auth/refresh')).length
+
+  beforeEach(() => {
+    localStorage.clear()
+    vi.useFakeTimers()
+    vi.stubGlobal('fetch', vi.fn())
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+    vi.resetModules()
+  })
+
+  async function signedInWithExpiredToken() {
+    const mod = await import('./cognito')
+    vi.mocked(fetch).mockResolvedValue(authenticated('old', -10))
+    await mod.signIn('anna@kallarestaurang.se', 'pw')
+    vi.mocked(fetch).mockReset()
+    return mod
+  }
+
+  it('a network error keeps the session: unreachable, never signed out', async () => {
+    const mod = await signedInWithExpiredToken()
+    const signedOut = vi.fn()
+    mod.onSignedOutElsewhere(signedOut)
+    vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'))
+
+    const result = mod.getCurrentSession()
+    const settled = expect(result).rejects.toBeInstanceOf(mod.AuthUnavailableError)
+    await vi.advanceTimersByTimeAsync(10_000)
+    await settled
+
+    expect(mod.isAuthUnreachable()).toBe(true)
+    expect(signedOut).not.toHaveBeenCalled()
+  })
+
+  it.each([500, 502, 503, 504, 429, 404])('a %i from /auth/refresh is transient, not a sign-out', async (status) => {
+    const mod = await signedInWithExpiredToken()
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(status, { error: 'x' }))
+
+    const settled = expect(mod.getCurrentSession()).rejects.toBeInstanceOf(mod.AuthUnavailableError)
+    await vi.advanceTimersByTimeAsync(10_000)
+    await settled
+    expect(mod.isAuthUnreachable()).toBe(true)
+  })
+
+  it.each([400, 401, 403])('a %i from /auth/refresh signs out and tells the app', async (status) => {
+    const mod = await signedInWithExpiredToken()
+    const signedOut = vi.fn()
+    mod.onSignedOutElsewhere(signedOut)
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(status, { error: 'not signed in' }))
+
+    await expect(mod.getCurrentSession()).resolves.toBeNull()
+    expect(signedOut).toHaveBeenCalledTimes(1)
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries quickly, inside the rotation grace period, when a refresh response is lost', async () => {
+    const mod = await signedInWithExpiredToken()
+    vi.mocked(fetch)
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(authenticated('new'))
+    const started = Date.now()
+
+    const result = mod.getCurrentSession()
+    await vi.advanceTimersByTimeAsync(mod.REFRESH_RETRY_DELAYS_MS[0])
+    const session = await result
+
+    expect(session?.accessToken).toBe('new')
+    expect(refreshCalls()).toBe(2)
+    // Cognito's retry_grace_period_seconds is 60; the first retry lands well inside it.
+    expect(Date.now() - started).toBeLessThan(10_000)
+    expect(mod.isAuthUnreachable()).toBe(false)
+  })
+
+  it('refreshes in the background a few minutes before the access token expires', async () => {
+    const mod = await import('./cognito')
+    const stop = mod.startSessionKeeper()
+    vi.mocked(fetch).mockResolvedValue(authenticated('first'))
+    await mod.signIn('anna@kallarestaurang.se', 'pw')
+    vi.mocked(fetch).mockReset()
+    vi.mocked(fetch).mockResolvedValue(authenticated('second'))
+
+    await vi.advanceTimersByTimeAsync(3600_000 - mod.REFRESH_AHEAD_MS - 1_000)
+    expect(refreshCalls()).toBe(0)
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(refreshCalls()).toBe(1)
+    await expect(mod.getAccessToken()).resolves.toBe('second')
+    stop()
+  })
+
+  it('keeps retrying in the background and restores the session when the network is back', async () => {
+    const mod = await import('./cognito')
+    const stop = mod.startSessionKeeper()
+    const restored = vi.fn()
+    mod.onSessionRestored(restored)
+    vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'))
+
+    // App start before Wi-Fi is up.
+    const first = expect(mod.getCurrentSession()).rejects.toBeInstanceOf(mod.AuthUnavailableError)
+    await vi.advanceTimersByTimeAsync(10_000)
+    await first
+    expect(mod.isAuthUnreachable()).toBe(true)
+
+    vi.mocked(fetch).mockResolvedValue(authenticated('back'))
+    window.dispatchEvent(new Event('online'))
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(restored).toHaveBeenCalledWith(expect.objectContaining({ accessToken: 'back' }))
+    expect(mod.isAuthUnreachable()).toBe(false)
+    stop()
+  })
+
+  it('after an API 401 it refreshes once even though the token looked valid', async () => {
+    const mod = await import('./cognito')
+    vi.mocked(fetch).mockResolvedValue(authenticated('stale'))
+    await mod.signIn('anna@kallarestaurang.se', 'pw')
+    vi.mocked(fetch).mockReset()
+    vi.mocked(fetch).mockResolvedValue(authenticated('fresh'))
+
+    await expect(mod.refreshAfterUnauthorized('stale')).resolves.toBe('fresh')
+    expect(refreshCalls()).toBe(1)
+    // A second caller that used the stale token reuses the fresh one.
+    await expect(mod.refreshAfterUnauthorized('stale')).resolves.toBe('fresh')
+    expect(refreshCalls()).toBe(1)
   })
 })
 

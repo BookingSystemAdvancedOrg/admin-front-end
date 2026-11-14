@@ -1,4 +1,4 @@
-import { getAccessToken } from '../features/auth/cognito'
+import { AuthUnavailableError, getAccessToken, refreshAfterUnauthorized } from '../features/auth/cognito'
 import { busyEnd, busyStart } from './motion/busy'
 
 /**
@@ -162,24 +162,33 @@ export async function apiFetch<T>(
       'VITE_API_BASE_URL är inte satt - appen kör på mockdata. Se docs/BACKEND-KOPPLING.md.',
     )
   }
-  const token = await getAccessToken()
   const method = (options.method ?? 'GET').toUpperCase()
   // Skrivningar syns som en strimma överst (shared/motion/BusyBar) tills de är klara.
   const writing = method !== 'GET'
   if (writing) busyStart()
+  const send = (token: string | null) => fetchWithRetry(method, () => fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+  }))
   let res: Response
   try {
-    res = await fetchWithRetry(method, () => fetch(`${API_BASE_URL}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options.headers,
-      },
-    }))
+    // Servern nås inte för att förnya tokenen: samma fel som ett tappat
+    // anrop, aldrig "utloggad" (sessionen gäller fortfarande).
+    const token = await getAccessToken()
+    res = await send(token)
+    // Ett 401 loggar inte ut direkt: förnya en gång och försök igen. Bara om
+    // servern säger att sessionen är slut visas inloggningen (AuthContext).
+    if (res.status === 401 && token) {
+      const fresh = await refreshAfterUnauthorized(token)
+      if (fresh) res = await send(fresh)
+    }
   } catch (err) {
     // fetch() avvisar bara när svaret aldrig kom (offline, tappad anslutning).
-    if (err instanceof TypeError) throw new NetworkError()
+    if (err instanceof TypeError || err instanceof AuthUnavailableError) throw new NetworkError()
     throw err
   } finally {
     if (writing) busyEnd()

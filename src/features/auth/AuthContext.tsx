@@ -4,13 +4,20 @@ import { AuthContext } from './context'
 import type { AuthStatus } from './context'
 import type { PendingChallenge } from './cognito'
 import {
+  AuthUnavailableError,
   completeNewPassword,
   getAccessToken,
   getCurrentSession,
+  isAuthUnreachable,
+  onConnectionChange,
+  onSessionRestored,
   onSignedOutElsewhere,
   signIn,
   signOut,
+  startSessionKeeper,
 } from './cognito'
+import type { StoredSession } from './cognito'
+import { ConnectionNotice } from './ConnectionNotice'
 import {
   clearMockSession,
   getMockSessionEmail,
@@ -50,24 +57,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // och nytt-lösenord-sidan tills /auth/challenge slutförs.
   const pendingChallenge = useRef<PendingChallenge | null>(null)
 
+  // Ingen kontakt med servern: sessionen finns kvar, appen försöker igen.
+  const [connectionLost, setConnectionLost] = useState(isAuthUnreachable)
+
+  const applySession = useCallback((session: StoredSession) => {
+    setEmail(session.email)
+    setSub(session.sub || null)
+    setGroups(session.groups)
+    setStatus('signed-in')
+  }, [])
+
   useEffect(() => {
     if (getMockSessionEmail()) return
     let cancelled = false
-    getCurrentSession().then((session) => {
-      if (cancelled) return
-      if (session) {
-        setEmail(session.email)
-        setSub(session.sub || null)
-        setGroups(session.groups)
-        setStatus('signed-in')
-      } else {
-        setStatus('signed-out')
-      }
+    const stopKeeper = startSessionKeeper()
+    const offConnection = onConnectionChange((lost) => {
+      if (!cancelled) setConnectionLost(lost)
     })
+    // Kontakten kom tillbaka efter en start utan nät: in i appen direkt.
+    const offRestored = onSessionRestored((session) => {
+      if (!cancelled) applySession(session)
+    })
+    getCurrentSession().then(
+      (session) => {
+        if (cancelled) return
+        if (session) applySession(session)
+        else setStatus('signed-out')
+      },
+      (err: unknown) => {
+        if (cancelled) return
+        // Servern nås inte (t.ex. datorn vaknade före Wi-Fi): kvar i
+        // laddningsläget, aldrig inloggningen. Bakgrunden försöker igen.
+        if (err instanceof AuthUnavailableError) return
+        setStatus('signed-out')
+      },
+    )
     return () => {
       cancelled = true
+      stopKeeper()
+      offConnection()
+      offRestored()
     }
-  }, [])
+  }, [applySession])
 
   const login = useCallback(
     async (loginEmail: string, password: string) => {
@@ -156,9 +187,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         finishNewPassword,
         logout,
         getToken,
+        connectionLost,
       }}
     >
       {children}
+      {connectionLost && status !== 'signed-out' ? <ConnectionNotice /> : null}
     </AuthContext.Provider>
   )
 }

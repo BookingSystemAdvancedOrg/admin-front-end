@@ -16,6 +16,7 @@ const auth: AuthContextValue = {
   finishNewPassword: vi.fn(),
   logout: vi.fn(),
   getToken: vi.fn(),
+  connectionLost: false,
 }
 
 function Where() {

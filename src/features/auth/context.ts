@@ -19,6 +19,8 @@ export interface AuthContextValue {
   logout: () => void
   /** Färsk access-token (JWT) för Authorization-headern - den API:ts authorizer validerar. */
   getToken: () => Promise<string | null>
+  /** True när servern inte går att nå: fortfarande inloggad, appen försöker igen. */
+  connectionLost: boolean
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

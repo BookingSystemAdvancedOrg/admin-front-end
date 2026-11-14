@@ -104,10 +104,16 @@ channel?.addEventListener('message', (event: MessageEvent) => {
   if (event.data !== 'signed-out') return
   signOutGeneration += 1
   current = null
+  clearTimeout(proactiveTimer)
+  clearTimeout(retryTimer)
+  setUnreachable(false)
   signedOutListeners.forEach((listener) => listener())
 })
 
-/** Anropas när en annan flik loggar ut. Returnerar en avregistrering. */
+/**
+ * Anropas när en annan flik loggar ut, eller när servern säger att sessionen
+ * är slut (refresh-tokenen utgången eller återkallad). Returnerar en avregistrering.
+ */
 export function onSignedOutElsewhere(listener: () => void): () => void {
   signedOutListeners.add(listener)
   return () => {
@@ -223,6 +229,8 @@ function toSignInResult(response: AuthResponse, fallbackUsername: string): SignI
   if (response.status === 'authenticated') {
     const session = toStoredSession(response.authenticationResult)
     current = session
+    setUnreachable(false)
+    scheduleProactiveRefresh()
     return { kind: 'success', session }
   }
   return {
@@ -353,6 +361,71 @@ export async function confirmPasswordReset(
   })
 }
 
+/**
+ * Servern gick inte att nå (offline, nätverksfel, timeout, 5xx, 429). Det
+ * betyder INTE utloggad: refresh-cookien gäller i 30 dagar och används igen
+ * så fort kontakten är tillbaka.
+ */
+export class AuthUnavailableError extends Error {
+  constructor() {
+    super('Ingen kontakt med servern. Kontrollera internetanslutningen och försök igen.')
+    this.name = 'AuthUnavailableError'
+  }
+}
+
+/** Bara de här svaren från /auth/refresh betyder att sessionen är slut. */
+const SIGNED_OUT_STATUSES = new Set([400, 401, 403])
+/** Ett /auth/refresh som hänger (t.ex. Wi-Fi som inte är uppe) avbryts. */
+const REFRESH_TIMEOUT_MS = 15_000
+/**
+ * Snabba omförsök inom samma förnyelse. Med roterande refresh-tokens gäller
+ * den gamla tokenen bara en kort stund (retry_grace_period_seconds) om
+ * svaret med den nya tappades, så första omförsöket måste komma snabbt.
+ */
+export const REFRESH_RETRY_DELAYS_MS: readonly number[] = [2_000, 5_000]
+/** Därefter försöker appen i bakgrunden, allt glesare, tills kontakten är tillbaka. */
+export const BACKGROUND_RETRY_DELAYS_MS: readonly number[] = [10_000, 20_000, 30_000, 60_000]
+/** Access-tokenen förnyas så här långt innan den går ut. */
+export const REFRESH_AHEAD_MS = 5 * 60_000
+/** Marginal mot klockskillnad när en token används direkt. */
+const MIN_VALIDITY_MS = 30_000
+
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+/** Ett försök mot /auth/refresh. null = utloggad; kastar AuthUnavailableError annars. */
+async function refreshOnce(): Promise<StoredSession | null> {
+  const controller = typeof AbortController === 'function' ? new AbortController() : null
+  const timer = controller ? setTimeout(() => controller.abort(), REFRESH_TIMEOUT_MS) : null
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: SESSION_HEADERS,
+      credentials: 'same-origin',
+      body: '{}',
+      signal: controller?.signal,
+    })
+  } catch (err) {
+    console.warn('[Auth] Ingen kontakt vid förnyelse', err)
+    throw new AuthUnavailableError()
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+  if (SIGNED_OUT_STATUSES.has(res.status)) return null
+  if (!res.ok) {
+    console.warn(`[Auth] Förnyelsen svarade ${res.status}; försöker igen.`)
+    throw new AuthUnavailableError()
+  }
+  let response: AuthResponse
+  try {
+    response = (await res.json()) as AuthResponse
+  } catch {
+    throw new AuthUnavailableError()
+  }
+  if (response.status !== 'authenticated') return null
+  return toStoredSession(response.authenticationResult)
+}
+
 /** Nya tokens via refresh-cookien. null = inte inloggad (eller utgången). */
 async function refreshSession(): Promise<StoredSession | null> {
   if (!API_BASE_URL) return null
@@ -362,12 +435,13 @@ async function refreshSession(): Promise<StoredSession | null> {
     await revokeOnServer()
     return null
   }
-  try {
-    const response = await authRequest('/auth/refresh', {})
-    if (response.status !== 'authenticated') return null
-    return toStoredSession(response.authenticationResult)
-  } catch {
-    return null
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await refreshOnce()
+    } catch (err) {
+      if (attempt >= REFRESH_RETRY_DELAYS_MS.length) throw err
+      await wait(REFRESH_RETRY_DELAYS_MS[attempt])
+    }
   }
 }
 
@@ -382,23 +456,158 @@ function refreshAcrossTabs(): Promise<StoredSession | null> {
   return locks.request('booqy-admin-refresh', () => refreshSession())
 }
 
+// Kontakten med inloggningstjänsten och sessionens livscykel, för AuthContext.
+let unreachable = false
+const connectionListeners = new Set<(unreachable: boolean) => void>()
+const sessionListeners = new Set<(session: StoredSession) => void>()
+
+/** true medan servern inte går att nå (sessionen finns kvar). Returnerar en avregistrering. */
+export function onConnectionChange(listener: (unreachable: boolean) => void): () => void {
+  connectionListeners.add(listener)
+  return () => {
+    connectionListeners.delete(listener)
+  }
+}
+
+/** En förnyelse lyckades (t.ex. när kontakten kom tillbaka). Returnerar en avregistrering. */
+export function onSessionRestored(listener: (session: StoredSession) => void): () => void {
+  sessionListeners.add(listener)
+  return () => {
+    sessionListeners.delete(listener)
+  }
+}
+
+export function isAuthUnreachable(): boolean {
+  return unreachable
+}
+
+function setUnreachable(next: boolean): void {
+  if (next === unreachable) return
+  unreachable = next
+  connectionListeners.forEach((listener) => listener(next))
+}
+
 /**
  * Den aktuella sessionen: från minnet om access-tokenen fortfarande gäller,
  * annars förnyad via cookien (efter omladdning, i en ny flik, efter en timme).
+ * null = utloggad. Kastar AuthUnavailableError när servern inte går att nå:
+ * då är man fortfarande inloggad och appen försöker igen i bakgrunden.
  */
-export async function getCurrentSession(): Promise<StoredSession | null> {
-  if (current && Date.now() < current.expiresAt - 30_000) return current
+export async function getCurrentSession(
+  minValidityMs: number = MIN_VALIDITY_MS,
+): Promise<StoredSession | null> {
+  if (current && Date.now() < current.expiresAt - minValidityMs) return current
+  return refreshNow()
+}
+
+async function refreshNow(): Promise<StoredSession | null> {
   const generation = signOutGeneration
   if (!refreshing) {
     refreshing = refreshAcrossTabs().finally(() => {
       refreshing = null
     })
   }
-  const refreshed = await refreshing
+  let refreshed: StoredSession | null
+  try {
+    refreshed = await refreshing
+  } catch (err) {
+    if (generation !== signOutGeneration) return null
+    if (!(err instanceof AuthUnavailableError)) throw err
+    // Sessionen i minnet ligger kvar; nästa försök sker i bakgrunden.
+    setUnreachable(true)
+    scheduleBackgroundRetry()
+    throw err
+  }
   // Utloggad medan förnyelsen pågick: kasta resultatet.
   if (generation !== signOutGeneration) return null
+  const hadSession = current !== null || unreachable
   current = refreshed
+  retryIndex = 0
+  clearTimeout(retryTimer)
+  setUnreachable(false)
+  if (refreshed) {
+    scheduleProactiveRefresh()
+    sessionListeners.forEach((listener) => listener(refreshed))
+  } else {
+    clearTimeout(proactiveTimer)
+    if (hadSession) signedOutListeners.forEach((listener) => listener())
+  }
   return refreshed
+}
+
+/**
+ * Efter ett 401 från ett vanligt API-anrop: förnya en gång (om ingen annan
+ * redan har gjort det sedan `usedToken` hämtades) och ge tillbaka den nya
+ * access-tokenen. null = servern säger att man är utloggad på riktigt.
+ */
+export async function refreshAfterUnauthorized(usedToken: string | null): Promise<string | null> {
+  if (current && current.accessToken !== usedToken && Date.now() < current.expiresAt - MIN_VALIDITY_MS) {
+    return current.accessToken
+  }
+  const session = await refreshNow()
+  return session?.accessToken || null
+}
+
+// Bakgrunden: förnyar i förväg och försöker igen när kontakten kommer tillbaka.
+let keeperRunning = false
+let proactiveTimer: ReturnType<typeof setTimeout> | undefined
+let retryTimer: ReturnType<typeof setTimeout> | undefined
+let retryIndex = 0
+
+function kick(): void {
+  if (!keeperRunning) return
+  if (!current && !unreachable) return
+  void getCurrentSession(REFRESH_AHEAD_MS).catch(() => undefined)
+}
+
+function scheduleProactiveRefresh(): void {
+  clearTimeout(proactiveTimer)
+  if (!keeperRunning || !current) return
+  const delay = Math.max(0, current.expiresAt - REFRESH_AHEAD_MS - Date.now())
+  proactiveTimer = setTimeout(kick, delay)
+}
+
+function scheduleBackgroundRetry(): void {
+  clearTimeout(retryTimer)
+  if (!keeperRunning) return
+  const delay = BACKGROUND_RETRY_DELAYS_MS[Math.min(retryIndex, BACKGROUND_RETRY_DELAYS_MS.length - 1)]
+  retryIndex += 1
+  retryTimer = setTimeout(kick, delay)
+}
+
+/**
+ * Startar bakgrunden (anropas en gång av AuthProvider): access-tokenen
+ * förnyas några minuter innan den går ut, direkt när datorn vaknar, när
+ * fönstret får fokus igen och när nätet kommer tillbaka. Returnerar stopp.
+ */
+export function startSessionKeeper(): () => void {
+  if (typeof window === 'undefined') return () => undefined
+  keeperRunning = true
+  const onVisible = () => {
+    if (document.visibilityState === 'visible') kick()
+  }
+  // Datorn har sovit: timers står still under sömnen, så ett glapp i
+  // klockan betyder att den just vaknade.
+  let last = Date.now()
+  const wakeCheck = setInterval(() => {
+    const now = Date.now()
+    if (now - last > 60_000) kick()
+    last = now
+  }, 20_000)
+  window.addEventListener('online', kick)
+  window.addEventListener('focus', kick)
+  document.addEventListener('visibilitychange', onVisible)
+  scheduleProactiveRefresh()
+  if (unreachable) scheduleBackgroundRetry()
+  return () => {
+    keeperRunning = false
+    clearInterval(wakeCheck)
+    clearTimeout(proactiveTimer)
+    clearTimeout(retryTimer)
+    window.removeEventListener('online', kick)
+    window.removeEventListener('focus', kick)
+    document.removeEventListener('visibilitychange', onVisible)
+  }
 }
 
 export async function getIdToken(): Promise<string | null> {
@@ -418,6 +627,7 @@ export async function getAccessToken(): Promise<string | null> {
 
 export function clearSession(): void {
   current = null
+  clearTimeout(proactiveTimer)
 }
 
 /** Ber servern återkalla refresh-tokenen och radera cookien. true = klart. */
@@ -455,6 +665,9 @@ async function revokeOnServer(): Promise<boolean> {
 export async function signOut(): Promise<boolean> {
   signOutGeneration += 1
   current = null
+  clearTimeout(proactiveTimer)
+  clearTimeout(retryTimer)
+  setUnreachable(false)
   if (!API_BASE_URL) return true
   if (refreshing) {
     await refreshing.catch(() => null)

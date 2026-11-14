@@ -22,7 +22,6 @@ import {
   tableSize,
 } from './data'
 import type {
-  Fixture,
   Floor,
   GroundRect,
   Opening,
@@ -59,6 +58,8 @@ import {
   formatMetres,
   formatSize,
   moveClipsTo,
+  freeTableSpot,
+  overlappingTableIds,
 } from './editorTools'
 import type { Clip, EditorAction, Guide, History, ShortcutTool } from './editorTools'
 import './layout-editor.css'
@@ -72,7 +73,6 @@ const WALL_HEIGHT = 90
 const WALL_LOW = 16
 const WALL_THICKNESS = 10
 const OPENING_THICKNESS = 14
-const COUNTER_HEIGHT = 34
 /**
  * Hur långt från en vägg man får klicka och ändå träffa den. Måttet gäller
  * i golvplanet, och i 3D-vyn blir den zonen visuellt smal - därför generöst
@@ -88,6 +88,8 @@ const OPENING_DEFAULT_LENGTH: Record<OpeningKind, number> = {
 }
 const HALF_W = WORKSPACE.w / 2
 const HALF_H = WORKSPACE.h / 2
+/** Början på felet när publiceringen stoppas av bord som står ovanpå varandra. */
+const OVERLAP_ERROR = 'Några bord står ovanpå varandra'
 
 type Tool =
   | 'select'
@@ -96,7 +98,6 @@ type Tool =
   | 'window'
   | 'entrance'
   | 'kitchen'
-  | 'counter'
   | 'add-square'
   | 'add-round'
   | 'erase'
@@ -105,17 +106,16 @@ type SelItem =
   | { kind: 'table'; id: string }
   | { kind: 'wall'; id: string }
   | { kind: 'opening'; id: string }
-  | { kind: 'fixture'; id: string }
   | { kind: 'ground'; id: string }
 
 type Selection = SelItem | null
 
 /** Det som går att flytta, kopiera och markera med ruta tillsammans. */
-const GROUPABLE: SelItem['kind'][] = ['table', 'fixture', 'wall']
+const GROUPABLE: SelItem['kind'][] = ['table', 'wall']
 
 type DragState =
   | {
-      kind: 'table' | 'fixture'
+      kind: 'table'
       id: string
       startX: number
       startY: number
@@ -133,7 +133,6 @@ type DragState =
       startX: number
       startY: number
       tables: Map<string, { x: number; y: number }>
-      fixtures: Map<string, { x: number; y: number }>
       walls: Map<string, { x: number; y: number }>
     }
   | { kind: 'marquee'; x0: number; y0: number; additive: boolean }
@@ -246,8 +245,8 @@ export default function LayoutEditorPage() {
  *
  * Våningar, väggar, öppningar och bord synkas mot det riktiga layout-API:t
  * (layoutApi.ts): de läses in vid sidladdning och skrivs vid "Spara
- * utkast"/"Publicera layout". Markytor och kassan finns inte i API:ts
- * datamodell och lever bara lokalt - se kommentaren i layoutApi.ts.
+ * utkast"/"Publicera layout". Markytor sparas som `floorArea` - se
+ * kommentaren i layoutApi.ts.
  */
 function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; active?: boolean }) {
   // Dold bakom "Boka bord": tangentbordsgenvägarna får inte röra planen då.
@@ -280,7 +279,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
   }
   // Ruta för att markera flera (skärmkoordinater relativt scenen).
   const [marquee, setMarquee] = useState<{ x0: number; y0: number; x: number; y: number; additive: boolean } | null>(null)
-  // Hjälplinjer som visas medan ett bord eller kassan dras.
+  // Hjälplinjer som visas medan ett bord dras.
   const [guides, setGuides] = useState<Guide[]>([])
   // Ett bord som dras från verktygsfältet ut på planen.
   const [placing, setPlacing] = useState<{ shape: TableShape; x: number; y: number; over: boolean } | null>(null)
@@ -458,10 +457,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
   const selectedOpening =
     selection?.kind === 'opening'
       ? floor.openings.find((o) => o.id === selection.id) ?? null
-      : null
-  const selectedFixture =
-    selection?.kind === 'fixture'
-      ? floor.fixtures.find((f) => f.id === selection.id) ?? null
       : null
   const selectedGround =
     selection?.kind === 'ground'
@@ -694,7 +689,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
 
   const openingTool = OPENING_TOOLS.find((o) => o.tool === tool) ?? null
   const isDrawTool =
-    tool === 'wall' || tool === 'ground' || tool === 'counter' || Boolean(openingTool)
+    tool === 'wall' || tool === 'ground' || Boolean(openingTool)
 
   /* --- Rita ------------------------------------------------------------- */
 
@@ -764,10 +759,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
         length: 0,
       })
       ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
-      return
-    }
-    if (tool === 'counter') {
-      addCounter(p)
       return
     }
     if (tool === 'select') {
@@ -1003,10 +994,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
         const o = d.tables.get(t.id)
         if (o) room(o, t.w, t.h)
       }
-      for (const f of floor.fixtures) {
-        const o = d.fixtures.get(f.id)
-        if (o) room(o, f.w, f.h)
-      }
       for (const w of floor.walls) {
         const o = d.walls.get(w.id)
         if (!o) continue
@@ -1031,15 +1018,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
             y: clamp(o.y + gy, -HALF_H + t.h / 2, HALF_H - t.h / 2),
           }
         }),
-        fixtures: fl.fixtures.map((f) => {
-          const o = d.fixtures.get(f.id)
-          if (!o) return f
-          return {
-            ...f,
-            x: clamp(o.x + gx, -HALF_W + f.w / 2, HALF_W - f.w / 2),
-            y: clamp(o.y + gy, -HALF_H + f.h / 2, HALF_H - f.h / 2),
-          }
-        }),
         walls: fl.walls.map((w) => {
           const o = d.walls.get(w.id)
           if (!o) return w
@@ -1053,19 +1031,18 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       return
     }
 
-    // Ett bord eller kassan: snappa mot de andras kanter och mitt och mot
-    // väggarna, med hjälplinjer (håll Cmd/Ctrl för att dra fritt).
-    const item = d.kind === 'table' ? floor.tables.find((t) => t.id === d.id) : floor.fixtures.find((f) => f.id === d.id)
+    // Ett bord: snappa mot de andras kanter och mitt och mot väggarna, med
+    // hjälplinjer (håll Cmd/Ctrl för att dra fritt).
+    const item = floor.tables.find((t) => t.id === d.id)
     if (!item) return
     let nx = d.origX + fx
     let ny = d.origY + fy
     if (e.metaKey || e.ctrlKey) {
       setGuides([])
     } else {
-      const others = [
-        ...floor.tables.filter((t) => t.id !== d.id),
-        ...floor.fixtures.filter((f) => f.id !== d.id),
-      ].map((o) => ({ x: o.x, y: o.y, w: o.w, h: o.h }))
+      const others = floor.tables
+        .filter((t) => t.id !== d.id)
+        .map((o) => ({ x: o.x, y: o.y, w: o.w, h: o.h }))
       const snapped = snapToGuides({ x: nx, y: ny, w: item.w, h: item.h }, others, floor.walls, 8 / zoom)
       nx += snapped.dx
       ny += snapped.dy
@@ -1073,11 +1050,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
     }
     const px = clamp(nx, -HALF_W + item.w / 2, HALF_W - item.w / 2)
     const py = clamp(ny, -HALF_H + item.h / 2, HALF_H - item.h / 2)
-    if (d.kind === 'table') {
-      patchFloor((fl) => ({ tables: fl.tables.map((t) => (t.id === d.id ? { ...t, x: px, y: py } : t)) }))
-    } else {
-      patchFloor((fl) => ({ fixtures: fl.fixtures.map((f) => (f.id === d.id ? { ...f, x: px, y: py } : f)) }))
-    }
+    patchFloor((fl) => ({ tables: fl.tables.map((t) => (t.id === d.id ? { ...t, x: px, y: py } : t)) }))
   }
 
   function onScenePointerUp() {
@@ -1196,7 +1169,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
 
   function onElementPointerDown(
     e: ReactPointerEvent,
-    kind: 'table' | 'fixture' | 'wall' | 'opening' | 'ground',
+    kind: 'table' | 'wall' | 'opening' | 'ground',
     id: string,
     origX = 0,
     origY = 0,
@@ -1227,14 +1200,12 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       // Dra i ett av flera valda element = flytta alla valda.
       const pick = (k: SelItem['kind']) => new Set(selected.filter((s) => s.kind === k).map((s) => s.id))
       const ts = pick('table')
-      const fs = pick('fixture')
       const ws = pick('wall')
       drag.current = {
         kind: 'group',
         startX: e.clientX,
         startY: e.clientY,
         tables: new Map(floor.tables.filter((t) => ts.has(t.id)).map((t) => [t.id, { x: t.x, y: t.y }])),
-        fixtures: new Map(floor.fixtures.filter((f) => fs.has(f.id)).map((f) => [f.id, { x: f.x, y: f.y }])),
         walls: new Map(floor.walls.filter((w) => ws.has(w.id)).map((w) => [w.id, { x: w.x, y: w.y }])),
       }
       ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
@@ -1293,7 +1264,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
   }
 
   function removeByKind(
-    kind: 'table' | 'fixture' | 'wall' | 'opening' | 'ground',
+    kind: 'table' | 'wall' | 'opening' | 'ground',
     id: string,
   ) {
     patchFloor((fl) => {
@@ -1305,8 +1276,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
         }
       if (kind === 'opening')
         return { openings: fl.openings.filter((o) => o.id !== id) }
-      if (kind === 'fixture')
-        return { fixtures: fl.fixtures.filter((f) => f.id !== id) }
       return { grounds: fl.grounds.filter((g) => g.id !== id) }
     })
     setSelection((cur) => (cur && cur.id === id ? null : cur))
@@ -1376,23 +1345,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
     setWallDraft(null)
   }
 
-  function addCounter(p: { x: number; y: number }) {
-    if (readOnly) return
-    const f: Fixture = {
-      id: `fx${nextId.current++}`,
-      type: 'counter',
-      label: 'KASSA',
-      x: clamp(snap(p.x), -HALF_W + 50, HALF_W - 50),
-      y: clamp(snap(p.y), -HALF_H + 20, HALF_H - 20),
-      w: 100,
-      h: 36,
-    }
-    patchFloor((fl) => ({ fixtures: [...fl.fixtures, f] }))
-    setSelection({ kind: 'fixture', id: f.id })
-    setTool('select')
-    markDirty()
-  }
-
   /* --- Högerklicksmeny -------------------------------------------------- */
 
   function onSceneContextMenu(e: React.MouseEvent) {
@@ -1428,7 +1380,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
     const view: MenuItem[] = [
       { label: 'Markera allt', shortcut: 'Cmd/Ctrl+A', run: () => setSelected([
         ...floor.tables.map((t) => ({ kind: 'table' as const, id: t.id })),
-        ...floor.fixtures.map((f) => ({ kind: 'fixture' as const, id: f.id })),
         ...floor.walls.map((w) => ({ kind: 'wall' as const, id: w.id })),
       ]) },
       { label: 'Zooma till allt', shortcut: 'Shift+1', run: () => fitTo(floor) },
@@ -1443,7 +1394,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
         [
           { label: 'Fyrkantigt bord här', shortcut: 'T', run: () => addTable('square', at) },
           { label: 'Runt bord här', shortcut: 'R', run: () => addTable('round', at) },
-          { label: 'Kassa här', shortcut: 'C', run: () => addCounter(at) },
         ],
         view,
       ]
@@ -1538,6 +1488,31 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
     return { x: snap(p.x), y: snap(p.y) }
   }
 
+  /**
+   * Golvytan som syns i scenen just nu (en bit in från kanterna), som en
+   * axelparallell ruta i golvkoordinater. Används för att lägga nya bord
+   * där man ser dem.
+   */
+  function visibleArea(): { minX: number; minY: number; maxX: number; maxY: number } {
+    const scene = sceneRef.current
+    if (!scene) return { minX: bounds.x, minY: bounds.y, maxX: bounds.x + bounds.w, maxY: bounds.y + bounds.h }
+    const r = scene.getBoundingClientRect()
+    const ix = r.width * 0.12
+    const iy = r.height * 0.12
+    const corners = [
+      unproject(r.left + ix, r.top + iy),
+      unproject(r.right - ix, r.top + iy),
+      unproject(r.left + ix, r.bottom - iy),
+      unproject(r.right - ix, r.bottom - iy),
+    ]
+    return {
+      minX: Math.min(...corners.map((c) => c.x)),
+      maxX: Math.max(...corners.map((c) => c.x)),
+      minY: Math.min(...corners.map((c) => c.y)),
+      maxY: Math.max(...corners.map((c) => c.y)),
+    }
+  }
+
   function addTable(shape: TableShape, at?: { x: number; y: number }) {
     if (readOnly) return
     // Nästa lediga nummer över alla våningar - tidigare började den på T14
@@ -1545,13 +1520,10 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
     const n = nextTableNumber(floors)
     const seats = shape === 'round' ? 2 : 4
     const size = defaultTableSize(shape, seats)
-    const c = at ?? viewCentre()
-    // Står redan ett bord där hamnar det nya snett bredvid, inte ovanpå
-    // (inte när det släpps på en vald plats - då hamnar det där man släppte).
-    for (let i = 0; !at && i < 20 && floor.tables.some((o) => Math.abs(o.x - c.x) < GRID && Math.abs(o.y - c.y) < GRID); i++) {
-      c.x += GRID * 2
-      c.y += GRID * 2
-    }
+    // Ett klick på verktyget lägger bordet på närmaste lediga ruta i det som
+    // syns, aldrig ovanpå ett annat. Släpps det på en vald plats hamnar det
+    // där man släppte (en krock flaggas då i planen).
+    const c = at ?? freeTableSpot(floor.tables, { shape, ...size }, viewCentre(), visibleArea())
     const t: TableElement = {
       id: `t${n}-${shape}-${nextId.current++}`,
       label: `T${n}`,
@@ -1604,16 +1576,13 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
 
   /* --- Kortkommandon ---------------------------------------------------- */
 
-  /** De valda elementen som klipp - bord, kassa och väggar går att kopiera. */
+  /** De valda elementen som klipp - bord och väggar går att kopiera. */
   function selectionClips(): Clip[] {
     const out: Clip[] = []
     for (const sel of selected) {
       if (sel.kind === 'table') {
         const t = floor.tables.find((x) => x.id === sel.id)
         if (t) out.push({ kind: 'table', table: t })
-      } else if (sel.kind === 'fixture') {
-        const f = floor.fixtures.find((x) => x.id === sel.id)
-        if (f) out.push({ kind: 'fixture', fixture: f })
       } else if (sel.kind === 'wall') {
         const w = floor.walls.find((x) => x.id === sel.id)
         if (w) out.push({ kind: 'wall', wall: w })
@@ -1630,21 +1599,18 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       pasteClip(
         clip,
         times,
-        () => `${clip.kind === 'wall' ? 'w' : clip.kind === 'fixture' ? 'fx' : 't'}${nextId.current++}-kopia`,
+        () => `${clip.kind === 'wall' ? 'w' : 't'}${nextId.current++}-kopia`,
         () => `T${n++}`,
       ),
     )
     const tables = outs.flatMap((o) => (o.kind === 'table' ? [o.table] : []))
-    const fixtures = outs.flatMap((o) => (o.kind === 'fixture' ? [o.fixture] : []))
     const walls = outs.flatMap((o) => (o.kind === 'wall' ? [o.wall] : []))
     patchFloor((fl) => ({
       tables: [...fl.tables, ...tables],
-      fixtures: [...fl.fixtures, ...fixtures],
       walls: [...fl.walls, ...walls],
     }))
     setSelected([
       ...tables.map((t) => ({ kind: 'table' as const, id: t.id })),
-      ...fixtures.map((f) => ({ kind: 'fixture' as const, id: f.id })),
       ...walls.map((w) => ({ kind: 'wall' as const, id: w.id })),
     ])
     pickTool('select')
@@ -1657,7 +1623,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
     const d = nudgeDelta(dx, dy, spin, GRID * (big ? 5 : 1))
     const ids = (k: SelItem['kind']) => new Set(selected.filter((s) => s.kind === k).map((s) => s.id))
     const ts = ids('table')
-    const fs = ids('fixture')
     const ws = ids('wall')
     const os = ids('opening')
     patchFloor((fl) => ({
@@ -1668,15 +1633,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
               ...t,
               x: clamp(t.x + d.x, -HALF_W + t.w / 2, HALF_W - t.w / 2),
               y: clamp(t.y + d.y, -HALF_H + t.h / 2, HALF_H - t.h / 2),
-            },
-      ),
-      fixtures: fl.fixtures.map((f) =>
-        !fs.has(f.id)
-          ? f
-          : {
-              ...f,
-              x: clamp(f.x + d.x, -HALF_W + f.w / 2, HALF_W - f.w / 2),
-              y: clamp(f.y + d.y, -HALF_H + f.h / 2, HALF_H - f.h / 2),
             },
       ),
       walls: fl.walls.map((w) =>
@@ -1781,7 +1737,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
         e.preventDefault() // Cmd+D är annars "lägg till bokmärke"
         const clips = selectionClips()
         if (clips.length > 0) pasteOnFloor(clips, 1)
-        else if (selected.length > 0) warn('Bord, kassan och väggar går att duplicera - fönster, dörrar och mark inte än.')
+        else if (selected.length > 0) warn('Bord och väggar går att duplicera - fönster, dörrar och mark inte än.')
         return
       }
       case 'copy': {
@@ -1828,8 +1784,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
         e.preventDefault()
         setSelected([
           ...floor.tables.map((t) => ({ kind: 'table' as const, id: t.id })),
-          ...floor.fixtures.map((f) => ({ kind: 'fixture' as const, id: f.id })),
-          ...floor.walls.map((w) => ({ kind: 'wall' as const, id: w.id })),
+            ...floor.walls.map((w) => ({ kind: 'wall' as const, id: w.id })),
         ])
         return
     }
@@ -2038,6 +1993,16 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
    * med i versionen.
    */
   async function publish() {
+    // Bord som står ovanpå varandra går inte att boka rätt - stoppa här, före
+    // sparningen, och peka ut var det är.
+    const crowded = floors.filter((f) => overlappingTableIds(f.tables).size > 0)
+    if (crowded.length > 0) {
+      setLayoutError(
+        `${OVERLAP_ERROR} (${crowded.map((f) => f.name).join(', ')}). ` +
+          'De är markerade med rött: flytta isär dem och publicera igen.',
+      )
+      return
+    }
     const loc = requireLocation()
     if (!loc) return
     if (!(await saveDraft())) return
@@ -2079,25 +2044,31 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
   const floorIsEmpty =
     floor.grounds.length === 0 &&
     floor.walls.length === 0 &&
-    floor.tables.length === 0 &&
-    floor.fixtures.length === 0
+    floor.tables.length === 0
 
   const loweredById = new Map(drawnWalls.map((w) => [w.id, isLowered(w)]))
+  // Bord som står ovanpå ett annat: röd kant, och publiceringen stoppas.
+  const overlapping = overlappingTableIds(floor.tables)
+  // Felet "bord ovanpå varandra" försvinner så fort borden flyttats isär.
+  const shownLayoutError =
+    layoutError?.startsWith(OVERLAP_ERROR) &&
+    !floors.some((f) => overlappingTableIds(f.tables).size > 0)
+      ? null
+      : layoutError
 
   // Raden under ritytan: en kort hjälp medan något pågår, annars inget
-  const sceneHint =
-    drawWarning
+  const sceneHint = drawWarning
     ? drawWarning
-    : tool === 'ground'
-      ? 'Klicka och dra för att rita mark - väggar skapas runt om automatiskt'
-      : openingTool
-        ? 'Klicka på en vägg och dra längs den - öppningen sitter kvar på väggen'
-        : tool === 'wall'
-          ? wallChain
-            ? 'Klicka för nästa hörn · klicka på startpunkten för att sluta rummet · dubbelklick, Enter eller Esc avslutar'
-            : 'Klicka för att börja en sammanhängande vägg (klick per hörn) - eller dra för en enskild vägg'
-          : tool === 'counter'
-            ? 'Klicka för att placera kassan'
+    : overlapping.size > 0 && !readOnly
+      ? 'Röda bord står ovanpå varandra - flytta isär dem innan du publicerar'
+      : tool === 'ground'
+        ? 'Klicka och dra för att rita mark - väggar skapas runt om automatiskt'
+        : openingTool
+          ? 'Klicka på en vägg och dra längs den - öppningen sitter kvar på väggen'
+          : tool === 'wall'
+            ? wallChain
+              ? 'Klicka för nästa hörn · klicka på startpunkten för att sluta rummet · dubbelklick, Enter eller Esc avslutar'
+              : 'Klicka för att börja en sammanhängande vägg (klick per hörn) - eller dra för en enskild vägg'
             : handMode || spaceDown
               ? 'Dra för att panorera · Esc lämnar handverktyget'
               : guides.length > 0
@@ -2177,9 +2148,9 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
             dess.
           </p>
         )}
-        {layoutError && (
+        {shownLayoutError && (
           <p className="form-error" role="alert">
-            {layoutError}
+            {shownLayoutError}
           </p>
         )}
         {liveError && (
@@ -2205,7 +2176,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
             <ToolButton icon="tool-window" caption="Fönster" title="Fönster - placeras på en vägg" shortcut={keyForTool('window')} active={tool === 'window'} disabled={readOnly} onClick={() => chooseTool('window')} />
             <ToolButton icon="tool-entrance" caption="Entré" title="Entré - placeras på en vägg" shortcut={keyForTool('entrance')} active={tool === 'entrance'} disabled={readOnly} onClick={() => chooseTool('entrance')} />
             <ToolButton icon="tool-kitchen" caption="Kök" title="Kökets ingång - placeras på en vägg" shortcut={keyForTool('kitchen')} active={tool === 'kitchen'} disabled={readOnly} onClick={() => chooseTool('kitchen')} />
-            <ToolButton icon="tool-checkout" caption="Kassa" title="Placera kassan - klicka" shortcut={keyForTool('counter')} active={tool === 'counter'} disabled={readOnly} onClick={() => chooseTool('counter')} />
             <ToolButton icon="table-square" caption="Fyrkant" title="Fyrkantigt bord - klicka, eller dra ut det på planen" shortcut={keyForTool('add-square')} active={placing?.shape === 'square'} disabled={readOnly} onPointerDown={(e) => onTableToolPointerDown(e, 'square')} onClick={() => !suppressToolClick.current && chooseTool('add-square')} />
             <ToolButton icon="table-round" caption="Runt" title="Runt bord - klicka, eller dra ut det på planen" shortcut={keyForTool('add-round')} active={placing?.shape === 'round'} disabled={readOnly} onPointerDown={(e) => onTableToolPointerDown(e, 'round')} onClick={() => !suppressToolClick.current && chooseTool('add-round')} />
             <ToolButton icon="trash" caption="Radera" title="Radera - klicka på ett element (eller välj och tryck Delete)" active={tool === 'erase'} disabled={readOnly} onClick={() => { setHandMode(false); setTool((t) => (t === 'erase' ? 'select' : 'erase')) }} />
@@ -2403,39 +2373,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                   )
                 })}
 
-                {floor.fixtures.map((f) => (
-                  <div
-                    key={f.id}
-                    className={isSel('fixture', f.id) ? 'fixture selected' : 'fixture'}
-                    data-sel-kind="fixture"
-                    data-sel-id={f.id}
-                    style={{
-                      left: f.x - f.w / 2 + HALF_W,
-                      top: f.y - f.h / 2 + HALF_H,
-                      width: f.w,
-                      height: f.h,
-                      ['--fh' as string]: `${COUNTER_HEIGHT}px`,
-                    }}
-                    onPointerDown={(e) => onElementPointerDown(e, 'fixture', f.id, f.x, f.y)}
-                  >
-                    <div className="fx-face back" />
-                    <div className="fx-face left" />
-                    <div className="fx-face right" />
-                    <div className="fx-face front" />
-                    <div className="fx-top" />
-                    <div className="fx-register">
-                      <div className="fxr-face back" />
-                      <div className="fxr-face left" />
-                      <div className="fxr-face right" />
-                      <div className="fxr-face front" />
-                      <div className="fxr-top" />
-                    </div>
-                    <div className="seg-tag kassa-tag">
-                      <span>{f.label}</span>
-                    </div>
-                  </div>
-                ))}
-
                 {floor.tables.map((t) => {
                   const size = tableSize(t)
                   return (
@@ -2445,6 +2382,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                         'table-el',
                         t.shape,
                         isSel('table', t.id) ? 'selected' : '',
+                        overlapping.has(t.id) ? 'overlap' : '',
                       ].join(' ')}
                       data-sel-kind="table"
                       data-sel-id={t.id}
@@ -2527,7 +2465,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                   )
                 })}
 
-                {/* Hjälplinjer medan ett bord eller kassan dras. */}
+                {/* Hjälplinjer medan ett bord dras. */}
                 {guides.map((g, i) => (
                   <div
                     key={i}
@@ -2613,7 +2551,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
 
             {/* Bara när något pågår (ett verktyg, en dragning, flera valda);
                 i vila står inget här: kortkommandona finns under ?. */}
-            {sceneHint && <p className={drawWarning ? 'scene-hint warning' : 'scene-hint'}>{sceneHint}</p>}
+            {sceneHint && <p className={drawWarning || (overlapping.size > 0 && !readOnly) ? 'scene-hint warning' : 'scene-hint'}>{sceneHint}</p>}
           </div>
 
           <aside className="admin-card props-panel">
@@ -2628,11 +2566,9 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                     ? 'Vägg'
                     : selectedOpening
                       ? OPENING_LABEL[selectedOpening.kind]
-                      : selectedFixture
-                        ? 'Kassan'
-                        : selectedGround
-                          ? 'Markyta'
-                          : floor.name}
+                      : selectedGround
+                        ? 'Markyta'
+                        : floor.name}
               </p>
             </div>
 
@@ -2840,23 +2776,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
               </>
             )}
 
-            {selectedFixture && (
-              <>
-                <div className="props-field">
-                  <p className="props-label">TYP</p>
-                  <p className="props-pos">Kassadisk</p>
-                </div>
-                <div className="props-field">
-                  <p className="props-label">POSITION</p>
-                  <p className="props-pos">{`x: ${Math.round(selectedFixture.x)}   y: ${Math.round(selectedFixture.y)}`}</p>
-                </div>
-                <div className="props-divider" />
-                <button type="button" className="btn danger-outline" onClick={() => removeByKind('fixture', selectedFixture.id)}>
-                  Ta bort element
-                </button>
-              </>
-            )}
-
             {selectedGround && (
               <>
                 <div className="props-field">
@@ -2922,8 +2841,8 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
         </div>
 
         <div className="editor-statusbar">
-          <span className="grow" role={layoutError ? 'alert' : undefined}>
-            {layoutError ?? statusText}
+          <span className="grow" role={shownLayoutError ? 'alert' : undefined}>
+            {shownLayoutError ?? statusText}
           </span>
           <span>
             {floor.name}
@@ -3030,8 +2949,6 @@ function contentBounds(floor: Floor): {
     if (w.dir === 'h') add(w.x, w.y, w.x + w.length, w.y)
     else add(w.x, w.y, w.x, w.y + w.length)
   }
-  for (const f of floor.fixtures)
-    add(f.x - f.w / 2, f.y - f.h / 2, f.x + f.w / 2, f.y + f.h / 2)
   for (const t of floor.tables) {
     const s = tableSize(t)
     add(t.x - s.w / 2, t.y - s.h / 2, t.x + s.w / 2, t.y + s.h / 2)
@@ -3256,7 +3173,6 @@ const SHORTCUTS: { group: string; rows: [string, string][] }[] = [
       ['M', 'Mark (väggar skapas runt om)'],
       ['W', 'Vägg - klick per hörn, dubbelklick/Enter avslutar'],
       ['F · E · K', 'Fönster · Entré · Kökets ingång'],
-      ['C', 'Kassa'],
       ['T · R', 'Fyrkantigt · runt bord (eller dra ut från verktygsfältet)'],
     ],
   },

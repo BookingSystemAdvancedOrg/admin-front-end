@@ -24,7 +24,6 @@ export type IconName =
   | 'tool-window'
   | 'tool-entrance'
   | 'tool-kitchen'
-  | 'tool-checkout'
   | 'table-square'
   | 'table-round'
   | 'undo'
@@ -80,7 +79,6 @@ const DRAWN: Record<IconName, string> = {
   'tool-window': '<rect x="4.5" y="5" width="15" height="14" rx="1"/><path d="M12 5v14M4.5 12h15"/>',
   'tool-entrance': '<path d="M4 20h16M6.5 20V4h9.5v16M13.4 12.2v.1"/>',
   'tool-kitchen': '<path d="M5 11h14v5a3.5 3.5 0 0 1-3.5 3.5h-7A3.5 3.5 0 0 1 5 16zM3 11h18M9.5 4c-1 1 1 2 0 3.5M13.5 4c-1 1 1 2 0 3.5"/>',
-  'tool-checkout': '<path d="M4 20h16M5.5 20l1-7.5h11l1 7.5M8.5 12.5V6h7v6.5M10.5 9h3"/>',
   'table-square': '<rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/><path d="M9.5 3.5h5M9.5 20.5h5M3.5 9.5v5M20.5 9.5v5"/>',
   'table-round': '<circle cx="12" cy="12" r="5.5"/><path d="M10 3.5h4M10 20.5h4M3.5 10v4M20.5 10v4"/>',
   undo: '<path d="M8.5 6L4.5 10l4 4M4.5 10h9.5a5.5 5.5 0 0 1 0 11H11"/>',

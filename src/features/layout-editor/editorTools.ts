@@ -4,7 +4,7 @@
  * att den går att testa utan att rendera hela 3D-scenen.
  */
 import { GRID, WORKSPACE } from './data'
-import type { Fixture, Floor, TableElement, WallSegment } from './data'
+import type { Floor, TableElement, WallSegment } from './data'
 
 /* --- Ångra / gör om ------------------------------------------------------ */
 
@@ -63,7 +63,6 @@ export type ShortcutTool =
   | 'window'
   | 'entrance'
   | 'kitchen'
-  | 'counter'
   | 'add-square'
   | 'add-round'
 
@@ -95,7 +94,6 @@ export const TOOL_KEYS: Record<string, ShortcutTool> = {
   f: 'window',
   e: 'entrance',
   k: 'kitchen',
-  c: 'counter',
   t: 'add-square',
   r: 'add-round',
 }
@@ -201,7 +199,6 @@ export function nudgeDelta(
 
 export type Clip =
   | { kind: 'table'; table: TableElement }
-  | { kind: 'fixture'; fixture: Fixture }
   | { kind: 'wall'; wall: WallSegment }
 
 /** Nästa lediga bordsnummer över ALLA våningar (T1, T2 ... -> 3). */
@@ -243,18 +240,6 @@ export function pasteClip(
         label: newTableLabel(),
         x: clamp(t.x + off, -HALF_W + t.w / 2, HALF_W - t.w / 2),
         y: clamp(t.y + off, -HALF_H + t.h / 2, HALF_H - t.h / 2),
-      },
-    }
-  }
-  if (clip.kind === 'fixture') {
-    const f = clip.fixture
-    return {
-      kind: 'fixture',
-      fixture: {
-        ...f,
-        id: newId(),
-        x: clamp(f.x + off, -HALF_W + f.w / 2, HALF_W - f.w / 2),
-        y: clamp(f.y + off, -HALF_H + f.h / 2, HALF_H - f.h / 2),
       },
     }
   }
@@ -462,12 +447,10 @@ export function moveClipsTo(clips: Clip[], at: { x: number; y: number }): Clip[]
   const centres = clips.map((c) =>
     c.kind === 'table'
       ? { x: c.table.x, y: c.table.y }
-      : c.kind === 'fixture'
-        ? { x: c.fixture.x, y: c.fixture.y }
-        : {
-            x: c.wall.x + (c.wall.dir === 'h' ? c.wall.length / 2 : 0),
-            y: c.wall.y + (c.wall.dir === 'v' ? c.wall.length / 2 : 0),
-          },
+      : {
+          x: c.wall.x + (c.wall.dir === 'h' ? c.wall.length / 2 : 0),
+          y: c.wall.y + (c.wall.dir === 'v' ? c.wall.length / 2 : 0),
+        },
   )
   const cx = centres.reduce((a, c) => a + c.x, 0) / centres.length
   const cy = centres.reduce((a, c) => a + c.y, 0) / centres.length
@@ -475,7 +458,6 @@ export function moveClipsTo(clips: Clip[], at: { x: number; y: number }): Clip[]
   const dy = Math.round((at.y - cy) / GRID) * GRID
   return clips.map((c) => {
     if (c.kind === 'table') return { ...c, table: { ...c.table, x: c.table.x + dx, y: c.table.y + dy } }
-    if (c.kind === 'fixture') return { ...c, fixture: { ...c.fixture, x: c.fixture.x + dx, y: c.fixture.y + dy } }
     return { ...c, wall: { ...c.wall, x: c.wall.x + dx, y: c.wall.y + dy } }
   })
 }
@@ -502,4 +484,109 @@ export function wallTowards(
   }
   const length = Math.abs(dy)
   return { dir: 'v', x: x0, y: dy < 0 ? y0 - length : y0, length, end: { x: x0, y: y0 + dy } }
+}
+
+/* --- Bord som inte får stå ovanpå varandra -------------------------------------- */
+
+type TableBox = Pick<TableElement, 'shape' | 'x' | 'y' | 'w' | 'h'>
+
+/** Så mycket (golvenheter) två bord måste gå in i varandra för att räknas som krock. */
+const OVERLAP_TOLERANCE = 1
+
+/**
+ * Om två bordsskivor går in i varandra. Fyrkantiga bord är rektanglar runt
+ * sin mittpunkt (editorn vrider genom att byta bredd och djup, så de är
+ * alltid axelparallella); ett runt bord med lika bredd och djup är en
+ * cirkel. Kant mot kant är ingen krock.
+ */
+export function tablesOverlap(a: TableBox, b: TableBox): boolean {
+  const circle = (t: TableBox) => t.shape === 'round' && Math.abs(t.w - t.h) < 1e-6
+  const ca = circle(a)
+  const cb = circle(b)
+  if (ca && cb) {
+    return Math.hypot(a.x - b.x, a.y - b.y) < a.w / 2 + b.w / 2 - OVERLAP_TOLERANCE
+  }
+  if (ca || cb) {
+    const c = ca ? a : b
+    const r = ca ? b : a
+    // Närmaste punkt på rektangeln till cirkelns mitt.
+    const nx = clamp(c.x, r.x - r.w / 2, r.x + r.w / 2)
+    const ny = clamp(c.y, r.y - r.h / 2, r.y + r.h / 2)
+    return Math.hypot(c.x - nx, c.y - ny) < c.w / 2 - OVERLAP_TOLERANCE
+  }
+  return (
+    Math.abs(a.x - b.x) < (a.w + b.w) / 2 - OVERLAP_TOLERANCE &&
+    Math.abs(a.y - b.y) < (a.h + b.h) / 2 - OVERLAP_TOLERANCE
+  )
+}
+
+/** Id:n på alla bord som står ovanpå minst ett annat bord på samma våning. */
+export function overlappingTableIds(tables: TableElement[]): Set<string> {
+  const out = new Set<string>()
+  for (let i = 0; i < tables.length; i++) {
+    for (let j = i + 1; j < tables.length; j++) {
+      if (tablesOverlap(tables[i], tables[j])) {
+        out.add(tables[i].id)
+        out.add(tables[j].id)
+      }
+    }
+  }
+  return out
+}
+
+/** Luft runt ett nytt bord så att stolarna får plats mellan borden. */
+const NEW_TABLE_GAP = GRID * 2
+
+/**
+ * En ledig plats för ett nytt bord: närmast `start` på rutnätet, inom
+ * `area` (det som syns, i golvkoordinater) och med `NEW_TABLE_GAP` luft
+ * till alla andra bord. Söker i ringar utåt från `start`. Får inget plats i
+ * det synliga söks hela arbetsytan, och är även den full blir det `start`
+ * (krocken flaggas då i planen precis som efter ett drag).
+ */
+export function freeTableSpot(
+  tables: TableElement[],
+  size: { shape: TableElement['shape']; w: number; h: number },
+  start: { x: number; y: number },
+  area: { minX: number; minY: number; maxX: number; maxY: number },
+): { x: number; y: number } {
+  const work = { minX: -HALF_W, minY: -HALF_H, maxX: HALF_W, maxY: HALF_H }
+  const inside = (a: typeof work) => ({
+    minX: Math.max(a.minX, work.minX) + size.w / 2,
+    maxX: Math.min(a.maxX, work.maxX) - size.w / 2,
+    minY: Math.max(a.minY, work.minY) + size.h / 2,
+    maxY: Math.min(a.maxY, work.maxY) - size.h / 2,
+  })
+  // Krocktestet görs med ett bord som är `NEW_TABLE_GAP` större åt alla håll.
+  const padded = { shape: size.shape, w: size.w + NEW_TABLE_GAP * 2, h: size.h + NEW_TABLE_GAP * 2 }
+  const free = (x: number, y: number) =>
+    !tables.some((t) => tablesOverlap({ ...padded, x, y }, t))
+
+  const sx = Math.round(start.x / GRID) * GRID
+  const sy = Math.round(start.y / GRID) * GRID
+  const maxRing = Math.ceil(Math.max(WORKSPACE.w, WORKSPACE.h) / GRID)
+  for (const box of [inside(area), inside(work)]) {
+    if (box.minX > box.maxX || box.minY > box.maxY) continue
+    const ok = (x: number, y: number) =>
+      x >= box.minX && x <= box.maxX && y >= box.minY && y <= box.maxY && free(x, y)
+    for (let ring = 0; ring <= maxRing; ring++) {
+      // Rutorna på ringens kant, närmast först.
+      const cells: { x: number; y: number; d: number }[] = []
+      for (let i = -ring; i <= ring; i++) {
+        for (let j = -ring; j <= ring; j++) {
+          if (Math.max(Math.abs(i), Math.abs(j)) !== ring) continue
+          const x = sx + i * GRID
+          const y = sy + j * GRID
+          cells.push({ x, y, d: Math.hypot(i, j) })
+        }
+      }
+      cells.sort((a, b) => a.d - b.d)
+      const hit = cells.find((c) => ok(c.x, c.y))
+      if (hit) return { x: hit.x, y: hit.y }
+    }
+  }
+  return {
+    x: clamp(start.x, -HALF_W + size.w / 2, HALF_W - size.w / 2),
+    y: clamp(start.y, -HALF_H + size.h / 2, HALF_H - size.h / 2),
+  }
 }

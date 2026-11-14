@@ -1,5 +1,6 @@
 /// <reference types="vitest/config" />
 import { defineConfig, loadEnv } from 'vite'
+import { configDefaults } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { helpCorpusPlugin } from './scripts/help-corpus.mjs'
 
@@ -29,6 +30,8 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       setupFiles: './src/test/setup.ts',
       globals: true,
+      // desktop/ har egna tester för node:test (npm test i desktop/).
+      exclude: [...configDefaults.exclude, 'desktop/**'],
     },
     server: {
       // 8081 krockar med Docker Desktop och 8090 med ett Wondershare-verktyg

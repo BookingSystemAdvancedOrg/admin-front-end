@@ -68,3 +68,19 @@
 .phone-install__icon--text { color: var(--ink); font-size: 1rem; }
 .phone-install__glyph { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .phone-install__note { margin-top: 12px; }
+
+/* Installera med ett kommando. */
+.desktop-app__sub { margin: 18px 0 4px; font-size: 1rem; font-weight: 700; color: var(--ink); }
+.desktop-app__install .cell-muted { margin: 0 0 8px; }
+.desktop-app__cmd { margin: 8px 0 0; min-width: 0; }
+.desktop-app__cmd-row .btn { flex: none; }
+.desktop-app__cmd-label { display: block; font-size: 0.8125rem; color: var(--muted); margin-bottom: 4px; }
+.desktop-app__cmd-row { display: flex; gap: 8px; align-items: stretch; }
+.desktop-app__cmd-row code {
+  flex: 1 1 auto; min-width: 0; overflow-x: auto; white-space: nowrap; padding: 10px 12px; border-radius: 12px;
+  font: 0.8125rem/1.5 var(--font-mono, ui-monospace, monospace); color: var(--ink);
+  background: var(--glass-well, rgb(241 238 230 / 0.7)); border: 1px solid var(--glass-edge, var(--border));
+  user-select: all;
+}
+.desktop-app__cmd-row code { background: rgb(251 250 246 / 0.72); border-color: rgb(28 25 24 / 0.14); }
+[data-theme='dark'] .desktop-app__cmd-row code { background: rgb(26 18 14 / 0.55); border-color: rgb(246 236 233 / 0.16); }

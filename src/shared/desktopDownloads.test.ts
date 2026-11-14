@@ -114,3 +114,15 @@ describe('downloads and nav', () => {
     expect(showDownloadNav({ userAgent: MAC_SAFARI_UA, platform: 'MacIntel', maxTouchPoints: 5 })).toBe(false)
   })
 })
+
+describe('one-command install', () => {
+  it('builds the curl and PowerShell commands per app and environment', async () => {
+    const { installCommand, installShellFor } = await import('./desktopDownloads')
+    expect(installCommand('admin', 'unix', 'https://dev.booqy.se/downloads')).toBe('curl -fsSL https://dev.booqy.se/downloads/admin/install.sh | sh')
+    expect(installCommand('admin', 'windows', 'https://booqy.se/downloads')).toBe('irm https://booqy.se/downloads/admin/install.ps1 | iex')
+    expect(installShellFor({ os: 'win', windows: 11 })).toBe('windows')
+    expect(installShellFor({ os: 'mac-arm64' })).toBe('unix')
+    expect(installShellFor({ os: 'linux' })).toBe('unix')
+    expect(installShellFor(null)).toBeNull()
+  })
+})

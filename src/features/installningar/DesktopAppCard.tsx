@@ -2,11 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
   desktopFiles,
+  installCommand,
+  installShellFor,
   isDesktopShell,
   isPhoneOrTablet,
   readSignals,
   recommend,
   type DesktopOs,
+  type InstallShell,
   type Recommendation,
 } from '../../shared/desktopDownloads'
 import { phoneKind, usePwaInstall } from '../../shared/pwa'
@@ -46,6 +49,34 @@ export function DesktopAppCard({ heading = true }: { heading?: boolean }) {
  * rulla hit, flytta fokus och lys upp kortet en kort stund. location.key gör
  * att det sker vid varje klick, även när adressen redan slutar på #skrivbordsappen.
  */
+/** Ett installationskommando med Kopiera-knapp. */
+function CommandRow({ shell }: { shell: InstallShell }) {
+  const command = installCommand('admin', shell)
+  const [copied, setCopied] = useState(false)
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(command)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false)
+    }
+  }
+  return (
+    <div className="desktop-app__cmd">
+      <span className="desktop-app__cmd-label">
+        {shell === 'windows' ? 'Windows: i PowerShell' : 'Mac och Linux: i Terminal'}
+      </span>
+      <div className="desktop-app__cmd-row">
+        <code>{command}</code>
+        <button type="button" className="btn outline square" onClick={() => void copy()}>
+          {copied ? 'Kopierat' : 'Kopiera'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function useFlashOnHash() {
   const location = useLocation()
   const ref = useRef<HTMLElement>(null)
@@ -175,8 +206,21 @@ function DesktopAppCardBody({ heading }: { heading: boolean }) {
       {heading && <h2 className="card-title">Skrivbordsappen</h2>}
       <p className="cell-muted">
         Booqy Admin som app på datorn, i ett eget fönster. Samma inloggning och samma funktioner som här. Appen visar alltid
-        den senaste versionen av Booqy och frågar när själva appen kan uppdateras.
+        den senaste versionen av Booqy och uppdaterar sig själv utan frågor.
       </p>
+
+      {rec !== undefined && (
+        <div className="desktop-app__install">
+          <h3 className="desktop-app__sub">Installera med ett kommando (rekommenderas)</h3>
+          <p className="cell-muted">
+            Klistra in i {installShellFor(rec) === 'windows' ? 'PowerShell' : installShellFor(rec) === 'unix' ? 'Terminal' : 'Terminal eller PowerShell'} och
+            tryck Retur. Kommandot kontrollerar filen och installerar utan varningsrutor.
+          </p>
+          {installShellFor(rec) !== 'windows' && <CommandRow shell="unix" />}
+          {installShellFor(rec) !== 'unix' && <CommandRow shell="windows" />}
+          <h3 className="desktop-app__sub">Eller ladda ner filen</h3>
+        </div>
+      )}
 
       {mine && rec ? (
         <p className="desktop-app__pick">

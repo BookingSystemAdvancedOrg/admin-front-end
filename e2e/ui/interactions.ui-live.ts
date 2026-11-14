@@ -66,8 +66,9 @@ for (const vp of VIEWPORTS.filter((v) => ['390', '1440'].includes(v.name))) {
       const n = await triggers.count()
       for (let i = 0; i < Math.min(n, 15); i++) {
         const t = triggers.nth(i)
-        await t.scrollIntoViewIfNeeded()
+        // triggers inside a closed section are hidden on purpose: skip them before scrolling (scrolling waits for visibility)
         if (!(await t.isVisible())) continue
+        await t.scrollIntoViewIfNeeded()
         await t.click()
         const panel = page.locator('.info-tooltip-panel').first()
         await expect(panel).toBeVisible()

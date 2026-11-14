@@ -56,8 +56,7 @@ export default function InlaggTab() {
     <>
       {notConnected ? (
         <Bar variant="banner" tone="warning" action={<Link className="card-link" to="/marknadsforing?flik=annonser">Koppla Facebook och Instagram</Link>}>
-          Koppla restaurangens Facebooksida och Instagramkonto för att publicera inlägg. Instagram måste vara ett
-          företagskonto kopplat till sidan.
+          Inte kopplat.
         </Bar>
       ) : null}
       {open ? (
@@ -67,7 +66,7 @@ export default function InlaggTab() {
       ) : null}
       <Card title="Inlägg">
         {listing.posts.length === 0 ? (
-          <p className="admin-empty">Inga inlägg än. Tryck på Dela vid en rätt under Meny för att göra ett utkast.</p>
+          <p className="admin-empty">Inga inlägg än.</p>
         ) : (
           <ul className="inlagg-list">
             {listing.posts.map((p) => (

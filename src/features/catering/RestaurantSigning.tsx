@@ -4,6 +4,7 @@ import { tokens } from '@booqy/brand'
 import { errorText, restaurantSign, restaurantSignStatus } from './cateringApi'
 import type { CateringRequest } from './cateringApi'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { TitleInfo } from '../../shared/TitleInfo'
 
 /** BankID: status en gång i sekunden (QR-koden byts varje sekund). */
 export const SIGN_POLL_MS = 1_000
@@ -118,11 +119,10 @@ export function RestaurantSigning({ request, onSigned, returned }: {
 
   return (
     <section className="admin-card table-card restaurant-signing" aria-label="Signera offerten">
-      <h2 className="card-title">Signera offerten (v{request.currentOfferVersion})</h2>
-      <p className="cell-muted">
-        Restaurangen signerar först. När ni har signerat skickas offerten till kunden via mejl och sms, och kunden
-        signerar samma version.
-      </p>
+      <TitleInfo
+        title={`Signera offerten (v${request.currentOfferVersion})`}
+        info="Restaurangen signerar först. När ni har signerat skickas offerten till kunden via mejl och sms, och kunden signerar samma version."
+      />
       {bankid ? (
         <div className="bankid-box" role="status" aria-live="polite">
           <p>

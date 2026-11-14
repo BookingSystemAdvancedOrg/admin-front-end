@@ -22,6 +22,7 @@ import {
 } from './api'
 import './google.css'
 import { ErrorActions } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 
 /** Inställningar > Profil: koppla Google, välj Google-plats, synka öppettider (Booqy styr). */
 export default function GoogleProfileCard({ locationId }: { locationId: string }) {
@@ -108,11 +109,11 @@ export default function GoogleProfileCard({ locationId }: { locationId: string }
 
   if (connection.status !== 'connected') {
     return (
-      <Card title="Google-profil">
-        <p>
-          Koppla er Google-profil så visar Google samma öppettider och avvikande dagar som ni har i Booqy.
-          Inga uppgifter om era gäster skickas till Google.
-        </p>
+      <Card title="Google-profil" actions={
+        <InfoTooltip label="Google-profil">
+          Google visar samma öppettider och avvikande dagar som ni har i Booqy. Inga uppgifter om era gäster skickas till Google.
+        </InfoTooltip>
+      }>
         {connection.status === 'needs_reauth' ? (
           <Bar variant="banner" tone="warning">Kopplingen till Google har gått ut. Koppla igen.</Bar>
         ) : null}
@@ -124,7 +125,7 @@ export default function GoogleProfileCard({ locationId }: { locationId: string }
   const free = (places ?? []).filter((p) => !p.linkedTo || p.linkedTo === locationId)
   return (
     <Card title="Google-profil" actions={<Button size="sm" variant="ghost" busy={busy === 'disconnect'} onClick={remove}>Koppla bort</Button>}>
-      <Bar variant="banner" tone="info">Ändringar i Google skrivs över av Booqy. Ändra öppettiderna här i stället.</Bar>
+      <Bar variant="banner" tone="info">Ändra öppettiderna här, inte i Google.</Bar>
       {view.link ? (
         <>
           <p className="google-status">
@@ -176,7 +177,6 @@ function Preview({ view }: { view: LocationView }) {
           </dl>
         </>
       ) : null}
-      <p className="cell-muted">Dagar utan onlinebokning och era anteckningar skickas inte till Google.</p>
     </div>
   )
 }

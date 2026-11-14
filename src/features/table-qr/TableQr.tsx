@@ -29,7 +29,7 @@ async function save(card: QrCard, kind: 'png' | 'svg' | 'pdf') {
   download(blob, fileName(card.title, kind))
 }
 
-const NO_SITE = 'Restaurangen har ingen webbadress än. QR-koderna kan skapas när webbplatsen finns.'
+const NO_SITE = 'Ingen webbadress än. Publicera webbplatsen först.'
 
 /** Kortet, knapparna för utskrift/nedladdning och "Ny kod" för ett bord. */
 function CodeCard({
@@ -163,7 +163,7 @@ export function TableQrPanel({
       {!codes && !error && <Loading label="Hämtar QR-koden" variant="inline" />}
       {codes && !code && (
         <p className="props-empty">
-          Bordet finns inte i den publicerade layouten än. Publicera layouten så får bordet sin QR-kod.
+          Publicera layouten först.
         </p>
       )}
       {code && (
@@ -204,14 +204,10 @@ export function TableQrModal({
             <Icon name="close" size={16} />
           </button>
         </div>
-        <p className="cell-muted">
-          Ett kort per bord i den publicerade layouten. Gästen skannar, ser sitt bord och beställer; personalen
-          ser bordet på varje beställning. Byter ett bord namn eller plats gäller samma dekal.
-        </p>
         <ErrorNote text={error} />
         {!codes && !error && <Loading label="Hämtar QR-koderna" />}
         {codes && codes.length === 0 && (
-          <p className="cell-muted">Publicera en layout med bord först, så får varje bord en QR-kod.</p>
+          <p className="cell-muted">Publicera en layout först.</p>
         )}
         {codes && codes.length > 0 && printable.length === 0 && <p className="form-error">{NO_SITE}</p>}
         {cards.length > 0 && (

@@ -454,8 +454,8 @@ function ExtendPanel({
       <p className="form-section-label">Ändra sluttid</p>
       <p className="cell-muted">
         Nu {r.startTime}-{r.endTime}. {rule.extensionAllowed
-          ? `Regeln tillåter till ${toClock(allowedEnd)}.`
-          : 'Regeln tillåter ingen förlängning.'}
+          ? `Max ${toClock(allowedEnd)}.`
+          : 'Ingen förlängning enligt regeln.'}
       </p>
       <div className="form-field">
         <label htmlFor="extend-end">Ny sluttid</label>
@@ -483,7 +483,6 @@ function ExtendPanel({
           Förläng ändå, utöver bokningens regel (sparas i historiken)
         </label>
       )}
-      <p className="cell-muted">Borden kontrolleras igen; nästa bokning på samma bord stoppar förlängningen.</p>
       {error && (
         <ErrorNote text={error} />
       )}
@@ -502,7 +501,7 @@ function ExtendPanel({
 function ReasonField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div className="form-field">
-      <label htmlFor="status-reason">Intern anteckning (valfritt, visas inte för gästen)</label>
+      <label htmlFor="status-reason">Intern anteckning (valfri)</label>
       <input id="status-reason" maxLength={300} value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
   )

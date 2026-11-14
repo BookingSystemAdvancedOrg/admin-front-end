@@ -101,7 +101,7 @@ test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', 
   await ready(page, 'Meny')
   const dishes: { name: string; cat: string; price: string; alcohol?: boolean; station?: string; parts?: [string, string][] }[] = [
     { name: 'E2E Margherita', cat: 'Varmrätter', price: '120' },
-    { name: 'E2E Cola', cat: 'Drycker', price: '30', station: 'Ingen bong (till exempel läsk ur kylen)' },
+    { name: 'E2E Cola', cat: 'Drycker', price: '30', station: 'Ingen bong' },
     { name: 'E2E Fatöl', cat: 'Drycker', price: '75', alcohol: true },
     { name: 'E2E Pizzameny', cat: 'Varmrätter', price: '149', parts: [['Pizza', 'Kök'], ['Läsk', 'Bar']] },
   ]

@@ -132,7 +132,7 @@ describe('BestallningarPage', () => {
     listOrders.mockResolvedValueOnce(list([]))
     listOrders.mockResolvedValue(list([order()]))
     render(<BestallningarPage />)
-    expect(await screen.findByText('Inga nya beställningar.')).toBeInTheDocument()
+    expect(await screen.findByText('Inga nya.')).toBeInTheDocument()
     await act(async () => {
       await vi.advanceTimersByTimeAsync(POLL_MS)
     })

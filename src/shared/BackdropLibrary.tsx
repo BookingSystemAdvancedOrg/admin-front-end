@@ -81,7 +81,7 @@ export function BackdropLibrary() {
       </div>
 
       {lib.loaded && lib.items.length === 0 && (
-        <p className="bg-library-empty">Inga egna bilder än. Ladda upp en, så hamnar den här och blir bakgrund direkt.</p>
+        <p className="bg-library-empty">Inga egna bilder än.</p>
       )}
 
       <ul className="bg-grid" aria-label="Dina bilder">

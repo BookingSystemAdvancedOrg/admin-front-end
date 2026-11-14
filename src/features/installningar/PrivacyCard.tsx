@@ -26,6 +26,7 @@ import type {
 import './privacy.css'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 
 /**
  * Integritet: restaurangen är personuppgiftsansvarig för sina gäster.
@@ -220,12 +221,14 @@ function NoticeEditor() {
   const dirty = saved !== null && text !== saved.body
   return (
     <section className="admin-card table-card" aria-labelledby="privacy-notice-title">
-      <h2 className="card-title" id="privacy-notice-title">Integritetspolicy för gäster</h2>
-      <p className="cell-muted privacy-lead">
-        Ni är personuppgiftsansvariga för era gästers uppgifter. Texten visas på sajtens sida
-        Integritetspolicy och länkas från varje boknings-, beställnings- och cateringformulär. Tabellen
-        över cookies och lagring läggs alltid till automatiskt.
-      </p>
+      <div className="title-info">
+        <h2 className="card-title" id="privacy-notice-title">Integritetspolicy för gäster</h2>
+        <InfoTooltip label="Integritetspolicy för gäster">
+          Ni är personuppgiftsansvariga för era gästers uppgifter. Texten visas på sajtens sida
+          Integritetspolicy och länkas från varje boknings-, beställnings- och cateringformulär. Tabellen
+          över cookies och lagring läggs alltid till automatiskt.
+        </InfoTooltip>
+      </div>
       {saved && (
         <p className="privacy-status" role="status">
           {saved.custom ? `Egen text, version ${saved.version}, sparad ${when(saved.updatedAt)}` : 'Standardmallen (ingen egen text sparad)'}
@@ -365,12 +368,14 @@ function ConsentTool() {
   const channels = (Object.keys(CHANNEL_LABEL) as ConsentChannel[]).filter((c) => result?.[c])
   return (
     <section className="admin-card table-card" aria-labelledby="privacy-consent-title">
-      <h2 className="card-title" id="privacy-consent-title">Gästens uppgifter och samtycken</h2>
-      <p className="cell-muted privacy-lead">
-        Om en gäst ber er sluta skicka erbjudanden: sök på e-post eller telefonnummer och återkalla
-        samtycket här. Det gäller bara erbjudanden. Bekräftelser, påminnelser och kvitton skickas som vanligt.
-        Vill gästen veta vad ni har sparat, eller bli raderad, exporterar eller raderar ni det också här.
-      </p>
+      <div className="title-info">
+        <h2 className="card-title" id="privacy-consent-title">Gästens uppgifter och samtycken</h2>
+        <InfoTooltip label="Gästens uppgifter och samtycken">
+          Om en gäst ber er sluta skicka erbjudanden: sök på e-post eller telefonnummer och återkalla
+          samtycket här. Det gäller bara erbjudanden. Bekräftelser, påminnelser och kvitton skickas som vanligt.
+          Vill gästen veta vad ni har sparat, eller bli raderad, exporterar eller raderar ni det också här.
+        </InfoTooltip>
+      </div>
       <form onSubmit={search} className="privacy-search">
         <div className="form-field">
           <label htmlFor="consent-email">E-post</label>

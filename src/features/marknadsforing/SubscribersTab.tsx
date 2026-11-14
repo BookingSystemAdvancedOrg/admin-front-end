@@ -20,6 +20,7 @@ import { useEscape } from './useEscape'
 import { SkelRows } from '../../shared/Skeleton'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 
 const CONSENT_SOURCE: Record<string, string> = {
   booking: 'Vid bokning',
@@ -220,7 +221,7 @@ export function SubscribersTab() {
             {view.email
               ? `Ingen mottagare med adressen ${view.email}.`
               : view.filter === 'subscribed'
-                ? 'Inga prenumeranter än. Gäster som kryssar i "erbjudanden" när de bokar bord hamnar här.'
+                ? 'Inga prenumeranter än.'
                 : 'Inga att visa.'}
           </p>
         )}
@@ -272,10 +273,13 @@ export function SubscribersTab() {
           </button>
         )}
       </section>
-      <p className="mk-footnote cell-muted">
-        Adresser som studsar eller markerar utskick som skräppost spärras automatiskt (Spärrade). Efter 30 dagar
-        raderas adressen och bara spärren finns kvar.
-      </p>
+      <div className="mk-footnote cell-muted">
+        Spärrade
+        <InfoTooltip label="Spärrade">
+          Adresser som studsar eller markerar utskick som skräppost spärras automatiskt (Spärrade). Efter 30 dagar
+          raderas adressen och bara spärren finns kvar.
+        </InfoTooltip>
+      </div>
 
       {confirmErase?.email && (
         <EraseGuestDialog

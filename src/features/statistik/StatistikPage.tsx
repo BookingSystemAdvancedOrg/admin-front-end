@@ -45,6 +45,7 @@ import { addDays, daysBetween, deltaPct, fmtDecimal, fmtInt, fmtKr, fmtPct, insi
 import './statistik.css'
 import { DateInput } from '../../shared/DateInput'
 import { SkelBlock, SkelBox, SkelCard, SkelPage } from '../../shared/Skeleton'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { booqyFaultText } from '../../shared/errors'
 
@@ -173,8 +174,7 @@ export default function StatistikPage() {
         <AdminTopbar title="Statistik" />
         <div className="admin-main">
           <section className="admin-card table-card tenant-notice">
-            <h2 className="card-title">Inte öppen för personalen</h2>
-            <p className="cell-muted">Restaurangens ägare har valt att bara ägaren ser statistiken.</p>
+            <h2 className="card-title">Bara för ägaren</h2>
           </section>
         </div>
       </>
@@ -188,7 +188,6 @@ export default function StatistikPage() {
         <div className="admin-main">
           <section className="admin-card table-card tenant-notice">
             <h2 className="card-title">Ingen plats än</h2>
-            <p className="cell-muted">Lägg in restaurangens uppgifter under Inställningar, så finns det något att räkna på.</p>
             <Link className="card-link" to="/installningar">
               Till inställningar →
             </Link>
@@ -267,7 +266,7 @@ export default function StatistikPage() {
         label="Gäster"
         value={fmtInt(s.guests)}
         info="Antal personer i bokningarna ovan (sällskapens storlek) på besöksdagen. Avbokade räknas inte."
-        sub={s.avgParty ? `${fmtDecimal(s.avgParty)} per sällskap` : 'Inga bokningar'}
+        sub={s.avgParty ? `${fmtDecimal(s.avgParty)} per sällskap` : undefined}
         spark={spark((d) => d.guests)}
         {...versus(s.guests, p?.guests, 'guests')}
       />
@@ -303,7 +302,7 @@ export default function StatistikPage() {
         label="Beläggning"
         value={fmtPct(s.occupancy)}
         info="Bokad bordstid delat med all bordstid under öppettiderna i perioden. 100 % betyder att alla bord var bokade hela tiden."
-        sub={s.seatFill !== null ? `${fmtPct(s.seatFill)} av stolarna fyllda` : 'av bordstiden bokad'}
+        sub={s.seatFill !== null ? `${fmtPct(s.seatFill)} av stolarna` : undefined}
         spark={spark((d) => d.occupancy, (v) => fmtPct(v))}
         {...versus(s.occupancy, p?.occupancy, 'occupancy')}
       />
@@ -317,7 +316,7 @@ export default function StatistikPage() {
         label="Tillagningstid"
         value={s.prepMinutes !== null ? `${fmtDecimal(s.prepMinutes)} min` : '-'}
         info="Minuter från att köket bekräftade beställningen till att den markerades som klar, i snitt."
-        sub={s.latePct !== null ? `${fmtPct(s.latePct)} blev klara sent` : 'Från påbörjad till klar'}
+        sub={s.latePct !== null ? `${fmtPct(s.latePct)} sena` : undefined}
         {...versus(s.prepMinutes, p?.prepMinutes, 'prepTime')}
       />
     ),
@@ -333,7 +332,7 @@ export default function StatistikPage() {
         {showSample && (
           <div className="sample-notice" role="status">
             <span className="sample-stamp">Exempel</span>
-            <span>Du ser exempeldata, inte restaurangens riktiga siffror.</span>
+            <span>Exempeldata</span>
             {sample && !offline && (
               <button type="button" className="link-action" onClick={() => chooseSample(false)}>
                 Visa riktiga siffror
@@ -349,7 +348,11 @@ export default function StatistikPage() {
           <h2 className="sk-block-title" id="sk-deep">
             Fördjupning
           </h2>
-          <p className="sk-deep-lead">Välj period och fäll ut det du vill se. Sidan minns vad du hade öppet.</p>
+          <InfoTooltip label="Så räknas siffrorna">
+            Bokningar räknas på dagen för besöket, beställningar på dagen de betalades, catering på leveransdagen. Belopp inklusive moms.
+            Lunch är före klockan {String(split).padStart(2, '0')}:00.{' '}
+            {ready?.builtAt ? `Sammanställt ${new Date(ready.builtAt).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' })}, idag räknas direkt.` : ''}
+          </InfoTooltip>
         </div>
         <div className="sk-filterbar">
           <div className="sk-chips" role="group" aria-label="Period">
@@ -467,12 +470,12 @@ export default function StatistikPage() {
 
         {ready?.pending && (
           <p className="sk-note" role="status">
-            Statistiken byggs upp i natt. Tills dess visas de senaste 31 dagarna; äldre dagar och jämförelser fylls på i morgon.
+            Senaste 31 dagarna. Äldre dagar kommer i morgon.
           </p>
         )}
         {ready && !money && (
           <p className="sk-note" role="status">
-            Du ser driftsiffrorna för {locationName ?? 'din plats'}. Belopp visas bara för restaurangens ägare.
+            Belopp visas bara för ägaren.
           </p>
         )}
 
@@ -503,11 +506,7 @@ export default function StatistikPage() {
 
         {s && nothing && (
           <section className="admin-card table-card sk-empty-card">
-            <h2 className="card-title">Inget att räkna på i perioden</h2>
-            <p className="cell-muted">
-              Inga bokningar, beställningar eller cateringförfrågningar {f.service !== 'all' ? 'för det passet ' : ''}än. Välj en längre
-              period, eller se hur sidan ser ut när den används.
-            </p>
+            <h2 className="card-title">Inget i perioden</h2>
             {!showSample && (
               <button type="button" className="btn outline square" onClick={() => chooseSample(true)}>
                 Visa med exempeldata
@@ -536,7 +535,7 @@ export default function StatistikPage() {
                 </div>
                 <h3 className="sk-sub-title">Att göra</h3>
                 {todo.length === 0 ? (
-                  <p className="admin-card sk-todo-none">Inget sticker ut i perioden. Titta igen när fler gäster har bokat, eller välj en längre period.</p>
+                  <p className="admin-card sk-todo-none">Inget att göra.</p>
                 ) : (
                   <ol className="sk-todo">
                     {todo.map((t, i) => (
@@ -563,7 +562,6 @@ export default function StatistikPage() {
                   <Disclosure id="omsattning" title="Omsättning" className="sk-acc" defaultOpen={open.includes('omsattning')} onToggle={toggle('omsattning')}>
                     <div className="sk-charts">
                     <Card title={insightTitle('Omsättningen', deltaPct(s.revenue, p?.revenue))} label="Omsättning per dag" info="Betalda beställningar på dagen de betalades, catering på leveransdagen, inklusive moms." wide>
-                      <p className="sk-insight">Betalda beställningar och levererad catering per dag, inklusive moms.</p>
                       <ColumnChart
                         unit="kr"
                         format={fmtKr}
@@ -591,9 +589,6 @@ export default function StatistikPage() {
               <Disclosure id="gaster" title="Gäster och bokningar" className="sk-acc" defaultOpen={open.includes('gaster')} onToggle={toggle('gaster')}>
                 <div className="sk-charts">
                 <Card title="Gäster per dag" label="Gäster per dag" info="Personer i bokningar som inte avbokats, räknat på dagen de kommer. Uteblivna räknas med; tabellen visar hur många som uteblev och avbokade." wide>
-                  <p className="sk-insight">
-                    Gäster i bokningar som inte avbokats, per besöksdag{p && prevByDay(0) ? `; linjen är ${cmp}` : ''}.
-                  </p>
                   <ColumnChart
                     unit="count"
                     format={fmtInt}
@@ -619,7 +614,6 @@ export default function StatistikPage() {
                 </Card>
 
                 <Card title={peakHour ? `Flest bokningar klockan ${hourLabel(peakHour.hour).slice(0, 2)}` : 'När gästerna kommer'} label="Bokningar per timme" info="Bokningar som inte avbokats, efter klockslaget de börjar.">
-                  <p className="sk-insight">Bokningar per starttimme.</p>
                   <BarChart
                     format={fmtInt}
                     seriesLabel="Bokningar"
@@ -638,7 +632,6 @@ export default function StatistikPage() {
                 </Card>
 
                 <Card title="Gäster per veckodag" label="Gäster per veckodag" info="Gäster i snitt per veckodag i perioden: alla gäster den veckodagen delat med hur många sådana dagar perioden har. Veckodagar som inte finns i perioden visas inte.">
-                  <p className="sk-insight">Snitt per dag. Den tyngsta dagen i rött.</p>
                   <BarChart
                     format={(v) => fmtDecimal(v, v < 10 ? 1 : 0)}
                     seriesLabel="Gäster per dag"
@@ -737,7 +730,6 @@ export default function StatistikPage() {
               <Disclosure id="belaggning" title="Beläggning" className="sk-acc" defaultOpen={open.includes('belaggning')} onToggle={toggle('belaggning')}>
                 <div className="sk-charts">
                 <Card title="Beläggning per veckodag och timme" label="Beläggning per veckodag och timme" info="För varje veckodag och timme: hur stor del av alla bords tid som var bokad, för alla sådana dagar i perioden. Bara öppna timmar visas. 50 betyder att hälften av bordstiden var bokad." wide>
-                  <p className="sk-insight">Procent av bordstiden som var bokad. Mörkare ruta = fler bord bokade.</p>
                   <Heatmap
                     rows={heatDays.map((wd) => WEEKDAY_LABELS[wd])}
                     cols={heatHours.map((h) => hourLabel(h).slice(0, 2))}
@@ -1053,11 +1045,6 @@ export default function StatistikPage() {
               )}
             </section>
 
-            <p className="sk-foot">
-              Bokningar räknas på dagen för besöket, beställningar på dagen de betalades, catering på leveransdagen. Belopp inklusive moms.
-              Lunch är före klockan {String(split).padStart(2, '0')}:00.{' '}
-              {ready?.builtAt ? `Sammanställt ${new Date(ready.builtAt).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' })}, idag räknas direkt.` : ''}
-            </p>
           </>
         )}
       </div>

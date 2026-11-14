@@ -105,8 +105,7 @@ export default function LoginPage() {
         </p>
       ) : (
         <p className="auth-hint">
-          Första gången? Du hittar ett tillfälligt lösenord i inbjudan som
-          mejlades till dig.
+          Första gången? Lösenordet finns i inbjudan.
         </p>
       )}
 

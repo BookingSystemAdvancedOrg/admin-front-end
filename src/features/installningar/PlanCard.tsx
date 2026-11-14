@@ -34,9 +34,7 @@ export function PlanCard({ tenant }: { tenant: Pick<Tenant, 'planId' | 'free'> }
         <div>
           <h2 className="card-title" id="plan-card-title">Abonnemang</h2>
           <p className="plan-card-name">{planLabel(tenant)}</p>
-          <p className="cell-muted">
-            {free ? 'Inget att betala. SMS ingår.' : 'Fast pris per månad. SMS ingår.'}
-          </p>
+          <p className="cell-muted">{free ? 'Gratis · SMS ingår' : 'SMS ingår'}</p>
         </div>
       </div>
     </section>

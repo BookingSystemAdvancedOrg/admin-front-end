@@ -50,10 +50,7 @@ export default function NewPasswordPage() {
     <AuthLayout>
       <div className="auth-heading">
         <h1>Välj ett nytt lösenord</h1>
-        <p>
-          Det här är första gången du loggar in. Ange ett nytt lösenord för att
-          aktivera ditt konto.
-        </p>
+        <p>Första inloggningen.</p>
       </div>
 
       <form className="auth-form" onSubmit={handleSubmit}>

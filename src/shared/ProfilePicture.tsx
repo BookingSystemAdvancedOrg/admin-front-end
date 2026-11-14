@@ -53,7 +53,7 @@ function ProfilePictureDialog({ name, email, onClose }: { name?: string | null; 
           <>
             <div className="profile-picture-now">
               <Avatar url={mine.url} name={name} email={email} size="lg" />
-              <p className="modal-text">Frivilligt. Bilden visas bredvid ditt namn i Personal. Utan bild visas dina initialer.</p>
+              <p className="modal-text">Frivilligt</p>
             </div>
             <ErrorNote text={error} />
             <div className="modal-actions">

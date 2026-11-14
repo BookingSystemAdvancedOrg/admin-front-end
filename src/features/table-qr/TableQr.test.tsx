@@ -41,7 +41,7 @@ describe('TableQrPanel', () => {
   it('explains that a draft table gets its code when the layout is published', async () => {
     listTableCodes.mockResolvedValue([seven])
     render(<TableQrPanel locationId="loc-1" tableId="t3-square-9" mockTables={[]} version={0} />)
-    expect(await screen.findByText(/Publicera layouten så får bordet sin QR-kod/)).toBeInTheDocument()
+    expect(await screen.findByText(/Publicera layouten först/)).toBeInTheDocument()
   })
 
   it('regenerates a stolen sticker only after confirming', async () => {

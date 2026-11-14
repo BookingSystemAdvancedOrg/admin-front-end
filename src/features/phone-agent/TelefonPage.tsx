@@ -30,7 +30,7 @@ export default function TelefonPage() {
         {enabled ? <Telefon /> : (
           <section className="admin-card table-card">
             <h2 className="card-title">Ingår inte i er plan</h2>
-            <p className="cell-muted">Telefonassistenten ingår inte i er plan. Kontakta oss för att uppgradera.</p>
+            <p className="cell-muted">Kontakta oss för att uppgradera.</p>
           </section>
         )}
       </main>

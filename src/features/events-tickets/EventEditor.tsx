@@ -5,6 +5,7 @@ import { ChangedNote } from '../../shared/ChangedNote'
 import { isConflict, mergeEdits, type FieldConflict } from '../../shared/merge'
 import { ERRORS, VAT_OPTIONS, createEvent, newId, updateEvent, type EventDetail, type NewEvent, type VatRate } from './api'
 import { ErrorActions } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 
 interface TypeRow { typeId: string; name: string; priceKr: string; vatRate: VatRate; perOrderMax: string; capacity: string; includes: string }
 
@@ -156,7 +157,7 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
             <div className="evenemang-row">
               <Field label="Datum" required><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required /></Field>
               <Field label="Börjar"><Input type="time" value={start} onChange={(e) => setStart(e.target.value)} required /></Field>
-              <Field label="Slutar" hint="En sluttid före starten räknas till nästa dag, till exempel 21:00-01:00.">
+              <Field label="Slutar" hint="Före starten = nästa dag">
                 <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} required />
               </Field>
               <Field label="Platser"><Input type="number" min={1} max={10000} value={capacity} onChange={(e) => setCapacity(e.target.value)} required /></Field>
@@ -208,15 +209,15 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
         <div className="evenemang-check-block">
           <label className="evenemang-check">
             <input type="checkbox" checked={resaleAllowed} onChange={(e) => setResaleAllowed(e.target.checked)} />
-            Gästen får sälja sin biljett vidare via er webbplats (stänger 2 timmar före start)
+            Gästen får sälja sin biljett vidare
           </label>
-          <p className="cell-muted evenemang-check-hint">
-            Alltid till samma pris som gästen betalade, aldrig mer. Köparen betalar till ert Stripe-konto och säljaren får
+          <InfoTooltip label="Vidareförsäljning">
+            Via er webbplats, stänger 2 timmar före start. Alltid till samma pris som gästen betalade, aldrig mer. Köparen betalar till ert Stripe-konto och säljaren får
             pengarna tillbaka automatiskt; ni behåller intäkten och bokföringen går jämnt ut. Stripes avgifter för båda
             betalningarna står ni för.
-          </p>
+          </InfoTooltip>
         </div>
-        <Field label="Villkor för återbetalning" hint="Visas vid köpet och i biljettmejlet.">
+        <Field label="Villkor för återbetalning" hint="Visas vid köpet">
           <textarea className="evenemang-text" value={refundPolicy} maxLength={1000} rows={2} onChange={(e) => setRefundPolicy(e.target.value)} />
         </Field>
         {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}

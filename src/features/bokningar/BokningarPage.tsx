@@ -129,12 +129,11 @@ export default function BokningarPage() {
   const cancelledCount = items.length - items.filter((r) => !isCancelled(r.status)).length
   const arrived = items.filter((r) => r.status === 'arrived').length
   const open = items.find((r) => r.reservationId === openId) ?? null
-  const dayWord = date === today ? 'idag' : 'den dagen'
   const tiles = [
-    { label: 'Bokningar', value: String(active.length), note: `Aktiva ${dayWord}` },
-    { label: 'Gäster', value: String(guests), note: active.length ? `${(guests / active.length).toFixed(1).replace('.', ',')} per bokning` : 'Inga bokningar' },
-    { label: 'Anlända', value: String(arrived), note: active.length ? `${Math.round((arrived / active.length) * 100)} % av bokningarna` : 'Ingen än' },
-    { label: 'Avbokade', value: String(cancelledCount), note: cancelledCount ? 'Visa dem under listan' : 'Inga avbokningar' },
+    { label: 'Bokningar', value: String(active.length) },
+    { label: 'Gäster', value: String(guests), note: active.length ? `${(guests / active.length).toFixed(1).replace('.', ',')} per bokning` : undefined },
+    { label: 'Anlända', value: String(arrived), note: active.length ? `${Math.round((arrived / active.length) * 100)} % av bokningarna` : undefined },
+    { label: 'Avbokade', value: String(cancelledCount) },
   ]
 
   if (!isApiConfigured()) {
@@ -234,7 +233,7 @@ export default function BokningarPage() {
                 {!loading && visible.length === 0 && (
                   <tr>
                     <td colSpan={5} className="cell-muted">
-                      Inga bokningar den här dagen.
+                      Inga bokningar.
                     </td>
                   </tr>
                 )}

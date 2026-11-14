@@ -10,6 +10,7 @@ import type { OrderingPolicy } from './locationApi'
 import '../bestallningar/bestallningar.css'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { booqyFaultText } from '../../shared/errors'
+import { TitleInfo } from '../../shared/TitleInfo'
 
 /**
  * Matbeställning för den valda platsen.
@@ -148,17 +149,15 @@ export function OrderingCard({
 
   return (
     <section id="bestallning" className="admin-card table-card">
-      <h2 className="card-title">Beställning</h2>
+      <TitleInfo
+        title="Beställning"
+        info="Gästerna beställer och betalar online, bara under öppettiderna. Avhämtning: sms när maten är klar. Vid bordet: QR-koden på bordet, maten serveras där. Alkohol kan bara beställas vid bordet (märk drycker med alkohol under Meny). Moms: 6 % på avhämtning (t.o.m. 2027), 12 % vid bordet, 25 % på alkohol."
+      />
       {live.there !== null && <ChangedNote onUse={live.takeThere} />}
       <div style={{ height: 8 }} />
-      <p className="cell-muted">
-        Gästerna beställer och betalar online. Avhämtning: sms när maten är klar. Vid bordet: QR-koden
-        på bordet, maten serveras där. Bara under öppettiderna.
-      </p>
       {!stripeReady && (
         <p className="form-error" role="status">
-          Kräver att restaurangens Stripe-konto är klart (se Betalningar). Tills dess kan gästerna
-          inte beställa.
+          Kräver Stripe (se Betalningar).
         </p>
       )}
       <div style={{ height: 16 }} />
@@ -171,7 +170,6 @@ export function OrderingCard({
               <p className="toggle-row-label" id="ordering-enabled-label">
                 Ta emot beställningar
               </p>
-              <p className="cell-muted">Personalen hanterar dem under Beställningar.</p>
             </div>
             <button type="button" role="switch" aria-checked={form.enabled}
               aria-labelledby="ordering-enabled-label" className="switch" disabled={disabled}
@@ -179,7 +177,7 @@ export function OrderingCard({
           </div>
           <div className="toggle-row">
             <p className="toggle-row-label" id="ordering-pickup-label">
-              Avhämtning (beställ online, hämta på restaurangen)
+              Avhämtning
             </p>
             <button type="button" role="switch" aria-checked={form.pickup}
               aria-labelledby="ordering-pickup-label" className="switch" disabled={disabled}
@@ -205,10 +203,6 @@ export function OrderingCard({
                 onChange={(e) => set('last', e.target.value)} />
             </div>
           </div>
-          <p className="cell-muted">
-            Alkohol kan bara beställas vid bordet (märk drycker med alkohol under Meny). Moms: 6 %
-            på avhämtning (t.o.m. 2027), 12 % vid bordet, 25 % på alkohol.
-          </p>
           {error && (
             <ErrorNote text={error} />
           )}
@@ -229,7 +223,7 @@ export function OrderingCard({
               )}
             </span>
           )}
-          {!isOwner && <p className="cell-muted">Bara restaurangens ägare kan ändra inställningen.</p>}
+          {!isOwner && <p className="cell-muted">Bara ägaren kan ändra.</p>}
         </form>
       )}
 
@@ -239,13 +233,10 @@ export function OrderingCard({
           <h3 className="card-title">QR-koder för borden</h3>
           {tablesError && <ErrorNote text={booqyFaultText('Kunde inte hämta borden.')} />}
           {tables && tables.length === 0 && (
-            <p className="cell-muted">Publicera en planritning med bord först (Layout).</p>
+            <p className="cell-muted">Publicera en layout först.</p>
           )}
           {tables && tables.length > 0 && (
             <>
-              <p className="cell-muted">
-                En QR-kod per bord. Visas också när du markerar ett bord under Layout.
-              </p>
               <span className="row-actions">
                 <button type="button" className="btn primary square" onClick={() => setShowQr(true)}>
                   Visa och skriv ut QR-koder ({tables.length} bord)

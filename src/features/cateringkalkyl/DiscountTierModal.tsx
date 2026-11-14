@@ -97,7 +97,6 @@ export function DiscountTierModal({
     >
       <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
         <h2>{title}</h2>
-        <p className="modal-subtitle">Samma formulär används för &quot;+ Ny rabattnivå&quot;</p>
 
         <div className="form-field">
           <label htmlFor="tier-name">Namn på nivå</label>
@@ -139,7 +138,7 @@ export function DiscountTierModal({
             value={discountPercent}
             onChange={(e) => setDiscountPercent(e.target.value)}
           />
-          <p className="field-hint">Dras från delsumman för maten, inte leveransen</p>
+          <p className="field-hint">På maten, inte leveransen</p>
         </div>
 
         <div className="toggle-row">

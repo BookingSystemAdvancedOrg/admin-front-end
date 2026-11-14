@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { NO_TICKET, printErrorText, saveRouting } from '../bestallningar/printApi'
 import type { Course, Printer, Station, TicketRouting } from '../bestallningar/printApi'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 
 /**
  * Inställningar > Skrivare > Stationer: vart bongarna går.
@@ -116,11 +117,13 @@ export function StationsCard({ locationId, isOwner, routing, devices, onSaved }:
 
   return (
     <section id="stationer" className="admin-card table-card printer-card" aria-labelledby="stations-title">
-      <h2 className="card-title" id="stations-title">Bongar och stationer</h2>
-      <p className="cell-muted printer-lead">
-        Varje station får sin egen bong: maten till köket, drycken till baren. Allergier och önskemål följer
-        rätten och står i fetstil. En station utan skrivare syns bara på köksskärmen under Beställningar.
-      </p>
+      <div className="title-info">
+        <h2 className="card-title" id="stations-title">Bongar och stationer</h2>
+        <InfoTooltip label="Bongar och stationer">
+          Varje station får sin egen bong: maten till köket, drycken till baren. Allergier och önskemål följer
+          rätten och står i fetstil. En station utan skrivare syns bara på köksskärmen under Beställningar.
+        </InfoTooltip>
+      </div>
       <form onSubmit={save} className="printer-stack">
         <ul className="station-list" aria-label="Stationer">
           {stations.map((station) => (
@@ -141,7 +144,7 @@ export function StationsCard({ locationId, isOwner, routing, devices, onSaved }:
               <fieldset className="station-printers" disabled={disabled}>
                 <legend>Skrivare</legend>
                 {devices.length === 0 ? (
-                  <p className="cell-muted">Inga skrivare än: bongarna visas på köksskärmen.</p>
+                  <p className="cell-muted">Inga skrivare än.</p>
                 ) : devices.map((d) => (
                   <label key={d.deviceId} className="station-printer">
                     <input type="checkbox" checked={station.printerIds.includes(d.deviceId)}
@@ -160,11 +163,13 @@ export function StationsCard({ locationId, isOwner, routing, devices, onSaved }:
         )}
 
         <div>
-          <h3 className="printer-subtitle">Vart går menyns kategorier?</h3>
-          <p className="cell-muted station-hint">
-            En enskild rätt kan gå någon annanstans (Meny, rätten, Bong). Välj Ingen bong för det som inte
-            behöver tillagas, som läsk ur kylen.
-          </p>
+          <div className="title-info">
+            <h3 className="printer-subtitle">Vart går menyns kategorier?</h3>
+            <InfoTooltip label="Kategorier">
+              En enskild rätt kan gå någon annanstans (Meny, rätten, Bong). Välj Ingen bong för det som inte
+              behöver tillagas, som läsk ur kylen.
+            </InfoTooltip>
+          </div>
           <div className="form-grid">
             {CATEGORIES.map(({ key, label }) => (
               <div key={key} className="form-field">
@@ -185,7 +190,6 @@ export function StationsCard({ locationId, isOwner, routing, devices, onSaved }:
         <div className="toggle-row">
           <div>
             <p className="toggle-row-label" id="allergy-ticket-label">Egen allergibong</p>
-            <p className="cell-muted">När en rad har en allergi skrivs en extra, tydligt märkt lapp ut på stationen.</p>
           </div>
           <button type="button" role="switch" aria-checked={allergyTicket} aria-labelledby="allergy-ticket-label"
             className="switch" disabled={disabled} onClick={() => { setAllergyTicket(!allergyTicket); setNotice(null) }} />
@@ -198,7 +202,7 @@ export function StationsCard({ locationId, isOwner, routing, devices, onSaved }:
             </button>
           </span>
         ) : (
-          <p className="cell-muted">Bara restaurangens ägare kan ändra stationerna.</p>
+          <p className="cell-muted">Bara ägaren kan ändra.</p>
         )}
         {error && <ErrorNote text={error.text} />}
         {notice && <p className="save-notice" role="status">{notice}</p>}

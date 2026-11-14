@@ -9,6 +9,7 @@ import type { OfferSettings, OfferView } from './marketingApi'
 import { DateInput } from '../../shared/DateInput'
 import { SkelCard, SkelPage } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 
 const PERCENTS = [5, 10, 15, 20, 25, 30, 40, 50]
 const VALID_DAYS = [7, 14, 30, 60, 90]
@@ -161,8 +162,7 @@ export function OfferTab() {
       <ErrorNote text={error} />
       {!hasOrdering && (
         <p className="form-error" role="alert">
-          Koden används vid onlinebeställning, och beställning ingår inte i er plan. Gäster kan anmäla sig, men inte
-          använda koden.
+          Onlinebeställning ingår inte i er plan, så koden kan inte användas.
         </p>
       )}
 
@@ -179,7 +179,6 @@ export function OfferTab() {
             <div className="toggle-row">
               <div>
                 <p className="toggle-row-label" id="mk-o-on">Visa på webbplatsen</p>
-                <p className="cell-muted">En rabattkupong i hörnet. Gäster lämnar e-post och får en kod som gäller en gång.</p>
               </div>
               <button type="button" role="switch" aria-checked={draft.enabled} aria-labelledby="mk-o-on" className="switch"
                 onClick={() => set('enabled', !draft.enabled)} />
@@ -216,7 +215,6 @@ export function OfferTab() {
             <div className="form-field">
               <label htmlFor="mk-o-text">Text</label>
               <textarea id="mk-o-text" rows={3} value={draft.text} maxLength={180} onChange={(e) => set('text', e.target.value)} />
-              <p className="field-hint">Säg vad gästen får och hur ofta ni hör av er. Lova inget ni inte håller.</p>
             </div>
             <div className="form-field">
               <label htmlFor="mk-o-btn">Knapptext</label>
@@ -277,7 +275,6 @@ export function OfferTab() {
             <div className="toggle-row">
               <div>
                 <p className="toggle-row-label" id="mk-o-mobile">Visa i mobilen</p>
-                <p className="cell-muted">Som en smal list längst ned som gästen trycker upp.</p>
               </div>
               <button type="button" role="switch" aria-checked={draft.showOnMobile} aria-labelledby="mk-o-mobile"
                 className="switch" onClick={() => set('showOnMobile', !draft.showOnMobile)} />
@@ -292,11 +289,14 @@ export function OfferTab() {
                 <DateInput id="mk-o-to" value={draft.activeTo ?? ''} onChange={(e) => set('activeTo', e.target.value || null)} />
               </div>
             </div>
-            <p className="field-hint">
-              Stänger gästen kortet, eller tar erbjudandet, visas det inte igen under besöket. Ett nytt besök (ny flik)
-              visar det igen, eftersom webbplatsen inte sparar något mellan besöken och därför inte behöver någon
-              cookieruta. En person kan bara få en kod, och koden gäller bara med den e-postadressen.
-            </p>
+            <div className="field-hint mk-footnote">
+              Så visas det
+              <InfoTooltip label="Så visas det">
+                Stänger gästen kortet, eller tar erbjudandet, visas det inte igen under besöket. Ett nytt besök (ny flik)
+                visar det igen, eftersom webbplatsen inte sparar något mellan besöken och därför inte behöver någon
+                cookieruta. En person kan bara få en kod, och koden gäller bara med den e-postadressen.
+              </InfoTooltip>
+            </div>
 
             {showErrors && problems.length > 0 && (
               <ul className="form-error mk-errors" role="alert">
@@ -308,11 +308,14 @@ export function OfferTab() {
           <div className="mk-preview">
             <p className="form-section-label">Så ser det ut</p>
             <CardPreview s={draft} image={image} restaurant={tenant?.name ?? 'restaurangen'} />
-            <p className="field-hint">
-              Gästen kryssar själv i att hen vill ha erbjudanden. Koden skickas med e-post och dras av när gästen betalar. Gästen
-              blir mottagare av era utskick först när hen bekräftat i mejlet eller använt koden (dubbel bekräftelse).
-              Till dess står hen under Mottagare som "Väntar på bekräftelse".
-            </p>
+            <div className="field-hint mk-footnote">
+              Samtycke
+              <InfoTooltip label="Samtycke">
+                Gästen kryssar själv i att hen vill ha erbjudanden. Koden skickas med e-post och dras av när gästen betalar. Gästen
+                blir mottagare av era utskick först när hen bekräftat i mejlet eller använt koden (dubbel bekräftelse).
+                Till dess står hen under Mottagare som "Väntar på bekräftelse".
+              </InfoTooltip>
+            </div>
           </div>
         </div>
       </form>

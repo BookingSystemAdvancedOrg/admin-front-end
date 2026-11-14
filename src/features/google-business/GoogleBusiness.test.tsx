@@ -62,7 +62,7 @@ describe('GoogleProfileCard', () => {
     fireEvent.change(await screen.findByRole('combobox'), { target: { value: 'locations/1' } })
     fireEvent.click(screen.getByRole('button', { name: 'Koppla platsen' }))
     await waitFor(() => expect(api.linkLocation).toHaveBeenCalledWith('loc-1', 'locations/1', undefined))
-    expect(screen.getByText('Ändringar i Google skrivs över av Booqy. Ändra öppettiderna här i stället.')).toBeInTheDocument()
+    expect(screen.getByText('Ändra öppettiderna här, inte i Google.')).toBeInTheDocument()
     expect(screen.getByText('11:00-22:30')).toBeInTheDocument()
     expect(screen.getByText('2026-12-24')).toBeInTheDocument()
   })

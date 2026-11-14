@@ -39,7 +39,7 @@ export default function GasterPage() {
         ) : (
           <section className="admin-card table-card">
             <h2 className="card-title">Ingår inte i er plan</h2>
-            <p className="cell-muted">Gästregistret ingår inte i er plan. Kontakta oss för att uppgradera.</p>
+            <p className="cell-muted">Kontakta oss för att uppgradera.</p>
           </section>
         )}
       </main>
@@ -162,7 +162,7 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
         {guests === null && !error ? <p className="cell-muted">Hämtar gäster…</p> : null}
         {guests && guests.length === 0 ? (
           <p className="admin-empty">
-            Inga gäster än. Gäster läggs till när de har varit här, beställt eller fått sin catering.
+            Inga gäster än.
           </p>
         ) : null}
         {guests && guests.length > 0 ? (
@@ -366,10 +366,10 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
               <Field label="Anteckning" hint={textNote('note') ?? 'Skriv aldrig allergier eller hälsouppgifter här.'}>
                 <textarea className="bq-input" maxLength={300} value={form.note} onChange={(e) => set({ note: e.target.value })} />
               </Field>
-              <Field label="Taggar" hint={textNote('tags') ?? 'Skilj med komma, högst 10.'}>
+              <Field label="Taggar" hint={textNote('tags') ?? 'Max 10, skilj med komma'}>
                 <Input value={form.tags} onChange={(e) => set({ tags: e.target.value })} />
               </Field>
-              <Field label="Födelsedag" hint={textNote('birthday') ?? 'MM-DD. Bara om gästen själv vill.'}>
+              <Field label="Födelsedag" hint={textNote('birthday') ?? 'MM-DD'}>
                 <Input value={form.birthday} placeholder="03-14" inputMode="numeric" onChange={(e) => set({ birthday: e.target.value })} />
               </Field>
               <label className="toggle-row">

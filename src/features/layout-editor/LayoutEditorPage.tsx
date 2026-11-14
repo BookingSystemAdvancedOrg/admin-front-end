@@ -209,7 +209,7 @@ export default function LayoutEditorPage() {
         notice={
           <p className="layout-small-notice" role="note">
             <Icon name="tool-floor" size={20} />
-            Redigera bordskartan på en större skärm. Här kan du se borden och boka dem.
+            Redigera på en större skärm.
           </p>
         }
       />
@@ -436,7 +436,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
         const drawn = elements.filter((e) => e.type !== 'floor').length
         setStatusText(
           drawn === 0
-            ? 'Tom layout - rita och spara för att komma igång.'
+            ? 'Tom layout'
             : `Utkast inläst från servern - ${drawn} element på ${loaded.length} ` +
                 (loaded.length === 1 ? 'våning.' : 'våningar.'),
         )
@@ -2190,10 +2190,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       <div className="admin-main">
         {!locationId && !resolvingLocation && (
           <p className="form-error" role="alert">
-            Layouten sparas inte: ingen restaurangplats är skapad än. Gå till
-            Inställningar och spara restaurangprofilen först - layouten lagras
-            per plats i API:t. Det du ritar här försvinner vid omladdning tills
-            dess.
+            Sparas inte: ingen plats än. Spara restaurangen under Inställningar först.
           </p>
         )}
         {shownLayoutError && (
@@ -2204,8 +2201,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
         )}
         {readOnly && (
           <p className="layout-viewmode-banner">
-            Du tittar på den publicerade, gällande versionen
-            {liveVersionLabel ? ` (${liveVersionLabel})` : ''} - skrivskyddat.{' '}
+            Publicerad version{liveVersionLabel ? ` (${liveVersionLabel})` : ''}, skrivskyddad.{' '}
             <button type="button" className="link-action" onClick={showDraft}>
               Tillbaka till utkastet
             </button>
@@ -2585,8 +2581,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                 <p>
                   <strong>{floor.name} är tom.</strong>
                   <br />
-                  Börja i mitten - origo (0,0) - med <b>Mark</b>-verktyget och
-                  rita golvet. Väggar skapas runt marken automatiskt.
+                  Rita golvet med <b>Mark</b>.
                 </p>
               </div>
             )}
@@ -2627,11 +2622,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
 
             {selected.length > 1 && (
               <>
-                <p className="props-empty">
-                  Dra i något av de valda för att flytta alla. Pilarna flyttar
-                  ett rutsteg (Shift: fem), Shift-klicka för att lägga till
-                  eller ta bort ur urvalet.
-                </p>
                 <div className="props-actions">
                   <button
                     type="button"
@@ -2680,10 +2670,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                 <div className="props-field">
                   <p className="props-label">STORLEK</p>
                   <p className="props-pos">{formatSize(selectedTable.w, selectedTable.h)}</p>
-                  <p className="props-empty">
-                    Dra i handtagen på en sida eller ände av bordet för att
-                    ändra bredd eller djup fritt - går att göra avlångt.
-                  </p>
                 </div>
                 <div className="props-field">
                   <p className="props-label">PLATSER</p>
@@ -2739,10 +2725,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                       <Icon name="arrow-down" size={16} /> Nedåt
                     </button>
                   </div>
-                  <p className="props-empty">
-                    Lägger till {rowCount} likadana bord efter det här, med
-                    lika mellanrum och nästa lediga nummer.
-                  </p>
                 </div>
                 <TableQrPanel
                   locationId={locationId}
@@ -2770,11 +2752,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                       +
                     </button>
                   </div>
-                  <p className="props-empty">
-                    {selectedWall.dir === 'h' ? 'Vågrät' : 'Lodrät'} - dra i
-                    handtagen eller flytta hela väggen. Öppningar på väggen
-                    följer med.
-                  </p>
+                  <p className="props-empty">{selectedWall.dir === 'h' ? 'Vågrät' : 'Lodrät'}</p>
                 </div>
                 <div className="props-field">
                   <p className="props-label">POSITION</p>
@@ -2804,10 +2782,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                       +
                     </button>
                   </div>
-                  <p className="props-empty">
-                    Sitter på väggen - dra för att glida längs den, dra i
-                    handtagen för att ändra längd. Kan aldrig lämna väggen.
-                  </p>
                 </div>
                 <div className="props-field">
                   <p className="props-label">PLACERING PÅ VÄGGEN</p>

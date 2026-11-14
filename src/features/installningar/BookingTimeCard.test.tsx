@@ -59,7 +59,7 @@ describe('BookingTimeCard', () => {
       bookingTimeRules: { defaultMinutes: 90, extension: { allowed: true, maxMinutes: 30 }, lastSeatingMinutes: 120, windows: [] },
     })
     render(<BookingTimeCard locationId="loc-1" isOwner={false} />)
-    expect(await screen.findByText('Bara restaurangens ägare kan ändra bokningstiden.')).toBeInTheDocument()
+    expect(await screen.findByText('Bara ägaren kan ändra.')).toBeInTheDocument()
     expect(screen.getByLabelText('Standardlängd')).toBeDisabled()
   })
 })

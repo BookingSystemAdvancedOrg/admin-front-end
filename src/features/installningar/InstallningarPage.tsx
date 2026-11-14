@@ -93,21 +93,21 @@ const TAB_LABEL: Record<SettingsTab, string> = {
 }
 
 /**
- * Inställningarna i fem grupper. Menyn visar först grupperna under varandra,
- * var och en med en rad om vad som finns där; ett klick öppnar gruppen och
- * dess delar, och "Alla inställningar" leder tillbaka. Texterna ska gå att
- * förstå utan att kunna systemet.
+ * Inställningarna i fem grupper. Menyn visar först grupperna under varandra;
+ * ett klick öppnar gruppen och dess delar, och "Alla inställningar" leder
+ * tillbaka. Bara namnen syns, så att menyn går att läsa med en blick.
  */
-const GROUPS: { id: string; label: string; hint: string; tabs: SettingsTab[] }[] = [
-  { id: 'verksamhet', label: 'Verksamheten', hint: 'Namn, adress, öppettider och bord', tabs: ['profil', 'dagar', 'bord'] },
-  { id: 'gaster', label: 'Gäster', hint: 'Sms och mejl till gästerna, avbokning och beställning', tabs: ['notiser', 'avbokning', 'bestallning', 'skrivare'] },
-  { id: 'ekonomi', label: 'Ekonomi', hint: 'Ta betalt online och underlag till bokföringen', tabs: ['betalningar', 'bokforing'] },
-  { id: 'data', label: 'Data och integritet', hint: 'Vad personalen ser i Statistik och gästernas uppgifter', tabs: ['statistik', 'integritet'] },
-  { id: 'enhet', label: 'Den här enheten', hint: 'Ljust eller mörkt läge, klickljud och skrivbordsappen', tabs: ['utseende'] },
+const GROUPS: { id: string; label: string; tabs: SettingsTab[] }[] = [
+  { id: 'verksamhet', label: 'Verksamheten', tabs: ['profil', 'dagar', 'bord'] },
+  { id: 'gaster', label: 'Gäster', tabs: ['notiser', 'avbokning', 'bestallning', 'skrivare'] },
+  { id: 'ekonomi', label: 'Ekonomi', tabs: ['betalningar', 'bokforing'] },
+  { id: 'data', label: 'Data och integritet', tabs: ['statistik', 'integritet'] },
+  { id: 'enhet', label: 'Den här enheten', tabs: ['utseende'] },
 ]
 
-/** En rad under varje del som säger vad man ställer in där. */
-const TAB_HINT: Record<SettingsTab, string> = {
+
+/** En rad om vad varje del ställer in. Syns inte i menyn; hjälpassistenten läser den (scripts/help-corpus.mjs). */
+export const TAB_HINT: Record<SettingsTab, string> = {
   profil: 'Namn, adress, telefon, e-post och öppettider',
   dagar: 'Helgdagar, stängt eller andra tider en viss dag',
   bord: 'Hur många gäster varje bord tar och vilka bord som kan ställas ihop',
@@ -426,7 +426,6 @@ export default function InstallningarPage() {
                   >
                     <span className="settings-menu-text">
                       <span className="settings-menu-title">{g.label}</span>
-                      <span className="settings-menu-hint">{g.hint}</span>
                     </span>
                     <span className="settings-menu-arrow" aria-hidden="true">›</span>
                   </button>
@@ -451,7 +450,6 @@ export default function InstallningarPage() {
                     onClick={() => openTab(t)}
                   >
                     <span className="settings-tab-title">{TAB_LABEL[t]}</span>
-                    <span className="settings-tab-hint">{TAB_HINT[t]}</span>
                   </button>
                 ))}
               </div>
@@ -469,11 +467,11 @@ export default function InstallningarPage() {
                     ? 'Letar efter restaurangens plats…'
                     : locationId
                       ? isOwner
-                        ? 'Namn, kontakt och öppettider. Spara med knappen uppe till höger.'
-                        : 'Uppgifter för din plats. Bara ägaren kan ändra dem.'
+                        ? null
+                        : 'Bara ägaren kan ändra.'
                       : isOwner
-                        ? 'Restaurangen har ingen plats än. Fyll i uppgifterna och spara för att skapa den första.'
-                        : 'Du är inte kopplad till någon plats än. Be ägaren att koppla dig till en plats.'}
+                        ? 'Ingen plats än. Fyll i och spara.'
+                        : 'Ingen plats än. Fråga ägaren.'}
                 </p>
               </div>
             </div>
@@ -539,7 +537,12 @@ export default function InstallningarPage() {
               </div>
             </div>
             <div style={{ height: 20 }} />
-            <p className="form-section-label">Öppettider</p>
+            <div className="title-info">
+              <p className="form-section-label">Öppettider</p>
+              <InfoTooltip label="Öppettider">
+                Har ni öppet efter midnatt? Ange stängningstiden som vanligt, t.ex. lördag 18:00-02:00. Passet räknas då in på natten till söndag.
+              </InfoTooltip>
+            </div>
             {drift.businessHours && !sameData(drift.businessHours, businessHours) ? (
               <ChangedNote onUse={() => {
                 setBusinessHours(drift.businessHours as BusinessHours)
@@ -554,11 +557,6 @@ export default function InstallningarPage() {
                 setBusinessHours(next)
               }}
             />
-            <div className="hours-hint">
-              <p className="cell-muted">
-                Har ni öppet efter midnatt? Ange stängningstiden som vanligt, t.ex. lördag 18:00-02:00. Passet räknas då in på natten till söndag.
-              </p>
-            </div>
           </section>
 
           {locationId && tab === 'profil' && (

@@ -245,7 +245,7 @@ export default function OversiktPage() {
       note: !todo
         ? 'Kunde inte hämtas'
         : todo.total === 0
-          ? 'Inget väntar - bra jobbat!'
+          ? 'Inget väntar'
           : todo.items.map((i) => `${i.count} ${i.label}`).join(' · '),
       action: todo && todo.total > 0 ? 'Ta det viktigaste först' : 'Allt är hanterat',
       // Till det mest brådskande först.
@@ -259,7 +259,7 @@ export default function OversiktPage() {
         ? 'Kunde inte hämtas'
         : bookings.next
           ? `${bookings.guests} gäster · nästa ${bookings.next.startTime}, ${bookings.next.customerName || 'gäst'} (${bookings.next.partySize} pers)`
-          : `${bookings.guests} gäster · inga fler gäster idag`,
+          : `${bookings.guests} gäster`,
       action: 'Se dagens bokningar',
       to: '/bokningar',
     },
@@ -292,14 +292,7 @@ export default function OversiktPage() {
     <div className="done-notice" role="status">
       <Icon name="check" size={18} />
       <span>
-        Avtalet är godkänt{accepted.sitePublished ? ' och er webbplats kan nu publiceras' : ''}.
-        {!locationId
-          ? ' Fortsätt med restaurangens uppgifter nedan.'
-          : loading
-            ? ''
-            : setupIncomplete
-              ? ' Fortsätt med stegen nedan.'
-              : ' Allt är klart för gästerna.'}
+        Avtalet är godkänt.
       </span>
       <button type="button" className="link-action" onClick={() => navigate(here, { replace: true, state: null })}>
         Stäng
@@ -315,11 +308,7 @@ export default function OversiktPage() {
           {acceptedNotice}
           <section className="admin-card table-card">
             <h2 className="card-title">Välkommen{tenant ? `, ${tenant.name}` : ''}!</h2>
-            <p className="cell-muted">
-              {isOwner
-                ? 'Restaurangen har ingen plats än. Börja med att lägga in restaurangens uppgifter under Inställningar.'
-                : 'Du är inte kopplad till någon plats än. Be restaurangens ägare att koppla dig till en plats.'}
-            </p>
+            {!isOwner && <p className="cell-muted">Ingen plats än. Fråga ägaren.</p>}
             {isOwner && (
               <Link className="card-link" to="/installningar">
                 Till inställningar →
@@ -338,7 +327,7 @@ export default function OversiktPage() {
         {sample && (
           <div className="sample-notice" role="status">
             <span className="sample-stamp">Exempel</span>
-            <span>Du ser exempeldata, inte restaurangens riktiga siffror.</span>
+            <span>Exempeldata</span>
             <button type="button" className="link-action" onClick={() => chooseSample(false)}>
               Visa riktiga siffror
             </button>
@@ -356,7 +345,6 @@ export default function OversiktPage() {
             <div className="card-head">
               <div>
                 <h2 className="card-title">Kom igång</h2>
-                <p className="cell-muted setup-lead">Gör klart de här stegen så att gästerna kan boka och beställa.</p>
               </div>
               <span className="cell-muted">
                 {remaining === 0 ? 'Kunde inte kontrollera allt' : <><Num>{doneCount}</Num> av {steps.length} klara</>}
@@ -396,7 +384,7 @@ export default function OversiktPage() {
                     ? 'Kunde inte hämta dagens bokningar.'
                     : (
                       <>
-                        Inga bokningar idag för {location?.name || 'platsen'}.
+                        Inga bokningar idag.
                         <button type="button" className="sample-offer" onClick={() => chooseSample(true)}>
                           Visa med exempeldata
                         </button>

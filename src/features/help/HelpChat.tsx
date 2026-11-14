@@ -232,7 +232,7 @@ export function HelpChat() {
           <ol className="help-log" ref={logRef} role="log" aria-live="polite" aria-label="Samtal">
             {messages.length === 0 && (
               <li className="help-empty">
-                <p>Fråga hur något fungerar i Booqy, så visar jag stegen och tar dig dit.</p>
+                <p>Fråga hur något fungerar.</p>
                 {suggestions.length > 0 && (
                   <div className="help-suggestions">
                     {suggestions.map((s) => (

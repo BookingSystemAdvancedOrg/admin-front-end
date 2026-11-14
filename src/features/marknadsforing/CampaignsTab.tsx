@@ -32,6 +32,7 @@ import { DateTimeInput } from '../../shared/DateInput'
 import { SkelRows } from '../../shared/Skeleton'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 
 const DAY_CHOICES = [30, 60, 90, 180, 365]
 
@@ -151,9 +152,7 @@ function CampaignForm({
         <p className="mk-audience-count" aria-live="polite" hidden={segment !== null}>
           {count === null ? 'Räknar mottagare…' : count < 0 ? 'Kunde inte räkna mottagarna.' : `${count} mottagare just nu`}
         </p>
-        <p className="field-hint">
-          Bara gäster som själva kryssat i att de vill få erbjudanden. Den som avregistrerat sig får aldrig utskick.
-        </p>
+        <p className="field-hint">Bara gäster som sagt ja till erbjudanden.</p>
 
         <ErrorNote text={error} />
         <div className="modal-actions">
@@ -218,8 +217,7 @@ function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone:
       <div className="modal mk-modal" role="dialog" aria-modal="true" aria-label="Skicka kampanjen">
         <h2>Skicka {campaign.name}?</h2>
         <p className="modal-text">
-          {count === null ? 'Räknar mottagare…' : `${count} mottagare (${audienceText(campaign.audience).toLowerCase()}).`} När
-          kampanjen skickas låses innehållet: ändringar i mallen efteråt påverkar inte utskicket.
+          {count === null ? 'Räknar mottagare…' : `${count} mottagare (${audienceText(campaign.audience).toLowerCase()}).`}
         </p>
         <div className="mk-radio-row" role="radiogroup" aria-label="När">
           <label className="check-row">
@@ -323,7 +321,7 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
         )}
         {campaigns === null && !error && <SkelRows n={4} cols={4} />}
         {campaigns !== null && campaigns.length === 0 && !noTemplates && (
-          <p className="cell-muted">Inga kampanjer än. Skapa en, skicka ett test till dig själv och sedan till gästerna.</p>
+          <p className="cell-muted">Inga kampanjer än.</p>
         )}
         {campaigns && campaigns.length > 0 && (
           <div className="table-scroll">
@@ -400,10 +398,13 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
         )}
       </section>
 
-      <p className="mk-footnote cell-muted">
-        Klick räknas per mottagare. Bokningar och omsättning räknas när en gäst bokar eller beställer efter att ha
-        klickat i utskicket. Öppningar mäts inte.
-      </p>
+      <div className="mk-footnote cell-muted">
+        Om siffrorna
+        <InfoTooltip label="Om siffrorna">
+          Klick räknas per mottagare. Bokningar och omsättning räknas när en gäst bokar eller beställer efter att ha
+          klickat i utskicket. Öppningar mäts inte.
+        </InfoTooltip>
+      </div>
 
       {form && templates && (
         <CampaignForm

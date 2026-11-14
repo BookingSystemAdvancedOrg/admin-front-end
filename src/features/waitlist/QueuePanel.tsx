@@ -64,7 +64,7 @@ export default function QueuePanel({ locationId, date }: { locationId: string; d
     <Card title={<>Kö <span className="status-badge" aria-label={`${waiting} väntar`}>{waiting}</span></>}
       actions={<Button size="sm" onClick={() => setAdding(true)}>Ställ i kö</Button>}>
       {!queue.settings.enabled ? (
-        <p className="cell-muted">Kön är avstängd. Ägaren slår på den under Inställningar &gt; Bord.</p>
+        <p className="cell-muted">Kön är avstängd.</p>
       ) : null}
       {first && firstEntry ? (
         <Bar variant="banner" tone="info" action={
@@ -76,7 +76,7 @@ export default function QueuePanel({ locationId, date }: { locationId: string; d
           Bord {first.tableIds.join(', ')} är ledigt för {firstEntry.name}, {firstEntry.partySize} pers.
         </Bar>
       ) : null}
-      {open.length === 0 ? <p className="admin-empty">Ingen står i kö just nu.</p> : (
+      {open.length === 0 ? <p className="admin-empty">Ingen i kö.</p> : (
         <ol className="queue-list">
           {open.map((e) => (
             <li key={e.entryId} className="queue-row">
@@ -88,7 +88,7 @@ export default function QueuePanel({ locationId, date }: { locationId: string; d
                   <span className="status-badge">{STATUS_LABEL[e.status]}</span>
                   {e.offer && e.status === 'offered' ? <span className="cell-muted"> Bord {e.offer.tableIds.join(', ')} kl. {e.offer.startTime}, svar senast {clock(e.offer.expiresAt)}</span> : null}
                   {e.notice && !e.notice.sentAt ? <span className="queue-warn"> Sms ej skickat</span> : null}
-                  {!e.phone ? <span className="cell-muted"> Inget nummer, säg till gästen själv.</span> : null}
+                  {!e.phone ? <span className="cell-muted"> Inget nummer</span> : null}
                 </span>
               </div>
               <Bar variant="action" label={`Kö: ${e.name}`}>
@@ -175,7 +175,7 @@ function WalkInModal({ locationId, onClose, onAdded }: { locationId: string; onC
         <Field label="Antal gäster" required>
           <Input type="number" min={1} max={20} value={party} required onChange={(e) => setParty(e.target.value)} />
         </Field>
-        <Field label="Mobilnummer" hint="Gästen får ett sms när bordet är klart. Utan nummer säger ni till själva.">
+        <Field label="Mobilnummer" hint="Sms när bordet är klart.">
           <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </Field>
         <Bar variant="action" label="Ställ i kö">

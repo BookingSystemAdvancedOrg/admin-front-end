@@ -33,9 +33,9 @@ export const POLL_MS = 10_000
 const PAUSE_CHOICES = [15, 30, 60, 120]
 
 const COLUMNS: { status: Order['status']; title: string; empty: string }[] = [
-  { status: 'confirmed', title: 'Nya', empty: 'Inga nya beställningar.' },
-  { status: 'preparing', title: 'Tillagas', empty: 'Inget tillagas just nu.' },
-  { status: 'ready', title: 'Klara', empty: 'Inget väntar på att hämtas eller serveras.' },
+  { status: 'confirmed', title: 'Nya', empty: 'Inga nya.' },
+  { status: 'preparing', title: 'Tillagas', empty: 'Inget tillagas.' },
+  { status: 'ready', title: 'Klara', empty: 'Inget klart.' },
 ]
 
 const JOB_TEXT: Record<JobState, string> = {
@@ -219,9 +219,9 @@ export default function BestallningarPage() {
   const revenueBefore = revenueUntil(lastWeekOrders, clockIn(null), null)
   const count = (status: string) => active.filter((o) => o.status === status).length
   const tiles = [
-    { label: 'Nya', value: String(count('confirmed')), note: count('confirmed') ? 'Väntar på köket' : 'Inget nytt just nu', tone: count('confirmed') ? ('attention' as const) : undefined },
-    { label: 'Tillagas', value: String(count('preparing')), note: 'I köket' },
-    { label: 'Klara', value: String(count('ready')), note: 'Att hämta eller servera' },
+    { label: 'Nya', value: String(count('confirmed')), note: undefined, tone: count('confirmed') ? ('attention' as const) : undefined },
+    { label: 'Tillagas', value: String(count('preparing')) },
+    { label: 'Klara', value: String(count('ready')) },
     {
       label: 'Omsättning idag',
       value: revenue ? kronor(revenue.amount) : '-',
@@ -370,7 +370,7 @@ export default function BestallningarPage() {
               <SkelTiles />
               <OrdersBoardSkeleton />
             </SkelPage>
-          ) : <p className="cell-muted">Ingen plats är vald.</p>
+          ) : <p className="cell-muted">Ingen plats vald.</p>
         ) : (
           <>
             {ordering && !ordering.open && (
@@ -382,7 +382,7 @@ export default function BestallningarPage() {
               <p className="orders-banner open" role="status">
                 Tar emot beställningar
                 {ordering.lastOrderAt ? ` · sista beställning ${ordering.lastOrderAt}` : ''}
-                {ordering.prepMinutes ? ` · gästerna ser ca ${ordering.prepMinutes} min` : ''}
+                {ordering.prepMinutes ? ` · ca ${ordering.prepMinutes} min` : ''}
               </p>
             )}
             {printBannerText(print) && (

@@ -40,7 +40,7 @@ export default function CallsTab({ locationId, owner }: { locationId: string; ow
   return (
     <Card title="Samtal senaste veckan">
       {!calls ? <p className="cell-muted">Hämtar…</p> : calls.length === 0 ? (
-        <p className="admin-empty">Inga samtal den senaste veckan.</p>
+        <p className="admin-empty">Inga samtal.</p>
       ) : (
         <div className="table-scroll">
           <table className="data-table">

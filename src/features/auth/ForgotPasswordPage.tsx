@@ -48,8 +48,7 @@ export default function ForgotPasswordPage() {
         <div className="auth-heading">
           <h1>Kolla din e-post</h1>
           <p>
-            Finns det ett konto för <strong>{sentTo}</strong> har vi skickat ett mejl med en
-            länk där du väljer ett nytt lösenord. Länken gäller i en timme.
+            Länk skickad till <strong>{sentTo}</strong>. Gäller en timme.
           </p>
         </div>
 
@@ -82,7 +81,7 @@ export default function ForgotPasswordPage() {
     <AuthLayout>
       <div className="auth-heading">
         <h1>Glömt lösenordet?</h1>
-        <p>Fyll i din e-postadress så skickar vi en länk där du väljer ett nytt lösenord.</p>
+        <p>Vi mejlar en länk.</p>
       </div>
 
       <form className="auth-form" onSubmit={handleSubmit} noValidate>

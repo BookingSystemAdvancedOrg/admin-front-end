@@ -118,12 +118,12 @@ export function PaymentsCard({
         <p className="cell-muted" role="status">
           {polling
             ? 'Tillbaka från Stripe. Hämtar den nya statusen…'
-            : 'Tillbaka från Stripe. Stripe behandlar fortfarande uppgifterna; statusen här uppdateras av sig själv när de är klara.'}
+            : 'Stripe behandlar uppgifterna.'}
         </p>
       )}
       {stripeReturn === 'refresh' && (
         <p className="cell-muted" role="status">
-          Stripe-länken hade gått ut. Öppna Stripe igen för att fortsätta.
+          Länken hade gått ut. Öppna Stripe igen.
         </p>
       )}
       <div className="stripe-status">
@@ -166,7 +166,7 @@ export function PaymentsCard({
         </span>
       )}
       {!isOwner && (
-        <p className="cell-muted">Restaurangens ägare hanterar Stripe-kontot.</p>
+        <p className="cell-muted">Bara ägaren hanterar Stripe.</p>
       )}
     </section>
   )

@@ -102,7 +102,7 @@ export default function ResetPasswordPage() {
             För <strong>{link.email}</strong>.
           </p>
         ) : (
-          <p>Fyll i din e-postadress och koden från mejlet, och välj ett nytt lösenord.</p>
+          <p>Koden finns i mejlet.</p>
         )}
       </div>
 

@@ -181,7 +181,7 @@ describe('EvenemangPage', () => {
     fireEvent.change(screen.getByLabelText(/Pris/), { target: { value: '100' } })
     const resale = screen.getByLabelText(/sälja sin biljett vidare/)
     expect(resale).not.toBeChecked()
-    expect(screen.getByText(/samma pris som gästen betalade, aldrig mer/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Förklaring: Vidareförsäljning' })).toBeInTheDocument()
     fireEvent.click(resale)
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
     await waitFor(() => expect(api.createEvent).toHaveBeenCalled())

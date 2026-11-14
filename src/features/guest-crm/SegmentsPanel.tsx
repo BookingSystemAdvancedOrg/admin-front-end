@@ -122,9 +122,6 @@ export default function SegmentsPanel() {
     <Card title="Målgrupper" actions={
       <Button size="sm" variant="secondary" onClick={() => setDraft(draftFrom(newId(), '', {}))}>Ny målgrupp</Button>
     }>
-      <p className="cell-muted">
-        Bara gäster som har sagt ja till erbjudanden kan få utskick. Gäster som inte vill ingå räknas aldrig med.
-      </p>
       {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
       {segments && segments.length === 0 && !draft ? (
         <div className="quick-links-row">
@@ -163,7 +160,7 @@ export default function SegmentsPanel() {
           <Field label="Namn" required>
             <Input value={draft.name} maxLength={60} required onChange={(e) => set({ name: e.target.value })} />
           </Field>
-          <Field label="Inte varit här på (dagar)" hint="Lämna tomt för att inte använda regeln.">
+          <Field label="Inte varit här på (dagar)" hint="Tomt = ingen regel">
             <Input type="number" min={7} max={3650} value={draft.lapsedDays} onChange={(e) => set({ lapsedDays: e.target.value })} />
           </Field>
           <Field label="Fyller år inom (dagar)">

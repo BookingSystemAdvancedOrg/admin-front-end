@@ -288,10 +288,7 @@ export function TemplateEditor({
             </p>
           )}
           {preview && previewError && <p className="field-hint error" role="alert">{previewError}</p>}
-          <p className="field-hint">
-            Varje utskick får automatiskt restaurangens namn och logga, adress och en länk för att avsluta
-            prenumerationen.
-          </p>
+          <p className="field-hint">Avregistreringslänk läggs till automatiskt.</p>
         </div>
       </div>
     </section>
@@ -315,7 +312,7 @@ export function ThemePicker({ theme, onChange }: { theme: TemplateTheme | null; 
       <legend className="form-section-label">Färger</legend>
       <SwatchRow
         label="Huvudfärg"
-        hint="Sidhuvudet och knapparna i mejlet. Texten på färgen blir ljus eller mörk av sig själv så att den går att läsa."
+        hint="Sidhuvud och knappar"
         options={THEME_COLORS}
         value={color}
         fallback="#1f2a24"

@@ -46,7 +46,7 @@ describe('PersonalliggarePage', () => {
     tenant = STAFF
     vi.mocked(api.checkIn).mockResolvedValue(ROW)
     render(<PersonalliggarePage />)
-    expect(screen.getByText(/För liggaren på papper och lägg in rättelser efteråt/)).toBeInTheDocument()
+    expect(screen.getByText(/För liggaren på papper/)).toBeInTheDocument()
     fireEvent.click(await screen.findByRole('button', { name: 'Checka in' }))
     await waitFor(() => expect(api.checkIn).toHaveBeenCalledWith('loc-1', undefined))
     expect(screen.queryByRole('tab', { name: 'Personer' })).not.toBeInTheDocument()  // owner tabs hidden

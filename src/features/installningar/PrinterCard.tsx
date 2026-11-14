@@ -18,6 +18,8 @@ import { SkelLines } from '../../shared/Skeleton'
 import { StationsCard } from './StationsCard'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { booqyFaultText } from '../../shared/errors'
+import { TitleInfo } from '../../shared/TitleInfo'
+import { Disclosure } from '../../shared/Disclosure'
 
 /**
  * Inställningar > Skrivare: bongskrivarna för matbeställningar.
@@ -202,12 +204,10 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
   return (
     <>
       <section id="skrivare" className="admin-card table-card printer-card">
-        <h2 className="card-title">Bongskrivare</h2>
-        <p className="cell-muted printer-lead">
-          Betalda beställningar skrivs ut av sig själva, en bong per station utan priser. Fungerar med
-          Star-skrivare med CloudPRNT (till exempel mC-Print3) och Epson-skrivare med Server Direct Print
-          (till exempel TM-m30III) som är kopplade till internet. Ingen dator eller app behöver stå på.
-        </p>
+        <TitleInfo
+          title="Bongskrivare"
+          info="Betalda beställningar skrivs ut av sig själva, en bong per station utan priser. Fungerar med Star-skrivare med CloudPRNT (till exempel mC-Print3) och Epson-skrivare med Server Direct Print (till exempel TM-m30III) som är kopplade till internet. Ingen dator eller app behöver stå på."
+        />
 
         {!locationId ? (
           <p className="cell-muted">Välj en plats först.</p>
@@ -220,9 +220,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
             {credentials && (
               <div className="printer-credentials" role="region" aria-label="Uppgifter till skrivaren">
                 <h3 className="printer-subtitle">Skriv in detta i skrivaren nu</h3>
-                <p className="cell-muted">
-                  Lösenordet visas bara den här gången. Tappar du bort det: välj Ny nyckel och skriv in det nya.
-                </p>
+                <p className="cell-muted">Lösenordet visas bara nu.</p>
                 <CopyField id="printer-url"
                   label={credentials.device.protocol === 'epson' ? 'Server-URL (Server Direct Print)' : 'Server-URL (CloudPRNT)'}
                   value={credentials.device.serverUrl ?? ''} />
@@ -318,7 +316,6 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
                 <div className="toggle-row">
                   <div>
                     <p className="toggle-row-label" id="print-auto-label">Skriv ut bongar automatiskt</p>
-                    <p className="cell-muted">När en gäst har betalat kommer varje stations bong ut direkt.</p>
                   </div>
                   <button type="button" role="switch" aria-checked={autoPrint} aria-labelledby="print-auto-label"
                     className="switch" disabled={disabled} onClick={() => { setAutoPrint(!autoPrint); setNotice(null) }} />
@@ -353,7 +350,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
                     )}
                   </span>
                 ) : (
-                  <p className="cell-muted">Bara restaurangens ägare kan ändra skrivarna.</p>
+                  <p className="cell-muted">Bara ägaren kan ändra.</p>
                 )}
               </form>
             )}
@@ -369,9 +366,8 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
           routing={data.routing} devices={devices} onSaved={(routing) => setData({ ...data, routing })} />
       )}
 
-      <section className="admin-card table-card printer-guide" aria-labelledby="printer-guide-title">
-        <h2 className="card-title" id="printer-guide-title">Så kopplar du skrivaren</h2>
-        <p className="cell-muted printer-lead">Gäller Star mC-Print3. Andra Star-skrivare med CloudPRNT fungerar likadant.</p>
+      <Disclosure title="Så kopplar du skrivaren" className="admin-card table-card printer-guide">
+        <p className="cell-muted printer-lead">Star mC-Print3 och andra Star med CloudPRNT</p>
         <ol className="printer-steps">
           <li>
             Koppla skrivaren till routern med nätverkskabel och slå på den. Håll inne FEED-knappen när du slår
@@ -414,7 +410,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
           <li>Fyll i användarnamn (ID) och lösenord under autentisering, spara och starta om skrivaren.</li>
           <li>Tryck på Testutskrift. Lappen kommer ut inom några sekunder.</li>
         </ol>
-      </section>
+      </Disclosure>
     </>
   )
 }

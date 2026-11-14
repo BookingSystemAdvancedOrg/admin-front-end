@@ -1094,6 +1094,9 @@
 }
 
 .toggle-row-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font: 600 13px/1.3 var(--sans);
   color: var(--ink);
 }
@@ -1788,4 +1791,16 @@
 .toggle-row--field {
   align-self: end;
   min-height: 44px;
+}
+
+/* Rubrik + (i) (shared/TitleInfo). */
+.title-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.title-info > .card-title {
+  margin: 0;
 }

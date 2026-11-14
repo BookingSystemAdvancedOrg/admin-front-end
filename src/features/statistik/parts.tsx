@@ -53,12 +53,13 @@ export function Tile({
   )
 }
 
-/** "Gör så här": vad siffran betyder för den som driver restaurangen. */
+/** "Gör så här": rådet bakom en (i) så att kortet bara visar siffrorna. */
 export function Tip({ children }: { children: ReactNode }) {
   return (
-    <p className="sk-tip">
-      <span className="sk-tip-label">Gör så här</span> {children}
-    </p>
+    <div className="sk-tip">
+      <span className="sk-tip-label">Tips</span>
+      <InfoTooltip label="Gör så här">{children}</InfoTooltip>
+    </div>
   )
 }
 

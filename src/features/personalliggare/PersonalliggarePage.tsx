@@ -48,7 +48,7 @@ export default function PersonalliggarePage() {
         {enabled ? <Ledger /> : (
           <section className="admin-card table-card">
             <h2 className="card-title">Ingår inte i er plan</h2>
-            <p className="cell-muted">Personalliggare ingår inte i er plan. Kontakta oss för att uppgradera.</p>
+            <p className="cell-muted">Kontakta oss för att uppgradera.</p>
           </section>
         )}
       </main>
@@ -85,7 +85,7 @@ function Ledger() {
   return (
     <>
       <Bar variant="banner" tone="warning">
-        Personalliggaren är under juridisk granskning. Fungerar inte appen? För liggaren på papper och lägg in rättelser efteråt.
+        Under juridisk granskning. Fungerar inte appen? För liggaren på papper.
       </Bar>
       {owner ? (
         <div className="pl-section">
@@ -187,7 +187,7 @@ function Today({ locationId, owner, persons }: { locationId: string; owner: bool
       </Card>
 
       <Card title="På plats nu" actions={<Button variant="secondary" onClick={() => setInspecting(true)}>Visa för Skatteverket</Button>}>
-        {!data ? <p className="cell-muted">Hämtar…</p> : data.present.length === 0 ? <p className="admin-empty">Ingen är incheckad just nu.</p> : (
+        {!data ? <p className="cell-muted">Hämtar…</p> : data.present.length === 0 ? <p className="admin-empty">Ingen incheckad.</p> : (
           <ul className="pl-present">
             {data.present.map((p) => <li key={p.personId}><span>{p.name}</span><span className="cell-muted">sedan {clock(p.since)}</span></li>)}
           </ul>
@@ -207,7 +207,7 @@ function Today({ locationId, owner, persons }: { locationId: string; owner: bool
 }
 
 function Rows({ rows, identity = false }: { rows: Row[]; identity?: boolean }) {
-  if (rows.length === 0) return <p className="admin-empty">Inga registreringar den här dagen.</p>
+  if (rows.length === 0) return <p className="admin-empty">Inga registreringar.</p>
   return (
     <div className="table-scroll">
       <table className="data-table pl-table">
@@ -255,7 +255,7 @@ function InspectionView({ locationId, day, onClose }: { locationId: string; day:
             <dt>Visad</dt><dd>{new Date(view.generatedAt).toLocaleString('sv-SE', { timeZone: 'Europe/Stockholm' })}</dd>
           </dl>
           <h3 className="pl-sub">På plats nu</h3>
-          {view.present.length === 0 ? <p>Ingen är incheckad just nu.</p> : (
+          {view.present.length === 0 ? <p>Ingen incheckad.</p> : (
             <ul className="pl-present">
               {view.present.map((p) => (
                 <li key={p.personId}><span>{p.name}</span><span className="pl-mono">{p.personalIdentity}</span><span>sedan {clock(p.since)}</span></li>
@@ -277,7 +277,6 @@ function Persons({ persons, onSaved }: { persons: Person[]; onSaved: () => Promi
   const blank: Person = { personId: '', name: '', personalIdentity: '', userSub: null, locationIds: [], active: true, version: 0 }
   return (
     <Card title="Personer" actions={<Button onClick={() => setEditing(blank)}>Lägg till person</Button>}>
-      <p className="cell-muted">Alla som arbetar ska finnas här, även du som ägare och de som hjälper till utan inloggning.</p>
       {persons.length === 0 ? <p className="admin-empty">Inga personer än.</p> : (
         <div className="table-scroll">
           <table className="data-table">
@@ -424,10 +423,7 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
   return (
     <>
       <Card title="Rätta eller efterregistrera">
-        <p className="cell-muted">
-          Inget skrivs över. En rättelse blir en ny rad med orsak, och den ursprungliga registreringen syns bredvid.
-          Välj en rad nedan för att rätta den, eller fyll i formuläret för att efterregistrera.
-        </p>
+        <p className="cell-muted">Välj en rad nedan, eller fyll i för att efterregistrera.</p>
         <form className="form-grid" onSubmit={save} aria-label="Rättelse">
           <Field label="Dag" required>
             <Input type="date" value={day} max={today()} onChange={(e) => { if (e.target.value) { setDay(e.target.value); pick(null) } }} />
@@ -458,7 +454,7 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
         </form>
       </Card>
       <Card title="Registreringar den dagen">
-        {!data ? <p className="cell-muted">Hämtar…</p> : data.records.length === 0 ? <p className="admin-empty">Inga registreringar den här dagen.</p> : (
+        {!data ? <p className="cell-muted">Hämtar…</p> : data.records.length === 0 ? <p className="admin-empty">Inga registreringar.</p> : (
           <ul className="pl-present">
             {data.records.map((r) => (
               <li key={`${r.seq}-${r.correctedBySeq ?? 0}`}>
@@ -502,7 +498,7 @@ function Export({ locationId }: { locationId: string }) {
 
   return (
     <Card title="Exportera">
-      <p className="cell-muted">Hämta liggaren som en CSV-fil, till exempel om Skatteverket ber om en kopia. Filen innehåller personnummer: spara den säkert.</p>
+      <p className="cell-muted">Innehåller personnummer: spara filen säkert.</p>
       <form className="form-grid" onSubmit={run} aria-label="Exportera liggaren">
         <Field label="Från" required><Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
         <Field label="Till" required><Input type="date" value={to} max={today()} onChange={(e) => setTo(e.target.value)} /></Field>

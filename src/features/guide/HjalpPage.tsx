@@ -18,13 +18,12 @@ export default function HjalpPage() {
 
   return (
     <>
-      <AdminTopbar title="Hjälp" subtitle="Kom igång med Booqy Admin" />
+      <AdminTopbar title="Hjälp" />
       <div className="admin-main">
         <section className="admin-card table-card">
           <div className="card-head">
             <div>
               <h2 className="card-title">Guiden</h2>
-              <p className="cell-muted">En rundtur genom appen, sida för sida. Tar ett par minuter.</p>
             </div>
             <button type="button" className="btn primary square" onClick={start}>
               Starta guiden

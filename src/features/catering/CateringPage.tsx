@@ -85,7 +85,7 @@ export default function CateringPage() {
               <SkelTiles />
               <SkelCard rows={5} cols={4} />
             </SkelPage>
-          ) : <p className="cell-muted">Ingen plats är vald.</p>
+          ) : <p className="cell-muted">Ingen plats vald.</p>
         ) : (
           <>
           <section className="stats-row" aria-label="Cateringens siffror">
@@ -105,8 +105,7 @@ export default function CateringPage() {
             {rows === null && !error && <SkelRows n={5} cols={4} />}
             {rows !== null && visible.length === 0 && (
               <p className="cell-muted">
-                Inga {filter === 'aktiva' ? 'pågående ' : ''}cateringförfrågningar. Gäster skickar dem från
-                cateringkalkylen på er webbplats.
+                Inga {filter === 'aktiva' ? 'pågående ' : ''}förfrågningar.
               </p>
             )}
             {visible.length > 0 && (

@@ -14,6 +14,7 @@ import {
 import type { AccountRole, Accounts, AccountingSettings, ExportFormat, ExportResult } from './accountingApi'
 import './bokforing.css'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { TitleInfo } from '../../shared/TitleInfo'
 
 /**
  * Bokföring: dagens försäljning som en verifikation per dag, till Fortnox,
@@ -221,12 +222,10 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
   return (
     <>
       <section id="bokforing" className="admin-card table-card bokforing-card">
-        <h2 className="card-title">Exportera till bokföringen</h2>
-        <div style={{ height: 8 }} />
-        <p className="cell-muted">
-          En verifikation per dag med försäljning per momssats, betalningar, återbetalningar, Stripes avgifter och
-          utbetalningar till banken. Läs in SIE-filen i Fortnox, Visma eller ett annat bokföringsprogram.
-        </p>
+        <TitleInfo
+          title="Exportera till bokföringen"
+          info="En verifikation per dag med försäljning per momssats, betalningar, återbetalningar, Stripes avgifter och utbetalningar till banken. Läs in SIE-filen i Fortnox, Visma eller ett annat bokföringsprogram."
+        />
         <div style={{ height: 16 }} />
         <form onSubmit={download} className="notifications-form">
           <div className="form-grid">
@@ -317,12 +316,10 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
       </section>
 
       <section className="admin-card table-card bokforing-card">
-        <h2 className="card-title">Konton</h2>
-        <div style={{ height: 8 }} />
-        <p className="cell-muted">
-          Standardkonton enligt BAS-kontoplanen. Stäm av dem med er redovisningskonsult och ändra det som ska bokas
-          på andra konton.
-        </p>
+        <TitleInfo
+          title="Konton"
+          info="Standardkonton enligt BAS-kontoplanen. Stäm av dem med er redovisningskonsult och ändra det som ska bokas på andra konton."
+        />
         <div style={{ height: 16 }} />
         <ErrorNote text={loadError} />
         {!accounts && !loadError && <p className="cell-muted">Hämtar kontona…</p>}

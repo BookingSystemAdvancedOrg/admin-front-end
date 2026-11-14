@@ -140,10 +140,10 @@ export default function AdWizard({ locationId, onClose, onCreated }: {
 
       {step === 2 ? (
         <div className="form-grid">
-          <Field label="Total budget (kr)" hint="100-20 000 kr. Meta slutar visa annonsen när budgeten är slut." required>
+          <Field label="Total budget (kr)" hint="100-20 000 kr" required>
             <Input type="number" min={100} max={20000} value={budget} onChange={(e) => setBudget(e.target.value)} />
           </Field>
-          <Field label="Antal dagar" hint="3-30 dagar. Annonsen slutar av sig själv." required>
+          <Field label="Antal dagar" hint="3-30 dagar" required>
             <Input type="number" min={3} max={30} value={days} onChange={(e) => setDays(e.target.value)} />
           </Field>
         </div>
@@ -173,10 +173,7 @@ export default function AdWizard({ locationId, onClose, onCreated }: {
 
       {step === 5 ? (
         <div>
-          <p>
-            Annonsen skapas hos Meta och blir <strong>pausad</strong>. Den visas först när du trycker på
-            "Starta annonsen" i listan.
-          </p>
+          <p>Skapas <strong>pausad</strong>. Starta den i listan.</p>
           <dl className="annons-facts">
             <dt>Rätt</dt><dd>{dish?.name}</dd>
             <dt>Budget</dt><dd>{Number(budget).toLocaleString('sv-SE')} kr under {days} dagar</dd>

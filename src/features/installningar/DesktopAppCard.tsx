@@ -129,10 +129,6 @@ function PhoneInstallBody() {
         <p className="desktop-app__now">Appen är installerad. Öppna Booqy Admin från hemskärmen.</p>
       ) : (
         <>
-          <p className="cell-muted">
-            Lägg Booqy Admin på hemskärmen, så öppnas den som en egen app i helskärm. Samma inloggning och samma funktioner
-            som här, och den visar alltid den senaste versionen.
-          </p>
           {kind === 'ios' ? (
             <ol className="phone-install__steps">
               <li>
@@ -204,17 +200,13 @@ function DesktopAppCardBody({ heading }: { heading: boolean }) {
       className={flash ? 'admin-card table-card desktop-app is-flash' : 'admin-card table-card desktop-app'}
     >
       {heading && <h2 className="card-title">Skrivbordsappen</h2>}
-      <p className="cell-muted">
-        Booqy Admin som app på datorn, i ett eget fönster. Samma inloggning och samma funktioner som här. Appen visar alltid
-        den senaste versionen av Booqy och uppdaterar sig själv utan frågor.
-      </p>
 
       {rec !== undefined && (
         <div className="desktop-app__install">
           <h3 className="desktop-app__sub">Installera med ett kommando (rekommenderas)</h3>
           <p className="cell-muted">
             Klistra in i {installShellFor(rec) === 'windows' ? 'PowerShell' : installShellFor(rec) === 'unix' ? 'Terminal' : 'Terminal eller PowerShell'} och
-            tryck Retur. Kommandot kontrollerar filen och installerar utan varningsrutor.
+            tryck Retur.
           </p>
           {installShellFor(rec) !== 'windows' && <CommandRow shell="unix" />}
           {installShellFor(rec) !== 'unix' && <CommandRow shell="windows" />}

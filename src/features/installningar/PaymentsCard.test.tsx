@@ -58,7 +58,7 @@ describe('PaymentsCard', () => {
       vi.advanceTimersByTime(120000)
     })
     expect(onRefresh).toHaveBeenCalledTimes(21)
-    expect(screen.getByText(/Stripe behandlar fortfarande uppgifterna/)).toBeInTheDocument()
+    expect(screen.getByText(/Stripe behandlar uppgifterna/)).toBeInTheDocument()
   })
 
   it('does not poll on a normal visit', async () => {

@@ -21,6 +21,7 @@ import { FocusFrame } from './FocusFrame'
 import { CENTRE, focusPosition, isCentre } from './imageFocus'
 import type { ImageFocus } from './imageFocus'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 
 export interface DishFormValues {
   name: string
@@ -298,7 +299,7 @@ export function DishModal({
                     style={{ objectPosition: focusPosition(imageFocus) }}
                   />
                   <p className="dish-focus-hint">
-                    Dra i bilden för att välja vad som syns i listan och på sajten. Klicka för att se den i stort.
+                    Dra för att välja utsnitt.
                   </p>
                 </div>
               )}
@@ -409,7 +410,7 @@ export function DishModal({
 
         <div className="toggle-row">
           <span className="toggle-row-label">
-            Aktiv - visas i menyn för gäster
+            Aktiv
           </span>
           <button
             type="button"
@@ -426,7 +427,8 @@ export function DishModal({
 
         <div className="toggle-row">
           <span className="toggle-row-label">
-            Innehåller alkohol - 25 % moms, kan bara beställas vid bordet
+            Innehåller alkohol
+            <InfoTooltip label="Alkohol">25 % moms. Kan bara beställas vid bordet.</InfoTooltip>
           </span>
           <button
             type="button"
@@ -439,7 +441,12 @@ export function DishModal({
         </div>
 
         <fieldset className="dish-ticket">
-          <legend>Bong</legend>
+          <legend>
+            Bong
+            <InfoTooltip label="Meny eller combo">
+              En meny eller combo delas upp: varje del får sin egen bong, till exempel burgare och pommes till köket och drycken till baren.
+            </InfoTooltip>
+          </legend>
           <div className="form-field">
             <label htmlFor="dish-station">Vart går rätten?</label>
             <select id="dish-station" value={station} onChange={(e) => setStation(e.target.value)}>
@@ -447,13 +454,9 @@ export function DishModal({
               {stations.map((s) => (
                 <option key={s.stationId} value={s.stationId}>{s.name}</option>
               ))}
-              <option value={NO_TICKET}>Ingen bong (till exempel läsk ur kylen)</option>
+              <option value={NO_TICKET}>Ingen bong</option>
             </select>
           </div>
-          <p className="cell-muted dish-ticket-hint">
-            En meny eller combo delas upp: varje del får sin egen bong, till exempel burgare och pommes till
-            köket och drycken till baren.
-          </p>
           {parts.map((part, i) => (
             <div key={i} className="dish-part">
               <div className="form-field">
@@ -488,7 +491,7 @@ export function DishModal({
 
         <div className="toggle-row">
           <span className="toggle-row-label">
-            Bara under en viss tid - t.ex. en lunchrätt eller en säsongsrätt
+            Bara under en viss tid
           </span>
           <button
             type="button"
@@ -511,10 +514,12 @@ export function DishModal({
         {scheduleOn && (
           <fieldset className="dish-schedule" id="dish-schedule">
             <legend className="sr-only">När rätten visas</legend>
-            <p className="dish-schedule-help">
-              Lämna en ruta tom för ingen gräns åt det hållet. Rätten är borta på
-              till-tiden (till 14:00 = borta 14:00). Svensk tid ({timeZone}).
-            </p>
+            <div className="dish-schedule-help">
+              Svensk tid
+              <InfoTooltip label="Tider">
+                Lämna en ruta tom för ingen gräns åt det hållet. Rätten är borta på till-tiden (till 14:00 = borta 14:00). Svensk tid ({timeZone}).
+              </InfoTooltip>
+            </div>
             <div className="form-grid">
               <div className="form-field">
                 <label htmlFor="dish-available-from">Visas från</label>

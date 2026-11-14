@@ -359,7 +359,7 @@ export default function CateringRequestPage() {
                   {request.status === 'requested' ? 'Offert' : `Ny offertversion (v${nextVersion})`}
                 </h2>
                 <p className="cell-muted">
-                  Justera fritt - priser i kronor inkl. moms. Kunden signerar exakt den version du skickar.
+                  Priser inkl. moms
                 </p>
                 {offerChangedThere && (
                   <ChangedNote

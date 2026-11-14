@@ -4,6 +4,8 @@ import type { FormEvent } from 'react'
 import { REMINDER_HOURS, replaceTenant, updateTenant } from '../../shared/tenant'
 import type { Tenant, TenantNotifications } from '../../shared/tenant'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { TitleInfo } from '../../shared/TitleInfo'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 
 /**
  * Notiser: vad gäster och restaurangen får när någon bokar.
@@ -79,21 +81,21 @@ export function NotificationsCard({ tenant, isOwner }: { tenant: Tenant; isOwner
 
   return (
     <section id="notiser" className="admin-card table-card">
-      <h2 className="card-title">Notiser</h2>
-      <div style={{ height: 8 }} />
-      <p className="cell-muted">
-        Gäster får alltid bokningsbekräftelse per e-post med en länk för att se eller avboka,
-        och besked om ni ändrar eller avbokar.
-      </p>
+      <TitleInfo
+        title="Notiser"
+        info="Gäster får alltid bokningsbekräftelse per e-post med en länk för att se eller avboka, och besked om ni ändrar eller avbokar."
+      />
       <div style={{ height: 16 }} />
       <form onSubmit={save} className="notifications-form">
         <div className="toggle-row">
           <div>
-            <p className="toggle-row-label" id="notif-sms-label">SMS till gästen</p>
-            <p className="cell-muted">
-              Bekräftelse och påminnelse även som SMS. Ingår i priset. Skickas till nordiska nummer
-              (+46, +45, +47, +358, +354) - andra gäster får e-posten.
-            </p>
+            <div className="title-info">
+              <p className="toggle-row-label" id="notif-sms-label">SMS till gästen</p>
+              <InfoTooltip label="SMS till gästen">
+                Bekräftelse och påminnelse även som SMS. Ingår i priset. Skickas till nordiska nummer
+                (+46, +45, +47, +358, +354), andra gäster får e-posten.
+              </InfoTooltip>
+            </div>
           </div>
           <button
             type="button"
@@ -140,7 +142,7 @@ export function NotificationsCard({ tenant, isOwner }: { tenant: Tenant; isOwner
         <div className="toggle-row">
           <div>
             <p className="toggle-row-label" id="notif-staff-label">E-post till restaurangen</p>
-            <p className="cell-muted">Vid ny onlinebokning och när en gäst avbokar.</p>
+            <p className="cell-muted">Ny bokning och avbokning</p>
           </div>
           <button
             type="button"
@@ -168,7 +170,7 @@ export function NotificationsCard({ tenant, isOwner }: { tenant: Tenant; isOwner
             )}
           </span>
         )}
-        {!isOwner && <p className="cell-muted">Bara restaurangens ägare kan ändra notiser.</p>}
+        {!isOwner && <p className="cell-muted">Bara ägaren kan ändra.</p>}
       </form>
     </section>
   )

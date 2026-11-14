@@ -29,6 +29,7 @@ import { Num } from '../../shared/motion/Num'
 import { parseKronor } from './data'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { TitleInfo } from '../../shared/TitleInfo'
 
 const kr = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 2 })
 
@@ -101,10 +102,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
     <section className="admin-card table-card">
       <div className="card-head">
         <div>
-          <h2 className="card-title">Cateringmeny</h2>
-          <p className="cell-muted">
-            Rätter och paket som gästen kan välja i kalkylen. Skild från den vanliga menyn.
-          </p>
+          <TitleInfo title="Cateringmeny" info="Rätter och paket som gästen kan välja i kalkylen. Skild från den vanliga menyn." />
         </div>
         {isOwner && locationId && (
           <span className="cm-head-actions">
@@ -126,7 +124,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
       <h3 className="cm-subtitle">Rätter</h3>
       {dishes.length === 0 ? (
         <p className="cm-empty">
-          Inga cateringrätter än. Skapa en ny rätt eller hämta rätter från den vanliga menyn.
+          Inga rätter än.
         </p>
       ) : (
         <div className="table-scroll">
@@ -189,7 +187,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
 
       <h3 className="cm-subtitle">Paket</h3>
       {packages.length === 0 ? (
-        <p className="cm-empty">Inga paket än. Ett paket är flera rätter till ett pris per gäst.</p>
+        <p className="cm-empty">Inga paket än.</p>
       ) : (
         <div className="table-scroll">
           <table className="data-table">
@@ -518,13 +516,12 @@ function ImportModal({ locationId, dishes, onImport, onCancel }: {
   return (
     <ModalShell title="Hämta från menyn" onCancel={onCancel}>
       <p className="modal-subtitle">
-        Rätterna kopieras med namn, beskrivning och pris. Ändringar i menyn följer inte med, och allergener lägger du
-        till efteråt.
+        Kopieras med namn, beskrivning och pris. Allergener lägger du till efteråt.
       </p>
       {menu === null ? (
         <p className="cell-muted">Hämtar menyn…</p>
       ) : menu.length === 0 ? (
-        <p className="cm-empty">Menyn har inga aktiva rätter att hämta.</p>
+        <p className="cm-empty">Inga aktiva rätter.</p>
       ) : (
         <div className="cm-checks cm-checks--wide">
           {menu.map((m) => (

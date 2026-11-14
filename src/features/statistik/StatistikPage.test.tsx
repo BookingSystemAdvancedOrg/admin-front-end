@@ -67,7 +67,7 @@ beforeEach(() => {
 describe('StatistikPage', () => {
   it('puts today, the coming bookings, guests per week and no-shows first, the rest folded', async () => {
     renderAt()
-    expect(await screen.findByRole('heading', { name: /^Idag/ })).toBeInTheDocument()
+    expect(await screen.findByRole('region', { name: 'Idag' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Kommande bokningar' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Gäster per vecka' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Uteblivna' })).toBeInTheDocument()
@@ -129,7 +129,7 @@ describe('StatistikPage', () => {
   it('shows staff the operations figures without amounts', async () => {
     tenant = { ...tenant, role: 'staff_user', locations: [locations[0]], insights: { staffAccess: 'operations' } }
     renderAt()
-    expect(await screen.findByText(/Belopp visas bara för restaurangens ägare/)).toBeInTheDocument()
+    expect(await screen.findByText(/Belopp visas bara för ägaren/)).toBeInTheDocument()
     expect(screen.queryAllByText(/Omsättning|kr$/)).toHaveLength(0)
     expect(screen.getAllByText('Tillagningstid').length).toBeGreaterThan(0)
     expect(screen.queryByLabelText('Plats')).not.toBeInTheDocument()
@@ -138,7 +138,7 @@ describe('StatistikPage', () => {
   it('tells staff when the owner has closed it', async () => {
     tenant = { ...tenant, role: 'staff_user', insights: { staffAccess: 'none' } }
     renderAt()
-    expect(screen.getByRole('heading', { name: 'Inte öppen för personalen' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Bara för ägaren' })).toBeInTheDocument()
     expect(fetchInsights).not.toHaveBeenCalled()
   })
 
@@ -149,7 +149,7 @@ describe('StatistikPage', () => {
       return { ...r, current: zero }
     })
     renderAt()
-    expect(await screen.findByRole('heading', { name: 'Inget att räkna på i perioden' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Inget i perioden' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Visa med exempeldata' })).toBeInTheDocument()
   })
 

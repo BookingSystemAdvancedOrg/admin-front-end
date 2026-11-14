@@ -97,7 +97,7 @@ describe('AnnonserTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Föreslå text' }))
     fireEvent.click(await screen.findByRole('button', { name: /Fredagspasta/ }))
     for (let i = 0; i < 4; i++) fireEvent.click(screen.getByRole('button', { name: 'Nästa' }))
-    expect(screen.getByText(/blir/)).toHaveTextContent('pausad')
+    expect(screen.getByText(/Skapas/)).toHaveTextContent('pausad')
     expect(screen.getByText('Område').closest('dl')).toHaveClass('annons-facts')
     fireEvent.click(screen.getByRole('button', { name: 'Skapa annonsen' }))
     await waitFor(() => expect(api.createCampaign).toHaveBeenCalledTimes(1))

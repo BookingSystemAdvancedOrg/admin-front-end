@@ -296,7 +296,7 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
 
   return (
     <>
-      <AdminTopbar title="Layout" subtitle="Boka bord direkt från bordskartan" actions={actions} />
+      <AdminTopbar title="Layout" actions={actions} />
       <div className="admin-main floor-booking">
         {notice}
         {planState === 'loading' && <Loading label="Hämtar bordskartan" />}
@@ -306,9 +306,7 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
         {planState === 'none' && (
           <section className="admin-card table-card">
             <h2 className="card-title">Ingen bordskarta än</h2>
-            <p className="cell-muted">
-              Rita borden under Layout på en dator och publicera layouten. Sedan går det att boka härifrån.
-            </p>
+            <p className="cell-muted">Publicera en layout först.</p>
           </section>
         )}
         {planState === 'ready' && plan && floor && view && (
@@ -453,7 +451,7 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
 
               <section className="admin-card floor-booking-panel" ref={panelRef} aria-live="polite">
                 {!table ? (
-                  <p className="cell-muted floor-booking-hint">Tryck på ett ledigt bord för att se dess lediga tider och boka.</p>
+                  <p className="cell-muted floor-booking-hint">Tryck på ett ledigt bord.</p>
                 ) : (
                   <form className="booking-form" onSubmit={submit}>
                     <div className="floor-booking-head">

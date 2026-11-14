@@ -180,9 +180,9 @@ export default function MenyPage() {
     : 0
   const tiles = [
     { label: 'Rätter på menyn', value: String(dishes.length), note: `${new Set(dishes.map((d) => d.category)).size} av ${categories.length} kategorier` },
-    { label: 'Aktiva', value: String(activeCount), note: dishes.length ? `${dishes.length - activeCount} dolda för gästerna` : 'Lägg till din första rätt' },
-    { label: 'Med bild', value: String(withImage), note: dishes.length ? `${Math.round((withImage / dishes.length) * 100)} % av rätterna` : '-' },
-    { label: 'Snittpris', value: activeCount ? `${avgPrice} kr` : '-', note: 'Aktiva rätter' },
+    { label: 'Aktiva', value: String(activeCount), note: dishes.length ? `${dishes.length - activeCount} dolda` : undefined },
+    { label: 'Med bild', value: String(withImage), note: dishes.length ? `${Math.round((withImage / dishes.length) * 100)} %` : undefined },
+    { label: 'Snittpris', value: activeCount ? `${avgPrice} kr` : '-' },
   ]
   /** Rätten som den ser ut i listan nu (kan ha ändrats på annat håll sedan dialogen öppnades). */
   const editingDish =
@@ -383,9 +383,7 @@ export default function MenyPage() {
       <div className="admin-main">
         {!locationId && !resolvingLocation && (
           <p className="form-error" role="alert">
-            Menyn kan inte hämtas: ingen restaurangplats är skapad än. Gå till
-            Inställningar och spara restaurangprofilen först - menyn lagras per
-            plats i API:t.
+            Ingen plats än. Spara restaurangen under Inställningar först.
           </p>
         )}
         {readOnly && (
@@ -403,8 +401,8 @@ export default function MenyPage() {
               {fetching
                 ? <SkelBlock w={150} h={14} />
                 : hasActiveFilters
-                  ? `${filteredDishes.length} av ${dishes.length} rätter · ${activeCount} aktiva totalt`
-                  : `${dishes.length} rätter · ${activeCount} aktiva`}
+                  ? `${filteredDishes.length} av ${dishes.length}`
+                  : null}
             </span>
           </div>
           <div className="meny-filters">
@@ -477,7 +475,7 @@ export default function MenyPage() {
                 {Boolean(locationId) && !fetching && dishes.length === 0 && !loadError && (
                   <tr>
                     <td colSpan={6} className="cell-muted">
-                      Inga rätter i menyn än.
+                      Inga rätter än.
                     </td>
                   </tr>
                 )}

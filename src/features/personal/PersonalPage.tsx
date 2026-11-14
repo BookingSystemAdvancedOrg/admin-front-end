@@ -9,7 +9,7 @@ import { errorText } from '../../shared/errors'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { CtaButton } from '../../shared/CtaButton'
 import { StatTile } from '../../shared/motion/StatTile'
-import { SkelBlock, SkelTableRows } from '../../shared/Skeleton'
+import { SkelTableRows } from '../../shared/Skeleton'
 import { onPageAction, takePageAction } from '../../shared/nav'
 import { useLocationId } from '../../shared/location'
 import { useTenant } from '../../shared/tenant'
@@ -29,6 +29,7 @@ import {
 } from '../installningar/usersApi'
 import type { User } from '../installningar/usersApi'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { TitleInfo } from '../../shared/TitleInfo'
 
 const ROLE_LABEL: Record<User['role'], string> = {
   staff: 'Personal',
@@ -103,7 +104,7 @@ export default function PersonalPage() {
         <AdminTopbar title="Personal" />
         <div className="admin-main">
           <section className="admin-card">
-            <p className="cell-muted">Det är restaurangens ägare som bjuder in och hanterar personalen.</p>
+            <p className="cell-muted">Bara ägaren hanterar personalen.</p>
           </section>
         </div>
       </>
@@ -115,10 +116,10 @@ export default function PersonalPage() {
   const staffOnly = staff.filter((s) => s.role === 'staff')
   const active = staffOnly.filter((s) => s.status === 'active').length
   const tiles = [
-    { label: 'Medarbetare', value: String(staffOnly.length), note: staffOnly.length ? 'Med egen inloggning' : 'Bjud in din första' },
-    { label: 'Aktiva', value: String(active), note: 'Kan logga in' },
-    { label: 'Inaktiva', value: String(staffOnly.length - active), note: 'Spärrade, kan aktiveras igen' },
-    { label: 'Platser', value: String(locations.length), note: 'Personal hör till en plats' },
+    { label: 'Medarbetare', value: String(staffOnly.length) },
+    { label: 'Aktiva', value: String(active) },
+    { label: 'Inaktiva', value: String(staffOnly.length - active) },
+    { label: 'Platser', value: String(locations.length) },
   ]
 
   function replace(updated: User) {
@@ -204,7 +205,7 @@ export default function PersonalPage() {
       <div className="admin-main">
         {tenant && locations.length === 0 && (
           <p className="form-error" role="alert">
-            Skapa restaurangens plats under Inställningar först: personal kopplas till en plats.
+            Skapa restaurangens plats under Inställningar först.
           </p>
         )}
         <section className="stats-row" aria-label="Personalens siffror">
@@ -216,14 +217,7 @@ export default function PersonalPage() {
         <section className="admin-card table-card">
           <div className="card-head">
             <div>
-              <h2 className="card-title">Medarbetare</h2>
-              <p className="cell-muted">
-                {loading ? (
-                  <SkelBlock w={200} h={14} />
-                ) : (
-                  'Inbjudan går till e-posten med ett tillfälligt lösenord. Personen ser bokningar, beställningar och menyn för sin plats.'
-                )}
-              </p>
+              <TitleInfo title="Medarbetare" info="Inbjudan går till e-posten med ett tillfälligt lösenord. Personen ser bokningar, beställningar och menyn för sin plats." />
             </div>
             {locations.length > 1 && (
               <div className="form-field">
@@ -257,7 +251,7 @@ export default function PersonalPage() {
                 {!loading && shown.length === 0 && !loadError && (
                   <tr>
                     <td colSpan={4} className="cell-muted">
-                      Ingen personal här än. Bjud in den första med knappen uppe till höger.
+                      Ingen personal än.
                     </td>
                   </tr>
                 )}

@@ -37,7 +37,7 @@ export default function PresentkortPage() {
           <section className="admin-card table-card">
             <h2 className="card-title">{blocked}</h2>
             <p className="cell-muted">
-              {!enabled ? 'Presentkort ingår inte i er plan. Kontakta oss för att uppgradera.'
+              {!enabled ? 'Kontakta oss för att uppgradera.'
                 : 'Presentkorten hanteras av restaurangens ägare.'}
             </p>
           </section>
@@ -69,7 +69,7 @@ function GiftCards() {
     <>
       <div className="presentkort-tiles">
         <StatTile label="Presentkortsskuld" value={listing ? kr(listing.liabilityOre) : '-'} loading={!listing}
-          note="Summan av saldot på alla aktiva kort." index={0} />
+          index={0} />
         <StatTile label="Aktiva kort" value={listing ? String(listing.cards.filter((c) => c.status === 'active').length) : '-'}
           loading={!listing} index={1} />
       </div>
@@ -230,7 +230,7 @@ function SettingsCard() {
           <input type="checkbox" checked={draft.enabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} />
           Sälj presentkort på hemsidan
         </label>
-        <Field label="Färdiga belopp (kr)" hint="Komma mellan, till exempel 250, 500, 1000." required>
+        <Field label="Färdiga belopp (kr)" hint="Till exempel 250, 500, 1000" required>
           <Input value={amounts} onChange={(e) => setAmounts(e.target.value)} />
         </Field>
         <Field label="Eget belopp, lägst (kr)" required>
@@ -239,7 +239,7 @@ function SettingsCard() {
         <Field label="Eget belopp, högst (kr)" required>
           <Input type="number" min={100} max={5000} value={String(draft.customMaxSek)} onChange={(e) => setDraft({ ...draft, customMaxSek: Number(e.target.value) })} />
         </Field>
-        <Field label="Giltighet (månader)" hint="Minst 12 månader. Visas för köparen." required>
+        <Field label="Giltighet (månader)" hint="Minst 12" required>
           <Input type="number" min={12} max={60} value={String(draft.validityMonths)} onChange={(e) => setDraft({ ...draft, validityMonths: Number(e.target.value) })} />
         </Field>
         <Bar variant="action" label="Spara presentkortsinställningar" className="presentkort-actions">

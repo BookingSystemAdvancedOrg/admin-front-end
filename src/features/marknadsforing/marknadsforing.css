@@ -176,6 +176,9 @@
 }
 
 .mk-footnote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
   max-width: 70ch;
 }

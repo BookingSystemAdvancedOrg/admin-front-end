@@ -45,7 +45,7 @@ describe('ForgotPasswordPage', () => {
 
     expect(requestPasswordReset).toHaveBeenCalledWith('anna@kallarestaurang.se')
     expect(await screen.findByRole('heading', { name: 'Kolla din e-post' })).toBeInTheDocument()
-    expect(screen.getByText(/Finns det ett konto för/)).toHaveTextContent('anna@kallarestaurang.se')
+    expect(screen.getByText(/Länk skickad till/)).toHaveTextContent('anna@kallarestaurang.se')
   })
 
   it('checks the address first', async () => {

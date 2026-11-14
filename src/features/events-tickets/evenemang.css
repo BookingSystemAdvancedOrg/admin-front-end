@@ -77,7 +77,9 @@
   accent-color: var(--bq-accent);
 }
 .evenemang-check-block {
-  display: grid;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: var(--bq-space-1);
 }
 .evenemang-check-hint {

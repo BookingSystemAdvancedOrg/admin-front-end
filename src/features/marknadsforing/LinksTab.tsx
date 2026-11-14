@@ -3,6 +3,7 @@ import QRCode from 'qrcode'
 import { tokens } from '@booqy/brand'
 import { DESTINATION_LABEL, LINK_SOURCES, campaignSlug, trackedLink } from './marketingApi'
 import type { Destination } from './marketingApi'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 
 type Page = Exclude<Destination, 'custom'>
 const PAGES: Page[] = ['home', 'book', 'menu', 'order', 'catering']
@@ -106,10 +107,13 @@ export function LinksTab({ primaryDomain }: { primaryDomain: string | null }) {
           </div>
         </div>
       </section>
-      <p className="mk-footnote cell-muted">
-        Besök via länken räknas på kanalen och kampanjnamnet, och bokningar som görs under samma besök räknas till
-        kampanjen. Inga cookies används.
-      </p>
+      <div className="mk-footnote cell-muted">
+        Om siffrorna
+        <InfoTooltip label="Om siffrorna">
+          Besök via länken räknas på kanalen och kampanjnamnet, och bokningar som görs under samma besök räknas till
+          kampanjen. Inga cookies används.
+        </InfoTooltip>
+      </div>
     </div>
   )
 }

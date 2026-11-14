@@ -117,7 +117,7 @@ export function TemplatesTab() {
         </div>
         {templates === null && !error && <SkelRows n={3} cols={2} />}
         {templates !== null && templates.length === 0 && (
-          <p className="cell-muted">Inga mallar än. Börja från en färdig mall nedan eller skapa en tom.</p>
+          <p className="cell-muted">Inga mallar än.</p>
         )}
         {templates && templates.length > 0 && (
           <div className="table-scroll">

@@ -110,21 +110,18 @@ export function Overview({ locationId, today, money, sample, sampleName }: {
   const dayLabel = (iso: string) => `${WEEKDAY_LABELS[weekdayOf(iso)]} ${shortDate(iso)}`
 
   return (
-    <section aria-labelledby="sk-today" className="sk-block sk-overview">
-      <h2 className="sk-block-title" id="sk-today">
-        Idag <span className="sk-block-sub">{dayLabel(today)}</span>
-      </h2>
+    <section aria-label="Idag" className="sk-block sk-overview">
       <div className="sk-kpis sk-kpis--four">
         <Tile
           label="Bokningar idag"
           value={fmtInt(day.bookings)}
-          sub={day.cancelled ? `${fmtInt(day.cancelled)} avbokade räknas inte` : 'Alla som ligger kvar för idag'}
+          sub={day.cancelled ? `${fmtInt(day.cancelled)} avbokade` : undefined}
           info="Dagens bokningar som inte är avbokade: de som väntas, de som har kommit och de som uteblev. Online, telefon och drop-in räknas lika."
         />
         <Tile
           label="Gäster idag"
           value={fmtInt(day.guests)}
-          sub={day.bookings ? `${fmtDecimal(day.guests / day.bookings)} per sällskap` : 'Inga bokningar än'}
+          sub={day.bookings ? `${fmtDecimal(day.guests / day.bookings)} per sällskap` : undefined}
           info="Antal personer i dagens bokningar (sällskapens storlek), avbokade räknas inte."
         />
         <Tile
@@ -136,7 +133,6 @@ export function Overview({ locationId, today, money, sample, sampleName }: {
         <Tile
           label="Beläggning idag"
           value={fmtPct(day.occupancy)}
-          sub="av bordstiden under öppettiderna"
           info="Hur stor del av alla bords tid under dagens öppettider som är bokad. 100 % betyder att varje bord är bokat hela dagen."
         />
       </div>
@@ -148,7 +144,7 @@ export function Overview({ locationId, today, money, sample, sampleName }: {
           info={`Bokningar som ligger inne för de ${AHEAD} dagarna efter idag, utan avbokade. Visas direkt när någon bokar.`}
         >
           <p className="sk-insight">
-            {fmtInt(aheadBookings)} bokningar, gäster per dag.
+            {fmtInt(aheadBookings)} bokningar
           </p>
           <ColumnChart
             unit="count"
@@ -176,8 +172,7 @@ export function Overview({ locationId, today, money, sample, sampleName }: {
           info="Gäster i bokningar som inte är avbokade, per vecka från måndag till söndag. Denna vecka räknar dagarna som varit och det som redan är bokat resten av veckan. Uteblivna räknas med."
         >
           <p className="sk-insight">
-            {thisWeek.ahead > 0 ? `Varav ${fmtInt(thisWeek.ahead)} bokade resten av veckan. ` : ''}
-            Förra veckan {fmtInt(lastWeek.guests)} gäster.
+            Förra veckan {fmtInt(lastWeek.guests)}
           </p>
           <ColumnChart
             unit="count"
@@ -203,7 +198,7 @@ export function Overview({ locationId, today, money, sample, sampleName }: {
           wide
         >
           <p className="sk-insight">
-            {fmtInt(pastNoShows)} av {fmtInt(pastBookings)} bokningar. Uteblivna per vecka:
+            {fmtInt(pastNoShows)} av {fmtInt(pastBookings)} bokningar
           </p>
           <ColumnChart
             unit="count"

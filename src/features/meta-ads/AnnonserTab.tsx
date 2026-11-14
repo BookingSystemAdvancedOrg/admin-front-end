@@ -24,6 +24,7 @@ import {
   type Connection,
 } from './api'
 import { ErrorActions } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 
 /** Marknadsföring > Annonser: koppla Meta, skapa annonser på två minuter, starta och pausa. */
 export default function AnnonserTab() {
@@ -82,11 +83,12 @@ export default function AnnonserTab() {
       ) : null}
       {connection === null && !error ? <p className="cell-muted">Hämtar…</p> : null}
       {connection && connection.status !== 'connected' ? (
-        <Card title="Koppla Meta">
-          <p>
+        <Card title="Koppla Meta" actions={
+          <InfoTooltip label="Koppla Meta">
             Koppla restaurangens Facebook- och Instagramkonto för att annonsera. Ni loggar in hos Meta och väljer
             vilka konton Booqy får använda. Inga uppgifter om era gäster skickas till Meta.
-          </p>
+          </InfoTooltip>
+        }>
           <Button busy={connecting} busyLabel="Öppnar Meta…" onClick={connect}>Koppla Meta</Button>
         </Card>
       ) : null}
@@ -191,10 +193,10 @@ function ConnectionCard({ connection, onSaved, onDisconnected }: {
           <Field label="Annonsör" hint="Den som annonsen gör reklam för. Visas i annonsen enligt EU:s regler." required>
             <Input value={beneficiary} maxLength={120} required onChange={(e) => setBeneficiary(e.target.value)} />
           </Field>
-          <Field label="Betalare" hint="Den som betalar annonsen." required>
+          <Field label="Betalare"  required>
             <Input value={payor} maxLength={120} required onChange={(e) => setPayor(e.target.value)} />
           </Field>
-          <Field label="Månadstak (kr)" hint="Booqy pausar alla annonser när taket nås. Ni får ett mejl vid 80 %." required>
+          <Field label="Månadstak (kr)" hint="Pausar allt vid taket" required>
             <Input type="number" min={100} value={cap} required onChange={(e) => setCap(e.target.value)} />
           </Field>
           <Bar variant="action" label="Spara Meta-konton">
@@ -245,7 +247,7 @@ function Campaigns({ locationId, blocked }: { locationId: string; blocked: boole
   return (
     <Card title="Annonser" actions={<Button size="sm" disabled={blocked} onClick={() => setWizard(true)}>Ny annons</Button>}>
       {campaigns && campaigns.length === 0 ? (
-        <p className="admin-empty">Inga annonser än. Tryck på Ny annons, det tar ungefär två minuter.</p>
+        <p className="admin-empty">Inga annonser än.</p>
       ) : null}
       {campaigns && campaigns.length > 0 ? (
         <div className="table-scroll">

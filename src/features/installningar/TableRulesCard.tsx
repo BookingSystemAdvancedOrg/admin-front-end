@@ -17,6 +17,8 @@ import '../bokningar/bokningar.css'
 import { SkelRows } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { booqyFaultText } from '../../shared/errors'
+import { TitleInfo } from '../../shared/TitleInfo'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 
 /**
  * Bord vid onlinebokning för den valda platsen (backend shared/booking_rules.py).
@@ -151,12 +153,10 @@ export function TableRulesCard({
 
   return (
     <section id="bord-online" className="admin-card table-card">
-      <h2 className="card-title">Bord vid onlinebokning</h2>
-      <div style={{ height: 8 }} />
-      <p className="cell-muted">
-        Gästerna väljer bord på planritningen, men bara bord som passar sällskapet. Personalen kan
-        alltid boka och kombinera alla bord.
-      </p>
+      <TitleInfo
+        title="Bord vid onlinebokning"
+        info="Gästerna väljer bord på planritningen, men bara bord som passar sällskapet. Personalen kan alltid boka och kombinera alla bord."
+      />
       <div style={{ height: 16 }} />
       {!locationId ? (
         <p className="cell-muted">Välj en plats först.</p>
@@ -165,7 +165,7 @@ export function TableRulesCard({
       ) : !tables || !saved ? (
         <SkelRows n={3} cols={3} />
       ) : tables.length === 0 ? (
-        <p className="cell-muted">Publicera en planritning med bord först (Planritning).</p>
+        <p className="cell-muted">Publicera en layout först.</p>
       ) : (
         <form onSubmit={save} className="notifications-form">
           <div className="table-scroll">
@@ -222,11 +222,13 @@ export function TableRulesCard({
             </table>
           </div>
 
-          <p className="form-section-label">Kombinationer</p>
-          <p className="cell-muted">
-            Bord som gästerna får boka tillsammans, t.ex. två fyrabord för 5-8 personer. Utan
-            kombinationer bokar gästerna ett bord per bokning.
-          </p>
+          <div className="title-info">
+            <p className="form-section-label">Kombinationer</p>
+            <InfoTooltip label="Kombinationer">
+              Bord som gästerna får boka tillsammans, t.ex. två fyrabord för 5-8 personer. Utan
+              kombinationer bokar gästerna ett bord per bokning.
+            </InfoTooltip>
+          </div>
           {combos.length > 0 && (
             <ul className="combo-list">
               {combos.map((c) => {
@@ -325,7 +327,7 @@ export function TableRulesCard({
               )}
             </span>
           )}
-          {!isOwner && <p className="cell-muted">Bara restaurangens ägare kan ändra bordsreglerna.</p>}
+          {!isOwner && <p className="cell-muted">Bara ägaren kan ändra.</p>}
         </form>
       )}
     </section>

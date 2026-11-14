@@ -15,6 +15,7 @@ import {
 } from './api'
 import './google.css'
 import { ErrorActions } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 
 const SOURCES: { id: Source; label: string }[] = [
   { id: 'booking', label: 'Efter bordsbokning (när gästen har kommit)' },
@@ -90,14 +91,15 @@ export default function OmdomenTab() {
       <div className="omdomen-stats">
         <StatTile label="Skickade (30 dagar)" value={String(view.stats.sent30d)} index={0} />
         <StatTile label="Inte skickade (30 dagar)" value={String(view.stats.skipped30d)}
-          note="Saknat samtycke, nyligen frågad eller utebliven gäst." index={1} />
+          index={1} />
       </div>
-      <Card title="Be om omdömen på Google">
-        <p>
+      <Card title="Be om omdömen på Google" actions={
+        <InfoTooltip label="Be om omdömen">
           Gäster som har sagt ja till utskick från er får ett meddelande efter besöket med en länk till ert
           Google-omdöme. Alla får samma meddelande, utan frågor om betyg och utan erbjudanden, och kan avregistrera
-          sig med ett klick.
-        </p>
+          sig med ett klick. Inte skickade: saknat samtycke, nyligen frågad eller utebliven gäst.
+        </InfoTooltip>
+      }>
         <form className="form-grid" onSubmit={save} aria-label="Omdömesförfrågningar">
           <fieldset className="omdomen-checks">
             <legend>Skicka förfrågningar</legend>
@@ -127,11 +129,11 @@ export default function OmdomenTab() {
               </label>
             ))}
           </fieldset>
-          <Field label="Fördröjning (timmar)" hint="Hur länge efter besöket meddelandet skickas, 1-72 timmar." required>
+          <Field label="Fördröjning (timmar)" hint="1-72" required>
             <Input type="number" min={1} max={72} value={String(hours)} required
               onChange={(e) => setDraft({ ...draft, delayMinutes: Math.max(30, Number(e.target.value) * 60) })} />
           </Field>
-          <Field label="Högst en gång per (dagar)" hint="Samma gäst frågas inte oftare än så, 30-365 dagar." required>
+          <Field label="Högst en gång per (dagar)" hint="30-365" required>
             <Input type="number" min={30} max={365} value={String(draft.minDaysBetween)} required
               onChange={(e) => setDraft({ ...draft, minDaysBetween: Number(e.target.value) })} />
           </Field>

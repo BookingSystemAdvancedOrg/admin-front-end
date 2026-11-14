@@ -113,9 +113,6 @@ export function CategoriesModal({
     <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="modal meny-categories" role="dialog" aria-modal="true" aria-label="Kategorier">
         <h2>Kategorier</h2>
-        <p className="cell-muted">
-          Ordningen här är ordningen på menyn för gästerna. En kategori med rätter kan inte tas bort.
-        </p>
         <ol className="meny-category-list">
           {rows.map((r, i) => {
             const count = r.categoryId ? dishCounts[r.categoryId] ?? 0 : 0

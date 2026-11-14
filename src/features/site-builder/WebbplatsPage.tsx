@@ -66,7 +66,7 @@ export default function WebbplatsPage() {
           <section className="admin-card table-card">
             <h2 className="card-title">{enabled ? 'Bara för ägare' : 'Ingår inte i er plan'}</h2>
             <p className="cell-muted">
-              {enabled ? 'Webbplatsen ändras av restaurangens ägare.' : 'Webbplatsbyggaren ingår inte i er plan. Kontakta oss för att uppgradera.'}
+              {enabled ? 'Bara ägaren ändrar webbplatsen.' : 'Kontakta oss för att uppgradera.'}
             </p>
           </section>
         )}
@@ -223,7 +223,7 @@ function Editor() {
     return error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error.text} />}>{error.text}</Bar> : <p className="cell-muted">Hämtar webbplatsen…</p>
   }
   if (site.mode === 'custom') {
-    return <Card title="Webbplats"><p>Er webbplats byggs av Booqy. Kontakta oss om ni vill ändra något.</p></Card>
+    return <Card title="Webbplats"><p>Byggs av Booqy. Kontakta oss för ändringar.</p></Card>
   }
 
   const page = doc.pages[Math.min(pageIndex, doc.pages.length - 1)]
@@ -307,7 +307,7 @@ function Editor() {
           </Field>
         </div>
         <h4 className="webbplats-heading">Block på sidan</h4>
-        {page.blocks.length === 0 ? <p className="cell-muted">Sidan har inga block än. Lägg till ett nedan.</p> : null}
+        {page.blocks.length === 0 ? <p className="cell-muted">Inga block än.</p> : null}
         <ol className="webbplats-blocks" aria-label="Block på sidan">
           {page.blocks.map((block, i) => (
             <li key={block.id} className={error?.page === pageIndex && error.block === i ? 'webbplats-block webbplats-block--invalid' : 'webbplats-block'}>
@@ -344,7 +344,7 @@ function Editor() {
           <Field label="Huvudfärg">
             <Input type="color" value={doc.theme.primaryColor} onChange={(e) => change({ ...doc, theme: { ...doc.theme, primaryColor: e.target.value } })} />
           </Field>
-          <Field label="Accentfärg" hint="Knappar och länkar. Booqy justerar färgen så att texten alltid går att läsa.">
+          <Field label="Accentfärg" hint="Knappar och länkar">
             <Input type="color" value={doc.theme.accentColor} onChange={(e) => change({ ...doc, theme: { ...doc.theme, accentColor: e.target.value } })} />
           </Field>
           <Field label="Typsnitt">
@@ -363,7 +363,6 @@ function Editor() {
         <Bar variant="tab" kind="track" label="Bredd" value={width} onChange={(k) => setWidth(k as 'mobile' | 'desktop')}
           items={[{ key: 'mobile', label: 'Mobil' }, { key: 'desktop', label: 'Dator' }]} />
         <Outline doc={doc} pageIndex={pageIndex} width={width} />
-        <p className="field-hint">Förhandsgranska visar sidan precis som gästerna ser den.</p>
       </Card>
 
       <Bar variant="action" sticky label="Spara utkast" status={dirty ? 'Osparade ändringar' : 'Sparat'}>

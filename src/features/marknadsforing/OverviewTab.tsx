@@ -19,6 +19,7 @@ import {
 import type { Overview } from './marketingApi'
 import type { TabId } from './MarknadsforingPage'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 
 const PERIODS = [
   { days: 7, label: '7 dagar' },
@@ -196,7 +197,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
             </div>
             {t && t.visits === 0 ? (
               <p className="cell-muted">
-                Inga besök registrerade under perioden. Besök räknas automatiskt på er webbplats, utan cookies.
+                Inga besök.
               </p>
             ) : (
               <VisitsChart series={data.series} />
@@ -245,7 +246,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
               </div>
               {data.campaigns.length === 0 ? (
                 <p className="cell-muted">
-                  Inga kampanjbesök än. Skicka ett utskick eller dela en spårbar länk, så syns resultatet här.
+                  Inga kampanjbesök än.
                 </p>
               ) : (
                 <div className="table-scroll">
@@ -277,10 +278,13 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
             </section>
           </div>
 
-          <p className="mk-footnote cell-muted">
-            Statistiken räknas utan cookies och utan att något sparas hos besökaren, så ingen samtyckesruta
-            behövs. Samma person som kommer tillbaka räknas som ett nytt besök.
-          </p>
+          <div className="mk-footnote cell-muted">
+            Om siffrorna
+            <InfoTooltip label="Om siffrorna">
+              Statistiken räknas utan cookies och utan att något sparas hos besökaren, så ingen samtyckesruta
+              behövs. Samma person som kommer tillbaka räknas som ett nytt besök.
+            </InfoTooltip>
+          </div>
         </>
       )}
     </div>

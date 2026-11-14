@@ -36,7 +36,7 @@ export default function EvenemangPage() {
         {!enabled ? (
           <section className="admin-card table-card">
             <h2 className="card-title">Ingår inte i er plan</h2>
-            <p className="cell-muted">Evenemang och biljetter ingår inte i er plan. Kontakta oss för att uppgradera.</p>
+            <p className="cell-muted">Kontakta oss för att uppgradera.</p>
           </section>
         ) : !locationId ? (
           <Printing label="Hämtar restaurangen" />
@@ -74,7 +74,7 @@ function EventList({ locationId, isOwner }: { locationId: string; isOwner: boole
     <Card title="Evenemang" actions={isOwner ? <Button variant="primary" onClick={() => setCreating(true)}>Nytt evenemang</Button> : undefined}>
       {!events ? <Printing label="Hämtar evenemangen" /> : null}
       {events && events.length === 0 ? (
-        <p className="admin-empty">{isOwner ? 'Inga evenemang än. Skapa ett, till exempel en vinmiddag eller ett quiz, och sälj biljetter på er webbplats.' : 'Inga evenemang än.'}</p>
+        <p className="admin-empty">Inga evenemang än.</p>
       ) : null}
       {events?.length ? (
         <div className="table-scroll">

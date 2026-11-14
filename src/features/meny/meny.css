@@ -94,6 +94,9 @@
 }
 
 .dish-schedule-help {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin: 0;
   font-size: 13px;
   line-height: 1.45;
@@ -354,6 +357,9 @@
 }
 
 .dish-ticket legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 0 0 6px;
   font: 700 15px/1.3 var(--sans);
   color: var(--ink);

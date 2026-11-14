@@ -598,9 +598,11 @@ export async function activateLayoutVersion(
     // en annan version är redan inbokat. Den generiska "ändrades samtidigt"
     // hade pekat användaren helt fel.
     if (err instanceof ApiError && err.status === 409) {
-      throw new Error(
+      throw new ApiError(
+        409,
         'Ett versionsbyte är redan inbokat. Vänta tills det genomförts, ' +
           'eller aktivera om den version som redan väntar.',
+        { code: err.code },
       )
     }
     throw toFriendlyLayoutError(err)
@@ -639,7 +641,8 @@ export async function archiveLayoutVersion(
     )
   } catch (err) {
     if (err instanceof ApiError && err.status === 409) {
-      throw new Error(
+      throw new ApiError(
+        409,
         'Den här versionen gäller eller väntar på att aktiveras och kan inte arkiveras.',
       )
     }
@@ -666,7 +669,8 @@ export async function cancelPendingLayoutActivation(
     )
   } catch (err) {
     if (err instanceof ApiError && err.status === 409) {
-      throw new Error(
+      throw new ApiError(
+        409,
         'Bytet hann redan genomföras eller ändrades samtidigt. Ladda om listan.',
       )
     }

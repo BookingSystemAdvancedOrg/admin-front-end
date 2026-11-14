@@ -42,6 +42,21 @@ describe('BusyBar', () => {
       release()
       await p.catch(() => undefined)
     })
+    // A failed save never shows "Sparat".
+    expect(bar().className).toContain('busy-bar--idle')
+    expect(screen.queryByText('Sparat')).toBeNull()
+  })
+
+  it('a failure anywhere in the round means no "Sparat"; the next good save shows it', () => {
+    render(<BusyBar />)
+    const bar = () => document.querySelector('.busy-bar') as HTMLElement
+    act(() => { busyStart(); busyStart() })
+    act(() => busyEnd(false))
+    act(() => busyEnd())
+    expect(bar().className).toContain('busy-bar--idle')
+    act(() => { vi.advanceTimersByTime(5) })
+    act(() => busyStart())
+    act(() => busyEnd())
     expect(bar().className).toContain('busy-bar--done')
   })
 })

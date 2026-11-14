@@ -837,7 +837,7 @@ export default function StatistikPage() {
                       </dl>
                       <Tip>
                         {money
-                          ? 'Höj snittordern med tillbehör i kassan: dryck, dessert eller en extra sås.'
+                          ? 'Höj snittordern med tillbehör i beställningen: dryck, dessert eller en extra sås.'
                           : 'Blir många beställningar klara sent? Säg till ägaren, så kan tidsestimatet höjas vid rusning.'}
                       </Tip>
                     </Card>
@@ -941,7 +941,7 @@ export default function StatistikPage() {
                             </li>
                           ))}
                         </ul>
-                        <Tip>Gör ett paketpris av paren som redan säljer ihop, eller föreslå den andra rätten i kassan.</Tip>
+                        <Tip>Gör ett paketpris av paren som redan säljer ihop, eller föreslå den andra rätten när gästen beställer.</Tip>
                       </Card>
                     )}
                   </div>

@@ -8,6 +8,9 @@ import { Icon } from './Icon'
  * och in igen, om och om, tills musen går; då landar det färdigt i sin
  * slinga i stället för att hoppa. Minska rörelse: planet står still och
  * texten byts utan glidning (ds.css). Skärmläsare hör bara knappens text.
+ * Efter ett klick visas knappens riktiga text igen tills musen lämnat den:
+ * vinnarfrasen ("Klart!") får aldrig se ut som ett svar på ett sparande
+ * som misslyckades.
  */
 export function CtaButton({
   label,
@@ -15,15 +18,21 @@ export function CtaButton({
   className = '',
   onPointerEnter,
   onPointerLeave,
+  onClick,
   ...rest
 }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & { label: ReactNode; win?: string }) {
   const [flying, setFlying] = useState(false)
+  const [clicked, setClicked] = useState(false)
   const stopping = useRef(false)
   return (
     <button
       type="button"
       {...rest}
-      className={`btn primary cta${flying ? ' is-flying' : ''} ${className}`.trim()}
+      className={`btn primary cta${flying ? ' is-flying' : ''}${clicked ? ' is-clicked' : ''} ${className}`.trim()}
+      onClick={(e) => {
+        setClicked(true)
+        onClick?.(e)
+      }}
       onPointerEnter={(e) => {
         if (e.pointerType === 'mouse') {
           stopping.current = false
@@ -33,6 +42,7 @@ export function CtaButton({
       }}
       onPointerLeave={(e) => {
         stopping.current = true
+        setClicked(false)
         onPointerLeave?.(e)
       }}
     >

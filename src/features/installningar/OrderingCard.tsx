@@ -160,7 +160,7 @@ export function OrderingCard({
           </div>
           <div className="toggle-row">
             <p className="toggle-row-label" id="ordering-pickup-label">
-              Avhämtning (beställ online, hämta i kassan)
+              Avhämtning (beställ online, hämta på restaurangen)
             </p>
             <button type="button" role="switch" aria-checked={form.pickup}
               aria-labelledby="ordering-pickup-label" className="switch" disabled={disabled}

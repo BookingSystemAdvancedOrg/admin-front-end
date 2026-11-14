@@ -168,6 +168,7 @@ export async function apiFetch<T>(
   const writing = method !== 'GET'
   if (writing) busyStart()
   let res: Response
+  let ok = false
   try {
     res = await fetchWithRetry(method, () => fetch(`${API_BASE_URL}${path}`, {
       ...options,
@@ -177,12 +178,13 @@ export async function apiFetch<T>(
         ...options.headers,
       },
     }))
+    ok = res.ok
   } catch (err) {
     // fetch() avvisar bara när svaret aldrig kom (offline, tappad anslutning).
     if (err instanceof TypeError) throw new NetworkError()
     throw err
   } finally {
-    if (writing) busyEnd()
+    if (writing) busyEnd(ok)
   }
   if (!res.ok) {
     throw await toApiError(res)

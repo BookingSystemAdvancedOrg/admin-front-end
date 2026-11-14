@@ -51,7 +51,7 @@ describe('OrderingCard', () => {
     const user = userEvent.setup()
     getLocation.mockResolvedValue({ locationId: 'loc-1', ordering: POLICY })
     render(<OrderingCard locationId="loc-1" isOwner stripeReady />)
-    await user.click(await screen.findByRole('switch', { name: 'Avhämtning (beställ online, hämta i kassan)' }))
+    await user.click(await screen.findByRole('switch', { name: 'Avhämtning (beställ online, hämta på restaurangen)' }))
     await user.click(screen.getByRole('switch', { name: 'Beställning vid bordet (QR-kod)' }))
     await user.click(screen.getByRole('button', { name: 'Spara beställning' }))
     expect(screen.getByRole('alert')).toHaveTextContent('Välj avhämtning')

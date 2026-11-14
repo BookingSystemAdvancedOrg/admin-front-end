@@ -34,7 +34,6 @@ export function helpSlug(text) {
 
 // Sidor utan menyval: namn och vem som ser dem.
 const EXTRA_PAGES = {
-  '/kassa/bruksanvisning': { label: 'Kassans bruksanvisning', feature: 'kassa' },
   '/cateringkalkyl': { label: 'Cateringinställningar', feature: 'catering', ownerOnly: true },
   '/avtal': { label: 'Avtal', ownerOnly: true },
 }

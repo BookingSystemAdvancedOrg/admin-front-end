@@ -1062,8 +1062,21 @@
 
 .hours-editor-interval {
   display: inline-flex;
+  flex-wrap: wrap; /* "natt mot söndag" and the remove button move down on narrow phones */
   align-items: center;
   gap: 6px;
+}
+
+.hours-editor-next {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.hours-hint .cell-muted {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .hours-editor-interval .time-input {

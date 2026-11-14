@@ -31,24 +31,44 @@ test.describe('Admin: Meny', () => {
     await ready(page, 'Meny')
   })
 
-  test('add dish requires a photo (drinks too)', async ({ page }) => {
+  test('photo is optional: a drink can be added without one', async ({ page }) => {
     await page.getByRole('button', { name: '+ Lägg till rätt' }).click()
     const dlg = page.getByRole('dialog', { name: 'Lägg till rätt' })
     await dlg.getByLabel('Namn').fill('E2E Cola')
     await dlg.getByLabel('Pris (kr)').fill('35')
-    await expect(dlg.getByRole('button', { name: 'Lägg till rätt' })).toBeDisabled()
+    await expect(dlg.getByRole('button', { name: 'Lägg till rätt' })).toBeEnabled()
     await dlg.getByRole('button', { name: 'Avbryt' }).click()
   })
 
   test('menu editor offers allergens, add-ons (modifiers) and own categories', async ({ page }) => {
     await page.getByRole('button', { name: '+ Lägg till rätt' }).click()
     const dlg = page.getByRole('dialog', { name: 'Lägg till rätt' })
-    const cats = await dlg.getByLabel('Kategori').locator('option').allTextContents()
-    test.info().annotations.push({ type: 'categories', description: cats.join(', ') })
-    await expect.soft(dlg.getByText(/allergen/i), 'allergen field').toBeVisible()
-    await expect.soft(dlg.getByText(/tillval|tillägg/i), 'add-ons / modifiers field').toBeVisible()
-    expect.soft(cats.length, 'restaurant can add its own categories').toBeGreaterThan(4)
+    await expect.soft(dlg.getByRole('group', { name: 'Allergener' }), 'allergen field').toBeVisible()
+    await expect.soft(dlg.getByRole('group', { name: 'Tillval' }), 'add-ons / modifiers field').toBeVisible()
+    await expect.soft(dlg.getByRole('button', { name: 'Lägg till tillval' })).toBeVisible()
     await dlg.getByRole('button', { name: 'Avbryt' }).click()
+    // Own category: add E2E Pizzor, see it in the dish form, then remove it again.
+    const cat = `E2E Pizzor ${RUN}`
+    const openCats = async () => {
+      await page.getByRole('button', { name: 'Kategorier', exact: true }).click()
+      const d = page.getByRole('dialog', { name: 'Kategorier' })
+      await expect(d).toBeVisible()
+      return d
+    }
+    let cats = await openCats()
+    await cats.getByLabel('Ny kategori').fill(cat)
+    await cats.getByRole('button', { name: 'Lägg till', exact: true }).click()
+    await cats.getByRole('button', { name: 'Spara kategorier' }).click()
+    await expect(cats).toBeHidden({ timeout: 20000 })
+    await page.getByRole('button', { name: '+ Lägg till rätt' }).click()
+    const options = await dlg.getByLabel('Kategori').locator('option').allTextContents()
+    test.info().annotations.push({ type: 'categories', description: options.join(', ') })
+    expect.soft(options, 'restaurant can add its own categories').toContain(cat)
+    await dlg.getByRole('button', { name: 'Avbryt' }).click()
+    cats = await openCats()
+    await cats.getByRole('button', { name: `Ta bort ${cat}` }).click()
+    await cats.getByRole('button', { name: 'Spara kategorier' }).click()
+    await expect(cats).toBeHidden({ timeout: 20000 })
   })
 
   test('create dishes: food, drink, combo split, long name with emoji and åäö', async ({ page }, info) => {

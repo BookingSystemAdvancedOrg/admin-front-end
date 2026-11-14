@@ -67,6 +67,7 @@ import {
 import type { Clip, EditorAction, Guide, History, ShortcutTool } from './editorTools'
 import './layout-editor.css'
 import { Icon, type IconName } from '../../shared/Icon'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 import { ErrorNote } from '../../shared/ErrorNote'
 
 const TILT_DEG = 55
@@ -2622,6 +2623,11 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
 
             {selected.length > 1 && (
               <>
+                <PropsLabel text="FLERA VALDA" info="Flera valda">
+                  Dra i något av de valda för att flytta alla. Pilarna flyttar
+                  ett rutsteg (Shift: fem). Shift-klicka för att lägga till
+                  eller ta bort ur urvalet.
+                </PropsLabel>
                 <div className="props-actions">
                   <button
                     type="button"
@@ -2668,7 +2674,10 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                   </div>
                 </div>
                 <div className="props-field">
-                  <p className="props-label">STORLEK</p>
+                  <PropsLabel text="STORLEK" info="Storlek">
+                    Dra i handtagen på en sida eller ände av bordet för att
+                    ändra bredd eller djup fritt. Går att göra avlångt.
+                  </PropsLabel>
                   <p className="props-pos">{formatSize(selectedTable.w, selectedTable.h)}</p>
                 </div>
                 <div className="props-field">
@@ -2707,7 +2716,10 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                   )}
                 </div>
                 <div className="props-field">
-                  <p className="props-label">UPPREPA I RAD</p>
+                  <PropsLabel text="UPPREPA I RAD" info="Upprepa i rad">
+                    Lägger till {rowCount} likadana bord efter det här, med
+                    lika mellanrum och nästa lediga nummer.
+                  </PropsLabel>
                   <div className="seats-stepper">
                     <button type="button" className="step-btn" aria-label="Färre bord" disabled={rowCount <= 1} onClick={() => setRowCount((c) => c - 1)}>
                       -
@@ -2742,7 +2754,10 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
             {selectedWall && (
               <>
                 <div className="props-field">
-                  <p className="props-label">LÄNGD</p>
+                  <PropsLabel text="LÄNGD" info="Vägg">
+                    Dra i handtagen eller flytta hela väggen. Öppningar på
+                    väggen följer med.
+                  </PropsLabel>
                   <div className="seats-stepper">
                     <button type="button" className="step-btn" disabled={selectedWall.length <= GRID} onClick={() => updateWallLength(-GRID)}>
                       -
@@ -2784,7 +2799,10 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                   </div>
                 </div>
                 <div className="props-field">
-                  <p className="props-label">PLACERING PÅ VÄGGEN</p>
+                  <PropsLabel text="PLACERING PÅ VÄGGEN" info="Placering på väggen">
+                    Sitter på väggen: dra för att glida längs den, dra i
+                    handtagen för att ändra längd. Kan aldrig lämna väggen.
+                  </PropsLabel>
                   <p className="props-pos">{`${formatMetres(selectedOpening.offset)} från väggens start`}</p>
                 </div>
                 <div className="props-divider" />
@@ -3265,4 +3283,14 @@ function ShortcutSheet({ onClose }: { onClose: () => void }) {
 
 function clamp(v: number, min: number, max: number): number {
   return Math.min(Math.max(v, min), max)
+}
+
+/** Fältrubrik i egenskapspanelen med hjälpen bakom en (i). */
+function PropsLabel({ text, info, children }: { text: string; info: string; children: ReactNode }) {
+  return (
+    <div className="props-label props-label--info">
+      <span>{text}</span>
+      <InfoTooltip label={info}>{children}</InfoTooltip>
+    </div>
+  )
 }

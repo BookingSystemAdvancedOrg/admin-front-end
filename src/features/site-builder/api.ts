@@ -115,6 +115,17 @@ export function locate(field: string | undefined): { page?: number; block?: numb
   return { page: Number(m[1]), ...(m[2] !== undefined ? { block: Number(m[2]) } : {}), ...(m[3] ? { slug: true } : {}) }
 }
 
+/** Var en krock sitter ("pages.0.blocks.2.heading"), med blockets namn för meddelandet. */
+export function conflictPlace(doc: SiteDoc, path: string): { name: string; page?: number; block?: number } {
+  const at = locate(`/${path.split('.').join('/')}`)
+  const page = at.page !== undefined ? doc.pages[at.page] : undefined
+  const pageName = page ? `sidan ${page.title || 'Startsida'}` : null
+  const block = page && at.block !== undefined ? page.blocks[at.block] : undefined
+  if (block) return { name: `Blocket ${BLOCK_LABEL[block.type]} på ${pageName}`, page: at.page, block: at.block }
+  if (pageName) return { name: pageName.charAt(0).toUpperCase() + pageName.slice(1), page: at.page }
+  return { name: 'Samma del av webbplatsen' }
+}
+
 /** En ledig adress för en ny sida: aldrig en annan sidas eller sajtens egen. */
 export function freeSlug(title: string, taken: string[]): string {
   const base = slugify(title)

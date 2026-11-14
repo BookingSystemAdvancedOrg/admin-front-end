@@ -28,6 +28,7 @@ describe('errorText', () => {
     expect(errorText(server(400, 'name is required', { code: 'required', field: 'name' }), 'Kunde inte spara.'))
       .toMatch(/obligatoriskt fält/)
     expect(errorText(server(404, 'not found', { code: 'not_found' }), 'Kunde inte spara.')).toMatch(/tagits bort på annat håll/)
+    expect(describeError(server(404, 'Not Found', { code: 'route_not_found' }), 'Kunde inte spara.').actor).toBe('booqy')
   })
 
   it('gemensamma koder har samma text överallt', () => {

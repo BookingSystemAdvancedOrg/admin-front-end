@@ -917,6 +917,25 @@
   color: var(--muted);
 }
 
+/* Rubrik med (i): bubblan öppnas under hela raden, inom panelens bredd. */
+.props-label--info {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.props-label--info .info-tooltip {
+  position: static;
+}
+
+.props-label--info .info-tooltip-panel {
+  width: 100%;
+  max-width: 100%;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
 .props-field {
   display: flex;
   flex-direction: column;

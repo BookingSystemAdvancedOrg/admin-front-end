@@ -111,7 +111,9 @@ describe('BokningarPage', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     const refresh = deferred<Reservation[]>()
+    // After the old refresh, the save's own refetch runs (it is queued, not dropped) and sees the change.
     listReservations.mockResolvedValueOnce([booking()]).mockReturnValueOnce(refresh.promise)
+      .mockResolvedValue([booking({ status: 'arrived' })])
     changeStatus.mockResolvedValue(booking({ status: 'arrived' }))
     const { container } = render(<BokningarPage />)
     const row = () => container.querySelector('.bookings-table tbody tr') as HTMLElement
@@ -128,6 +130,7 @@ describe('BokningarPage', () => {
 
     await act(async () => refresh.resolve([booking()]))
     expect(within(row()).getByText('Anlänt')).toBeInTheDocument()
+    expect(listReservations).toHaveBeenCalledTimes(3)
   })
 
   it('keeps the list quietly when a live refresh fails, and picks up changes on the next one', async () => {

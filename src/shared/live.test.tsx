@@ -2,7 +2,7 @@ import { act, render, renderHook, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DATA_CHANGED_EVENT } from './api'
-import { LIVE_INTERVAL_MS, backoffMs, dedupe, useLiveQuery, useLiveRefresh } from './live'
+import { LIVE_INTERVAL_MS, backoffMs, dedupe, useLiveForm, useLiveQuery, useLiveRefresh } from './live'
 
 function setVisibility(state: 'visible' | 'hidden') {
   Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state })
@@ -99,7 +99,25 @@ describe('useLiveRefresh', () => {
     })
     expect(refetch).toHaveBeenCalledTimes(1)
     await act(async () => finish())
+    expect(refetch).toHaveBeenCalledTimes(2) // the 'online' that came meanwhile
+    await act(async () => finish())
     await tick(LIVE_INTERVAL_MS)
+    expect(refetch).toHaveBeenCalledTimes(3)
+  })
+
+  it('a save during a running refetch is not dropped: one more runs right after', async () => {
+    const finishers: Array<() => void> = []
+    const refetch = vi.fn(() => new Promise<void>((resolve) => { finishers.push(resolve) }))
+    renderHook(() => useLiveRefresh(refetch))
+    await tick(LIVE_INTERVAL_MS) // interval fetch starts (before the save)
+    await act(async () => {
+      window.dispatchEvent(new Event(DATA_CHANGED_EVENT))
+      window.dispatchEvent(new Event(DATA_CHANGED_EVENT))
+    })
+    expect(refetch).toHaveBeenCalledTimes(1)
+    await act(async () => finishers[0]())
+    expect(refetch).toHaveBeenCalledTimes(2) // both signals become one more fetch
+    await act(async () => finishers[1]())
     expect(refetch).toHaveBeenCalledTimes(2)
   })
 
@@ -216,6 +234,62 @@ describe('no clobbering an edit', () => {
     expect(screen.getByText('I listan: Torskrygg')).toBeInTheDocument()
     expect(screen.getByLabelText('Namn')).toHaveValue('Torsk med smör')
     expect(document.activeElement).toBe(input)
+  })
+})
+
+describe('useLiveForm', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  function Card({ fetch }: { fetch: () => Promise<string> }) {
+    const [saved, setSaved] = useState('10')
+    const [form, setForm] = useState('10')
+    const live = useLiveForm<string, string>({
+      enabled: true,
+      fetch,
+      saved,
+      form,
+      toForm: (v) => v,
+      adopt: (v) => {
+        setSaved(v)
+        setForm(v)
+      },
+    })
+    return (
+      <>
+        <input aria-label="Minuter" value={form} onChange={(e) => setForm(e.target.value)} />
+        {live.there !== null && <p>Ändrades nyss: {live.there}</p>}
+      </>
+    )
+  }
+
+  it('what you type while the refetch is under way is kept', async () => {
+    let answer: (v: string) => void = () => undefined
+    const fetch = vi.fn(() => new Promise<string>((resolve) => { answer = resolve }))
+    render(<Card fetch={fetch} />)
+    await tick(LIVE_INTERVAL_MS) // the fetch is out, the form still untouched
+    const input = screen.getByLabelText('Minuter') as HTMLInputElement
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+      setter?.call(input, '45')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => answer('20'))
+    expect(screen.getByLabelText('Minuter')).toHaveValue('45')
+    expect(screen.getByText('Ändrades nyss: 20')).toBeInTheDocument()
+  })
+
+  it('an untouched form follows the server', async () => {
+    const fetch = vi.fn().mockResolvedValue('20')
+    render(<Card fetch={fetch} />)
+    await tick(LIVE_INTERVAL_MS)
+    expect(screen.getByLabelText('Minuter')).toHaveValue('20')
+    expect(screen.queryByText(/Ändrades nyss/)).toBeNull()
   })
 })
 

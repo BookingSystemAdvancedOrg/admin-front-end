@@ -82,6 +82,7 @@ const COMMON: Record<string, Mapped> = {
   no_stripe_account: user('Kortbetalningar är inte aktiverade än. Ägaren slutför Stripe-kopplingen under Betalningar.', LINK.payments),
   no_tenant: booqy(`Ditt konto är inte kopplat till någon restaurang. Logga ut och in igen. ${BOOQY_FAULT}`),
   timeout: booqy(`Servern svarade inte i tid. ${BOOQY_FAULT}`),
+  route_not_found: booqy(`Appen hittade inte den här delen av servern. ${BOOQY_FAULT}`),
   invalid_json: booqy(`Appen skickade något servern inte kunde läsa. ${BOOQY_FAULT}`),
   stripe_unavailable: booqy(`Stripe svarar inte just nu. ${NOT_YOUR_FAULT}`),
   payment_unavailable: booqy(`Betaltjänsten svarar inte just nu. ${NOT_YOUR_FAULT}`),
@@ -99,6 +100,7 @@ function byShape(status: number, code: string): Mapped | null {
   if (code === 'required') return user('Ett obligatoriskt fält saknas. Fyll i det markerade fältet och försök igen.')
   if (code === 'invalid_request') return user('Något av uppgifterna godtas inte. Kontrollera det du fyllt i och försök igen.')
   if (code === 'invalid_value') return user('Något av fälten har ett värde som inte godtas. Kontrollera uppgifterna och försök igen.')
+  if (code === 'route_not_found') return booqy(BOOQY_FAULT)
   if (status === 404 || code === 'not_found' || code.endsWith('_not_found')) return user('Det har tagits bort på annat håll. Sidan visar nu det som finns kvar.')
   if (status === 409) return user('Läget ändrades på annat håll. Det senaste visas nu; gör ändringen igen om den fortfarande behövs.')
   if (status === 402) return user('Betalningen gick inte igenom. Försök igen eller använd ett annat kort.')
@@ -111,7 +113,7 @@ function byShape(status: number, code: string): Mapped | null {
 /** Är felet Booqys enligt status och kod (för texter en sida redan har översatt)? */
 export function isBooqyFault(status: number, code: string): boolean {
   return status >= 500 || code === 'timeout' || code.endsWith('_unavailable') || /access_?denied/i.test(code)
-    || code === 'internal_error' || code === 'invalid_json'
+    || code === 'internal_error' || code === 'invalid_json' || code === 'route_not_found'
 }
 
 const RAW = /^[a-z][a-z0-9_]*$|^(Failed to fetch|Load failed|NetworkError|Network request failed|Internal Server Error|Service Unavailable|Not Found|Forbidden|Unauthorized)/i

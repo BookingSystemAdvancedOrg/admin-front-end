@@ -1,6 +1,6 @@
-import { useEffect, useEffectEvent, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useState } from 'react'
 import { ApiError } from '../../shared/api'
-import { errorText } from '../../shared/errors'
+import { booqyFaultText, errorText } from '../../shared/errors'
 import { createStripeAccountLink, stripeStage } from '../../shared/tenant'
 import type { StripeStage as Stage, Tenant } from '../../shared/tenant'
 import { ErrorNote } from '../../shared/ErrorNote'
@@ -21,7 +21,7 @@ const POLL_TRIES = 20
 const STAGE_TEXT: Record<Stage, { title: string; text: string; ok: boolean }> = {
   missing: {
     title: 'Inget Stripe-konto än',
-    text: 'Kontot skapas av plattformen när restaurangen registreras. Kontakta support om det saknas.',
+    text: 'Kontot skapas av Booqy när restaurangen registreras.',
     ok: false,
   },
   not_started: {
@@ -57,6 +57,8 @@ export function PaymentsCard({
   const info = STAGE_TEXT[stage]
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Saknas kontot är det Booqys fel: Försök igen och Rapportera till Booqy.
+  const missing = useMemo(() => (stage === 'missing' ? booqyFaultText('Stripe-kontot saknas.', 'stripe_account_missing') : null), [stage])
 
   // Tillbaka från Stripe: Stripe meddelar backend via webhook några sekunder
   // efter att formuläret skickats in. Hämta statusen direkt och sedan var
@@ -133,6 +135,7 @@ export function PaymentsCard({
           <p className="cell-muted">{payouts}</p>
         </div>
       </div>
+      {missing && <ErrorNote text={missing} onRetry={() => void onRefresh()} />}
       {error && (
         <ErrorNote text={error} />
       )}

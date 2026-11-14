@@ -115,6 +115,76 @@ describe('mergeDeep (whole documents)', () => {
     expect(conflicts).toEqual(['pages.0.blocks.0.heading'])
     expect(merged.pages[0].blocks[0].heading).toBe('Välkommen')
   })
+
+  describe('lists with ids (pages, blocks)', () => {
+    const doc = {
+      pages: [{ id: 'start', title: 'Bistro', blocks: [{ id: 'hero', heading: 'Hej' }, { id: 'text', body: 'A' }, { id: 'meny', heading: 'Meny' }] }],
+    }
+
+    it('a block a colleague added stays when you edit another block', () => {
+      const mine = structuredClone(doc)
+      mine.pages[0].blocks[0].heading = 'Välkommen'
+      const theirs = structuredClone(doc)
+      theirs.pages[0].blocks.splice(1, 0, { id: 'bild', heading: 'Bild' })
+      const { merged, conflicts } = mergeDeep(doc, mine, theirs)
+      expect(conflicts).toEqual([])
+      expect(merged.pages[0].blocks.map((b) => b.id)).toEqual(['hero', 'bild', 'text', 'meny'])
+      expect(merged.pages[0].blocks[0].heading).toBe('Välkommen')
+    })
+
+    it('keeps additions and deletions from both sides', () => {
+      const mine = structuredClone(doc)
+      mine.pages[0].blocks = mine.pages[0].blocks.filter((b) => b.id !== 'text')
+      mine.pages[0].blocks.push({ id: 'kontakt', heading: 'Kontakt' })
+      const theirs = structuredClone(doc)
+      theirs.pages[0].blocks = theirs.pages[0].blocks.filter((b) => b.id !== 'meny')
+      theirs.pages[0].blocks.unshift({ id: 'oppet', heading: 'Öppet' })
+      const { merged, conflicts } = mergeDeep(doc, mine, theirs)
+      expect(conflicts).toEqual([])
+      expect(merged.pages[0].blocks.map((b) => b.id)).toEqual(['oppet', 'hero', 'kontakt'])
+    })
+
+    it('your move wins the order and their new block still lands', () => {
+      const mine = structuredClone(doc)
+      mine.pages[0].blocks.reverse()
+      const theirs = structuredClone(doc)
+      theirs.pages[0].blocks.push({ id: 'kontakt', heading: 'Kontakt' })
+      expect(mergeDeep(doc, mine, theirs).merged.pages[0].blocks.map((b) => b.id)).toEqual(['meny', 'kontakt', 'text', 'hero'])
+    })
+
+    it('their move is kept when you only edited', () => {
+      const mine = structuredClone(doc)
+      mine.pages[0].blocks[1].body = 'B'
+      const theirs = structuredClone(doc)
+      theirs.pages[0].blocks.reverse()
+      const { merged, conflicts } = mergeDeep(doc, mine, theirs)
+      expect(conflicts).toEqual([])
+      expect(merged.pages[0].blocks.map((b) => b.id)).toEqual(['meny', 'text', 'hero'])
+      expect(merged.pages[0].blocks[1].body).toBe('B')
+    })
+
+    it('only the same block changed on both sides is a conflict, at its place in the result', () => {
+      const mine = structuredClone(doc)
+      mine.pages[0].blocks[2].heading = 'Vår meny'
+      const theirs = structuredClone(doc)
+      theirs.pages[0].blocks.unshift({ id: 'bild', heading: 'Bild' })
+      theirs.pages[0].blocks[3].heading = 'Menyn'
+      const { merged, conflicts } = mergeDeep(doc, mine, theirs)
+      expect(conflicts).toEqual(['pages.0.blocks.3.heading'])
+      expect(merged.pages[0].blocks.map((b) => b.id)).toEqual(['bild', 'hero', 'text', 'meny'])
+      expect(merged.pages[0].blocks[3].heading).toBe('Vår meny')
+    })
+
+    it('a block you edited that they removed is a conflict and stays', () => {
+      const mine = structuredClone(doc)
+      mine.pages[0].blocks[1].body = 'B'
+      const theirs = structuredClone(doc)
+      theirs.pages[0].blocks.splice(1, 1)
+      const { merged, conflicts } = mergeDeep(doc, mine, theirs)
+      expect(conflicts).toEqual(['pages.0.blocks.1'])
+      expect(merged.pages[0].blocks.map((b) => b.id)).toEqual(['hero', 'text', 'meny'])
+    })
+  })
 })
 
 describe('mergeCategoryRows', () => {

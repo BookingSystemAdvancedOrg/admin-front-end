@@ -76,6 +76,18 @@ describe('apiFetch fel', () => {
     await expect(apiFetch('/x', { method: 'POST' })).rejects.toMatchObject({ code: 'internal_error', status: 502 })
   })
 
+  it('ett 404 utan error-fält (gatewayens egen väg saknas) är route_not_found, ett 404 från funktionen är not_found', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(json(404, { message: 'Not Found' }))
+      .mockResolvedValueOnce(new Response('', { status: 404 }))
+      .mockResolvedValueOnce(json(404, { error: 'not found', code: 'not_found' }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { apiFetch } = await loadApi()
+    await expect(apiFetch('/x')).rejects.toMatchObject({ code: 'route_not_found', status: 404 })
+    await expect(apiFetch('/x')).rejects.toMatchObject({ code: 'route_not_found', status: 404 })
+    await expect(apiFetch('/x')).rejects.toMatchObject({ code: 'not_found', status: 404 })
+  })
+
   it('ingen anslutning blir ett NetworkError med svensk text', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
     const { apiFetch } = await loadApi()

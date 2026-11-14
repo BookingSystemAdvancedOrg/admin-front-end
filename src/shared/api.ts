@@ -96,11 +96,13 @@ async function toApiError(res: Response): Promise<ApiError> {
     const message = body.error ?? body.message ?? text
     const code = typeof body.code === 'string' && CODE.test(body.code) ? body.code
       : typeof body.error === 'string' && CODE.test(body.error) ? body.error
-        : statusCode(res.status)
+        // API Gateways eget {"message":"Not Found"}: vägen finns inte (appen och API:t i otakt), inte posten.
+        : res.status === 404 && body.error === undefined ? 'route_not_found'
+          : statusCode(res.status)
     return new ApiError(res.status, message, { code, field: body.field, fromServer: true, requestId: requestIdOf(res, body) })
   } catch {
     // CloudFront/API Gateway kan svara med HTML eller tom text (502/504).
-    return new ApiError(res.status, text || res.statusText, { code: statusCode(res.status), fromServer: true, requestId: requestIdOf(res) })
+    return new ApiError(res.status, text || res.statusText, { code: res.status === 404 ? 'route_not_found' : statusCode(res.status), fromServer: true, requestId: requestIdOf(res) })
   }
 }
 

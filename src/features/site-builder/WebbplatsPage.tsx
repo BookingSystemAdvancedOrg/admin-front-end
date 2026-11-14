@@ -22,6 +22,7 @@ import {
   freeSlug,
   getSite,
   listVersions,
+  conflictPlace,
   locate,
   moveBlock,
   newId,
@@ -113,11 +114,16 @@ function Editor() {
   // Har du osparade ändringar skrivs utkastet inte över; de läggs ovanpå det
   // senaste när du sparar.
   const dirtyRef = useRef(dirty)
+  const versionRef = useRef(version)
   useEffect(() => {
     dirtyRef.current = dirty
-  }, [dirty])
+    versionRef.current = version
+  }, [dirty, version])
   useLiveRefresh(async () => {
     const s = await getSite()
+    // Ett svar som hämtades före din sparning har ett äldre utkast: det får
+    // inte ta tillbaka det du nyss sparade (nästa puls har det nya).
+    if (s.draft.version < versionRef.current) return
     setSite((cur) => (sameData(cur, s) ? cur : s))
     if (!dirtyRef.current) {
       setDoc((cur) => (sameData(cur, s.draft.doc) ? cur : s.draft.doc))
@@ -160,7 +166,9 @@ function Editor() {
         setVersion(latest.draft.version)
         setDoc(merged)
         if (conflicts.length) {
-          setError({ text: 'Samma text ändrades nyss på en annan plats. Din version står kvar; spara igen för att använda den, eller ändra först.' })
+          const where = conflictPlace(merged, conflicts[0])
+          setError({ text: `${where.name} ändrades nyss på en annan plats. Din version står kvar; spara igen för att använda den, eller ändra först.`, page: where.page, block: where.block })
+          if (where.page !== undefined) setPageIndex(where.page)
           return null
         }
         sent = merged

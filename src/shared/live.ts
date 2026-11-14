@@ -133,12 +133,20 @@ export function useLiveRefresh(
   useEffect(() => {
     if (!enabled) return
     let running = false
+    // En signal (sparning, 409, fokus) under en pågående hämtning tappas
+    // inte: den hämtningen kan ha börjat före sparningen och ge gammal data,
+    // så en till körs direkt efteråt.
+    let pending: LiveReason | null = null
+    let stopped = false
     let failures = 0
     let notBefore = 0
     const run = async (reason: LiveReason) => {
-      if (running) return
       if (reason === 'online') failures = 0
       if (reason === 'interval' && Date.now() < notBefore) return
+      if (running) {
+        if (reason !== 'interval' || pending === null) pending = reason
+        return
+      }
       running = true
       try {
         const result = await latest.current()
@@ -151,12 +159,16 @@ export function useLiveRefresh(
       } finally {
         running = false
       }
+      const again = pending
+      pending = null
+      if (again !== null && !stopped) void run(again)
     }
     const unsubscribe = subscribeLive((reason) => {
       if (everyMs === null || reason !== 'interval') void run(reason)
     })
     const own = everyMs === null ? null : setInterval(() => visible() && online() && void run('interval'), everyMs)
     return () => {
+      stopped = true
       unsubscribe()
       if (own !== null) clearInterval(own)
     }
@@ -273,14 +285,21 @@ export function useLiveForm<S, F>(opts: {
   adopt: (s: S) => void
 }): { there: S | null; takeThere: () => void } {
   const [there, setThere] = useState<S | null>(null)
+  // Formulär och sparat värde läses efter svaret, inte före: det du skriver
+  // medan hämtningen pågår räknas som ändrat och skrivs aldrig över.
+  const now = useRef(opts)
+  useEffect(() => {
+    now.current = opts
+  })
   useLiveRefresh(async () => {
-    const next = await opts.fetch()
-    if (sameData(next, opts.saved)) {
+    const next = await now.current.fetch()
+    const { saved, form, toForm, adopt } = now.current
+    if (sameData(next, saved)) {
       setThere(null)
       return
     }
-    if (sameData(opts.form, opts.toForm(opts.saved as S))) {
-      opts.adopt(next)
+    if (sameData(form, toForm(saved as S))) {
+      adopt(next)
       setThere(null)
     } else {
       setThere(next)

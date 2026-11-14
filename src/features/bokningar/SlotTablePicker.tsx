@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { addDays, dayNotice, errorMessage, getAvailability } from './bookingsApi'
+import { addDays, dayNotice, errorMessage, getAvailability, LOCATION_NOT_BOOKABLE } from './bookingsApi'
 import type { AvailabilitySlot, DayStatus } from './bookingsApi'
 import { useTables } from '../../shared/tables'
 import { DateInput } from '../../shared/DateInput'
@@ -111,7 +111,7 @@ export function SlotTablePicker({
         if (cancelled) return
         setSlots([])
         setDay(null)
-        setError(errorMessage(err, 'Kunde inte hämta lediga tider.'))
+        setError(errorMessage(err, 'Kunde inte hämta lediga tider.', LOCATION_NOT_BOOKABLE))
         setLoadedFor(requestKey)
       })
     return () => {

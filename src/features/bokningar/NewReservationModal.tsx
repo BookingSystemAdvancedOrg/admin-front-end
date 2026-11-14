@@ -11,6 +11,7 @@ import {
   addDays,
   createManualReservation,
   errorMessage,
+  LOCATION_NOT_BOOKABLE,
   isStaleSlotError,
   normalizePhone,
   validEmail,
@@ -100,7 +101,7 @@ export function NewReservationModal({
       })
       onCreated(created)
     } catch (err) {
-      setError(errorMessage(err))
+      setError(errorMessage(err, undefined, LOCATION_NOT_BOOKABLE))
       if (isStaleSlotError(err)) {
         // Tiden eller bordet gick inte längre: hämta om listan och välj om.
         setSlot((s) => ({ ...s, startTime: '', tableIds: [] }))

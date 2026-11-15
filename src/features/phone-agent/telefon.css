@@ -161,7 +161,7 @@
   font: inherit;
   font-size: var(--bq-text-base);
   text-align: left;
-  cursor: pointer;
+  cursor: default;
 }
 .telefon-checklist__row:hover,
 .telefon-checklist__row:focus-visible {
@@ -287,7 +287,7 @@
   background: var(--bq-surface);
   color: var(--bq-ink);
   font-size: var(--bq-text-base);
-  cursor: pointer;
+  cursor: default;
 }
 .telefon-card input {
   width: 20px;
@@ -363,7 +363,7 @@
   font-size: var(--bq-text-sm);
   text-decoration: underline;
   text-underline-offset: 3px;
-  cursor: pointer;
+  cursor: default;
 }
 .telefon-checks {
   margin: var(--bq-space-2) 0;

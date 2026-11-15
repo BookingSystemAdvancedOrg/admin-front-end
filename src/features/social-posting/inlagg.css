@@ -19,7 +19,7 @@
   color: var(--bq-ink);
   font: inherit;
   text-align: left;
-  cursor: pointer;
+  cursor: default;
 }
 .inlagg-row[aria-current='true'] .inlagg-caption {
   font-weight: 600;

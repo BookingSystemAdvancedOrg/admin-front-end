@@ -206,11 +206,15 @@ export default function GoogleProfileCard({ locationId }: { locationId: string }
             <strong>{view.link.title}</strong>
             <span className="status-badge">{syncedText(view.link)}</span>
           </p>
-          <Preview view={view} />
-          <Bar variant="action" label="Google-plats">
-            <Button type="button" variant="secondary" busy={busy === 'unlink'} onClick={unlink}>Byt plats</Button>
-            <Button type="button" variant="primary" busy={busy === 'sync'} busyLabel="Synkar…" onClick={sync}>Synka nu</Button>
-          </Bar>
+          <div className="google-link-row">
+            <Preview view={view} />
+            <div className="google-link-actions">
+              <Bar variant="action" label="Google-plats">
+                <Button type="button" variant="secondary" busy={busy === 'unlink'} onClick={unlink}>Byt plats</Button>
+                <Button type="button" variant="primary" busy={busy === 'sync'} busyLabel="Synkar…" onClick={sync}>Synka nu</Button>
+              </Bar>
+            </div>
+          </div>
         </>
       ) : (
         <>
@@ -224,13 +228,17 @@ export default function GoogleProfileCard({ locationId }: { locationId: string }
               {free.map((p) => <option key={p.googleLocation} value={p.googleLocation}>{p.title}, {p.address}</option>)}
             </Select>
           </Field>
-          <Preview view={view} />
-          <Bar variant="action" label="Koppla Google-plats">
-            <Button type="button" variant="primary" disabled={!picked} busy={busy === 'link'} busyLabel="Kopplar…" onClick={link}>Koppla platsen</Button>
-          </Bar>
-          <p className="google-skip">
-            <button type="button" className="link-action" disabled={busy !== null} onClick={skip}>Hoppa över</button>
-          </p>
+          <div className="google-link-row">
+            <Preview view={view} />
+            <div className="google-link-actions">
+              <Bar variant="action" label="Koppla Google-plats">
+                <Button type="button" variant="primary" disabled={!picked} busy={busy === 'link'} busyLabel="Kopplar…" onClick={link}>Koppla platsen</Button>
+              </Bar>
+              <p className="google-skip">
+                <button type="button" className="link-action" disabled={busy !== null} onClick={skip}>Hoppa över</button>
+              </p>
+            </div>
+          </div>
           <Help connected />
         </>
       )}

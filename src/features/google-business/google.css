@@ -15,11 +15,42 @@
   font-size: var(--bq-text-sm);
   color: var(--bq-muted);
 }
+/* One vertical list of days, at every width (owner 2026-11-15). */
 .google-hours {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
-  gap: var(--bq-space-1) var(--bq-space-4);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--bq-space-1);
+  max-width: 28rem;
   margin: 0;
+}
+/* The days with the buttons: buttons under the list on phones and narrow
+   cards, to the right of it (bottom aligned) when there is room. */
+.google-link-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--bq-space-4);
+  align-items: end;
+}
+.google-link-actions {
+  display: grid;
+  gap: var(--bq-space-2);
+  justify-items: stretch;
+}
+.google-link-actions .google-skip {
+  margin: 0;
+  text-align: center;
+}
+@media (min-width: 900px) {
+  .google-link-row {
+    grid-template-columns: minmax(0, 28rem) auto;
+    justify-content: space-between;
+  }
+  .google-link-actions {
+    justify-items: end;
+  }
+  .google-link-actions .google-skip {
+    text-align: right;
+  }
 }
 .google-hours div {
   display: flex;

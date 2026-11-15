@@ -51,6 +51,13 @@
     margin: -7px;
   }
 
+  /* På: `background: var(--ink)` (brand.css) nollställer background-clip, så
+     den svarta färgen fyllde den osynliga tryckkanten och reglaget såg
+     tjockare ut än när det är av. Samma storlek i båda lägena. */
+  html .switch[aria-checked] {
+    background-clip: padding-box;
+  }
+
   html .info-tooltip .info-tooltip-trigger {
     box-sizing: content-box;
     width: 22px;

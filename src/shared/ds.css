@@ -1247,11 +1247,19 @@
     gap: 6px 16px;
   }
 
+  /* rubriken står ovanför värdet, så varje siffra säger vad den är */
   .data-table:not(.keep-table) td[data-label]::before {
-    content: attr(data-label) ' ';
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
     font-size: 12px;
     font-weight: 500;
     color: var(--muted);
+  }
+
+  /* radens namn står överst på en egen rad, värdena under */
+  .data-table:not(.keep-table) td.cell-strong:first-child {
+    flex: 1 1 100%;
   }
 }
 

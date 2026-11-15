@@ -110,7 +110,7 @@
     background: none;
     color: var(--dock-ink-off);
     text-decoration: none;
-    cursor: pointer;
+    cursor: default;
     -webkit-tap-highlight-color: transparent;
     transition: color var(--dur-fast) var(--ease-out);
   }
@@ -362,7 +362,7 @@
     background: none;
     color: var(--ink);
     font: var(--fw-strong) var(--fs-sm) / 1.2 var(--font);
-    cursor: pointer;
+    cursor: default;
   }
 
   .bq-more__tile.is-pressed {
@@ -434,7 +434,7 @@
     font: var(--fw-regular) var(--fs-base) / 1.2 var(--font);
     text-align: left;
     text-decoration: none;
-    cursor: pointer;
+    cursor: default;
   }
 
   .bq-more__row.is-pressed {

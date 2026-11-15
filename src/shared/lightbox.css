@@ -50,7 +50,7 @@
   box-shadow: var(--liquid-edge), var(--elev-1);
   -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
   backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
-  cursor: pointer;
+  cursor: default;
   transition: scale var(--dur-fast) var(--ease-out);
 }
 

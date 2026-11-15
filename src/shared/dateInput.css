@@ -89,11 +89,16 @@
 .date-cal {
   position: fixed;
   z-index: 1000;
+  /* popover (top layer): utan webbläsarens centrering och ram. */
+  inset: auto;
+  margin: 0;
+  overflow: visible;
   width: 280px;
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--glass-pop);
+  /* Helt täckande: Safari suddar inte bakgrunden bakom ett element i top layer. */
+  background: var(--surface);
   color: var(--ink);
   box-shadow: var(--shadow-lg);
   -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.5);

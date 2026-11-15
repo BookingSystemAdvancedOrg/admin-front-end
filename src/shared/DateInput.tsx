@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import './dateInput.css'
 import { Icon } from './Icon'
 
@@ -114,6 +115,10 @@ export function DateInput({ value, onChange, min, max, ...rest }: Common & { min
 
   const parsed = parseDate(text)
   const invalid = text !== '' && !(parsed && inRange(parsed, min, max))
+  // Som det inbyggda fältet: ett ofullständigt eller otillåtet datum stoppar formuläret (required räcker inte, texten är inte tom).
+  useEffect(() => {
+    input.current?.setCustomValidity(invalid ? 'Ange ett giltigt datum, DD/MM/ÅÅÅÅ.' : '')
+  }, [invalid])
 
   return (
     <span className={`date-input ${rest.className ?? ''}`} ref={wrap}>
@@ -177,6 +182,7 @@ export function DateInput({ value, onChange, min, max, ...rest }: Common & { min
 /** Tid som TT:MM, 24-timmarsklocka. */
 export function TimeInput({ value, onChange, ...rest }: Common & { step?: number }) {
   const [text, setText] = useState(value)
+  const input = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if ((parseTime(text) ?? '') !== value) setText(value)
@@ -184,8 +190,12 @@ export function TimeInput({ value, onChange, ...rest }: Common & { step?: number
   }, [value])
 
   const invalid = text !== '' && !parseTime(text)
+  useEffect(() => {
+    input.current?.setCustomValidity(invalid ? 'Ange en giltig tid, TT:MM.' : '')
+  }, [invalid])
   return (
     <input
+      ref={input}
       id={rest.id}
       type="text"
       inputMode="numeric"
@@ -286,16 +296,38 @@ function Calendar({
 
   // Fast position under fältet (eller ovanför om det inte får plats), så att modaler inte klipper kalendern.
   useLayoutEffect(() => {
+    // Överst (top layer) när webbläsaren kan: då klipper ingen dialog eller kort kalendern.
+    const el0 = panel.current
+    if (el0 && typeof el0.showPopover === 'function' && !el0.matches(':popover-open')) {
+      try {
+        el0.showPopover()
+      } catch {
+        /* äldre webbläsare: kalendern ligger kvar i dialogen/sidan */
+      }
+    }
     function place() {
       const a = anchor.current?.getBoundingClientRect()
       const h = panel.current?.offsetHeight ?? 320
       const w = panel.current?.offsetWidth ?? 280
       if (!a) return
       const below = a.bottom + 6 + h <= window.innerHeight
-      setPos({
-        top: below ? a.bottom + 6 : Math.max(8, a.top - 6 - h),
-        left: Math.max(8, Math.min(a.left, window.innerWidth - w - 8)),
-      })
+      const top = below ? a.bottom + 6 : Math.max(8, a.top - 6 - h)
+      const left = Math.max(8, Math.min(a.left, window.innerWidth - w - 8))
+      // En öppen dialog (eller ett förälder-element med transform) flyttar nollpunkten för
+      // position: fixed. Mät nollpunkten och räkna bort den, så hamnar kalendern vid fältet.
+      const el = panel.current
+      let dx = 0
+      let dy = 0
+      if (el) {
+        el.style.top = '0px'
+        el.style.left = '0px'
+        const o = el.getBoundingClientRect()
+        dx = o.left
+        dy = o.top
+        el.style.top = `${top - dy}px`
+        el.style.left = `${left - dx}px`
+      }
+      setPos({ top: top - dy, left: left - dx })
     }
     place()
     window.addEventListener('resize', place)
@@ -341,7 +373,9 @@ function Calendar({
   function onKey(e: KeyboardEvent<HTMLDivElement>) {
     const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key]
     if (e.key === 'Escape') {
+      // Stäng bara kalendern, inte dialogen den ligger i.
       e.preventDefault()
+      e.stopPropagation()
       onClose()
       return
     }
@@ -354,9 +388,13 @@ function Calendar({
     setView({ y: d.getUTCFullYear(), m: d.getUTCMonth() + 1 })
   }
 
-  return (
+  // I body (eller den öppna dialogen, som ligger överst): ett kort med backdrop-filter eller transform
+  // blir annars utgångspunkt för position: fixed och kalendern hamnar fel.
+  const host = anchor.current?.closest('dialog') ?? document.body
+  return createPortal(
     <div
       ref={panel}
+      popover="manual"
       className="date-cal"
       role="dialog"
       aria-label="Välj datum"
@@ -408,6 +446,7 @@ function Calendar({
       >
         Idag
       </button>
-    </div>
+    </div>,
+    host,
   )
 }

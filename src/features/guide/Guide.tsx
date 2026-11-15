@@ -24,9 +24,11 @@ import './guide.css'
 interface GuideApi {
   start: () => void
   active: boolean
+  /** Målet (data-tour) för steget guiden står på eller väntar på; null utan mål. */
+  target: string | null
 }
 
-const GuideCtx = createContext<GuideApi>({ start: () => {}, active: false })
+const GuideCtx = createContext<GuideApi>({ start: () => {}, active: false, target: null })
 
 export function useGuide(): GuideApi {
   return useContext(GuideCtx)
@@ -39,9 +41,10 @@ const SAME_PAGE_WAIT_MS = 300
 
 function targetOf(step: GuideStep): HTMLElement | null {
   if (!step.target) return null
-  const el = document.querySelector<HTMLElement>(`[data-tour="${step.target}"]`)
-  // Dolda element (display: none) har ingen yta att peka på.
-  return el && el.getClientRects().length > 0 ? el : null
+  // Samma mål kan finnas två gånger (sidomenyn och telefonens rad eller ark):
+  // det som syns. Dolda element (display: none) har ingen yta att peka på.
+  const all = document.querySelectorAll<HTMLElement>(`[data-tour="${step.target}"]`)
+  return Array.from(all).find((el) => el.getClientRects().length > 0) ?? null
 }
 
 function routeMatches(route: string, pathname: string, hash: string): boolean {
@@ -153,7 +156,8 @@ export function GuideProvider({
     return () => window.clearInterval(timer)
   }, [steps, step, index, location.pathname, location.hash, navigate, finish])
 
-  const api = useMemo(() => ({ start, active: steps !== null }), [start, steps])
+  const target = step?.target ?? null
+  const api = useMemo(() => ({ start, active: steps !== null, target }), [start, steps, target])
   const waiting = !shown || shown.step !== step
 
   return (

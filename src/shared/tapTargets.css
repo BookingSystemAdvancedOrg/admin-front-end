@@ -3,7 +3,6 @@
    kontroller (switch, (i)) behåller sin bild: träffytan växer med en
    genomskinlig kant och negativ marginal, så att raden inte flyttar sig. */
 @media (max-width: 640px) {
-  html .admin-menu-button,
   html .palette-trigger,
   html .topbar-tool,
   html .admin-topbar .theme-toggle {

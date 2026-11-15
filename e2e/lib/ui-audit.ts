@@ -177,6 +177,13 @@ export async function layoutAudit(page: Page, opts: AuditOpts): Promise<Issue[]>
         for (const el of [...interactive, ...textLeaves]) {
           if (el === help || help.contains(el) || el.contains(help)) continue
           if (el.closest('.help-panel, [role=dialog]')) continue
+          // visually hidden (sr-only: clip-path inset(50%) or clip rect 0), e.g. table heads on phones
+          let clipped = false
+          for (let p: Element | null = el; p && p !== document.body; p = p.parentElement) {
+            const cs = getComputedStyle(p)
+            if (cs.clipPath.startsWith('inset(50%') || /rect\(0(px)?,? 0(px)?,? 0(px)?,? 0(px)?\)/.test(cs.clip)) clipped = true
+          }
+          if (clipped) continue
           const r = el.getBoundingClientRect()
           const w = Math.min(hr.right, r.right) - Math.max(hr.left, r.left)
           const h = Math.min(hr.bottom, r.bottom) - Math.max(hr.top, r.top)

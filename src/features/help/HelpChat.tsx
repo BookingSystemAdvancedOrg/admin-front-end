@@ -70,18 +70,24 @@ export function HelpChat() {
 
   const show = useCallback(() => {
     if (!helpChatEnabled()) return
-    returnTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    // Safari fokuserar inte knappar vid klick: då är det <body>, inget att gå tillbaka till.
+    const from = document.activeElement
+    returnTo.current = from instanceof HTMLElement && from !== document.body ? from : null
     setOpen(true)
   }, [])
   const close = useCallback(() => {
     setOpen(false)
     // Tillbaka dit man var; knappen nere till höger ritas om när panelen stängs.
     // På telefonen öppnades den från arket bakom Mer: tillbaka till Mer.
-    requestAnimationFrame(() => {
-      const more = document.querySelector<HTMLElement>('.bq-dock__more')
-      const back = returnTo.current?.isConnected ? returnTo.current : launcherRef.current ?? more
-      back?.focus?.()
-    })
+    // Raden längst ner visas igen först en bild senare (den var gömd under
+    // panelen och går inte att fokusera förrän då): två bildrutor.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const more = document.querySelector<HTMLElement>('.bq-dock__more')
+        const back = returnTo.current?.isConnected ? returnTo.current : launcherRef.current ?? more
+        back?.focus?.()
+      }),
+    )
   }, [])
 
   useEffect(() => {

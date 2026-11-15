@@ -145,7 +145,13 @@ for (const vp of SIZES) {
     test(`help assistant panel ${vp.name} ${theme}`, async ({ page }, info) => {
       await open(page, '/', vp, theme)
       const issues: Issue[] = []
-      await page.locator('.help-launcher').click()
+      if (phone) {
+        // Phones: no floating launcher; Fråga Booqy is a tile in the Mer sheet.
+        await page.getByRole('navigation', { name: 'Snabbmeny' }).getByRole('button', { name: /^Mer/ }).click()
+        await page.getByRole('dialog', { name: 'Mer' }).getByRole('button', { name: 'Fråga Booqy' }).click()
+      } else {
+        await page.locator('.help-launcher').click()
+      }
       const panel = page.locator('.help-panel')
       await expect(panel).toBeVisible()
       await page.waitForTimeout(400)

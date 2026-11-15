@@ -108,7 +108,8 @@
   --dock-shadow: 0 10px 30px rgba(26, 18, 14, 0.18);
   --dock-scrim: rgba(26, 18, 14, 0.32);
   --dock-wine: #350001;
-  --dock-sheet: rgb(var(--bq-snow-rgb) / 0.95);
+  /* Täckande: Safari lät sidans text lysa igenom även vid 95 %. */
+  --dock-sheet: rgb(var(--bq-snow-rgb));
 }
 
 :root[data-theme='dark'] {
@@ -145,7 +146,7 @@
   --dock-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
   --dock-scrim: var(--dim);
   --dock-wine: #ee8a90;
-  --dock-sheet: rgba(36, 25, 19, 0.96);
+  --dock-sheet: rgb(36, 25, 19);
 }
 
 @media (max-width: 900px) {

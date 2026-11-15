@@ -99,8 +99,11 @@ export function isKeyboardField(el: Element | null): boolean {
   return !!el && el instanceof HTMLElement && el.matches(KEYBOARD_FIELD) && !el.closest('.bq-dock')
 }
 
+/** Guiden pekar på raden och arket: dess kort (aria-modal) gömmer inte raden. */
+const NOT_A_LAYER = '.guide-layer'
+
 export function fullLayerOpen(root: ParentNode = document): boolean {
-  return root.querySelector(FULL_LAYER) !== null
+  return Array.from(root.querySelectorAll(FULL_LAYER)).some((el) => !el.closest(NOT_A_LAYER))
 }
 
 /**
@@ -143,6 +146,9 @@ export function useDockHiding(active: boolean): void {
       raf = window.requestAnimationFrame(() => {
         raf = 0
         layer = fullLayerOpen()
+        // Safari skickar ingen focusout när fältet med fokus tas bort (paletten,
+        // hjälpassistenten stängs): läs om fokus, annars blir raden kvar gömd.
+        typing = isKeyboardField(document.activeElement)
         apply()
       })
     })

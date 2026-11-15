@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { dockPaths, dockSlots, fullLayerOpen, isKeyboardField, sheetGroups } from './dock'
+import { dockPaths, dockSlots, fullLayerOpen, isKeyboardField, sheetGroups, useDockHiding } from './dock'
 import { NAV_GROUPS, visibleNav } from './nav'
 import type { Tenant } from './tenant'
 
@@ -77,6 +77,30 @@ describe('when the bar hides', () => {
     expect(fullLayerOpen(root)).toBe(false)
     root.innerHTML += '<div class="modal-overlay"></div>'
     expect(fullLayerOpen(root)).toBe(true)
+  })
+
+  it('stays up for the guide card, which points at the bar', () => {
+    const root = document.createElement('div')
+    root.innerHTML = '<div class="guide-layer"><div role="dialog" aria-modal="true"></div></div>'
+    expect(fullLayerOpen(root)).toBe(false)
+  })
+
+  it('comes back when a focused field is removed without focusout (Safari)', async () => {
+    const { renderHook } = await import('@testing-library/react')
+    const field = document.createElement('input')
+    document.body.appendChild(field)
+    field.focus()
+    const { unmount } = renderHook(() => useDockHiding(true))
+    expect(document.documentElement.classList.contains('dock-hidden')).toBe(true)
+    // Safari: no focusout when the element goes away.
+    const stop = (e: Event) => e.stopImmediatePropagation()
+    document.addEventListener('focusout', stop, true)
+    field.remove()
+    document.body.appendChild(document.createElement('div'))
+    await new Promise((r) => setTimeout(r, 50))
+    expect(document.documentElement.classList.contains('dock-hidden')).toBe(false)
+    document.removeEventListener('focusout', stop, true)
+    unmount()
   })
 })
 

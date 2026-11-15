@@ -189,7 +189,8 @@ export function AdminLayout() {
           {locations.length > 1 && locationName && <span className="admin-mobilebar-place"> · {locationName}</span>}
         </span>
       </header>
-      {phone && status === 'ready' && (
+      {/* Även vid fel: Logga ut och resten av menyn finns kvar, som i sidomenyn. */}
+      {phone && (status === 'ready' || status === 'error') && (
         <BottomNav
           tenant={tenant}
           locationId={locationId}

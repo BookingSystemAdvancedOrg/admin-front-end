@@ -293,12 +293,27 @@ function GuideOverlay({
       const next = place(step, bubbleRef.current?.offsetHeight ?? 180)
       if (next) setPlacement(next)
     }
+    // Målet glider in (telefonens ark bakom Mer): mät igen när det står still,
+    // och rulla fram det om det då ligger utanför skärmen.
+    const settled = (e: Event) => {
+      if ((e.target as Element | null)?.closest?.('.guide-layer')) return
+      const now = step ? targetOf(step) : null
+      if (now) {
+        const r = now.getBoundingClientRect()
+        if (r.top < 0 || r.bottom > window.innerHeight) now.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+      }
+      update()
+    }
     update()
     window.addEventListener('resize', update)
     window.addEventListener('scroll', update, true)
+    document.addEventListener('animationend', settled, true)
+    document.addEventListener('transitionend', settled, true)
     return () => {
       window.removeEventListener('resize', update)
       window.removeEventListener('scroll', update, true)
+      document.removeEventListener('animationend', settled, true)
+      document.removeEventListener('transitionend', settled, true)
     }
   }, [step])
 

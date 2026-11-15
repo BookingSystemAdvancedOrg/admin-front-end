@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { rangesOverlap } from './data'
 import type { DiscountTier } from './data'
+import ModalOverlay from '../../shared/ModalOverlay'
 
 export interface DiscountTierFormValues {
   name: string
@@ -91,13 +92,11 @@ export function DiscountTierModal({
   }
 
   return (
-    <div
-      className="modal-overlay"
+    <ModalOverlay
       onPointerDown={(e) => e.target === e.currentTarget && onCancel()}
     >
       <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
         <h2>{title}</h2>
-        <p className="modal-subtitle">Samma formulär används för &quot;+ Ny rabattnivå&quot;</p>
 
         <div className="form-field">
           <label htmlFor="tier-name">Namn på nivå</label>
@@ -139,7 +138,7 @@ export function DiscountTierModal({
             value={discountPercent}
             onChange={(e) => setDiscountPercent(e.target.value)}
           />
-          <p className="field-hint">Dras från delsumman för maten, inte leveransen</p>
+          <p className="field-hint">På maten, inte leveransen</p>
         </div>
 
         <div className="toggle-row">
@@ -185,6 +184,6 @@ export function DiscountTierModal({
           </span>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   )
 }

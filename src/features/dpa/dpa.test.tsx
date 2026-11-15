@@ -128,7 +128,9 @@ describe('AvtalPage', () => {
     renderAt('/avtal', <AvtalPage />)
     await user.click(screen.getByRole('checkbox'))
     await user.click(screen.getByRole('button', { name: 'Godkänn avtalet' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Ladda om sidan')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Den nya versionen visas nu')
+    expect(screen.getByRole('checkbox')).not.toBeChecked()
+    expect(screen.queryByText(/Ladda om/)).not.toBeInTheDocument()
   })
 
   it('lets staff read but not accept', () => {

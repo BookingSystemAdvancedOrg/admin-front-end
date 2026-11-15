@@ -9,6 +9,16 @@
     <link rel="icon" type="image/svg+xml" href="/src/assets/favicon-dark.svg" media="(prefers-color-scheme: dark)" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f6f1ea" />
+    <!-- Appen på telefonen (PWA): manifest, hemskärmsikon och fristående läge.
+         Filnamnen har version (v1) eftersom deployen cachar dem i ett år;
+         ändras en fil, höj versionen i namnet och här. Se src/shared/pwa.ts. -->
+    <link rel="manifest" href="/app.v1.webmanifest" />
+    <link rel="apple-touch-icon" href="/pwa/icon-180.v1.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Booqy Admin" />
+    <!-- default: statusraden får egen plats, så inget hamnar under klockan. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <!-- Ljust eller mörkt läge innan första bildrutan (public/theme.v2.js). -->
     <script src="/theme.v2.js"></script>
     <title>Booqy Admin</title>

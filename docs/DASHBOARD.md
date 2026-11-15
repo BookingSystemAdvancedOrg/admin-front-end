@@ -59,9 +59,6 @@ non-zero), then the work in progress, then money. Keep that order.
 
 - **Covers per hour today** (kitchen pacing): needs reservations grouped by
   start hour for today; the list has the data but no forecast of walk-ins.
-- **Today's revenue including card-terminal and Kassa sales**: Översikt
-  counts online orders only; terminal and till sales are in insights
-  (`inPersonRevenue`) per day, not per hour.
 - **Tables free right now**: needs live table state (occupied/free) from the
   bookings service.
 - **Unanswered guest messages / reviews**: no API.

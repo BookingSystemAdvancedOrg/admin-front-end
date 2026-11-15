@@ -24,6 +24,9 @@ import type {
   PrivacyNotice,
 } from './privacyApi'
 import './privacy.css'
+import ModalOverlay from '../../shared/ModalOverlay'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 
 /**
  * Integritet: restaurangen är personuppgiftsansvarig för sina gäster.
@@ -134,7 +137,7 @@ export function EraseGuestDialog({ who, busy, onCancel, onConfirm }: {
   onConfirm: () => void
 }) {
   return (
-    <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && !busy && onCancel()}>
+    <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && !busy && onCancel()}>
       <div className="modal modal--confirm" role="dialog" aria-modal="true" aria-label="Radera gästens uppgifter">
         <h2>Radera uppgifterna om {who}?</h2>
         <p className="modal-text">
@@ -150,7 +153,7 @@ export function EraseGuestDialog({ who, busy, onCancel, onConfirm }: {
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   )
 }
 
@@ -192,7 +195,7 @@ function NoticeEditor() {
       setText(n.body)
       setNotice('Sparat. Gästerna ser den nya texten direkt.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara just nu. Försök igen om en stund.'))
+      setError(errorText(err, 'Kunde inte spara.'))
     } finally {
       setBusy(false)
     }
@@ -218,12 +221,14 @@ function NoticeEditor() {
   const dirty = saved !== null && text !== saved.body
   return (
     <section className="admin-card table-card" aria-labelledby="privacy-notice-title">
-      <h2 className="card-title" id="privacy-notice-title">Integritetspolicy för gäster</h2>
-      <p className="cell-muted privacy-lead">
-        Ni är personuppgiftsansvariga för era gästers uppgifter. Texten visas på sajtens sida
-        Integritetspolicy och länkas från varje boknings-, beställnings- och cateringformulär. Tabellen
-        över cookies och lagring läggs alltid till automatiskt.
-      </p>
+      <div className="title-info">
+        <h2 className="card-title" id="privacy-notice-title">Integritetspolicy för gäster</h2>
+        <InfoTooltip label="Integritetspolicy för gäster">
+          Ni är personuppgiftsansvariga för era gästers uppgifter. Texten visas på sajtens sida
+          Integritetspolicy och länkas från varje boknings-, beställnings- och cateringformulär. Tabellen
+          över cookies och lagring läggs alltid till automatiskt.
+        </InfoTooltip>
+      </div>
       {saved && (
         <p className="privacy-status" role="status">
           {saved.custom ? `Egen text, version ${saved.version}, sparad ${when(saved.updatedAt)}` : 'Standardmallen (ingen egen text sparad)'}
@@ -251,9 +256,7 @@ function NoticeEditor() {
           </p>
         </div>
         {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
+          <ErrorNote text={error} />
         )}
         <span className="row-actions">
           <button type="submit" className="btn primary square" disabled={busy || !dirty}>
@@ -305,7 +308,7 @@ function ConsentTool() {
       setAsked(q)
     } catch (err) {
       setResult(null)
-      setError(errorText(err, 'Kunde inte söka just nu. Försök igen om en stund.'))
+      setError(errorText(err, 'Kunde inte söka.'))
     } finally {
       setBusy(false)
     }
@@ -323,7 +326,7 @@ function ConsentTool() {
       setResult(r)
       setNotice(r.withdrawn.length ? `Samtycket via ${label} är återkallat.` : 'Det fanns inget samtycke att återkalla.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte återkalla just nu. Försök igen om en stund.'))
+      setError(errorText(err, 'Kunde inte återkalla.'))
     } finally {
       setBusy(false)
     }
@@ -338,7 +341,7 @@ function ConsentTool() {
       downloadJson(await exportGuest(asked.email, asked.phone), `gastdata-${new Date().toISOString().slice(0, 10)}.json`)
       setNotice('Filen är nedladdad. Skicka den till gästen på ett säkert sätt.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte exportera just nu. Försök igen om en stund.'))
+      setError(errorText(err, 'Kunde inte exportera.'))
     } finally {
       setBusy(false)
     }
@@ -356,7 +359,7 @@ function ConsentTool() {
       setResult(await lookupConsent(asked.email, asked.phone))
     } catch (err) {
       setConfirmErase(false)
-      setError(errorText(err, 'Kunde inte radera just nu. Försök igen om en stund.'))
+      setError(errorText(err, 'Kunde inte radera.'))
     } finally {
       setBusy(false)
     }
@@ -365,12 +368,14 @@ function ConsentTool() {
   const channels = (Object.keys(CHANNEL_LABEL) as ConsentChannel[]).filter((c) => result?.[c])
   return (
     <section className="admin-card table-card" aria-labelledby="privacy-consent-title">
-      <h2 className="card-title" id="privacy-consent-title">Gästens uppgifter och samtycken</h2>
-      <p className="cell-muted privacy-lead">
-        Om en gäst ber er sluta skicka erbjudanden: sök på e-post eller telefonnummer och återkalla
-        samtycket här. Det gäller bara erbjudanden. Bekräftelser, påminnelser och kvitton skickas som vanligt.
-        Vill gästen veta vad ni har sparat, eller bli raderad, exporterar eller raderar ni det också här.
-      </p>
+      <div className="title-info">
+        <h2 className="card-title" id="privacy-consent-title">Gästens uppgifter och samtycken</h2>
+        <InfoTooltip label="Gästens uppgifter och samtycken">
+          Om en gäst ber er sluta skicka erbjudanden: sök på e-post eller telefonnummer och återkalla
+          samtycket här. Det gäller bara erbjudanden. Bekräftelser, påminnelser och kvitton skickas som vanligt.
+          Vill gästen veta vad ni har sparat, eller bli raderad, exporterar eller raderar ni det också här.
+        </InfoTooltip>
+      </div>
       <form onSubmit={search} className="privacy-search">
         <div className="form-field">
           <label htmlFor="consent-email">E-post</label>
@@ -391,9 +396,7 @@ function ConsentTool() {
         </button>
       </form>
       {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
+        <ErrorNote text={error} />
       )}
       {notice && (
         <p className="save-notice" role="status">

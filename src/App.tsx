@@ -2,6 +2,7 @@ import { lazy } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AdminLayout } from './shared/AdminLayout'
 import { pages } from './pages'
+import { DownloadRedirect } from './features/installningar/DownloadRedirect'
 
 const OversiktPage = lazy(pages.oversikt)
 const BokningarPage = lazy(pages.bokningar)
@@ -16,16 +17,13 @@ const HjalpPage = lazy(pages.hjalp)
 const MarknadsforingPage = lazy(pages.marknadsforing)
 const StatistikPage = lazy(pages.statistik)
 const AvtalPage = lazy(pages.avtal)
-const TaBetaltPage = lazy(pages.tabetalt)
-const KassaPage = lazy(pages.kassa)
-const KassaManualPage = lazy(() => pages.kassaGuide().then((m) => ({ default: m.KassaManualPage })))
+const PersonalPage = lazy(pages.personal)
 const PersonalliggarePage = lazy(pages.personalliggare)
 const GasterPage = lazy(pages.gaster)
 const PresentkortPage = lazy(pages.presentkort)
 const WebbplatsPage = lazy(pages.webbplats)
 const TelefonPage = lazy(pages.telefon)
 const EvenemangPage = lazy(pages.evenemang)
-const KassaPrintPage = lazy(() => pages.kassaGuide().then((m) => ({ default: m.KassaPrintPage })))
 
 
 /**
@@ -51,14 +49,11 @@ function App() {
         <Route path="statistik" element={<StatistikPage />} />
         <Route path="bokningar" element={<BokningarPage />} />
         <Route path="bestallningar" element={<BestallningarPage />} />
-        <Route path="ta-betalt" element={<TaBetaltPage />} />
-        <Route path="kassa" element={<KassaPage />} />
-        <Route path="kassa/bruksanvisning" element={<KassaManualPage />} />
-        <Route path="kassa/utskrift/:kind" element={<KassaPrintPage />} />
         <Route path="meny" element={<MenyPage />} />
         <Route path="cateringkalkyl" element={<CateringkalkylPage />} />
         <Route path="catering" element={<CateringPage />} />
         <Route path="catering/:locationId/:requestId" element={<CateringRequestPage />} />
+        <Route path="personal" element={<PersonalPage />} />
         <Route path="personalliggare" element={<PersonalliggarePage />} />
         <Route path="telefon" element={<TelefonPage />} />
         <Route path="telefon/samtal/:callId" element={<TelefonPage />} />
@@ -72,6 +67,7 @@ function App() {
         <Route path="marknadsforing" element={<MarknadsforingPage />} />
         <Route path="installningar" element={<InstallningarPage />} />
         <Route path="hjalp" element={<HjalpPage />} />
+        <Route path="ladda-ner" element={<DownloadRedirect />} />
         <Route path="avtal" element={<AvtalPage />} />
         <Route path="settings/payments" element={<StripeReturn />} />
         <Route path="*" element={<Navigate to="/" replace />} />

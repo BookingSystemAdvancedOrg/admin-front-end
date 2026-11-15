@@ -37,11 +37,14 @@ export const MOCK_SESSION_KEY = 'admin-mock-session'
 export const LOGOUT_PENDING_KEY = 'booqy-logout-pending'
 export const MOTION_SEEN_KEY = 'booqy-motion-seen'
 export const THEME_KEY = 'booqy-theme'
+export const APP_HINT_KEY = 'booqy-app-hint'
+export const GLASS_BACKDROP_KEY = 'booqy-glass-backdrop'
 export const SOUND_KEY = 'booqy-sound'
 export const SOUND_VOLUME_KEY = 'booqy-sound-volume'
 export const NAV_CLOSED_KEY = 'booqy-nav-closed'
 export const SAMPLE_DATA_KEY = 'booqy-sample-data'
-export const CARD_READER_KEY_PREFIX = 'booqy-card-reader:'
+export const STATISTIK_OPEN_KEY_PREFIX = 'booqy-statistik-open:'
+export const UPDATED_FLAG_KEY = 'booqy-updated'
 /** IndexedDB-databasen för insläpp vid dörren, en per tillfälle (CONTRACTS.md 10). */
 export const EVENT_SCAN_KEY_PREFIX = STORAGE_KEYS.EVENT_SCAN_KEY_PREFIX
 
@@ -52,7 +55,7 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     setBy: 'Booqy (servern)',
     purpose:
       'Håller dig inloggad. Kan inte läsas av sidans skript (HttpOnly), skickas bara till inloggningstjänsten på den här adressen och byts ut vid varje förnyelse.',
-    lifetime: '12 timmar, raderas när du loggar ut',
+    lifetime: '30 dagar, raderas när du loggar ut',
     category: 'nödvändig',
   },
   {
@@ -97,6 +100,22 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     category: 'nödvändig',
   },
   {
+    name: GLASS_BACKDROP_KEY,
+    kind: 'localStorage',
+    setBy: 'Booqy',
+    purpose: 'Vilken bakgrund du valt bakom glaset på den här enheten: en färg eller "egen bild" (Inställningar, Utseende och ljud). Själva bilden sparas på servern under ditt konto och tas bort när du tar bort den eller ditt konto. Utan val är skrivbordsappen genomskinlig och webbläsaren har Booqys bakgrund.',
+    lifetime: 'Tills du byter tillbaka eller rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: APP_HINT_KEY,
+    kind: 'localStorage',
+    setBy: 'Booqy',
+    purpose: 'Att tipset om skrivbordsappen är stängt i den här webbläsaren, så att det inte visas igen. Inga personuppgifter.',
+    lifetime: 'Tills du rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
     name: SOUND_KEY,
     kind: 'localStorage',
     setBy: 'Booqy',
@@ -129,10 +148,10 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     category: 'nödvändig',
   },
   {
-    name: `${CARD_READER_KEY_PREFIX}{plats}`,
+    name: `${STATISTIK_OPEN_KEY_PREFIX}{användar-id}`,
     kind: 'localStorage',
     setBy: 'Booqy',
-    purpose: 'Vilken kortläsare du senast valde under Ta betalt på den här enheten, så att den är förvald nästa gång. Inga personuppgifter.',
+    purpose: 'Vilka avsnitt under Fördjupning på Statistik du har fällt ut, så att sidan ser likadan ut nästa gång. Inga personuppgifter.',
     lifetime: 'Tills du rensar webbläsaren',
     category: 'nödvändig',
   },
@@ -142,6 +161,14 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     setBy: 'Booqy (Evenemang, insläpp)',
     purpose: 'Sparar gästlistan och insläpp som gjorts utan nät vid dörren, tills de har skickats till servern.',
     lifetime: 'Tills insläppen är synkade, senast dagen efter evenemanget',
+    category: 'nödvändig',
+  },
+  {
+    name: UPDATED_FLAG_KEY,
+    kind: 'sessionStorage',
+    setBy: 'Booqy',
+    purpose: 'Sätts en kort stund när du laddar om för en ny version, så att den nya sidan kan visa "Uppdaterad" en gång. Tas bort direkt efter. Inga personuppgifter.',
+    lifetime: 'Tills sidan laddats om',
     category: 'nödvändig',
   },
 ]

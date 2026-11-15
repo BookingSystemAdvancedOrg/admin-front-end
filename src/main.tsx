@@ -6,6 +6,11 @@ import './index.css'
 import { installPress } from './shared/press'
 import { installGlide } from './shared/glide'
 import { installGlassFilter } from './shared/glassFilter'
+import { installDesktopGlass } from './shared/desktopGlass'
+import { startUpdateNotice } from './shared/updateNotice'
+import { BUILT_N } from './whatsNew'
+import { hasUnsaved } from './shared/unsaved'
+import { installPwa } from './shared/pwa'
 import App from './App.tsx'
 import { AuthProvider } from './features/auth/AuthContext.tsx'
 import { RequireAuth } from './features/auth/RequireAuth.tsx'
@@ -23,6 +28,13 @@ import CookiesPage from './features/cookies/CookiesPage.tsx'
 installPress()
 installGlide()
 installGlassFilter()
+installDesktopGlass()
+// "Ny version finns" efter en deploy (bara i bygget, inte i npm run dev).
+// Osparade utkast (webbplats, bordskarta) frågas om innan omladdningen.
+// Rutan listar även det som är nytt sedan det här bygget (src/whatsNew.ts).
+if (import.meta.env.PROD) startUpdateNotice({ hasUnsaved, whatsNew: { since: BUILT_N } })
+// Appen på telefonen: service worker och installationsknappen (bara i bygget).
+if (import.meta.env.PROD) installPwa()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

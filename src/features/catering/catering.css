@@ -8,7 +8,7 @@
 
 .catering-facts > div {
   display: grid;
-  grid-template-columns: 130px 1fr;
+  grid-template-columns: 130px minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -58,7 +58,6 @@
   width: 100%;
   min-width: 70px;
   padding: 8px 10px;
-  border: 1px solid var(--border);
   border-radius: var(--r-md);
   font: inherit;
 }
@@ -76,7 +75,6 @@
 .catering-confirm textarea,
 .catering-request .form-field textarea {
   padding: 10px 12px;
-  border: 1px solid var(--border);
   border-radius: var(--r-md);
   font: inherit;
 }
@@ -104,7 +102,7 @@
   margin-top: 4px;
 }
 
-.offer-add-row select {
+.offer-add-row .b-select {
   max-width: 100%;
   min-width: 0;
 }
@@ -122,7 +120,7 @@
   height: 200px;
   padding: 8px;
   border-radius: var(--r-md);
-  background: #fff;
+  background: var(--bq-snow);
 }
 
 /* Väntan på signeringstjänsten: tre punkter som fylls på. */

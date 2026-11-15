@@ -49,7 +49,7 @@ function Pages({ emptyMenu = false }: { emptyMenu?: boolean }) {
         path="/installningar"
         element={
           <div>
-            {['profil', 'personal', 'betalningar', 'notiser', 'avbokning', 'bestallning', 'dagar', 'bord'].map((t) => (
+            {['profil', 'betalningar', 'notiser', 'avbokning', 'bestallning', 'dagar', 'bord'].map((t) => (
               <button key={t} type="button" data-tour={`settings-tab-${t}`}>{t}</button>
             ))}
             <button type="button" data-tour="settings-save">Spara ändringar</button>
@@ -69,6 +69,7 @@ function Pages({ emptyMenu = false }: { emptyMenu?: boolean }) {
       <Route path="/bokningar" element={<div><div data-tour="booking-day" /><div data-tour="booking-list" /><button type="button" data-tour="booking-new" /></div>} />
       <Route path="/bestallningar" element={<div><div data-tour="orders-board" /><div data-tour="orders-pause" /></div>} />
       <Route path="/catering" element={<div><div data-tour="catering-list" /><a data-tour="catering-settings" /></div>} />
+      <Route path="/personal" element={<button type="button" data-tour="personal-invite">+ Bjud in personal</button>} />
       <Route path="/layout" element={<div><div data-tour="layout-tools" /><button type="button" data-tour="layout-publish" /></div>} />
       <Route path="*" element={null} />
     </Routes>
@@ -128,10 +129,12 @@ describe('Guide', () => {
 
     expect(screen.getByRole('dialog', { name: 'Välkommen till Booqy Admin' })).toBeInTheDocument()
     expect(screen.getByText(`1 av ${total}`)).toBeInTheDocument()
-    expect(screen.getByTestId('where')).toHaveTextContent('/')
+    // Startad av sig själv: stannar på sidan man öppnade (direktlänk).
+    expect(screen.getByTestId('where')).toHaveTextContent('/bokningar')
 
     await next(user, 'Visa mig')
     expect(screen.getByRole('dialog', { name: 'Översikt' })).toBeInTheDocument()
+    expect(screen.getByTestId('where')).toHaveTextContent(/^\/$/)
     await next(user)
     expect(screen.getByRole('dialog', { name: 'Kom igång' })).toBeInTheDocument()
 
@@ -144,7 +147,7 @@ describe('Guide', () => {
     expect(screen.getByRole('dialog', { name: 'Spara' })).toBeInTheDocument()
     await next(user)
     expect(screen.getByRole('dialog', { name: 'Personal' })).toBeInTheDocument()
-    expect(screen.getByTestId('where')).toHaveTextContent('/installningar#personal')
+    expect(screen.getByTestId('where')).toHaveTextContent('/personal')
 
     for (const title of ['Betalningar', 'Notiser', 'Avbokning', 'Beställning', 'Avvikande dagar', 'Bord']) {
       await next(user)
@@ -236,6 +239,20 @@ describe('Guide', () => {
     expect(one.some((s) => s.id === 'location')).toBe(false)
     expect(two.some((s) => s.id === 'location')).toBe(true)
     expect(two.length).toBe(one.length + 1)
+  })
+
+  it('keeps a direct link open while auto-started, but Hjälp starts from Översikt', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    await renderGuide()
+    await settle(3500)
+    expect(screen.getByRole('dialog', { name: 'Välkommen till Booqy Admin' })).toBeInTheDocument()
+    expect(screen.getByTestId('where')).toHaveTextContent('/bokningar')
+    await user.click(screen.getByRole('button', { name: 'Hoppa över' }))
+    expect(screen.getByTestId('where')).toHaveTextContent('/bokningar')
+
+    await user.click(screen.getByRole('button', { name: 'Starta guiden' }))
+    await settle()
+    expect(screen.getByTestId('where')).toHaveTextContent(/^\/$/)
   })
 
   it('closes with Escape and does not start by itself when autoStart is off', async () => {

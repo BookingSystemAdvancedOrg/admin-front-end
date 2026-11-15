@@ -22,6 +22,9 @@ import type { BookingExtension, BookingTimeRules, BookingTimeWindow } from './bo
 import './bookingTime.css'
 import { DateInput, TimeInput } from '../../shared/DateInput'
 import { SkelRows } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { TitleInfo } from '../../shared/TitleInfo'
+import { Select } from '../../shared/Select'
 
 /**
  * Bokningstid (backend shared/booking_rules.py): standardlängd, om
@@ -46,13 +49,13 @@ function MinutesSelect({
 }) {
   const all = options.includes(value) ? options : [...options, value].sort((a, b) => a - b)
   return (
-    <select id={id} value={value} onChange={(e) => onChange(Number(e.target.value))}>
+    <Select id={id} value={value} onChange={(e) => onChange(Number(e.target.value))}>
       {all.map((m) => (
         <option key={m} value={m}>
           {m === 0 && zeroLabel ? zeroLabel : minutesLabel(m)}
         </option>
       ))}
-    </select>
+    </Select>
   )
 }
 
@@ -173,20 +176,16 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
 
   return (
     <section className="admin-card table-card">
-      <h2 className="card-title">Bokningstid</h2>
-      <div style={{ height: 8 }} />
-      <p className="cell-muted">
-        Hur länge ett bord är bokat. Specialtider (t.ex. lunchbuffé) gäller bokningar som börjar inom dem.
-        Varje bokning behåller tiden den fick, även om du ändrar här.
-      </p>
+      <TitleInfo
+        title="Bokningstid"
+        info="Hur länge ett bord är bokat. Specialtider (t.ex. lunchbuffé) gäller bokningar som börjar inom dem. Varje bokning behåller tiden den fick, även om du ändrar här."
+      />
       <div style={{ height: 16 }} />
       {!locationId ? (
         <p className="cell-muted">Välj en plats först.</p>
       ) : !rules ? (
         error ? (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
+          <ErrorNote text={error} />
         ) : (
           <SkelRows n={3} cols={3} />
         )
@@ -194,8 +193,7 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
         <form onSubmit={save} className="notifications-form">
           {legacy && (
             <p className="cell-muted" role="note">
-              Nu: {minutesLabel(rules.defaultMinutes)} per bokning, ingen förlängning. Spara för att börja använda
-              inställningarna nedan.
+              Nu: {minutesLabel(rules.defaultMinutes)} per bokning, ingen förlängning.
             </p>
           )}
           <fieldset className="bt-fieldset" disabled={disabled}>
@@ -237,7 +235,7 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
           <div>
             <p className="form-section-label">Specialtider</p>
             {rules.windows.length === 0 && (
-              <p className="cell-muted">Inga specialtider. Alla bokningar får standardlängden.</p>
+              <p className="cell-muted">Inga specialtider.</p>
             )}
           </div>
           {rules.windows.length > 0 && (
@@ -394,9 +392,7 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
             </ul>
           )}
           {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
+            <ErrorNote text={error} />
           )}
           {isOwner ? (
             <span className="row-actions">
@@ -415,7 +411,7 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
               )}
             </span>
           ) : (
-            <p className="cell-muted">Bara restaurangens ägare kan ändra bokningstiden.</p>
+            <p className="cell-muted">Bara ägaren kan ändra.</p>
           )}
         </form>
       )}

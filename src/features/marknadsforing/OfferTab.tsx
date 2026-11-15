@@ -4,10 +4,13 @@ import type { FormEvent } from 'react'
 import { useTenant } from '../../shared/tenant'
 import { listMenuItems, menuImageUrl } from '../meny/menuApi'
 import type { MenuItem } from '../meny/menuApi'
-import { errorText, getOfferSettings, kronorFromOre, offerErrors, percent, saveOfferSettings, withPercent } from './marketingApi'
+import { errorText, getOfferSettings, kronorFromOre, offerErrors, saveOfferSettings, withPercent } from './marketingApi'
 import type { OfferSettings, OfferView } from './marketingApi'
 import { DateInput } from '../../shared/DateInput'
 import { SkelCard, SkelPage } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Select } from '../../shared/Select'
 
 const PERCENTS = [5, 10, 15, 20, 25, 30, 40, 50]
 const VALID_DAYS = [7, 14, 30, 60, 90]
@@ -106,7 +109,7 @@ export function OfferTab() {
   }, [locationId])
 
   if (!view || !draft) {
-    return error ? <p className="form-error" role="alert">{error}</p> : (
+    return error ? <ErrorNote text={error} /> : (
       <SkelPage label="Hämtar erbjudandet">
         <SkelCard aside={false} lines={6} />
       </SkelPage>
@@ -147,21 +150,20 @@ export function OfferTab() {
     <div className="mk-stack">
       <section className="stats-row" aria-label="Resultat">
         {[
-          { label: 'Visningar', value: st.views.toLocaleString('sv-SE'), note: 'Gånger kortet visats' },
-          { label: 'Anmälningar', value: st.signups.toLocaleString('sv-SE'), note: `${percent(st.signups, st.views)} av visningarna` },
-          { label: 'Använda koder', value: st.redeemed.toLocaleString('sv-SE'), note: `${percent(st.redeemed, st.signups)} av anmälningarna` },
-          { label: 'Omsättning', value: kronorFromOre(st.revenueOre), note: `${kronorFromOre(st.discountOre)} i rabatt` },
+          { label: 'Visningar', value: st.views.toLocaleString('sv-SE') },
+          { label: 'Anmälningar', value: st.signups.toLocaleString('sv-SE') },
+          { label: 'Använda koder', value: st.redeemed.toLocaleString('sv-SE') },
+          { label: 'Omsättning', value: kronorFromOre(st.revenueOre) },
         ].map((t, i) => (
-          <StatTile key={t.label} label={t.label} value={t.value} note={t.note} index={i} />
+          <StatTile key={t.label} label={t.label} value={t.value} index={i} />
         ))}
       </section>
 
       {notice && <p className="save-notice" role="status">{notice}</p>}
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <ErrorNote text={error} />
       {!hasOrdering && (
         <p className="form-error" role="alert">
-          Koden används vid onlinebeställning, och beställning ingår inte i er plan. Gäster kan anmäla sig, men inte
-          använda koden.
+          Onlinebeställning ingår inte i er plan, så koden kan inte användas.
         </p>
       )}
 
@@ -178,7 +180,6 @@ export function OfferTab() {
             <div className="toggle-row">
               <div>
                 <p className="toggle-row-label" id="mk-o-on">Visa på webbplatsen</p>
-                <p className="cell-muted">En rabattkupong i hörnet. Gäster lämnar e-post och får en kod som gäller en gång.</p>
               </div>
               <button type="button" role="switch" aria-checked={draft.enabled} aria-labelledby="mk-o-on" className="switch"
                 onClick={() => set('enabled', !draft.enabled)} />
@@ -188,9 +189,9 @@ export function OfferTab() {
             <div className="mk-field-row">
               <div className="form-field">
                 <label htmlFor="mk-o-pct">Rabatt</label>
-                <select id="mk-o-pct" value={draft.percent} onChange={(e) => set('percent', Number(e.target.value))}>
+                <Select id="mk-o-pct" value={draft.percent} onChange={(e) => set('percent', Number(e.target.value))}>
                   {PERCENTS.map((p) => <option key={p} value={p}>{p} %</option>)}
-                </select>
+                </Select>
               </div>
               <div className="form-field">
                 <label htmlFor="mk-o-min">Minsta beställning (kr)</label>
@@ -200,9 +201,9 @@ export function OfferTab() {
               </div>
               <div className="form-field">
                 <label htmlFor="mk-o-days">Koden gäller</label>
-                <select id="mk-o-days" value={draft.validDays} onChange={(e) => set('validDays', Number(e.target.value))}>
+                <Select id="mk-o-days" value={draft.validDays} onChange={(e) => set('validDays', Number(e.target.value))}>
                   {VALID_DAYS.map((d) => <option key={d} value={d}>{d} dagar</option>)}
-                </select>
+                </Select>
               </div>
             </div>
 
@@ -215,7 +216,6 @@ export function OfferTab() {
             <div className="form-field">
               <label htmlFor="mk-o-text">Text</label>
               <textarea id="mk-o-text" rows={3} value={draft.text} maxLength={180} onChange={(e) => set('text', e.target.value)} />
-              <p className="field-hint">Säg vad gästen får och hur ofta ni hör av er. Lova inget ni inte håller.</p>
             </div>
             <div className="form-field">
               <label htmlFor="mk-o-btn">Knapptext</label>
@@ -223,7 +223,7 @@ export function OfferTab() {
             </div>
             <div className="form-field">
               <label htmlFor="mk-o-dish">Bild från menyn</label>
-              <select
+              <Select
                 id="mk-o-dish"
                 value={draft.imageMenuItemId ?? ''}
                 disabled={!dishes}
@@ -233,22 +233,22 @@ export function OfferTab() {
               >
                 <option value="">Ingen bild</option>
                 {(dishes ?? []).map((d) => <option key={d.menuItemId} value={d.menuItemId}>{d.name}</option>)}
-              </select>
+              </Select>
             </div>
 
             <p className="form-section-label">När och hur ofta</p>
             <div className="mk-field-row">
               <div className="form-field">
                 <label htmlFor="mk-o-delay">Visa efter</label>
-                <select id="mk-o-delay" value={draft.delaySeconds} onChange={(e) => set('delaySeconds', Number(e.target.value))}>
+                <Select id="mk-o-delay" value={draft.delaySeconds} onChange={(e) => set('delaySeconds', Number(e.target.value))}>
                   {DELAYS.map((d) => <option key={d} value={d}>{d === 0 ? 'Direkt' : `${d} sekunder`}</option>)}
-                </select>
+                </Select>
               </div>
               <div className="form-field">
                 <label htmlFor="mk-o-scroll">Eller när besökaren scrollat</label>
-                <select id="mk-o-scroll" value={draft.scrollPercent} onChange={(e) => set('scrollPercent', Number(e.target.value))}>
+                <Select id="mk-o-scroll" value={draft.scrollPercent} onChange={(e) => set('scrollPercent', Number(e.target.value))}>
                   {SCROLLS.map((d) => <option key={d} value={d}>{d === 0 ? 'Används inte' : `${d} % av sidan`}</option>)}
-                </select>
+                </Select>
               </div>
             </div>
             <fieldset className="mk-radios">
@@ -276,7 +276,6 @@ export function OfferTab() {
             <div className="toggle-row">
               <div>
                 <p className="toggle-row-label" id="mk-o-mobile">Visa i mobilen</p>
-                <p className="cell-muted">Som en smal list längst ned som gästen trycker upp.</p>
               </div>
               <button type="button" role="switch" aria-checked={draft.showOnMobile} aria-labelledby="mk-o-mobile"
                 className="switch" onClick={() => set('showOnMobile', !draft.showOnMobile)} />
@@ -291,11 +290,14 @@ export function OfferTab() {
                 <DateInput id="mk-o-to" value={draft.activeTo ?? ''} onChange={(e) => set('activeTo', e.target.value || null)} />
               </div>
             </div>
-            <p className="field-hint">
-              Stänger gästen kortet, eller tar erbjudandet, visas det inte igen under besöket. Ett nytt besök (ny flik)
-              visar det igen, eftersom webbplatsen inte sparar något mellan besöken och därför inte behöver någon
-              cookieruta. En person kan bara få en kod, och koden gäller bara med den e-postadressen.
-            </p>
+            <div className="field-hint mk-footnote">
+              Så visas det
+              <InfoTooltip label="Så visas det">
+                Stänger gästen kortet, eller tar erbjudandet, visas det inte igen under besöket. Ett nytt besök (ny flik)
+                visar det igen, eftersom webbplatsen inte sparar något mellan besöken och därför inte behöver någon
+                cookieruta. En person kan bara få en kod, och koden gäller bara med den e-postadressen.
+              </InfoTooltip>
+            </div>
 
             {showErrors && problems.length > 0 && (
               <ul className="form-error mk-errors" role="alert">
@@ -307,11 +309,14 @@ export function OfferTab() {
           <div className="mk-preview">
             <p className="form-section-label">Så ser det ut</p>
             <CardPreview s={draft} image={image} restaurant={tenant?.name ?? 'restaurangen'} />
-            <p className="field-hint">
-              Gästen kryssar själv i att hen vill ha erbjudanden. Koden skickas med e-post och dras av i kassan. Gästen
-              blir mottagare av era utskick först när hen bekräftat i mejlet eller använt koden (dubbel bekräftelse).
-              Till dess står hen under Mottagare som "Väntar på bekräftelse".
-            </p>
+            <div className="field-hint mk-footnote">
+              Samtycke
+              <InfoTooltip label="Samtycke">
+                Gästen kryssar själv i att hen vill ha erbjudanden. Koden skickas med e-post och dras av när gästen betalar. Gästen
+                blir mottagare av era utskick först när hen bekräftat i mejlet eller använt koden (dubbel bekräftelse).
+                Till dess står hen under Mottagare som "Väntar på bekräftelse".
+              </InfoTooltip>
+            </div>
           </div>
         </div>
       </form>

@@ -32,7 +32,6 @@ const SLOT_LOADERS: Record<ComponentSlotId, Loader> = {
   'installningar.bokforing.sync': () => import('../features/accounting-sync/DirektbokforingCard'),
   'bokningar.panel.waitlist': () => import('../features/waitlist/QueuePanel'),
   'bokningar.reservation.badge': () => import('../features/guest-crm/GuestBadge'),
-  'kassa.payment.giftcard': () => import('../features/gift-cards/KassaGiftCardButton'),
   'meny.dish.cost': () => import('../features/dish-margin/DishCostField'),
   'meny.dish.share': () => import('../features/social-posting/ShareDishAction'),
   'statistik.dishes.margin': () => import('../features/dish-margin/MarginChart'),
@@ -57,12 +56,6 @@ export interface SlotProps {
   'installningar.bokforing.sync': Record<string, never>
   'bokningar.panel.waitlist': { locationId: string; date: string }
   'bokningar.reservation.badge': { locationId: string; reservationId: string; email?: string; phone?: string }
-  'kassa.payment.giftcard': {
-    locationId: string
-    billId: string
-    remainingOre: number
-    onPaid: (p: { paymentId: string; amountOre: number }) => void
-  }
   'meny.dish.cost': { locationId: string; menuItemId: string; priceSek: number; alcohol: boolean }
   'meny.dish.share': { locationId: string; menuItemId: string }
   'statistik.dishes.margin': { insights: InsightsResponse; locationId: string; from: string; to: string }

@@ -1,12 +1,16 @@
+import { isApiConfigured } from './api'
+import { useLiveRefresh } from './live'
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { BrandMark, BrandWordmark } from './BrandMark'
 import { useAuth } from '../features/auth/useAuth'
 import { primaryGroupLabel } from '../features/installningar/usersApi'
-import { canSeeInsights, hasFeature, selectLocation, useTenant } from './tenant'
-import type { FeatureKey } from './contracts'
-import { GuideProvider } from '../features/guide/Guide'
+import { selectLocation, useTenant } from './tenant'
+import { GuideProvider, useGuide } from '../features/guide/Guide'
 import { LogoutConfirm } from './LogoutConfirm'
+import { syncBackdropImage } from './backdropStore'
+import { MyAvatarButton } from './ProfilePicture'
+import { DesktopHint } from './DesktopHint'
 import type { TenantErrorCode } from './tenant'
 import './admin.css'
 import './brand.css'
@@ -18,65 +22,19 @@ import { DpaBanner } from '../features/dpa/DpaBanner'
 import { SkelCard, SkelPage, SkelTiles } from './Skeleton'
 import { NAV_CLOSED_KEY } from './storageRegistry'
 import { preloadPages } from '../pages'
-
-// Sidebar-länkarna, i grupper efter när man behöver dem: överblicken,
-// det som händer under passet, och det man ställer in mer sällan.
-// `end: true` gör att '/' bara markeras aktiv på exakt träff, annars skulle
-// den lysa upp på alla undersidor också.
-// `feature` som lista = minst en av dem ingår i planen.
-type NavItem = { to: string; label: string; tour: string; end?: boolean; feature?: FeatureKey | FeatureKey[]; ownerOnly?: boolean; insights?: boolean }
-const NAV_GROUPS: { id: string; label: string | null; items: NavItem[] }[] = [
-  {
-    id: 'overblick',
-    label: null,
-    items: [
-      { to: '/', label: 'Översikt', tour: 'nav-oversikt', end: true },
-      // Restaurangens siffror över tid; bara ägare.
-      { to: '/statistik', label: 'Statistik', tour: 'nav-statistik', insights: true },
-    ],
-  },
-  {
-    id: 'passet',
-    label: 'Under passet',
-    items: [
-      { to: '/bokningar', label: 'Bokningar', tour: 'nav-bokningar' },
-      // Bara för restauranger vars plan har matbeställning.
-      { to: '/bestallningar', label: 'Beställningar', tour: 'nav-bestallningar', feature: 'ordering' },
-      // Kortbetalning på restaurangens kortläsare; bara med kortterminaler i planen.
-      { to: '/ta-betalt', label: 'Ta betalt', tour: 'nav-ta-betalt', feature: 'terminal' },
-      // Kassaregistret; av tills Booqy slår på det per restaurang.
-      { to: '/kassa', label: 'Kassa', tour: 'nav-kassa', feature: 'kassa' },
-      // Förfrågningar; inställningar och rabatter nås därifrån (/cateringkalkyl).
-      { to: '/catering', label: 'Catering', tour: 'nav-catering', feature: 'catering' },
-      // In- och utcheckning för personalen (personalliggaren).
-      { to: '/personalliggare', label: 'Personalliggare', tour: 'nav-personalliggare', feature: 'personalliggare' },
-      // Telefonassistenten: samtal, återuppringningar och avstängning; inställningarna är ägarens.
-      { to: '/telefon', label: 'Telefon', tour: 'nav-telefon', feature: 'phoneAgent' },
-    ],
-  },
-  {
-    id: 'restaurangen',
-    label: 'Restaurangen',
-    items: [
-      { to: '/meny', label: 'Meny', tour: 'nav-meny' },
-      { to: '/layout', label: 'Layout', tour: 'nav-layout' },
-      { to: '/gaster', label: 'Gäster', tour: 'nav-gaster', feature: 'guestCrm' },
-      { to: '/presentkort', label: 'Presentkort', tour: 'nav-presentkort', feature: 'giftCards', ownerOnly: true },
-      { to: '/webbplats', label: 'Webbplats', tour: 'nav-webbplats', feature: 'siteBuilder', ownerOnly: true },
-      // Biljetter till kvällar och middagar; personalen scannar vid dörren, ägaren redigerar.
-      { to: '/evenemang', label: 'Evenemang', tour: 'nav-evenemang', feature: 'events' },
-      // Utskick, annonser, omdömen och inlägg; bara ägare, när minst en av dem ingår i planen.
-      {
-        to: '/marknadsforing',
-        label: 'Marknadsföring',
-        tour: 'nav-marknadsforing',
-        feature: ['marketing', 'metaAds', 'googleBusiness', 'socialPosting'],
-        ownerOnly: true,
-      },
-      { to: '/installningar', label: 'Inställningar', tour: 'nav-installningar' },
-    ],
-  },
-]
+import { NAV_FOOTER, NAV_GROUPS, navVisible, onItem, recentPages, rememberPage, requestPageAction, visibleNav } from './nav'
+import type { NavItem } from './nav'
+import { Icon } from './Icon'
+import { RoleGate } from './RoleGate'
+import { CommandPalette } from './CommandPalette'
+import type { PaletteItem } from './CommandPalette'
+import './ds.css'
+import './tapTargets.css'
+import { HelpChat } from '../features/help/HelpChat'
+import { helpChatEnabled, openHelpChat } from '../features/help/chatState'
+import { ErrorNote } from './ErrorNote'
+import { booqyFaultText } from './errors'
+import { Select } from './Select'
 
 /** Grupperna i sidomenyn som användaren har fällt ihop (sparas i webbläsaren). */
 function storedClosedGroups(): string[] {
@@ -88,19 +46,14 @@ function storedClosedGroups(): string[] {
   }
 }
 
-/** Är sidan en av gruppens? */
-function onItem(pathname: string, item: NavItem): boolean {
-  return item.end ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`)
-}
-
 const TENANT_ERROR: Record<TenantErrorCode, { title: string; text: string }> = {
   tenant_inactive: {
     title: 'Kontot är inte aktivt',
-    text: 'Restaurangens konto är pausat eller avslutat. Kontakta support om det inte stämmer.',
+    text: 'Restaurangens konto är pausat eller avslutat. Ägaren kontaktar Booqy (svara på senaste fakturan eller mejlet från oss) för att öppna det igen.',
   },
   no_tenant: {
     title: 'Inloggningen är inte kopplad till någon restaurang',
-    text: 'Be restaurangens ägare eller support att bjuda in dig på nytt, och logga sedan in igen.',
+    text: 'Be restaurangens ägare bjuda in dig på nytt under Personal, och logga sedan in igen.',
   },
   unauthorized: {
     title: 'Du är utloggad',
@@ -108,7 +61,7 @@ const TENANT_ERROR: Record<TenantErrorCode, { title: string; text: string }> = {
   },
   unavailable: {
     title: 'Kunde inte hämta restaurangen',
-    text: 'Tjänsten svarar inte just nu. Försök igen om en stund.',
+    text: 'Tjänsten svarar inte just nu.',
   },
 }
 
@@ -122,12 +75,36 @@ const TENANT_ERROR: Record<TenantErrorCode, { title: string; text: string }> = {
  * en plats till en annan.
  */
 export function AdminLayout() {
+  // Egen bild bakom glaset: hämtas när man är inloggad (shared/backdropStore.ts).
+  useEffect(() => syncBackdropImage(), [])
   const { email, sub, groups, logout } = useAuth()
   const { tenant, status, error, locationId, refresh } = useTenant()
+  // Restaurangen (platser, Stripe-läget, avtalet, abonnemanget) är levande som
+  // sidorna: ändras den på annat håll syns det av sig självt.
+  useLiveRefresh(() => refresh(), { enabled: status === 'ready' && isApiConfigured() })
   const { pathname } = useLocation()
   // Sidomenyns grupper är öppna från början; en grupp man fäller ihop förblir
   // hopfälld i den här webbläsaren.
   const [closedGroups, setClosedGroups] = useState<string[]>(storedClosedGroups)
+  // Telefon och surfplatta: menyn är en glaslåda från vänster som öppnas med
+  // menyknappen och stängs vid sidbyte, Esc eller klick utanför.
+  const [drawer, setDrawer] = useState(false)
+  useEffect(() => {
+    setDrawer(false)
+    rememberPage(pathname)
+  }, [pathname])
+  useEffect(() => {
+    if (!drawer) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setDrawer(false)
+    window.addEventListener('keydown', onKey)
+    // Sidan bakom lådan står still medan den är öppen.
+    const root = document.documentElement
+    root.classList.add('drawer-lock')
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      root.classList.remove('drawer-lock')
+    }
+  }, [drawer])
   // Skalet och första sidan är uppe: resten av sidorna hämtas i bakgrunden.
   useEffect(() => {
     if (status === 'ready') preloadPages()
@@ -154,7 +131,6 @@ export function AdminLayout() {
   }
   // Visningsnamn = det som står innan '@' i e-posten, t.ex. "anna@..." -> "anna".
   const displayName = email ? email.split('@')[0] : 'Personal'
-  const initial = (displayName[0] ?? 'K').toUpperCase()
   const locations = tenant?.locations ?? []
   // Sidomenyns "Logga ut" frågar först (felrutorna nedan loggar ut direkt -
   // där går appen ändå inte att använda).
@@ -183,6 +159,21 @@ export function AdminLayout() {
     },
   })
 
+  const link = (item: NavItem) => (
+    <NavLink
+      key={item.to}
+      to={item.to}
+      end={item.end}
+      data-tour={item.tour}
+      data-help={`nav:${item.to}`}
+      // En länk till en del av en sida (#) markeras inte: sidan själv (Inställningar) är aktiv.
+      className={({ isActive }) => (isActive && !item.to.includes('#') ? 'admin-nav-item active' : 'admin-nav-item')}
+    >
+      <Icon name={item.icon} size={18} className="admin-nav-icon" />
+      <span className="admin-nav-label">{item.label}</span>
+    </NavLink>
+  )
+
   return (
     <GuideProvider
       user={sub ?? email ?? null}
@@ -193,8 +184,29 @@ export function AdminLayout() {
       }}
       autoStart={status === 'ready' && import.meta.env.MODE !== 'test'}
     >
-    <div className="admin-shell">
+    <div className={`admin-shell${drawer ? ' drawer-open' : ''}`}>
+      <ShellPalette onLogout={() => setConfirmLogout(true)} />
+      <HelpChat />
+      <GuideDrawer open={drawer} />
+      <header className="admin-mobilebar">
+        <button
+          type="button"
+          className="admin-menu-button"
+          aria-expanded={drawer}
+          aria-controls="admin-sidebar"
+          onClick={() => setDrawer((o) => !o)}
+        >
+          <Icon name={drawer ? 'close' : 'menu'} size={20} />
+          <span className="sr-only">{drawer ? 'Stäng menyn' : 'Meny'}</span>
+        </button>
+        <span className="admin-mobilebar-brand">
+          <BrandWordmark height={18} />
+        </span>
+        <span className="admin-mobilebar-name">{tenant?.name ?? ''}</span>
+      </header>
+      {drawer && <div className="admin-drawer-scrim" aria-hidden="true" onClick={() => setDrawer(false)} />}
       <aside
+        id="admin-sidebar"
         ref={sidebarRef}
         className={`admin-sidebar${poured ? ' admin-sidebar--full' : ' admin-sidebar--pouring'}`}
         onPointerMove={(e) => {
@@ -204,6 +216,9 @@ export function AdminLayout() {
         }}
       >
         {pour && <canvas ref={sidebarCanvas} className="admin-sidebar-liquid" aria-hidden="true" />}
+        {/* Allt i menyn ligger i en egen rullyta: glaset och oskärpan stannar på
+            panelen, och telefonens låda går att rulla till sista raden. */}
+        <div className="admin-sidebar-scroll">
         <div className="admin-logo">
           <span className="admin-logo-badge" aria-hidden="true">
             <BrandMark />
@@ -220,7 +235,7 @@ export function AdminLayout() {
         {locations.length > 1 && (
           <div className="admin-location-picker" data-tour="location-picker">
             <label htmlFor="admin-location">Plats</label>
-            <select
+            <Select
               id="admin-location"
               value={locationId ?? ''}
               onChange={(e) => selectLocation(e.target.value)}
@@ -230,34 +245,19 @@ export function AdminLayout() {
                   {l.name || 'Namnlös plats'}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
 
         <nav className="admin-nav" aria-label="Huvudmeny">
           {NAV_GROUPS.map((group) => {
-            const items = group.items.filter(
-              (item) =>
-                (!item.feature || hasFeature(tenant, item.feature)) &&
-                (!item.ownerOnly || tenant?.role === 'owner_user') &&
-                (!item.insights || canSeeInsights(tenant)),
-            )
+            const items = group.items.filter((item) => navVisible(item, tenant))
             if (items.length === 0) return null
             const headingId = `nav-group-${group.id}`
             const listId = `nav-list-${group.id}`
             // Öppen från början; hopfälld bara om användaren har fällt ihop den.
             const open = !group.label || !closedGroups.includes(group.id)
-            const links = items.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                data-tour={item.tour}
-                className={({ isActive }) => (isActive ? 'admin-nav-item active' : 'admin-nav-item')}
-              >
-                {item.label}
-              </NavLink>
-            ))
+            const links = items.map(link)
             return (
               <div
                 key={group.id}
@@ -276,7 +276,7 @@ export function AdminLayout() {
                       onClick={() => toggleGroup(group.id, open)}
                     >
                       {group.label}
-                      <span className="admin-nav-chevron" aria-hidden="true" />
+                      <Icon name="chevron-down" size={14} className="admin-nav-chevron" />
                     </button>
                     <div className="admin-nav-items" id={listId}>
                       <div>{links}</div>
@@ -292,21 +292,15 @@ export function AdminLayout() {
 
         <div className="admin-sidebar-spacer" />
 
-        <nav className="admin-nav admin-nav--bottom" aria-label="Hjälp">
-          <NavLink
-            to="/hjalp"
-            data-tour="nav-hjalp"
-            className={({ isActive }) => (isActive ? 'admin-nav-item active' : 'admin-nav-item')}
-          >
-            Hjälp
-          </NavLink>
+        <nav className="admin-nav admin-nav--bottom" aria-label="Inställningar och hjälp">
+          {NAV_FOOTER.filter((item) => navVisible(item, tenant)).map(link)}
         </nav>
+
+        <DesktopHint />
 
         <div className="admin-user">
           <div className="admin-user-row" title={email ?? undefined}>
-            <span className="admin-avatar" aria-hidden="true">
-              {initial}
-            </span>
+            <MyAvatarButton name={displayName} email={email} />
             <span className="admin-user-name">
               {/* Rollen enligt servern när restaurangen är laddad. */}
               {displayName} · {primaryGroupLabel(tenant ? [tenant.role] : groups)}
@@ -318,8 +312,10 @@ export function AdminLayout() {
             aria-haspopup="dialog"
             onClick={() => setConfirmLogout(true)}
           >
+            <Icon name="logout" size={16} />
             Logga ut
           </button>
+        </div>
         </div>
       </aside>
       {confirmLogout && <LogoutConfirm onConfirm={logout} onCancel={cancelLogout} />}
@@ -330,17 +326,12 @@ export function AdminLayout() {
           <div className="admin-main">
             <section className="admin-card table-card tenant-notice" role="alert">
               <h2 className="card-title">{TENANT_ERROR[error].title}</h2>
-              <p className="cell-muted">{TENANT_ERROR[error].text}</p>
+              {error === 'unavailable' ? (
+                <ErrorNote text={booqyFaultText(TENANT_ERROR[error].text)} onRetry={() => void refresh()} />
+              ) : (
+                <p className="cell-muted">{TENANT_ERROR[error].text}</p>
+              )}
               <div className="row-actions">
-                {error === 'unavailable' && (
-                  <button
-                    type="button"
-                    className="btn primary square"
-                    onClick={() => void refresh()}
-                  >
-                    Försök igen
-                  </button>
-                )}
                 {error !== 'unavailable' && (
                   <button type="button" className="btn outline square" onClick={logout}>
                     Logga ut
@@ -354,7 +345,9 @@ export function AdminLayout() {
             <DpaBanner />
             {/* Sidans kod hämtas när den öppnas (App.tsx); under tiden samma skelett som när restaurangen hämtas. */}
             <Suspense fallback={<div className="admin-main"><SkelPage label="Hämtar sidan"><SkelTiles /><SkelCard rows={5} /></SkelPage></div>}>
-              <Outlet key={locationId ?? 'no-location'} />
+              <RoleGate>
+                <Outlet key={locationId ?? 'no-location'} />
+              </RoleGate>
             </Suspense>
           </MotionScope>
         ) : (
@@ -369,4 +362,51 @@ export function AdminLayout() {
     </div>
     </GuideProvider>
   )
+}
+
+/** Guiden pekar på menylänkar: på smala skärmar ligger menyn då öppen i flödet. */
+function GuideDrawer({ open }: { open: boolean }) {
+  const { active } = useGuide()
+  useEffect(() => {
+    document.documentElement.classList.toggle('guide-nav-open', active && !open)
+    return () => document.documentElement.classList.remove('guide-nav-open')
+  }, [active, open])
+  return null
+}
+
+/** ⌘K: sidorna man får se, några åtgärder och de senast besökta sidorna. */
+function ShellPalette({ onLogout }: { onLogout: () => void }) {
+  const navigate = useNavigate()
+  const { tenant } = useTenant()
+  const { start } = useGuide()
+  const items = useCallback((): PaletteItem[] => {
+    const nav = visibleNav(tenant)
+    const canBook = nav.some((n) => n.to === '/bokningar')
+    const actions: PaletteItem[] = [
+      ...(canBook
+        ? [{ id: 'a-booking', group: 'Åtgärder' as const, label: 'Ny bokning', icon: 'plus' as const, keywords: 'boka bord gäst', run: () => { requestPageAction('new-booking'); navigate('/bokningar') } }]
+        : []),
+      ...(nav.some((n) => n.to === '/personal')
+        ? [{ id: 'a-staff', group: 'Åtgärder' as const, label: 'Bjud in personal', icon: 'staff' as const, keywords: 'medarbetare anställd användare inloggning', run: () => { requestPageAction('invite-staff'); navigate('/personal') } }]
+        : []),
+      { id: 'a-dish', group: 'Åtgärder', label: 'Lägg till rätt', icon: 'dish', keywords: 'meny mat', run: () => { requestPageAction('new-dish'); navigate('/meny') } },
+      { id: 'a-look', group: 'Åtgärder', label: 'Utseende och ljud', hint: 'Inställningar', icon: 'gear', keywords: 'mörkt ljust tema klickljud', run: () => navigate('/installningar#utseende') },
+      { id: 'a-guide', group: 'Åtgärder', label: 'Starta guiden', icon: 'help', keywords: 'hjälp introduktion', run: start },
+      ...(helpChatEnabled()
+        ? [{ id: 'a-ask', group: 'Åtgärder' as const, label: 'Fråga hjälpassistenten', icon: 'help' as const, keywords: 'chatt fråga hur gör jag assistent', run: openHelpChat }]
+        : []),
+      { id: 'a-logout', group: 'Åtgärder', label: 'Logga ut', icon: 'logout', run: onLogout },
+    ]
+    const goto: PaletteItem[] = nav.map((n) => ({ id: `n-${n.to}`, group: 'Gå till', label: n.label, icon: n.icon, run: () => navigate(n.to) }))
+    const here = window.location.pathname
+    const recent: PaletteItem[] = recentPages()
+      .filter((p) => p !== here)
+      .map((p) => nav.find((n) => onItem(p, n)))
+      .filter((n): n is NavItem => Boolean(n))
+      .filter((n, i, arr) => arr.indexOf(n) === i)
+      .slice(0, 4)
+      .map((n) => ({ id: `r-${n.to}`, group: 'Senaste', label: n.label, icon: n.icon, run: () => navigate(n.to) }))
+    return [...actions, ...goto, ...recent]
+  }, [tenant, navigate, start, onLogout])
+  return <CommandPalette items={items} />
 }

@@ -1,3 +1,5 @@
+import { useLiveRefresh } from '../../shared/live'
+import { RowActions } from '../../shared/RowActions'
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
@@ -16,6 +18,10 @@ import type { ChannelConsent, EraseResult } from '../installningar/privacyApi'
 import '../installningar/privacy.css'
 import { useEscape } from './useEscape'
 import { SkelRows } from '../../shared/Skeleton'
+import ModalOverlay from '../../shared/ModalOverlay'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Select } from '../../shared/Select'
 
 const CONSENT_SOURCE: Record<string, string> = {
   booking: 'Vid bokning',
@@ -38,7 +44,7 @@ export function SubscribersTab() {
   const [view, setView] = useState<View>({ filter: 'subscribed', email: null })
   const [query, setQuery] = useState('')
   // Listan hör till en vy; en annan vy visar laddning direkt.
-  const [list, setList] = useState<{ view: View; rows: Subscriber[]; cursor: string | null } | null>(null)
+  const [list, setList] = useState<{ view: View; rows: Subscriber[]; cursor: string | null; more?: boolean } | null>(null)
   const [reload, setReload] = useState(0)
   const rows = list?.view === view ? list.rows : null
   const cursor = list?.view === view ? list.cursor : null
@@ -61,6 +67,11 @@ export function SubscribersTab() {
       cancelled = true
     }
   }, [view, reload])
+  // Levande för första sidan (inte efter "Visa fler"): nya mottagare syns av sig själva.
+  useLiveRefresh(async () => {
+    const p = await (view.email ? findSubscriber(view.email) : listSubscribers(view.filter))
+    setList((cur) => (cur && cur.view === view && !cur.more ? { view, rows: p.subscribers, cursor: p.cursor } : cur))
+  }, { enabled: list !== null })
 
   const closeConfirm = useCallback(() => !erasing && setConfirmErase(null), [erasing])
   const closeHistory = useCallback(() => setHistory(null), [])
@@ -95,7 +106,7 @@ export function SubscribersTab() {
     setLoadingMore(true)
     try {
       const page = await listSubscribers(view.filter, cursor)
-      setList((l) => ({ view, rows: [...(l?.rows ?? []), ...page.subscribers], cursor: page.cursor }))
+      setList((l) => ({ view, rows: [...(l?.rows ?? []), ...page.subscribers], cursor: page.cursor, more: true }))
     } catch (err) {
       setError(errorText(err, 'Kunde inte hämta fler.'))
     } finally {
@@ -165,12 +176,12 @@ export function SubscribersTab() {
           <KeptList items={erased.kept} />
         </div>
       )}
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <ErrorNote text={error} />
       <section className="admin-card table-card">
         <div className="card-head">
           <h2 className="card-title">Mottagare</h2>
           <div className="row-actions">
-            <select className="compact-select" aria-label="Visa" value={view.filter} onChange={(e) => {
+            <Select className="compact-select" aria-label="Visa" value={view.filter} onChange={(e) => {
                 setQuery('')
                 show({ filter: e.target.value as SubscriberFilter, email: null })
               }}>
@@ -179,7 +190,7 @@ export function SubscribersTab() {
               <option value="unsubscribed">Avregistrerade</option>
               <option value="suppressed">Spärrade</option>
               <option value="">Alla</option>
-            </select>
+            </Select>
             <button type="button" className="btn outline square" disabled={exporting} onClick={() => void doExport()}>
               {exporting ? 'Laddar ned…' : 'Ladda ned CSV'}
             </button>
@@ -211,12 +222,12 @@ export function SubscribersTab() {
             {view.email
               ? `Ingen mottagare med adressen ${view.email}.`
               : view.filter === 'subscribed'
-                ? 'Inga prenumeranter än. Gäster som kryssar i "erbjudanden" när de bokar bord hamnar här.'
+                ? 'Inga prenumeranter än.'
                 : 'Inga att visa.'}
           </p>
         )}
         {rows && rows.length > 0 && (
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0}>
             <table className="data-table">
               <thead>
                 <tr>
@@ -240,7 +251,7 @@ export function SubscribersTab() {
                       {s.consentSource && <div>{CONSENT_SOURCE[s.consentSource] ?? s.consentSource}</div>}
                     </td>
                     <td className="cell-muted">{s.lastVisit ? s.lastVisit.slice(0, 10) : '-'}</td>
-                    <td className="mk-row-actions">
+                    <td className="right"><RowActions label="Åtgärder">
                       {s.email && (
                         <button type="button" className="link-action" onClick={() => void openHistory(s)}>Historik</button>
                       )}
@@ -250,7 +261,7 @@ export function SubscribersTab() {
                       {s.email && (
                         <button type="button" className="link-action danger" onClick={() => setConfirmErase(s)}>Radera</button>
                       )}
-                    </td>
+                    </RowActions></td>
                   </tr>
                 ))}
               </tbody>
@@ -263,10 +274,13 @@ export function SubscribersTab() {
           </button>
         )}
       </section>
-      <p className="mk-footnote cell-muted">
-        Adresser som studsar eller markerar utskick som skräppost spärras automatiskt (Spärrade). Efter 30 dagar
-        raderas adressen och bara spärren finns kvar.
-      </p>
+      <div className="mk-footnote cell-muted">
+        Spärrade
+        <InfoTooltip label="Spärrade">
+          Adresser som studsar eller markerar utskick som skräppost spärras automatiskt (Spärrade). Efter 30 dagar
+          raderas adressen och bara spärren finns kvar.
+        </InfoTooltip>
+      </div>
 
       {confirmErase?.email && (
         <EraseGuestDialog
@@ -278,7 +292,7 @@ export function SubscribersTab() {
       )}
 
       {history && (
-        <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && setHistory(null)}>
+        <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && setHistory(null)}>
           <div className="modal" role="dialog" aria-modal="true" aria-label="Samtyckeshistorik">
             <h2>Historik för {history.subscriber.email}</h2>
             {history.consent === null && <SkelRows n={3} cols={2} />}
@@ -290,7 +304,7 @@ export function SubscribersTab() {
               <button type="button" className="btn outline square" autoFocus onClick={() => setHistory(null)}>Stäng</button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   )

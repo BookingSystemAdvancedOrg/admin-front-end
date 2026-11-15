@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { sameData, useLiveRefresh } from '../../shared/live'
 import type { CSSProperties } from 'react'
 import { Num } from '../../shared/motion/Num'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { QuickLinkIcon } from './QuickLinkIcon'
 import { MonthCard } from './MonthCard'
 import { StatTile } from './StatTile'
-import type { QuickLinkIconName } from './QuickLinkIcon'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { currentLocation, stripeStage, useTenant } from '../../shared/tenant'
 import { getLocation } from '../installningar/locationApi'
@@ -43,17 +42,23 @@ import { addDays } from '../statistik/stats'
 import { trendOf } from '../../shared/trend'
 import type { Trend } from '../../shared/trend'
 import { Icon } from '../../shared/Icon'
+import type { IconName } from '../../shared/Icon'
+import { Disclosure } from '../../shared/Disclosure'
 import { SkelRows } from '../../shared/Skeleton'
+import { getLocation as getPhoneLocation, getOverview as getPhoneOverview } from '../phone-agent/api'
+import { progress as phoneProgress, type Progress } from '../phone-agent/setup'
+import { getConnection as getGoogleConnection, getLocationView as getGoogleView, googleDone } from '../google-business/api'
+import './setup.css'
 
 // Genvägskorten längst ned som länkar till de andra sidorna. Ägaren får
 // Statistik i stället för "Se alla bokningar" (dagens bokningar har redan
 // "Visa alla" ovanför).
-const QUICK_LINKS: { to: string; icon: QuickLinkIconName; label: string; ownerOnly?: boolean; staffOnly?: boolean }[] = [
-  { to: '/statistik?period=month', icon: 'stats', label: 'Månadens statistik', ownerOnly: true },
-  { to: '/meny', icon: 'menu', label: 'Hantera meny' },
-  { to: '/layout', icon: 'layout', label: 'Redigera layout' },
-  { to: '/bokningar', icon: 'bookings', label: 'Se alla bokningar', staffOnly: true },
-  { to: '/installningar', icon: 'settings', label: 'Inställningar' },
+const QUICK_LINKS: { to: string; icon: IconName; label: string; ownerOnly?: boolean; staffOnly?: boolean }[] = [
+  { to: '/statistik?period=month', icon: 'chart', label: 'Månadens statistik', ownerOnly: true },
+  { to: '/meny', icon: 'book', label: 'Hantera meny' },
+  { to: '/layout', icon: 'tool-floor', label: 'Redigera layout' },
+  { to: '/bokningar', icon: 'calendar', label: 'Se alla bokningar', staffOnly: true },
+  { to: '/installningar', icon: 'gear', label: 'Inställningar' },
 ]
 
 interface OverviewData {
@@ -73,6 +78,10 @@ interface OverviewData {
   catering: RequestSummary[] | null
   /** Köksskrivarens läge; null = ingen beställning i planen eller kunde inte hämtas. */
   print: PrintStatus | null
+  /** Telefonassistentens fem steg; null = ingår inte i planen eller kunde inte hämtas. */
+  phone: Progress | null
+  /** Google-profilen klar (kopplad eller överhoppad); null = ingår inte i planen eller kunde inte hämtas. */
+  google: boolean | null
 }
 
 const EMPTY: OverviewData = {
@@ -86,6 +95,8 @@ const EMPTY: OverviewData = {
   ordersLastWeek: null,
   catering: null,
   print: null,
+  phone: null,
+  google: null,
 }
 
 /** Ett anrop som misslyckas ger `null` (okänt) i stället för att fälla sidan. */
@@ -133,11 +144,13 @@ export default function OversiktPage() {
       : fetched
   const hasOrdering = sample || Boolean(tenant?.entitlements.features.ordering)
   const hasCatering = sample || Boolean(tenant?.entitlements.features.catering)
+  // Telefonassistenten i planen: ägarens Kom igång får ett steg med fem delsteg.
+  const hasPhone = isOwner && Boolean(tenant?.entitlements.features.phoneAgent)
+  // Google-profilen i planen: ett valfritt steg som går att hoppa över.
+  const hasGoogle = isOwner && Boolean(tenant?.entitlements.features.googleBusiness)
   const tableLabels = sample ? (SAMPLE_TABLE_LABELS as Map<string, string>) : labels
 
-  useEffect(() => {
-    if (!locationId) return
-    let cancelled = false
+  const fetchOverview = useCallback((locationId: string): Promise<OverviewData> =>
     Promise.all([
       orNull(getLocation(locationId)),
       orNull(listMenuItems(locationId)),
@@ -148,9 +161,13 @@ export default function OversiktPage() {
       hasCatering ? orNull(listRequests(locationId)) : Promise.resolve(null),
       hasOrdering ? orNull(listOrders(locationId, addDays(todayIn(timezoneSetting), -7))) : Promise.resolve(null),
       hasOrdering ? orNull(getPrintStatus(locationId)) : Promise.resolve(null),
-    ]).then(([loc, menu, versions, users, today, orders, catering, lastWeek, print]) => {
-      if (cancelled) return
-      setFetched({
+      hasPhone
+        ? orNull(Promise.all([getPhoneOverview(), getPhoneLocation(locationId)]).then(([o, l]) => phoneProgress(o.config, l)))
+        : Promise.resolve(null),
+      hasGoogle
+        ? orNull(Promise.all([getGoogleConnection(), getGoogleView(locationId)]).then(([c, v]) => googleDone(c, v)))
+        : Promise.resolve(null),
+    ]).then(([loc, menu, versions, users, today, orders, catering, lastWeek, print, phone, google]) => ({
         forLocation: locationId,
         location: loc,
         activeMenuItems: menu ? menu.filter((m) => m.active).length : null,
@@ -161,12 +178,27 @@ export default function OversiktPage() {
         ordersLastWeek: lastWeek ? lastWeek.orders : null,
         catering,
         print,
-      })
+        phone,
+        google,
+      })),
+  [isOwner, timezoneSetting, hasOrdering, hasCatering, hasPhone, hasGoogle])
+
+  useEffect(() => {
+    if (!locationId) return
+    let cancelled = false
+    void fetchOverview(locationId).then((d) => {
+      if (!cancelled) setFetched(d)
     })
     return () => {
       cancelled = true
     }
-  }, [locationId, isOwner, timezoneSetting, hasOrdering, hasCatering])
+  }, [locationId, fetchOverview])
+  // Levande: dagens bokningar, beställningar och förfrågningar uppdateras av sig själva.
+  useLiveRefresh(async () => {
+    if (!locationId) return
+    const d = await fetchOverview(locationId)
+    setFetched((prev) => (prev.forLocation === d.forLocation && !sameData(prev, d) ? d : prev))
+  }, { enabled: Boolean(locationId) && !loading && !sample })
 
   const stage = tenant ? stripeStage(tenant.stripe) : 'missing'
   const timezone = data.location?.timezone ?? location?.timezone ?? null
@@ -178,6 +210,8 @@ export default function OversiktPage() {
     stripeStage: stage,
     staffCount: data.staffCount,
     dpaAccepted: tenant?.dpa ? tenant.dpa.upToDate : undefined,
+    google: hasGoogle ? data.google : undefined,
+    phone: hasPhone ? data.phone : undefined,
   })
   const remaining = steps.filter((s) => s.done === false).length
   // Kom igång (bara ägaren): direkt under nyckeltalen så länge något är kvar
@@ -193,7 +227,19 @@ export default function OversiktPage() {
         <span className={`setup-check ${step.done ? 'done' : ''}`} aria-hidden="true">
           {step.done ? <Icon name="check" size={14} /> : step.done === null ? '?' : ''}
         </span>
-        {step.label}
+        <span className="setup-step__label">
+          {step.label}
+          {step.sub ? (
+            <span className="setup-sub" aria-label={`${step.sub.filter((x) => x.done).length} av ${step.sub.length} delsteg klara`}>
+              {step.sub.map((x) => (
+                <span key={x.label} className={`setup-sub__item${x.done ? ' done' : ''}`}>
+                  {x.done ? <Icon name="check" size={12} /> : null}
+                  {x.label}
+                </span>
+              ))}
+            </span>
+          ) : null}
+        </span>
       </span>
       <span className="activity-time">
         {step.done ? 'Klart' : step.done === null ? 'Kunde inte kontrolleras' : 'Att göra'}
@@ -223,8 +269,6 @@ export default function OversiktPage() {
   const stats: {
     label: string
     value: string
-    note: string
-    action: string
     to: string
     tone?: 'attention'
     trend?: Trend
@@ -232,12 +276,6 @@ export default function OversiktPage() {
     {
       label: 'Att hantera',
       value: todo ? String(todo.total) : '-',
-      note: !todo
-        ? 'Kunde inte hämtas'
-        : todo.total === 0
-          ? 'Inget väntar - bra jobbat!'
-          : todo.items.map((i) => `${i.count} ${i.label}`).join(' · '),
-      action: todo && todo.total > 0 ? 'Ta det viktigaste först' : 'Allt är hanterat',
       // Till det mest brådskande först.
       to: todo?.items[0]?.to ?? '/bokningar',
       tone: todo && todo.total > 0 ? 'attention' : undefined,
@@ -245,12 +283,6 @@ export default function OversiktPage() {
     {
       label: 'Bokningar idag',
       value: bookings ? String(bookings.count) : '-',
-      note: !bookings
-        ? 'Kunde inte hämtas'
-        : bookings.next
-          ? `${bookings.guests} gäster · nästa ${bookings.next.startTime}, ${bookings.next.customerName || 'gäst'} (${bookings.next.partySize} pers)`
-          : `${bookings.guests} gäster · inga fler gäster idag`,
-      action: 'Se dagens bokningar',
       to: '/bokningar',
     },
     ...(hasOrdering
@@ -258,19 +290,11 @@ export default function OversiktPage() {
         {
           label: 'Aktiva beställningar',
           value: inProgress ? String(inProgress.count) : '-',
-          note: !inProgress
-            ? 'Kunde inte hämtas'
-            : inProgress.count === 0
-              ? 'Inga pågående just nu'
-              : `${inProgress.fresh} nya · ${inProgress.preparing} tillagas · ${inProgress.ready} klara`,
-          action: 'Öppna beställningar',
           to: '/bestallningar',
         },
         {
           label: 'Dagens omsättning',
           value: revenue ? kronor(revenue.amount) : '-',
-          note: revenue ? `${revenue.count} betalda beställningar` : 'Kunde inte hämtas',
-          action: 'Se försäljningen',
           to: '/bestallningar',
           trend: revenue ? trendOf(revenue.amount, revenueBefore, 'revenue', 'samma tid förra veckan') : undefined,
         },
@@ -282,14 +306,7 @@ export default function OversiktPage() {
     <div className="done-notice" role="status">
       <Icon name="check" size={18} />
       <span>
-        Avtalet är godkänt{accepted.sitePublished ? ' och er webbplats kan nu publiceras' : ''}.
-        {!locationId
-          ? ' Fortsätt med restaurangens uppgifter nedan.'
-          : loading
-            ? ''
-            : setupIncomplete
-              ? ' Fortsätt med stegen nedan.'
-              : ' Allt är klart för gästerna.'}
+        Avtalet är godkänt.
       </span>
       <button type="button" className="link-action" onClick={() => navigate(here, { replace: true, state: null })}>
         Stäng
@@ -305,11 +322,7 @@ export default function OversiktPage() {
           {acceptedNotice}
           <section className="admin-card table-card">
             <h2 className="card-title">Välkommen{tenant ? `, ${tenant.name}` : ''}!</h2>
-            <p className="cell-muted">
-              {isOwner
-                ? 'Restaurangen har ingen plats än. Börja med att lägga in restaurangens uppgifter under Inställningar.'
-                : 'Du är inte kopplad till någon plats än. Be restaurangens ägare att koppla dig till en plats.'}
-            </p>
+            {!isOwner && <p className="cell-muted">Ingen plats än. Fråga ägaren.</p>}
             {isOwner && (
               <Link className="card-link" to="/installningar">
                 Till inställningar →
@@ -328,7 +341,7 @@ export default function OversiktPage() {
         {sample && (
           <div className="sample-notice" role="status">
             <span className="sample-stamp">Exempel</span>
-            <span>Du ser exempeldata, inte restaurangens riktiga siffror.</span>
+            <span>Exempeldata</span>
             <button type="button" className="link-action" onClick={() => chooseSample(false)}>
               Visa riktiga siffror
             </button>
@@ -346,7 +359,6 @@ export default function OversiktPage() {
             <div className="card-head">
               <div>
                 <h2 className="card-title">Kom igång</h2>
-                <p className="cell-muted setup-lead">Gör klart de här stegen så att gästerna kan boka och beställa.</p>
               </div>
               <span className="cell-muted">
                 {remaining === 0 ? 'Kunde inte kontrollera allt' : <><Num>{doneCount}</Num> av {steps.length} klara</>}
@@ -386,7 +398,7 @@ export default function OversiktPage() {
                     ? 'Kunde inte hämta dagens bokningar.'
                     : (
                       <>
-                        Inga bokningar idag för {location?.name || 'platsen'}.
+                        Inga bokningar idag.
                         <button type="button" className="sample-offer" onClick={() => chooseSample(true)}>
                           Visa med exempeldata
                         </button>
@@ -412,21 +424,21 @@ export default function OversiktPage() {
           />
         )}
 
-        <section className="quick-links-row" aria-label="Genvägar">
-          {QUICK_LINKS.filter((link) => (link.ownerOnly ? isOwner : link.staffOnly ? !isOwner : true)).map((link) => (
-            <Link key={link.to + link.label} className="admin-card quick-link" to={link.to}>
-              <span className="quick-link-label">
-                <span className="quick-link-icon" aria-hidden="true">
-                  <QuickLinkIcon name={link.icon} />
+        <Disclosure title="Genvägar" className="ds-acc--line">
+          <section className="quick-links-row" aria-label="Genvägar">
+            {QUICK_LINKS.filter((link) => (link.ownerOnly ? isOwner : link.staffOnly ? !isOwner : true)).map((link) => (
+              <Link key={link.to + link.label} className="admin-card quick-link" to={link.to}>
+                <span className="quick-link-label">
+                  <span className="quick-link-icon" aria-hidden="true">
+                    <Icon name={link.icon} size={20} />
+                  </span>
+                  {link.label}
                 </span>
-                {link.label}
-              </span>
-              <span className="quick-link-arrow" aria-hidden="true">
-                →
-              </span>
-            </Link>
-          ))}
-        </section>
+                <Icon name="arrow-right" size={18} className="quick-link-arrow" />
+              </Link>
+            ))}
+          </section>
+        </Disclosure>
 
         {setupComplete && (
           <details className="admin-card setup-card setup-card--done" data-tour="getting-started">

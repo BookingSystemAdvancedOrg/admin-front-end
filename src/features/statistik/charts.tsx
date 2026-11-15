@@ -1,10 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import type { CSSProperties, ReactNode, RefObject } from 'react'
+import type { CSSProperties, RefObject } from 'react'
 import { ChartTip } from '../../shared/ChartTip'
 import { useChartTip } from '../../shared/chartTipState'
 import type { TipContent } from '../../shared/chartTipState'
-import { Icon } from '../../shared/Icon'
-import type { Trend } from '../../shared/trend'
 import { reducedMotion } from '../../shared/motion/countUp'
 import { heatStep, niceMax, tickLabel } from './chartScale'
 import { fmtPct } from './stats'
@@ -37,32 +35,50 @@ function useWidth(fallback = 640): [RefObject<HTMLElement | null>, number] {
   return [ref, width]
 }
 
-/** Tabellen bakom varje diagram, för skärmläsare och för den som vill ha siffrorna. */
-export function ChartTable({ caption, head, rows }: { caption: string; head: string[]; rows: (string | number)[][] }) {
+/**
+ * Tabellen bakom varje diagram, för skärmläsare och för den som vill ha
+ * siffrorna. Långa tabeller rullar inom sig själva med rubrikraden (och i
+ * en matris även första kolumnen) kvar på plats.
+ */
+export function ChartTable({ caption, head, rows, rowHeaders = false }: {
+  caption: string
+  head: string[]
+  rows: (string | number)[][]
+  /** Första cellen i varje rad är radens rubrik (veckodagen i en matris). */
+  rowHeaders?: boolean
+}) {
   return (
     <details className="sk-table">
       <summary>Visa som tabell</summary>
-      <table>
-        <caption className="sr-only">{caption}</caption>
-        <thead>
-          <tr>
-            {head.map((h) => (
-              <th key={h} scope="col">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i}>
-              {r.map((c, j) => (
-                <td key={j}>{c}</td>
+      <div className="sk-table-scroll" tabIndex={0} role="region" aria-label={`${caption}, tabell`}>
+        <table className={rowHeaders ? 'sk-table-matrix' : undefined}>
+          <caption className="sr-only">{caption}</caption>
+          <thead>
+            <tr>
+              {head.map((h) => (
+                <th key={h} scope="col">
+                  {h}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i}>
+                {r.map((c, j) =>
+                  rowHeaders && j === 0 ? (
+                    <th key={j} scope="row">
+                      {c}
+                    </th>
+                  ) : (
+                    <td key={j}>{c}</td>
+                  ),
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </details>
   )
 }
@@ -433,30 +449,6 @@ export function Ring({ title, segments, total, centerLabel, empty, format, value
   )
 }
 
-/* --- Förändringen mot förra perioden ---------------------------------------- */
-
-/**
- * "+12 % mot förra perioden" som en stämpel, med tonen från den gemensamma
- * regeln (shared/trend). `trend` null: det finns ingen förra period. På noll
- * (inget än i perioden) står ingen stämpel alls.
- */
-export function Delta({ trend, pending = false, children }: { trend: Trend | null; pending?: boolean; children?: ReactNode }) {
-  if (pending) return <span className="sk-delta sk-delta--none">jämför med förra perioden…</span>
-  if (trend === null) return <span className="sk-delta sk-delta--none">ingen förra period att jämföra med</span>
-  if (!trend.text) return null
-  return (
-    <span className={`sk-delta sk-delta--${trend.tone === 'neutral' ? 'flat' : trend.tone}`}>
-      {trend.direction === 'up' && (trend.text !== 'ny' || trend.tone !== 'neutral') && <Icon name="trend-up" size={13} className="sk-delta-icon" />}
-      {trend.direction === 'down' && <Icon name="trend-down" size={13} className="sk-delta-icon" />}
-      <span aria-hidden="true">{trend.text}</span>
-      <span className="sk-delta-label" aria-hidden="true">
-        {children ?? 'mot förra perioden'}
-      </span>
-      <span className="sr-only">{trend.spoken}</span>
-    </span>
-  )
-}
-
 /* --- Värmekartan: veckodag x timme ------------------------------------------- */
 
 export interface HeatCell {
@@ -475,6 +467,7 @@ export function Heatmap({ rows, cols, cells, ariaLabel, tableHead, tableRows }: 
   cols: string[]
   cells: HeatCell[]
   ariaLabel: string
+  /** Matrisen: första kolumnen är raden (veckodagen), sedan en kolumn per timme. */
   tableHead: string[]
   tableRows: (string | number)[][]
 }) {
@@ -564,44 +557,7 @@ export function Heatmap({ rows, cols, cells, ariaLabel, tableHead, tableRows }: 
           </span>
         ))}
       </figcaption>
-      <ChartTable caption={ariaLabel} head={tableHead} rows={tableRows} />
+      <ChartTable caption={ariaLabel} head={tableHead} rows={tableRows} rowHeaders />
     </figure>
-  )
-}
-
-/* --- Gnistlinjen i nyckeltalen ----------------------------------------------- */
-
-/** En liten linje över perioden; varje dag visar sitt värde i verktygstipset. */
-export function Sparkline({ points, format, label }: { points: { label: string; value: number }[]; format: (v: number) => string; label: string }) {
-  const tip = useChartTip(points.length)
-  if (points.length < 2 || points.every((p) => p.value === 0)) return null
-  const w = 96
-  const h = 24
-  const max = Math.max(...points.map((p) => p.value), 1)
-  const step = w / (points.length - 1)
-  const px = (i: number) => i * step
-  const py = (v: number) => h - 2 - (v / max) * (h - 4)
-  const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${px(i).toFixed(1)},${py(p.value).toFixed(1)}`).join(' ')
-  const a = tip.active
-  const ap = a !== null ? points[a] : null
-  return (
-    <span className="sk-spark-wrap chart-tip-host">
-      <svg
-        className="sk-spark chart-tip-surface"
-        viewBox={`0 0 ${w} ${h}`}
-        width={w}
-        height={h}
-        role="img"
-        aria-label={`${label} per dag`}
-        {...tip.surface}
-      >
-        <path d={d} />
-        {ap && <circle cx={px(a!)} cy={py(ap.value)} r={2.5} className="sk-spark-dot" />}
-        {points.map((_p, i) => (
-          <rect key={i} x={px(i) - step / 2} y={-4} width={step} height={h + 8} className="chart-hit" {...tip.hit(i)} />
-        ))}
-      </svg>
-      <ChartTip tip={tip} at={ap ? { x: px(a!), y: py(ap.value) - 3 } : null} content={ap ? { heading: ap.label, rows: [{ label, value: format(ap.value) }] } : null} />
-    </span>
   )
 }

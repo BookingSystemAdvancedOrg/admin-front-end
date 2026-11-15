@@ -24,3 +24,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Hjälpassistentens kunskapsbas, byggs ur koden (scripts/help-corpus.mjs)
+public/help-corpus.json

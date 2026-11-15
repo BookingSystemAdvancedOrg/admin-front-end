@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
+import { tokens } from '@booqy/brand'
 import { errorText, restaurantSign, restaurantSignStatus } from './cateringApi'
 import type { CateringRequest } from './cateringApi'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { TitleInfo } from '../../shared/TitleInfo'
 
 /** BankID: status en gång i sekunden (QR-koden byts varje sekund). */
 export const SIGN_POLL_MS = 1_000
@@ -63,7 +66,7 @@ export function RestaurantSigning({ request, onSigned, returned }: {
         setBankid(null)
         if (r.state === 'signed') onSigned(r.request)
         else if (r.state === 'failed') setError(HINT[r.hint ?? ''] ?? 'Signeringen avbröts. Försök igen.')
-        else setError('Signeringen är inte klar än. Ladda om sidan om en liten stund.')
+        else setError('Signeringen är inte klar än. Sidan visar den av sig själv så fort den är registrerad.')
       } catch (err) {
         setBankid(null)
         // no_signing_started: ingen signering väntar (t.ex. sidan laddades om), knappen räcker
@@ -73,7 +76,7 @@ export function RestaurantSigning({ request, onSigned, returned }: {
     void check()
   }, [returned, request.locationId, request.requestId, onSigned])
 
-  const qr = async (data?: string) => (data ? QRCode.toDataURL(data, { margin: 1, width: 240 }).catch(() => undefined) : undefined)
+  const qr = async (data?: string) => (data ? QRCode.toDataURL(data, { margin: 1, width: 240, color: { light: tokens.palette.snow } }).catch(() => undefined) : undefined)
 
   async function poll() {
     try {
@@ -116,11 +119,10 @@ export function RestaurantSigning({ request, onSigned, returned }: {
 
   return (
     <section className="admin-card table-card restaurant-signing" aria-label="Signera offerten">
-      <h2 className="card-title">Signera offerten (v{request.currentOfferVersion})</h2>
-      <p className="cell-muted">
-        Restaurangen signerar först. När ni har signerat skickas offerten till kunden via mejl och sms, och kunden
-        signerar samma version.
-      </p>
+      <TitleInfo
+        title={`Signera offerten (v${request.currentOfferVersion})`}
+        info="Restaurangen signerar först. När ni har signerat skickas offerten till kunden via mejl och sms, och kunden signerar samma version."
+      />
       {bankid ? (
         <div className="bankid-box" role="status" aria-live="polite">
           <p>
@@ -144,7 +146,7 @@ export function RestaurantSigning({ request, onSigned, returned }: {
           </button>
         </span>
       )}
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <ErrorNote text={error} />
     </section>
   )
 }

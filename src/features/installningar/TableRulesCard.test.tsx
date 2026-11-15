@@ -125,7 +125,7 @@ describe('TableRulesCard', () => {
     tables = []
     getLocation.mockResolvedValue({ locationId: 'loc-1' })
     render(<TableRulesCard locationId="loc-1" isOwner />)
-    expect(await screen.findByText(/Publicera en planritning/)).toBeInTheDocument()
+    expect(await screen.findByText(/Publicera en layout/)).toBeInTheDocument()
   })
 
   it('staff can look but not change', async () => {

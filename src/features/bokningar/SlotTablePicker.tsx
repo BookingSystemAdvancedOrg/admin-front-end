@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { addDays, dayNotice, errorMessage, getAvailability } from './bookingsApi'
+import { addDays, dayNotice, errorMessage, getAvailability, LOCATION_NOT_BOOKABLE } from './bookingsApi'
 import type { AvailabilitySlot, DayStatus } from './bookingsApi'
 import { useTables } from '../../shared/tables'
 import { DateInput } from '../../shared/DateInput'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { Select } from '../../shared/Select'
 
 /** Hur ofta listan med lediga tider hämtas om medan formuläret är öppet. */
 export const SLOT_REFRESH_MS = 60_000
@@ -111,7 +113,7 @@ export function SlotTablePicker({
         if (cancelled) return
         setSlots([])
         setDay(null)
-        setError(errorMessage(err, 'Kunde inte hämta lediga tider.'))
+        setError(errorMessage(err, 'Kunde inte hämta lediga tider.', LOCATION_NOT_BOOKABLE))
         setLoadedFor(requestKey)
       })
     return () => {
@@ -180,7 +182,7 @@ export function SlotTablePicker({
         </div>
         <div className="form-field">
           <label htmlFor="slot-time">Tid</label>
-          <select
+          <Select
             id="slot-time"
             value={startTime}
             disabled={loading || times.length === 0}
@@ -197,7 +199,7 @@ export function SlotTablePicker({
                 {t}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
       {notice && (
@@ -211,9 +213,7 @@ export function SlotTablePicker({
         </p>
       )}
       {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
+        <ErrorNote text={error} />
       )}
       {startTime && !loading && (
         <fieldset className="table-picker">

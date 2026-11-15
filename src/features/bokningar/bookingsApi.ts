@@ -271,7 +271,7 @@ const ERROR_TEXT: Record<string, string> = {
   not_chargeable: 'Den här bokningen kan inte debiteras.',
   not_refundable: 'Det finns inget att återbetala.',
   owner_only: 'Bara restaurangens ägare kan göra återbetalningar.',
-  payment_unavailable: 'Stripe svarar inte just nu. Försök igen om en stund - inget dras två gånger.',
+  payment_unavailable: 'Stripe svarar inte just nu (inget dras två gånger). Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
   card_declined: 'Kortet nekades.',
   authentication_required:
     'Gästens bank kräver att gästen godkänner betalningen. Kontakta gästen och lös avgiften direkt.',
@@ -312,7 +312,19 @@ const VALIDATION_TEXT: [RegExp, string][] = [
   [/^endTime must be/, 'Välj en sluttid i kvartssteg, minst 15 minuter efter start.'],
 ]
 
-export function errorMessage(err: unknown, action = 'Det gick inte att spara bokningen.'): string {
+/** 404 från en bokning (ändra, status, betalning): bokningen finns inte längre. */
+export const RESERVATION_NOT_FOUND = 'Bokningen hittades inte. Den kan ha tagits bort på en annan plats; listan visar det som finns kvar.'
+
+/** 404 från platsens bokningsrutter (lediga tider, ny bokning, listan): det
+ * är platsen, inte en bokning, som saknas eller inte tar emot bokningar. */
+export const LOCATION_NOT_BOOKABLE =
+  'Restaurangen tar inte emot bokningar just nu. Kontrollera att bokning ingår i abonnemanget; sidan hämtar listan igen av sig själv.'
+
+export function errorMessage(
+  err: unknown,
+  action = 'Det gick inte att spara bokningen.',
+  notFound: string = RESERVATION_NOT_FOUND,
+): string {
   if (err instanceof ApiError) {
     const known = ERROR_TEXT[err.message]
     if (known) return known
@@ -321,7 +333,7 @@ export function errorMessage(err: unknown, action = 'Det gick inte att spara bok
       const match = VALIDATION_TEXT.find(([pattern]) => pattern.test(err.message))
       if (match) return match[1]
     }
-    if (err.status === 404) return 'Bokningen hittades inte. Den kan ha tagits bort; ladda om listan.'
+    if (err.status === 404) return notFound
   }
   return errorText(err, action)
 }

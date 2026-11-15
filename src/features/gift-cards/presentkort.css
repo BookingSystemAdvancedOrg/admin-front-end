@@ -1,0 +1,66 @@
+/* Presentkort i admin. Bara @booqy/brand-tokens. */
+.presentkort-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--bq-space-3);
+  margin-bottom: var(--bq-space-4);
+}
+.presentkort-open {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.presentkort-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--bq-space-2) var(--bq-space-4);
+  margin: 0;
+}
+.presentkort-facts dt {
+  color: var(--bq-muted);
+}
+.presentkort-facts dd {
+  margin: 0;
+  color: var(--bq-ink);
+}
+.presentkort-sub {
+  margin: var(--bq-space-4) 0 var(--bq-space-2);
+  font-size: var(--bq-text-sm);
+  color: var(--bq-muted);
+}
+.presentkort-history {
+  margin: 0 0 var(--bq-space-4);
+  padding: 0;
+  list-style: none;
+}
+.presentkort-history li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--bq-space-3);
+  padding: var(--bq-space-1) 0;
+  border-top: 1px solid var(--bq-line);
+}
+.presentkort-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bq-space-2);
+}
+.presentkort-check input {
+  accent-color: var(--bq-accent);
+}
+.presentkort-confirm {
+  grid-column: 1 / -1;
+  padding: var(--bq-space-3);
+  border: 1px solid var(--bq-line);
+  border-radius: var(--bq-radius-inner);
+}
+.presentkort-confirm p {
+  margin: 0 0 var(--bq-space-2);
+  color: var(--bq-ink);
+}
+/* The save bar spans the whole form grid, under the fields. */
+.presentkort-actions {
+  grid-column: 1 / -1;
+}

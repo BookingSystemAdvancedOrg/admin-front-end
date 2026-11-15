@@ -1,0 +1,50 @@
+/* Felrutan med knappar (ErrorNote): samma röda ton som .form-error, knapparna
+   på egen rad under texten och radbryts på mobil. */
+.error-note {
+  display: grid;
+  gap: 10px;
+}
+
+.error-note-text {
+  margin: 0;
+}
+
+.error-note-body {
+  display: grid;
+  gap: 8px;
+}
+
+.error-note-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.error-note-actions .btn {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.error-note-status {
+  margin: 0;
+  font-size: 13px;
+}
+
+@media (max-width: 480px) {
+  .error-note-actions .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* In a banner (<Bar action={<ErrorActions />}>) the buttons go under the text
+   on narrow screens, so the message never gets squeezed into a column. */
+@media (max-width: 820px) {
+  .bq-bar--banner:has(.error-note-body) {
+    flex-wrap: wrap;
+  }
+
+  .bq-bar--banner:has(.error-note-body) .bq-bar__message {
+    flex-basis: 100%;
+  }
+}

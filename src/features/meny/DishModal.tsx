@@ -1,13 +1,28 @@
 import { errorText, focusErrorField } from '../../shared/errors'
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import { CATEGORY_LABEL } from './data'
-import type { Dish, DishCategory } from './data'
-import { validateDishName, validateDishPrice } from './menuApi'
+import { ALLERGENS, ALLERGEN_LABEL, categoryName } from './data'
+import type { Allergen, Dish, DishCategory, DishComponent, MenuCategoryEntry, OptionGroup } from './data'
+import { getRouting, NO_TICKET } from '../bestallningar/printApi'
+import type { Station } from '../bestallningar/printApi'
+import { parsePrice, validateDishName } from './menuApi'
+import { ChangedNote } from '../../shared/ChangedNote'
+import { serverChanges } from '../../shared/merge'
+import { OptionsEditor } from './OptionsEditor'
+import { draftToGroups, toDraft } from './menuForm'
+import type { DraftGroup } from './menuForm'
 import { utcToZonedInput, zonedInputToUtc } from './schedule'
 import { DateTimeInput } from '../../shared/DateInput'
 import { Icon } from '../../shared/Icon'
 import { Slot } from '../../shared/slots'
+import ModalOverlay from '../../shared/ModalOverlay'
+import { ImageLightbox } from '../../shared/ImageLightbox'
+import { FocusFrame } from './FocusFrame'
+import { CENTRE, focusPosition, isCentre } from './imageFocus'
+import type { ImageFocus } from './imageFocus'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Select } from '../../shared/Select'
 
 export interface DishFormValues {
   name: string
@@ -23,9 +38,19 @@ export interface DishFormValues {
    * skapas av sidan via uploadMenuImage när rätten sparas.
    */
   imageFile: File | null
+  /** Sant när den sparade bilden ska tas bort (rätten visas med platshållare). */
+  removeImage: boolean
+  /** Vilken del av bilden som syns i beskurna ramar; CENTRE = mitten. */
+  imageFocus: ImageFocus
   /** Schemat i UTC ("...Z"), null = ingen gräns. */
   availableFrom: string | null
   availableUntil: string | null
+  /** Bongens station, "none" = ingen bong, null = kategorins. */
+  station: string | null
+  /** Meny/combo: delarna (tomma namn är borttagna). */
+  components: DishComponent[]
+  allergens: Allergen[]
+  options: OptionGroup[]
 }
 
 const GAP_ERROR =
@@ -51,18 +76,18 @@ function scheduleValue(
  * Popup för att lägga till eller redigera en rätt: bild, namn, beskrivning,
  * kategori, pris och aktiv-status. Samma dialog för båda flödena.
  *
- * API:t kräver en bild när en rätt skapas (imageKey är obligatoriskt och
- * kan inte vara tomt), så "Lägg till rätt" är spärrad tills en bild valts.
- * Vid redigering kan bilden bara bytas, inte tas bort - kontraktet tillåter
- * inte en tom imageKey.
+ * Bilden är frivillig för alla rätter (en dryck behöver ingen); utan bild
+ * visas en neutral platshållare i listan och på sajten.
  */
 export function DishModal({
   title,
   initial,
   timeZone,
   locationId = null,
+  categories,
   onSave,
   onCancel,
+  latest = null,
 }: {
   title: string
   initial: Dish | null
@@ -70,20 +95,34 @@ export function DishModal({
   timeZone: string
   /** Platsen rätten hör till; behövs för planfunktionernas fält (Slot). */
   locationId?: string | null
+  /** Platsens kategorier i visningsordning. */
+  categories: MenuCategoryEntry[]
   onSave: (values: DishFormValues) => Promise<void>
   onCancel: () => void
+  /**
+   * Rätten som den ser ut på servern just nu (listan hämtas levande). Skiljer
+   * den sig från `initial`, som formuläret öppnades med, har någon annan
+   * ändrat den under tiden: fälten får en rad med det nya värdet, ditt står kvar.
+   */
+  latest?: Dish | null
 }) {
   const [name, setName] = useState(initial?.name ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [category, setCategory] = useState<DishCategory>(
-    initial?.category ?? 'varmratter',
+    initial?.category ??
+      (categories.some((c) => c.categoryId === 'mains') ? 'mains' : categories[0]?.categoryId ?? 'mains'),
   )
+  const [allergens, setAllergens] = useState<Allergen[]>(initial?.allergens ?? [])
+  const [optionDrafts, setOptionDrafts] = useState<DraftGroup[]>(() => toDraft(initial?.options))
+  const [removeImage, setRemoveImage] = useState(false)
   const [price, setPrice] = useState(initial ? String(initial.price) : '')
   const [active, setActive] = useState(initial?.active ?? true)
   const [alcohol, setAlcohol] = useState(initial?.alcohol ?? false)
   // Förhandsvisning: befintlig CDN-bild eller data-URL för nyvald fil.
   const [preview, setPreview] = useState<string | null>(initial?.image ?? null)
   const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imageFocus, setImageFocus] = useState<ImageFocus>(initial?.imageFocus ?? CENTRE)
+  const [zoomed, setZoomed] = useState(false)
   const [initialFrom] = useState(() => utcToZonedInput(initial?.availableFrom ?? null, timeZone))
   const [initialUntil] = useState(() => utcToZonedInput(initial?.availableUntil ?? null, timeZone))
   const [openedAt] = useState(() => Date.now())
@@ -91,8 +130,21 @@ export function DishModal({
   const [untilInput, setUntilInput] = useState(initialUntil)
   // Schemat är ett tillval: stängt tills någon vill begränsa när rätten syns.
   const [scheduleOn, setScheduleOn] = useState(Boolean(initialFrom || initialUntil))
+  const [station, setStation] = useState<string>(initial?.station ?? '')
+  const [parts, setParts] = useState<DishComponent[]>(initial?.components ?? [])
+  const [stations, setStations] = useState<Station[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  // Stationerna (Kök, Bar ...) för bongvalet; utan dem visas bara kategorins.
+  useEffect(() => {
+    if (!locationId) return
+    let cancelled = false
+    getRouting(locationId).then((r) => !cancelled && setStations(r.stations)).catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [locationId])
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Stäng med Escape.
@@ -108,6 +160,9 @@ export function DishModal({
     const file = e.target.files?.[0]
     if (!file) return
     setImageFile(file)
+    setRemoveImage(false)
+    // ett nytt foto börjar i mitten
+    setImageFocus(CENTRE)
     const reader = new FileReader()
     reader.onload = () => setPreview(String(reader.result))
     reader.readAsDataURL(file)
@@ -115,15 +170,12 @@ export function DishModal({
     e.target.value = ''
   }
 
-  // Tillåt både "195" och "129,50"/"129.50" - API:t tar högst två decimaler.
-  const parsedPrice = Number(price.replace(/[^\d.,]/g, '').replace(',', '.'))
-  const priceError =
-    price.trim() === '' ? 'Pris krävs.' : validateDishPrice(parsedPrice)
+  // "195", "129,50" och "129.50" går bra; "abc", "-10" och tre decimaler ger fel.
+  const priceResult = parsePrice(price)
+  const parsedPrice = priceResult.value ?? 0
+  const priceError = priceResult.error
   const nameError = validateDishName(name)
-  // En helt ny rätt kan inte skapas utan bild (API-kravet); en befintlig
-  // rätt har redan sin imageKey och behöver ingen ny fil.
-  const imageError =
-    !initial && !imageFile ? 'En bild krävs för att skapa rätten.' : null
+  const optionsResult = draftToGroups(optionDrafts)
   const availableFrom = scheduleValue(fromInput, initialFrom, initial?.availableFrom ?? null, timeZone)
   const availableUntil = scheduleValue(untilInput, initialUntil, initial?.availableUntil ?? null, timeZone)
   const orderError =
@@ -135,10 +187,17 @@ export function DishModal({
       ? 'Sluttiden har redan passerat - rätten visas inte för gäster.'
       : null
   const scheduleValid = availableFrom !== undefined && availableUntil !== undefined && !orderError
-  const valid = !nameError && !priceError && !imageError && scheduleValid
+  const valid = !nameError && !priceError && !optionsResult.error && scheduleValid
+  // Ändrat på annat håll sedan dialogen öppnades (bara fält som skiljer sig från formuläret).
+  const drift = initial ? serverChanges(initial, latest, ['name', 'description', 'price', 'category', 'active']) : {}
+  const driftName = drift.name !== undefined && drift.name !== name.trim() ? drift.name : undefined
+  const driftDescription = drift.description !== undefined && drift.description !== description.trim() ? drift.description : undefined
+  const driftPrice = drift.price !== undefined && drift.price !== parsedPrice ? drift.price : undefined
+  const driftCategory = drift.category !== undefined && drift.category !== category ? drift.category : undefined
+  const driftActive = drift.active !== undefined && drift.active !== active ? drift.active : undefined
 
   async function save() {
-    if (busy || !valid || availableFrom === undefined || availableUntil === undefined) return
+    if (busy || !valid || availableFrom === undefined || availableUntil === undefined || !optionsResult.groups) return
     setError(null)
     setBusy(true)
     try {
@@ -150,8 +209,16 @@ export function DishModal({
         active,
         alcohol,
         imageFile,
+        removeImage: removeImage && !imageFile,
+        imageFocus,
         availableFrom,
         availableUntil,
+        station: station || null,
+        components: parts
+          .map((p) => ({ name: p.name.trim(), ...(p.station ? { station: p.station } : {}) }))
+          .filter((p) => p.name),
+        allergens: ALLERGENS.filter((a) => allergens.includes(a)),
+        options: optionsResult.groups,
       })
     } catch (err) {
       setError(errorText(err, 'Kunde inte spara.'))
@@ -164,21 +231,22 @@ export function DishModal({
   }
 
   return (
-    <div
-      className="modal-overlay"
+    <ModalOverlay
       onPointerDown={(e) => e.target === e.currentTarget && onCancel()}
     >
       <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
         <h2>{title}</h2>
 
         <div className="form-field">
-          <label>{initial ? 'Bild' : 'Bild (krävs)'}</label>
+          <label>Bild (frivilligt)</label>
           <div className="dish-upload">
             {preview ? (
-              <img
-                className="dish-upload-preview"
+              <FocusFrame
                 src={preview}
-                alt="Förhandsvisning"
+                alt={name.trim() || 'Rättens bild'}
+                focus={imageFocus}
+                onChange={setImageFocus}
+                onOpen={() => setZoomed(true)}
               />
             ) : (
               <span className="dish-placeholder large" aria-hidden="true">
@@ -186,13 +254,56 @@ export function DishModal({
               </span>
             )}
             <div className="dish-upload-actions">
-              <button
-                type="button"
-                className="btn outline square"
-                onClick={() => fileRef.current?.click()}
-              >
-                {preview ? 'Byt bild' : 'Ladda upp bild'}
-              </button>
+              <div className="dish-upload-buttons">
+                <button
+                  type="button"
+                  className="btn outline square"
+                  data-help="meny:byt-bild"
+                  onClick={() => fileRef.current?.click()}
+                >
+                  {preview ? 'Byt bild' : 'Ladda upp bild'}
+                </button>
+                {preview && (
+                  <button
+                    type="button"
+                    className="btn outline square"
+                    onClick={() => {
+                      setPreview(null)
+                      setImageFile(null)
+                      setImageFocus(CENTRE)
+                      setRemoveImage(Boolean(initial?.imageKey))
+                    }}
+                  >
+                    Ta bort bild
+                  </button>
+                )}
+                {preview && (
+                  <button
+                    type="button"
+                    className="btn outline square"
+                    data-help="meny:aterstall-bildfokus"
+                    disabled={isCentre(imageFocus)}
+                    onClick={() => setImageFocus(CENTRE)}
+                  >
+                    Återställ
+                  </button>
+                )}
+              </div>
+              {preview && (
+                <div className="dish-focus-help">
+                  <img
+                    className="dish-focus-plate"
+                    src={preview}
+                    alt=""
+                    aria-hidden="true"
+                    draggable={false}
+                    style={{ objectPosition: focusPosition(imageFocus) }}
+                  />
+                  <p className="dish-focus-hint">
+                    Dra för att välja utsnitt.
+                  </p>
+                </div>
+              )}
               <input
                 ref={fileRef}
                 type="file"
@@ -212,6 +323,7 @@ export function DishModal({
             placeholder="t.ex. Smörstekt Torskrygg"
             onChange={(e) => setName(e.target.value)}
           />
+          {driftName !== undefined && <ChangedNote value={driftName} onUse={() => setName(driftName)} />}
         </div>
 
         <div className="form-field">
@@ -222,22 +334,31 @@ export function DishModal({
             placeholder="t.ex. Serveras med brynt smör och pepparrot"
             onChange={(e) => setDescription(e.target.value)}
           />
+          {driftDescription !== undefined && (
+            <ChangedNote value={driftDescription} onUse={() => setDescription(driftDescription)} />
+          )}
         </div>
 
         <div className="form-grid">
           <div className="form-field">
             <label htmlFor="dish-category">Kategori</label>
-            <select
+            <Select
               id="dish-category"
               value={category}
               onChange={(e) => setCategory(e.target.value as DishCategory)}
             >
-              {(Object.keys(CATEGORY_LABEL) as DishCategory[]).map((c) => (
-                <option key={c} value={c}>
-                  {CATEGORY_LABEL[c]}
+              {categories.map((c) => (
+                <option key={c.categoryId} value={c.categoryId}>
+                  {c.name}
                 </option>
               ))}
-            </select>
+              {!categories.some((c) => c.categoryId === category) && (
+                <option value={category}>Övrigt</option>
+              )}
+            </Select>
+            {driftCategory !== undefined && (
+              <ChangedNote value={categoryName(categories, driftCategory)} onUse={() => setCategory(driftCategory)} />
+            )}
           </div>
           <div className="form-field">
             <label htmlFor="dish-price">Pris (kr)</label>
@@ -253,6 +374,9 @@ export function DishModal({
             {price.trim() !== '' && priceError && (
               <p id="dish-price-error" className="form-error">{priceError}</p>
             )}
+            {driftPrice !== undefined && (
+              <ChangedNote value={`${driftPrice.toLocaleString('sv-SE')} kr`} onUse={() => setPrice(String(driftPrice))} />
+            )}
           </div>
         </div>
         {locationId && initial && (
@@ -262,9 +386,32 @@ export function DishModal({
           />
         )}
 
+        <fieldset className="dish-allergens">
+          <legend>Allergener</legend>
+          <div className="meny-checks">
+            {ALLERGENS.map((a) => (
+              <label key={a} className="meny-check">
+                <input
+                  type="checkbox"
+                  checked={allergens.includes(a)}
+                  onChange={() =>
+                    setAllergens((prev) => (prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]))
+                  }
+                />
+                {ALLERGEN_LABEL[a]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <OptionsEditor value={optionDrafts} onChange={setOptionDrafts} />
+        {optionDrafts.length > 0 && optionsResult.error && (
+          <p className="form-error">{optionsResult.error}</p>
+        )}
+
         <div className="toggle-row">
           <span className="toggle-row-label">
-            Aktiv - visas i menyn för gäster
+            Aktiv
           </span>
           <button
             type="button"
@@ -275,10 +422,14 @@ export function DishModal({
             onClick={() => setActive((a) => !a)}
           />
         </div>
+        {driftActive !== undefined && (
+          <ChangedNote value={driftActive ? 'aktiv' : 'pausad'} onUse={() => setActive(driftActive)} />
+        )}
 
         <div className="toggle-row">
           <span className="toggle-row-label">
-            Innehåller alkohol - 25 % moms, kan bara beställas vid bordet
+            Innehåller alkohol
+            <InfoTooltip label="Alkohol">25 % moms. Kan bara beställas vid bordet.</InfoTooltip>
           </span>
           <button
             type="button"
@@ -290,15 +441,64 @@ export function DishModal({
           />
         </div>
 
+        <fieldset className="dish-ticket">
+          <legend>
+            Bong
+            <InfoTooltip label="Meny eller combo">
+              En meny eller combo delas upp: varje del får sin egen bong, till exempel burgare och pommes till köket och drycken till baren.
+            </InfoTooltip>
+          </legend>
+          <div className="form-field">
+            <label htmlFor="dish-station">Vart går rätten?</label>
+            <Select id="dish-station" value={station} onChange={(e) => setStation(e.target.value)}>
+              <option value="">Som kategorin {categoryName(categories, category).toLowerCase()}</option>
+              {stations.map((s) => (
+                <option key={s.stationId} value={s.stationId}>{s.name}</option>
+              ))}
+              <option value={NO_TICKET}>Ingen bong</option>
+            </Select>
+          </div>
+          {parts.map((part, i) => (
+            <div key={i} className="dish-part">
+              <div className="form-field">
+                <label htmlFor={`dish-part-${i}`}>Del {i + 1}</label>
+                <input id={`dish-part-${i}`} value={part.name} maxLength={60} placeholder="Till exempel Pommes"
+                  onChange={(e) => setParts((prev) => prev.map((p, j) => (j === i ? { ...p, name: e.target.value } : p)))} />
+              </div>
+              <div className="form-field">
+                <label htmlFor={`dish-part-station-${i}`}>Bong</label>
+                <Select id={`dish-part-station-${i}`} value={part.station ?? ''}
+                  onChange={(e) => setParts((prev) => prev.map((p, j) => (j === i ? { ...p, station: e.target.value || null } : p)))}>
+                  <option value="">Som rätten</option>
+                  {stations.map((s) => (
+                    <option key={s.stationId} value={s.stationId}>{s.name}</option>
+                  ))}
+                  <option value={NO_TICKET}>Ingen bong</option>
+                </Select>
+              </div>
+              <button type="button" className="btn outline square" aria-label={`Ta bort del ${i + 1}`}
+                onClick={() => setParts((prev) => prev.filter((_, j) => j !== i))}>
+                Ta bort
+              </button>
+            </div>
+          ))}
+          {parts.length < 8 && (
+            <button type="button" className="btn outline square dish-part-add"
+              onClick={() => setParts((prev) => [...prev, { name: '' }])}>
+              {parts.length ? 'Lägg till del' : 'Dela upp som meny/combo'}
+            </button>
+          )}
+        </fieldset>
+
         <div className="toggle-row">
           <span className="toggle-row-label">
-            Bara under en viss tid - t.ex. en lunchrätt eller en säsongsrätt
+            Bara under en viss tid
           </span>
           <button
             type="button"
             role="switch"
             aria-checked={scheduleOn}
-            aria-controls="dish-schedule"
+            aria-controls={scheduleOn ? 'dish-schedule' : undefined}
             aria-label="Bara under en viss tid"
             className="switch"
             onClick={() => {
@@ -315,10 +515,12 @@ export function DishModal({
         {scheduleOn && (
           <fieldset className="dish-schedule" id="dish-schedule">
             <legend className="sr-only">När rätten visas</legend>
-            <p className="dish-schedule-help">
-              Lämna en ruta tom för ingen gräns åt det hållet. Rätten är borta på
-              till-tiden (till 14:00 = borta 14:00). Svensk tid ({timeZone}).
-            </p>
+            <div className="dish-schedule-help">
+              Svensk tid
+              <InfoTooltip label="Tider">
+                Lämna en ruta tom för ingen gräns åt det hållet. Rätten är borta på till-tiden (till 14:00 = borta 14:00). Svensk tid ({timeZone}).
+              </InfoTooltip>
+            </div>
             <div className="form-grid">
               <div className="form-field">
                 <label htmlFor="dish-available-from">Visas från</label>
@@ -356,9 +558,9 @@ export function DishModal({
         )}
 
         {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
+          <div className="dish-save-error">
+            <ErrorNote text={error} />
+          </div>
         )}
 
         <div className="modal-actions">
@@ -375,6 +577,9 @@ export function DishModal({
           </button>
         </div>
       </div>
-    </div>
+      {zoomed && preview && (
+        <ImageLightbox src={preview} alt={name.trim() || 'Rättens bild'} onClose={() => setZoomed(false)} />
+      )}
+    </ModalOverlay>
   )
 }

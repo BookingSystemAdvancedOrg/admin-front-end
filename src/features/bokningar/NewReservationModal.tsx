@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { SlotTablePicker } from './SlotTablePicker'
+import { ChannelPicker } from './ChannelPicker'
+import type { StaffChannel } from './ChannelPicker'
 import type { SlotValue } from './SlotTablePicker'
 import {
   EMAIL_MAX,
@@ -9,11 +11,14 @@ import {
   addDays,
   createManualReservation,
   errorMessage,
+  LOCATION_NOT_BOOKABLE,
   isStaleSlotError,
   normalizePhone,
   validEmail,
 } from './bookingsApi'
 import type { Reservation } from './bookingsApi'
+import ModalOverlay from '../../shared/ModalOverlay'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /** Ett datum inom bokningsbara dagar (idag … idag + 20). */
 function clampDate(date: string, today: string): string {
@@ -43,7 +48,7 @@ export function NewReservationModal({
   onCreated: (r: Reservation) => void
   onCancel: () => void
 }) {
-  const [source, setSource] = useState<'phone' | 'walk_in'>('phone')
+  const [source, setSource] = useState<StaffChannel>('phone')
   const [partySize, setPartySize] = useState('2')
   const [slot, setSlot] = useState<SlotValue>({
     date: clampDate(initialDate, today),
@@ -68,7 +73,7 @@ export function NewReservationModal({
     sizeOk && name.trim() && slot.startTime && slot.tableIds.length > 0 && phoneOk && emailOk
   const canNotify = Boolean(phone.trim() || email.trim())
 
-  function chooseSource(value: 'phone' | 'walk_in') {
+  function chooseSource(value: StaffChannel) {
     if (value === source) return
     setSource(value)
     setNotify(value === 'phone')
@@ -97,7 +102,7 @@ export function NewReservationModal({
       })
       onCreated(created)
     } catch (err) {
-      setError(errorMessage(err))
+      setError(errorMessage(err, undefined, LOCATION_NOT_BOOKABLE))
       if (isStaleSlotError(err)) {
         // Tiden eller bordet gick inte längre: hämta om listan och välj om.
         setSlot((s) => ({ ...s, startTime: '', tableIds: [] }))
@@ -108,29 +113,11 @@ export function NewReservationModal({
   }
 
   return (
-    <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && onCancel()}>
+    <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="modal booking-modal" role="dialog" aria-modal="true" aria-label="Ny bokning">
         <h2>Ny bokning</h2>
         <form onSubmit={submit} className="booking-form">
-          <div className="segmented" role="radiogroup" aria-label="Typ av bokning">
-            {(
-              [
-                ['phone', 'Telefon'],
-                ['walk_in', 'Drop-in'],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={source === value}
-                className={source === value ? 'active' : ''}
-                onClick={() => chooseSource(value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <ChannelPicker value={source} onChange={chooseSource} />
 
           <div className="form-field">
             <label htmlFor="nb-size">Antal personer</label>
@@ -212,9 +199,7 @@ export function NewReservationModal({
           )}
 
           {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
+            <ErrorNote text={error} />
           )}
           <div className="modal-actions">
             <button type="button" className="btn outline square" onClick={onCancel}>
@@ -226,6 +211,6 @@ export function NewReservationModal({
           </div>
         </form>
       </div>
-    </div>
+    </ModalOverlay>
   )
 }

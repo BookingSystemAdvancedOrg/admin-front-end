@@ -1,5 +1,6 @@
 import { useRef } from 'react'
-import type { PointerEvent, ReactNode } from 'react'
+import { helpSlug } from '../helpId'
+import type { PointerEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Num } from './Num'
 import { useLiquidFill } from './useLiquidFill'
@@ -15,9 +16,7 @@ export interface StatTileProps {
   label: string
   /** Färdigformaterat värde ("12", "1 250 kr", "-"). Räknas upp när det kommer. */
   value: string
-  note?: ReactNode
-  /** Länktext längst ned; med `to` blir hela rutan en länk. */
-  action?: string
+  /** Med `to` blir hela rutan en länk. */
   to?: string
   onClick?: () => void
   tone?: 'attention'
@@ -31,7 +30,7 @@ export interface StatTileProps {
 }
 
 /**
- * Nyckeltalsruta som fylls med vätska när siffran kommer (samma vatten som
+ * Nyckeltalsruta, bara rubrik och siffra (och ev. trendchip), som fylls med vätska när siffran kommer (samma vatten som
  * Översikt): strålen häller i från ovan, ytan gungar och siffran räknas upp
  * exponentiellt till det riktiga värdet. Pekaren rör vid ytan. Texten
  * ligger alltid ovanpå. Bara första gången sidan visas i fliken
@@ -40,8 +39,6 @@ export interface StatTileProps {
 export function StatTile({
   label,
   value,
-  note,
-  action,
   to,
   onClick,
   tone,
@@ -71,42 +68,37 @@ export function StatTile({
     },
     onPointerLeave: (e: PointerEvent<HTMLElement>) => touch(e, -2),
   }
+  const help = { 'data-help': `kpi:${helpSlug(label)}` }
   const classes = `admin-card stat-tile${to || onClick ? ' stat-tile--link' : ''}${tone ? ` stat-tile--${tone}` : ''} ${className}`
   const body = (
     <>
       <canvas ref={canvasRef} className="stat-tile-liquid" aria-hidden="true" />
       <p className="stat-tile-label">
         {label}
-        {trend && !loading && <TrendBadge trend={trend} className="stat-tile-delta" />}
+        {trend && !loading && <TrendBadge trend={trend} chip className="stat-tile-delta" />}
       </p>
       <p ref={valueRef} className={`stat-tile-value${toneClass(trendTone)}`}>
         {loading ? '…' : <Num delayMs={index * STAGGER_MS}>{value}</Num>}
       </p>
-      {(note || loading) && <p className="stat-tile-note">{loading ? 'Hämtar…' : note}</p>}
-      {action && (
-        <span className="stat-tile-action">
-          {action} <span aria-hidden="true">→</span>
-        </span>
-      )}
     </>
   )
 
   if (to) {
     return (
-      <Link ref={tileRef as React.RefObject<HTMLAnchorElement>} to={to} className={classes} {...handlers}>
+      <Link ref={tileRef as React.RefObject<HTMLAnchorElement>} to={to} className={classes} {...help} {...handlers}>
         {body}
       </Link>
     )
   }
   if (onClick) {
     return (
-      <button ref={tileRef as React.RefObject<HTMLButtonElement>} type="button" className={classes} onClick={onClick} {...handlers}>
+      <button ref={tileRef as React.RefObject<HTMLButtonElement>} type="button" className={classes} onClick={onClick} {...help} {...handlers}>
         {body}
       </button>
     )
   }
   return (
-    <div ref={tileRef as React.RefObject<HTMLDivElement>} className={classes} {...handlers}>
+    <div ref={tileRef as React.RefObject<HTMLDivElement>} className={classes} {...help} {...handlers}>
       {body}
     </div>
   )

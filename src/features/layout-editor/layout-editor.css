@@ -61,7 +61,7 @@
   height: 52px;
   border-radius: var(--r-md);
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--glass-surface);
   color: var(--ink);
   font: 600 15px/1 var(--sans);
   cursor: default;
@@ -84,6 +84,10 @@
   right: 4px;
   font: 600 8px/1 var(--mono, ui-monospace, monospace);
   color: var(--muted);
+}
+
+.tool-key::before {
+  content: attr(data-key);
 }
 
 .tool-btn.active .tool-key {
@@ -117,7 +121,7 @@
   flex: 1 1 0;
   min-width: 1px;
   height: 600px;
-  background: var(--bg);
+  background: var(--glass-well);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   overflow: hidden;
@@ -162,7 +166,7 @@
   padding: 8px 14px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
   font: 600 13px/1.2 var(--sans);
   color: var(--muted);
   cursor: default;
@@ -188,7 +192,7 @@
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   overflow: hidden;
-  background: var(--surface);
+  background: var(--glass-surface);
 }
 
 .view-toggle button {
@@ -223,11 +227,13 @@
   max-height: calc(100% - 96px);
   overflow: auto;
   padding: 16px 18px;
-  background: var(--surface);
+  background: var(--glass-pop);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   box-shadow: 0 12px 32px -12px rgba(26, 18, 14, 0.35);
   cursor: default;
+  -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
+  backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
 }
 
 .shortcut-head {
@@ -285,7 +291,7 @@
   padding: 2px 5px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--bg, #f6f3ee);
+  background: var(--glass-well);
   color: var(--ink);
 }
 
@@ -419,7 +425,7 @@
   max-width: 340px;
   padding: 20px 24px;
   border-radius: var(--r-md);
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  background: color-mix(in srgb, var(--glass-surface) 88%, transparent);
   border: 1px solid var(--border);
   font-size: 14px;
   line-height: 1.5;
@@ -518,7 +524,7 @@
 
 .seg.lowered .seg-cap {
   background: #6e6e73;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgb(var(--bq-snow-rgb) / 0.12);
 }
 
 /* Fönster - glasband som sitter i väggen (väggen bakom är kvar) */
@@ -527,7 +533,7 @@
     rgba(214, 235, 243, 0.9),
     rgba(150, 196, 214, 0.75)
   );
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 0 0 2px rgb(var(--bq-snow-rgb) / 0.6);
 }
 
 .seg.window .seg-cap.glass-cap {
@@ -568,7 +574,7 @@
   height: 22px;
   border-radius: 3px;
   background: var(--accent);
-  border: 2px solid #fff;
+  border: 2px solid var(--bq-snow);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   transform: translateZ(calc(var(--wh, 90px) + 4px));
   cursor: ew-resize;
@@ -620,7 +626,7 @@
   font: 700 10px/1 var(--sans);
   letter-spacing: 0.08em;
   color: var(--muted);
-  background: rgba(255, 255, 255, 0.9);
+  background: rgb(var(--bq-snow-rgb) / 0.9);
   padding: 3px 7px;
   border-radius: var(--r-md);
   white-space: nowrap;
@@ -700,7 +706,7 @@
 }
 
 .table-el.selected .table-seat-top {
-  background: color-mix(in srgb, var(--accent) 30%, #ffffff);
+  background: color-mix(in srgb, var(--accent) 30%, var(--bq-snow));
 }
 
 .table-el.selected .table-seat-back {
@@ -715,7 +721,7 @@
   height: 22px;
   border-radius: 3px;
   background: var(--accent);
-  border: 2px solid #fff;
+  border: 2px solid var(--bq-snow);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   transform: translateZ(calc(var(--th, 22px) + 4px));
   z-index: 2;
@@ -805,7 +811,7 @@
   align-items: center;
   justify-content: center;
   gap: 1px;
-  background: #fff;
+  background: var(--bq-snow);
   border: 1px solid #ddd5c6;
   transform: translateZ(var(--th));
   transform-style: preserve-3d;
@@ -844,15 +850,17 @@
   transform: translateZ(calc(var(--th) / 2));
 }
 
+/* Bordsskivan är ljus i båda lägena (.table-top), så texten på den har fasta
+   färger: med temats bläck blev den ljus på ljust i mörkt läge. */
 .table-label {
   font: 700 11px/1.1 var(--sans);
-  color: var(--ink);
+  color: var(--bq-espresso);
 }
 
 .table-seats {
   font: 700 10px/1.1 var(--sans);
-  color: var(--on-accent);
-  background: var(--ink, #1d1d1f);
+  color: var(--bq-snow);
+  background: var(--bq-espresso);
   border-radius: var(--r-md);
   padding: 1px 6px;
 }
@@ -867,158 +875,17 @@
   color: var(--on-accent);
 }
 
+/* Bord som står ovanpå ett annat: röd kant (även när det är valt), och
+   publiceringen stoppas tills de flyttats isär. */
+.table-el.overlap .table-top,
+.table-el.overlap.selected .table-top {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger);
+}
+
 .table-el.selected .table-seats {
-  color: var(--accent-ink);
-  background: #fff;
-}
-
-/* --- Inventarier (kassan) ----------------------------------------------- */
-
-.fixture {
-  position: absolute;
-  transform-style: preserve-3d;
-  cursor: grab;
-}
-
-.fixture:active {
-  cursor: grabbing;
-}
-
-.fixture .fx-face {
-  position: absolute;
-  background: #3a3a3c;
-}
-
-.fixture .fx-face.front {
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: var(--fh);
-  transform-origin: bottom center;
-  transform: rotateX(-90deg);
-  background: #2c2c2e;
-}
-
-.fixture .fx-face.back {
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: var(--fh);
-  transform-origin: top center;
-  transform: rotateX(90deg);
-}
-
-.fixture .fx-face.left {
-  left: 0;
-  top: 0;
-  width: var(--fh);
-  height: 100%;
-  transform-origin: center left;
-  transform: rotateY(-90deg);
-}
-
-.fixture .fx-face.right {
-  right: 0;
-  top: 0;
-  width: var(--fh);
-  height: 100%;
-  transform-origin: center right;
-  transform: rotateY(90deg);
-}
-
-.fixture .fx-top {
-  position: absolute;
-  inset: 0;
-  background: #58585c;
-  border: 1px solid #2c2c2e;
-  transform: translateZ(var(--fh));
-  transform-style: preserve-3d;
-  /* diskens träyta */
-  background-image: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.06) 0 2px,
-    transparent 2px 12px
-  );
-}
-
-/* Kassaapparaten som står på disken */
-.fixture .fx-register {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  width: 24px;
-  height: 16px;
-  margin-top: -8px;
-  transform: translateZ(var(--fh));
-  transform-style: preserve-3d;
-  --rh: 18px;
-  pointer-events: none;
-}
-
-.fxr-face {
-  position: absolute;
-  background: #2c2c2e;
-}
-
-.fxr-face.back {
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: var(--rh);
-  transform-origin: top center;
-  transform: rotateX(90deg);
-}
-
-.fxr-face.front {
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: var(--rh);
-  transform-origin: bottom center;
-  transform: rotateX(-90deg);
-  background: #1c1c1e;
-}
-
-.fxr-face.left {
-  left: 0;
-  top: 0;
-  width: var(--rh);
-  height: 100%;
-  transform-origin: center left;
-  transform: rotateY(-90deg);
-}
-
-.fxr-face.right {
-  right: 0;
-  top: 0;
-  width: var(--rh);
-  height: 100%;
-  transform-origin: center right;
-  transform: rotateY(90deg);
-}
-
-.fxr-top {
-  position: absolute;
-  inset: 0;
-  background: var(--accent);
-  border: 1px solid var(--accent-active);
-  transform: translateZ(var(--rh));
-}
-
-/* Flytande KASSA-skylt som alltid vänder sig mot kameran */
-.fixture .seg-tag.kassa-tag {
-  --tagz: 82px;
-}
-
-.fixture .seg-tag.kassa-tag span {
-  background: var(--green);
-  color: var(--on-accent);
-  letter-spacing: 0.1em;
-}
-
-.fixture.selected .fx-top {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent);
+  color: var(--bq-bronze);
+  background: var(--bq-snow);
 }
 
 .floor-entry-label {
@@ -1056,6 +923,25 @@
   color: var(--muted);
 }
 
+/* Rubrik med (i): bubblan öppnas under hela raden, inom panelens bredd. */
+.props-label--info {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.props-label--info .info-tooltip {
+  position: static;
+}
+
+.props-label--info .info-tooltip-panel {
+  width: 100%;
+  max-width: 100%;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
 .props-field {
   display: flex;
   flex-direction: column;
@@ -1073,7 +959,7 @@
 .shape-toggle button {
   padding: 8px 16px;
   border: 0;
-  background: var(--surface);
+  background: var(--glass-surface);
   font: 400 13px/1.2 var(--sans);
   color: var(--muted);
   cursor: default;
@@ -1159,7 +1045,7 @@
   padding: 8px 14px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
   font: 600 13px/1.2 var(--sans);
   color: var(--muted);
   cursor: default;
@@ -1181,7 +1067,7 @@
   padding: 14px 20px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
   font-size: 13px;
   color: var(--muted);
 }
@@ -1350,7 +1236,7 @@
   margin-top: 8px;
 }
 
-/* Hjälplinje på golvet medan ett bord eller kassan dras (Figmas röda linje,
+/* Hjälplinje på golvet medan ett bord dras (Figmas röda linje,
    här i skrivarens röda). Lyft en pixel så den inte flimrar mot golvet. */
 .guide-line {
   position: absolute;
@@ -1401,10 +1287,12 @@
   z-index: 50;
   min-width: 230px;
   padding: 4px;
-  background: var(--surface);
+  background: var(--glass-pop);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   box-shadow: 0 14px 36px -12px rgba(26, 18, 14, 0.4);
+  -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
+  backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
 }
 
 .context-menu-group + .context-menu-group {
@@ -1431,7 +1319,7 @@
 
 .context-menu-item:hover:not(:disabled),
 .context-menu-item:focus-visible {
-  background: var(--bg);
+  background: var(--glass-well);
   outline: none;
 }
 
@@ -1458,7 +1346,7 @@
   z-index: 40;
   display: grid;
   place-items: center;
-  background: color-mix(in srgb, var(--bg) 42%, transparent);
+  background: color-mix(in srgb, var(--glass-well) 42%, transparent);
   -webkit-backdrop-filter: blur(14px) saturate(1.3);
   backdrop-filter: blur(14px) saturate(1.3);
   opacity: 1;
@@ -1476,7 +1364,7 @@
   gap: 14px;
   padding: 26px 30px 22px;
   border-radius: var(--r-lg);
-  background: var(--glass-hi, color-mix(in srgb, var(--surface) 70%, transparent));
+  background: var(--glass-hi, color-mix(in srgb, var(--glass-surface) 70%, transparent));
   box-shadow: var(--rim, none), var(--shadow, 0 20px 40px -24px rgba(26, 18, 14, 0.4));
   transition: translate 520ms var(--ease), scale 520ms var(--ease);
 }
@@ -1541,7 +1429,7 @@
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .layout-prep {
-    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    background: color-mix(in srgb, var(--glass-well) 92%, transparent);
   }
 }
 

@@ -11,6 +11,7 @@ import {
   validateBookingDuration,
   validateBusinessHours,
   validateDayIntervals,
+  isOvernight,
   validateEmail,
   validateGracePeriod,
   validateName,
@@ -91,13 +92,41 @@ describe('validateDayIntervals / validateBusinessHours', () => {
     expect(validateDayIntervals('monday', [])).toBeNull()
   })
 
-  it('requires opensAt to precede closesAt', () => {
-    expect(
-      validateDayIntervals('monday', [{ opensAt: '22:00', closesAt: '11:00' }]),
-    ).not.toBeNull()
+  it('accepts hours past midnight and refuses equal times', () => {
+    // Lördag 18:00-02:00 closes Sunday 02:00; 17:00-00:00 closes at midnight.
+    expect(validateDayIntervals('saturday', [{ opensAt: '18:00', closesAt: '02:00' }])).toBeNull()
+    expect(validateDayIntervals('friday', [{ opensAt: '17:00', closesAt: '00:00' }])).toBeNull()
     expect(
       validateDayIntervals('monday', [{ opensAt: '11:00', closesAt: '11:00' }]),
-    ).not.toBeNull()
+    ).toBe('Måndag: öppnings- och stängningstiden kan inte vara samma.')
+  })
+
+  it('lets only the last interval of a day run past midnight', () => {
+    expect(
+      validateDayIntervals('saturday', [
+        { opensAt: '11:00', closesAt: '14:00' },
+        { opensAt: '18:00', closesAt: '02:00' },
+      ]),
+    ).toBeNull()
+    expect(
+      validateDayIntervals('saturday', [
+        { opensAt: '18:00', closesAt: '02:00' },
+        { opensAt: '22:00', closesAt: '23:00' },
+      ]),
+    ).toBe('Lördag: tiderna får inte överlappa varandra.')
+  })
+
+  it('isOvernight: closes before it opens, or at midnight', () => {
+    expect(isOvernight({ opensAt: '18:00', closesAt: '02:00' })).toBe(true)
+    expect(isOvernight({ opensAt: '18:00', closesAt: '00:00' })).toBe(true)
+    expect(isOvernight({ opensAt: '11:00', closesAt: '22:00' })).toBe(false)
+  })
+
+  it('isOvernight: an empty or half typed time is not overnight', () => {
+    expect(isOvernight({ opensAt: '18:00', closesAt: '' })).toBe(false)
+    expect(isOvernight({ opensAt: '18:00', closesAt: '0' })).toBe(false)
+    expect(isOvernight({ opensAt: '18:00', closesAt: '01:' })).toBe(false)
+    expect(isOvernight({ opensAt: '', closesAt: '02:00' })).toBe(false)
   })
 
   it('rejects malformed time strings', () => {
@@ -134,10 +163,28 @@ describe('validateDayIntervals / validateBusinessHours', () => {
     ).toBeNull()
   })
 
-  it('validateBusinessHours checks every day and reports the first failure', () => {
+  it('validateBusinessHours checks every day and names it in Swedish', () => {
     const hours = emptyBusinessHours()
-    hours.wednesday = [{ opensAt: '18:00', closesAt: '10:00' }]
-    expect(validateBusinessHours(hours)).toMatch(/wednesday/)
+    hours.wednesday = [{ opensAt: '18:00', closesAt: '18:00' }]
+    expect(validateBusinessHours(hours)).toBe('Onsdag: öppnings- och stängningstiden kan inte vara samma.')
+    hours.wednesday = [{ opensAt: '18:00', closesAt: '02:00' }]
+    expect(validateBusinessHours(hours)).toBeNull()
+  })
+
+  it('the hours after midnight must end before the next day opens', () => {
+    const hours = emptyBusinessHours()
+    hours.saturday = [{ opensAt: '18:00', closesAt: '02:00' }]
+    hours.sunday = [{ opensAt: '02:00', closesAt: '04:00' }]
+    expect(validateBusinessHours(hours)).toBeNull()
+    hours.sunday = [{ opensAt: '12:00', closesAt: '20:00' }, { opensAt: '01:00', closesAt: '03:00' }]
+    expect(validateBusinessHours(hours)).toBe(
+      'Lördag: tiden efter midnatt (till 02:00) krockar med söndagens första tid (01:00).',
+    )
+    // Sunday night runs into Monday.
+    const week = emptyBusinessHours()
+    week.sunday = [{ opensAt: '20:00', closesAt: '03:00' }]
+    week.monday = [{ opensAt: '02:00', closesAt: '05:00' }]
+    expect(validateBusinessHours(week)).toMatch(/^Söndag: .*måndagens första tid/)
   })
 })
 

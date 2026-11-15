@@ -18,6 +18,9 @@ import {
 import type { Draft } from './bookingRules'
 import { DateInput, TimeInput } from '../../shared/DateInput'
 import { SkelRows } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { TitleInfo } from '../../shared/TitleInfo'
+import { Select } from '../../shared/Select'
 
 /**
  * Avvikande öppettider för den valda platsen (backend shared/booking_rules.py):
@@ -161,20 +164,16 @@ export function SpecialDaysCard({
 
   return (
     <section id="avvikande-dagar" className="admin-card table-card">
-      <h2 className="card-title">Avvikande öppettider</h2>
-      <div style={{ height: 8 }} />
-      <p className="cell-muted">
-        Stängda dagar, andra öppettider eller dagar utan onlinebokning. Gästerna ser det på
-        bokningssidan; bokningar som redan finns avbokas inte automatiskt.
-      </p>
+      <TitleInfo
+        title="Avvikande öppettider"
+        info="Stängda dagar, andra öppettider eller dagar utan onlinebokning. Gästerna ser det på bokningssidan; bokningar som redan finns avbokas inte automatiskt."
+      />
       <div style={{ height: 16 }} />
       {!locationId ? (
         <p className="cell-muted">Välj en plats först.</p>
       ) : !ready ? (
         error ? (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
+          <ErrorNote text={error} />
         ) : (
           <SkelRows n={3} cols={3} />
         )
@@ -244,7 +243,7 @@ export function SpecialDaysCard({
                 </div>
                 <div className="form-field">
                   <label htmlFor="special-kind">Typ</label>
-                  <select
+                  <Select
                     id="special-kind"
                     value={draft.kind}
                     onChange={(e) => setDraft((d) => ({ ...d, kind: e.target.value as SpecialDayKind }))}
@@ -254,7 +253,7 @@ export function SpecialDaysCard({
                         {KIND_LABEL[k]}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               </div>
               {draft.kind === 'hours' && (
@@ -318,9 +317,7 @@ export function SpecialDaysCard({
           )}
 
           {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
+            <ErrorNote text={error} />
           )}
           {isOwner && (
             <span className="row-actions">
@@ -339,7 +336,7 @@ export function SpecialDaysCard({
               )}
             </span>
           )}
-          {!isOwner && <p className="cell-muted">Bara restaurangens ägare kan ändra öppettiderna.</p>}
+          {!isOwner && <p className="cell-muted">Bara ägaren kan ändra.</p>}
         </form>
       )}
     </section>

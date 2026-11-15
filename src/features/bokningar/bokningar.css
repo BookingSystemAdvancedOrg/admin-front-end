@@ -15,7 +15,7 @@
   margin: -6px 0;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
   font: 600 12px/1.3 var(--sans);
   color: var(--muted);
   cursor: default;
@@ -74,9 +74,7 @@
 .day-tools .date-input > input {
   height: 44px;
   padding: 0 12px;
-  border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
   font: 500 14px/1 var(--sans);
   color: var(--ink);
 }
@@ -95,7 +93,7 @@
 
 .booking-row:hover td,
 .booking-row:focus-visible td {
-  background: var(--bg);
+  background: var(--glass-well);
 }
 
 .booking-row:focus-visible {
@@ -140,7 +138,7 @@
 
 .booking-details {
   display: grid;
-  grid-template-columns: max-content 1fr;
+  grid-template-columns: max-content minmax(0, 1fr);
   gap: 8px 16px;
   margin: 0;
   font-size: 14px;
@@ -177,7 +175,7 @@
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  background: var(--bg);
+  background: var(--glass-well);
 }
 
 .check-row {
@@ -194,32 +192,6 @@
   height: 18px;
   margin-top: 1px;
   accent-color: var(--green);
-}
-
-.segmented {
-  display: inline-flex;
-  align-self: flex-start;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  background: var(--bg);
-}
-
-.segmented button {
-  min-height: 36px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: var(--r-md);
-  background: none;
-  font: 600 13px/1 var(--sans);
-  color: var(--muted);
-  cursor: default;
-}
-
-.segmented button.active {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: var(--shadow);
 }
 
 .slot-picker {
@@ -251,7 +223,7 @@
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
+  background: var(--glass-surface);
   font-size: 13px;
   cursor: default;
 }
@@ -268,9 +240,7 @@
 .booking-form textarea {
   width: 100%;
   padding: 12px 14px;
-  border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface);
   font: 400 14px/1.4 var(--sans);
   color: var(--ink);
   resize: vertical;
@@ -304,7 +274,7 @@
 
 @media (max-width: 640px) {
   .booking-details {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 2px;
   }
 
@@ -314,5 +284,77 @@
 
   .day-tools {
     width: 100%;
+  }
+}
+
+/* Hur gästen bokade (ChannelPicker): två stora val mitt i kortet; den
+   valda pillen glider (glide.ts, 'bare'). */
+.channel-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 4px;
+  border-radius: var(--r-md);
+  background: var(--glass-well);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.channel-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+
+.channel-option.active {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.channel-picker[data-glide] > .channel-option.active {
+  background: transparent;
+}
+
+.channel-option:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus) !important;
+}
+
+.channel-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.channel-option-label {
+  font: 700 16px/1.1 var(--sans);
+}
+
+.channel-option-hint {
+  font: 400 12px/1.2 var(--sans);
+  opacity: 0.75;
+}
+
+@media (max-width: 380px) {
+  .channel-option {
+    flex-direction: column;
+    gap: 6px;
+    text-align: center;
+  }
+
+  .channel-option-text {
+    align-items: center;
   }
 }

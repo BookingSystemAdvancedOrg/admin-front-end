@@ -1,0 +1,77 @@
+/* Personalliggare i admin. Bara @booqy/brand-tokens. */
+.pl-section {
+  margin: var(--bq-space-3) 0;
+}
+.pl-me {
+  display: grid;
+  gap: var(--bq-space-3);
+  max-width: 28rem;
+}
+.pl-me__status {
+  margin: 0;
+  font-size: var(--bq-text-lg);
+  color: var(--bq-ink);
+}
+.pl-for {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--bq-space-3);
+  margin-top: var(--bq-space-4);
+}
+.pl-present {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pl-present li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--bq-space-2);
+  padding: var(--bq-space-2) 0;
+  border-bottom: 1px solid var(--bq-line);
+}
+.pl-mono {
+  font-family: var(--bq-font-mono);
+}
+.pl-open {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.pl-check {
+  display: flex;
+  align-items: center;
+  gap: var(--bq-space-2);
+}
+.pl-locations {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--bq-space-2);
+}
+.pl-inspection {
+  color: var(--bq-ink);
+  font-size: var(--bq-text-lg);
+}
+.pl-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--bq-space-2) var(--bq-space-4);
+  margin: 0;
+}
+.pl-facts dt {
+  color: var(--bq-muted);
+}
+.pl-facts dd {
+  margin: 0;
+}
+.pl-sub {
+  margin: var(--bq-space-4) 0 var(--bq-space-2);
+  font-size: var(--bq-text-base);
+}

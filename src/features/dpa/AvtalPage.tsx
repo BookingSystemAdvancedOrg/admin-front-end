@@ -3,10 +3,13 @@ import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { ApiError } from '../../shared/api'
+import { errorText } from '../../shared/errors'
 import { replaceTenant, useTenant } from '../../shared/tenant'
 import { acceptDpa, dpaBlocksSite } from './dpaApi'
 import { DPA_INTRO, DPA_SECTIONS, DPA_TITLE, DPA_VERSION } from './dpaText'
 import './dpa.css'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { TermsSection } from './TermsSection'
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
@@ -26,7 +29,7 @@ function formatDate(iso: string): string {
  * nästa steg, så att ingen blir stående här med en knapp som försvann.
  */
 export default function AvtalPage() {
-  const { tenant } = useTenant()
+  const { tenant, refresh } = useTenant()
   const [checked, setChecked] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -46,12 +49,18 @@ export default function AvtalPage() {
       replaceTenant(updated)
       navigate('/', { state: { dpaAccepted: true, sitePublished: Boolean(updated.dpa?.required) } })
     } catch (err) {
+      const updatedMeanwhile = err instanceof ApiError && err.status === 409
+      if (updatedMeanwhile) {
+        // En ny version kom medan sidan var öppen: hämta den och låt ägaren läsa och kryssa igen.
+        setChecked(false)
+        void refresh()
+      }
       setError(
-        err instanceof ApiError && err.status === 409
-          ? 'Avtalet har uppdaterats sedan sidan laddades. Ladda om sidan och läs den nya versionen.'
+        updatedMeanwhile
+          ? 'Avtalet har uppdaterats sedan du öppnade sidan. Den nya versionen visas nu; läs den och godkänn igen.'
           : err instanceof ApiError && err.status === 403
             ? 'Bara restaurangens ägare kan godkänna avtalet.'
-            : 'Kunde inte spara just nu. Försök igen om en stund.',
+            : errorText(err, 'Kunde inte spara.'),
       )
     } finally {
       setBusy(false)
@@ -117,9 +126,7 @@ export default function AvtalPage() {
                   </span>
                 </label>
                 {error && (
-                  <p className="form-error" role="alert">
-                    {error}
-                  </p>
+                  <ErrorNote text={error} />
                 )}
                 <div className="row-actions">
                   <button type="submit" className="btn primary square" disabled={!checked || busy}>
@@ -132,6 +139,8 @@ export default function AvtalPage() {
             )}
           </section>
         )}
+
+        <TermsSection />
       </div>
     </>
   )

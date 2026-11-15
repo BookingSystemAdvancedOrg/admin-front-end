@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../statistik/live'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { isApiConfigured } from '../../shared/api'
@@ -14,6 +15,8 @@ import { sampleInsights } from '../statistik/insightsSample'
 import { daysBetween, fmtInt, fmtKr, fmtPct, shortDate } from '../statistik/stats'
 import '../statistik/statistik.css'
 import { SkelLines } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { booqyFaultText } from '../../shared/errors'
 
 /**
  * "Den här månaden" på Översikt: månaden hittills i fyra siffror och en
@@ -72,6 +75,9 @@ export function MonthCard({
   const sampleResponse = useSample ? sampleInsights({ ...filters, from, to }, today, true) : null
   const sampleSummary = sampleResponse?.current ?? null
 
+  // Levande som Statistik: efter egna ändringar, vid fokus och varje minut medan fliken syns.
+  const [tick, setTick] = useState(0)
+  useLiveRefresh(() => setTick((n) => n + 1), visible && !useSample)
   useEffect(() => {
     if (!visible || useSample) return
     let cancelled = false
@@ -81,7 +87,7 @@ export function MonthCard({
     return () => {
       cancelled = true
     }
-  }, [visible, useSample, key, from, to, locationId])
+  }, [visible, useSample, key, from, to, locationId, tick])
 
   const s = sampleSummary ?? (loaded?.key === key ? loaded.summary : null)
   const p = sampleResponse ? sampleResponse.previous : loaded?.key === key ? loaded.previous : null
@@ -111,7 +117,7 @@ export function MonthCard({
       </div>
 
       {error ? (
-        <p className="admin-empty">Kunde inte hämta månadens siffror. Försök igen om en stund, eller öppna Statistik.</p>
+        <ErrorNote text={booqyFaultText('Kunde inte hämta månadens siffror.')} />
       ) : !s ? (
         <div className="month-card-loading" role="status">
           <SkelLines n={4} />
@@ -141,9 +147,6 @@ export function MonthCard({
                 <KpiValue trend={versus(s.revenue, p?.revenue, 'revenue')} index={0}>
                   {fmtKr(s.revenue)}
                 </KpiValue>
-                <span className="month-kpi-sub">
-                  {fmtInt(s.orders)} beställningar{(s.cateringRevenue ?? 0) > 0 ? ' och catering' : ''}
-                </span>
               </div>
             )}
             <div className="month-kpi">
@@ -151,23 +154,18 @@ export function MonthCard({
               <KpiValue trend={versus(s.bookings, p?.bookings, 'bookings')} index={1}>
                 {fmtInt(s.bookings)}
               </KpiValue>
-              <span className="month-kpi-sub">{fmtInt(s.cancelled)} avbokade</span>
             </div>
             <div className="month-kpi">
               <dt>Gäster</dt>
               <KpiValue trend={versus(s.guests, p?.guests, 'guests')} index={2}>
                 {fmtInt(s.guests)}
               </KpiValue>
-              <span className="month-kpi-sub">
-                {s.avgParty ? `${s.avgParty.toLocaleString('sv-SE', { maximumFractionDigits: 1 })} per bokning` : 'Inga bokningar än'}
-              </span>
             </div>
             <div className={`month-kpi${s.noShowPct !== null && s.noShowPct >= 5 ? ' month-kpi--warn' : ''}`}>
               <dt>Uteblivna</dt>
               <KpiValue trend={versus(s.noShowPct, p?.noShowPct, 'noShows')} index={3} warn={s.noShowPct !== null && s.noShowPct >= 5}>
                 {fmtPct(s.noShowPct)}
               </KpiValue>
-              <span className="month-kpi-sub">{fmtInt(s.noShows)} bokningar kom inte</span>
             </div>
           </dl>
         </div>
@@ -176,7 +174,7 @@ export function MonthCard({
   )
 }
 
-/** Ett av månadens tal: grönt eller rött mot dagarna innan, med förändringen under. */
+/** Ett av månadens tal: grönt eller rött mot dagarna innan, med förändringen som chip (pil och procent). */
 function KpiValue({ trend, index, warn = false, children }: { trend: Trend; index: number; warn?: boolean; children: string }) {
   // Varningen (många uteblivna) går före tonen.
   const tone = warn ? 'neutral' : trend.tone
@@ -186,7 +184,10 @@ function KpiValue({ trend, index, warn = false, children }: { trend: Trend; inde
       <dd ref={ref} className={toneClass(tone).trim() || undefined}>
         <Num>{children}</Num>
       </dd>
-      <TrendBadge trend={trend} className="month-kpi-trend" />
+      {/* Chipet i en egen dd: en dl får bara ha dt och dd i sina grupper. */}
+      <dd className="month-kpi-trend-cell">
+        <TrendBadge trend={trend} chip className="month-kpi-trend" />
+      </dd>
     </>
   )
 }

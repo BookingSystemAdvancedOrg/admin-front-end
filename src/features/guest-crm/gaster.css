@@ -1,0 +1,39 @@
+/* Gäster: faktalistan i gästens kort och listan med målgrupper. Bara @booqy/brand-tokens. */
+.gaster-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: var(--bq-space-2) var(--bq-space-4);
+  margin: 0 0 var(--bq-space-5);
+}
+.gaster-facts dt {
+  color: var(--bq-muted);
+  font-size: var(--bq-text-sm);
+}
+.gaster-facts dd {
+  margin: 0;
+  color: var(--bq-ink);
+  overflow-wrap: anywhere;
+}
+.gaster-segments {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 var(--bq-space-5);
+  padding: 0;
+  list-style: none;
+}
+.gaster-segments li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bq-space-3);
+  padding: var(--bq-space-3) 0;
+  border-top: 1px solid var(--bq-line);
+}
+.gaster-segments li > div:first-child {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+.gaster-segments p {
+  margin: var(--bq-space-1) 0 0;
+}

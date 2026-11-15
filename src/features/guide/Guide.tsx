@@ -17,7 +17,8 @@ import './guide.css'
  *
  * Den startar av sig själv EN gång per användare - första gången hen
  * loggar in - och sparas på kontot, så den kommer inte tillbaka på en annan
- * dator. Efter det startas den bara från Hjälp-sidan.
+ * dator. Efter det startas den bara från Hjälp-sidan. När den startar av sig
+ * själv stannar den på sidan man öppnade tills man trycker vidare.
  */
 
 interface GuideApi {
@@ -75,8 +76,15 @@ export function GuideProvider({
   const navigatedFor = useRef<string | null>(null)
   const contextRef = useRef(context)
   contextRef.current = context
+  /**
+   * Startade guiden av sig själv? Då visas välkomststeget på sidan man
+   * öppnade (en direktlänk som /meny eller /avtal ska fungera) - guiden byter
+   * sida först när användaren själv trycker vidare.
+   */
+  const stayPut = useRef(false)
 
   const start = useCallback(() => {
+    stayPut.current = false
     direction.current = 1
     setIndex(0)
     setShown(null)
@@ -102,7 +110,10 @@ export function GuideProvider({
     void guideDoneOnAccount().then((done) => {
       if (cancelled) return
       if (done === true) rememberLocally(user)
-      else if (done === false) start()
+      else if (done === false) {
+        start()
+        stayPut.current = true
+      }
     })
     return () => {
       cancelled = true
@@ -113,7 +124,8 @@ export function GuideProvider({
   const step = steps?.[index] ?? null
   useEffect(() => {
     if (!steps || !step) return
-    if (step.route && !routeMatches(step.route, location.pathname, location.hash)) {
+    const keepPage = stayPut.current && index === 0 && !step.target
+    if (step.route && !keepPage && !routeMatches(step.route, location.pathname, location.hash)) {
       navigatedFor.current = step.id
       // Ny sida: börja överst, som när man klickar i menyn.
       if (step.route.split('#')[0] !== location.pathname) window.scrollTo({ top: 0 })
@@ -154,6 +166,7 @@ export function GuideProvider({
           number={shown?.number ?? 1}
           total={steps.length}
           onNext={() => {
+            stayPut.current = false
             direction.current = 1
             if (index + 1 < steps.length) setIndex(index + 1)
             else finish()
@@ -161,6 +174,7 @@ export function GuideProvider({
           onBack={
             index > 0
               ? () => {
+                  stayPut.current = false
                   direction.current = -1
                   setIndex(index - 1)
                 }

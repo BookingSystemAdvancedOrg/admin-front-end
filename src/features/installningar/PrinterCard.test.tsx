@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PrinterCard } from './PrinterCard'
 import { ApiError } from '../../shared/api'
 import type { PrintOverview } from '../bestallningar/printApi'
+import { chooseOption } from '../../test/select'
 
 const api = {
   getPrinting: vi.fn(),
@@ -43,7 +44,7 @@ describe('PrinterCard', () => {
     expect(await screen.findByText('Ingen skrivare är tillagd än.')).toBeInTheDocument()
     await user.type(screen.getByLabelText('Lägg till skrivare'), 'Köket')
     await user.click(screen.getByRole('button', { name: 'Lägg till' }))
-    expect(api.addPrinter).toHaveBeenCalledWith('loc-1', 'Köket')
+    expect(api.addPrinter).toHaveBeenCalledWith('loc-1', 'Köket', 'star')
     const box = await screen.findByRole('region', { name: 'Uppgifter till skrivaren' })
     expect(within(box).getByLabelText('Lösenord')).toHaveValue('s3cret')
     expect(within(box).getByLabelText('Server-URL (CloudPRNT)')).toHaveValue(PRINTER.serverUrl)
@@ -56,8 +57,8 @@ describe('PrinterCard', () => {
     api.getPrinting.mockResolvedValue(ONE)
     api.savePrintSettings.mockImplementation(async (_l, s) => ({ ...s, version: s.version + 1 }))
     render(<PrinterCard locationId="loc-1" isOwner />)
-    await user.click(await screen.findByRole('switch', { name: 'Skriv ut beställningar automatiskt' }))
-    await user.selectOptions(screen.getByLabelText('Pappersbredd'), '58')
+    await user.click(await screen.findByRole('switch', { name: 'Skriv ut bongar automatiskt' }))
+    await chooseOption(screen.getByLabelText('Pappersbredd'), '58')
     await user.click(screen.getByRole('button', { name: 'Spara skrivare' }))
     expect(api.savePrintSettings).toHaveBeenCalledWith('loc-1',
       { autoPrint: true, printerId: PRINTER.deviceId, paperWidth: 58, version: 1 })
@@ -84,6 +85,6 @@ describe('PrinterCard', () => {
     expect(api.testPrint).toHaveBeenCalledWith('loc-1', PRINTER.deviceId)
     expect(screen.queryByRole('button', { name: 'Ta bort' })).toBeNull()
     expect(screen.queryByLabelText('Lägg till skrivare')).toBeNull()
-    expect(screen.getByRole('switch', { name: 'Skriv ut beställningar automatiskt' })).toBeDisabled()
+    expect(screen.getByRole('switch', { name: 'Skriv ut bongar automatiskt' })).toBeDisabled()
   })
 })

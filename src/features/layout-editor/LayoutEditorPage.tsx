@@ -1,11 +1,16 @@
+import type { LayoutElement } from './layoutApi'
 import { errorText } from '../../shared/errors'
 import { useEffect, useRef, useState } from 'react'
+import { sameData, useLiveRefresh } from '../../shared/live'
 import { LayoutPrep } from './LayoutPrep'
-import type { PointerEvent as ReactPointerEvent } from 'react'
+import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import { FloorBooking } from './FloorBooking'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
+import { useUnsavedGuard } from '../../shared/unsaved'
 import { getStoredLocationId, useLocationId } from '../../shared/location'
 import { LayoutVersionsModal } from './LayoutVersionsModal'
+import { TableQrModal, TableQrPanel } from '../table-qr/TableQr'
 import {
   GRID,
   MIN_TABLE_SIZE,
@@ -20,7 +25,6 @@ import {
   tableSize,
 } from './data'
 import type {
-  Fixture,
   Floor,
   GroundRect,
   Opening,
@@ -30,13 +34,14 @@ import type {
   WallSegment,
 } from './data'
 import {
-  activateLayoutVersion,
   listLayoutElements,
   listLayoutVersions,
   publishLayout,
   saveLayout,
   toFloors,
 } from './layoutApi'
+import type { PublishedLayoutSnapshot } from './layoutApi'
+import { activatePublished, labelFor } from './publishFlow'
 import {
   actionForKey,
   isTypingTarget,
@@ -56,10 +61,14 @@ import {
   formatMetres,
   formatSize,
   moveClipsTo,
+  freeTableSpot,
+  overlappingTableIds,
 } from './editorTools'
 import type { Clip, EditorAction, Guide, History, ShortcutTool } from './editorTools'
 import './layout-editor.css'
 import { Icon, type IconName } from '../../shared/Icon'
+import { InfoTooltip } from '../../shared/InfoTooltip'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 const TILT_DEG = 55
 const PERSPECTIVE = 1600
@@ -69,7 +78,6 @@ const WALL_HEIGHT = 90
 const WALL_LOW = 16
 const WALL_THICKNESS = 10
 const OPENING_THICKNESS = 14
-const COUNTER_HEIGHT = 34
 /**
  * Hur långt från en vägg man får klicka och ändå träffa den. Måttet gäller
  * i golvplanet, och i 3D-vyn blir den zonen visuellt smal - därför generöst
@@ -85,6 +93,8 @@ const OPENING_DEFAULT_LENGTH: Record<OpeningKind, number> = {
 }
 const HALF_W = WORKSPACE.w / 2
 const HALF_H = WORKSPACE.h / 2
+/** Början på felet när publiceringen stoppas av bord som står ovanpå varandra. */
+const OVERLAP_ERROR = 'Några bord står ovanpå varandra'
 
 type Tool =
   | 'select'
@@ -93,7 +103,6 @@ type Tool =
   | 'window'
   | 'entrance'
   | 'kitchen'
-  | 'counter'
   | 'add-square'
   | 'add-round'
   | 'erase'
@@ -102,17 +111,16 @@ type SelItem =
   | { kind: 'table'; id: string }
   | { kind: 'wall'; id: string }
   | { kind: 'opening'; id: string }
-  | { kind: 'fixture'; id: string }
   | { kind: 'ground'; id: string }
 
 type Selection = SelItem | null
 
 /** Det som går att flytta, kopiera och markera med ruta tillsammans. */
-const GROUPABLE: SelItem['kind'][] = ['table', 'fixture', 'wall']
+const GROUPABLE: SelItem['kind'][] = ['table', 'wall']
 
 type DragState =
   | {
-      kind: 'table' | 'fixture'
+      kind: 'table'
       id: string
       startX: number
       startY: number
@@ -130,7 +138,6 @@ type DragState =
       startX: number
       startY: number
       tables: Map<string, { x: number; y: number }>
-      fixtures: Map<string, { x: number; y: number }>
       walls: Map<string, { x: number; y: number }>
     }
   | { kind: 'marquee'; x0: number; y0: number; additive: boolean }
@@ -168,6 +175,70 @@ const OPENING_TOOLS: { tool: Tool; kind: OpeningKind; warn: string }[] = [
   { tool: 'kitchen', kind: 'kitchen', warn: 'Kökets ingång kan bara placeras på en vägg - rita väggen först.' },
 ]
 
+/** Sant när skärmen är för smal för redigeraren (telefon). */
+function useSmallScreen(): boolean {
+  const query = '(max-width: 767px)'
+  const get = () => typeof window.matchMedia === 'function' && window.matchMedia(query).matches
+  const [small, setSmall] = useState(get)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia(query)
+    const on = () => setSmall(mq.matches)
+    mq.addEventListener?.('change', on)
+    return () => mq.removeEventListener?.('change', on)
+  }, [])
+  return small
+}
+
+/**
+ * Layout-sidan: "Boka bord" (boka direkt från den publicerade bordskartan)
+ * och "Redigera" (3D-redigeraren). Redigeraren kräver mus och en stor skärm;
+ * i telefonen visas bara bokningsvyn, med en rad om att planen redigeras på
+ * en större skärm. Redigeraren ligger kvar monterad (dold) när man växlar
+ * till bokning, så ett osparat utkast inte försvinner.
+ */
+export default function LayoutEditorPage() {
+  const small = useSmallScreen()
+  const [mode, setMode] = useState<'book' | 'edit'>('edit')
+  // Monteras första gången skärmen är stor nog, och ligger sedan kvar.
+  const [editorMounted, setEditorMounted] = useState(!small)
+  if (!small && !editorMounted) setEditorMounted(true)
+
+  if (small) {
+    return (
+      <FloorBooking
+        notice={
+          <p className="layout-small-notice" role="note">
+            <Icon name="tool-floor" size={20} />
+            Redigera på en större skärm.
+          </p>
+        }
+      />
+    )
+  }
+
+  const modeSwitch = (
+    <span className="view-toggle layout-mode-switch" role="tablist" aria-label="Läge">
+      <button type="button" role="tab" aria-selected={mode === 'book'} className={mode === 'book' ? 'active' : ''} onClick={() => setMode('book')}>
+        Boka bord
+      </button>
+      <button type="button" role="tab" aria-selected={mode === 'edit'} className={mode === 'edit' ? 'active' : ''} onClick={() => setMode('edit')}>
+        Redigera
+      </button>
+    </span>
+  )
+  return (
+    <>
+      {mode === 'book' && <FloorBooking actions={modeSwitch} />}
+      {editorMounted && (
+        <div style={{ display: mode === 'edit' ? 'contents' : 'none' }}>
+          <LayoutEditor modeSwitch={modeSwitch} active={mode === 'edit'} />
+        </div>
+      )}
+    </>
+  )
+}
+
 /**
  * Figma: admin-live-layout-editor-page (26:2), byggd som riktig 3D-scen i
  * CSS. Origo ligger i canvasens mitt. Marken ritas fritt och får
@@ -179,10 +250,13 @@ const OPENING_TOOLS: { tool: Tool; kind: OpeningKind; warn: string }[] = [
  *
  * Våningar, väggar, öppningar och bord synkas mot det riktiga layout-API:t
  * (layoutApi.ts): de läses in vid sidladdning och skrivs vid "Spara
- * utkast"/"Publicera layout". Markytor och kassan finns inte i API:ts
- * datamodell och lever bara lokalt - se kommentaren i layoutApi.ts.
+ * utkast"/"Publicera layout". Markytor sparas som `floorArea` - se
+ * kommentaren i layoutApi.ts.
  */
-export default function LayoutEditorPage() {
+function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; active?: boolean }) {
+  // Dold bakom "Boka bord": tangentbordsgenvägarna får inte röra planen då.
+  const activeRef = useRef(active)
+  activeRef.current = active
   // Den faktiskt inloggade användaren - statusraden visade tidigare ett
   // påhittat namn ("Anna") oavsett vem som satt vid tangentbordet.
   const { email: editorEmail, sub: editorSub, groups } = useAuth()
@@ -192,6 +266,10 @@ export default function LayoutEditorPage() {
   // Editorn startar tom och fylls av serverns layout. Ingen mockdata visas
   // först - den hann annars blinka förbi innan inläsningen var klar.
   const [floors, setFloors] = useState<Floor[]>(() => [emptyFloor(1)])
+  const floorsRef = useRef(floors)
+  useEffect(() => {
+    floorsRef.current = floors
+  }, [floors])
   const [currentFloorId, setCurrentFloorId] = useState(() => floors[0].id)
   // Allt som är markerat (Shift-klick och ruta väljer flera). `selection`
   // nedan är det ENDA valda elementet när bara ett är valt - egenskapspanelen,
@@ -210,7 +288,7 @@ export default function LayoutEditorPage() {
   }
   // Ruta för att markera flera (skärmkoordinater relativt scenen).
   const [marquee, setMarquee] = useState<{ x0: number; y0: number; x: number; y: number; additive: boolean } | null>(null)
-  // Hjälplinjer som visas medan ett bord eller kassan dras.
+  // Hjälplinjer som visas medan ett bord dras.
   const [guides, setGuides] = useState<Guide[]>([])
   // Ett bord som dras från verktygsfältet ut på planen.
   const [placing, setPlacing] = useState<{ shape: TableShape; x: number; y: number; over: boolean } | null>(null)
@@ -251,6 +329,14 @@ export default function LayoutEditorPage() {
   const [groundDraft, setGroundDraft] = useState<GroundDraft | null>(null)
   const [drawWarning, setDrawWarning] = useState<string | null>(null)
   const [statusText, setStatusText] = useState('Hämtar layout…')
+  // Osparat utkast: uppdateringsrutan frågar innan den laddar om. Läget följer
+  // statusraden; "Kopierat" ändrar inget, allt annat (inläst, sparat) är rent.
+  const unsavedDraft = useRef(false)
+  useEffect(() => {
+    if (statusText.startsWith('Osparade ändringar')) unsavedDraft.current = true
+    else if (!statusText.startsWith('Kopierat')) unsavedDraft.current = false
+  }, [statusText])
+  useUnsavedGuard(() => unsavedDraft.current)
   const [versionLabel, setVersionLabel] = useState('')
   // Utan en sparad plats finns inget layout-API att prata med - då kör
   // editorn vidare på mockdatan som förut.
@@ -260,6 +346,9 @@ export default function LayoutEditorPage() {
   const [publishing, setPublishing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
+  const [showQr, setShowQr] = useState(false)
+  // Ökas efter en publicering så QR-panelen hämtar de publicerade borden igen.
+  const [publishCount, setPublishCount] = useState(0)
   const [layoutError, setLayoutError] = useState<string | null>(null)
   // Vilken plats vars sparade layout är inläst; tills dess ligger planen bakom glaset (LayoutPrep).
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
@@ -322,6 +411,13 @@ export default function LayoutEditorPage() {
     }
   }, [])
 
+  // Layouten som den senast lästes in eller sparades: dina ändringar räknas
+  // mot den, så det en kollega sparat under tiden står kvar när du sparar.
+  const baseElements = useRef<LayoutElement[] | null>(null)
+  const savedFloors = useRef<Floor[] | null>(null)
+  /** Utkastet sparades på annat håll medan du hade osparade ändringar. */
+  const [changedThere, setChangedThere] = useState(false)
+
   // Läs in den sparade layouten: våningar med sitt innehåll.
   useEffect(() => {
     if (!locationId) return
@@ -330,6 +426,8 @@ export default function LayoutEditorPage() {
       .then((elements) => {
         if (cancelled) return
         const loaded = toFloors(elements)
+        baseElements.current = elements
+        savedFloors.current = loaded
         setFloors(loaded)
         setCurrentFloorId(loaded[0].id)
         setSelection(null)
@@ -339,7 +437,7 @@ export default function LayoutEditorPage() {
         const drawn = elements.filter((e) => e.type !== 'floor').length
         setStatusText(
           drawn === 0
-            ? 'Tom layout - rita och spara för att komma igång.'
+            ? 'Tom layout'
             : `Utkast inläst från servern - ${drawn} element på ${loaded.length} ` +
                 (loaded.length === 1 ? 'våning.' : 'våningar.'),
         )
@@ -359,6 +457,26 @@ export default function LayoutEditorPage() {
     }
   }, [locationId])
 
+  // Levande: utan osparade ändringar följer utkastet med det som sparas på
+  // annat håll; med osparade ändringar visas bara en rad (de läggs ovanpå när du sparar).
+  useLiveRefresh(async () => {
+    if (!locationId || drag.current) return
+    const elements = await listLayoutElements(locationId)
+    if (sameData(elements, baseElements.current)) return
+    const clean = savedFloors.current !== null && sameData(floorsRef.current, savedFloors.current)
+    if (!clean) {
+      setChangedThere(true)
+      return
+    }
+    const loaded = toFloors(elements)
+    baseElements.current = elements
+    savedFloors.current = loaded
+    setFloors(loaded)
+    resetHistory(loaded)
+    setCurrentFloorId((id) => (loaded.some((f) => f.id === id) ? id : loaded[0].id))
+    setSelection(null)
+  }, { enabled: Boolean(locationId) && loadedFor === locationId && !readOnly && !saving })
+
   function patchFloor(patch: (f: Floor) => Partial<Floor>) {
     // Nästan all redigering går via den här funktionen - en enda spärr här
     // stoppar ritning, flytt, storleksändring och radering i skrivskyddat
@@ -368,6 +486,11 @@ export default function LayoutEditorPage() {
       prev.map((f) => (f.id === floor.id ? { ...f, ...patch(f) } : f)),
     )
   }
+
+  // Utan API: alla ritade bord räknas som publicerade, numrerade som gästsidan gör.
+  const qrMockTables = floors
+    .flatMap((f) => f.tables)
+    .map((t, i) => ({ tableId: t.id, label: String(i + 1), seats: t.seats }))
 
   const selectedTable =
     selection?.kind === 'table'
@@ -380,10 +503,6 @@ export default function LayoutEditorPage() {
   const selectedOpening =
     selection?.kind === 'opening'
       ? floor.openings.find((o) => o.id === selection.id) ?? null
-      : null
-  const selectedFixture =
-    selection?.kind === 'fixture'
-      ? floor.fixtures.find((f) => f.id === selection.id) ?? null
       : null
   const selectedGround =
     selection?.kind === 'ground'
@@ -616,7 +735,7 @@ export default function LayoutEditorPage() {
 
   const openingTool = OPENING_TOOLS.find((o) => o.tool === tool) ?? null
   const isDrawTool =
-    tool === 'wall' || tool === 'ground' || tool === 'counter' || Boolean(openingTool)
+    tool === 'wall' || tool === 'ground' || Boolean(openingTool)
 
   /* --- Rita ------------------------------------------------------------- */
 
@@ -686,10 +805,6 @@ export default function LayoutEditorPage() {
         length: 0,
       })
       ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
-      return
-    }
-    if (tool === 'counter') {
-      addCounter(p)
       return
     }
     if (tool === 'select') {
@@ -925,10 +1040,6 @@ export default function LayoutEditorPage() {
         const o = d.tables.get(t.id)
         if (o) room(o, t.w, t.h)
       }
-      for (const f of floor.fixtures) {
-        const o = d.fixtures.get(f.id)
-        if (o) room(o, f.w, f.h)
-      }
       for (const w of floor.walls) {
         const o = d.walls.get(w.id)
         if (!o) continue
@@ -953,15 +1064,6 @@ export default function LayoutEditorPage() {
             y: clamp(o.y + gy, -HALF_H + t.h / 2, HALF_H - t.h / 2),
           }
         }),
-        fixtures: fl.fixtures.map((f) => {
-          const o = d.fixtures.get(f.id)
-          if (!o) return f
-          return {
-            ...f,
-            x: clamp(o.x + gx, -HALF_W + f.w / 2, HALF_W - f.w / 2),
-            y: clamp(o.y + gy, -HALF_H + f.h / 2, HALF_H - f.h / 2),
-          }
-        }),
         walls: fl.walls.map((w) => {
           const o = d.walls.get(w.id)
           if (!o) return w
@@ -975,19 +1077,18 @@ export default function LayoutEditorPage() {
       return
     }
 
-    // Ett bord eller kassan: snappa mot de andras kanter och mitt och mot
-    // väggarna, med hjälplinjer (håll Cmd/Ctrl för att dra fritt).
-    const item = d.kind === 'table' ? floor.tables.find((t) => t.id === d.id) : floor.fixtures.find((f) => f.id === d.id)
+    // Ett bord: snappa mot de andras kanter och mitt och mot väggarna, med
+    // hjälplinjer (håll Cmd/Ctrl för att dra fritt).
+    const item = floor.tables.find((t) => t.id === d.id)
     if (!item) return
     let nx = d.origX + fx
     let ny = d.origY + fy
     if (e.metaKey || e.ctrlKey) {
       setGuides([])
     } else {
-      const others = [
-        ...floor.tables.filter((t) => t.id !== d.id),
-        ...floor.fixtures.filter((f) => f.id !== d.id),
-      ].map((o) => ({ x: o.x, y: o.y, w: o.w, h: o.h }))
+      const others = floor.tables
+        .filter((t) => t.id !== d.id)
+        .map((o) => ({ x: o.x, y: o.y, w: o.w, h: o.h }))
       const snapped = snapToGuides({ x: nx, y: ny, w: item.w, h: item.h }, others, floor.walls, 8 / zoom)
       nx += snapped.dx
       ny += snapped.dy
@@ -995,11 +1096,7 @@ export default function LayoutEditorPage() {
     }
     const px = clamp(nx, -HALF_W + item.w / 2, HALF_W - item.w / 2)
     const py = clamp(ny, -HALF_H + item.h / 2, HALF_H - item.h / 2)
-    if (d.kind === 'table') {
-      patchFloor((fl) => ({ tables: fl.tables.map((t) => (t.id === d.id ? { ...t, x: px, y: py } : t)) }))
-    } else {
-      patchFloor((fl) => ({ fixtures: fl.fixtures.map((f) => (f.id === d.id ? { ...f, x: px, y: py } : f)) }))
-    }
+    patchFloor((fl) => ({ tables: fl.tables.map((t) => (t.id === d.id ? { ...t, x: px, y: py } : t)) }))
   }
 
   function onScenePointerUp() {
@@ -1118,7 +1215,7 @@ export default function LayoutEditorPage() {
 
   function onElementPointerDown(
     e: ReactPointerEvent,
-    kind: 'table' | 'fixture' | 'wall' | 'opening' | 'ground',
+    kind: 'table' | 'wall' | 'opening' | 'ground',
     id: string,
     origX = 0,
     origY = 0,
@@ -1149,14 +1246,12 @@ export default function LayoutEditorPage() {
       // Dra i ett av flera valda element = flytta alla valda.
       const pick = (k: SelItem['kind']) => new Set(selected.filter((s) => s.kind === k).map((s) => s.id))
       const ts = pick('table')
-      const fs = pick('fixture')
       const ws = pick('wall')
       drag.current = {
         kind: 'group',
         startX: e.clientX,
         startY: e.clientY,
         tables: new Map(floor.tables.filter((t) => ts.has(t.id)).map((t) => [t.id, { x: t.x, y: t.y }])),
-        fixtures: new Map(floor.fixtures.filter((f) => fs.has(f.id)).map((f) => [f.id, { x: f.x, y: f.y }])),
         walls: new Map(floor.walls.filter((w) => ws.has(w.id)).map((w) => [w.id, { x: w.x, y: w.y }])),
       }
       ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
@@ -1215,7 +1310,7 @@ export default function LayoutEditorPage() {
   }
 
   function removeByKind(
-    kind: 'table' | 'fixture' | 'wall' | 'opening' | 'ground',
+    kind: 'table' | 'wall' | 'opening' | 'ground',
     id: string,
   ) {
     patchFloor((fl) => {
@@ -1227,8 +1322,6 @@ export default function LayoutEditorPage() {
         }
       if (kind === 'opening')
         return { openings: fl.openings.filter((o) => o.id !== id) }
-      if (kind === 'fixture')
-        return { fixtures: fl.fixtures.filter((f) => f.id !== id) }
       return { grounds: fl.grounds.filter((g) => g.id !== id) }
     })
     setSelection((cur) => (cur && cur.id === id ? null : cur))
@@ -1298,23 +1391,6 @@ export default function LayoutEditorPage() {
     setWallDraft(null)
   }
 
-  function addCounter(p: { x: number; y: number }) {
-    if (readOnly) return
-    const f: Fixture = {
-      id: `fx${nextId.current++}`,
-      type: 'counter',
-      label: 'KASSA',
-      x: clamp(snap(p.x), -HALF_W + 50, HALF_W - 50),
-      y: clamp(snap(p.y), -HALF_H + 20, HALF_H - 20),
-      w: 100,
-      h: 36,
-    }
-    patchFloor((fl) => ({ fixtures: [...fl.fixtures, f] }))
-    setSelection({ kind: 'fixture', id: f.id })
-    setTool('select')
-    markDirty()
-  }
-
   /* --- Högerklicksmeny -------------------------------------------------- */
 
   function onSceneContextMenu(e: React.MouseEvent) {
@@ -1350,7 +1426,6 @@ export default function LayoutEditorPage() {
     const view: MenuItem[] = [
       { label: 'Markera allt', shortcut: 'Cmd/Ctrl+A', run: () => setSelected([
         ...floor.tables.map((t) => ({ kind: 'table' as const, id: t.id })),
-        ...floor.fixtures.map((f) => ({ kind: 'fixture' as const, id: f.id })),
         ...floor.walls.map((w) => ({ kind: 'wall' as const, id: w.id })),
       ]) },
       { label: 'Zooma till allt', shortcut: 'Shift+1', run: () => fitTo(floor) },
@@ -1365,7 +1440,6 @@ export default function LayoutEditorPage() {
         [
           { label: 'Fyrkantigt bord här', shortcut: 'T', run: () => addTable('square', at) },
           { label: 'Runt bord här', shortcut: 'R', run: () => addTable('round', at) },
-          { label: 'Kassa här', shortcut: 'C', run: () => addCounter(at) },
         ],
         view,
       ]
@@ -1460,6 +1534,31 @@ export default function LayoutEditorPage() {
     return { x: snap(p.x), y: snap(p.y) }
   }
 
+  /**
+   * Golvytan som syns i scenen just nu (en bit in från kanterna), som en
+   * axelparallell ruta i golvkoordinater. Används för att lägga nya bord
+   * där man ser dem.
+   */
+  function visibleArea(): { minX: number; minY: number; maxX: number; maxY: number } {
+    const scene = sceneRef.current
+    if (!scene) return { minX: bounds.x, minY: bounds.y, maxX: bounds.x + bounds.w, maxY: bounds.y + bounds.h }
+    const r = scene.getBoundingClientRect()
+    const ix = r.width * 0.12
+    const iy = r.height * 0.12
+    const corners = [
+      unproject(r.left + ix, r.top + iy),
+      unproject(r.right - ix, r.top + iy),
+      unproject(r.left + ix, r.bottom - iy),
+      unproject(r.right - ix, r.bottom - iy),
+    ]
+    return {
+      minX: Math.min(...corners.map((c) => c.x)),
+      maxX: Math.max(...corners.map((c) => c.x)),
+      minY: Math.min(...corners.map((c) => c.y)),
+      maxY: Math.max(...corners.map((c) => c.y)),
+    }
+  }
+
   function addTable(shape: TableShape, at?: { x: number; y: number }) {
     if (readOnly) return
     // Nästa lediga nummer över alla våningar - tidigare började den på T14
@@ -1467,13 +1566,10 @@ export default function LayoutEditorPage() {
     const n = nextTableNumber(floors)
     const seats = shape === 'round' ? 2 : 4
     const size = defaultTableSize(shape, seats)
-    const c = at ?? viewCentre()
-    // Står redan ett bord där hamnar det nya snett bredvid, inte ovanpå
-    // (inte när det släpps på en vald plats - då hamnar det där man släppte).
-    for (let i = 0; !at && i < 20 && floor.tables.some((o) => Math.abs(o.x - c.x) < GRID && Math.abs(o.y - c.y) < GRID); i++) {
-      c.x += GRID * 2
-      c.y += GRID * 2
-    }
+    // Ett klick på verktyget lägger bordet på närmaste lediga ruta i det som
+    // syns, aldrig ovanpå ett annat. Släpps det på en vald plats hamnar det
+    // där man släppte (en krock flaggas då i planen).
+    const c = at ?? freeTableSpot(floor.tables, { shape, ...size }, viewCentre(), visibleArea())
     const t: TableElement = {
       id: `t${n}-${shape}-${nextId.current++}`,
       label: `T${n}`,
@@ -1526,16 +1622,13 @@ export default function LayoutEditorPage() {
 
   /* --- Kortkommandon ---------------------------------------------------- */
 
-  /** De valda elementen som klipp - bord, kassa och väggar går att kopiera. */
+  /** De valda elementen som klipp - bord och väggar går att kopiera. */
   function selectionClips(): Clip[] {
     const out: Clip[] = []
     for (const sel of selected) {
       if (sel.kind === 'table') {
         const t = floor.tables.find((x) => x.id === sel.id)
         if (t) out.push({ kind: 'table', table: t })
-      } else if (sel.kind === 'fixture') {
-        const f = floor.fixtures.find((x) => x.id === sel.id)
-        if (f) out.push({ kind: 'fixture', fixture: f })
       } else if (sel.kind === 'wall') {
         const w = floor.walls.find((x) => x.id === sel.id)
         if (w) out.push({ kind: 'wall', wall: w })
@@ -1552,21 +1645,18 @@ export default function LayoutEditorPage() {
       pasteClip(
         clip,
         times,
-        () => `${clip.kind === 'wall' ? 'w' : clip.kind === 'fixture' ? 'fx' : 't'}${nextId.current++}-kopia`,
+        () => `${clip.kind === 'wall' ? 'w' : 't'}${nextId.current++}-kopia`,
         () => `T${n++}`,
       ),
     )
     const tables = outs.flatMap((o) => (o.kind === 'table' ? [o.table] : []))
-    const fixtures = outs.flatMap((o) => (o.kind === 'fixture' ? [o.fixture] : []))
     const walls = outs.flatMap((o) => (o.kind === 'wall' ? [o.wall] : []))
     patchFloor((fl) => ({
       tables: [...fl.tables, ...tables],
-      fixtures: [...fl.fixtures, ...fixtures],
       walls: [...fl.walls, ...walls],
     }))
     setSelected([
       ...tables.map((t) => ({ kind: 'table' as const, id: t.id })),
-      ...fixtures.map((f) => ({ kind: 'fixture' as const, id: f.id })),
       ...walls.map((w) => ({ kind: 'wall' as const, id: w.id })),
     ])
     pickTool('select')
@@ -1579,7 +1669,6 @@ export default function LayoutEditorPage() {
     const d = nudgeDelta(dx, dy, spin, GRID * (big ? 5 : 1))
     const ids = (k: SelItem['kind']) => new Set(selected.filter((s) => s.kind === k).map((s) => s.id))
     const ts = ids('table')
-    const fs = ids('fixture')
     const ws = ids('wall')
     const os = ids('opening')
     patchFloor((fl) => ({
@@ -1590,15 +1679,6 @@ export default function LayoutEditorPage() {
               ...t,
               x: clamp(t.x + d.x, -HALF_W + t.w / 2, HALF_W - t.w / 2),
               y: clamp(t.y + d.y, -HALF_H + t.h / 2, HALF_H - t.h / 2),
-            },
-      ),
-      fixtures: fl.fixtures.map((f) =>
-        !fs.has(f.id)
-          ? f
-          : {
-              ...f,
-              x: clamp(f.x + d.x, -HALF_W + f.w / 2, HALF_W - f.w / 2),
-              y: clamp(f.y + d.y, -HALF_H + f.h / 2, HALF_H - f.h / 2),
             },
       ),
       walls: fl.walls.map((w) =>
@@ -1703,7 +1783,7 @@ export default function LayoutEditorPage() {
         e.preventDefault() // Cmd+D är annars "lägg till bokmärke"
         const clips = selectionClips()
         if (clips.length > 0) pasteOnFloor(clips, 1)
-        else if (selected.length > 0) warn('Bord, kassan och väggar går att duplicera - fönster, dörrar och mark inte än.')
+        else if (selected.length > 0) warn('Bord och väggar går att duplicera - fönster, dörrar och mark inte än.')
         return
       }
       case 'copy': {
@@ -1750,8 +1830,7 @@ export default function LayoutEditorPage() {
         e.preventDefault()
         setSelected([
           ...floor.tables.map((t) => ({ kind: 'table' as const, id: t.id })),
-          ...floor.fixtures.map((f) => ({ kind: 'fixture' as const, id: f.id })),
-          ...floor.walls.map((w) => ({ kind: 'wall' as const, id: w.id })),
+            ...floor.walls.map((w) => ({ kind: 'wall' as const, id: w.id })),
         ])
         return
     }
@@ -1778,7 +1857,7 @@ export default function LayoutEditorPage() {
   // av hanteraren (som ser aktuellt urval, verktyg och historik).
   const onKey = useRef<(e: KeyboardEvent) => void>(() => {})
   onKey.current = (e: KeyboardEvent) => {
-    if (showVersions || isTypingTarget(e.target)) return
+    if (showVersions || showQr || isTypingTarget(e.target)) return
     if (menu) {
       // Med menyn öppen: Esc stänger, pilarna flyttar mellan raderna och
       // Enter/mellanslag väljer raden (knappens eget beteende).
@@ -1808,9 +1887,11 @@ export default function LayoutEditorPage() {
     if (action) runAction(action, e)
   }
   useEffect(() => {
-    const down = (e: KeyboardEvent) => onKey.current(e)
+    const down = (e: KeyboardEvent) => {
+      if (activeRef.current) onKey.current(e)
+    }
     const up = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
+      if (activeRef.current && e.code === 'Space') {
         e.preventDefault()
         setSpaceDown(false)
       }
@@ -1826,9 +1907,13 @@ export default function LayoutEditorPage() {
     }
   }, [])
 
-  async function refreshVersionLabel() {
+  /** Läser om versionerna, sätter etiketten och ger listan (null vid fel). */
+  async function refreshVersionLabel(): Promise<PublishedLayoutSnapshot[] | null> {
     const loc = getStoredLocationId()
-    if (loc) setVersionLabel(await versionLabelFor(loc))
+    if (!loc) return null
+    const versions = await listLayoutVersions(loc).catch(() => null)
+    setVersionLabel(versions ? labelFor(versions) : '')
+    return versions
   }
 
   /**
@@ -1902,7 +1987,7 @@ export default function LayoutEditorPage() {
     setLayoutError(null)
     setSaving(true)
     try {
-      const result = await saveLayout(loc, floors)
+      const result = await saveLayout(loc, floors, baseElements.current ?? undefined)
       const serverId = (localId: string) => result.idMap.get(localId) ?? localId
       // Läs in serverns svar igen: nyskapade element (och våningar) får sina
       // riktiga elementId, vilket nästa sparning behöver för att se dem som
@@ -1911,6 +1996,9 @@ export default function LayoutEditorPage() {
       // I platt reservläge finns bara första våningen på servern - de andra
       // behålls lokalt så att inget ritat försvinner.
       const next = result.flat ? [reloaded[0], ...floors.slice(1)] : reloaded
+      baseElements.current = result.elements
+      savedFloors.current = next
+      setChangedThere(false)
       setFloors(next)
       // Elementen har fått serverns id:n - äldre ångra-steg har de lokala
       // och skulle återskapa dubbletter vid nästa sparning. Historiken
@@ -1954,37 +2042,30 @@ export default function LayoutEditorPage() {
    * med i versionen.
    */
   async function publish() {
+    // Bord som står ovanpå varandra går inte att boka rätt - stoppa här, före
+    // sparningen, och peka ut var det är.
+    const crowded = floors.filter((f) => overlappingTableIds(f.tables).size > 0)
+    if (crowded.length > 0) {
+      setLayoutError(
+        `${OVERLAP_ERROR} (${crowded.map((f) => f.name).join(', ')}). ` +
+          'De är markerade med rött: flytta isär dem och publicera igen.',
+      )
+      return
+    }
     const loc = requireLocation()
     if (!loc) return
     if (!(await saveDraft())) return
     setPublishing(true)
     try {
       const snapshot = await publishLayout(loc)
-      try {
-        const activation = await activateLayoutVersion(loc, snapshot.version)
-        await refreshVersionLabel()
-        setStatusText(
-          activation.status === 'active'
-            ? `Publicerad och aktiverad som version ${snapshot.version} - gäller nu.`
-            : `Publicerad som version ${snapshot.version}. En annan version gäller ` +
-                `redan, så bytet sker ${formatMoment(activation.cutoverAt)} istället för direkt.`,
-        )
-      } catch (activateErr) {
-        // Versionen finns - bara aktiveringen misslyckades (t.ex. saknad
-        // behörighet, eller ett annat versionsbyte redan inbokat). Säg det
-        // tydligt så ingen tror att publiceringen också gick fel; den kan
-        // fortfarande aktiveras manuellt. Felmeddelandet för "redan
-        // inbokat" (409) ger redan sin egen vägledning - dubblera den inte.
-        const detail =
-          errorText(activateErr, 'Okänt fel.')
-        const guidance = /aktivera/i.test(detail)
-          ? ''
-          : ' Aktivera den manuellt under Versioner.'
-        setLayoutError(
-          `Publicerad som version ${snapshot.version}, men aktiveringen ` +
-            `misslyckades: ${detail}${guidance}`,
-        )
-      }
+      // Versionen finns nu; aktiveringen kan ändå misslyckas (behörighet,
+      // ett annat versionsbyte redan inbokat). Då sägs det tydligt, och
+      // etiketten visar alltid det versionslistan säger.
+      const outcome = await activatePublished(loc, snapshot.version, { formatMoment })
+      setPublishCount((n) => n + 1)
+      setVersionLabel(outcome.label)
+      if (outcome.ok) setStatusText(outcome.text)
+      else setLayoutError(outcome.text)
     } catch (err) {
       setLayoutError(
         `Utkastet sparades, men publiceringen misslyckades: ${errorText(err, 'Kunde inte publicera layouten.')}`,
@@ -2012,25 +2093,31 @@ export default function LayoutEditorPage() {
   const floorIsEmpty =
     floor.grounds.length === 0 &&
     floor.walls.length === 0 &&
-    floor.tables.length === 0 &&
-    floor.fixtures.length === 0
+    floor.tables.length === 0
 
   const loweredById = new Map(drawnWalls.map((w) => [w.id, isLowered(w)]))
+  // Bord som står ovanpå ett annat: röd kant, och publiceringen stoppas.
+  const overlapping = overlappingTableIds(floor.tables)
+  // Felet "bord ovanpå varandra" försvinner så fort borden flyttats isär.
+  const shownLayoutError =
+    layoutError?.startsWith(OVERLAP_ERROR) &&
+    !floors.some((f) => overlappingTableIds(f.tables).size > 0)
+      ? null
+      : layoutError
 
   // Raden under ritytan: en kort hjälp medan något pågår, annars inget
-  const sceneHint =
-    drawWarning
+  const sceneHint = drawWarning
     ? drawWarning
-    : tool === 'ground'
-      ? 'Klicka och dra för att rita mark - väggar skapas runt om automatiskt'
-      : openingTool
-        ? 'Klicka på en vägg och dra längs den - öppningen sitter kvar på väggen'
-        : tool === 'wall'
-          ? wallChain
-            ? 'Klicka för nästa hörn · klicka på startpunkten för att sluta rummet · dubbelklick, Enter eller Esc avslutar'
-            : 'Klicka för att börja en sammanhängande vägg (klick per hörn) - eller dra för en enskild vägg'
-          : tool === 'counter'
-            ? 'Klicka för att placera kassan'
+    : overlapping.size > 0 && !readOnly
+      ? 'Röda bord står ovanpå varandra - flytta isär dem innan du publicerar'
+      : tool === 'ground'
+        ? 'Klicka och dra för att rita mark - väggar skapas runt om automatiskt'
+        : openingTool
+          ? 'Klicka på en vägg och dra längs den - öppningen sitter kvar på väggen'
+          : tool === 'wall'
+            ? wallChain
+              ? 'Klicka för nästa hörn · klicka på startpunkten för att sluta rummet · dubbelklick, Enter eller Esc avslutar'
+              : 'Klicka för att börja en sammanhängande vägg (klick per hörn) - eller dra för en enskild vägg'
             : handMode || spaceDown
               ? 'Dra för att panorera · Esc lämnar handverktyget'
               : guides.length > 0
@@ -2045,6 +2132,7 @@ export default function LayoutEditorPage() {
         title="Layout"
         actions={
           <span className="row-actions">
+            {modeSwitch}
             <span className="cell-muted">{versionLabel}</span>
             <button
               type="button"
@@ -2053,6 +2141,15 @@ export default function LayoutEditorPage() {
               onClick={() => setShowVersions(true)}
             >
               Versioner
+            </button>
+            <button
+              type="button"
+              className="btn outline"
+              disabled={!locationId}
+              title="QR-kod per bord för beställning vid bordet: skriv ut alla eller ladda ner"
+              onClick={() => setShowQr(true)}
+            >
+              QR-koder
             </button>
             <button
               type="button"
@@ -2094,26 +2191,18 @@ export default function LayoutEditorPage() {
       <div className="admin-main">
         {!locationId && !resolvingLocation && (
           <p className="form-error" role="alert">
-            Layouten sparas inte: ingen restaurangplats är skapad än. Gå till
-            Inställningar och spara restaurangprofilen först - layouten lagras
-            per plats i API:t. Det du ritar här försvinner vid omladdning tills
-            dess.
+            Sparas inte: ingen plats än. Spara restaurangen under Inställningar först.
           </p>
         )}
-        {layoutError && (
-          <p className="form-error" role="alert">
-            {layoutError}
-          </p>
+        {shownLayoutError && (
+          <ErrorNote text={shownLayoutError} />
         )}
         {liveError && (
-          <p className="form-error" role="alert">
-            {liveError}
-          </p>
+          <ErrorNote text={liveError} />
         )}
         {readOnly && (
           <p className="layout-viewmode-banner">
-            Du tittar på den publicerade, gällande versionen
-            {liveVersionLabel ? ` (${liveVersionLabel})` : ''} - skrivskyddat.{' '}
+            Publicerad version{liveVersionLabel ? ` (${liveVersionLabel})` : ''}, skrivskyddad.{' '}
             <button type="button" className="link-action" onClick={showDraft}>
               Tillbaka till utkastet
             </button>
@@ -2128,7 +2217,6 @@ export default function LayoutEditorPage() {
             <ToolButton icon="tool-window" caption="Fönster" title="Fönster - placeras på en vägg" shortcut={keyForTool('window')} active={tool === 'window'} disabled={readOnly} onClick={() => chooseTool('window')} />
             <ToolButton icon="tool-entrance" caption="Entré" title="Entré - placeras på en vägg" shortcut={keyForTool('entrance')} active={tool === 'entrance'} disabled={readOnly} onClick={() => chooseTool('entrance')} />
             <ToolButton icon="tool-kitchen" caption="Kök" title="Kökets ingång - placeras på en vägg" shortcut={keyForTool('kitchen')} active={tool === 'kitchen'} disabled={readOnly} onClick={() => chooseTool('kitchen')} />
-            <ToolButton icon="tool-checkout" caption="Kassa" title="Placera kassan - klicka" shortcut={keyForTool('counter')} active={tool === 'counter'} disabled={readOnly} onClick={() => chooseTool('counter')} />
             <ToolButton icon="table-square" caption="Fyrkant" title="Fyrkantigt bord - klicka, eller dra ut det på planen" shortcut={keyForTool('add-square')} active={placing?.shape === 'square'} disabled={readOnly} onPointerDown={(e) => onTableToolPointerDown(e, 'square')} onClick={() => !suppressToolClick.current && chooseTool('add-square')} />
             <ToolButton icon="table-round" caption="Runt" title="Runt bord - klicka, eller dra ut det på planen" shortcut={keyForTool('add-round')} active={placing?.shape === 'round'} disabled={readOnly} onPointerDown={(e) => onTableToolPointerDown(e, 'round')} onClick={() => !suppressToolClick.current && chooseTool('add-round')} />
             <ToolButton icon="trash" caption="Radera" title="Radera - klicka på ett element (eller välj och tryck Delete)" active={tool === 'erase'} disabled={readOnly} onClick={() => { setHandMode(false); setTool((t) => (t === 'erase' ? 'select' : 'erase')) }} />
@@ -2326,39 +2414,6 @@ export default function LayoutEditorPage() {
                   )
                 })}
 
-                {floor.fixtures.map((f) => (
-                  <div
-                    key={f.id}
-                    className={isSel('fixture', f.id) ? 'fixture selected' : 'fixture'}
-                    data-sel-kind="fixture"
-                    data-sel-id={f.id}
-                    style={{
-                      left: f.x - f.w / 2 + HALF_W,
-                      top: f.y - f.h / 2 + HALF_H,
-                      width: f.w,
-                      height: f.h,
-                      ['--fh' as string]: `${COUNTER_HEIGHT}px`,
-                    }}
-                    onPointerDown={(e) => onElementPointerDown(e, 'fixture', f.id, f.x, f.y)}
-                  >
-                    <div className="fx-face back" />
-                    <div className="fx-face left" />
-                    <div className="fx-face right" />
-                    <div className="fx-face front" />
-                    <div className="fx-top" />
-                    <div className="fx-register">
-                      <div className="fxr-face back" />
-                      <div className="fxr-face left" />
-                      <div className="fxr-face right" />
-                      <div className="fxr-face front" />
-                      <div className="fxr-top" />
-                    </div>
-                    <div className="seg-tag kassa-tag">
-                      <span>{f.label}</span>
-                    </div>
-                  </div>
-                ))}
-
                 {floor.tables.map((t) => {
                   const size = tableSize(t)
                   return (
@@ -2368,6 +2423,7 @@ export default function LayoutEditorPage() {
                         'table-el',
                         t.shape,
                         isSel('table', t.id) ? 'selected' : '',
+                        overlapping.has(t.id) ? 'overlap' : '',
                       ].join(' ')}
                       data-sel-kind="table"
                       data-sel-id={t.id}
@@ -2450,7 +2506,7 @@ export default function LayoutEditorPage() {
                   )
                 })}
 
-                {/* Hjälplinjer medan ett bord eller kassan dras. */}
+                {/* Hjälplinjer medan ett bord dras. */}
                 {guides.map((g, i) => (
                   <div
                     key={i}
@@ -2526,8 +2582,7 @@ export default function LayoutEditorPage() {
                 <p>
                   <strong>{floor.name} är tom.</strong>
                   <br />
-                  Börja i mitten - origo (0,0) - med <b>Mark</b>-verktyget och
-                  rita golvet. Väggar skapas runt marken automatiskt.
+                  Rita golvet med <b>Mark</b>.
                 </p>
               </div>
             )}
@@ -2536,7 +2591,7 @@ export default function LayoutEditorPage() {
 
             {/* Bara när något pågår (ett verktyg, en dragning, flera valda);
                 i vila står inget här: kortkommandona finns under ?. */}
-            {sceneHint && <p className={drawWarning ? 'scene-hint warning' : 'scene-hint'}>{sceneHint}</p>}
+            {sceneHint && <p className={drawWarning || (overlapping.size > 0 && !readOnly) ? 'scene-hint warning' : 'scene-hint'}>{sceneHint}</p>}
           </div>
 
           <aside className="admin-card props-panel">
@@ -2551,11 +2606,9 @@ export default function LayoutEditorPage() {
                     ? 'Vägg'
                     : selectedOpening
                       ? OPENING_LABEL[selectedOpening.kind]
-                      : selectedFixture
-                        ? 'Kassan'
-                        : selectedGround
-                          ? 'Markyta'
-                          : floor.name}
+                      : selectedGround
+                        ? 'Markyta'
+                        : floor.name}
               </p>
             </div>
 
@@ -2570,11 +2623,11 @@ export default function LayoutEditorPage() {
 
             {selected.length > 1 && (
               <>
-                <p className="props-empty">
+                <PropsLabel text="FLERA VALDA" info="Flera valda">
                   Dra i något av de valda för att flytta alla. Pilarna flyttar
-                  ett rutsteg (Shift: fem), Shift-klicka för att lägga till
+                  ett rutsteg (Shift: fem). Shift-klicka för att lägga till
                   eller ta bort ur urvalet.
-                </p>
+                </PropsLabel>
                 <div className="props-actions">
                   <button
                     type="button"
@@ -2621,12 +2674,11 @@ export default function LayoutEditorPage() {
                   </div>
                 </div>
                 <div className="props-field">
-                  <p className="props-label">STORLEK</p>
-                  <p className="props-pos">{formatSize(selectedTable.w, selectedTable.h)}</p>
-                  <p className="props-empty">
+                  <PropsLabel text="STORLEK" info="Storlek">
                     Dra i handtagen på en sida eller ände av bordet för att
-                    ändra bredd eller djup fritt - går att göra avlångt.
-                  </p>
+                    ändra bredd eller djup fritt. Går att göra avlångt.
+                  </PropsLabel>
+                  <p className="props-pos">{formatSize(selectedTable.w, selectedTable.h)}</p>
                 </div>
                 <div className="props-field">
                   <p className="props-label">PLATSER</p>
@@ -2664,7 +2716,10 @@ export default function LayoutEditorPage() {
                   )}
                 </div>
                 <div className="props-field">
-                  <p className="props-label">UPPREPA I RAD</p>
+                  <PropsLabel text="UPPREPA I RAD" info="Upprepa i rad">
+                    Lägger till {rowCount} likadana bord efter det här, med
+                    lika mellanrum och nästa lediga nummer.
+                  </PropsLabel>
                   <div className="seats-stepper">
                     <button type="button" className="step-btn" aria-label="Färre bord" disabled={rowCount <= 1} onClick={() => setRowCount((c) => c - 1)}>
                       -
@@ -2682,11 +2737,13 @@ export default function LayoutEditorPage() {
                       <Icon name="arrow-down" size={16} /> Nedåt
                     </button>
                   </div>
-                  <p className="props-empty">
-                    Lägger till {rowCount} likadana bord efter det här, med
-                    lika mellanrum och nästa lediga nummer.
-                  </p>
                 </div>
+                <TableQrPanel
+                  locationId={locationId}
+                  tableId={selectedTable.id}
+                  mockTables={qrMockTables}
+                  version={publishCount}
+                />
                 <div className="props-divider" />
                 <button type="button" className="btn danger-outline" onClick={() => removeByKind('table', selectedTable.id)}>
                   Ta bort element
@@ -2697,7 +2754,10 @@ export default function LayoutEditorPage() {
             {selectedWall && (
               <>
                 <div className="props-field">
-                  <p className="props-label">LÄNGD</p>
+                  <PropsLabel text="LÄNGD" info="Vägg">
+                    Dra i handtagen eller flytta hela väggen. Öppningar på
+                    väggen följer med.
+                  </PropsLabel>
                   <div className="seats-stepper">
                     <button type="button" className="step-btn" disabled={selectedWall.length <= GRID} onClick={() => updateWallLength(-GRID)}>
                       -
@@ -2707,11 +2767,7 @@ export default function LayoutEditorPage() {
                       +
                     </button>
                   </div>
-                  <p className="props-empty">
-                    {selectedWall.dir === 'h' ? 'Vågrät' : 'Lodrät'} - dra i
-                    handtagen eller flytta hela väggen. Öppningar på väggen
-                    följer med.
-                  </p>
+                  <p className="props-empty">{selectedWall.dir === 'h' ? 'Vågrät' : 'Lodrät'}</p>
                 </div>
                 <div className="props-field">
                   <p className="props-label">POSITION</p>
@@ -2741,34 +2797,16 @@ export default function LayoutEditorPage() {
                       +
                     </button>
                   </div>
-                  <p className="props-empty">
-                    Sitter på väggen - dra för att glida längs den, dra i
-                    handtagen för att ändra längd. Kan aldrig lämna väggen.
-                  </p>
                 </div>
                 <div className="props-field">
-                  <p className="props-label">PLACERING PÅ VÄGGEN</p>
+                  <PropsLabel text="PLACERING PÅ VÄGGEN" info="Placering på väggen">
+                    Sitter på väggen: dra för att glida längs den, dra i
+                    handtagen för att ändra längd. Kan aldrig lämna väggen.
+                  </PropsLabel>
                   <p className="props-pos">{`${formatMetres(selectedOpening.offset)} från väggens start`}</p>
                 </div>
                 <div className="props-divider" />
                 <button type="button" className="btn danger-outline" onClick={() => removeByKind('opening', selectedOpening.id)}>
-                  Ta bort element
-                </button>
-              </>
-            )}
-
-            {selectedFixture && (
-              <>
-                <div className="props-field">
-                  <p className="props-label">TYP</p>
-                  <p className="props-pos">Kassadisk</p>
-                </div>
-                <div className="props-field">
-                  <p className="props-label">POSITION</p>
-                  <p className="props-pos">{`x: ${Math.round(selectedFixture.x)}   y: ${Math.round(selectedFixture.y)}`}</p>
-                </div>
-                <div className="props-divider" />
-                <button type="button" className="btn danger-outline" onClick={() => removeByKind('fixture', selectedFixture.id)}>
                   Ta bort element
                 </button>
               </>
@@ -2839,8 +2877,10 @@ export default function LayoutEditorPage() {
         </div>
 
         <div className="editor-statusbar">
-          <span className="grow" role={layoutError ? 'alert' : undefined}>
-            {layoutError ?? statusText}
+          <span className="grow" role={shownLayoutError ? 'alert' : undefined}>
+            {shownLayoutError ?? (changedThere
+              ? 'Layouten ändrades nyss på en annan plats. Dina ändringar läggs ovanpå när du sparar.'
+              : statusText)}
           </span>
           <span>
             {floor.name}
@@ -2880,6 +2920,9 @@ export default function LayoutEditorPage() {
         </div>
       )}
 
+      {showQr && locationId && (
+        <TableQrModal locationId={locationId} mockTables={qrMockTables} onClose={() => setShowQr(false)} />
+      )}
       {showVersions && locationId && (
         <LayoutVersionsModal
           locationId={locationId}
@@ -2915,12 +2958,7 @@ function formatMoment(iso: string): string {
  */
 async function versionLabelFor(locationId: string): Promise<string> {
   try {
-    const versions = await listLayoutVersions(locationId)
-    if (versions.length === 0) return 'Aldrig publicerad'
-    const current = versions.find((v) => v.isCurrent)
-    return current
-      ? `Gäller: ${current.label}`
-      : `${versions[0].label} · ej aktiverad`
+    return labelFor(await listLayoutVersions(locationId))
   } catch {
     // Utan versionslista är utkastet ändå inläst - visa inget hellre än fel.
     return ''
@@ -2949,8 +2987,6 @@ function contentBounds(floor: Floor): {
     if (w.dir === 'h') add(w.x, w.y, w.x + w.length, w.y)
     else add(w.x, w.y, w.x, w.y + w.length)
   }
-  for (const f of floor.fixtures)
-    add(f.x - f.w / 2, f.y - f.h / 2, f.x + f.w / 2, f.y + f.h / 2)
   for (const t of floor.tables) {
     const s = tableSize(t)
     add(t.x - s.w / 2, t.y - s.h / 2, t.x + s.w / 2, t.y + s.h / 2)
@@ -3152,7 +3188,6 @@ function ToolButton({
       type="button"
       className={active ? 'tool-btn active' : 'tool-btn'}
       title={full}
-      aria-label={full}
       aria-keyshortcuts={shortcut}
       aria-pressed={active}
       disabled={disabled}
@@ -3161,7 +3196,9 @@ function ToolButton({
     >
       <Icon name={icon} size={20} />
       <small>{caption}</small>
-      {shortcut && <kbd className="tool-key" aria-hidden="true">{shortcut}</kbd>}
+      {/* Namnet är bildtexten (det man ser), förklaringen står i title och
+          bokstaven i aria-keyshortcuts; själva bokstaven ritas med CSS. */}
+      {shortcut && <kbd className="tool-key" data-key={shortcut} aria-hidden="true" />}
     </button>
   )
 }
@@ -3175,7 +3212,6 @@ const SHORTCUTS: { group: string; rows: [string, string][] }[] = [
       ['M', 'Mark (väggar skapas runt om)'],
       ['W', 'Vägg - klick per hörn, dubbelklick/Enter avslutar'],
       ['F · E · K', 'Fönster · Entré · Kökets ingång'],
-      ['C', 'Kassa'],
       ['T · R', 'Fyrkantigt · runt bord (eller dra ut från verktygsfältet)'],
     ],
   },
@@ -3248,4 +3284,14 @@ function ShortcutSheet({ onClose }: { onClose: () => void }) {
 
 function clamp(v: number, min: number, max: number): number {
   return Math.min(Math.max(v, min), max)
+}
+
+/** Fältrubrik i egenskapspanelen med hjälpen bakom en (i). */
+function PropsLabel({ text, info, children }: { text: string; info: string; children: ReactNode }) {
+  return (
+    <div className="props-label props-label--info">
+      <span>{text}</span>
+      <InfoTooltip label={info}>{children}</InfoTooltip>
+    </div>
+  )
 }

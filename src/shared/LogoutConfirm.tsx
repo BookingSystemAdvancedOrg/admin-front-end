@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
+import ModalOverlay from './ModalOverlay'
 
 /**
  * "Vill du logga ut?" - frågas innan utloggning från sidomenyn, så att ingen
@@ -41,7 +42,7 @@ export function LogoutConfirm({ onConfirm, onCancel }: { onConfirm: () => void; 
   }
 
   return (
-    <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && onCancel()}>
+    <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && onCancel()}>
       <div
         className="modal modal--confirm"
         role="alertdialog"
@@ -63,6 +64,6 @@ export function LogoutConfirm({ onConfirm, onCancel }: { onConfirm: () => void; 
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   )
 }

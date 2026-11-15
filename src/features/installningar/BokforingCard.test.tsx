@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../shared/api'
 import { BokforingCard } from './BokforingCard'
 import type { AccountingSettings } from './accountingApi'
+import { chooseOption } from '../../test/select'
 
 const defaults = {
   sales25: '3001', sales12: '3002', sales6: '3003', vat25: '2611', vat12: '2621', vat6: '2631',
@@ -60,8 +61,8 @@ describe('BokforingCard', () => {
   it('exports a custom period as CSV and refuses a backwards range', async () => {
     const user = userEvent.setup()
     render(<BokforingCard locationId="loc-1" />)
-    await user.selectOptions(screen.getByLabelText('Period'), 'egen')
-    await user.selectOptions(screen.getByLabelText('Filformat'), 'csv')
+    await chooseOption(screen.getByLabelText('Period'), 'egen')
+    await chooseOption(screen.getByLabelText('Filformat'), 'csv')
     const from = screen.getByLabelText('Från och med')
     const to = screen.getByLabelText('Till och med')
     await user.clear(from)

@@ -1,4 +1,4 @@
-import { getAccessToken } from '../features/auth/cognito'
+import { AuthUnavailableError, getAccessToken, refreshAfterUnauthorized } from '../features/auth/cognito'
 import { busyEnd, busyStart } from './motion/busy'
 
 /**
@@ -40,11 +40,13 @@ export class ApiError extends Error {
   code: string
   field?: string
   fromServer: boolean
+  /** API Gatewayns request id (svarshuvudet apigw-requestid), för Rapportera till Booqy. */
+  requestId?: string
 
   constructor(
     status: number,
     message: string,
-    opts: { code?: string; field?: string; fromServer?: boolean } = {},
+    opts: { code?: string; field?: string; fromServer?: boolean; requestId?: string } = {},
   ) {
     super(message)
     this.name = 'ApiError'
@@ -52,6 +54,7 @@ export class ApiError extends Error {
     this.code = opts.code ?? (CODE.test(message) ? message : statusCode(status))
     this.field = opts.field
     this.fromServer = opts.fromServer ?? false
+    if (opts.requestId) this.requestId = opts.requestId
   }
 }
 
@@ -77,18 +80,29 @@ function statusCode(status: number): string {
   return 'invalid_request'
 }
 
+const REQUEST_ID = /^[A-Za-z0-9=_.:-]{1,100}$/
+
+/** Anropets id hos API Gateway, så Booqy hittar det i loggarna. */
+function requestIdOf(res: Response, body?: { requestId?: unknown }): string | undefined {
+  const raw = res.headers?.get?.('apigw-requestid') ?? res.headers?.get?.('x-amzn-requestid')
+    ?? (typeof body?.requestId === 'string' ? body.requestId : null)
+  return raw && REQUEST_ID.test(raw) ? raw : undefined
+}
+
 async function toApiError(res: Response): Promise<ApiError> {
   const text = await res.text().catch(() => '')
   try {
-    const body = JSON.parse(text) as { error?: string; message?: string; code?: string; field?: string }
+    const body = JSON.parse(text) as { error?: string; message?: string; code?: string; field?: string; requestId?: unknown }
     const message = body.error ?? body.message ?? text
     const code = typeof body.code === 'string' && CODE.test(body.code) ? body.code
       : typeof body.error === 'string' && CODE.test(body.error) ? body.error
-        : statusCode(res.status)
-    return new ApiError(res.status, message, { code, field: body.field, fromServer: true })
+        // API Gateways eget {"message":"Not Found"}: vägen finns inte (appen och API:t i otakt), inte posten.
+        : res.status === 404 && body.error === undefined ? 'route_not_found'
+          : statusCode(res.status)
+    return new ApiError(res.status, message, { code, field: body.field, fromServer: true, requestId: requestIdOf(res, body) })
   } catch {
     // CloudFront/API Gateway kan svara med HTML eller tom text (502/504).
-    return new ApiError(res.status, text || res.statusText, { code: statusCode(res.status), fromServer: true })
+    return new ApiError(res.status, text || res.statusText, { code: res.status === 404 ? 'route_not_found' : statusCode(res.status), fromServer: true, requestId: requestIdOf(res) })
   }
 }
 
@@ -146,6 +160,14 @@ async function fetchWithRetry(method: string, send: () => Promise<Response>): Pr
  *     body: JSON.stringify(dish),
  *   })
  */
+/**
+ * Skickas på window efter varje lyckad skrivning (detail.path), och efter en
+ * skrivning som fick 409 (detail.conflict), så att sidorna hämtar det
+ * senaste direkt (shared/live.ts) och summor (Statistik, Översikt) räknar
+ * om, utan att någon laddar om sidan.
+ */
+export const DATA_CHANGED_EVENT = 'booqy:data-changed'
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
@@ -155,31 +177,48 @@ export async function apiFetch<T>(
       'VITE_API_BASE_URL är inte satt - appen kör på mockdata. Se docs/BACKEND-KOPPLING.md.',
     )
   }
-  const token = await getAccessToken()
   const method = (options.method ?? 'GET').toUpperCase()
   // Skrivningar syns som en strimma överst (shared/motion/BusyBar) tills de är klara.
   const writing = method !== 'GET'
   if (writing) busyStart()
+  const send = (token: string | null) => fetchWithRetry(method, () => fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+  }))
   let res: Response
+  let ok = false
   try {
-    res = await fetchWithRetry(method, () => fetch(`${API_BASE_URL}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options.headers,
-      },
-    }))
+    // Servern nås inte för att förnya tokenen: samma fel som ett tappat
+    // anrop, aldrig "utloggad" (sessionen gäller fortfarande).
+    const token = await getAccessToken()
+    res = await send(token)
+    // Ett 401 loggar inte ut direkt: förnya en gång och försök igen. Bara om
+    // servern säger att sessionen är slut visas inloggningen (AuthContext).
+    if (res.status === 401 && token) {
+      const fresh = await refreshAfterUnauthorized(token)
+      if (fresh) res = await send(fresh)
+    }
+    ok = res.ok
   } catch (err) {
     // fetch() avvisar bara när svaret aldrig kom (offline, tappad anslutning).
-    if (err instanceof TypeError) throw new NetworkError()
+    if (err instanceof TypeError || err instanceof AuthUnavailableError) throw new NetworkError()
     throw err
   } finally {
-    if (writing) busyEnd()
+    if (writing) busyEnd(ok)
   }
   if (!res.ok) {
-    throw await toApiError(res)
+    const err = await toApiError(res)
+    // Någon annan sparade emellan: sidorna hämtar det senaste direkt (shared/live.ts).
+    if (writing && res.status === 409 && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT, { detail: { path, conflict: true } }))
+    }
+    throw err
   }
+  if (writing && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT, { detail: { path } }))
   if (res.status === 204) {
     return undefined as T
   }

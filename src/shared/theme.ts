@@ -43,9 +43,17 @@ function emit() {
   for (const listener of listeners) listener()
 }
 
+/**
+ * Skrivbordsappen läser data-glass-theme (inte data-theme) för systemets
+ * glas. Under ett byte hålls det kvar på det gamla läget tills svepet är
+ * klart, så att den gamla bilden aldrig ligger över det nya glaset.
+ */
+let holdGlass = false
+
 /** Sätter läget på sidan (attribut och ramfärg) utan att spara det. */
 export function applyTheme(theme: Theme) {
   document.documentElement.setAttribute('data-theme', theme)
+  if (!holdGlass) document.documentElement.dataset.glassTheme = theme
   for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
     meta.content = THEME_COLOR[theme]
   }
@@ -77,24 +85,56 @@ function subscribe(listener: () => void) {
 
 /**
  * Byter läge med ett svep: de nya färgerna växer ut i en cirkel från
- * knappen (origin) tills de täcker sidan (View Transitions). Utan stöd i
- * webbläsaren, utan origin eller med "minska rörelse" byts det direkt.
+ * klickpunkten (View Transitions, 480 ms). Under bytet är alla övergångar av
+ * (.theme-switching), så att ingen yta tonar genom grått.
+ *
+ * Skrivbordsappen: systemets glas kan inte vara i två lägen samtidigt. Den
+ * gamla bilden ligger därför kvar på det gamla glaset under hela svepet, och
+ * den nya får en tät botten i ungefär det nya glasets färg (.theme-settling).
+ * När svepet är klart byter skalet glaset (data-glass-theme) och botten tonar
+ * bort på 200 ms. "Minska rörelse" eller ingen View Transitions: direkt byte.
  */
 export function switchTheme(theme: Theme, origin?: { x: number; y: number }) {
-  const doc = document as Document & { startViewTransition?: (update: () => void) => { ready: Promise<void> } }
+  const root = document.documentElement
+  const doc = document as Document & {
+    startViewTransition?: (update: () => void) => { ready: Promise<void>; finished: Promise<void> }
+  }
   const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  if (!origin || reduce || typeof doc.startViewTransition !== 'function') {
+  if (reduce || typeof doc.startViewTransition !== 'function') {
     setTheme(theme)
     return
   }
-  const { x, y } = origin
+  const desktop = root.classList.contains('is-desktop-glass')
+  root.classList.add('theme-switching')
+  if (desktop) {
+    root.dataset.glassTheme = currentTheme()
+    holdGlass = true
+  }
+  const x = origin?.x ?? window.innerWidth / 2
+  const y = origin?.y ?? window.innerHeight / 2
   const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
   const transition = doc.startViewTransition(() => setTheme(theme))
+  const done = () => {
+    if (desktop) {
+      holdGlass = false
+      root.dataset.glassTheme = theme
+      // Skalet byter glaset inom ett par bildrutor; sedan tonar botten bort.
+      window.setTimeout(() => {
+        root.classList.remove('theme-switching')
+        requestAnimationFrame(() => root.classList.remove('theme-settling'))
+      }, 120)
+      return
+    }
+    requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('theme-switching')))
+  }
+  transition.finished.then(done, done)
   transition.ready.then(() => {
-    document.documentElement.animate(
+    const sweep = root.animate(
       { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
-      { duration: 700, easing: 'cubic-bezier(0.65, 0, 0.35, 1)', pseudoElement: '::view-transition-new(root)' },
+      { duration: 480, easing: 'cubic-bezier(0.65, 0, 0.35, 1)', pseudoElement: '::view-transition-new(root)' },
     )
+    // Cirkeln täcker allt: nu får sidan den nya botten under bilden.
+    if (desktop) sweep.finished.then(() => root.classList.add('theme-settling'), () => root.classList.add('theme-settling'))
   }, () => {})
 }
 

@@ -1,3 +1,5 @@
+import { useLiveRefresh } from '../../shared/live'
+import { RowActions } from '../../shared/RowActions'
 import { useCallback, useEffect, useState } from 'react'
 import { Num } from '../../shared/motion/Num'
 import type { FormEvent } from 'react'
@@ -28,6 +30,10 @@ import type { TabId } from './MarknadsforingPage'
 import { useEscape } from './useEscape'
 import { DateTimeInput } from '../../shared/DateInput'
 import { SkelRows } from '../../shared/Skeleton'
+import ModalOverlay from '../../shared/ModalOverlay'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Select } from '../../shared/Select'
 
 const DAY_CHOICES = [30, 60, 90, 180, 365]
 
@@ -93,7 +99,7 @@ function CampaignForm({
   }
 
   return (
-    <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+    <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
       <form className="modal mk-modal" role="dialog" aria-modal="true" aria-label="Kampanj" onSubmit={(e) => void submit(e)}>
         <h2>{campaign ? 'Redigera kampanj' : 'Ny kampanj'}</h2>
         <div className="form-field">
@@ -102,11 +108,11 @@ function CampaignForm({
         </div>
         <div className="form-field">
           <label htmlFor="mk-c-tpl">Mall</label>
-          <select id="mk-c-tpl" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+          <Select id="mk-c-tpl" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
             {templates.map((t) => (
               <option key={t.templateId} value={t.templateId}>{t.name}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="form-field">
           <label htmlFor="mk-c-subject">Ämnesrad (tom = mallens)</label>
@@ -116,48 +122,46 @@ function CampaignForm({
         <p className="form-section-label">Målgrupp</p>
         <div className="form-field">
           <label htmlFor="mk-c-aud">Vilka får utskicket</label>
-          <select id="mk-c-aud" value={type} onChange={(e) => setType(e.target.value as AudienceType)}>
+          <Select id="mk-c-aud" value={type} onChange={(e) => setType(e.target.value as AudienceType)}>
             {(Object.keys(AUDIENCE_LABEL) as AudienceType[]).map((a) => (
               <option key={a} value={a}>{AUDIENCE_LABEL[a]}</option>
             ))}
-          </select>
+          </Select>
         </div>
         {type !== 'all' && (
           <div className="form-field">
             <label htmlFor="mk-c-days">{type === 'recent' ? 'Senaste besöket inom' : 'Inget besök på minst'}</label>
-            <select id="mk-c-days" value={days} onChange={(e) => setDays(Number(e.target.value))}>
+            <Select id="mk-c-days" value={days} onChange={(e) => setDays(Number(e.target.value))}>
               {DAY_CHOICES.map((d) => (
                 <option key={d} value={d}>{d} dagar</option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
         {locations.length > 1 && (
           <div className="form-field">
             <label htmlFor="mk-c-loc">Plats</label>
-            <select id="mk-c-loc" value={loc} onChange={(e) => setLoc(e.target.value)}>
+            <Select id="mk-c-loc" value={loc} onChange={(e) => setLoc(e.target.value)}>
               <option value="">Alla platser</option>
               {locations.map((l) => (
                 <option key={l.locationId} value={l.locationId}>{l.name || 'Namnlös plats'}</option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
         <Slot id="marketing.kampanjer.audience" props={{ value: segment, onChange: setSegment }} />
         <p className="mk-audience-count" aria-live="polite" hidden={segment !== null}>
           {count === null ? 'Räknar mottagare…' : count < 0 ? 'Kunde inte räkna mottagarna.' : `${count} mottagare just nu`}
         </p>
-        <p className="field-hint">
-          Bara gäster som själva kryssat i att de vill få erbjudanden. Den som avregistrerat sig får aldrig utskick.
-        </p>
+        <p className="field-hint">Bara gäster som sagt ja till erbjudanden.</p>
 
-        {error && <p className="form-error" role="alert">{error}</p>}
+        <ErrorNote text={error} />
         <div className="modal-actions">
           <button type="button" className="btn outline square" onClick={onClose} disabled={saving}>Avbryt</button>
           <button type="submit" className="btn primary square" disabled={saving}>{saving ? 'Sparar…' : 'Spara utkast'}</button>
         </div>
       </form>
-    </div>
+    </ModalOverlay>
   )
 }
 
@@ -210,12 +214,11 @@ function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone:
   }
 
   return (
-    <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+    <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal mk-modal" role="dialog" aria-modal="true" aria-label="Skicka kampanjen">
         <h2>Skicka {campaign.name}?</h2>
         <p className="modal-text">
-          {count === null ? 'Räknar mottagare…' : `${count} mottagare (${audienceText(campaign.audience).toLowerCase()}).`} När
-          kampanjen skickas låses innehållet: ändringar i mallen efteråt påverkar inte utskicket.
+          {count === null ? 'Räknar mottagare…' : `${count} mottagare (${audienceText(campaign.audience).toLowerCase()}).`}
         </p>
         <div className="mk-radio-row" role="radiogroup" aria-label="När">
           <label className="check-row">
@@ -231,7 +234,7 @@ function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone:
             <DateTimeInput id="mk-send-at" timeLabel="Tid" value={at} min={toLocalInput(new Date())} onChange={(e) => setAt(e.target.value)} />
           </div>
         )}
-        {error && <p className="form-error" role="alert">{error}</p>}
+        <ErrorNote text={error} />
         <div className="modal-actions">
           <button type="button" className="btn outline square" onClick={onClose} disabled={busy}>Avbryt</button>
           <button type="button" className="btn primary square" onClick={() => void go()} disabled={busy || count === 0}>
@@ -239,7 +242,7 @@ function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone:
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   )
 }
 
@@ -263,13 +266,13 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
 
   useEffect(load, [load])
 
-  // Medan något skickas: hämta om då och då så siffrorna rör sig.
-  const active = (campaigns ?? []).some((c) => c.status === 'sending' || c.status === 'scheduled')
-  useEffect(() => {
-    if (!active) return
-    const id = setInterval(load, 30_000)
-    return () => clearInterval(id)
-  }, [active, load])
+  // Levande: utskick som pågår och kampanjer en kollega ändrar syns av sig själva
+  // (formuläret du skriver i rörs inte; det har sin egen kopia).
+  useLiveRefresh(async () => {
+    const [c, t] = await Promise.all([listCampaigns(), listTemplates()])
+    setCampaigns(c)
+    setTemplates(t)
+  }, { enabled: campaigns !== null && busy === null })
 
   const act = async (c: Campaign, what: 'test' | 'cancel' | 'resume' | 'delete') => {
     setBusy(`${c.campaignId}:${what}`)
@@ -302,7 +305,7 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
   return (
     <div className="mk-stack">
       {notice && <p className="save-notice" role="status">{notice}</p>}
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <ErrorNote text={error} />
 
       <section className="admin-card table-card">
         <div className="card-head">
@@ -319,10 +322,10 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
         )}
         {campaigns === null && !error && <SkelRows n={4} cols={4} />}
         {campaigns !== null && campaigns.length === 0 && !noTemplates && (
-          <p className="cell-muted">Inga kampanjer än. Skapa en, skicka ett test till dig själv och sedan till gästerna.</p>
+          <p className="cell-muted">Inga kampanjer än.</p>
         )}
         {campaigns && campaigns.length > 0 && (
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0}>
             <table className="data-table mk-campaigns">
               <thead>
                 <tr>
@@ -369,7 +372,7 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
                         <Num>{kronorFromOre(s.revenueOre ?? 0)}</Num>
                         {(s.unsubscribed ?? 0) > 0 && <div className="cell-muted">{s.unsubscribed} avregistrerade</div>}
                       </td>
-                      <td className="mk-row-actions">
+                      <td className="right"><RowActions label="Åtgärder">
                         {c.status === 'draft' && (
                           <>
                             <button type="button" className="link-action" onClick={() => setForm({ campaign: c })}>Redigera</button>
@@ -386,7 +389,7 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
                         {(c.status === 'scheduled' || c.status === 'sending' || c.status === 'paused_limit') && (
                           <button type="button" className="link-action danger" disabled={isBusy('cancel')} onClick={() => void act(c, 'cancel')}>Avbryt</button>
                         )}
-                      </td>
+                      </RowActions></td>
                     </tr>
                   )
                 })}
@@ -396,10 +399,13 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
         )}
       </section>
 
-      <p className="mk-footnote cell-muted">
-        Klick räknas per mottagare. Bokningar och omsättning räknas när en gäst bokar eller beställer efter att ha
-        klickat i utskicket. Öppningar mäts inte.
-      </p>
+      <div className="mk-footnote cell-muted">
+        Om siffrorna
+        <InfoTooltip label="Om siffrorna">
+          Klick räknas per mottagare. Bokningar och omsättning räknas när en gäst bokar eller beställer efter att ha
+          klickat i utskicket. Öppningar mäts inte.
+        </InfoTooltip>
+      </div>
 
       {form && templates && (
         <CampaignForm

@@ -29,6 +29,8 @@ export interface User {
   status: UserStatus
   createdBy: string
   createdAt: string
+  /** Förhandsgodkänd länk till profilbilden (1 h), eller null. Frivillig. */
+  avatarUrl?: string | null
 }
 
 export interface UserInviteRequest {
@@ -189,17 +191,16 @@ function toFriendlyUserError(err: unknown): Error {
       if (err.message.includes('already exists')) {
         return new Error('Det finns redan en användare med den e-postadressen.')
       }
-      return new Error(
-        'Användaren ändrades samtidigt av någon annan. Ladda om och försök igen.',
+      return Object.assign(
+        new Error('Användaren ändrades samtidigt av någon annan. Det senaste visas nu; spara igen om ändringen fortfarande behövs.'),
+        { conflict: true },
       )
     case 429:
       return new Error('För många förfrågningar. Vänta en stund och försök igen.')
     case 501:
-      return new Error(
-        'Den här funktionen är inte klar på serversidan än (manage-user är inte deployad).',
-      )
+      return new ApiError(501, 'Den här funktionen är inte klar på serversidan än. Felet ligger hos Booqy, inte hos er. Försök igen; kvarstår det, rapportera det till Booqy.')
     case 503:
-      return new Error('Tjänsten är tillfälligt otillgänglig. Försök igen om en stund.')
+      return new ApiError(503, 'Tjänsten är tillfälligt otillgänglig. Felet ligger hos Booqy, inte hos er. Försök igen; kvarstår det, rapportera det till Booqy.')
     default:
       return new Error(commonError(err, 'Kunde inte spara användaren.'))
   }
@@ -259,16 +260,27 @@ export function inviteUser(input: UserInviteRequest): Promise<User> {
   )
 }
 
-export function updateUserProfile(
+/**
+ * Bara de ändrade fälten skickas. Krockade sparningen med en ändring på annat
+ * håll (409) skickas samma fält en gång till ovanpå det som nu är sparat.
+ */
+export async function updateUserProfile(
   cognitoSub: string,
   updates: UserProfileUpdate,
 ): Promise<User> {
-  return userCall(() =>
-    apiFetch<User>(`/users/${encodeURIComponent(cognitoSub)}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    }),
-  )
+  const send = () =>
+    userCall(() =>
+      apiFetch<User>(`/users/${encodeURIComponent(cognitoSub)}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      }),
+    )
+  try {
+    return await send()
+  } catch (err) {
+    if (!(err as { conflict?: boolean }).conflict) throw err
+    return send()
+  }
 }
 
 export function changeUserGroup(

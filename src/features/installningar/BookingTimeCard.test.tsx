@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BookingTimeCard } from './BookingTimeCard'
+import { chooseOption } from '../../test/select'
 
 const getLocation = vi.fn()
 const updateLocation = vi.fn()
@@ -24,7 +25,7 @@ describe('BookingTimeCard', () => {
     render(<BookingTimeCard locationId="loc-1" isOwner />)
     expect(await screen.findByText(/Nu: 2 tim per bokning, ingen förlängning/)).toBeInTheDocument()
 
-    await user.selectOptions(screen.getByLabelText('Standardlängd'), '90')
+    await chooseOption(screen.getByLabelText('Standardlängd'), '90')
     await user.click(screen.getByLabelText('Personalen får förlänga bokningar om bordet är ledigt'))
     await user.click(screen.getByRole('button', { name: '+ Lägg till specialtid' }))
     await user.click(screen.getByRole('button', { name: 'Spara bokningstid' }))
@@ -59,7 +60,7 @@ describe('BookingTimeCard', () => {
       bookingTimeRules: { defaultMinutes: 90, extension: { allowed: true, maxMinutes: 30 }, lastSeatingMinutes: 120, windows: [] },
     })
     render(<BookingTimeCard locationId="loc-1" isOwner={false} />)
-    expect(await screen.findByText('Bara restaurangens ägare kan ändra bokningstiden.')).toBeInTheDocument()
+    expect(await screen.findByText('Bara ägaren kan ändra.')).toBeInTheDocument()
     expect(screen.getByLabelText('Standardlängd')).toBeDisabled()
   })
 })

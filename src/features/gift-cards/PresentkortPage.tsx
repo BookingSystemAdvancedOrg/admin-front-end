@@ -20,6 +20,7 @@ import {
   type Listing,
   type Settings,
 } from './api'
+import { DateInput } from '../../shared/DateInput'
 import './presentkort.css'
 
 /** Presentkort (planfunktionen "giftCards", bara ägare): sålda kort, saldo, historik och inställningar. */
@@ -155,7 +156,7 @@ function CardModal({ cardId, onClose, onChanged }: { cardId: string; onClose: ()
           </ul>
           {card.status === 'active' ? (
             <div className="form-grid">
-              <Field label="Förläng till"><Input type="date" value={extendTo} onChange={(e) => setExtendTo(e.target.value)} /></Field>
+              <Field label="Förläng till"><DateInput inputClassName="bq-input" value={extendTo} onChange={(e) => setExtendTo(e.target.value)} /></Field>
               <Field label="Anledning" hint="Sparas i historiken." required><Input value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
               <Bar variant="action" label="Presentkortet" className="presentkort-actions">
                 <Button variant="secondary" disabled={!extendTo || !reason.trim()} busy={busy === 'extend'}

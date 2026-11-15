@@ -50,6 +50,16 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* I ett Field från @booqy/brand (klassen bq-input): fältet fyller sin cell
+   som de andra fälten och går aldrig utanför kortet. */
+.date-input > input.bq-input,
+.time-input.bq-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .date-input > input[aria-invalid='true'],
 .time-input[aria-invalid='true'] {
   box-shadow: 0 0 0 1.5px var(--accent-ink);

@@ -26,6 +26,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
   { n: 14, text: 'Tabeller i mobilen' },
   { n: 15, text: 'Reglage i mobilen' },
   { n: 16, text: 'Meny längst ner' },
+  { n: 17, text: 'Datumfält i mobilen' },
 ]
 
 declare const __WHATS_NEW_N__: number | undefined

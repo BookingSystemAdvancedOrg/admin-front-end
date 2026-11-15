@@ -9,6 +9,7 @@ import { withBusy } from '../../shared/motion/busy'
 import { errorText } from '../../shared/errors'
 import { ApiError } from '../../shared/api'
 import SimulatorPanel from './SimulatorPanel'
+import { TimeInput } from '../../shared/DateInput'
 import {
   DAYS, ERRORS, saveConfigPatch, saveLocationPatch,
   type Config, type Day, type LocationConfig, type Span,
@@ -172,9 +173,9 @@ export default function AdvancedSettings({ locationId, config, loc, open, onOpen
                   <span className="telefon-hours__label">{d.label}</span>
                   {spansOf(d.key).length ? spansOf(d.key).map((span, i) => (
                     <div key={i} className="telefon-hours__row">
-                      <Input type="time" aria-label={`${d.label} från${i ? ` (${i + 1})` : ''}`} value={span.from}
+                      <TimeInput inputClassName="bq-input" aria-label={`${d.label} från${i ? ` (${i + 1})` : ''}`} value={span.from}
                         onChange={(e) => setSpan(d.key, i, 'from', e.target.value)} />
-                      <Input type="time" aria-label={`${d.label} till${i ? ` (${i + 1})` : ''}`} value={span.to}
+                      <TimeInput inputClassName="bq-input" aria-label={`${d.label} till${i ? ` (${i + 1})` : ''}`} value={span.to}
                         onChange={(e) => setSpan(d.key, i, 'to', e.target.value)} />
                       <Button type="button" size="sm" variant="secondary" aria-label={`Ta bort ${d.label.toLowerCase()} ${span.from}-${span.to}`}
                         onClick={() => removeSpan(d.key, i)}>Ta bort</Button>

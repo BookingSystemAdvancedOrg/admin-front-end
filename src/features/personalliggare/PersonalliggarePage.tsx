@@ -29,6 +29,7 @@ import {
 } from './api'
 import './personalliggare.css'
 import { ErrorActions } from '../../shared/ErrorNote'
+import { DateInput, TimeInput } from '../../shared/DateInput'
 
 type Tab = 'idag' | 'personer' | 'rattelser' | 'exportera'
 
@@ -197,7 +198,7 @@ function Today({ locationId, owner, persons }: { locationId: string; owner: bool
 
       <Card title="Liggaren">
         <Field label="Dag">
-          <Input type="date" value={day} max={today()} onChange={(e) => e.target.value && setDay(e.target.value)} />
+          <DateInput inputClassName="bq-input" value={day} max={today()} onChange={(e) => e.target.value && setDay(e.target.value)} />
         </Field>
         {data ? <Rows rows={data.records} /> : null}
       </Card>
@@ -427,7 +428,7 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
         <p className="cell-muted">Välj en rad nedan, eller fyll i för att efterregistrera.</p>
         <form className="form-grid" onSubmit={save} aria-label="Rättelse">
           <Field label="Dag" required>
-            <Input type="date" value={day} max={today()} onChange={(e) => { if (e.target.value) { setDay(e.target.value); pick(null) } }} />
+            <DateInput inputClassName="bq-input" value={day} max={today()} onChange={(e) => { if (e.target.value) { setDay(e.target.value); pick(null) } }} />
           </Field>
           <Field label="Person" required>
             <Select value={personId} onChange={(e) => setPersonId(e.target.value)}>
@@ -442,7 +443,7 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
             </Select>
           </Field>
           <Field label="Rätt tid" required>
-            <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            <TimeInput inputClassName="bq-input" value={time} onChange={(e) => setTime(e.target.value)} />
           </Field>
           <Field label="Orsak" hint="5-300 tecken. Sparas i liggaren." required>
             <Input value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} />
@@ -501,8 +502,8 @@ function Export({ locationId }: { locationId: string }) {
     <Card title="Exportera">
       <p className="cell-muted">Innehåller personnummer: spara filen säkert.</p>
       <form className="form-grid" onSubmit={run} aria-label="Exportera liggaren">
-        <Field label="Från" required><Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
-        <Field label="Till" required><Input type="date" value={to} max={today()} onChange={(e) => setTo(e.target.value)} /></Field>
+        <Field label="Från" required><DateInput inputClassName="bq-input" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
+        <Field label="Till" required><DateInput inputClassName="bq-input" value={to} max={today()} onChange={(e) => setTo(e.target.value)} /></Field>
         <Bar variant="action" label="Exportera">
           <Button type="submit" busy={busy} busyLabel="Exporterar…" disabled={!from || !to}>Ladda ner CSV</Button>
         </Bar>

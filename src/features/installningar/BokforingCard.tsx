@@ -16,6 +16,7 @@ import './bokforing.css'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
 import { Select } from '../../shared/Select'
+import { DateInput } from '../../shared/DateInput'
 
 /**
  * Bokföring: dagens försäljning som en verifikation per dag, till Fortnox,
@@ -252,12 +253,12 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
               <>
                 <div className="form-field">
                   <label htmlFor="bokforing-from">Från och med</label>
-                  <input id="bokforing-from" type="date" value={from} max={to || undefined}
+                  <DateInput id="bokforing-from" value={from} max={to || undefined}
                     onChange={(e) => setFrom(e.target.value)} />
                 </div>
                 <div className="form-field">
                   <label htmlFor="bokforing-to">Till och med</label>
-                  <input id="bokforing-to" type="date" value={to} min={from || undefined}
+                  <DateInput id="bokforing-to" value={to} min={from || undefined}
                     onChange={(e) => setTo(e.target.value)} />
                 </div>
               </>

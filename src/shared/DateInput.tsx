@@ -19,7 +19,10 @@ type Common = {
   value: string
   onChange: Change
   disabled?: boolean
+  required?: boolean
   className?: string
+  /** Klass på själva textfältet, t.ex. "bq-input" i ett Field från @booqy/brand. */
+  inputClassName?: string
   'aria-label'?: string
   'aria-invalid'?: boolean
   'aria-describedby'?: string
@@ -121,6 +124,8 @@ export function DateInput({ value, onChange, min, max, ...rest }: Common & { min
         inputMode="numeric"
         autoComplete="off"
         placeholder="DD/MM/ÅÅÅÅ"
+        className={rest.inputClassName}
+        required={rest.required}
         data-min={min}
         data-max={max}
         value={text}
@@ -186,9 +191,10 @@ export function TimeInput({ value, onChange, ...rest }: Common & { step?: number
       inputMode="numeric"
       autoComplete="off"
       placeholder="TT:MM"
-      className={`time-input ${rest.className ?? ''}`}
+      className={['time-input', rest.className, rest.inputClassName].filter(Boolean).join(' ')}
       value={text}
       disabled={rest.disabled}
+      required={rest.required}
       aria-label={rest['aria-label']}
       aria-invalid={rest['aria-invalid'] || invalid || undefined}
       aria-describedby={rest['aria-describedby']}
@@ -243,6 +249,8 @@ export function DateTimeInput({
       <TimeInput
         value={time}
         disabled={rest.disabled}
+        required={rest.required}
+        inputClassName={rest.inputClassName}
         aria-label={timeLabel}
         aria-invalid={rest['aria-invalid']}
         onChange={(e) => {

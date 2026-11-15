@@ -72,6 +72,7 @@ describe('field validation (mirrors create-location Lambda rules)', () => {
     expect(validateGracePeriod(0)).not.toBeNull()
     expect(validateGracePeriod(1.25)).not.toBeNull()
     expect(validateGracePeriod(-0.5)).not.toBeNull()
+    expect(validateGracePeriod(0)).toContain('Väntetiden för sena gäster')
   })
 
   it('requires a well-formed email address', () => {

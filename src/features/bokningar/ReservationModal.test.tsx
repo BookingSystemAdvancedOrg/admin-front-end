@@ -91,7 +91,7 @@ describe('ReservationModal', () => {
     render(<ReservationModal today={TODAY} reservation={booking()} isOwner onChanged={() => {}} onClose={() => {}} />)
     await user.click(screen.getByRole('button', { name: 'Uteblev' }))
     await user.click(screen.getAllByRole('button', { name: 'Uteblev' }).at(-1)!)
-    expect(await screen.findByRole('alert')).toHaveTextContent('grace period')
+    expect(await screen.findByRole('alert')).toHaveTextContent('väntetid för sena gäster')
   })
 
   it('cancels and tells the guest unless unticked', async () => {

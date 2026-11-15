@@ -180,7 +180,7 @@ export function validateBookingDuration(hours: number): string | null {
 
 export function validateGracePeriod(hours: number): string | null {
   if (!Number.isFinite(hours) || hours < 0.25 || hours > 1) {
-    return 'Grace period ska vara mellan 15 och 60 minuter.'
+    return 'Väntetiden för sena gäster ska vara mellan 15 och 60 minuter.'
   }
   return null
 }
@@ -268,7 +268,7 @@ function toFriendlyLocationError(err: unknown): Error {
       return new ApiError(
         400,
         /^gracePeriodHours must be shorter/.test(err.message)
-          ? 'Grace period måste vara kortare än den kortaste bokningstiden (se Bokningstid).'
+          ? 'Väntetiden för sena gäster måste vara kortare än den kortaste bokningstiden (se Bokningstid).'
           : commonError(err, 'Platsen kunde inte sparas.', {}, LOCATION_FIELDS),
         { code: err.code, field: err.field },
       )

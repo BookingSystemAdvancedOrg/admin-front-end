@@ -262,7 +262,7 @@ const ERROR_TEXT: Record<string, string> = {
   cannot_undo: 'Det går inte att ångra längre.',
   not_reserved: 'Bara en aktiv bokning kan markeras som utebliven.',
   grace_period_not_over:
-    'För tidigt: gästen kan markeras som utebliven först när platsens grace period efter starttiden har gått.',
+    'För tidigt: gästen kan markeras som utebliven först när platsens väntetid för sena gäster har gått.',
   not_cancellable: 'Den här bokningen kan inte avbokas.',
   not_movable: 'Den här bokningen kan inte flyttas.',
   not_editable: 'Den här bokningen kan inte ändras.',

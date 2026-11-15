@@ -90,7 +90,7 @@ describe('bookingsApi', () => {
   })
 
   it('maps server codes to Swedish messages', () => {
-    expect(errorMessage(new ApiError(409, 'grace_period_not_over'))).toMatch(/grace period/)
+    expect(errorMessage(new ApiError(409, 'grace_period_not_over'))).toMatch(/väntetid för sena gäster/)
     expect(errorMessage(new ApiError(402, 'authentication_required'))).toMatch(/godkänner/)
     expect(errorMessage(new ApiError(402, 'weird', { fromServer: true }))).toMatch(/^Betalningen gick inte igenom\. /)
     expect(errorMessage(new ApiError(402, 'weird', { fromServer: true }))).not.toMatch(/weird/)

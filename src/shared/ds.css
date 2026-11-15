@@ -92,6 +92,24 @@
 
   --nav-w: 248px;
   --shell-gap: var(--space-3);
+
+  /* Telefonens meny längst ner (shared/bottomNav.css). --dock-space är
+     platsen raden tar längst ner: 0 på bredare skärmar och när raden är gömd. */
+  --dock-h: 64px;
+  --dock-gap: 10px;
+  --dock-space: 0px;
+  --dock-ink: var(--ink);
+  --dock-ink-off: color-mix(in srgb, var(--ink) 66%, transparent);
+  --dock-pill: rgb(26 18 14 / 0.08);
+  --dock-pill-edge: rgb(26 18 14 / 0.05);
+  --dock-disc: #1a120e;
+  --dock-disc-ink: #f6efe6;
+  --dock-disc-shadow: 0 6px 18px rgba(53, 0, 1, 0.22), 0 1px 0 rgb(var(--bq-snow-rgb) / 0.18) inset;
+  --dock-shadow: 0 10px 30px rgba(26, 18, 14, 0.18);
+  --dock-scrim: rgba(26, 18, 14, 0.32);
+  --dock-wine: #350001;
+  /* Täckande: Safari lät sidans text lysa igenom även vid 95 %. */
+  --dock-sheet: rgb(var(--bq-snow-rgb));
 }
 
 :root[data-theme='dark'] {
@@ -119,6 +137,25 @@
   --field-inset: inset 0 2px 4px rgb(0 0 0 / 0.42), inset 0 -1px 0 rgb(246 241 234 / 0.07);
   --field-placeholder: #b3a79f;
   --dim: rgba(0, 0, 0, 0.55);
+  --dock-ink-off: color-mix(in srgb, var(--ink) 68%, transparent);
+  --dock-pill: rgb(246 241 234 / 0.14);
+  --dock-pill-edge: rgb(246 241 234 / 0.08);
+  --dock-disc: #f6efe6;
+  --dock-disc-ink: #1a120e;
+  --dock-disc-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  --dock-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  --dock-scrim: var(--dim);
+  --dock-wine: #ee8a90;
+  --dock-sheet: rgb(36, 25, 19);
+}
+
+@media (max-width: 900px) {
+  :root {
+    --dock-space: calc(var(--dock-h) + var(--dock-gap) + 10px + env(safe-area-inset-bottom, 0px));
+  }
+  html.dock-hidden {
+    --dock-space: 0px;
+  }
 }
 
 /* --- Skalet ---------------------------------------------------------------- */
@@ -311,8 +348,7 @@
 }
 
 /* Telefonens rad överst: bara på smala skärmar (se längre ned). */
-.admin-mobilebar,
-.admin-drawer-scrim {
+.admin-mobilebar {
   display: none;
 }
 
@@ -829,40 +865,26 @@
     gap: var(--space-2);
   }
 
+  /* Överst bara märket och restaurangen; rullar bort med sidan. Menyn är
+     längst ner (BottomNav), så här finns inga knappar. */
   .admin-mobilebar {
-    position: sticky;
-    top: var(--space-2);
-    z-index: 40;
+    position: static;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: var(--space-3);
-    min-height: 56px;
-    padding: var(--space-2) var(--space-4) var(--space-2) var(--space-2);
+    min-height: 48px;
+    padding: var(--space-2) var(--space-4);
     border-radius: var(--radius-panel);
-    background: var(--glass-side);
+    background: var(--glass-side) var(--liquid-sheen);
     box-shadow: var(--glass-edge), var(--elev-1);
     -webkit-backdrop-filter: blur(var(--blur-side)) saturate(1.5);
     backdrop-filter: blur(var(--blur-side)) saturate(1.5);
   }
 
-  .admin-menu-button {
-    display: inline-grid;
-    place-items: center;
-    width: 40px;
-    height: 40px;
-    border: 0;
-    border-radius: var(--radius-pill);
-    background: var(--wall-tint);
-    color: var(--ink);
-  }
-
-  .admin-menu-button:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--focus);
-  }
-
   .admin-mobilebar-brand {
     display: inline-flex;
+    flex: none;
     color: var(--ink);
   }
 
@@ -877,140 +899,19 @@
     text-overflow: ellipsis;
   }
 
-  .admin-drawer-scrim {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 55;
-    background: var(--dim);
-    animation: palette-fade var(--dur-base) var(--ease-out);
+  .admin-mobilebar-place {
+    font-weight: var(--fw-regular);
   }
 
-  .admin-sidebar,
-  .admin-sidebar.liquid--full {
-    position: fixed;
-    top: var(--space-2);
-    bottom: var(--space-2);
-    left: var(--space-2);
-    z-index: 60;
-    width: min(300px, calc(100vw - 48px));
-    height: auto;
-    min-height: 0;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    align-items: stretch;
-    gap: var(--space-1);
-    padding: var(--space-5) 0 var(--space-4);
-    overflow-y: auto;
-    background: var(--glass-pop);
-    box-shadow: var(--glass-edge), var(--elev-3);
-    -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
-    backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
-    transform: translateX(calc(-100% - var(--space-4)));
-    visibility: hidden;
-    transition:
-      transform var(--dur-slow) var(--ease-out),
-      visibility 0s var(--dur-slow);
+  /* Sidomenyn finns bara på bredare skärmar: här är menyn längst ner. */
+  .admin-shell .admin-sidebar,
+  .admin-shell .admin-sidebar.liquid--full {
+    display: none;
   }
 
-  .drawer-open .admin-sidebar {
-    transform: none;
-    visibility: visible;
-    transition: transform var(--dur-slow) var(--ease-out);
-  }
-
-  /* Lådan är exakt fönstrets höjd (minus marginalen) oavsett äldre regler,
-     och innehållet rullar i en inre yta. dvh följer Safaris verktygsfält;
-     svh är reserven. Längst ned plats för hemindikatorn. */
-  .admin-shell .admin-sidebar {
-    inset-block: var(--space-2) auto;
-    block-size: calc(100svh - 2 * var(--space-2));
-    block-size: calc(100dvh - 2 * var(--space-2));
-    max-block-size: calc(100dvh - 2 * var(--space-2));
-    min-block-size: 0;
-    padding: 0;
-    overflow: hidden;
-  }
-
-  .admin-shell .admin-sidebar-scroll {
-    padding: var(--space-5) 0 calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .admin-logo {
-    padding: 0 var(--space-5) var(--space-5);
-  }
-
-  .admin-nav {
-    flex-direction: column;
-    flex-wrap: nowrap;
-    width: 100%;
-  }
-
-  .admin-nav-group {
-    display: flex;
-  }
-
-  .admin-nav-heading,
-  .admin-nav-toggle {
-    display: flex;
-  }
-
-  .admin-nav-items {
-    display: grid;
-  }
-
-  .admin-nav-items > div {
-    display: flex;
-  }
-
-  .admin-nav-group.closed .admin-nav-items {
-    grid-template-rows: 0fr;
-    opacity: 0;
-    visibility: hidden;
-  }
-
-  .admin-nav-item {
-    min-height: 44px;
-    padding: 0 var(--space-3);
-    border-bottom: 0;
-  }
-
-  .admin-sidebar-spacer {
-    display: block;
-    min-height: var(--space-4);
-  }
-
-  .admin-nav--bottom {
-    flex-direction: column;
-    flex-wrap: nowrap;
-    margin-top: var(--space-2);
-    padding-top: var(--space-2);
-    border-top: 1px solid var(--hairline);
-  }
-
-  .admin-user {
-    margin: 0;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-2);
-    padding: var(--space-3) var(--space-5) 0;
-  }
-
-  .admin-logout {
-    align-self: flex-start;
-  }
-
-  /* Guiden pekar på menylänkarna: lådan står öppen i flödet så länge. */
-  .guide-nav-open .admin-sidebar {
-    position: relative;
-    inset: auto;
-    z-index: auto;
-    width: 100%;
-    transform: none;
-    visibility: visible;
+  /* Fråga Booqy ligger under Mer; ingen flytande knapp över raden. */
+  .help-launcher {
+    display: none;
   }
 
   .admin-topbar {
@@ -1104,13 +1005,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .palette,
-  .palette-backdrop,
-  .admin-drawer-scrim {
+  .palette-backdrop {
     animation: none;
-  }
-  .admin-sidebar,
-  .drawer-open .admin-sidebar {
-    transition: none;
   }
 }
 
@@ -1247,11 +1143,19 @@
     gap: 6px 16px;
   }
 
+  /* rubriken står ovanför värdet, så varje siffra säger vad den är */
   .data-table:not(.keep-table) td[data-label]::before {
-    content: attr(data-label) ' ';
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
     font-size: 12px;
     font-weight: 500;
     color: var(--muted);
+  }
+
+  /* radens namn står överst på en egen rad, värdena under */
+  .data-table:not(.keep-table) td.cell-strong:first-child {
+    flex: 1 1 100%;
   }
 }
 
@@ -1424,6 +1328,30 @@ html.is-desktop-glass.glass-refract .admin-sidebar {
   }
 }
 
+/* Inbyggda datum- och tidsfält (skyddsnät, appen använder shared/DateInput):
+   iOS Safari ger dem en egen minsta bredd och centrerad text, så att de
+   annars sticker ut ur kortet. Här följer de samma mått som andra fält. */
+input:is([type='date'], [type='time'], [type='datetime-local'], [type='month'], [type='week']) {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 10px 16px;
+  font: 400 15px/1.3 var(--font);
+  text-align: left;
+}
+input:is([type='date'], [type='time'], [type='datetime-local'], [type='month'], [type='week'])::-webkit-date-and-time-value {
+  min-width: 0;
+  margin: 0;
+  text-align: left;
+}
+input:is([type='date'], [type='time'], [type='datetime-local'], [type='month'], [type='week'])::-webkit-datetime-edit {
+  padding: 0;
+}
+
 /* Sifferfält: ingen inbyggd snurra, siffrorna står i linje. */
 input[type='number'] {
   -moz-appearance: textfield;
@@ -1457,4 +1385,23 @@ html.drawer-lock body {
    (också i mediafrågorna) inte tar bort den. */
 .admin-right .admin-main {
   padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Telefon: ingen flytande knapp, men menyn längst ner (--dock-space). Den
+   klistrade Spara-raden, rutan "Ny version" och andra fasta saker längst ner
+   lägger sig ovanför raden. */
+@media (max-width: 900px) {
+  .admin-right .admin-main {
+    padding-bottom: calc(var(--dock-space) + 16px);
+  }
+
+  html .bq-bar--stuck {
+    bottom: calc(var(--dock-space) + 8px);
+  }
+
+  html .booqy-update,
+  html .booqy-updated {
+    bottom: calc(var(--dock-space) + 8px);
+    transition: bottom 200ms var(--ease-out);
+  }
 }

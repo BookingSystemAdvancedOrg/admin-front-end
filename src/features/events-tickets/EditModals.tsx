@@ -12,6 +12,7 @@ import {
   MAX_PLACES, priceOre, takenOf, takenText, toUtc, typeForm, validateCapacity, validateType, type TypeForm,
 } from './edit'
 import { ErrorActions } from '../../shared/ErrorNote'
+import { DateTimeInput } from '../../shared/DateInput'
 
 const TYPE_FIELDS: (keyof TypeForm)[] = ['name', 'includes', 'priceKr', 'vatRate', 'perOrderMax', 'capacity', 'from', 'until']
 const SERVER_FIELD: Record<string, keyof TypeForm> = {
@@ -191,10 +192,10 @@ export function TypeEditModal({ locationId, eventId, type: opened, latest = null
         </div>
         <div className="evenemang-row">
           <Field label="Säljs från" error={errors.from} hint="Tomt = när försäljningen öppnar.">
-            <Input id={id('from')} type="datetime-local" value={form.from} onChange={(e) => set({ from: e.target.value })} />
+            <DateTimeInput inputClassName="bq-input" id={id('from')} timeLabel="Säljs från, tid" value={form.from} onChange={(e) => set({ from: e.target.value })} />
           </Field>
           <Field label="Säljs till" error={errors.until} hint="Tomt = tills försäljningen stänger.">
-            <Input id={id('until')} type="datetime-local" value={form.until} onChange={(e) => set({ until: e.target.value })} />
+            <DateTimeInput inputClassName="bq-input" id={id('until')} timeLabel="Säljs till, tid" value={form.until} onChange={(e) => set({ until: e.target.value })} />
           </Field>
         </div>
         {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}

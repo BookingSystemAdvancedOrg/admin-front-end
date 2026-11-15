@@ -35,6 +35,8 @@ import { helpChatEnabled, openHelpChat } from '../features/help/chatState'
 import { ErrorNote } from './ErrorNote'
 import { booqyFaultText } from './errors'
 import { Select } from './Select'
+import { BottomNav } from './BottomNav'
+import { usePhoneNav } from './dock'
 
 /** Grupperna i sidomenyn som användaren har fällt ihop (sparas i webbläsaren). */
 function storedClosedGroups(): string[] {
@@ -86,25 +88,12 @@ export function AdminLayout() {
   // Sidomenyns grupper är öppna från början; en grupp man fäller ihop förblir
   // hopfälld i den här webbläsaren.
   const [closedGroups, setClosedGroups] = useState<string[]>(storedClosedGroups)
-  // Telefon och surfplatta: menyn är en glaslåda från vänster som öppnas med
-  // menyknappen och stängs vid sidbyte, Esc eller klick utanför.
-  const [drawer, setDrawer] = useState(false)
+  // Telefon och smal surfplatta (900 px och smalare): ingen sidomeny och ingen
+  // menyknapp uppe, utan menyn längst ner där tummen är (BottomNav).
+  const phone = usePhoneNav()
   useEffect(() => {
-    setDrawer(false)
     rememberPage(pathname)
   }, [pathname])
-  useEffect(() => {
-    if (!drawer) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setDrawer(false)
-    window.addEventListener('keydown', onKey)
-    // Sidan bakom lådan står still medan den är öppen.
-    const root = document.documentElement
-    root.classList.add('drawer-lock')
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      root.classList.remove('drawer-lock')
-    }
-  }, [drawer])
   // Skalet och första sidan är uppe: resten av sidorna hämtas i bakgrunden.
   useEffect(() => {
     if (status === 'ready') preloadPages()
@@ -132,6 +121,7 @@ export function AdminLayout() {
   // Visningsnamn = det som står innan '@' i e-posten, t.ex. "anna@..." -> "anna".
   const displayName = email ? email.split('@')[0] : 'Personal'
   const locations = tenant?.locations ?? []
+  const locationName = locations.find((l) => l.locationId === locationId)?.name ?? ''
   // Sidomenyns "Logga ut" frågar först (felrutorna nedan loggar ut direkt -
   // där går appen ändå inte att använda).
   const [confirmLogout, setConfirmLogout] = useState(false)
@@ -145,6 +135,8 @@ export function AdminLayout() {
   const [poured, setPoured] = useState(!pour)
   const wall = useLiquidFill(sidebarRef, sidebarCanvas, {
     active: pour && status === 'ready',
+    // Telefon: sidomenyn syns inte, så den fylls inte; flaggan sätts ändå (onStatic).
+    enabled: !phone,
     fillMs: 1900,
     pourAt: 0.5,
     onProgress: (_, done) => {
@@ -184,27 +176,30 @@ export function AdminLayout() {
       }}
       autoStart={status === 'ready' && import.meta.env.MODE !== 'test'}
     >
-    <div className={`admin-shell${drawer ? ' drawer-open' : ''}`}>
+    <div className="admin-shell">
       <ShellPalette onLogout={() => setConfirmLogout(true)} />
       <HelpChat />
-      <GuideDrawer open={drawer} />
+      {/* Telefonens rad överst: bara märket och restaurangen, inga knappar (menyn är längst ner). */}
       <header className="admin-mobilebar">
-        <button
-          type="button"
-          className="admin-menu-button"
-          aria-expanded={drawer}
-          aria-controls="admin-sidebar"
-          onClick={() => setDrawer((o) => !o)}
-        >
-          <Icon name={drawer ? 'close' : 'menu'} size={20} />
-          <span className="sr-only">{drawer ? 'Stäng menyn' : 'Meny'}</span>
-        </button>
         <span className="admin-mobilebar-brand">
           <BrandWordmark height={18} />
         </span>
-        <span className="admin-mobilebar-name">{tenant?.name ?? ''}</span>
+        <span className="admin-mobilebar-name">
+          {tenant?.name ?? ''}
+          {locations.length > 1 && locationName && <span className="admin-mobilebar-place"> · {locationName}</span>}
+        </span>
       </header>
-      {drawer && <div className="admin-drawer-scrim" aria-hidden="true" onClick={() => setDrawer(false)} />}
+      {/* Även vid fel: Logga ut och resten av menyn finns kvar, som i sidomenyn. */}
+      {phone && (status === 'ready' || status === 'error') && (
+        <BottomNav
+          tenant={tenant}
+          locationId={locationId}
+          person={{ name: displayName, role: primaryGroupLabel(tenant ? [tenant.role] : groups) }}
+          email={email}
+          intro={pour}
+          onLogout={() => setConfirmLogout(true)}
+        />
+      )}
       <aside
         id="admin-sidebar"
         ref={sidebarRef}
@@ -362,16 +357,6 @@ export function AdminLayout() {
     </div>
     </GuideProvider>
   )
-}
-
-/** Guiden pekar på menylänkar: på smala skärmar ligger menyn då öppen i flödet. */
-function GuideDrawer({ open }: { open: boolean }) {
-  const { active } = useGuide()
-  useEffect(() => {
-    document.documentElement.classList.toggle('guide-nav-open', active && !open)
-    return () => document.documentElement.classList.remove('guide-nav-open')
-  }, [active, open])
-  return null
 }
 
 /** ⌘K: sidorna man får se, några åtgärder och de senast besökta sidorna. */

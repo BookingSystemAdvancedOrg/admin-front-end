@@ -152,7 +152,7 @@ function extensionError(ext: BookingExtension, label: string): string | null {
 
 const durationOk = (m: number) => Number.isInteger(m) && m >= STEP && m <= 480 && m % STEP === 0
 
-/** Första felet (svenska), eller null. graceMinutes = platsens grace period. */
+/** Första felet (svenska), eller null. graceMinutes = platsens väntetid för sena gäster (grace period). */
 export function validateRules(rules: BookingTimeRules, graceMinutes: number): string | null {
   if (!durationOk(rules.defaultMinutes)) return 'Standardlängden måste vara 15 min - 8 tim i kvartssteg.'
   const ext = extensionError(rules.extension, 'Standard')
@@ -184,7 +184,7 @@ export function validateRules(rules: BookingTimeRules, graceMinutes: number): st
   }
   const shortest = Math.min(rules.defaultMinutes, ...rules.windows.map((w) => w.durationMinutes))
   if (graceMinutes >= shortest) {
-    return `Grace period (${graceMinutes} min) måste vara kortare än den kortaste bokningen (${minutesLabel(shortest)}).`
+    return `Väntetiden för sena gäster (${graceMinutes} min) måste vara kortare än den kortaste bokningen (${minutesLabel(shortest)}).`
   }
   return null
 }

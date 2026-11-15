@@ -1227,8 +1227,10 @@
 }
 
 @media (max-width: 900px) {
+  /* Telefon: en kolumn. Surfplatta (kortet minst ~580 px brett): korta fält
+     två och två, så att ett sifferfält inte sträcks över hela kortet. */
   .form-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   }
 
   .admin-shell {

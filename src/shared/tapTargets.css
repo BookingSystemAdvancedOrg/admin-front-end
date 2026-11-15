@@ -3,7 +3,6 @@
    kontroller (switch, (i)) behåller sin bild: träffytan växer med en
    genomskinlig kant och negativ marginal, så att raden inte flyttar sig. */
 @media (max-width: 640px) {
-  html .admin-menu-button,
   html .palette-trigger,
   html .topbar-tool,
   html .admin-topbar .theme-toggle {
@@ -49,6 +48,13 @@
     border: 7px solid transparent;
     background-clip: padding-box;
     margin: -7px;
+  }
+
+  /* På: `background: var(--ink)` (brand.css) nollställer background-clip, så
+     den svarta färgen fyllde den osynliga tryckkanten och reglaget såg
+     tjockare ut än när det är av. Samma storlek i båda lägena. */
+  html .switch[aria-checked] {
+    background-clip: padding-box;
   }
 
   html .info-tooltip .info-tooltip-trigger {

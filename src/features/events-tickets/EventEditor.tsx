@@ -7,6 +7,7 @@ import { isConflict, mergeEdits, type FieldConflict } from '../../shared/merge'
 import { ERRORS, VAT_OPTIONS, createEvent, newId, updateEvent, type EventDetail, type NewEvent, type VatRate } from './api'
 import { ErrorActions } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
+import { DateInput, TimeInput } from '../../shared/DateInput'
 
 interface TypeRow { typeId: string; name: string; priceKr: string; vatRate: VatRate; perOrderMax: string; capacity: string; includes: string }
 
@@ -156,10 +157,10 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
         {!existing ? (
           <>
             <div className="evenemang-row">
-              <Field label="Datum" required><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required /></Field>
-              <Field label="Börjar"><Input type="time" value={start} onChange={(e) => setStart(e.target.value)} required /></Field>
+              <Field label="Datum" required><DateInput inputClassName="bq-input" value={date} onChange={(e) => setDate(e.target.value)} required /></Field>
+              <Field label="Börjar"><TimeInput inputClassName="bq-input" value={start} onChange={(e) => setStart(e.target.value)} required /></Field>
               <Field label="Slutar" hint="Före starten = nästa dag">
-                <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} required />
+                <TimeInput inputClassName="bq-input" value={end} onChange={(e) => setEnd(e.target.value)} required />
               </Field>
               <Field label="Platser"><Input type="number" min={1} max={10000} value={capacity} onChange={(e) => setCapacity(e.target.value)} required /></Field>
             </div>
@@ -197,7 +198,7 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
                 <option value="monthly">Varje månad (samma veckodag)</option>
               </Select>
             </Field>
-            {repeat ? <Field label="Till och med" hint="Högst ett år framåt."><Input type="date" value={until} onChange={(e) => setUntil(e.target.value)} required /></Field> : null}
+            {repeat ? <Field label="Till och med" hint="Högst ett år framåt."><DateInput inputClassName="bq-input" value={until} onChange={(e) => setUntil(e.target.value)} required /></Field> : null}
           </div>
         ) : null}
         <div className="evenemang-row">

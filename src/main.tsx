@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import '@booqy/brand/styles.css'
 import './index.css'
 import { installPress } from './shared/press'
+import { installTableLabels } from './shared/tableLabels'
 import { installGlide } from './shared/glide'
 import { installGlassFilter } from './shared/glassFilter'
 import { installDesktopGlass } from './shared/desktopGlass'
@@ -26,6 +27,7 @@ import CookiesPage from './features/cookies/CookiesPage.tsx'
 // and is gated by RequireAuth, which redirects signed-out visitors to
 // /logga-in.
 installPress()
+installTableLabels()
 installGlide()
 installGlassFilter()
 installDesktopGlass()

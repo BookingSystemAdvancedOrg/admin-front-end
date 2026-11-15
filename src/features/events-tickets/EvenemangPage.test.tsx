@@ -375,7 +375,7 @@ describe('editing ticket types and occurrences after sales', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
     expect(await screen.findByText(/Fler biljetter hann säljas medan du ändrade/)).toBeInTheDocument()
     expect(screen.getByLabelText(/^Antal av typen/)).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByLabelText(/^Säljs till/)).not.toHaveAttribute('aria-invalid')
+    expect(screen.getByLabelText('Säljs till')).not.toHaveAttribute('aria-invalid')
   })
 
   it('validates in Swedish (pure helpers)', () => {

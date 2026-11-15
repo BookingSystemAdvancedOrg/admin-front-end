@@ -1,0 +1,593 @@
+/* Telefonens meny längst ner (BottomNav, MoreSheet). Tokens i ds.css
+   (--dock-*). Bara 900 px och smalare; bredare skärmar har sidomenyn. */
+
+.bq-dock,
+.bq-more,
+.bq-more-scrim {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  /* --- Raden --------------------------------------------------------------- */
+
+  .bq-dock {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(var(--dock-gap) + env(safe-area-inset-bottom, 0px));
+    z-index: 50;
+    display: grid;
+    grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr));
+    align-items: center;
+    max-width: 520px;
+    height: var(--dock-h);
+    margin-inline: auto;
+    padding: 0 6px;
+    border-radius: 24px;
+    background: var(--glass-pop) var(--liquid-sheen);
+    box-shadow: var(--liquid-edge), var(--dock-shadow);
+    -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
+    backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
+    transition:
+      transform 200ms var(--ease-out),
+      opacity 200ms var(--ease-out),
+      visibility 0s;
+  }
+
+  .glass-refract .bq-dock {
+    backdrop-filter: url(#booqy-glass) blur(var(--blur-pop)) saturate(1.5);
+  }
+
+  /* Arket är öppet: raden ligger över skuggan, så att Mer stänger och de andra byter sida. */
+  .bq-dock.is-sheet-open {
+    z-index: 59;
+  }
+
+  .bq-dock--intro {
+    animation: bq-dock-in 360ms var(--ease-out) both;
+  }
+
+  @keyframes bq-dock-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
+  /* Tangentbordet eller ett lager över hela skärmen: raden glider bort. */
+  html.dock-hidden .bq-dock {
+    transform: translateY(calc(100% + 24px + env(safe-area-inset-bottom, 0px)));
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      transform 200ms var(--ease-out),
+      opacity 200ms var(--ease-out),
+      visibility 0s 200ms;
+  }
+
+  /* Pillret bakom den aktiva ikonen: ett element som glider mellan platserna. */
+  .bq-dock__pill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 6px;
+    width: calc((100% - 12px) / var(--n, 5));
+    pointer-events: none;
+    transform: translateX(calc(var(--i, 0) * 100%));
+    transition: transform 240ms var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+  }
+
+  .bq-dock__pill::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 52px;
+    height: 38px;
+    margin: -19px 0 0 -26px;
+    border-radius: 19px;
+    background: var(--dock-pill) var(--liquid-sheen);
+    box-shadow: inset 0 0 0 1px var(--dock-pill-edge);
+  }
+
+  .bq-dock__pill.is-off {
+    opacity: 0;
+  }
+
+  .bq-dock__item {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    justify-self: center;
+    width: 48px;
+    height: 48px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 16px;
+    background: none;
+    color: var(--dock-ink-off);
+    text-decoration: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: color var(--dur-fast) var(--ease-out);
+  }
+
+  .bq-dock__item.is-active {
+    color: var(--dock-ink);
+  }
+
+  .bq-dock__item.is-active .icon {
+    stroke-width: 2.1;
+  }
+
+  .bq-dock__item:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  /* Ny bokning: den upphöjda runda knappen i mitten, aldrig vinröd. */
+  .bq-dock__new {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    transform: translateY(-22px);
+  }
+
+  .bq-dock__disc {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--dock-disc);
+    color: var(--dock-disc-ink);
+    box-shadow: var(--dock-disc-shadow);
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+
+  .bq-dock__disc .icon {
+    stroke-width: 2.2;
+  }
+
+  .bq-dock__new:active .bq-dock__disc,
+  .bq-dock__new.is-pressed .bq-dock__disc {
+    transform: scale(0.94);
+  }
+
+  /* press.ts klämmer knappar; mittknappen har sin egen klämning ovan. */
+  .bq-dock__new.is-pressed {
+    scale: none;
+  }
+
+  .bq-dock__new:focus-visible {
+    outline-offset: 0;
+  }
+
+  /* --- Arket bakom Mer ----------------------------------------------------- */
+
+  .bq-more-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: var(--dock-scrim);
+    animation: bq-fade-in 280ms var(--ease-out) both;
+  }
+
+  .bq-more-scrim.is-closing {
+    animation: bq-fade-out 220ms var(--ease-out) both;
+  }
+
+  .bq-more {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(var(--dock-space) + 14px);
+    z-index: 58;
+    display: flex;
+    flex-direction: column;
+    max-width: 560px;
+    max-height: calc(100dvh - var(--dock-space) - 40px);
+    margin-inline: auto;
+    border-radius: 24px;
+    /* Nästan helt täckande, som rullistornas ark: inget av sidan lyser igenom listan. */
+    background: var(--dock-sheet) var(--liquid-sheen);
+    box-shadow: var(--liquid-edge), var(--elev-3);
+    -webkit-backdrop-filter: blur(var(--blur-modal)) saturate(1.5);
+    backdrop-filter: blur(var(--blur-modal)) saturate(1.5);
+    color: var(--ink);
+    transform-origin: 50% 100%;
+    animation: bq-sheet-in 280ms var(--ease-out) both;
+    transition: transform 220ms var(--ease-out);
+    overflow: hidden;
+  }
+
+  /* Raden är gömd (en rullista över arket): arket går ned till kanten. */
+  html.dock-hidden .bq-more {
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .bq-more.is-closing {
+    animation: bq-sheet-out 220ms var(--ease-out) forwards;
+    pointer-events: none;
+  }
+
+  @keyframes bq-sheet-in {
+    from {
+      opacity: 0;
+      transform: translateY(calc(100% + var(--dock-space)));
+    }
+  }
+
+  @keyframes bq-sheet-out {
+    to {
+      opacity: 0;
+      transform: translateY(calc(100% + var(--dock-space)));
+    }
+  }
+
+  @keyframes bq-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes bq-fade-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  .bq-more__grab {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 28px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .bq-more__grab.is-pressed {
+    scale: none;
+  }
+
+  .bq-more__handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--hairline-strong);
+  }
+
+  .bq-more__grab:focus-visible {
+    outline: none;
+  }
+
+  .bq-more__grab:focus-visible .bq-more__handle {
+    outline: 2px solid var(--focus);
+    outline-offset: 4px;
+  }
+
+  .bq-more__head {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px 12px 18px;
+    border-bottom: 1px solid var(--hairline);
+    touch-action: none;
+  }
+
+  /* Märket: svart ruta med ljust b (mörkt läge: tvärtom), aldrig vinrött. */
+  .bq-more__mark {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--dock-disc);
+    color: var(--dock-disc-ink);
+  }
+
+  .bq-more__who {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .bq-more__name {
+    overflow: hidden;
+    font: var(--fw-strong) var(--fs-base) / 1.25 var(--font);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .bq-more__role {
+    overflow: hidden;
+    font-size: var(--fs-sm);
+    color: var(--muted);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .bq-more__list {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 12px 10px 14px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .bq-more__place {
+    display: grid;
+    gap: 6px;
+    padding: 0 8px 14px;
+  }
+
+  .bq-more__place label {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-strong);
+    color: var(--muted);
+  }
+
+  /* Snabbvalen: runda glasbrickor med namnet under. */
+  .bq-more__quick {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 2px 4px 12px;
+  }
+
+  .bq-more__tile {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    min-height: 84px;
+    margin: 0;
+    padding: 4px 0;
+    border: 0;
+    border-radius: 18px;
+    background: none;
+    color: var(--ink);
+    font: var(--fw-strong) var(--fs-sm) / 1.2 var(--font);
+    cursor: pointer;
+  }
+
+  .bq-more__tile.is-pressed {
+    scale: none;
+  }
+
+  .bq-more__tile-disc {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--dock-pill) var(--liquid-sheen);
+    box-shadow: var(--liquid-edge), inset 0 0 0 1px var(--dock-pill-edge);
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+
+  .bq-more__tile.is-pressed .bq-more__tile-disc,
+  .bq-more__tile:active .bq-more__tile-disc {
+    transform: scale(0.94);
+  }
+
+  .bq-more__tile:focus-visible {
+    outline: none;
+  }
+
+  .bq-more__tile:focus-visible .bq-more__tile-disc {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .bq-more__nav {
+    display: grid;
+    gap: 4px;
+  }
+
+  .bq-more__group {
+    display: grid;
+    padding-top: 6px;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .bq-more__group:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .bq-more__group-label {
+    margin: 6px 0 2px;
+    padding: 0 12px;
+    font: var(--fw-strong) var(--fs-xs) / 1.4 var(--font);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .bq-more__row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    min-height: 52px;
+    margin: 0;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 16px;
+    background: none;
+    color: var(--ink);
+    font: var(--fw-regular) var(--fs-base) / 1.2 var(--font);
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .bq-more__row.is-pressed {
+    scale: none;
+  }
+
+  .bq-more__row-icon {
+    flex: none;
+    color: var(--dock-ink-off);
+  }
+
+  .bq-more__row-label {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .bq-more__chev {
+    flex: none;
+    color: var(--dock-ink-off);
+    transform: rotate(-90deg);
+  }
+
+  .bq-more__row.is-active {
+    background: var(--dock-pill) var(--liquid-sheen);
+    box-shadow: inset 0 0 0 1px var(--dock-pill-edge);
+    font-weight: var(--fw-strong);
+  }
+
+  .bq-more__row.is-active .bq-more__row-icon {
+    color: var(--dock-ink);
+  }
+
+  .bq-more__row:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+  }
+
+  .bq-more__look {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 52px;
+    margin-top: 6px;
+    padding: 6px 6px 6px 12px;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .bq-more__look-label {
+    font-size: var(--fs-base);
+  }
+
+  .bq-more__look-tools {
+    display: inline-flex;
+    gap: 6px;
+  }
+
+  .bq-more__look-tools .bq-more__tool.theme-toggle {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--dock-pill) var(--liquid-sheen);
+    box-shadow: var(--liquid-edge), inset 0 0 0 1px var(--dock-pill-edge);
+    color: var(--ink);
+  }
+
+  .bq-more__look-tools .bq-more__tool.theme-toggle:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .bq-more__logout {
+    border-top: 1px solid var(--hairline);
+    border-radius: 0 0 16px 16px;
+  }
+
+  .bq-more__logout .bq-more__row-icon {
+    color: var(--dock-wine);
+  }
+
+  /* --- Utan oskärpa, minskad genomskinlighet och minskad rörelse ----------- */
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .bq-dock,
+    .bq-more {
+      background: var(--surface);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .bq-dock,
+    .bq-more {
+      background: var(--surface);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bq-dock,
+    html.dock-hidden .bq-dock {
+      transform: none;
+      transition: opacity 120ms linear, visibility 0s;
+    }
+
+    .bq-dock--intro {
+      animation: bq-fade-in 120ms linear both;
+    }
+
+    .bq-dock__pill {
+      transition: none;
+    }
+
+    .bq-dock__disc,
+    .bq-more__tile-disc {
+      transition: none;
+    }
+
+    .bq-dock__new:active .bq-dock__disc,
+    .bq-dock__new.is-pressed .bq-dock__disc,
+    .bq-more__tile.is-pressed .bq-more__tile-disc,
+    .bq-more__tile:active .bq-more__tile-disc {
+      transform: none;
+    }
+
+    .bq-dock__new {
+      transform: translateY(-22px);
+    }
+
+    .bq-more {
+      animation: bq-fade-in 120ms linear both;
+      transition: none;
+    }
+
+    .bq-more.is-closing {
+      animation: bq-fade-out 120ms linear forwards;
+    }
+
+    .bq-more-scrim,
+    .bq-more-scrim.is-closing {
+      animation-duration: 120ms;
+      animation-timing-function: linear;
+    }
+  }
+}
+
+@media print {
+  .bq-dock,
+  .bq-more,
+  .bq-more-scrim {
+    display: none !important;
+  }
+}

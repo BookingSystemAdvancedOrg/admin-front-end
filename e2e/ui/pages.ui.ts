@@ -53,7 +53,7 @@ for (const pg of PAGES) {
           const issues: Issue[] = []
           if (dataTheme && dataTheme !== theme) issues.push({ kind: 'theme', severity: 'high', message: `data-theme is ${dataTheme}, expected ${theme}` })
 
-          issues.push(...(await fullAudit(page, { phone: vp.kind === 'phone', helpSelector: '.help-launcher' })))
+          issues.push(...(await fullAudit(page, { phone: vp.kind === 'phone', helpSelector: '.help-launcher, .bq-dock' })))
           issues.push(...(await axeIssues(page)))
           if (info.project.name === 'chromium') issues.push(...(await focusIssues(page)))
 

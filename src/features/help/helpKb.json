@@ -1647,7 +1647,9 @@
         "telefonnummer",
         "restaurangens namn",
         "e-post restaurang",
-        "grace period"
+        "grace period",
+        "väntetid",
+        "sen gäst"
       ],
       "answer": "Öppettider, adress och kontaktuppgifter ändrar ägaren under Inställningar, Verksamheten, Restaurang.",
       "steps": [

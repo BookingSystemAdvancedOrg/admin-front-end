@@ -39,7 +39,7 @@ describe('bookingTime', () => {
     [rules({ dateFrom: '2026-12-01', dateTo: '2026-11-01' }), 'från-datumet'],
     [rules({ extension: { allowed: true, maxMinutes: 20 } }), 'förlängning'],
     [rules({ name: 'A' }, { name: 'B', startTime: '13:00', endTime: '15:00' }), 'samma prioritet'],
-    [rules({ durationMinutes: 15 }), 'Grace period'],
+    [rules({ durationMinutes: 15 }), 'Väntetiden för sena gäster'],
   ])('refuses invalid rules (%#)', (value, message) => {
     expect(validateRules(value, 15)).toContain(message)
   })

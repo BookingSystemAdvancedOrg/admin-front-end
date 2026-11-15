@@ -35,8 +35,8 @@
   }
 }
 
-/* Narrow screens: the bottom edge holds the download hint and the browser bar. */
-@media (max-width: 899px) {
+/* Phone layout (900 px and narrower, as the bottom menu): the bottom edge holds the menu bar. */
+@media (max-width: 900px) {
   .connection-notice {
     top: max(12px, env(safe-area-inset-top));
     right: auto;

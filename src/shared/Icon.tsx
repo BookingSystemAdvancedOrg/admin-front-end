@@ -61,6 +61,7 @@ export type IconName =
   | 'menu'
   | 'keypad'
   | 'mobile'
+  | 'grid'
 
 // Egna ikoner, 24x24 med 1.8 px linje.
 const DRAWN: Record<IconName, string> = {
@@ -118,6 +119,8 @@ const DRAWN: Record<IconName, string> = {
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   keypad: '<circle cx="7" cy="5" r="1.3"/><circle cx="12" cy="5" r="1.3"/><circle cx="17" cy="5" r="1.3"/><circle cx="7" cy="10" r="1.3"/><circle cx="12" cy="10" r="1.3"/><circle cx="17" cy="10" r="1.3"/><circle cx="7" cy="15" r="1.3"/><circle cx="12" cy="15" r="1.3"/><circle cx="17" cy="15" r="1.3"/><circle cx="12" cy="20" r="1.3"/>',
   mobile: '<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/>',
+  // Mer i telefonens meny längst ner. Noun-ersättare: icons/noun/grid.svg.
+  grid: '<rect x="4.5" y="4.5" width="6.5" height="6.5" rx="1.5"/><rect x="13" y="4.5" width="6.5" height="6.5" rx="1.5"/><rect x="4.5" y="13" width="6.5" height="6.5" rx="1.5"/><rect x="13" y="13" width="6.5" height="6.5" rx="1.5"/>',
 }
 
 // Noun Project-filer som finns i repot (läses in vid bygget).

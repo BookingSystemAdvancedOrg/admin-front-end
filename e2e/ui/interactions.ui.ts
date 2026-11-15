@@ -19,7 +19,7 @@ async function open(page: Page, path: string, vp: (typeof SIZES)[number], theme:
   await page.waitForTimeout(300)
 }
 
-const opts = (phone: boolean) => ({ phone, helpSelector: '.help-launcher' })
+const opts = (phone: boolean) => ({ phone, helpSelector: '.help-launcher, .bq-dock' })
 /** Overlay-specific audit: no tap-target noise, only containment/overlap. */
 const finish = (info: Parameters<Parameters<typeof test>[2]>[1], name: string, vp: string, theme: string, issues: Issue[]) => {
   record(info, 'admin', 'interaction:' + name, vp, theme, issues)
@@ -31,22 +31,26 @@ for (const vp of SIZES) {
     const phone = vp.kind === 'phone'
 
     if (phone) {
-      test(`drawer opens and closes ${vp.name} ${theme}`, async ({ page }, info) => {
+      test(`Mer sheet opens and closes ${vp.name} ${theme}`, async ({ page }, info) => {
         await open(page, '/', vp, theme)
         const issues: Issue[] = []
-        await page.getByRole('button', { name: 'Meny', exact: true }).click()
-        const sidebar = page.locator('#admin-sidebar')
-        await expect(sidebar).toBeVisible()
-        await page.waitForTimeout(300)
-        const box = await sidebar.boundingBox()
-        if (!box || box.x < -1 || box.x + box.width > vp.width + 1) issues.push({ kind: 'drawer-bounds', severity: 'high', message: `Drawer outside the window: ${JSON.stringify(box)}` })
+        const dock = page.getByRole('navigation', { name: 'Snabbmeny' })
+        await expect(dock).toBeVisible()
+        await expect(page.locator('#admin-sidebar')).toBeHidden()
+        await dock.getByRole('button', { name: /^Mer/ }).click()
+        const sheet = page.getByRole('dialog', { name: 'Mer' })
+        await expect(sheet).toBeVisible()
+        await page.waitForTimeout(350)
+        const box = await sheet.boundingBox()
+        if (!box || box.x < -1 || box.x + box.width > vp.width + 1 || box.y < -1) issues.push({ kind: 'sheet-bounds', severity: 'high', message: `Sheet outside the window: ${JSON.stringify(box)}` })
         issues.push(...(await layoutAudit(page, { ...opts(true), atBottom: false })).filter((i) => i.kind !== 'tap-target' && i.kind !== 'covered'))
-        await page.screenshot({ path: info.outputPath('drawer-open.png') })
+        await page.screenshot({ path: info.outputPath('sheet-open.png') })
         await page.keyboard.press('Escape')
-        const stillOpen = await page.locator('.admin-shell.drawer-open').count()
-        if (stillOpen) await page.locator('.admin-drawer-scrim').click({ position: { x: vp.width - 5, y: 300 } })
-        await expect(page.locator('.admin-shell.drawer-open')).toHaveCount(0)
-        finish(info, 'drawer', vp.name, theme, issues)
+        await expect(sheet).toHaveCount(0)
+        await dock.getByRole('button', { name: /^Mer/ }).click()
+        await page.locator('.bq-more-scrim').click({ position: { x: vp.width / 2, y: 20 } })
+        await expect(sheet).toHaveCount(0)
+        finish(info, 'sheet', vp.name, theme, issues)
       })
     }
 
@@ -141,7 +145,13 @@ for (const vp of SIZES) {
     test(`help assistant panel ${vp.name} ${theme}`, async ({ page }, info) => {
       await open(page, '/', vp, theme)
       const issues: Issue[] = []
-      await page.locator('.help-launcher').click()
+      if (phone) {
+        // Phones: no floating launcher; Fråga Booqy is a tile in the Mer sheet.
+        await page.getByRole('navigation', { name: 'Snabbmeny' }).getByRole('button', { name: /^Mer/ }).click()
+        await page.getByRole('dialog', { name: 'Mer' }).getByRole('button', { name: 'Fråga Booqy' }).click()
+      } else {
+        await page.locator('.help-launcher').click()
+      }
       const panel = page.locator('.help-panel')
       await expect(panel).toBeVisible()
       await page.waitForTimeout(400)

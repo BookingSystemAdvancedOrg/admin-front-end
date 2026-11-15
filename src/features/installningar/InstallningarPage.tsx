@@ -515,8 +515,8 @@ export default function InstallningarPage() {
               </div>
               <div className="form-field">
                 <span className="form-field-label-row">
-                  <label htmlFor="rp-grace">Grace period (minuter)</label>
-                  <InfoTooltip label="Grace period (minuter)">
+                  <label htmlFor="rp-grace">Väntetid för sena gäster (minuter)</label>
+                  <InfoTooltip label="Väntetid för sena gäster (minuter)">
                     Hur länge bordet hålls om gästen är sen. Därefter blir bordet
                     ledigt igen.
                   </InfoTooltip>

@@ -1,7 +1,7 @@
 import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Bar, Button, Card, Field, Input, toast } from '@booqy/brand'
+import { Bar, Button, Card, Field, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
 import { menuImageUrl } from '../meny/menuApi'
 import {
@@ -21,6 +21,7 @@ import {
 } from './api'
 import './inlagg.css'
 import { ErrorActions } from '../../shared/ErrorNote'
+import { DateTimeInput } from '../../shared/DateInput'
 
 /** Marknadsföring > Inlägg: utkast från menyn, förhandsvisning, publicera nu, schemalägg, avbryt. */
 export default function InlaggTab() {
@@ -142,7 +143,7 @@ function Editor({ post, listing, onClose, onChanged, onDeleted }: {
             Inlägget handlar om alkohol och är återhållsamt, riktar sig inte till personer under 25 år och följer alkohollagen.
           </label>
           <Field label="Schemalägg till">
-            <Input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+            <DateTimeInput inputClassName="bq-input" timeLabel="Schemalägg till, tid" value={when} onChange={(e) => setWhen(e.target.value)} />
           </Field>
           {Object.entries(post.channels).map(([c, s]) => (s?.state === 'failed' || s?.state === 'needs_check') ? (
             <p key={c} className="inlagg-warn">

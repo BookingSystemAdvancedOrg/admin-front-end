@@ -50,6 +50,16 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* I ett Field från @booqy/brand (klassen bq-input): fältet fyller sin cell
+   som de andra fälten och går aldrig utanför kortet. */
+.date-input > input.bq-input,
+.time-input.bq-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .date-input > input[aria-invalid='true'],
 .time-input[aria-invalid='true'] {
   box-shadow: 0 0 0 1.5px var(--accent-ink);
@@ -79,11 +89,16 @@
 .date-cal {
   position: fixed;
   z-index: 1000;
+  /* popover (top layer): utan webbläsarens centrering och ram. */
+  inset: auto;
+  margin: 0;
+  overflow: visible;
   width: 280px;
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--glass-pop);
+  /* Helt täckande: Safari suddar inte bakgrunden bakom ett element i top layer. */
+  background: var(--surface);
   color: var(--ink);
   box-shadow: var(--shadow-lg);
   -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.5);

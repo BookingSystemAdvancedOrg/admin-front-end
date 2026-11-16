@@ -79,7 +79,8 @@ export default function BestallningarPage() {
   const [busy, setBusy] = useState<string | null>(null)
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null)
   /** Beställningen ägaren återbetalar (dialogen är öppen). */
-  const [refunding, setRefunding] = useState<Order | null>(null)
+  // Bara id: dialogen följer listan, så en 409 som laddar om visar det senaste beloppet.
+  const [refundingId, setRefundingId] = useState<string | null>(null)
   const isOwner = useTenant().tenant?.role === 'owner_user'
   const [fresh, setFresh] = useState<Set<string>>(new Set())
   const seen = useRef<Set<string> | null>(null)
@@ -196,6 +197,7 @@ export default function BestallningarPage() {
   }
 
   const canRefund = (order: Order) => isOwner && (order.refundable ?? 0) > 0
+  const refunding = refundingId ? (orders ?? []).find((o) => o.orderId === refundingId) ?? null : null
 
   async function reprint(order: Order) {
     if (!locationId) return
@@ -363,9 +365,9 @@ export default function BestallningarPage() {
           )}
           {confirming ? (
             <>
-              <button type="button" className="btn danger-outline square" disabled={isBusy}
+              <button type="button" className="btn danger-outline square order-cancel-confirm" disabled={isBusy}
                 onClick={() => void move(order, 'cancelled')}>
-                Bekräfta: avbryt och återbetala {kronor(order.totalAmount)}
+                {cancelConfirmLabel(order)}
               </button>
               <button type="button" className="btn outline square" onClick={() => setConfirmCancel(null)}>
                 Behåll
@@ -375,7 +377,7 @@ export default function BestallningarPage() {
             <>
               {canRefund(order) && (
                 <button type="button" className="btn outline square" disabled={isBusy}
-                  onClick={() => setRefunding(order)}>
+                  onClick={() => setRefundingId(order.orderId)}>
                   Återbetala
                 </button>
               )}
@@ -516,7 +518,7 @@ export default function BestallningarPage() {
                       </span>
                       {canRefund(o) && (
                         <button type="button" className="btn outline square orders-done-refund"
-                          aria-label={`Återbetala #${o.number ?? ''}`} onClick={() => setRefunding(o)}>
+                          aria-label={`Återbetala #${o.number ?? ''}`} onClick={() => setRefundingId(o.orderId)}>
                           Återbetala
                         </button>
                       )}
@@ -538,8 +540,8 @@ export default function BestallningarPage() {
             ? `Presentkortets del (${kronor(refunding.giftCard.debitedOre)}) kommer tillbaka bara om beställningen avbryts.`
             : undefined}
           onRefund={(input) => refund(refunding, input)}
-          onDone={() => setRefunding(null)}
-          onClose={() => setRefunding(null)}
+          onDone={() => setRefundingId(null)}
+          onClose={() => setRefundingId(null)}
         />
       )}
     </>
@@ -564,4 +566,24 @@ function OrdersBoardSkeleton() {
       ))}
     </div>
   )
+}
+
+/**
+ * Vad en avbokning faktiskt betalar tillbaka: det som är kvar av kortdelen
+ * (efter tidigare återbetalningar) och presentkortets del som inte redan
+ * kommit tillbaka. Servern gör samma sak (manage-order _cancel).
+ */
+export function cancelRefund(order: Order): { card: number; gift: number } {
+  const gift = Math.max((order.giftCard?.debitedOre ?? 0) - (order.giftCard?.refundedOre ?? 0), 0)
+  const card =
+    order.refundable ??
+    Math.max(order.totalAmount - (order.giftCard?.debitedOre ?? 0) - (order.refund?.amount ?? 0), 0)
+  return { card, gift }
+}
+
+function cancelConfirmLabel(order: Order): string {
+  const { card, gift } = cancelRefund(order)
+  if (card + gift <= 0) return 'Bekräfta: avbryt'
+  const parts = gift > 0 && card > 0 ? ` (presentkort ${kronor(gift)})` : gift > 0 ? ' till presentkortet' : ''
+  return `Bekräfta: avbryt och återbetala ${kronor(card + gift)}${parts}`
 }

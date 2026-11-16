@@ -1,5 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../shared/api'
 import { ReservationModal } from './ReservationModal'
@@ -11,6 +12,7 @@ import { chooseOption } from '../../test/select'
 
 const changeStatus = vi.fn()
 const paymentAction = vi.fn()
+const getReservation = vi.fn()
 const updateReservation = vi.fn()
 const getAvailability = vi.fn()
 const createManualReservation = vi.fn()
@@ -18,6 +20,7 @@ vi.mock('./bookingsApi', async (orig) => ({
   ...(await orig<typeof import('./bookingsApi')>()),
   changeStatus: (...a: unknown[]) => changeStatus(...a),
   paymentAction: (...a: unknown[]) => paymentAction(...a),
+  getReservation: (...a: unknown[]) => getReservation(...a),
   updateReservation: (...a: unknown[]) => updateReservation(...a),
   getAvailability: (...a: unknown[]) => getAvailability(...a),
   createManualReservation: (...a: unknown[]) => createManualReservation(...a),
@@ -49,7 +52,7 @@ function booking(over: Partial<Reservation> = {}): Reservation {
 }
 
 beforeEach(() => {
-  for (const fn of [changeStatus, paymentAction, updateReservation, getAvailability, createManualReservation]) {
+  for (const fn of [changeStatus, paymentAction, getReservation, updateReservation, getAvailability, createManualReservation]) {
     fn.mockReset()
   }
   getAvailability.mockResolvedValue(avail([]))
@@ -143,6 +146,27 @@ describe('ReservationModal', () => {
       amount: 20000, reason: 'Sjukdom', notifyGuest: true,
     })
     expect(screen.queryByRole('dialog', { name: 'Återbetala avgiften' })).toBeNull()
+  })
+
+  it('a refund that hits a 409 reloads the booking so the dialog shows what is left now', async () => {
+    const user = userEvent.setup()
+    const charged = (refundedAmount: number) => booking({
+      status: 'no_show_charged',
+      payment: { kind: 'no_show', status: 'succeeded', amount: 50000, refundedAmount },
+    })
+    paymentAction.mockRejectedValue(new ApiError(409, 'changed_retry', { code: 'changed_retry', fromServer: true }))
+    getReservation.mockResolvedValue(charged(30000))
+    function Host() {
+      const [r, setR] = useState(charged(0))
+      return <ReservationModal today={TODAY} reservation={r} isOwner onChanged={setR} onClose={() => {}} />
+    }
+    render(<Host />)
+    await user.click(screen.getByRole('button', { name: 'Återbetala' }))
+    await user.click(screen.getByRole('button', { name: 'Återbetala 500 kr' }))
+    expect(await screen.findByText(/registrerades nyss/)).toBeInTheDocument()
+    expect(getReservation).toHaveBeenCalledWith('loc-1', 'r1')
+    expect(screen.getByText('Kvar att återbetala', { exact: false })).toHaveTextContent('200 kr')
+    expect(screen.getByLabelText(/Belopp/)).toHaveValue('200')
   })
 
   it('moves a booking to another time and table', async () => {

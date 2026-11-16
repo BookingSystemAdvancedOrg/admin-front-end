@@ -3,6 +3,7 @@ import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode } from '
 import ModalOverlay from './ModalOverlay'
 import { ErrorNote } from './ErrorNote'
 import { InfoTooltip } from './InfoTooltip'
+import { ApiError } from './api'
 import { errorText } from './errors'
 import './refundDialog.css'
 
@@ -29,12 +30,17 @@ export function parseKr(text: string): number | null {
   return Math.round(Number(clean) * 100)
 }
 
+function krText(ore: number): string {
+  return (ore % 100 ? (ore / 100).toFixed(2) : String(ore / 100)).replace('.', ',')
+}
+
 /** Serverns koder för återbetalningar (bokning, beställning, catering). */
 export const REFUND_ERRORS: Record<string, string> = {
   refund_in_progress: 'En återbetalning pågår redan. Vänta två minuter och försök igen.',
   nothing_to_refund: 'Allt är redan återbetalt.',
   not_refundable: 'Det här går inte att återbetala längre. Det senaste visas nu.',
   not_paid: 'Det finns ingen kortbetalning att återbetala.',
+  changed_retry: 'En återbetalning registrerades nyss. Kontrollera beloppet innan du försöker igen.',
   refund_failed: 'Stripe avvisade återbetalningen och inget har betalats tillbaka. Kontrollera saldot i Stripe och försök igen.',
   payment_provider_rejected:
     'Stripe avvisade återbetalningen och inget har betalats tillbaka. Kontrollera saldot i Stripe och försök igen.',
@@ -72,9 +78,7 @@ export function RefundDialog({
   onClose: () => void
 }) {
   const id = useId()
-  const [amountText, setAmountText] = useState(
-    (remaining % 100 ? (remaining / 100).toFixed(2) : String(remaining / 100)).replace('.', ','),
-  )
+  const [amountText, setAmountText] = useState(krText(remaining))
   const [reason, setReason] = useState('')
   const [notify, setNotify] = useState(canNotify)
   const [busy, setBusy] = useState(false)
@@ -82,6 +86,14 @@ export function RefundDialog({
   const amountRef = useRef<HTMLInputElement>(null)
   const dialogRef = useRef<HTMLFormElement>(null)
   const busyRef = useRef(false)
+
+  // Nytt "kvar" (listan laddades om, t.ex. efter 409): beloppet följer med.
+  const shownRemaining = useRef(remaining)
+  useEffect(() => {
+    if (shownRemaining.current === remaining) return
+    shownRemaining.current = remaining
+    setAmountText(krText(remaining))
+  }, [remaining])
 
   const amount = parseKr(amountText)
   const valid = amount !== null && amount >= 1 && amount <= remaining
@@ -135,7 +147,12 @@ export function RefundDialog({
       })
       onDone()
     } catch (err) {
-      setError(errorText(err, 'Kunde inte återbetala.', REFUND_ERRORS))
+      // 402 är kortavslag för debitering; vid återbetalning finns inget kort att byta.
+      setError(
+        err instanceof ApiError && err.status === 402
+          ? REFUND_ERRORS.refund_failed
+          : errorText(err, 'Kunde inte återbetala.', REFUND_ERRORS),
+      )
     } finally {
       busyRef.current = false
       setBusy(false)

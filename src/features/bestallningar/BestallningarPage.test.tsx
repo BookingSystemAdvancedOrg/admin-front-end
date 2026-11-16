@@ -109,6 +109,43 @@ describe('BestallningarPage', () => {
     expect(moveOrder).toHaveBeenCalledWith('loc-1', expect.anything(), 'cancelled')
   })
 
+  it('the cancel confirm on a partly refunded order states what the cancel returns', async () => {
+    const user = userEvent.setup()
+    listOrders.mockResolvedValue(list([order({
+      status: 'preparing', paymentStatus: 'partly_refunded', totalAmount: 28500, refund: { amount: 5000 }, refundable: 23500,
+    })]))
+    render(<BestallningarPage />)
+    await user.click(await screen.findByRole('button', { name: 'Avbryt' }))
+    expect(screen.getByRole('button', { name: 'Bekräfta: avbryt och återbetala 235 kr' })).toBeInTheDocument()
+  })
+
+  it('the cancel confirm counts the gift card part that is not yet returned', async () => {
+    const user = userEvent.setup()
+    listOrders.mockResolvedValue(list([order({
+      paymentStatus: 'partly_refunded', totalAmount: 30000, refund: { amount: 5000 }, refundable: 15000,
+      giftCard: { debitedOre: 10000 },
+    })]))
+    render(<BestallningarPage />)
+    await user.click(await screen.findByRole('button', { name: 'Avbryt' }))
+    expect(screen.getByRole('button', { name: 'Bekräfta: avbryt och återbetala 250 kr (presentkort 100 kr)' }))
+      .toBeInTheDocument()
+  })
+
+  it('the refund dialog follows the reloaded order after a 409', async () => {
+    const user = userEvent.setup()
+    const partly = { status: 'preparing' as const, paymentStatus: 'partly_refunded' as const, totalAmount: 28500 }
+    listOrders
+      .mockResolvedValueOnce(list([order({ ...partly, refund: { amount: 5000 }, refundable: 23500 })]))
+      .mockResolvedValue(list([order({ ...partly, refund: { amount: 15000 }, refundable: 13500 })]))
+    refundOrder.mockRejectedValue(new ApiError(409, 'changed_retry', { code: 'changed_retry', fromServer: true }))
+    render(<BestallningarPage />)
+    await user.click(await screen.findByRole('button', { name: 'Återbetala' }))
+    await user.click(screen.getByRole('button', { name: 'Återbetala 235 kr' }))
+    expect(await screen.findByText(/registrerades nyss/)).toBeInTheDocument()
+    expect(await screen.findByText('135 kr', { selector: 'strong' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Belopp (kr)')).toHaveValue('135')
+  })
+
   it('explains a refund Stripe refused and reloads', async () => {
     const user = userEvent.setup()
     listOrders.mockResolvedValue(list([order()]))

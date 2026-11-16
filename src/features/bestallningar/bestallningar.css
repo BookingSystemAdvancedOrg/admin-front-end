@@ -135,6 +135,13 @@
   margin-left: auto;
 }
 
+/* Beloppet (ibland med presentkortets del) får radbryta i en smal kolumn. */
+.order-actions .order-cancel-confirm {
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+}
+
 .orders-done {
   padding: 16px 20px;
 }

@@ -19,6 +19,7 @@ import {
   formatKr,
   isStaleSlotError,
   normalizePhone,
+  getReservation,
   paymentAction,
   timestampLabel,
   updateReservation,
@@ -346,7 +347,15 @@ export function ReservationModal({
                 title="Återbetala avgiften"
                 remaining={actions.refundable}
                 canNotify={canNotify}
-                onRefund={async (input) => onChanged(await paymentAction(r.locationId, r.reservationId, 'refund', input))}
+                onRefund={async (input) => {
+                  try {
+                    onChanged(await paymentAction(r.locationId, r.reservationId, 'refund', input))
+                  } catch (err) {
+                    // Det senaste beloppet i dialogen (t.ex. efter 409).
+                    await getReservation(r.locationId, r.reservationId).then(onChanged, () => {})
+                    throw err
+                  }
+                }}
                 onDone={() => setRefunding(false)}
                 onClose={() => setRefunding(false)}
               />

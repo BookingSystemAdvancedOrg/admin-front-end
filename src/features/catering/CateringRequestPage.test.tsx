@@ -337,6 +337,25 @@ describe('CateringRequestPage', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
+  it('a refund that hits a 409 reloads the request so the dialog shows what is left now', async () => {
+    const user = userEvent.setup()
+    const offer = { version: 1, lines: request().request.lines, totals: TOTALS, validUntil: '2026-11-01' }
+    const paid = (refundable: number) => request({
+      status: 'confirmed', paid: true, offer, offers: [offer], currentOfferVersion: 1, refundable,
+      refundedAmount: 100000 - refundable,
+      signature: { name: 'A', personalNumberMasked: 'x', signedAt: '2026-10-13T09:00:00Z', documentHash: 'h' },
+    })
+    getRequest.mockResolvedValueOnce(paid(100000)).mockResolvedValue(paid(40000))
+    refundRequest.mockRejectedValue(new ApiError(409, 'changed_retry', { code: 'changed_retry', fromServer: true }))
+    renderAt()
+    await user.click(await screen.findByRole('button', { name: 'Återbetala' }))
+    const dialog = screen.getByRole('dialog', { name: 'Återbetala cateringen' })
+    await user.click(within(dialog).getByRole('button', { name: /Återbetala 1\s000 kr/ }))
+    expect(await within(dialog).findByText(/registrerades nyss/)).toBeInTheDocument()
+    expect(within(dialog).getByText('400 kr', { selector: 'strong' })).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Belopp (kr)')).toHaveValue('400')
+  })
+
   it('a Bankgiro invoice is refunded by hand and staff see no refund button', async () => {
     const user = userEvent.setup()
     const offer = { version: 1, lines: request().request.lines, totals: TOTALS, validUntil: '2026-11-01' }

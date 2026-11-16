@@ -90,4 +90,26 @@ describe('kronor', () => {
     expect(parseKr('abc')).toBeNull()
     expect(refundKr(125050)).toMatch(/^1\s250,50 kr$/)
   })
+
+  it('a refund Stripe refused with a card code (402) says to check Stripe, not to use another card', async () => {
+    const { user } = setup({
+      onRefund: () => Promise.reject(new ApiError(402, 'balance_insufficient', { code: 'balance_insufficient', fromServer: true })),
+    })
+    await user.click(screen.getByRole('button', { name: 'Återbetala 600 kr' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).not.toMatch(/annat kort/)
+    expect(alert.textContent).toMatch(/Kontrollera saldot i Stripe/)
+  })
+
+  it('a 409 changed_retry asks to check the amount, and a new remaining resets the amount', async () => {
+    const onRefund = vi.fn().mockRejectedValue(new ApiError(409, 'changed_retry', { code: 'changed_retry', fromServer: true }))
+    const props = { title: 'Återbetala avgiften', onRefund, onDone: () => {}, onClose: () => {} }
+    const { rerender } = render(<RefundDialog {...props} remaining={60000} />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Återbetala 600 kr' }))
+    expect((await screen.findByRole('alert')).textContent).toMatch(/registrerades nyss/)
+    rerender(<RefundDialog {...props} remaining={25050} />)
+    expect(screen.getByLabelText('Belopp (kr)')).toHaveValue('250,50')
+    expect(screen.getByText('Kvar att återbetala', { exact: false })).toHaveTextContent('250,50 kr')
+  })
 })

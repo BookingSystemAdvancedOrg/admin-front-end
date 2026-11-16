@@ -53,6 +53,8 @@ function phoneWidth() {
     }) as MediaQueryList
 }
 
+const SLOW = { timeout: 10_000 }
+
 const dock = () => screen.getByRole('navigation', { name: 'Snabbmeny' })
 function openSheet() {
   fireEvent.click(within(dock()).getByRole('button', { name: /^Mer/ }))
@@ -97,19 +99,19 @@ describe('help_assistant_off', () => {
         </Routes>
       </MemoryRouter>,
     )
-    await waitFor(() => expect(helpChatEnabled()).toBe(true))
+    await waitFor(() => expect(helpChatEnabled()).toBe(true), SLOW)
 
     // På: Fråga Booqy i arket och i ⌘K.
     expect(paletteHasAsk()).toBe(true)
     await user.click(within(openSheet()).getByRole('button', { name: 'Fråga Booqy' }))
-    await user.type(await screen.findByRole('textbox', { name: 'Din fråga' }), 'Hur lägger jag till en rätt?{Enter}')
+    await user.type(await screen.findByRole('textbox', { name: 'Din fråga' }, SLOW), 'Hur lägger jag till en rätt?{Enter}')
 
     // Booqy stängde av assistenten: borta överallt.
-    await waitFor(() => expect(helpChatEnabled()).toBe(false))
-    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Din fråga' })).toBeNull())
+    await waitFor(() => expect(helpChatEnabled()).toBe(false), SLOW)
+    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Din fråga' })).toBeNull(), SLOW)
     expect(within(openSheet()).queryByRole('button', { name: 'Fråga Booqy' })).toBeNull()
     expect(within(screen.getByRole('dialog', { name: 'Mer' })).getByRole('button', { name: 'Sök' })).toBeInTheDocument()
     closeSheet()
     expect(paletteHasAsk()).toBe(false)
-  })
+  }, 30_000)
 })

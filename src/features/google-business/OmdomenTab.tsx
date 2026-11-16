@@ -16,6 +16,8 @@ import {
 import './google.css'
 import { ErrorActions } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
+import { NoLocation } from '../../shared/NoLocation'
+import { SkelCard, SkelTiles } from '../../shared/Skeleton'
 
 const SOURCES: { id: Source; label: string }[] = [
   { id: 'booking', label: 'Efter bordsbokning (när gästen har kommit)' },
@@ -38,6 +40,7 @@ export default function OmdomenTab() {
 
   const load = useCallback(async () => {
     if (!locationId) return
+    setError(null)
     try {
       const [c, v] = await Promise.all([getConnection(), getLocationView(locationId)])
       setConnected(c.status === 'connected')
@@ -58,8 +61,20 @@ export default function OmdomenTab() {
     setView(v)
   }, { enabled: Boolean(locationId) && view !== null && !saving })
 
-  if (error) return <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng" action={<ErrorActions text={error} />}>{error}</Bar>
-  if (!locationId || !view || !draft) return <p className="cell-muted">Hämtar…</p>
+  if (!locationId) return <NoLocation />
+  if (error) {
+    // Stäng och Försök igen hämtar om: utan data finns inget annat att visa.
+    const retry = () => void load()
+    return <Bar variant="banner" tone="danger" onDismiss={retry} dismissLabel="Stäng" action={<ErrorActions text={error} onRetry={retry} />}>{error}</Bar>
+  }
+  if (!view || !draft) {
+    return (
+      <div className="skel" role="status" aria-label="Hämtar omdömen" aria-busy="true">
+        <SkelTiles n={2} />
+        <SkelCard rows={4} cols={1} aside={false} />
+      </div>
+    )
+  }
 
   function toggle<T extends string>(list: T[], value: T): T[] {
     return list.includes(value) ? list.filter((v) => v !== value) : [...list, value]

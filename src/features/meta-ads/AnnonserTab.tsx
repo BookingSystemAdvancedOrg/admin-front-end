@@ -26,6 +26,7 @@ import {
 } from './api'
 import { ErrorActions } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
+import { SkelCard } from '../../shared/Skeleton'
 
 /** Marknadsföring > Annonser: koppla Meta, skapa annonser på två minuter, starta och pausa. */
 export default function AnnonserTab() {
@@ -78,11 +79,11 @@ export default function AnnonserTab() {
 
   return (
     <>
-      {error ? <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng" action={<ErrorActions text={error} />}>{error}</Bar> : null}
+      {error ? <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng" action={<ErrorActions text={error} onRetry={connection === null ? () => { setError(null); void load() } : undefined} />}>{error}</Bar> : null}
       {connection?.killSwitch ? (
         <Bar variant="banner" tone="warning">Annonser är pausade av Booqy just nu. Inga nya annonser kan startas.</Bar>
       ) : null}
-      {connection === null && !error ? <p className="cell-muted">Hämtar…</p> : null}
+      {connection === null && !error ? <div role="status" aria-label="Hämtar annonser" aria-busy="true"><SkelCard rows={3} cols={3} /></div> : null}
       {connection && connection.status !== 'connected' ? (
         <Card title="Koppla Meta" actions={
           <InfoTooltip label="Koppla Meta">

@@ -20,6 +20,8 @@ import {
 } from './api'
 import './gaster.css'
 import { ErrorActions } from '../../shared/ErrorNote'
+import { useConfirm } from '../../shared/ConfirmDialog'
+import { SkelRows } from '../../shared/Skeleton'
 
 /** Målgrupper på Marknadsföring > Mottagare (ägare): sparade regler, antal och "Använd i kampanj". */
 export default function SegmentsPanel() {
@@ -38,8 +40,10 @@ export default function SegmentsPanel() {
   }
   const [saving, setSaving] = useState(false)
   const [counts, setCounts] = useState<Record<string, { total: number; reachable: number }>>({})
+  const [confirmEl, ask] = useConfirm()
 
   async function load() {
+    setError(null)
     try {
       const out = await listSegments()
       setSegments(out.segments)
@@ -108,6 +112,7 @@ export default function SegmentsPanel() {
   }
 
   async function remove(segment: Segment) {
+    if (!(await ask({ title: `Ta bort ${segment.name}?`, confirmLabel: 'Ta bort', cancelLabel: 'Behåll', danger: true }))) return
     try {
       await deleteSegment(segment.segmentId)
       await load()
@@ -123,7 +128,11 @@ export default function SegmentsPanel() {
     <Card title="Målgrupper" actions={
       <Button size="sm" variant="secondary" onClick={() => setDraft(draftFrom(newId(), '', {}))}>Ny målgrupp</Button>
     }>
-      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
+      {confirmEl}
+      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} onRetry={() => void load()} />}>{error}</Bar> : null}
+      {segments === null && !error ? (
+        <div role="status" aria-label="Hämtar målgrupper" aria-busy="true"><SkelRows n={3} cols={2} /></div>
+      ) : null}
       {segments && segments.length === 0 && !draft ? (
         <div className="quick-links-row">
           {templates.map((t) => (

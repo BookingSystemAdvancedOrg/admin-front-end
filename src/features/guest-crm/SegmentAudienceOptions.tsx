@@ -5,6 +5,8 @@ import { errorText } from '../../shared/errors'
 import { exportSegment, listSegments, newId, type Segment } from './api'
 import { ErrorActions } from '../../shared/ErrorNote'
 
+const SAVED = '__saved'
+
 interface Props {
   value: { type: 'segment'; exportId: string } | null
   onChange: (v: { type: 'segment'; exportId: string } | null) => void
@@ -61,12 +63,14 @@ export default function SegmentAudienceOptions({ value, onChange }: Props) {
   return (
     <>
       <Field label="Målgrupp" hint={busy ? 'Räknar gäster…' : value && count !== null ? `${count} gäster kan få utskicket.` : undefined}>
-        <Select value={value || busy ? chosen : ''} disabled={busy} onChange={(e) => void choose(e.target.value)}>
+        <Select value={value || busy ? (chosen || SAVED) : ''} disabled={busy} onChange={(e) => e.target.value !== SAVED && void choose(e.target.value)}>
           <option value="">Ingen målgrupp</option>
+          {/* En kampanj som redan har en målgrupp (utkast som redigeras): listan står kvar tills du väljer en annan. */}
+          {value && !chosen ? <option value={SAVED}>Sparad målgrupp</option> : null}
           {segments.map((s) => <option key={s.segmentId} value={s.segmentId}>{s.name}</option>)}
         </Select>
       </Field>
-      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
+      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} onRetry={() => void choose(chosen)} />}>{error}</Bar> : null}
     </>
   )
 }

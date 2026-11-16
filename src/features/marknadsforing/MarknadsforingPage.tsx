@@ -1,5 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
+import { PlanLocked } from '../../shared/PlanLocked'
 import { useTenant } from '../../shared/tenant'
 import { Slot, slotVisible } from '../../shared/slots'
 import { OverviewTab } from './OverviewTab'
@@ -73,14 +74,14 @@ export default function MarknadsforingPage() {
       <>
         <AdminTopbar title="Marknadsföring" />
         <main className="admin-main">
-          <section className="admin-card table-card">
-            <h2 className="card-title">{enabled ? 'Bara för ägare' : 'Ingår inte i er plan'}</h2>
-            <p className="cell-muted">
-              {enabled
-                ? 'Marknadsföringen hanteras av restaurangens ägare.'
-                : 'Kontakta oss för att uppgradera.'}
-            </p>
-          </section>
+          {enabled ? (
+            <section className="admin-card table-card">
+              <h2 className="card-title">Bara för ägare</h2>
+              <p className="cell-muted">Marknadsföringen hanteras av restaurangens ägare.</p>
+            </section>
+          ) : (
+            <PlanLocked />
+          )}
         </main>
       </>
     )

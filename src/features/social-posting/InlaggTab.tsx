@@ -22,6 +22,7 @@ import {
 import './inlagg.css'
 import { ErrorActions } from '../../shared/ErrorNote'
 import { DateTimeInput } from '../../shared/DateInput'
+import { SkelCard } from '../../shared/Skeleton'
 
 /** Marknadsföring > Inlägg: utkast från menyn, förhandsvisning, publicera nu, schemalägg, avbryt. */
 export default function InlaggTab() {
@@ -33,13 +34,17 @@ export default function InlaggTab() {
   const load = useCallback(async () => {
     try {
       setListing(await listPosts())
+      setError(null)
     } catch (err) {
       setError(errorText(err, 'Kunde inte hämta inläggen.', ERRORS))
     }
   }, [])
 
   useEffect(() => { void load() }, [load])
-  useLiveRefresh(async () => setListing(await listPosts()))
+  useLiveRefresh(async () => {
+    setListing(await listPosts())
+    setError(null)
+  })
 
   // Medan något publiceras: fråga igen tills det är klart.
   useEffect(() => {
@@ -48,8 +53,12 @@ export default function InlaggTab() {
     return () => window.clearTimeout(timer)
   }, [listing, load])
 
-  if (error) return <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng" action={<ErrorActions text={error} />}>{error}</Bar>
-  if (!listing) return <p className="cell-muted">Hämtar…</p>
+  const retry = () => {
+    setError(null)
+    void load()
+  }
+  if (error) return <Bar variant="banner" tone="danger" onDismiss={retry} dismissLabel="Stäng" action={<ErrorActions text={error} onRetry={retry} />}>{error}</Bar>
+  if (!listing) return <div role="status" aria-label="Hämtar inlägg" aria-busy="true"><SkelCard rows={4} cols={3} /></div>
   const notConnected = !listing.connection.page
 
   const open = listing.posts.find((p) => p.postId === openId) ?? null

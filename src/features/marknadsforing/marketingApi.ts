@@ -258,21 +258,34 @@ export interface Audience {
   locationId?: string
 }
 
+/** En låst lista från en målgrupp i Gäster (guestCrm). */
+export interface SegmentAudience {
+  type: 'segment'
+  exportId: string
+}
+
+export type CampaignAudience = Audience | SegmentAudience
+
 export const AUDIENCE_LABEL: Record<AudienceType, string> = {
   all: 'Alla som prenumererar',
   recent: 'Har besökt oss nyligen',
   lapsed: 'Har inte besökt oss på länge',
 }
 
-export function audienceText(a: Audience | null | undefined): string {
+export function audienceText(a: CampaignAudience | null | undefined): string {
   if (!a) return AUDIENCE_LABEL.all
+  if (a.type === 'segment') return 'Målgrupp'
   if (a.type === 'recent') return `Besökt oss senaste ${a.days} dagarna`
   if (a.type === 'lapsed') return `Inte besökt oss på ${a.days} dagar`
   return AUDIENCE_LABEL.all
 }
 
-export async function audienceSize(a: Audience): Promise<number> {
+export async function audienceSize(a: CampaignAudience): Promise<number> {
   const q = new URLSearchParams({ type: a.type })
+  if (a.type === 'segment') {
+    q.set('exportId', a.exportId)
+    return (await apiFetch<{ count: number }>(`/marketing/audience?${q}`)).count
+  }
   if (a.days) q.set('days', String(a.days))
   if (a.locationId) q.set('locationId', a.locationId)
   return (await apiFetch<{ count: number }>(`/marketing/audience?${q}`)).count
@@ -324,7 +337,7 @@ export interface CampaignInput {
   templateId: string
   subject?: string | null
   /** Ett exporterat gästsegment (guestCrm) går också att välja som målgrupp. */
-  audience: Audience | { type: 'segment'; exportId: string }
+  audience: CampaignAudience
 }
 
 export interface Campaign {
@@ -332,7 +345,7 @@ export interface Campaign {
   name: string
   templateId: string
   subject: string | null
-  audience: Audience
+  audience: CampaignAudience
   status: CampaignStatus
   scheduledAt: string | null
   startedAt: string | null

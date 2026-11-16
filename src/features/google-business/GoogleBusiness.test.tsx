@@ -231,6 +231,15 @@ describe('OmdomenTab', () => {
     await waitFor(() => expect(api.saveReviewSettings).toHaveBeenCalledWith('loc-1', { ...settings, enabled: true }))
   })
 
+  it('Stäng on a failed first load fetches again instead of waiting forever', async () => {
+    vi.mocked(api.getConnection).mockResolvedValue({ status: 'connected' })
+    vi.mocked(api.getLocationView).mockRejectedValueOnce(new ApiError(500, 'internal_error')).mockResolvedValue(view)
+    render(<OmdomenTab />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Stäng' }))
+    expect(await screen.findByRole('checkbox', { name: 'På' })).toBeInTheDocument()
+    expect(api.getLocationView).toHaveBeenCalledTimes(2)
+  })
+
   it('warns when Google is not linked', async () => {
     vi.mocked(api.getConnection).mockResolvedValue({ status: 'disconnected' })
     render(<OmdomenTab />)

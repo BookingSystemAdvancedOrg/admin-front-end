@@ -1,6 +1,6 @@
 import { useLiveRefresh } from '../../shared/live'
 import { RowActions } from '../../shared/RowActions'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   SUBSCRIBER_STATUS_CLASS,
@@ -50,6 +50,12 @@ export function SubscribersTab() {
   const cursor = list?.view === view ? list.cursor : null
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Det som misslyckades sist: Försök igen gör om just det (listan, Visa fler, avregistrera ...).
+  const retryRef = useRef<() => void>(() => {})
+  const fail = (err: unknown, text: string, retry: () => void) => {
+    retryRef.current = retry
+    setError(errorText(err, text))
+  }
   const [notice, setNotice] = useState<string | null>(null)
   const [erased, setErased] = useState<EraseResult | null>(null)
   const [confirmErase, setConfirmErase] = useState<Subscriber | null>(null)
@@ -62,7 +68,14 @@ export function SubscribersTab() {
     const page = view.email ? findSubscriber(view.email) : listSubscribers(view.filter)
     page
       .then((p) => !cancelled && setList({ view, rows: p.subscribers, cursor: p.cursor }))
-      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Kunde inte hämta mottagarna.')))
+      .catch((err: unknown) => {
+        if (cancelled) return
+        retryRef.current = () => {
+          setList(null)
+          setReload((n) => n + 1)
+        }
+        setError(errorText(err, 'Kunde inte hämta mottagarna.'))
+      })
     return () => {
       cancelled = true
     }
@@ -104,11 +117,12 @@ export function SubscribersTab() {
   const more = async () => {
     if (!cursor) return
     setLoadingMore(true)
+    setError(null)
     try {
       const page = await listSubscribers(view.filter, cursor)
       setList((l) => ({ view, rows: [...(l?.rows ?? []), ...page.subscribers], cursor: page.cursor, more: true }))
     } catch (err) {
-      setError(errorText(err, 'Kunde inte hämta fler.'))
+      fail(err, 'Kunde inte hämta fler.', () => void more())
     } finally {
       setLoadingMore(false)
     }
@@ -118,12 +132,13 @@ export function SubscribersTab() {
     if (!s.email) return
     setNotice(null)
     setErased(null)
+    setError(null)
     try {
       await withdrawConsent(['email'], s.email)
       setNotice(`${s.email} får inga fler utskick.`)
       load()
     } catch (err) {
-      setError(errorText(err, 'Kunde inte avregistrera.'))
+      fail(err, 'Kunde inte avregistrera.', () => void doUnsubscribe(s))
     }
   }
 
@@ -131,13 +146,14 @@ export function SubscribersTab() {
     if (!s.email) return
     setNotice(null)
     setErasing(true)
+    setError(null)
     try {
       setErased(await eraseGuest(s.email))
       setConfirmErase(null)
       load()
     } catch (err) {
       setConfirmErase(null)
-      setError(errorText(err, 'Kunde inte radera.'))
+      fail(err, 'Kunde inte radera.', () => void doErase(s))
     } finally {
       setErasing(false)
     }
@@ -146,12 +162,13 @@ export function SubscribersTab() {
   const openHistory = async (s: Subscriber) => {
     if (!s.email) return
     setHistory({ subscriber: s, consent: null })
+    setError(null)
     try {
       const r = await lookupConsent(s.email)
       setHistory((h) => (h?.subscriber === s ? { subscriber: s, consent: r.email ?? { state: 'none', history: [] } } : h))
     } catch (err) {
       setHistory(null)
-      setError(errorText(err, 'Kunde inte hämta historiken.'))
+      fail(err, 'Kunde inte hämta historiken.', () => void openHistory(s))
     }
   }
 
@@ -161,7 +178,7 @@ export function SubscribersTab() {
     try {
       await exportSubscribers()
     } catch (err) {
-      setError(errorText(err, 'Kunde inte ladda ned listan.'))
+      fail(err, 'Kunde inte ladda ned listan.', () => void doExport())
     } finally {
       setExporting(false)
     }
@@ -176,7 +193,7 @@ export function SubscribersTab() {
           <KeptList items={erased.kept} />
         </div>
       )}
-      <ErrorNote text={error} />
+      <ErrorNote text={error} onRetry={() => retryRef.current()} />
       <section className="admin-card table-card">
         <div className="card-head">
           <h2 className="card-title">Mottagare</h2>

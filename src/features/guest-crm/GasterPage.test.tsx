@@ -1,5 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiError } from '../../shared/api'
 import GasterPage from './GasterPage'
 import GuestBadge from './GuestBadge'
 import * as api from './api'
@@ -35,9 +37,10 @@ beforeEach(() => {
 describe('GasterPage', () => {
   it('says the feature is not in the plan while it is off', () => {
     tenant = { role: 'owner_user', entitlements: { maxLocations: null, features: {} }, locations: [] }
-    render(<GasterPage />)
+    render(<MemoryRouter><GasterPage /></MemoryRouter>)
     expect(screen.getByRole('heading', { level: 1, name: 'Gäster' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Ingår inte i er plan' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Se abonnemanget/ })).toHaveAttribute('href', '/installningar#profil')
     expect(api.listGuests).not.toHaveBeenCalled()
   })
 
@@ -82,6 +85,70 @@ describe('GasterPage', () => {
   })
 })
 
+describe('GasterPage loading', () => {
+  const owner = () => ({ role: 'owner_user', entitlements: { maxLocations: null, features: { guestCrm: true } }, locations: [] })
+
+  it('Försök igen after a failed first load fetches the list again', async () => {
+    tenant = owner()
+    vi.mocked(api.listGuests).mockReset()
+    vi.mocked(api.listGuests)
+      .mockRejectedValueOnce(new ApiError(500, 'internal_error'))
+      .mockResolvedValue({ guests: [anna], cursor: null })
+    render(<GasterPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    expect(await screen.findByRole('button', { name: 'Anna Andersson' })).toBeInTheDocument()
+    expect(api.listGuests).toHaveBeenCalledTimes(2)
+  })
+
+  it('Visa fler tapped twice fetches the next page once', async () => {
+    tenant = owner()
+    const bertil = { ...anna, guestId: 'g2', name: 'Bertil' }
+    let release: (v: { guests: api.GuestSummary[]; cursor: null }) => void = () => undefined
+    vi.mocked(api.listGuests).mockReset()
+    vi.mocked(api.listGuests)
+      .mockResolvedValueOnce({ guests: [anna], cursor: 'c1' })
+      .mockImplementationOnce(() => new Promise((r) => { release = r }))
+    render(<GasterPage />)
+    const more = await screen.findByRole('button', { name: 'Visa fler' })
+    fireEvent.click(more)
+    fireEvent.click(more)
+    await act(async () => release({ guests: [bertil], cursor: null }))
+    expect(await screen.findAllByRole('button', { name: 'Bertil' })).toHaveLength(1)
+    expect(api.listGuests).toHaveBeenCalledTimes(2)
+  })
+
+  it('a Visa fler page that lands after a search does not join the search hits', async () => {
+    tenant = owner()
+    const bertil = { ...anna, guestId: 'g2', name: 'Bertil' }
+    const cilla = { ...anna, guestId: 'g3', name: 'Cilla' }
+    let release: (v: { guests: api.GuestSummary[]; cursor: string | null }) => void = () => undefined
+    vi.mocked(api.listGuests).mockReset()
+    vi.mocked(api.listGuests)
+      .mockResolvedValueOnce({ guests: [anna], cursor: 'c1' })
+      .mockImplementationOnce(() => new Promise((r) => { release = r }))
+    vi.mocked(api.searchGuests).mockResolvedValue({ guests: [cilla] })
+    render(<GasterPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Visa fler' }))
+    fireEvent.change(screen.getByLabelText('Namn'), { target: { value: 'Cilla' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Sök' }))
+    expect(await screen.findByRole('button', { name: 'Cilla' })).toBeInTheDocument()
+    await act(async () => release({ guests: [bertil], cursor: 'c2' }))
+    expect(screen.queryByRole('button', { name: 'Bertil' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Visa fler' })).not.toBeInTheDocument()
+  })
+
+  it('hides the Restaurang filter while search hits are shown (search covers every restaurant)', async () => {
+    tenant = { ...owner(), locations: [{ locationId: 'loc-1', name: 'Bistro' }, { locationId: 'loc-2', name: 'Söder' }] }
+    vi.mocked(api.searchGuests).mockResolvedValue({ guests: [anna] })
+    render(<GasterPage />)
+    await screen.findByRole('button', { name: 'Anna Andersson' })
+    expect(screen.getByLabelText('Restaurang')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Namn'), { target: { value: 'Anna' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Sök' }))
+    await waitFor(() => expect(screen.queryByLabelText('Restaurang')).not.toBeInTheDocument())
+  })
+})
+
 describe('GuestBadge', () => {
   it('batches every badge of a list into one lookup', async () => {
     vi.mocked(api.lookupGuests).mockResolvedValue({ results: { r1: { status: 'returning', visits: 4 }, r2: { status: 'new', visits: 0 } } })
@@ -105,5 +172,35 @@ describe('segment rules', () => {
     expect(api.rulesFrom({ segmentId: 's', name: 'x', lapsedDays: '90', birthdayWithinDays: '', minSpendSek: '2000', minVisits: '', locationId: '', optedIn: true }))
       .toEqual({ lapsedDays: 90, minSpendSek: 2000, optedIn: true })
     expect(api.describeRules({ lapsedDays: 90, optedIn: true })).toBe('Inte varit här på 90 dagar, vill ha erbjudanden')
+  })
+})
+
+describe('GasterPage guest drawer, closing with edits', () => {
+  const open = async () => {
+    tenant = { role: 'owner_user', entitlements: { maxLocations: null, features: { guestCrm: true } }, locations: [] }
+    render(<GasterPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Anna Andersson' }))
+    await screen.findByText('Historik')
+    return document.querySelector('dialog.bq-modal') as HTMLElement
+  }
+
+  it('closes at once on a tap outside when nothing changed', async () => {
+    const dialog = await open()
+    fireEvent.mouseDown(dialog)
+    await waitFor(() => expect(screen.queryByText('Historik')).not.toBeInTheDocument())
+    expect(screen.queryByText('Släng ändringarna?')).not.toBeInTheDocument()
+  })
+
+  it('asks before throwing away a changed note on a tap outside or Escape', async () => {
+    const dialog = await open()
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Anteckning' }), { target: { value: 'Fönsterbord' } })
+    fireEvent.mouseDown(dialog)
+    expect(await screen.findByText('Släng ändringarna?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Fortsätt redigera' }))
+    await waitFor(() => expect(screen.queryByText('Släng ändringarna?')).not.toBeInTheDocument())
+    expect(within(dialog).getByRole('textbox', { name: 'Anteckning' })).toHaveValue('Fönsterbord')
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Släng' }))
+    await waitFor(() => expect(screen.queryByText('Historik')).not.toBeInTheDocument())
   })
 })

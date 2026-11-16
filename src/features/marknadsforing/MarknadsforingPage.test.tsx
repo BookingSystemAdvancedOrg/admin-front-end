@@ -18,6 +18,9 @@ const api = vi.hoisted(() => ({
   audienceSize: vi.fn(),
   sendCampaign: vi.fn(),
   sendTest: vi.fn(),
+  updateCampaign: vi.fn(),
+  cancelCampaign: vi.fn(),
+  deleteCampaign: vi.fn(),
   listSubscribers: vi.fn(),
   findSubscriber: vi.fn(),
   getOfferSettings: vi.fn(),
@@ -160,6 +163,108 @@ describe('MarknadsforingPage', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Skicka nu' }))
     expect(api.sendCampaign).toHaveBeenCalledWith(draftCampaign.campaignId, null)
     expect(await screen.findByText(/skickas nu till 42 mottagare/)).toBeInTheDocument()
+  })
+
+  it('keeps a segment audience: labelled Målgrupp, counted by its export and saved unchanged', async () => {
+    const segmentCampaign = { ...draftCampaign, audience: { type: 'segment' as const, exportId: 'exp-1' } }
+    api.listCampaigns.mockResolvedValue([segmentCampaign])
+    api.updateCampaign.mockResolvedValue(segmentCampaign)
+    renderAt('/marknadsforing?flik=kampanjer')
+    const row = (await screen.findByText('Vårutskick')).closest('tr') as HTMLElement
+    expect(within(row).getByText('Målgrupp')).toBeInTheDocument()
+    await userEvent.click(within(row).getByRole('button', { name: 'Skicka' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Skicka kampanjen' })
+    expect(await within(dialog).findByText('42 mottagare (målgrupp).')).toBeInTheDocument()
+    expect(api.audienceSize).toHaveBeenCalledWith({ type: 'segment', exportId: 'exp-1' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Avbryt' }))
+    await userEvent.click(within(row).getByRole('button', { name: 'Redigera' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Spara utkast' }))
+    await waitFor(() => expect(api.updateCampaign).toHaveBeenCalledWith(draftCampaign.campaignId, expect.objectContaining({
+      audience: { type: 'segment', exportId: 'exp-1' },
+    })))
+  })
+
+  it('shows a count failure in the send dialog instead of counting forever', async () => {
+    api.audienceSize.mockRejectedValue(new ApiError(400, 'invalid_request'))
+    renderAt('/marknadsforing?flik=kampanjer')
+    const row = (await screen.findByText('Vårutskick')).closest('tr') as HTMLElement
+    await userEvent.click(within(row).getByRole('button', { name: 'Skicka' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Skicka kampanjen' })
+    expect(await within(dialog).findByText('Kunde inte räkna mottagarna.')).toBeInTheDocument()
+  })
+
+  it('asks before stopping a scheduled campaign and before deleting a draft', async () => {
+    const scheduled = { ...draftCampaign, campaignId: 'c'.repeat(16), name: 'Helgen', status: 'scheduled' as const, scheduledAt: '2026-12-01T10:00:00Z' }
+    api.listCampaigns.mockResolvedValue([draftCampaign, scheduled])
+    api.cancelCampaign.mockResolvedValue({ status: 'cancelled' })
+    renderAt('/marknadsforing?flik=kampanjer')
+    const row = (await screen.findByText('Helgen')).closest('tr') as HTMLElement
+    await userEvent.click(within(row).getByRole('button', { name: 'Stoppa utskicket' }))
+    const ask = await screen.findByRole('alertdialog', { name: 'Stoppa Helgen?' })
+    await userEvent.click(within(ask).getByRole('button', { name: 'Behåll' }))
+    expect(api.cancelCampaign).not.toHaveBeenCalled()
+    await userEvent.click(within(row).getByRole('button', { name: 'Stoppa utskicket' }))
+    await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Stoppa utskicket' }))
+    await waitFor(() => expect(api.cancelCampaign).toHaveBeenCalledWith(scheduled.campaignId))
+
+    const draftRow = screen.getByText('Vårutskick').closest('tr') as HTMLElement
+    await userEvent.click(within(draftRow).getByRole('button', { name: 'Ta bort' }))
+    await userEvent.click(within(await screen.findByRole('alertdialog', { name: 'Ta bort Vårutskick?' })).getByRole('button', { name: 'Behåll' }))
+    expect(api.deleteCampaign).not.toHaveBeenCalled()
+  })
+
+  it('Försök igen after a failed stop repeats the stop, not only the list', async () => {
+    const scheduled = { ...draftCampaign, name: 'Helgen', status: 'scheduled' as const, scheduledAt: '2026-12-01T10:00:00Z' }
+    api.listCampaigns.mockResolvedValue([scheduled])
+    api.cancelCampaign.mockRejectedValueOnce(new ApiError(500, 'internal_error')).mockResolvedValue({ status: 'cancelled' })
+    renderAt('/marknadsforing?flik=kampanjer')
+    const row = (await screen.findByText('Helgen')).closest('tr') as HTMLElement
+    await userEvent.click(within(row).getByRole('button', { name: 'Stoppa utskicket' }))
+    await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Stoppa utskicket' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    await waitFor(() => expect(api.cancelCampaign).toHaveBeenCalledTimes(2))
+    expect(await screen.findByText(/Utskicket är stoppat/)).toBeInTheDocument()
+  })
+
+  it('editing a segment campaign: choosing another audience drops the segment', async () => {
+    const segmentCampaign = { ...draftCampaign, audience: { type: 'segment' as const, exportId: 'exp-1' } }
+    api.listCampaigns.mockResolvedValue([segmentCampaign])
+    api.updateCampaign.mockResolvedValue(segmentCampaign)
+    renderAt('/marknadsforing?flik=kampanjer')
+    const row = (await screen.findByText('Vårutskick')).closest('tr') as HTMLElement
+    await userEvent.click(within(row).getByRole('button', { name: 'Redigera' }))
+    await screen.findByRole('dialog', { name: 'Kampanj' })
+    const aud = screen.getByRole('combobox', { name: 'Vilka får utskicket' })
+    expect(aud).toHaveTextContent('Sparad målgrupp')
+    chooseOption(aud, 'all')
+    await userEvent.click(screen.getByRole('button', { name: 'Spara utkast' }))
+    await waitFor(() => expect(api.updateCampaign).toHaveBeenCalledWith(draftCampaign.campaignId, expect.objectContaining({
+      audience: { type: 'all' },
+    })))
+  })
+
+  it('Försök igen after a failed first load fetches the campaigns again', async () => {
+    api.listCampaigns.mockRejectedValueOnce(new ApiError(500, 'internal_error'))
+    renderAt('/marknadsforing?flik=kampanjer')
+    await userEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    expect(await screen.findByText('Vårutskick')).toBeInTheDocument()
+  })
+
+  it('Försök igen after a failed Visa fler on Mottagare fetches that page again', async () => {
+    const sub = (id: string, email: string) => ({
+      subscriberId: id, email, name: null, status: 'subscribed' as const, consentAt: null, consentSource: null,
+      lastVisit: null, locations: [], unsubscribedAt: null,
+    })
+    api.listSubscribers
+      .mockResolvedValueOnce({ subscribers: [sub('s1', 'a@example.se')], cursor: 'c1' })
+      .mockRejectedValueOnce(new ApiError(500, 'internal_error'))
+      .mockResolvedValue({ subscribers: [sub('s2', 'b@example.se')], cursor: null })
+    renderAt('/marknadsforing?flik=mottagare')
+    await userEvent.click(await screen.findByRole('button', { name: 'Visa fler' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    expect((await screen.findAllByText('b@example.se')).length).toBeGreaterThan(0)
+    expect(screen.getAllByText('a@example.se').length).toBeGreaterThan(0)
+    expect(api.listSubscribers).toHaveBeenLastCalledWith('subscribed', 'c1')
   })
 
   it('builds a tracked link with a QR code', async () => {

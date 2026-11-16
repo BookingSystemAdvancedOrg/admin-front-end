@@ -65,6 +65,8 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
   const retryRef = useRef<() => void>(() => undefined)
   /** Bara det senaste anropet får skriva listan: en gammal sida landar inte i en ny lista. */
   const seq = useRef(0)
+  /** Sökningen som visas (null = listan), så att ett byte av Restaurang söker om i stället för att visa listan. */
+  const searchRef = useRef<{ by: SearchKind; value: string } | null>(null)
 
   // Levande bara för första sidan av listan (inte sökträffar eller "Visa fler").
   const [paging, setPaging] = useState<'first' | 'more' | 'search'>('first')
@@ -104,24 +106,32 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
   }, [locationId])
 
   useEffect(() => {
-    void load(null, false)
+    const active = searchRef.current
+    if (active) void runSearch(active.by, active.value)
+    else void load(null, false)
+    // runSearch läser locationId från samma rendering som load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load])
 
   function search(e: React.FormEvent) {
     e.preventDefault()
     const value = query.trim()
-    if (!value) return void load(null, false)
+    if (!value) {
+      searchRef.current = null
+      return void load(null, false)
+    }
     void runSearch(kind, value)
   }
 
   async function runSearch(by: SearchKind, value: string) {
     retryRef.current = () => void runSearch(by, value)
+    searchRef.current = { by, value }
     const my = ++seq.current
     setSearching(true)
     setError(null)
     try {
       const body = by === 'email' ? { email: value } : by === 'phone' ? { phone: value } : { name: value }
-      const found = await searchGuests(body)
+      const found = await searchGuests(body, locationId || undefined)
       if (my !== seq.current) return
       setPaging('search')
       setGuests(found.guests)
@@ -174,8 +184,7 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
               autoComplete="off"
             />
           </Field>
-          {/* Sökningen gäller alla restauranger (servern filtrerar inte på plats än), så filtret döljs medan träffarna visas. */}
-          {owner && locations.length > 1 && paging !== 'search' ? (
+          {owner && locations.length > 1 ? (
             <Field label="Restaurang">
               <Select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
                 <option value="">Alla</option>
@@ -186,7 +195,7 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
           <div className="row-actions">
             <Button type="submit" busy={searching} busyLabel="Söker…">Sök</Button>
             {query ? (
-              <Button type="button" variant="ghost" onClick={() => { setQuery(''); void load(null, false) }}>
+              <Button type="button" variant="ghost" onClick={() => { setQuery(''); searchRef.current = null; void load(null, false) }}>
                 Rensa
               </Button>
             ) : null}

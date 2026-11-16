@@ -81,7 +81,7 @@ describe('GasterPage', () => {
     chooseOption(screen.getByLabelText('Sök på'), 'email')
     fireEvent.change(screen.getByLabelText('E-postadress'), { target: { value: 'b@x.se' } })
     fireEvent.click(screen.getByRole('button', { name: 'Sök' }))
-    await waitFor(() => expect(api.searchGuests).toHaveBeenCalledWith({ email: 'b@x.se' }))
+    await waitFor(() => expect(api.searchGuests).toHaveBeenCalledWith({ email: 'b@x.se' }, undefined))
   })
 })
 
@@ -137,15 +137,19 @@ describe('GasterPage loading', () => {
     expect(screen.queryByRole('button', { name: 'Visa fler' })).not.toBeInTheDocument()
   })
 
-  it('hides the Restaurang filter while search hits are shown (search covers every restaurant)', async () => {
+  it('keeps the Restaurang filter during a search, sends it and searches again when it changes', async () => {
     tenant = { ...owner(), locations: [{ locationId: 'loc-1', name: 'Bistro' }, { locationId: 'loc-2', name: 'Söder' }] }
     vi.mocked(api.searchGuests).mockResolvedValue({ guests: [anna] })
     render(<GasterPage />)
     await screen.findByRole('button', { name: 'Anna Andersson' })
-    expect(screen.getByLabelText('Restaurang')).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Namn'), { target: { value: 'Anna' } })
     fireEvent.click(screen.getByRole('button', { name: 'Sök' }))
-    await waitFor(() => expect(screen.queryByLabelText('Restaurang')).not.toBeInTheDocument())
+    await waitFor(() => expect(api.searchGuests).toHaveBeenCalledWith({ name: 'Anna' }, undefined))
+    expect(screen.getByLabelText('Restaurang')).toBeInTheDocument()
+    const listCalls = vi.mocked(api.listGuests).mock.calls.length
+    chooseOption(screen.getByLabelText('Restaurang'), 'Söder')
+    await waitFor(() => expect(api.searchGuests).toHaveBeenLastCalledWith({ name: 'Anna' }, 'loc-2'))
+    expect(vi.mocked(api.listGuests).mock.calls.length).toBe(listCalls)
   })
 })
 

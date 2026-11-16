@@ -72,6 +72,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
   { n: 60, text: 'Webbplats utan färgval' },
   { n: 61, text: 'Webbplatsens knappblock per plan' },
   { n: 62, text: 'Personal behörigheter' },
+  { n: 63, text: 'Gäster, sök per restaurang' },
 ]
 
 declare const __WHATS_NEW_N__: number | undefined

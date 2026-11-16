@@ -4,6 +4,7 @@ import { Bar, Button, Card, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
 import { COUNTER_LABEL, ERRORS, OUTCOME_LABEL, deleteRecording, getCall, when, type CallDetail as Detail } from './api'
 import { ErrorActions } from '../../shared/ErrorNote'
+import { SkelLines } from '../../shared/Skeleton'
 
 const ROLE: Record<string, string> = { agent: 'Assistenten', caller: 'Den som ringde', tool: 'Bokningssystemet', system: 'System' }
 
@@ -16,13 +17,17 @@ export default function CallDetail({ locationId, callId, owner, onBack }: { loca
   const load = useCallback(async () => {
     try {
       setCall(await getCall(locationId, callId))
+      setError(null)
     } catch (err) {
       setError(errorText(err, 'Kunde inte hämta samtalet.', ERRORS))
     }
   }, [locationId, callId])
 
   useEffect(() => { void load() }, [load])
-  useLiveRefresh(async () => setCall(await getCall(locationId, callId)))
+  useLiveRefresh(async () => {
+    setCall(await getCall(locationId, callId))
+    setError(null)
+  })
 
   async function removeRecording() {
     setBusy(true)
@@ -39,7 +44,9 @@ export default function CallDetail({ locationId, callId, owner, onBack }: { loca
 
   return (
     <Card title="Samtal" actions={<Button variant="ghost" onClick={onBack}>Tillbaka till samtalen</Button>}>
-      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : !call ? <p className="cell-muted">Hämtar…</p> : (
+      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} onRetry={() => { setError(null); void load() }} />}>{error}</Bar> : !call ? (
+        <div role="status" aria-label="Hämtar samtalet"><SkelLines n={5} /></div>
+      ) : (
         <>
           <dl className="telefon-facts">
             <dt>När</dt><dd>{when(call.startedAt)}</dd>

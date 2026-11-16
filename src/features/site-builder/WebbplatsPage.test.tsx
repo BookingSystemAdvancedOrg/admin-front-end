@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import WebbplatsPage, { POLL_LIMIT, waitForPublish } from './WebbplatsPage'
 import * as api from './api'
 import { ApiError } from '../../shared/api'
+import { MemoryRouter } from 'react-router-dom'
 
 let tenant: Record<string, unknown>
 vi.mock('../../shared/tenant', () => ({
@@ -33,10 +34,53 @@ beforeEach(() => {
 describe('WebbplatsPage', () => {
   it('says the feature is not in the plan while it is off', () => {
     tenant = { role: 'owner_user', entitlements: { maxLocations: null, features: {} } }
-    render(<WebbplatsPage />)
+    render(<MemoryRouter><WebbplatsPage /></MemoryRouter>)
     expect(screen.getByRole('heading', { level: 1, name: 'Webbplats' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Ingår inte i er plan' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Se abonnemanget/ })).toHaveAttribute('href', '/installningar#profil')
     expect(api.getSite).not.toHaveBeenCalled()
+  })
+
+  it('Försök igen after a failed first load fetches the site again', async () => {
+    tenant = on
+    vi.mocked(api.getSite).mockRejectedValueOnce(new ApiError(500, 'internal_error', { code: 'internal_error', fromServer: true }))
+    render(<WebbplatsPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    expect(await screen.findByText('Utkast · inte publicerad än')).toBeInTheDocument()
+    expect(api.getSite).toHaveBeenCalledTimes(2)
+  })
+
+  it('an offline first load reloads by itself when the connection is back', async () => {
+    tenant = on
+    vi.mocked(api.getSite).mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    render(<WebbplatsPage />)
+    expect(await screen.findByText(/Kontrollera internetanslutningen/)).toBeInTheDocument()
+    window.dispatchEvent(new Event('online'))
+    expect(await screen.findByText('Utkast · inte publicerad än')).toBeInTheDocument()
+    expect(screen.queryByText(/Kontrollera internetanslutningen/)).not.toBeInTheDocument()
+  })
+
+  it('Försök igen after a failed publish publishes again', async () => {
+    tenant = on
+    vi.mocked(api.publish).mockRejectedValueOnce(new ApiError(500, 'internal_error', { code: 'internal_error', fromServer: true }))
+      .mockResolvedValue({ publishId: 'p', status: 'running' })
+    vi.mocked(api.publishStatus).mockResolvedValue({ status: 'done', versionNo: 1 })
+    render(<WebbplatsPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Publicera' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    await waitFor(() => expect(api.publish).toHaveBeenCalledTimes(2))
+  })
+
+  it('a failed versions load says so instead of nothing published', async () => {
+    tenant = on
+    vi.mocked(api.listVersions).mockRejectedValueOnce(new ApiError(503, 'service_unavailable', { code: 'service_unavailable', fromServer: true }))
+    render(<WebbplatsPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Versioner' }))
+    expect(await screen.findByText(/Tjänsten är tillfälligt otillgänglig/)).toBeInTheDocument()
+    expect(screen.queryByText('Inget är publicerat än.')).not.toBeInTheDocument()
+    vi.mocked(api.listVersions).mockResolvedValueOnce({ versions: [] })
+    fireEvent.click(screen.getByRole('button', { name: 'Försök igen' }))
+    expect(await screen.findByText('Inget är publicerat än.')).toBeInTheDocument()
   })
 
   it('tells staff it is for the owner', () => {

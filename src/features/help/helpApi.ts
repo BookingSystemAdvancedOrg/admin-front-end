@@ -16,9 +16,13 @@ export async function getHelpStatus(): Promise<{ enabled: boolean; mode: HelpMod
   if (!isApiConfigured()) return { enabled: true, mode: 'kb' }
   try {
     return await apiFetch<{ enabled: boolean; mode: HelpMode }>('/tenant/help-assistant')
-  } catch {
-    // Saknas routen (äldre API) eller går den inte att nå: ingen assistent.
-    return { enabled: false, mode: 'off' }
+  } catch (err) {
+    // Saknas routen (äldre API): ingen assistent. Annars (kall start, nätet,
+    // 5xx) finns kunskapsbasen ändå här, så assistenten försvinner inte.
+    if (err instanceof ApiError && (err.status === 404 || err.code === 'route_not_found' || err.code === 'help_assistant_off')) {
+      return { enabled: false, mode: 'off' }
+    }
+    return { enabled: true, mode: 'kb' }
   }
 }
 

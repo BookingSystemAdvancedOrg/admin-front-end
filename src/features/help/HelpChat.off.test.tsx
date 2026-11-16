@@ -42,7 +42,7 @@ const realMatchMedia = window.matchMedia
 function phoneWidth() {
   window.matchMedia = (query: string) =>
     ({
-      matches: query.includes('prefers-reduced-motion') || query.includes('max-width: 900px'),
+      matches: query.includes('prefers-reduced-motion') || query.includes('max-width: 600px') || query.includes('max-width: 900px'),
       media: query,
       onchange: null,
       addListener: () => {},

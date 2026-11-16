@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { errorText } from '../../shared/errors'
+import { booqyFaultText, errorText } from '../../shared/errors'
 import { Icon } from '../../shared/Icon'
 import { Loading } from '../../shared/Loading'
 import ModalOverlay from '../../shared/ModalOverlay'
@@ -49,6 +49,8 @@ function CodeCard({
   const [confirm, setConfirm] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Försök igen i felrutan gör om det som misslyckades (ny kod eller filen).
+  const [retry, setRetry] = useState<(() => void) | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const card = code.url ? toCard(code, restaurant) : null
   const preview = card ? svgDataUrl(cardSvg(card)) : null
@@ -63,6 +65,7 @@ function CodeCard({
       setConfirm(false)
     } catch (err) {
       setError(errorText(err, 'Kunde inte skapa en ny kod just nu. Försök igen.'))
+      setRetry(() => () => void regenerate())
     } finally {
       setBusy(false)
     }
@@ -74,7 +77,8 @@ function CodeCard({
     try {
       await save(card, kind)
     } catch {
-      setError('Kunde inte skapa filen. Försök igen.')
+      setError(booqyFaultText('Kunde inte skapa filen.'))
+      setRetry(() => () => void run(kind))
     }
   }
 
@@ -130,7 +134,7 @@ function CodeCard({
           </button>
         )}
         {notice && <p className="save-notice" role="status">{notice}</p>}
-        <ErrorNote text={error} />
+        <ErrorNote text={error} onRetry={retry ?? undefined} />
       </div>
     </figure>
   )
@@ -154,13 +158,13 @@ export function TableQrPanel({
   version: number
 }) {
   const restaurant = useCardName()
-  const { codes, error, replace } = useTableCodes(locationId, mockTables, version)
+  const { codes, error, replace, retry } = useTableCodes(locationId, mockTables, version)
   const code = codes?.find((c) => c.tableId === tableId) ?? null
   if (!locationId) return null
   return (
     <div className="props-field tqr-panel">
       <p className="props-label">QR-KOD FÖR BESTÄLLNING</p>
-      <ErrorNote text={error} />
+      <ErrorNote text={error} onRetry={retry} />
       {!codes && !error && <Loading label="Hämtar QR-koden" variant="inline" />}
       {codes && !code && (
         <p className="props-empty">
@@ -185,7 +189,7 @@ export function TableQrModal({
   onClose: () => void
 }) {
   const restaurant = useCardName()
-  const { codes, error, replace } = useTableCodes(locationId, mockTables)
+  const { codes, error, replace, retry } = useTableCodes(locationId, mockTables)
   const printable = (codes ?? []).filter((c) => c.url)
   const cards = printable.map((c) => toCard(c, restaurant))
   const sheetTitle = `QR-koder ${restaurant}`.trim()
@@ -205,7 +209,7 @@ export function TableQrModal({
             <Icon name="close" size={16} />
           </button>
         </div>
-        <ErrorNote text={error} />
+        <ErrorNote text={error} onRetry={retry} />
         {!codes && !error && <Loading label="Hämtar QR-koderna" />}
         {codes && codes.length === 0 && (
           <p className="cell-muted">Publicera en layout först.</p>

@@ -2,6 +2,8 @@ import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Card, toast } from '@booqy/brand'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { SkelRows } from '../../shared/Skeleton'
 import { errorText } from '../../shared/errors'
 import { isRowOpenKey, shouldOpenRow } from '../meny/rowClick'
 import { COUNTER_LABEL, ERRORS, OUTCOME_LABEL, REFUSED_LABEL, daysAgo, listCalls, today, when, type CallRow } from './api'
@@ -11,19 +13,23 @@ export default function CallsTab({ locationId, owner }: { locationId: string; ow
   const [calls, setCalls] = useState<CallRow[] | null>(null)
   const [cursor, setCursor] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
   const [paged, setPaged] = useState(false)
   const load = useCallback(async (after?: string | null) => {
     setPaged(Boolean(after))
     setBusy(true)
+    if (!after) setError(null)
     try {
       const page = await listCalls(locationId, daysAgo(6), today(), after)
       setCalls((prev) => (after ? [...(prev ?? []), ...page.calls] : page.calls))
       setCursor(page.cursor)
     } catch (err) {
-      toast(errorText(err, 'Kunde inte hämta samtalen.', ERRORS), { tone: 'danger' })
-      setCalls((prev) => prev ?? [])
+      const text = errorText(err, 'Kunde inte hämta samtalen.', ERRORS)
+      // Första sidan: felet i kortet, inte en tom lista. "Visa fler": en toast, listan står kvar.
+      if (after) toast(text, { tone: 'danger' })
+      else setError(text)
     } finally {
       setBusy(false)
     }
@@ -31,15 +37,20 @@ export default function CallsTab({ locationId, owner }: { locationId: string; ow
 
   useEffect(() => { void load() }, [load])
   // Levande bara för första sidan (inte efter "Visa fler").
+  // Har första hämtningen misslyckats (t.ex. offline) försöker den igen av
+  // sig själv, även när nätet kommer tillbaka; felrutan står kvar tills dess.
   useLiveRefresh(async () => {
     const page = await listCalls(locationId, daysAgo(6), today(), null)
     setCalls(page.calls)
     setCursor(page.cursor)
-  }, { enabled: calls !== null && !busy && !paged })
+    setError(null)
+  }, { enabled: (calls !== null || error !== null) && !busy && !paged })
 
   return (
     <Card title="Samtal senaste veckan">
-      {!calls ? <p className="cell-muted">Hämtar…</p> : calls.length === 0 ? (
+      {error ? <ErrorNote text={error} onRetry={() => void load()} /> : !calls ? (
+        <div role="status" aria-label="Hämtar samtalen"><SkelRows n={4} cols={4} /></div>
+      ) : calls.length === 0 ? (
         <p className="admin-empty">Inga samtal senaste veckan.</p>
       ) : (
         <div className="table-scroll" tabIndex={0}>
@@ -76,7 +87,7 @@ export default function CallsTab({ locationId, owner }: { locationId: string; ow
           </table>
         </div>
       )}
-      {cursor ? <Button variant="secondary" busy={busy} busyLabel="Hämtar…" onClick={() => void load(cursor)}>Visa fler</Button> : null}
+      {cursor && !error ? <Button variant="secondary" busy={busy} busyLabel="Hämtar…" onClick={() => void load(cursor)}>Visa fler</Button> : null}
     </Card>
   )
 }

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { buildCorpus } from '../../../scripts/help-corpus.mjs'
 import type { HelpView } from './kb'
 
@@ -11,6 +11,12 @@ vi.mock('../auth/cognito', () => ({
 const json = (code: number, body: unknown, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), { status: code, headers: { 'Content-Type': 'application/json', ...headers } })
 
+// Kunskapsbasen byggs en gång för filen, inte vid varje hämtning (långsamt).
+let CORPUS = ''
+beforeAll(() => {
+  CORPUS = JSON.stringify(buildCorpus())
+}, 30_000)
+
 const VIEW: HelpView = { role: 'owner_user', features: { reservations: true }, staffInsights: true }
 const ANSWER = { text: 'Från servern.', steps: [], actions: [] }
 
@@ -20,7 +26,9 @@ async function load(answers: (init: RequestInit) => Promise<Response>, corpus = 
   vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com')
   const fetchMock = vi.fn((url: string, init: RequestInit = {}) => {
     if (url.endsWith('help-corpus.json')) {
-      return corpus ? Promise.resolve(json(200, buildCorpus())) : Promise.reject(new TypeError('Failed to fetch'))
+      return corpus
+        ? Promise.resolve(new Response(CORPUS, { status: 200, headers: { 'Content-Type': 'application/json' } }))
+        : Promise.reject(new TypeError('Failed to fetch'))
     }
     return answers(init)
   })
@@ -37,7 +45,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('askHelp', () => {
+describe('askHelp', { timeout: 15_000 }, () => {
   it('asks quietly: no data-changed signal, so open pages do not refetch', async () => {
     const h = await load(async () => json(200, { answer: ANSWER }))
     const changed = vi.fn()
@@ -56,6 +64,13 @@ describe('askHelp', () => {
   it('switched off: no answer from the local corpus', async () => {
     const h = await load(async () => json(403, { error: 'help_assistant_off' }))
     await expect(h.askHelp('Hur lägger jag till en rätt?', [], VIEW)).rejects.toBeInstanceOf(h.HelpOff)
+  })
+
+  it('a 403 forbidden falls back to the local corpus and does not switch the assistant off', async () => {
+    const h = await load(async () => json(403, { error: 'forbidden' }))
+    const answer = await h.askHelp('Hur lägger jag till en rätt?', [], VIEW)
+    expect(answer.text).not.toBe('')
+    expect(answer.known).toBe(true)
   })
 
   it('a server error falls back to the local corpus', async () => {

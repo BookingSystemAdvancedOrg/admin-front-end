@@ -1,6 +1,6 @@
 import type { LayoutElement } from './layoutApi'
 import { errorText } from '../../shared/errors'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { sameData, useLiveRefresh } from '../../shared/live'
 import { LayoutPrep } from './LayoutPrep'
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
@@ -211,7 +211,10 @@ export default function LayoutEditorPage() {
     setLastFocus(focusTableId)
     if (focusTableId) setMode('book')
   }
-  const focus = focusTableId ? { tableId: focusTableId, date: focusDate } : null
+  const focus = useMemo(
+    () => (focusTableId ? { tableIds: focusTableId.split(',').filter(Boolean), date: focusDate } : null),
+    [focusTableId, focusDate],
+  )
   // Monteras första gången skärmen är stor nog, och ligger sedan kvar.
   const [editorMounted, setEditorMounted] = useState(!small)
   if (!small && !editorMounted) setEditorMounted(true)

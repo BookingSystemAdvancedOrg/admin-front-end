@@ -116,3 +116,18 @@ describe('WaitlistSettingsCard', () => {
     await waitFor(() => expect(api.saveSettings).toHaveBeenCalledWith('loc-1', { ...settings, holdMinutes: 15 }))
   })
 })
+
+describe('TableLinks chip', () => {
+  it('is one button for a booking at several tables, linking to all of them', async () => {
+    const { TableLinks } = await import('../../shared/TableLinks')
+    render(
+      <MemoryRouter>
+        <TableLinks ids={['u3', 'u4']} labels={new Map([['u3', '3'], ['u4', '4']])} date="2026-11-16" />
+      </MemoryRouter>,
+    )
+    const chip = screen.getByRole('link', { name: 'Bord 3 och 4, visa i bordskartan' })
+    expect(chip.textContent).toBe('Bord 3 + 4')
+    expect(chip).toHaveAttribute('href', tableHref(['u3', 'u4'], '2026-11-16'))
+    expect(screen.getAllByRole('link')).toHaveLength(1)
+  })
+})

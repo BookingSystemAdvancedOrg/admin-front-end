@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import EventEditor from './EventEditor'
 import * as api from './api'
 import * as menuApi from '../meny/menuApi'
+import { ApiError } from '../../shared/api'
 import { EVENT_IMAGE_MAX_BYTES, imageAltError, imageFields, imageFileError, initialImage } from './eventImage'
 
 vi.mock('./api', async (orig) => ({
@@ -127,5 +128,42 @@ describe('EventEditor image', () => {
     const body = vi.mocked(api.updateEvent).mock.calls[0][2]
     expect(body.imageKey).toBeUndefined()
     expect(body.imageAlt).toBeUndefined()
+  })
+
+  it('keeps an image someone else added while I edited the title (409 retry)', async () => {
+    const OTHER = KEY.replace('0f8fad5b', '1a2b3c4d')
+    const start = { ...detail, imageKey: undefined, imageAlt: undefined }
+    const latest = { ...start, version: 4, imageKey: OTHER, imageAlt: 'Scenen' }
+    vi.mocked(api.updateEvent).mockRejectedValueOnce(new ApiError(409, 'changed_retry'))
+    const fetchLatest = vi.fn().mockResolvedValue(latest)
+    render(<EventEditor locationId="loc-a-1" existing={start} fetchLatest={fetchLatest} onSaved={vi.fn()} onCancel={vi.fn()} />)
+    fireEvent.change(screen.getByDisplayValue('Vinmiddag'), { target: { value: 'Vinmiddag i höst' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(() => expect(api.updateEvent).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(api.updateEvent).mock.calls[1][2]).toMatchObject({ title: 'Vinmiddag i höst', imageKey: OTHER, imageAlt: 'Scenen', version: 4 })
+    expect(menuApi.uploadMenuImage).not.toHaveBeenCalled()
+  })
+
+  it('shows a clash when both changed the image, and "Använd" takes theirs', async () => {
+    const OTHER = KEY.replace('0f8fad5b', '1a2b3c4d')
+    const latest = { ...detail, version: 4, imageKey: OTHER, imageAlt: 'Scenen' }
+    vi.mocked(api.updateEvent).mockRejectedValueOnce(new ApiError(409, 'changed_retry'))
+    const fetchLatest = vi.fn().mockResolvedValue(latest)
+    render(<EventEditor locationId="loc-a-1" existing={detail} fetchLatest={fetchLatest} onSaved={vi.fn()} onCancel={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText(/Bildtext för skärmläsare/), { target: { value: 'Långbord i kvällsljus' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    expect(await screen.findByText('Samma fält ändrades nyss på en annan plats. Välj vilket värde som ska gälla och spara igen.')).toBeInTheDocument()
+    expect(api.updateEvent).toHaveBeenCalledTimes(1)
+    const group = screen.getByRole('group', { name: 'Bild' })
+    expect(group).toHaveTextContent('Ändrades nyss på en annan plats: en annan bild (Scenen)')
+    // Ditt val står kvar tills du väljer.
+    expect(screen.getByLabelText(/Bildtext för skärmläsare/)).toHaveValue('Långbord i kvällsljus')
+    fireEvent.click(screen.getByRole('button', { name: 'Använd' }))
+    expect(screen.getByLabelText(/Bildtext för skärmläsare/)).toHaveValue('Scenen')
+    expect(document.querySelector('img.evenemang-image-preview')?.getAttribute('src')).toBe(`https://cdn.example/${OTHER}`)
+    expect(screen.queryByRole('button', { name: 'Använd' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(() => expect(api.updateEvent).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(api.updateEvent).mock.calls[1][2]).toMatchObject({ imageKey: OTHER, imageAlt: 'Scenen', version: 4 })
   })
 })

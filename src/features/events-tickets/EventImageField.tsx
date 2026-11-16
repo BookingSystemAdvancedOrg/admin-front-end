@@ -1,12 +1,14 @@
-import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useId, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { Bar, Button, Field, Input } from '@booqy/brand'
 import { MENU_IMAGE_CONTENT_TYPES, menuImageUrl } from '../meny/menuApi'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { EVENT_IMAGE_ALT_MAX, imageAltError, imageFileError, type EventImage } from './eventImage'
 
 /** Bildväljaren i evenemangsredigeraren: förhandsvisning, byt/ta bort och alt-text. */
-export default function EventImageField({ value, onChange, showErrors }: {
+export default function EventImageField({ value, onChange, showErrors, note }: {
   value: EventImage; onChange: (next: EventImage) => void; showErrors: boolean
+  /** Rad när bilden ändrats på annat håll samtidigt (ChangedNote). */
+  note?: ReactNode
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const legendId = useId()
@@ -63,6 +65,7 @@ export default function EventImageField({ value, onChange, showErrors }: {
           <Input value={value.alt} maxLength={EVENT_IMAGE_ALT_MAX} onChange={(e) => onChange({ ...value, alt: e.target.value })} />
         </Field>
       ) : null}
+      {note}
     </fieldset>
   )
 }

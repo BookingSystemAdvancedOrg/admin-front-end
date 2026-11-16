@@ -61,10 +61,10 @@
   rotate: -90deg;
   transition: rotate 240ms var(--ease);
 }
-.stree-tree[aria-expanded='true'] > .stree-row .stree-chevron {
+.stree-row[aria-expanded='true'] .stree-chevron {
   rotate: 0deg;
 }
-.stree-tree:focus-visible > .stree-row,
+.stree-row:focus-visible,
 .stree-branch:focus-visible {
   box-shadow: 0 0 0 2px var(--focus);
 }

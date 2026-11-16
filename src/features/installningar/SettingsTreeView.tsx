@@ -125,21 +125,23 @@ export function SettingsTreeNav({
           const expanded = open.has(tree.id)
           const here = tree.id === currentTree
           return (
-            <li
-              key={tree.id}
-              role="treeitem"
-              aria-expanded={expanded}
-              aria-label={tree.label}
-              className={here ? 'stree-tree here' : 'stree-tree'}
-              {...props(treeItem)}
-            >
-              <div className="stree-row" onClick={() => toggle(tree.id)}>
+            <li key={tree.id} role="none" className={here ? 'stree-tree here' : 'stree-tree'}>
+              {/* Raden är trädets treeitem och äger gruppen (WAI:s navigationsträd), så namnet är bara trädets. */}
+              <div
+                className="stree-row"
+                role="treeitem"
+                aria-expanded={expanded}
+                aria-owns={`stree-group-${tree.id}`}
+                aria-label={tree.label}
+                onClick={() => toggle(tree.id)}
+                {...props(treeItem)}
+              >
                 <span className="stree-icon" aria-hidden="true"><Icon name={tree.icon} size={18} /></span>
                 <span className="stree-label">{tree.label}</span>
                 <span className="stree-chevron" aria-hidden="true"><Icon name="chevron-down" size={16} /></span>
               </div>
               <div className="stree-fold" data-open={expanded}>
-                <ul role="group" className="stree-group">
+                <ul role="group" className="stree-group" id={`stree-group-${tree.id}`}>
                   {expanded &&
                     tree.branches.map((t) => {
                       const item = items.find((i) => i.key === t) as NavItem

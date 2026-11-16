@@ -200,6 +200,16 @@ describe('BottomNav on phones', () => {
     expect(document.documentElement).not.toHaveClass('drawer-lock')
   })
 
+  it('leaves focus where Sök put it when the sheet slides away', async () => {
+    renderAt()
+    openSheet()
+    fireEvent.click(within(sheet()!).getByRole('button', { name: 'Sök' }))
+    const input = await screen.findByRole('combobox')
+    await waitFor(() => expect(sheet()).toBeNull())
+    await act(() => new Promise((r) => setTimeout(r, 300)))
+    expect(document.activeElement).toBe(input)
+  })
+
   it('closes on a scrim tap and on a second tap on Mer', async () => {
     renderAt()
     openSheet()

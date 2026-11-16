@@ -212,9 +212,12 @@
   z-index: 10;
 }
 
+/* Titeln krymper aldrig under sin bredd: får den och åtgärderna inte plats
+   på en rad hamnar åtgärderna på en egen rad under (aldrig över titeln). */
 .admin-topbar-titles {
-  flex: 1 0 0;
-  min-width: 1px;
+  flex: 1 0 auto;
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -922,6 +925,25 @@
 
 /* --- Modal / popup ------------------------------------------------------ */
 
+/* Eget översta lager när en ruta öppnas ovanpå en <dialog> (ModalOverlay). */
+dialog.modal-layer {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+dialog.modal-layer::backdrop {
+  background: transparent;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1163,6 +1185,11 @@
   gap: 20px;
 }
 
+/* Ett ensamt kort i raden tar hela bredden. */
+.settings-row > :only-child {
+  grid-column: 1 / -1;
+}
+
 .stripe-status {
   display: flex;
   align-items: center;
@@ -1233,6 +1260,27 @@
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   }
 
+  .admin-topbar,
+  .admin-main {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  /* Nyckeltalen stannar två och två: hela raden ska synas på en gång i telefonen. */
+  .stats-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .quick-links-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Telefon (även liggande) och telefonappen: skalet i en kolumn, menyn längst
+   ner (BottomNav). Samma fråga som PHONE_NAV_QUERY i dock.ts; surfplattor och
+   datorer behåller sidomenyn. */
+@media (max-width: 600px), (pointer: coarse) and (max-height: 500px) {
   .admin-shell {
     flex-direction: column;
   }
@@ -1282,22 +1330,6 @@
 
   .admin-logout {
     align-self: center;
-  }
-
-  .admin-topbar,
-  .admin-main {
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-
-  /* Nyckeltalen stannar två och två: hela raden ska synas på en gång i telefonen. */
-  .stats-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .quick-links-row {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
 

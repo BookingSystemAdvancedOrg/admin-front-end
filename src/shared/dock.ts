@@ -4,12 +4,15 @@ import type { NavItem } from './nav'
 import type { Tenant } from './tenant'
 
 /**
- * Telefonens meny längst ner (BottomNav, MoreSheet): samma brytpunkt som när
- * sidomenyn tidigare blev en låda. Allt räknas fram ur nav.ts (NAV_GROUPS,
- * NAV_FOOTER, navVisible), så raden och arket visar exakt det sidomenyn visar
- * för rollen och planen, varken mer eller mindre.
+ * Telefonens meny längst ner (BottomNav, MoreSheet): bara på telefoner och i
+ * telefonappen, aldrig på surfplattor eller datorer (de har sidomenyn).
+ * Telefon = smal skärm (stående), eller pekskärm med låg höjd (en stor
+ * telefon liggande, 932 x 430). En surfplatta är minst ~744 px åt båda håll.
+ * Samma fråga står i bottomNav.css, admin.css, brand.css och ds.css.
+ * Allt räknas fram ur nav.ts (NAV_GROUPS, NAV_FOOTER, navVisible), så raden
+ * och arket visar exakt det sidomenyn visar för rollen och planen.
  */
-export const PHONE_NAV_QUERY = '(max-width: 900px)'
+export const PHONE_NAV_QUERY = '(max-width: 600px), (pointer: coarse) and (max-height: 500px)'
 
 function phoneNow(): boolean {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(PHONE_NAV_QUERY).matches
@@ -22,7 +25,7 @@ function subscribePhone(onChange: () => void): () => void {
   return () => mq.removeEventListener?.('change', onChange)
 }
 
-/** Telefon och smal surfplatta (900 px och smalare): raden längst ner i stället för sidomenyn. */
+/** Telefon (även liggande) och telefonappen: raden längst ner i stället för sidomenyn. */
 export function usePhoneNav(): boolean {
   return useSyncExternalStore(subscribePhone, phoneNow, () => false)
 }

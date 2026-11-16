@@ -88,8 +88,9 @@ export function AdminLayout() {
   // Sidomenyns grupper är öppna från början; en grupp man fäller ihop förblir
   // hopfälld i den här webbläsaren.
   const [closedGroups, setClosedGroups] = useState<string[]>(storedClosedGroups)
-  // Telefon och smal surfplatta (900 px och smalare): ingen sidomeny och ingen
+  // Telefon (även liggande) och telefonappen: ingen sidomeny och ingen
   // menyknapp uppe, utan menyn längst ner där tummen är (BottomNav).
+  // Surfplattor och datorer har sidomenyn.
   const phone = usePhoneNav()
   useEffect(() => {
     rememberPage(pathname)

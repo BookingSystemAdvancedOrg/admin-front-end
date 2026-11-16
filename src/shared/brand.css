@@ -419,7 +419,7 @@ button.stat-tile {
 
 /* --- Mobil: sidomenyn blir ett vinrött band ------------------------------ */
 
-@media (max-width: 900px) {
+@media (max-width: 600px), (pointer: coarse) and (max-height: 500px) {
   /* Bandet följer inte med vid rullning på mobil (regeln ovan satte sticky
      igen efter admin.css, så bandet låg kvar över innehållet). Relative, inte
      static: vätskans canvas ska stanna inom bandet, annars täcker den sidan. */
@@ -567,7 +567,7 @@ html.is-saving .btn:disabled {
   color: var(--on-ox-3);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 600px), (pointer: coarse) and (max-height: 500px) {
   .admin-nav-group {
     display: contents;
   }
@@ -895,7 +895,7 @@ html.is-busy * {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 600px), (pointer: coarse) and (max-height: 500px) {
   .admin-shell {
     padding: 10px;
     gap: 10px;
@@ -1106,6 +1106,7 @@ html.is-busy * {
   color: var(--muted);
 }
 .settings-menu-arrow {
+  display: inline-flex;
   flex: none;
   font: 400 22px/1 var(--font);
   color: var(--muted);
@@ -1127,10 +1128,6 @@ html.is-busy * {
   color: var(--accent-ink);
   cursor: default;
   transition: background-color 200ms var(--ease);
-}
-.settings-back span {
-  font-size: 20px;
-  line-height: 1;
 }
 .settings-group-name {
   margin: 0 0 8px 14px;
@@ -1557,7 +1554,7 @@ html.is-busy * {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 600px), (pointer: coarse) and (max-height: 500px) {
   .admin-nav-toggle {
     display: none;
   }

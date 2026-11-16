@@ -188,6 +188,12 @@
   font-size: var(--fs-sm);
 }
 
+/* Booqys fel: texten, sedan Försök igen och Rapportera till Booqy (ErrorActions). */
+.help-msg--fault {
+  display: grid;
+  gap: var(--space-3);
+}
+
 .help-answer {
   margin: 0;
 }

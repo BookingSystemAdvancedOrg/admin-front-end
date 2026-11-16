@@ -88,3 +88,22 @@ describe('CategoriesModal', () => {
     expect(screen.getByRole('button', { name: 'Spara kategorier' })).toBeEnabled()
   })
 })
+
+describe('CategoriesModal closing by mistake', () => {
+  it('closes at once without changes, asks first with them', async () => {
+    const user = userEvent.setup()
+    const onCancel = vi.fn()
+    const { unmount } = render(<CategoriesModal categories={CATS} version={1} dishCounts={{}} onSave={vi.fn()} fetchLatest={vi.fn()} onCancel={onCancel} />)
+    await user.keyboard('{Escape}')
+    expect(onCancel).toHaveBeenCalledTimes(1)
+    unmount()
+
+    onCancel.mockClear()
+    render(<CategoriesModal categories={CATS} version={1} dishCounts={{}} onSave={vi.fn()} fetchLatest={vi.fn()} onCancel={onCancel} />)
+    await user.type(screen.getByLabelText('Kategori 1'), 'x')
+    await user.keyboard('{Escape}')
+    expect(onCancel).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Släng' }))
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+})

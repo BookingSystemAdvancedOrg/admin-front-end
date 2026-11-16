@@ -295,12 +295,17 @@
   color: var(--ink);
 }
 
-/* Vridpilarna (⟲ ⟳) är små tecken i typsnittet: större, samma knapphöjd. */
+/* Vridpilarna: samma linjeikon som ångra/gör om; moturs är den spegelvänd. */
 .view-toggle button.view-icon {
-  padding: 6px 14px;
-  font-size: 22px;
+  display: inline-grid;
+  place-items: center;
+  padding: 6px 12px;
   line-height: 1;
   color: var(--ink);
+}
+
+.view-toggle button.view-icon .icon-mirror {
+  transform: scaleX(-1);
 }
 
 .view-toggle .zoom-value {
@@ -626,7 +631,7 @@
   font: 700 10px/1 var(--sans);
   letter-spacing: 0.08em;
   color: var(--muted);
-  background: rgb(var(--bq-snow-rgb) / 0.9);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
   padding: 3px 7px;
   border-radius: var(--r-md);
   white-space: nowrap;
@@ -634,8 +639,7 @@
 
 .seg.kitchen .seg-tag span,
 .seg.entrance .seg-tag span {
-  color: #0058b0;
-  background: rgba(235, 244, 255, 0.92);
+  color: var(--accent-ink);
 }
 
 /* --- Bord --------------------------------------------------------------- */

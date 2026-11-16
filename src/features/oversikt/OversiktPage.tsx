@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { sameData, useLiveRefresh } from '../../shared/live'
 import type { CSSProperties } from 'react'
 import { Num } from '../../shared/motion/Num'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { booqyFaultText } from '../../shared/errors'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { MonthCard } from './MonthCard'
 import { StatTile } from './StatTile'
@@ -193,6 +195,22 @@ export default function OversiktPage() {
       cancelled = true
     }
   }, [locationId, fetchOverview])
+  // Försök igen i felrutan: hämta översikten på nytt.
+  // Bara ett försök åt gången, och ett sent svar för en annan plats skriver aldrig över.
+  const [retrying, setRetrying] = useState(false)
+  const locationIdRef = useRef(locationId)
+  useEffect(() => {
+    locationIdRef.current = locationId
+  }, [locationId])
+  const retryOverview = () => {
+    if (!locationId || retrying) return
+    setRetrying(true)
+    void fetchOverview(locationId)
+      .then((d) => {
+        if (d.forLocation === locationIdRef.current) setFetched(d)
+      })
+      .finally(() => setRetrying(false))
+  }
   // Levande: dagens bokningar, beställningar och förfrågningar uppdateras av sig själva.
   useLiveRefresh(async () => {
     if (!locationId) return
@@ -390,20 +408,16 @@ export default function OversiktPage() {
                   </li>
                 ))}
               </ul>
-            ) : loading ? (
+            ) : loading || retrying ? (
               <SkelRows n={3} cols={3} />
+            ) : todayActive === null ? (
+              <ErrorNote text={booqyFaultText('Kunde inte hämta dagens bokningar.')} onRetry={retryOverview} />
             ) : (
               <p className="admin-empty">
-                {todayActive === null
-                    ? 'Kunde inte hämta dagens bokningar.'
-                    : (
-                      <>
-                        Inga bokningar idag.
-                        <button type="button" className="sample-offer" onClick={() => chooseSample(true)}>
-                          Visa med exempeldata
-                        </button>
-                      </>
-                    )}
+                Inga bokningar idag.
+                <button type="button" className="sample-offer" onClick={() => chooseSample(true)}>
+                  Visa med exempeldata
+                </button>
               </p>
             )}
             {todayActive && todayActive.length > 8 && (

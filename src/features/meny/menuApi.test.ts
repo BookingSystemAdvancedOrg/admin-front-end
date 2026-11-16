@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../shared/api'
+import { describeError } from '../../shared/errors'
 import * as api from '../../shared/api'
 import type { Dish } from './data'
 import {
@@ -267,6 +268,25 @@ describe('uploadMenuImage', () => {
       }),
     )
     fetchSpy.mockRestore()
+  })
+
+  it('treats a failed S3 upload as Booqys fault, with Rapportera', async () => {
+    mockedApiFetch.mockResolvedValue({
+      uploadUrl: 'https://s3.example/upload',
+      imageKey: 'k',
+      expiresIn: 300,
+      requiredHeaders: { 'Content-Type': 'image/webp' },
+    })
+    for (const status of [403, 503]) {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status }))
+      const err = await uploadMenuImage('loc-1', new File(['x'], 'bild.webp', { type: 'image/webp' })).catch((e: unknown) => e)
+      expect(err).toBeInstanceOf(ApiError)
+      expect((err as ApiError).status).toBeGreaterThanOrEqual(500)
+      const info = describeError(err, 'Kunde inte spara.')
+      expect(info.actor).toBe('booqy')
+      expect(info.text).toMatch(/^Kunde inte spara\. Felet ligger hos Booqy/)
+      fetchSpy.mockRestore()
+    }
   })
 })
 

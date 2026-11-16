@@ -310,7 +310,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
   const [showFloorBelow, setShowFloorBelow] = useState(true)
   // Handverktyget (H, eller håll inne mellanslag - som i Figma): klick+drag
   // panorerar vyn i stället för att rita/välja. Vyn roteras med Alt+drag
-  // eller ⟲ ⟳. isRotating stänger av vyns 320ms-övergång under själva
+  // eller rotera-knapparna. isRotating stänger av vyns 320ms-övergång under själva
   // draget (rotation eller panorering), så vyn följer musen direkt.
   const [handMode, setHandMode] = useState(false)
   const [spaceDown, setSpaceDown] = useState(false)
@@ -419,6 +419,11 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
   const [changedThere, setChangedThere] = useState(false)
 
   // Läs in den sparade layouten: våningar med sitt innehåll.
+  // Ingen plats: inget att hämta, så statusraden väntar inte på något.
+  useEffect(() => {
+    if (!locationId && !resolvingLocation) setStatusText((t) => (t === 'Hämtar layout…' ? 'Ingen plats än' : t))
+  }, [locationId, resolvingLocation])
+
   useEffect(() => {
     if (!locationId) return
     let cancelled = false
@@ -2278,10 +2283,10 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
               </div>
               <div className="view-toggle">
                 <button type="button" className="view-icon" title="Rotera vyn moturs (eller Alt + dra)" aria-label="Rotera moturs" onClick={() => setSpin((s) => s - 45)}>
-                  ⟲
+                  <Icon name="rotate" size={18} className="icon-mirror" />
                 </button>
                 <button type="button" className="view-icon" title="Rotera vyn medurs (eller Alt + dra)" aria-label="Rotera medurs" onClick={() => setSpin((s) => s + 45)}>
-                  ⟳
+                  <Icon name="rotate" size={18} />
                 </button>
               </div>
               <div className="view-toggle">
@@ -2857,7 +2862,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                   </summary>
                   <p>
                     Väggar som vetter mot kameran sänks så att borden alltid
-                    syns. Rotera vyn med Alt + dra eller ⟲ ⟳. Fönster, entré och
+                    syns. Rotera vyn med Alt + dra eller rotera-knapparna. Fönster, entré och
                     kök sitter på väggarna och följer med när väggen flyttas
                     eller förlängs. Tryck ? för alla kortkommandon.
                   </p>

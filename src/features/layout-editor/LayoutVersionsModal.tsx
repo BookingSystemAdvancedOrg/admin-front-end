@@ -9,6 +9,7 @@ import {
 import type { LayoutActivation, PublishedLayoutSnapshot } from './layoutApi'
 import { SkelRows } from '../../shared/Skeleton'
 import ModalOverlay from '../../shared/ModalOverlay'
+import { useConfirm } from '../../shared/ConfirmDialog'
 import { ErrorNote } from '../../shared/ErrorNote'
 
 /** "2026-10-05T01:00:00Z" -> "5 oktober 2026, 03:00" i lokal tid. */
@@ -71,6 +72,7 @@ export function LayoutVersionsModal({
   onClose: () => void
   onActivated: () => void
 }) {
+  const [confirmEl, ask] = useConfirm()
   const [versions, setVersions] = useState<PublishedLayoutSnapshot[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busyVersion, setBusyVersion] = useState<number | null>(null)
@@ -124,7 +126,8 @@ export function LayoutVersionsModal({
    * användare/rätter).
    */
   async function archive(version: number, label: string) {
-    if (!window.confirm(`Arkivera ${label}? Går inte att ångra.`)) return
+    if (!(await ask({ title: `Arkivera ${label}?`, text: 'Går inte att ångra.', confirmLabel: 'Arkivera', danger: true })))
+      return
     setError(null)
     setArchivingVersion(version)
     try {
@@ -146,7 +149,7 @@ export function LayoutVersionsModal({
    * lifecycle-fält ändras.
    */
   async function cancelPending() {
-    if (!window.confirm('Avbryta det schemalagda bytet?')) return
+    if (!(await ask({ title: 'Avbryta det schemalagda bytet?', confirmLabel: 'Avbryt bytet', cancelLabel: 'Behåll' }))) return
     setError(null)
     setResult(null)
     setCancelling(true)
@@ -167,6 +170,7 @@ export function LayoutVersionsModal({
   const currentVersion = versions?.find((v) => v.isCurrent)
 
   return (
+    <>
     <ModalOverlay role="dialog" aria-modal="true">
       <div className="modal">
         <h2>Publicerade versioner</h2>
@@ -272,5 +276,7 @@ export function LayoutVersionsModal({
         </div>
       </div>
     </ModalOverlay>
+    {confirmEl}
+    </>
   )
 }

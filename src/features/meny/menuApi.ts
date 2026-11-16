@@ -476,7 +476,8 @@ export async function uploadMenuImage(
       headers: { 'Content-Type': grant.requiredHeaders['Content-Type'] },
     })
     if (!res.ok) {
-      throw new Error('Bilduppladdningen misslyckades - försök igen.')
+      // Bildlagringen (S3) vägrade eller svarade inte: Booqys fel, med Rapportera.
+      throw new ApiError(res.status >= 500 ? res.status : 502, 'image_upload_failed', { code: 'image_upload_unavailable' })
     }
   })
   return grant.imageKey

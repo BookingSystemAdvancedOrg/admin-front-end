@@ -42,6 +42,8 @@ import { isCentre } from './imageFocus'
 import { SkelBlock, SkelTableRows } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { Select } from '../../shared/Select'
+import { NoLocation } from '../../shared/NoLocation'
+import { useConfirm } from '../../shared/ConfirmDialog'
 
 /**
  * `base` är rätten som dialogen öppnades med (dina ändringar räknas mot den,
@@ -63,6 +65,7 @@ type ModalState = { mode: 'add' } | { mode: 'edit'; id: string; base: Dish; upda
 export default function MenyPage() {
   const { sub } = useAuth()
   const { locationId, resolving: resolvingLocation } = useLocationId(sub)
+  const [confirmEl, ask] = useConfirm()
   const timeZone = currentLocation(useTenant())?.timezone || DEFAULT_TIMEZONE
   // Schemats status räknas om varje minut, så badgen byter utan omladdning.
   const [now, setNow] = useState(() => new Date())
@@ -278,7 +281,7 @@ export default function MenyPage() {
 
   async function removeDish(dish: Dish) {
     if (!locationId) return
-    if (!window.confirm(`Ta bort ${dish.name} permanent?`)) return
+    if (!(await ask({ title: `Ta bort ${dish.name}?`, text: 'Går inte att ångra.', confirmLabel: 'Ta bort', danger: true }))) return
     setRowError(null)
     markBusy(dish.id, true)
     try {
@@ -372,7 +375,7 @@ export default function MenyPage() {
             Kategorier
           </button>
           <CtaButton
-            label="+ Lägg till rätt"
+            label="Lägg till rätt"
             win="Kör!"
             data-tour="menu-add"
             disabled={!canEdit}
@@ -382,11 +385,10 @@ export default function MenyPage() {
         }
       />
       <div className="admin-main">
-        {!locationId && !resolvingLocation && (
-          <p className="form-error" role="alert">
-            Ingen plats än. Spara restaurangen under Inställningar först.
-          </p>
-        )}
+        {!locationId && !resolvingLocation ? (
+          <NoLocation />
+        ) : (
+        <>
         {readOnly && (
           <ErrorNote text={MENU_ROUTES_MISSING_MESSAGE} />
         )}
@@ -513,8 +515,11 @@ export default function MenyPage() {
             </table>
           </div>
         </section>
+        </>
+        )}
       </div>
 
+      {confirmEl}
       {modal && (
         <DishModal
           key={modal.mode === 'edit' ? modal.id : 'new'}

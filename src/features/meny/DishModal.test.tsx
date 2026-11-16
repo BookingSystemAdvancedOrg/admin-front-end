@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { DishModal } from './DishModal'
@@ -40,5 +40,38 @@ describe('DishModal while the dish changes somewhere else', () => {
     await user.type(screen.getByLabelText('Namn'), 'Torsk')
     rerender(modal({ ...DISH, name: 'Torsk' }))
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+})
+
+describe('DishModal closing by mistake', () => {
+  function open(onCancel = vi.fn()) {
+    render(
+      <DishModal title="Redigera rätt" initial={DISH} latest={DISH} timeZone="Europe/Stockholm" categories={CATS}
+        onSave={vi.fn()} onCancel={onCancel} />,
+    )
+    return onCancel
+  }
+
+  it('closes at once on Escape when nothing changed', async () => {
+    const user = userEvent.setup()
+    const onCancel = open()
+    await user.keyboard('{Escape}')
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('asks before throwing away edits on Escape or a tap outside', async () => {
+    const user = userEvent.setup()
+    const onCancel = open()
+    await user.type(screen.getByLabelText('Pris (kr)'), '0')
+    await user.keyboard('{Escape}')
+    expect(onCancel).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Fortsätt redigera' }))
+    expect(screen.getByLabelText('Pris (kr)')).toHaveValue('1890')
+
+    const overlay = document.querySelector('.modal-overlay') as HTMLElement
+    fireEvent.pointerDown(overlay)
+    expect(onCancel).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Släng' }))
+    expect(onCancel).toHaveBeenCalledTimes(1)
   })
 })

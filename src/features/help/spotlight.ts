@@ -38,6 +38,12 @@ export function findTargets(targets: string[], root: ParentNode = document): HTM
 
 let active: { stop: () => void } | null = null
 
+/** Slutar lysa upp och slutar vänta på mål (t.ex. när en vy eller ett test stängs). */
+export function stopSpotlight() {
+  active?.stop()
+  active = null
+}
+
 /** Lyser upp målen; returnerar elementen som lyses upp. */
 export function spotlight(targets: string[], opts: { waitMs?: number; reducedMotion?: boolean } = {}): Promise<HTMLElement[]> {
   active?.stop()

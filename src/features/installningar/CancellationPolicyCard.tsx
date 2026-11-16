@@ -1,8 +1,12 @@
+import { ChangedNote } from '../../shared/ChangedNote'
+import { dedupe, useLiveForm } from '../../shared/live'
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { getLocation, updateLocation } from './locationApi'
 import type { GuaranteePolicy } from './locationApi'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { TitleInfo } from '../../shared/TitleInfo'
 
 /**
  * Avbokningspolicy / kortgaranti för den valda platsen.
@@ -79,6 +83,20 @@ export function CancellationPolicyCard({
     }
   }, [locationId])
 
+  // Levande: sparar en kollega eller en annan plats inställningen syns den av sig själv;
+  // har du börjat ändra står ditt kvar med en rad om det andra.
+  const live = useLiveForm<GuaranteePolicy | null, FormState>({
+    enabled: Boolean(locationId) && !loading && !busy,
+    fetch: async () => (await dedupe(`location:${locationId}`, () => getLocation(locationId as string))).guarantee ?? null,
+    saved,
+    form,
+    toForm: (s) => toForm(s ?? DEFAULTS),
+    adopt: (s) => {
+      setSaved(s)
+      setForm(toForm(s ?? DEFAULTS))
+    },
+  })
+
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }))
     setNotice(null)
@@ -129,16 +147,15 @@ export function CancellationPolicyCard({
 
   return (
     <section id="avbokningspolicy" className="admin-card table-card">
-      <h2 className="card-title">Avbokningspolicy</h2>
+      <TitleInfo
+        title="Avbokningspolicy"
+        info="Med kortgaranti sparar gästen sitt kort när hen bokar online (3-D Secure), inget dras då. Uteblir gästen eller avbokar för sent kan avgiften debiteras. Beloppen låses på bokningen."
+      />
+      {live.there !== null && <ChangedNote onUse={live.takeThere} />}
       <div style={{ height: 8 }} />
-      <p className="cell-muted">
-        Med kortgaranti sparar gästen sitt kort när hen bokar online - inget dras då. Uteblir
-        gästen eller avbokar för sent kan avgiften debiteras. Beloppen låses på bokningen.
-      </p>
       {!stripeReady && (
         <p className="form-error" role="status">
-          Kräver att restaurangens Stripe-konto är klart (se Betalningar). Tills dess bokar
-          gästerna utan kort.
+          Kräver Stripe (se Betalningar).
         </p>
       )}
       <div style={{ height: 16 }} />
@@ -151,7 +168,6 @@ export function CancellationPolicyCard({
               <p className="toggle-row-label" id="guarantee-enabled-label">
                 Kortgaranti vid onlinebokning
               </p>
-              <p className="cell-muted">Gästen lägger in kort i bokningen (3-D Secure).</p>
             </div>
             <button
               type="button"
@@ -212,13 +228,11 @@ export function CancellationPolicyCard({
             </p>
           ) : (
             <p className="cell-muted">
-              Nu: kortgaranti är avstängd - gästerna bokar utan kort. Slå på reglaget ovan och spara.
+              Nu: avstängd.
             </p>
           )}
           {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
+            <ErrorNote text={error} />
           )}
           {isOwner && (
             <span className="row-actions">
@@ -237,7 +251,7 @@ export function CancellationPolicyCard({
               )}
             </span>
           )}
-          {!isOwner && <p className="cell-muted">Bara restaurangens ägare kan ändra policyn.</p>}
+          {!isOwner && <p className="cell-muted">Bara ägaren kan ändra.</p>}
         </form>
       )}
     </section>

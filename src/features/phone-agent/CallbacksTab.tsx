@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { Button, Card, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
@@ -22,6 +23,7 @@ export function CallbackList({ locationId, title, compact = false }: { locationI
   }, [locationId, compact])
 
   useEffect(() => { void load() }, [load])
+  useLiveRefresh(async () => setItems(await listCallbacks(locationId)))
 
   async function close(cb: Callback) {
     setBusy(cb.callbackId)
@@ -39,7 +41,7 @@ export function CallbackList({ locationId, title, compact = false }: { locationI
   if (compact && (!items || items.length === 0)) return null
   return (
     <Card title={<>{title} <span className="status-badge" aria-label={`${items?.length ?? 0} väntar`}>{items?.length ?? 0}</span></>}>
-      {!items ? <p className="cell-muted">Hämtar…</p> : items.length === 0 ? <p className="admin-empty">Ingen väntar på att bli uppringd.</p> : (
+      {!items ? <p className="cell-muted">Hämtar…</p> : items.length === 0 ? <p className="admin-empty">Inga återuppringningar.</p> : (
         <ul className="telefon-callbacks">
           {items.map((cb) => (
             <li key={cb.callbackId}>

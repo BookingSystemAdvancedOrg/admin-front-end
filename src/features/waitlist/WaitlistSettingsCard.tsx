@@ -35,21 +35,17 @@ export default function WaitlistSettingsCard({ locationId }: { locationId: strin
 
   return (
     <Card title="Kö">
-      <p className="cell-muted">
-        När allt är fullbokat kan gäster ställa sig i kö. När ett bord blir ledigt erbjuder ni det med ett tryck och
-        gästen får ett sms. Bordet hålls för gästen så länge som hålltiden säger.
-      </p>
       <form className="form-grid" onSubmit={save} aria-label="Köinställningar">
         <fieldset className="queue-checks">
           <legend>Kön</legend>
           <label><input type="checkbox" checked={draft.enabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} /> På</label>
-          <label><input type="checkbox" checked={draft.publicJoin} onChange={(e) => setDraft({ ...draft, publicJoin: e.target.checked })} /> Gäster kan ställa sig i kö från hemsidan</label>
+          <label><input type="checkbox" checked={draft.publicJoin} onChange={(e) => setDraft({ ...draft, publicJoin: e.target.checked })} /> Kö från hemsidan</label>
         </fieldset>
-        <Field label="Hålltid (minuter)" hint="Hur länge ett erbjudet bord väntar på gästen, 5-30 minuter." required>
+        <Field label="Hålltid (minuter)" hint="5-30 min" required>
           <Input type="number" min={5} max={30} value={String(draft.holdMinutes)} required
             onChange={(e) => setDraft({ ...draft, holdMinutes: Number(e.target.value) })} />
         </Field>
-        <Field label="Max antal i kö" hint="1-200 sällskap." required>
+        <Field label="Max antal i kö" hint="1-200 sällskap" required>
           <Input type="number" min={1} max={200} value={String(draft.maxWaiting)} required
             onChange={(e) => setDraft({ ...draft, maxWaiting: Number(e.target.value) })} />
         </Field>

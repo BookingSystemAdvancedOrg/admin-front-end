@@ -1,16 +1,11 @@
-import { WEEKDAYS } from './locationApi'
+import { DAY_LABEL, WEEKDAYS, isOvernight } from './locationApi'
 import type { BusinessHours, BusinessHoursInterval, Weekday } from './locationApi'
 import { TimeInput } from '../../shared/DateInput'
 import { Icon } from '../../shared/Icon'
 
-const DAY_LABEL: Record<Weekday, string> = {
-  monday: 'Måndag',
-  tuesday: 'Tisdag',
-  wednesday: 'Onsdag',
-  thursday: 'Torsdag',
-  friday: 'Fredag',
-  saturday: 'Lördag',
-  sunday: 'Söndag',
+const NEXT_DAY: Record<Weekday, Weekday> = {
+  monday: 'tuesday', tuesday: 'wednesday', wednesday: 'thursday', thursday: 'friday',
+  friday: 'saturday', saturday: 'sunday', sunday: 'monday',
 }
 
 /**
@@ -83,6 +78,11 @@ export function BusinessHoursEditor({
                     updateInterval(day, index, 'closesAt', e.target.value)
                   }
                 />
+                {isOvernight(interval) && interval.opensAt !== interval.closesAt && (
+                  <span className="cell-muted hours-editor-next">
+                    {interval.closesAt === '00:00' ? 'till midnatt' : `natt mot ${DAY_LABEL[NEXT_DAY[day]].toLowerCase()}`}
+                  </span>
+                )}
                 {!disabled && (
                   <button
                     type="button"

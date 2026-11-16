@@ -1,3 +1,4 @@
+import { RowActions } from '../../shared/RowActions'
 import { useCallback, useEffect, useState } from 'react'
 import { TemplateEditor } from './TemplateEditor'
 import {
@@ -12,6 +13,8 @@ import {
 import type { Starter, Template, TemplateInput } from './marketingApi'
 import { useEscape } from './useEscape'
 import { SkelRows } from '../../shared/Skeleton'
+import ModalOverlay from '../../shared/ModalOverlay'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 type Editing = { mode: 'new'; initial: TemplateInput; title: string } | { mode: 'edit'; template: Template }
 
@@ -80,7 +83,7 @@ export function TemplatesTab() {
   if (editing) {
     return (
       <div className="mk-stack">
-        {error && <p className="form-error" role="alert">{error}</p>}
+        <ErrorNote text={error} />
         <TemplateEditor
           key={editing.mode === 'edit' ? editing.template.templateId : editing.title}
           title={editing.mode === 'edit' ? `Redigera ${editing.template.name}` : editing.title}
@@ -96,7 +99,7 @@ export function TemplatesTab() {
   return (
     <div className="mk-stack">
       {notice && <p className="save-notice" role="status">{notice}</p>}
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <ErrorNote text={error} />
 
       <section className="admin-card table-card">
         <div className="card-head">
@@ -114,10 +117,10 @@ export function TemplatesTab() {
         </div>
         {templates === null && !error && <SkelRows n={3} cols={2} />}
         {templates !== null && templates.length === 0 && (
-          <p className="cell-muted">Inga mallar än. Börja från en färdig mall nedan eller skapa en tom.</p>
+          <p className="cell-muted">Inga mallar än.</p>
         )}
         {templates && templates.length > 0 && (
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0}>
             <table className="data-table">
               <thead>
                 <tr>
@@ -133,7 +136,7 @@ export function TemplatesTab() {
                     <td className="cell-strong">{t.name}</td>
                     <td>{t.subject}</td>
                     <td className="cell-muted">{formatDateTime(t.updatedAt)}</td>
-                    <td className="mk-row-actions">
+                    <td className="right"><RowActions label="Åtgärder">
                       <button type="button" className="link-action" onClick={() => { setNotice(null); setEditing({ mode: 'edit', template: t }) }}>
                         Redigera
                       </button>
@@ -150,7 +153,7 @@ export function TemplatesTab() {
                       <button type="button" className="link-action danger" onClick={() => setConfirmDelete(t)}>
                         Ta bort
                       </button>
-                    </td>
+                    </RowActions></td>
                   </tr>
                 ))}
               </tbody>
@@ -184,7 +187,7 @@ export function TemplatesTab() {
       )}
 
       {confirmDelete && (
-        <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && setConfirmDelete(null)}>
+        <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && setConfirmDelete(null)}>
           <div className="modal modal--confirm" role="dialog" aria-modal="true" aria-label="Ta bort mallen">
             <h2>Ta bort {confirmDelete.name}?</h2>
             <p className="modal-text">Kampanjer som redan skickats påverkas inte. Utkast som använder mallen kan inte skickas.</p>
@@ -193,7 +196,7 @@ export function TemplatesTab() {
               <button type="button" className="btn danger-outline square" onClick={() => void remove(confirmDelete)}>Ta bort</button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   )

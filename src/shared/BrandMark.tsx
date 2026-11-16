@@ -44,7 +44,7 @@ export function BrandMark({
       {tone === 'red' && (
         <rect x={ICON.x} y={ICON.y} width={ICON.s} height={ICON.s} rx={rounded ? Math.round(ICON.s * 0.22) : 0} fill={BRAND_TILE} />
       )}
-      <path d={MARK_PATH} fill={tone === 'red' ? '#fff' : 'currentColor'} />
+      <path d={MARK_PATH} fill={tone === 'red' ? '#fdfaf6' : 'currentColor'} />
     </svg>
   )
 }

@@ -63,7 +63,7 @@
   width: 100%;
   font: inherit;
   color: var(--bq-ink);
-  background: var(--bq-surface);
+  background: var(--glass-surface);
   border: 1px solid var(--bq-line);
   border-radius: var(--bq-radius-inner);
   padding: var(--bq-space-2);
@@ -77,7 +77,9 @@
   accent-color: var(--bq-accent);
 }
 .evenemang-check-block {
-  display: grid;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: var(--bq-space-1);
 }
 .evenemang-check-hint {
@@ -130,6 +132,8 @@
   color: var(--bq-muted);
   text-align: center;
 }
-.evenemang-image-hint {
-  margin: 0;
+.evenemang-image-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bq-space-2);
 }

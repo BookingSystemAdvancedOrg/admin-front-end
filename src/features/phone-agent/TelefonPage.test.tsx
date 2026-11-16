@@ -1,12 +1,11 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CallBadge from './CallBadge'
 import CallbacksPanel from './CallbacksPanel'
 import TelefonPage from './TelefonPage'
 import * as api from './api'
 import { resetCallBadgeCacheForTests } from './callBadgeCache'
-import { ApiError } from '../../shared/api'
 
 let tenant: Record<string, unknown>
 vi.mock('../../shared/tenant', () => ({
@@ -16,7 +15,7 @@ vi.mock('../../shared/tenant', () => ({
 vi.mock('../../shared/AdminTopbar', () => ({ AdminTopbar: ({ title }: { title: string }) => <h1>{title}</h1> }))
 vi.mock('./api', async (orig) => ({
   ...(await orig<typeof import('./api')>()),
-  getOverview: vi.fn(), saveConfig: vi.fn(), getLocation: vi.fn(), saveLocation: vi.fn(), setKillSwitch: vi.fn(),
+  getOverview: vi.fn(), saveConfig: vi.fn(), getLocation: vi.fn(), saveLocation: vi.fn(), setKillSwitch: vi.fn(), getPlaceBasics: vi.fn(),
   simulate: vi.fn(), listCalls: vi.fn(), getCall: vi.fn(), deleteRecording: vi.fn(), listCallbacks: vi.fn(), closeCallback: vi.fn(),
 }))
 
@@ -26,14 +25,23 @@ const LOC: api.LocationConfig = {
   locationId: 'loc-1', enabled: true, killSwitch: false, mode: 'after_hours', agentHours: { mon: [{ from: '17:00', to: '23:00' }] },
   greetingExtraSv: '', greetingExtraEn: '', transferTo: '+46812345678', maxCallSeconds: 480,
   counterOffers: { nearbyTables: true, phoneOnlyTables: true }, number: '+46100000001', version: 2,
-  forwarding: { number: '+46100000001', codes: [{ operator: 'Telia', label: 'Vidarekoppla alla samtal', on: '**21*+46100000001#', off: '##21#' }] },
+  setup: { operator: 'telia', forwardedAt: '2026-11-14T10:00:00Z', testedAt: null },
+  forwarding: { number: '+46100000001', codes: [{ label: 'Vidarekoppla när ni inte svarar', on: '**004*+46100000001#', off: '##004#' }] },
 }
 const CALL: api.CallRow = { callId: '20261105abc', startedAt: '2026-11-05T18:00:00Z', durationSec: 125, language: 'sv', outcome: 'booked',
   counterOffer: 'other_time', reservationId: 'r1', callbackId: null, summary: 'Bord för fyra 19:30', from: '+46701112233' }
 
+let seen = ''
+function Where() {
+  const l = useLocation()
+  seen = l.pathname + l.search
+  return null
+}
+
 function renderAt(path = '/telefon') {
   return render(
     <MemoryRouter initialEntries={[path]}>
+      <Where />
       <Routes>
         <Route path="/telefon" element={<TelefonPage />} />
         <Route path="/telefon/samtal/:callId" element={<TelefonPage />} />
@@ -59,6 +67,19 @@ describe('TelefonPage', () => {
     expect(api.getLocation).not.toHaveBeenCalled()
   })
 
+  it('opens Inställningar at the linked step from Kom igång on Översikt', async () => {
+    tenant = OWNER
+    vi.mocked(api.getOverview).mockResolvedValue({ config: { agentName: 'Booqy', tone: 'friendly', languages: ['sv'], recording: { enabled: false },
+      minutesCapPerMonth: 300, version: 1 }, locations: [], usage: { minutes: 0, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
+    vi.mocked(api.getPlaceBasics).mockResolvedValue({ businessHours: null, phoneNumber: '+46812345678' })
+    renderAt('/telefon?flik=installningar&steg=prova')
+    expect(await screen.findByText('Steg 5 av 5')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Ring och prova' })).toBeInTheDocument()
+    // Länken är läst och borttagen: en omladdning öppnar inte guiden på ett gammalt steg.
+    await waitFor(() => expect(seen).toBe('/telefon'))
+    expect(screen.getByRole('tab', { name: 'Inställningar' })).toHaveAttribute('aria-selected', 'true')
+  })
+
   it('lists the calls with outcome and counter-offer, staff without caller numbers or settings', async () => {
     tenant = STAFF
     renderAt()
@@ -66,6 +87,14 @@ describe('TelefonPage', () => {
     expect(screen.getByText(/Erbjöd annan tid/)).toBeInTheDocument()
     expect(screen.queryByText('+46701112233')).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Inställningar' })).not.toBeInTheDocument()
+  })
+
+  it('opens a call by clicking anywhere on its row', async () => {
+    tenant = OWNER
+    vi.mocked(api.getCall).mockResolvedValue({ ...CALL, billedMinutes: 3, recordingUrl: undefined, turns: [], disclosure: { text: 'Hej', playedAt: '2026-11-05T18:00:02Z', repeats: 0 } })
+    renderAt()
+    fireEvent.click(await screen.findByText('Bokade bord'))
+    await waitFor(() => expect(api.getCall).toHaveBeenCalled())
   })
 
   it('lets staff turn the assistant off with one tap', async () => {
@@ -91,47 +120,42 @@ describe('TelefonPage', () => {
     expect(screen.getByText('+46701112233')).toBeInTheDocument()          // the owner sees the number
   })
 
-  it('walks the owner through the wizard: the disclosure is fixed text, the number step shows codes', async () => {
+  it('tells the owner the assistant is not on and opens the setup with Kom igång', async () => {
     tenant = OWNER
-    vi.mocked(api.getOverview).mockResolvedValue({ config: { agentName: 'Sara', tone: 'friendly', languages: ['sv', 'en'],
-      recording: { enabled: false }, minutesCapPerMonth: 300, version: 1 }, locations: [],
-      usage: { minutes: 10, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
+    vi.mocked(api.getLocation).mockResolvedValue({ ...LOC, enabled: false, number: null, version: 0 })
+    vi.mocked(api.getOverview).mockResolvedValue({ config: { agentName: 'Booqy', tone: 'friendly', languages: ['sv'],
+      recording: { enabled: false }, minutesCapPerMonth: 300, version: 0 }, locations: [],
+      usage: { minutes: 0, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
+    vi.mocked(api.getPlaceBasics).mockResolvedValue({ businessHours: null, phoneNumber: null })
     renderAt()
-    fireEvent.click(await screen.findByRole('tab', { name: 'Inställningar' }))
-    expect(await screen.findByText(/en AI-assistent för Bistro/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('tab', { name: '5. Nummer' }))
-    expect(screen.getByText('**21*+46100000001#')).toBeInTheDocument()
+    expect(await screen.findByText('Assistenten är inte på än.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Kom igång' }))
+    expect(await screen.findByRole('heading', { name: 'Kom igång med telefonassistenten' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kom igång' })).not.toBeInTheDocument()
   })
 
-  it('sends the recording choice with the config save (the notice is shown first)', async () => {
+  it('says the assistant is not ready, without the off button, until the number is forwarded', async () => {
     tenant = OWNER
-    vi.mocked(api.getOverview).mockResolvedValue({ config: { agentName: 'Sara', tone: 'friendly', languages: ['sv'],
-      recording: { enabled: false }, minutesCapPerMonth: 300, version: 1 }, locations: [],
-      usage: { minutes: 0, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
-    vi.mocked(api.saveConfig).mockRejectedValue(new ApiError(400, 'purpose_required', { fromServer: true }))
+    vi.mocked(api.getLocation).mockResolvedValue({ ...LOC, setup: { operator: 'telia', forwardedAt: null, testedAt: null } })
     renderAt()
-    fireEvent.click(await screen.findByRole('tab', { name: 'Inställningar' }))
-    fireEvent.click(await screen.findByRole('tab', { name: '4. Inspelning' }))
-    fireEvent.click(screen.getByLabelText(/Spela in samtalen/))
-    expect(screen.getByText(/Samtalet spelas in/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    await waitFor(() => expect(api.saveConfig).toHaveBeenCalled())
-    expect(vi.mocked(api.saveConfig).mock.calls[0][0].recording.enabled).toBe(true)
+    expect(await screen.findByText('Assistenten är inte klar än.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Kom igång' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Stäng av assistenten nu' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/\+46 10 000 00 01/)).not.toBeInTheDocument()
   })
 
-  it('runs the text simulator', async () => {
-    tenant = OWNER
-    vi.mocked(api.getOverview).mockResolvedValue({ config: { agentName: 'Sara', tone: 'friendly', languages: ['sv'],
-      recording: { enabled: false }, minutesCapPerMonth: 300, version: 1 }, locations: [],
-      usage: { minutes: 0, cap: 300, includedMinutes: 300, periodEnd: '2026-11-24' } })
-    vi.mocked(api.simulate).mockResolvedValue({ reply: 'Hej, du pratar med Sara, en AI-assistent för Bistro. Jag håller ett bord.',
-      toolCalls: [{ name: 'hold_table', ok: true }], state: {}, disclosure: true })
+  it('names when the assistant answers once forwarded, never the Booqy number', async () => {
+    tenant = STAFF
     renderAt()
-    fireEvent.click(await screen.findByRole('tab', { name: 'Inställningar' }))
-    fireEvent.click(await screen.findByRole('tab', { name: '6. Prova' }))
-    fireEvent.change(screen.getByLabelText('Du säger'), { target: { value: 'Ett bord för fyra imorgon' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
-    expect(await screen.findByText(/Jag håller ett bord/)).toBeInTheDocument()
+    expect(await screen.findByText('Assistenten svarar när ni har stängt.')).toBeInTheDocument()
+  })
+
+  it('tells staff the assistant is off without a setup button', async () => {
+    tenant = STAFF
+    vi.mocked(api.getLocation).mockResolvedValue({ ...LOC, enabled: false, number: null })
+    renderAt()
+    expect(await screen.findByText('Assistenten är inte på för den här platsen.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kom igång' })).not.toBeInTheDocument()
   })
 })
 

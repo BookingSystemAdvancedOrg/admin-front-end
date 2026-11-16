@@ -1,12 +1,16 @@
+import { ChangedNote } from '../../shared/ChangedNote'
+import { dedupe, useLiveForm } from '../../shared/live'
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import QRCode from 'qrcode'
 import { useTables } from '../../shared/tables'
-import { tableCodes } from '../bestallningar/ordersApi'
+import { TableQrModal } from '../table-qr/TableQr'
 import { getLocation, updateLocation } from './locationApi'
 import type { OrderingPolicy } from './locationApi'
 import '../bestallningar/bestallningar.css'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { booqyFaultText } from '../../shared/errors'
+import { TitleInfo } from '../../shared/TitleInfo'
 
 /**
  * Matbeställning för den valda platsen.
@@ -19,8 +23,9 @@ import '../bestallningar/bestallningar.css'
  * tas bara emot under öppettiderna (avvikande dagar räknas), fram till
  * "sista beställning" före stängning.
  *
- * QR-koderna är signerade av servern (en gäst kan inte hitta på ett bord)
- * och innehåller bordets namn - byter ett bord namn behövs en ny kod.
+ * QR-koderna: en slumpad kod per bord i den publicerade planritningen
+ * (Layout). Samma dekal gäller när bordet byter namn eller flyttas; se
+ * features/table-qr.
  */
 
 const DEFAULTS: OrderingPolicy = {
@@ -39,13 +44,6 @@ interface FormState {
   last: string
 }
 
-interface QrTile {
-  tableId: string
-  label: string
-  url: string
-  image: string
-}
-
 function toForm(policy: OrderingPolicy): FormState {
   return {
     enabled: policy.enabled,
@@ -60,14 +58,6 @@ function whole(value: string, low: number, high: number): number | null {
   if (!/^\d+$/.test(value.trim())) return null
   const n = Number(value)
   return n >= low && n <= high ? n : null
-}
-
-function tableTitle(label: string): string {
-  return /^bord/i.test(label) ? label : `Bord ${label}`
-}
-
-function escapeHtml(text: string): string {
-  return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 }
 
 export function OrderingCard({
@@ -86,9 +76,7 @@ export function OrderingCard({
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const { tables, error: tablesError } = useTables(locationId)
-  const [qr, setQr] = useState<QrTile[] | null>(null)
-  const [qrBusy, setQrBusy] = useState(false)
-  const [qrError, setQrError] = useState<string | null>(null)
+  const [showQr, setShowQr] = useState(false)
 
   useEffect(() => {
     if (!locationId) return
@@ -105,6 +93,20 @@ export function OrderingCard({
       cancelled = true
     }
   }, [locationId])
+
+  // Levande: sparar en kollega eller en annan plats inställningen syns den av sig själv;
+  // har du börjat ändra står ditt kvar med en rad om det andra.
+  const live = useLiveForm<OrderingPolicy | null, FormState>({
+    enabled: Boolean(locationId) && !loading && !busy,
+    fetch: async () => (await dedupe(`location:${locationId}`, () => getLocation(locationId as string))).ordering ?? null,
+    saved,
+    form,
+    toForm: (s) => toForm(s ?? DEFAULTS),
+    adopt: (s) => {
+      setSaved(s)
+      setForm(toForm(s ?? DEFAULTS))
+    },
+  })
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -142,72 +144,20 @@ export function OrderingCard({
     }
   }
 
-  async function makeQrCodes() {
-    if (!locationId || !tables?.length) return
-    setQrBusy(true)
-    setQrError(null)
-    try {
-      const result = await tableCodes(
-        locationId,
-        tables.map((t) => ({ tableId: t.tableId, label: t.label })),
-      )
-      if (result.tables.some((t) => !t.url)) {
-        setQrError('Restaurangen har ingen webbadress än - QR-koderna kan inte skapas förrän den finns.')
-        return
-      }
-      const tiles = await Promise.all(
-        result.tables.map(async (t) => ({
-          tableId: t.tableId,
-          label: t.label,
-          url: t.url as string,
-          image: await QRCode.toDataURL(t.url as string, { margin: 1, width: 480, errorCorrectionLevel: 'M' }),
-        })),
-      )
-      setQr(tiles)
-    } catch (err) {
-      setQrError(errorText(err, 'Kunde inte skapa QR-koderna just nu. Försök igen om en stund.'))
-    } finally {
-      setQrBusy(false)
-    }
-  }
-
-  function printQr() {
-    if (!qr) return
-    const win = window.open('', '_blank')
-    if (!win) return
-    const tiles = qr
-      .map(
-        (t) =>
-          `<figure><img src="${t.image}" alt=""><figcaption><strong>${escapeHtml(tableTitle(t.label))}</strong>` +
-          `<br>Skanna för att beställa</figcaption></figure>`,
-      )
-      .join('')
-    win.document.write(
-      `<!doctype html><html><head><meta charset="utf-8"><title>QR-koder</title><style>` +
-        `body{font-family:system-ui,sans-serif;margin:16px}main{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}` +
-        `figure{margin:0;text-align:center;break-inside:avoid;border:1px dashed #bbb;padding:12px}` +
-        `img{width:100%;max-width:220px}</style></head><body><main>${tiles}</main></body></html>`,
-    )
-    win.document.close()
-    win.focus()
-    win.print()
-  }
-
   const disabled = !isOwner || busy || loading || !locationId
   const dirty = !loading && JSON.stringify(form) !== JSON.stringify(toForm(saved ?? DEFAULTS))
 
   return (
     <section id="bestallning" className="admin-card table-card">
-      <h2 className="card-title">Beställning</h2>
+      <TitleInfo
+        title="Beställning"
+        info="Gästerna beställer och betalar online, bara under öppettiderna. Avhämtning: sms när maten är klar. Vid bordet: QR-koden på bordet, maten serveras där. Alkohol kan bara beställas vid bordet (märk drycker med alkohol under Meny). Moms: 6 % på avhämtning (t.o.m. 2027), 12 % vid bordet, 25 % på alkohol."
+      />
+      {live.there !== null && <ChangedNote onUse={live.takeThere} />}
       <div style={{ height: 8 }} />
-      <p className="cell-muted">
-        Gästerna beställer och betalar online. Avhämtning: sms när maten är klar. Vid bordet: QR-koden
-        på bordet, maten serveras där. Bara under öppettiderna.
-      </p>
       {!stripeReady && (
         <p className="form-error" role="status">
-          Kräver att restaurangens Stripe-konto är klart (se Betalningar). Tills dess kan gästerna
-          inte beställa.
+          Kräver Stripe (se Betalningar).
         </p>
       )}
       <div style={{ height: 16 }} />
@@ -220,7 +170,6 @@ export function OrderingCard({
               <p className="toggle-row-label" id="ordering-enabled-label">
                 Ta emot beställningar
               </p>
-              <p className="cell-muted">Personalen hanterar dem under Beställningar.</p>
             </div>
             <button type="button" role="switch" aria-checked={form.enabled}
               aria-labelledby="ordering-enabled-label" className="switch" disabled={disabled}
@@ -228,7 +177,7 @@ export function OrderingCard({
           </div>
           <div className="toggle-row">
             <p className="toggle-row-label" id="ordering-pickup-label">
-              Avhämtning (beställ online, hämta i kassan)
+              Avhämtning
             </p>
             <button type="button" role="switch" aria-checked={form.pickup}
               aria-labelledby="ordering-pickup-label" className="switch" disabled={disabled}
@@ -254,14 +203,8 @@ export function OrderingCard({
                 onChange={(e) => set('last', e.target.value)} />
             </div>
           </div>
-          <p className="cell-muted">
-            Alkohol kan bara beställas vid bordet (märk drycker med alkohol under Meny). Moms: 6 %
-            på avhämtning (t.o.m. 2027), 12 % vid bordet, 25 % på alkohol.
-          </p>
           {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
+            <ErrorNote text={error} />
           )}
           {isOwner && (
             <span className="row-actions">
@@ -280,7 +223,7 @@ export function OrderingCard({
               )}
             </span>
           )}
-          {!isOwner && <p className="cell-muted">Bara restaurangens ägare kan ändra inställningen.</p>}
+          {!isOwner && <p className="cell-muted">Bara ägaren kan ändra.</p>}
         </form>
       )}
 
@@ -288,40 +231,25 @@ export function OrderingCard({
         <div className="qr-section">
           <div style={{ height: 20 }} />
           <h3 className="card-title">QR-koder för borden</h3>
-          {tablesError && <p className="form-error" role="alert">Kunde inte hämta borden.</p>}
+          {tablesError && <ErrorNote text={booqyFaultText('Kunde inte hämta borden.')} />}
           {tables && tables.length === 0 && (
-            <p className="cell-muted">Publicera en planritning med bord först (Layout).</p>
+            <p className="cell-muted">Publicera en layout först.</p>
           )}
           {tables && tables.length > 0 && (
-            <span className="row-actions">
-              <button type="button" className="btn outline square" disabled={qrBusy}
-                onClick={() => void makeQrCodes()}>
-                {qrBusy ? 'Skapar…' : `Skapa QR-koder (${tables.length} bord)`}
-              </button>
-              {qr && (
-                <button type="button" className="btn primary square" onClick={printQr}>
-                  Skriv ut
+            <>
+              <span className="row-actions">
+                <button type="button" className="btn primary square" onClick={() => setShowQr(true)}>
+                  Visa och skriv ut QR-koder ({tables.length} bord)
                 </button>
-              )}
-            </span>
+              </span>
+            </>
           )}
-          {qrError && (
-            <p className="form-error" role="alert">
-              {qrError}
-            </p>
-          )}
-          {qr && (
-            <div className="qr-sheet">
-              {qr.map((t) => (
-                <figure key={t.tableId} className="qr-tile">
-                  <img src={t.image} alt={`QR-kod för ${tableTitle(t.label)}`} />
-                  <figcaption className="qr-tile-label">{tableTitle(t.label)}</figcaption>
-                  <a href={t.image} download={`qr-${tableTitle(t.label).replace(/\s+/g, '-').toLowerCase()}.png`}>
-                    Ladda ner
-                  </a>
-                </figure>
-              ))}
-            </div>
+          {showQr && (
+            <TableQrModal
+              locationId={locationId}
+              mockTables={tables ?? []}
+              onClose={() => setShowQr(false)}
+            />
           )}
         </div>
       )}

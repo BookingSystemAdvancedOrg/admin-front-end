@@ -1,7 +1,9 @@
-import { useEffect, useEffectEvent, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useState } from 'react'
 import { ApiError } from '../../shared/api'
+import { booqyFaultText, errorText } from '../../shared/errors'
 import { createStripeAccountLink, stripeStage } from '../../shared/tenant'
 import type { StripeStage as Stage, Tenant } from '../../shared/tenant'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /**
  * Betalningar: restaurangens Stripe-konto, från GET /tenant.
@@ -19,7 +21,7 @@ const POLL_TRIES = 20
 const STAGE_TEXT: Record<Stage, { title: string; text: string; ok: boolean }> = {
   missing: {
     title: 'Inget Stripe-konto än',
-    text: 'Kontot skapas av plattformen när restaurangen registreras. Kontakta support om det saknas.',
+    text: 'Kontot skapas av Booqy när restaurangen registreras.',
     ok: false,
   },
   not_started: {
@@ -55,6 +57,8 @@ export function PaymentsCard({
   const info = STAGE_TEXT[stage]
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Saknas kontot är det Booqys fel: Försök igen och Rapportera till Booqy.
+  const missing = useMemo(() => (stage === 'missing' ? booqyFaultText('Stripe-kontot saknas.', 'stripe_account_missing') : null), [stage])
 
   // Tillbaka från Stripe: Stripe meddelar backend via webhook några sekunder
   // efter att formuläret skickats in. Hämta statusen direkt och sedan var
@@ -92,11 +96,11 @@ export function PaymentsCard({
     } catch (err) {
       setBusy(false)
       if (err instanceof ApiError && err.message === 'no_stripe_account') {
-        setError('Restaurangen har inget Stripe-konto än. Kontakta support.')
+        setError(errorText(err, 'Kunde inte öppna Stripe.'))
       } else if (err instanceof ApiError && err.status === 403) {
         setError('Bara restaurangens ägare kan hantera Stripe-kontot.')
       } else {
-        setError('Kunde inte öppna Stripe just nu. Försök igen om en stund.')
+        setError(errorText(err, 'Kunde inte öppna Stripe.'))
       }
     }
   }
@@ -116,12 +120,12 @@ export function PaymentsCard({
         <p className="cell-muted" role="status">
           {polling
             ? 'Tillbaka från Stripe. Hämtar den nya statusen…'
-            : 'Tillbaka från Stripe. Stripe behandlar fortfarande uppgifterna - ladda om sidan om en stund.'}
+            : 'Stripe behandlar uppgifterna.'}
         </p>
       )}
       {stripeReturn === 'refresh' && (
         <p className="cell-muted" role="status">
-          Stripe-länken hade gått ut. Öppna Stripe igen för att fortsätta.
+          Länken hade gått ut. Öppna Stripe igen.
         </p>
       )}
       <div className="stripe-status">
@@ -131,10 +135,9 @@ export function PaymentsCard({
           <p className="cell-muted">{payouts}</p>
         </div>
       </div>
+      {missing && <ErrorNote text={missing} onRetry={() => void onRefresh()} />}
       {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
+        <ErrorNote text={error} />
       )}
       <div style={{ height: 16 }} />
       {isOwner && stage !== 'missing' && (
@@ -166,7 +169,7 @@ export function PaymentsCard({
         </span>
       )}
       {!isOwner && (
-        <p className="cell-muted">Restaurangens ägare hanterar Stripe-kontot.</p>
+        <p className="cell-muted">Bara ägaren hanterar Stripe.</p>
       )}
     </section>
   )

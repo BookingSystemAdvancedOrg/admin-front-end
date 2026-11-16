@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BestallningarPage, { POLL_MS } from './BestallningarPage'
 import { ApiError } from '../../shared/api'
 import type { Order, OrderList } from './ordersApi'
+import { chooseOption, optionTexts } from '../../test/select'
 
 const listOrders = vi.fn()
 const moveOrder = vi.fn()
@@ -120,7 +121,7 @@ describe('BestallningarPage', () => {
     pauseOrdering.mockResolvedValueOnce({ ordering: { open: false, reason: 'paused', pausedUntil: '2026-10-12T16:30:00Z' } })
     pauseOrdering.mockResolvedValueOnce({ ordering: { open: true } })
     render(<BestallningarPage />)
-    await user.selectOptions(await screen.findByLabelText('Pausa beställningar'), '30')
+    await chooseOption(await screen.findByLabelText('Pausa beställningar'), '30')
     expect(pauseOrdering).toHaveBeenCalledWith('loc-1', 30)
     expect(await screen.findByText(/Pausat till/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Ta emot beställningar igen' }))
@@ -132,12 +133,13 @@ describe('BestallningarPage', () => {
     listOrders.mockResolvedValueOnce(list([]))
     listOrders.mockResolvedValue(list([order()]))
     render(<BestallningarPage />)
-    expect(await screen.findByText('Inga nya beställningar.')).toBeInTheDocument()
+    expect(await screen.findByText('Inga nya.')).toBeInTheDocument()
     await act(async () => {
       await vi.advanceTimersByTimeAsync(POLL_MS)
     })
-    const card = await screen.findByRole('article', { name: 'Beställning 7' })
+    const card = await screen.findByRole('article', { name: 'Beställning 7, Avhämtning' })
     expect(card).toHaveClass('fresh')
+    expect(screen.getByText('Ny beställning #7, Avhämtning')).toBeInTheDocument()
     expect(document.title).toBe('(1) Beställningar')
   })
 
@@ -145,5 +147,38 @@ describe('BestallningarPage', () => {
     listOrders.mockResolvedValue(list([], { open: false, reason: 'no_payments' }))
     render(<BestallningarPage />)
     expect(await screen.findByText(/Stripe-kontot kan inte ta emot betalningar/)).toBeInTheDocument()
+  })
+
+  it('tells staff which table to bring a ready order to', async () => {
+    const user = userEvent.setup()
+    const atTable = order({ status: 'preparing', mode: 'table', tableId: 't-7', tableLabel: '7' })
+    listOrders.mockResolvedValue(list([atTable]))
+    moveOrder.mockResolvedValue({ ...atTable, status: 'ready' })
+    render(<BestallningarPage />)
+    const card = await screen.findByRole('article', { name: 'Beställning 7, Bord 7' })
+    await user.click(within(card).getByRole('button', { name: 'Klar att servera' }))
+    expect(screen.getByText(/är klar\. Bär maten till/)).toBeInTheDocument()
+    const klara = screen.getByRole('region', { name: 'Klara' })
+    expect(within(klara).getByText('Bär till Bord 7')).toBeInTheDocument()
+    expect(within(klara).getByRole('button', { name: 'Serverad vid Bord 7' })).toBeInTheDocument()
+  })
+
+  it('filters the board by table', async () => {
+    const user = userEvent.setup()
+    listOrders.mockResolvedValue(list([
+      order(),
+      order({ orderId: 'b'.repeat(32), number: 8, mode: 'table', tableId: 't-2', tableLabel: '2' }),
+      order({ orderId: 'c'.repeat(32), number: 9, mode: 'table', tableId: 't-9', tableLabel: 'Terrassen', status: 'ready' }),
+    ]))
+    render(<BestallningarPage />)
+    const select = await screen.findByLabelText('Visa')
+    expect(optionTexts(select)).toEqual(
+      ['Alla bord och avhämtning', 'Avhämtning', 'Bord 2', 'Terrassen'])
+    await chooseOption(select, 'table:t-2')
+    expect(screen.getByRole('article', { name: 'Beställning 8, Bord 2' })).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: /Beställning 7/ })).toBeNull()
+    expect(screen.queryByRole('article', { name: /Beställning 9/ })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Visa alla' }))
+    expect(screen.getAllByRole('article')).toHaveLength(3)
   })
 })

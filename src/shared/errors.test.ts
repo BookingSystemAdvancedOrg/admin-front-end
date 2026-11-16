@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError, NetworkError } from './api'
-import { errorCode, errorText, focusErrorField } from './errors'
+import { BOOQY_FAULT, booqyFaultText, describeError, errorCode, errorInfo, errorText, focusErrorField } from './errors'
 
 const server = (status: number, message: string, opts: { code?: string; field?: string } = {}) =>
   new ApiError(status, message, { ...opts, fromServer: true })
@@ -24,17 +24,18 @@ describe('errorText', () => {
 
   it('säger vad som hände och vad man kan göra', () => {
     expect(errorText(server(503, 'catering service unavailable', { code: 'catering_service_unavailable' }), 'Kunde inte spara.'))
-      .toBe('Kunde inte spara. Tjänsten är tillfälligt otillgänglig. Försök igen om en stund.')
+      .toBe(`Kunde inte spara. ${BOOQY_FAULT}`)
     expect(errorText(server(400, 'name is required', { code: 'required', field: 'name' }), 'Kunde inte spara.'))
       .toMatch(/obligatoriskt fält/)
-    expect(errorText(server(404, 'not found', { code: 'not_found' }), 'Kunde inte spara.')).toMatch(/Ladda om sidan/)
+    expect(errorText(server(404, 'not found', { code: 'not_found' }), 'Kunde inte spara.')).toMatch(/tagits bort på annat håll/)
+    expect(describeError(server(404, 'Not Found', { code: 'route_not_found' }), 'Kunde inte spara.').actor).toBe('booqy')
   })
 
   it('gemensamma koder har samma text överallt', () => {
     expect(errorText(new NetworkError())).toMatch(/^Ingen kontakt med servern/)
     expect(errorText(server(403, 'tenant_inactive'))).toMatch(/pausat/)
     expect(errorText(server(429, 'too_many_requests'))).toMatch(/Vänta en minut/)
-    expect(errorText(server(409, 'changed_retry'))).toMatch(/Ladda om/)
+    expect(errorText(server(409, 'changed_retry'))).toMatch(/Det senaste visas nu/)
     expect(errorText(server(401, 'Unauthorized', { code: 'unauthorized' }))).toMatch(/Logga in igen/)
   })
 
@@ -73,5 +74,96 @@ describe('focusErrorField', () => {
   it('gör ingenting utan fält eller okänt fält', () => {
     expect(focusErrorField(new Error('x'), { price: 'dish-price' })).toBe(false)
     expect(focusErrorField(new ApiError(400, 'x', { field: 'other' }), { price: 'dish-price' })).toBe(false)
+  })
+
+  it('markerar och fokuserar en rullista (combobox-knapp) tills ett nytt val görs', () => {
+    document.body.innerHTML = '<button id="dish-category" role="combobox" type="button">Förrätt</button>'
+    const err = new ApiError(400, 'unknown category', { fromServer: true, field: 'category' })
+    expect(focusErrorField(err, { category: 'dish-category' })).toBe(true)
+    const box = document.getElementById('dish-category') as HTMLButtonElement
+    expect(document.activeElement).toBe(box)
+    expect(box).toHaveAttribute('aria-invalid', 'true')
+    box.dispatchEvent(new Event('input', { bubbles: true }))
+    expect(box).not.toHaveAttribute('aria-invalid')
+  })
+
+  it('tar inte en vanlig knapp som fält', () => {
+    document.body.innerHTML = '<button id="dish-category" type="button">Spara</button>'
+    const err = new ApiError(400, 'x', { fromServer: true, field: 'category' })
+    expect(focusErrorField(err, { category: 'dish-category' })).toBe(false)
+  })
+})
+
+describe('vem gör något', () => {
+  const who = (err: unknown, known: Record<string, string> = {}) => describeError(err, 'Kunde inte spara.', known)
+
+  it('Booqys fel: 5xx, *_unavailable, internal_error, AccessDenied, timeout', () => {
+    for (const err of [
+      server(500, 'Internal Server Error'),
+      server(502, 'Bad Gateway'),
+      server(503, 'x', { code: 'service_unavailable' }),
+      server(503, 'x', { code: 'fortnox_unavailable' }),
+      server(500, 'x', { code: 'internal_error' }),
+      server(403, 'AccessDenied', { code: 'AccessDenied' }),
+      server(403, 'x', { code: 'access_denied' }),
+      new DOMException('t', 'TimeoutError'),
+    ]) {
+      const info = who(err)
+      expect(info.actor, info.code).toBe('booqy')
+      expect(info.text).toMatch(/Booqy/)
+      expect(info.link).toBeUndefined()
+    }
+  })
+
+  it('okända koder räknas som Booqys fel', () => {
+    for (const err of [server(400, 'x', { code: 'weird_new_thing' }), server(418, 'teapot'), new Error('x'), 'raw', { a: 1 }]) {
+      const info = who(err)
+      expect(info.actor).toBe('booqy')
+      expect(info.text).toBe(`Kunde inte spara. ${BOOQY_FAULT}`)
+    }
+  })
+
+  it('användarens fel säger vad man gör, och leder till rätt ställe när det finns ett', () => {
+    expect(who(server(403, 'dpa_version_outdated')).link).toEqual({ to: '/avtal', label: 'Öppna Avtal' })
+    expect(who(server(403, 'dpa_version_outdated')).text).toMatch(/under Avtal/)
+    expect(who(server(403, 'feature_not_in_plan')).link?.to).toBe('/installningar#profil')
+    expect(who(server(409, 'no_stripe_account')).link?.to).toBe('/installningar#betalningar')
+    expect(who(server(401, 'Unauthorized', { code: 'unauthorized' })).link?.to).toBe('/logga-in')
+    for (const err of [
+      new NetworkError(),
+      server(400, 'x', { code: 'required', field: 'name' }),
+      server(400, 'x', { code: 'invalid_value' }),
+      server(404, 'not found', { code: 'not_found' }),
+      server(409, 'changed_retry'),
+      server(429, 'too_many_requests'),
+      server(403, 'owner_only'),
+    ]) {
+      const info = who(err)
+      expect(info.actor, info.code).toBe('user')
+      expect(info.text).not.toMatch(/Booqy/)
+    }
+  })
+
+  it('sidans egna texter behåller vem som gör något efter koden', () => {
+    expect(who(server(502, 'x', { code: 'google_unavailable' }), { google_unavailable: 'Google svarar inte.' }))
+      .toMatchObject({ text: 'Google svarar inte.', actor: 'booqy' })
+    expect(who(server(409, 'table_taken'), { table_taken: 'Bordet är upptaget.' }))
+      .toMatchObject({ text: 'Bordet är upptaget.', actor: 'user' })
+    expect(who(new ApiError(503, 'Tjänsten svarar inte.'))).toMatchObject({ actor: 'booqy' })
+  })
+
+  it('ingen text slutar med ett ensamt "försök igen om en stund"', () => {
+    const codes = ['network', 'timeout', 'internal_error', 'service_unavailable', 'stripe_unavailable', 'payment_unavailable',
+      'invalid_json', 'no_tenant', 'tenant_inactive', 'x_unavailable']
+    for (const code of codes) {
+      expect(errorText(server(code === 'network' ? 0 : 503, code, { code }), 'Kunde inte spara.')).not.toMatch(/försök igen om en stund\.$/i)
+    }
+  })
+
+  it('felrutan hittar vem som gör något utifrån texten, och request id följer med', () => {
+    const text = errorText(new ApiError(500, 'Boom happened', { fromServer: true, requestId: 'abc=' }), 'Kunde inte spara.')
+    expect(errorInfo(text)).toMatchObject({ actor: 'booqy', status: 500, code: 'internal_error', requestId: 'abc=' })
+    expect(errorInfo('Fyll i namn.')).toBeUndefined()
+    expect(errorInfo(booqyFaultText('Kunde inte hämta siffrorna.'))?.actor).toBe('booqy')
   })
 })

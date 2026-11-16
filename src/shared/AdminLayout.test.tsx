@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AdminLayout } from './AdminLayout'
 
@@ -39,7 +39,7 @@ describe('AdminLayout sidebar', () => {
     renderLayout()
     const labels = navLabels()
     for (const l of [...NEW, 'Marknadsföring']) expect(labels).not.toContain(l)
-    expect(labels).toEqual(['Översikt', 'Statistik', 'Bokningar', 'Meny', 'Layout', 'Inställningar'])
+    expect(labels).toEqual(['Översikt', 'Statistik', 'Bokningar', 'Meny', 'Layout', 'Personal'])
   })
 
   it('shows the new items in contract order when on', () => {
@@ -47,8 +47,14 @@ describe('AdminLayout sidebar', () => {
     renderLayout()
     expect(navLabels()).toEqual([
       'Översikt', 'Statistik', 'Bokningar', 'Catering', 'Personalliggare',
-      'Meny', 'Layout', 'Gäster', 'Presentkort', 'Webbplats', 'Marknadsföring', 'Inställningar',
+      'Meny', 'Layout', 'Personal', 'Gäster', 'Presentkort', 'Webbplats', 'Marknadsföring',
     ])
+  })
+
+  it('keeps Inställningar, Hjälp and Ladda ner appen at the foot of the menu', () => {
+    renderLayout()
+    const foot = screen.getByRole('navigation', { name: 'Inställningar och hjälp' })
+    expect(within(foot).getAllByRole('link').map((a) => a.textContent)).toEqual(['Inställningar', 'Hjälp', 'Ladda ner appen'])
   })
 
   it('shows Marknadsföring when any one of its four features is on', () => {
@@ -63,7 +69,7 @@ describe('AdminLayout sidebar', () => {
     const labels = navLabels()
     expect(labels).toContain('Personalliggare')
     expect(labels).toContain('Gäster')
-    for (const l of ['Presentkort', 'Webbplats', 'Marknadsföring']) expect(labels).not.toContain(l)
+    for (const l of ['Personal', 'Presentkort', 'Webbplats', 'Marknadsföring']) expect(labels).not.toContain(l)
   })
 
   it('hides Telefon and Evenemang while phoneAgent and events are off', () => {
@@ -79,7 +85,7 @@ describe('AdminLayout sidebar', () => {
     renderLayout()
     expect(navLabels()).toEqual([
       'Översikt', 'Statistik', 'Bokningar', 'Personalliggare', 'Telefon',
-      'Meny', 'Layout', 'Webbplats', 'Evenemang', 'Inställningar',
+      'Meny', 'Layout', 'Personal', 'Webbplats', 'Evenemang',
     ])
   })
 
@@ -89,5 +95,35 @@ describe('AdminLayout sidebar', () => {
     const labels = navLabels()
     expect(labels).toContain('Telefon')
     expect(labels).toContain('Evenemang')
+  })
+})
+
+describe('AdminLayout role gate', () => {
+  function renderAt(path: string) {
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route element={<AdminLayout />}>
+            <Route index element={<p>Översiktssidan</p>} />
+            <Route path="personal" element={<p>Personalsidan</p>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+  }
+
+  it('sends staff from an owner page to Översikt with a notice', () => {
+    owner({}, 'staff_user')
+    renderAt('/personal')
+    expect(screen.queryByText('Personalsidan')).toBeNull()
+    expect(screen.getByText('Översiktssidan')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('bara för restaurangens ägare')
+  })
+
+  it('lets the owner open the page, without a notice', () => {
+    owner({})
+    renderAt('/personal')
+    expect(screen.getByText('Personalsidan')).toBeInTheDocument()
+    expect(screen.queryByText(/bara för restaurangens ägare/)).toBeNull()
   })
 })

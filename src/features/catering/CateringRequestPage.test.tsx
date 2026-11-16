@@ -7,6 +7,7 @@ import CateringPage from './CateringPage'
 import { ApiError } from '../../shared/api'
 import { offerTotals } from './cateringApi'
 import type { CateringRequest } from './cateringApi'
+import { chooseOption } from '../../test/select'
 
 const getRequest = vi.fn()
 const sendOffer = vi.fn()
@@ -126,10 +127,10 @@ describe('CateringRequestPage', () => {
     expect(await screen.findByText('Under granskning')).toBeInTheDocument()
     expect(screen.getByText('Karl Ek, VD (intygad behörighet)')).toBeInTheDocument()
     expect(screen.getByText(/hittades inte på kartan/)).toBeInTheDocument()
-    await user.selectOptions(screen.getByLabelText('Lägg till från cateringmenyn'), 'p:p1')
+    await chooseOption(screen.getByLabelText('Lägg till från cateringmenyn'), 'p:p1')
     expect(screen.getByLabelText('Rad 1 namn')).toHaveValue('Mingelpaket')
     expect(screen.getByLabelText('Rad 1 antal')).toHaveValue('40')
-    await user.selectOptions(screen.getByLabelText('Moms'), 'food')
+    await chooseOption(screen.getByLabelText('Moms'), 'food')
     expect(screen.getByText('varav moms 6 %')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Skicka offert' }))
     expect(sendOffer).toHaveBeenCalledWith('loc-1', 'req-1', expect.objectContaining({
@@ -178,11 +179,10 @@ describe('CateringRequestPage', () => {
   })
 
   it('switches an offer to cleaned and drops the fee', async () => {
-    const user = userEvent.setup()
     getRequest.mockResolvedValue(request({ equipmentReturn: 'not_cleaned', settings: { cleaningFee: 500 } }))
     renderAt()
     expect(await screen.findByLabelText('Rengöringsavgift (kr)')).toHaveValue('500')
-    await user.selectOptions(screen.getByLabelText('Retur av utrustning'), 'cleaned')
+    await chooseOption(screen.getByLabelText('Retur av utrustning'), 'cleaned')
     expect(screen.queryByLabelText('Rengöringsavgift (kr)')).not.toBeInTheDocument()
     expect(screen.queryByText('Rengöringsavgift')).not.toBeInTheDocument()
   })
@@ -232,6 +232,26 @@ describe('CateringRequestPage', () => {
     expect(valid).toHaveFocus()
     expect(valid).toHaveAttribute('aria-invalid', 'true')
     expect(getRequest).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the typed offer and marks the dropdown the server refused', async () => {
+    const user = userEvent.setup()
+    getRequest.mockResolvedValue(request({ settings: { cleaningFee: 500 } }))
+    sendOffer.mockRejectedValue(new ApiError(400, 'equipmentReturn is not allowed here',
+      { field: 'equipmentReturn', fromServer: true }))
+    renderAt()
+    const delivery = await screen.findByLabelText('Leverans (kr)')
+    await user.clear(delivery)
+    await user.type(delivery, '250')
+    await user.click(screen.getByRole('button', { name: 'Skicka offert' }))
+    await screen.findByRole('alert')
+    const ret = screen.getByRole('combobox', { name: 'Retur av utrustning' })
+    expect(ret).toHaveFocus()
+    expect(ret).toHaveAttribute('aria-invalid', 'true')
+    expect(getRequest).toHaveBeenCalledTimes(1)
+    expect(delivery).toHaveValue('250')
+    await chooseOption(ret, 'not_cleaned')
+    expect(ret).not.toHaveAttribute('aria-invalid')
   })
 
   it('staff cannot edit the offer', async () => {

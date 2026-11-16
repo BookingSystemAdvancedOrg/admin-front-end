@@ -1,6 +1,7 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Bar, Button, Card, Field, Input, toast } from '@booqy/brand'
+import { Bar, Button, Card, Field, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
 import { menuImageUrl } from '../meny/menuApi'
 import {
@@ -19,6 +20,8 @@ import {
   type Post,
 } from './api'
 import './inlagg.css'
+import { ErrorActions } from '../../shared/ErrorNote'
+import { DateTimeInput } from '../../shared/DateInput'
 
 /** Marknadsföring > Inlägg: utkast från menyn, förhandsvisning, publicera nu, schemalägg, avbryt. */
 export default function InlaggTab() {
@@ -36,6 +39,7 @@ export default function InlaggTab() {
   }, [])
 
   useEffect(() => { void load() }, [load])
+  useLiveRefresh(async () => setListing(await listPosts()))
 
   // Medan något publiceras: fråga igen tills det är klart.
   useEffect(() => {
@@ -44,7 +48,7 @@ export default function InlaggTab() {
     return () => window.clearTimeout(timer)
   }, [listing, load])
 
-  if (error) return <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng">{error}</Bar>
+  if (error) return <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng" action={<ErrorActions text={error} />}>{error}</Bar>
   if (!listing) return <p className="cell-muted">Hämtar…</p>
   const notConnected = !listing.connection.page
 
@@ -53,8 +57,7 @@ export default function InlaggTab() {
     <>
       {notConnected ? (
         <Bar variant="banner" tone="warning" action={<Link className="card-link" to="/marknadsforing?flik=annonser">Koppla Facebook och Instagram</Link>}>
-          Koppla restaurangens Facebooksida och Instagramkonto för att publicera inlägg. Instagram måste vara ett
-          företagskonto kopplat till sidan.
+          Inte kopplat.
         </Bar>
       ) : null}
       {open ? (
@@ -64,7 +67,7 @@ export default function InlaggTab() {
       ) : null}
       <Card title="Inlägg">
         {listing.posts.length === 0 ? (
-          <p className="admin-empty">Inga inlägg än. Tryck på Dela vid en rätt under Meny för att göra ett utkast.</p>
+          <p className="admin-empty">Inga inlägg än.</p>
         ) : (
           <ul className="inlagg-list">
             {listing.posts.map((p) => (
@@ -140,7 +143,7 @@ function Editor({ post, listing, onClose, onChanged, onDeleted }: {
             Inlägget handlar om alkohol och är återhållsamt, riktar sig inte till personer under 25 år och följer alkohollagen.
           </label>
           <Field label="Schemalägg till">
-            <Input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+            <DateTimeInput inputClassName="bq-input" timeLabel="Schemalägg till, tid" value={when} onChange={(e) => setWhen(e.target.value)} />
           </Field>
           {Object.entries(post.channels).map(([c, s]) => (s?.state === 'failed' || s?.state === 'needs_check') ? (
             <p key={c} className="inlagg-warn">

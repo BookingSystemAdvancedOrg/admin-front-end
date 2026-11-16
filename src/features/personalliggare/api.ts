@@ -84,7 +84,7 @@ export const ERRORS: Record<string, string> = {
   not_checked_in: 'Personen är inte incheckad.',
   no_person_for_user: 'Din inloggning är inte kopplad till någon i liggaren. Be ägaren lägga till dig under Personer.',
   changed_retry: 'Någon annan registrerade samtidigt. Försök igen.',
-  reason_required: 'Skriv en orsak på 5–300 tecken.',
+  reason_required: 'Skriv en orsak på 5-300 tecken.',
   invalid_event_time: 'Tiden kan inte ligga i framtiden eller för långt bak i tiden.',
   wrong_person: 'Rättelsen måste gälla samma person som den ursprungliga registreringen.',
   invalid_personal_identity: 'Personnumret stämmer inte. Kontrollera siffrorna.',

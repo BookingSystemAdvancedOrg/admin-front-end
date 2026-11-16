@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PersonalliggarePage from './PersonalliggarePage'
 import * as api from './api'
 import { ApiError } from '../../shared/api'
+import { chooseOption } from '../../test/select'
 
 let tenant: Record<string, unknown>
 vi.mock('../../shared/tenant', () => ({
@@ -46,7 +47,7 @@ describe('PersonalliggarePage', () => {
     tenant = STAFF
     vi.mocked(api.checkIn).mockResolvedValue(ROW)
     render(<PersonalliggarePage />)
-    expect(screen.getByText(/För liggaren på papper och lägg in rättelser efteråt/)).toBeInTheDocument()
+    expect(screen.getByText(/För liggaren på papper/)).toBeInTheDocument()
     fireEvent.click(await screen.findByRole('button', { name: 'Checka in' }))
     await waitFor(() => expect(api.checkIn).toHaveBeenCalledWith('loc-1', undefined))
     expect(screen.queryByRole('tab', { name: 'Personer' })).not.toBeInTheDocument()  // owner tabs hidden
@@ -90,7 +91,7 @@ describe('PersonalliggarePage', () => {
     tenant = OWNER
     vi.mocked(api.checkIn).mockResolvedValue({ ...ROW, personId: 'p2', name: 'Hugo' })
     render(<PersonalliggarePage />)
-    fireEvent.change(await screen.findByLabelText('Registrera för någon annan'), { target: { value: 'p2' } })
+    chooseOption(await screen.findByLabelText('Registrera för någon annan'), 'p2')
     fireEvent.click(screen.getByRole('button', { name: 'Checka in Hugo' }))
     await waitFor(() => expect(api.checkIn).toHaveBeenCalledWith('loc-1', 'p2'))
   })

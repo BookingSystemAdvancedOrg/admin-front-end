@@ -8,6 +8,7 @@ import { occurrenceWindow } from './EventEditor'
 import EventsStats from './EventsStats'
 import * as api from './api'
 import { parseCode, signature } from './scanStore'
+import { chooseOption, optionTexts } from '../../test/select'
 
 let tenant: Record<string, unknown>
 vi.mock('../../shared/tenant', () => ({ useTenant: () => ({ tenant, locationId: 'loc-a-1' }) }))
@@ -63,11 +64,18 @@ describe('EvenemangPage', () => {
   it('lists the events and lets the owner create one', async () => {
     tenant = OWNER
     at('/evenemang')
-    expect(await screen.findByRole('link', { name: 'Vinmiddag' })).toBeInTheDocument()
+    expect(await screen.findByText('Vinmiddag')).toBeInTheDocument()
     expect(screen.getByText('12 av 40')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Nytt evenemang' }))
     expect(screen.getByRole('heading', { name: 'Nytt evenemang' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /12 % \(middag/ })).toBeInTheDocument()
+    expect(optionTexts(screen.getByLabelText(/^Moms/))).toContainEqual(expect.stringMatching(/12 % \(middag/))
+  })
+
+  it('opens an event by clicking anywhere on its row', async () => {
+    tenant = OWNER
+    at('/evenemang')
+    fireEvent.click(await screen.findByText('12 av 40'))
+    expect(await screen.findByRole('heading', { name: 'Vinmiddag' })).toBeInTheDocument()
   })
 
   it('sends a new event with prices in öre and the chosen VAT rate', async () => {
@@ -79,7 +87,7 @@ describe('EvenemangPage', () => {
     fireEvent.change(screen.getByLabelText(/Datum/), { target: { value: '2026-12-10' } })
     fireEvent.change(screen.getAllByLabelText(/Namn/)[1], { target: { value: 'Inträde' } })
     fireEvent.change(screen.getByLabelText(/Pris/), { target: { value: '149,50' } })
-    fireEvent.change(screen.getByLabelText(/^Moms/), { target: { value: '25' } })
+    chooseOption(screen.getByLabelText(/^Moms/), '25')
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
     await waitFor(() => expect(api.createEvent).toHaveBeenCalled())
     const body = vi.mocked(api.createEvent).mock.calls[0][1]
@@ -174,7 +182,7 @@ describe('EvenemangPage', () => {
     fireEvent.change(screen.getByLabelText(/Pris/), { target: { value: '100' } })
     const resale = screen.getByLabelText(/sälja sin biljett vidare/)
     expect(resale).not.toBeChecked()
-    expect(screen.getByText(/samma pris som gästen betalade, aldrig mer/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Förklaring: Vidareförsäljning' })).toBeInTheDocument()
     fireEvent.click(resale)
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
     await waitFor(() => expect(api.createEvent).toHaveBeenCalled())
@@ -263,7 +271,7 @@ describe('editing ticket types and occurrences after sales', () => {
     expect(screen.getByText(/12 sålda\. Sålda och reserverade biljetter behåller sitt pris/)).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText(/^Pris/), { target: { value: '995' } })
     expect(screen.getByText(/Nya priset gäller bara nya köp. Sålda biljetter kostade 895 kr./)).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText(/^Moms/), { target: { value: '25' } })
+    chooseOption(screen.getByLabelText(/^Moms/), '25')
     expect(screen.getByText(/Momssatsen ändras från 12 % till 25 % för nya köp. Redan sålda biljetter behåller sin moms. Ändringen sparas och markeras för granskning av revisorn./)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
     await waitFor(() => expect(api.updateTicketType).toHaveBeenCalled())
@@ -298,7 +306,7 @@ describe('editing ticket types and occurrences after sales', () => {
     expect(api.updateOccurrence).not.toHaveBeenCalled()
     fireEvent.change(screen.getByLabelText(/^Antal platser/), { target: { value: '12' } })
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    expect(await screen.findByText(/Fler platser såldes medan du ändrade/)).toBeInTheDocument()
+    expect(await screen.findByText(/Fler platser hann säljas medan du ändrade/)).toBeInTheDocument()
     expect(vi.mocked(api.updateOccurrence).mock.calls[0].slice(2)).toEqual([OCC, { capacity: 12, version: 1 }])
   })
 
@@ -365,9 +373,9 @@ describe('editing ticket types and occurrences after sales', () => {
     at('/evenemang/EVENT1AAAAAAAA')
     fireEvent.click(await screen.findByRole('button', { name: 'Ändra Middag' }))
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    expect(await screen.findByText(/Fler biljetter såldes medan du ändrade/)).toBeInTheDocument()
+    expect(await screen.findByText(/Fler biljetter hann säljas medan du ändrade/)).toBeInTheDocument()
     expect(screen.getByLabelText(/^Antal av typen/)).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByLabelText(/^Säljs till/)).not.toHaveAttribute('aria-invalid')
+    expect(screen.getByLabelText('Säljs till')).not.toHaveAttribute('aria-invalid')
   })
 
   it('validates in Swedish (pure helpers)', () => {

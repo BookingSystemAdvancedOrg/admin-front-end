@@ -135,15 +135,14 @@ export function SkelTiles({ n = 4 }: { n?: number }) {
         <div key={i} className="admin-card stat-tile skel-tile">
           <Sheen />
           <SkelBlock w="46%" h={12} />
-          <SkelBlock w="34%" h={40} style={{ borderRadius: 'var(--r-md)' }} />
-          <SkelBlock w="70%" h={12} style={{ marginTop: 'auto' }} />
+          <SkelBlock w="34%" h={36} style={{ borderRadius: 'var(--r-md)' }} />
         </div>
       ))}
     </section>
   )
 }
 
-/** En ruta i sidans eget kort eller rutnät (t.ex. kassans rätter). */
+/** En ruta i sidans eget kort eller rutnät (t.ex. menyns rätter). */
 export function SkelBox({ className = '', h, children }: { className?: string; h?: Size; children?: ReactNode }) {
   return (
     <div className={`skel-box${className ? ` ${className}` : ''}`} aria-hidden="true" style={h !== undefined ? { minHeight: h } : undefined}>

@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import SegmentAudienceOptions from './SegmentAudienceOptions'
 import * as api from './api'
+import { chooseOption } from '../../test/select'
 
 vi.mock('./api', async (orig) => ({
   ...(await orig<typeof import('./api')>()),
@@ -27,13 +28,13 @@ describe('SegmentAudienceOptions', () => {
     render(<Host seen={seen} />)
     const select = await screen.findByRole('combobox')
     for (const id of ['s1', 's2', 's1', 's2', 's1']) {
-      fireEvent.change(select, { target: { value: id } })
+      chooseOption(select, id)
       await waitFor(() => expect(select).not.toBeDisabled())
     }
     expect(api.exportSegment).toHaveBeenCalledTimes(2)
     expect(seen).toHaveBeenLastCalledWith({ type: 'segment', exportId: 'e-s1-1' })
     expect(screen.getByText('7 gäster kan få utskicket.')).toBeInTheDocument()
-    fireEvent.change(select, { target: { value: '' } })
+    chooseOption(select, '')
     expect(seen).toHaveBeenLastCalledWith(null)
   })
 })

@@ -1,9 +1,15 @@
 import { useState } from 'react'
-import { Bar, Button, Card, Field, Input, Select, toast } from '@booqy/brand'
+import { Bar, Button, Card, Field, Input, toast } from '@booqy/brand'
+import { BrandSelect as Select } from '../../shared/Select'
 import { errorText } from '../../shared/errors'
+import { ChangedNote } from '../../shared/ChangedNote'
+import { isConflict, mergeEdits, type FieldConflict } from '../../shared/merge'
 import { ERRORS, VAT_OPTIONS, createEvent, newId, updateEvent, type EventDetail, type NewEvent, type VatRate } from './api'
 import EventImageField from './EventImageField'
 import { imageAltError, imageFields, initialImage } from './eventImage'
+import { ErrorActions } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
+import { DateInput, TimeInput } from '../../shared/DateInput'
 
 interface TypeRow { typeId: string; name: string; priceKr: string; vatRate: VatRate; perOrderMax: string; capacity: string; includes: string }
 
@@ -28,9 +34,29 @@ export function occurrenceWindow(date: string, start: string, end: string): { st
  * och tillfällen skapas här; efter publicering ändras tillfällena ett och ett.
  * Momssatsen per biljettyp väljs ur en lista som revisorn ska godkänna.
  */
-export default function EventEditor({ locationId, existing, onSaved, onCancel }: {
-  locationId: string; existing?: EventDetail; onSaved: (e: EventDetail) => void; onCancel: () => void
+/** Fälten som ändras på ett befintligt evenemang (för att lägga ihop med en ändring på annat håll). */
+interface EventForm { title: string; description: string; perOrderMax: string; transferAllowed: boolean; resaleAllowed: boolean; refundPolicy: string }
+
+function eventForm(e: EventDetail): EventForm {
+  return {
+    title: e.title, description: e.description ?? '', perOrderMax: String(e.settings.perOrderMax ?? 10),
+    transferAllowed: e.settings.transferAllowed ?? true, resaleAllowed: e.settings.resaleAllowed ?? false, refundPolicy: e.settings.refundPolicy ?? '',
+  }
+}
+
+export default function EventEditor({ locationId, existing, fetchLatest, onSaved, onCancel }: {
+  locationId: string
+  /** Evenemanget som det såg ut när ändringen började. */
+  existing?: EventDetail
+  /** Det senaste sparade (efter 409 changed_retry): dina fält läggs ovanpå och sparas igen. */
+  fetchLatest?: () => Promise<EventDetail>
+  onSaved: (e: EventDetail) => void
+  onCancel: () => void
 }) {
+  // Evenemanget som dina ändringar utgår från (byts mot det senaste efter en krock).
+  const [base, setBase] = useState(existing)
+  const [clashes, setClashes] = useState<FieldConflict[]>([])
+  const clash = (field: keyof EventForm) => clashes.find((c) => c.field === field)
   const [title, setTitle] = useState(existing?.title ?? '')
   const [description, setDescription] = useState(existing?.description ?? '')
   const [date, setDate] = useState('')
@@ -69,12 +95,38 @@ export default function EventEditor({ locationId, existing, onSaved, onCancel }:
     }
     setBusy(true)
     try {
-      if (existing) {
+      if (existing && base) {
         const pictured = await imageFields(locationId, image, keepUploaded)
-        onSaved(await updateEvent(locationId, existing.eventId, {
-          title: title.trim(), description, settings, version: existing.version, ...pictured,
-          ...(existing.status === 'draft' && repeat && until ? { series: { freq: repeat, until } } : {}),
-        }))
+        const mine: EventForm = { title, description, perOrderMax, transferAllowed, resaleAllowed, refundPolicy }
+        const send = (v: EventForm, on: EventDetail) => updateEvent(locationId, existing.eventId, {
+          title: v.title.trim(), description: v.description, version: on.version,
+          settings: { perOrderMax: Number(v.perOrderMax), transferAllowed: v.transferAllowed, resaleAllowed: v.resaleAllowed, refundPolicy: v.refundPolicy.trim() || undefined },
+          ...pictured,
+          ...(on.status === 'draft' && repeat && until ? { series: { freq: repeat, until } } : {}),
+        })
+        setClashes([])
+        try {
+          onSaved(await send(mine, base))
+        } catch (err) {
+          if (!isConflict(err) || !fetchLatest) throw err
+          // Någon annan sparade emellan: dina ändrade fält ovanpå det senaste, en gång till.
+          const latest = await fetchLatest()
+          const { merged, conflicts } = mergeEdits(eventForm(base), mine, eventForm(latest))
+          if (conflicts.length) {
+            // Fält du inte rört tar det senaste; dina står kvar och nästa sparning går mot den nya versionen.
+            setTitle(merged.title)
+            setDescription(merged.description)
+            setPerOrderMax(merged.perOrderMax)
+            setTransferAllowed(merged.transferAllowed)
+            setResaleAllowed(merged.resaleAllowed)
+            setRefundPolicy(merged.refundPolicy)
+            setBase(latest)
+            setClashes(conflicts)
+            setError('Samma fält ändrades nyss på en annan plats. Välj vilket värde som ska gälla och spara igen.')
+            return
+          }
+          onSaved(await send(merged, latest))
+        }
       } else {
         if (!date) {
           setError('Välj ett datum.')
@@ -105,10 +157,15 @@ export default function EventEditor({ locationId, existing, onSaved, onCancel }:
   return (
     <Card title={existing ? 'Ändra evenemanget' : 'Nytt evenemang'}>
       <form className="evenemang-form" onSubmit={(e) => { void save(e) }}>
-        <Field label="Namn" required>
+        <Field label="Namn" required hint={clash('title') && title !== clash('title')?.theirs
+          ? <ChangedNote as="span" value={String(clash('title')?.theirs)} onUse={() => setTitle(String(clash('title')?.theirs))} />
+          : undefined}>
           <Input value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} required />
         </Field>
-        <Field label="Beskrivning" hint="Visas på er webbplats. Gör ni reklam för alkohol är det ert ansvar att följa alkohollagen.">
+
+        <Field label="Beskrivning" hint={clash('description') && description !== clash('description')?.theirs
+          ? <ChangedNote as="span" value={String(clash('description')?.theirs)} onUse={() => setDescription(String(clash('description')?.theirs))} />
+          : 'Visas på er webbplats. Gör ni reklam för alkohol är det ert ansvar att följa alkohollagen.'}>
           <textarea className="evenemang-text" value={description} maxLength={4000} rows={4}
             onChange={(e) => setDescription(e.target.value)} />
         </Field>
@@ -116,10 +173,10 @@ export default function EventEditor({ locationId, existing, onSaved, onCancel }:
         {!existing ? (
           <>
             <div className="evenemang-row">
-              <Field label="Datum" required><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required /></Field>
-              <Field label="Börjar"><Input type="time" value={start} onChange={(e) => setStart(e.target.value)} required /></Field>
-              <Field label="Slutar" hint="En sluttid före starten räknas till nästa dag, till exempel 21:00-01:00.">
-                <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} required />
+              <Field label="Datum" required><DateInput inputClassName="bq-input" value={date} onChange={(e) => setDate(e.target.value)} required /></Field>
+              <Field label="Börjar"><TimeInput inputClassName="bq-input" value={start} onChange={(e) => setStart(e.target.value)} required /></Field>
+              <Field label="Slutar" hint="Före starten = nästa dag">
+                <TimeInput inputClassName="bq-input" value={end} onChange={(e) => setEnd(e.target.value)} required />
               </Field>
               <Field label="Platser"><Input type="number" min={1} max={10000} value={capacity} onChange={(e) => setCapacity(e.target.value)} required /></Field>
             </div>
@@ -157,7 +214,7 @@ export default function EventEditor({ locationId, existing, onSaved, onCancel }:
                 <option value="monthly">Varje månad (samma veckodag)</option>
               </Select>
             </Field>
-            {repeat ? <Field label="Till och med" hint="Högst ett år framåt."><Input type="date" value={until} onChange={(e) => setUntil(e.target.value)} required /></Field> : null}
+            {repeat ? <Field label="Till och med" hint="Högst ett år framåt."><DateInput inputClassName="bq-input" value={until} onChange={(e) => setUntil(e.target.value)} required /></Field> : null}
           </div>
         ) : null}
         <div className="evenemang-row">
@@ -170,18 +227,18 @@ export default function EventEditor({ locationId, existing, onSaved, onCancel }:
         <div className="evenemang-check-block">
           <label className="evenemang-check">
             <input type="checkbox" checked={resaleAllowed} onChange={(e) => setResaleAllowed(e.target.checked)} />
-            Gästen får sälja sin biljett vidare via er webbplats (stänger 2 timmar före start)
+            Gästen får sälja sin biljett vidare
           </label>
-          <p className="cell-muted evenemang-check-hint">
-            Alltid till samma pris som gästen betalade, aldrig mer. Köparen betalar till ert Stripe-konto och säljaren får
+          <InfoTooltip label="Vidareförsäljning">
+            Via er webbplats, stänger 2 timmar före start. Alltid till samma pris som gästen betalade, aldrig mer. Köparen betalar till ert Stripe-konto och säljaren får
             pengarna tillbaka automatiskt; ni behåller intäkten och bokföringen går jämnt ut. Stripes avgifter för båda
             betalningarna står ni för.
-          </p>
+          </InfoTooltip>
         </div>
-        <Field label="Villkor för återbetalning" hint="Visas vid köpet och i biljettmejlet.">
+        <Field label="Villkor för återbetalning" hint="Visas vid köpet">
           <textarea className="evenemang-text" value={refundPolicy} maxLength={1000} rows={2} onChange={(e) => setRefundPolicy(e.target.value)} />
         </Field>
-        {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
+        {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
         <Bar variant="action" label="Spara evenemanget">
           <Button type="button" variant="ghost" onClick={onCancel}>Avbryt</Button>
           <Button type="submit" variant="primary" busy={busy}>Spara</Button>

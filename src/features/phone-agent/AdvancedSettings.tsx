@@ -1,0 +1,303 @@
+import { useState, type FormEvent, type ReactNode } from 'react'
+import { Bar, Button, Field, Input, toast } from '@booqy/brand'
+import { BrandSelect as Select } from '../../shared/Select'
+import { Disclosure } from '../../shared/Disclosure'
+import { InfoTooltip } from '../../shared/InfoTooltip'
+import { PhoneInput } from '../../shared/PhoneInput'
+import { toE164 } from '../../shared/phone'
+import { withBusy } from '../../shared/motion/busy'
+import { errorText } from '../../shared/errors'
+import { ApiError } from '../../shared/api'
+import SimulatorPanel from './SimulatorPanel'
+import { TimeInput } from '../../shared/DateInput'
+import {
+  DAYS, ERRORS, saveConfigPatch, saveLocationPatch,
+  type Config, type Day, type LocationConfig, type Span,
+} from './api'
+
+type Errors = Record<string, string | undefined>
+
+/**
+ * Ett avsnitt med egen Spara: felet hamnar på fältet servern pekar ut, annars
+ * som en rad med Försök igen.
+ */
+function Group({ title, info, onSave, children, setFieldErrors }: {
+  title: string
+  info?: ReactNode
+  onSave: () => Promise<Errors | void>
+  children: ReactNode
+  setFieldErrors: (e: Errors) => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const [banner, setBanner] = useState<string | null>(null)
+  async function save(e?: FormEvent) {
+    e?.preventDefault()
+    setBanner(null)
+    setBusy(true)
+    try {
+      const invalid = await withBusy(onSave)
+      if (invalid && Object.values(invalid).some(Boolean)) {
+        setFieldErrors(invalid)
+        return
+      }
+      setFieldErrors({})
+      toast('Sparat.', { tone: 'success' })
+    } catch (err) {
+      const text = errorText(err, 'Kunde inte spara.', ERRORS)
+      const field = err instanceof ApiError ? err.field : undefined
+      if (field) setFieldErrors({ [field]: text })
+      else setBanner(text)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <form className="telefon-group form-grid" noValidate onSubmit={(e) => void save(e)} aria-label={title}>
+      <div className="telefon-q telefon-q--small">
+        <h3>{title}</h3>
+        {info ? <InfoTooltip label={title}>{info}</InfoTooltip> : null}
+      </div>
+      {children}
+      {banner ? (
+        <Bar variant="banner" tone="danger" action={<Button size="sm" variant="secondary" type="button" onClick={() => void save()}>Försök igen</Button>}>
+          {banner}
+        </Bar>
+      ) : null}
+      <div className="telefon-group__save">
+        <Button type="submit" busy={busy} busyLabel="Sparar…">Spara</Button>
+      </div>
+    </form>
+  )
+}
+
+/**
+ * "Fler inställningar": dagens fält, var och en med egen Spara. Monteras inte
+ * om efter Spara: det som skrivits i de andra avsnitten och att avsnittet är
+ * utfällt (`open`, hålls av föräldern) finns kvar.
+ */
+export default function AdvancedSettings({ locationId, config, loc, open, onOpenChange, restaurantPhone, includedMinutes, onConfig, onLoc }: {
+  locationId: string
+  config: Config
+  loc: LocationConfig
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  restaurantPhone: string | null
+  includedMinutes: number | null
+  onConfig: (c: Config) => void
+  onLoc: (l: LocationConfig) => void
+}) {
+  const [tone, setTone] = useState(config.tone)
+  const [greetSv, setGreetSv] = useState(loc.greetingExtraSv)
+  const [greetEn, setGreetEn] = useState(loc.greetingExtraEn)
+  const [hours, setHours] = useState(loc.agentHours)
+  const [transfer, setTransfer] = useState(loc.transferTo ?? '')
+  const [maxMin, setMaxMin] = useState(String(Math.round(loc.maxCallSeconds / 60)))
+  const [offers, setOffers] = useState(loc.counterOffers)
+  const [cap, setCap] = useState(String(config.minutesCapPerMonth))
+  const [rec, setRec] = useState(config.recording)
+  const [errors, setErrors] = useState<Record<string, Errors>>({})
+  const [stopping, setStopping] = useState(false)
+  const [confirmStop, setConfirmStop] = useState(false)
+  const [stopError, setStopError] = useState<string | null>(null)
+
+  const errs = (group: string) => errors[group] ?? {}
+  const setErrs = (group: string) => (e: Errors) => setErrors((prev) => ({ ...prev, [group]: e }))
+  const saveLoc = async (patch: Parameters<typeof saveLocationPatch>[2]) => onLoc(await saveLocationPatch(locationId, loc, patch, onLoc))
+  const saveCfg = async (patch: Parameters<typeof saveConfigPatch>[1]) => onConfig(await saveConfigPatch(config, patch, onConfig))
+
+  // Alla perioder per dag visas och ändras; en ändring rör bara sin egen period.
+  const spansOf = (day: Day): Span[] => hours[day] ?? []
+  function setSpan(day: Day, i: number, field: 'from' | 'to', value: string) {
+    setHours({ ...hours, [day]: spansOf(day).map((s, j) => (j === i ? { ...s, [field]: value } : s)) })
+  }
+  function addSpan(day: Day) {
+    const last = spansOf(day).at(-1)
+    const span = !last ? { from: '17:00', to: '23:00' } : last.to < '23:00' ? { from: last.to, to: '23:59' } : { from: '00:00', to: '06:00' }
+    setHours({ ...hours, [day]: [...spansOf(day), span] })
+  }
+  function removeSpan(day: Day, i: number) {
+    setHours({ ...hours, [day]: spansOf(day).filter((_, j) => j !== i) })
+  }
+
+  async function stop() {
+    setStopping(true)
+    setStopError(null)
+    try {
+      onLoc(await withBusy(() => saveLocationPatch(locationId, loc, { enabled: false }, onLoc)))
+      setConfirmStop(false)
+      toast('Assistenten är avstängd. Numret sparas i 30 dagar.', { tone: 'success' })
+    } catch (err) {
+      setStopError(errorText(err, 'Kunde inte stänga av.', ERRORS))
+    } finally {
+      setStopping(false)
+    }
+  }
+
+  return (
+    <Disclosure title="Fler inställningar" className="telefon-more" defaultOpen={open} onToggle={onOpenChange}>
+      <div className="telefon-groups">
+        <Group title="Ton" setFieldErrors={setErrs('tone')} onSave={() => saveCfg({ tone })}>
+          <Field label="Ton">
+            <Select value={tone} onChange={(e) => setTone(e.target.value as Config['tone'])}>
+              <option value="friendly">Vänlig</option>
+              <option value="formal">Formell</option>
+            </Select>
+          </Field>
+        </Group>
+
+        <Group title="Hälsning" info="Det assistenten säger efter: Hej, du pratar med ..., en AI-assistent för ... Den meningen går inte att ändra."
+          setFieldErrors={setErrs('greet')}
+          onSave={() => saveLoc({ greetingExtraSv: greetSv, greetingExtraEn: greetEn })}>
+          <Field label="Svenska" error={errs('greet').greetingExtraSv}>
+            <Input value={greetSv} maxLength={200} placeholder="Vad kan jag hjälpa dig med?" onChange={(e) => setGreetSv(e.target.value)} />
+          </Field>
+          <Field label="Engelska" error={errs('greet').greetingExtraEn}>
+            <Input value={greetEn} maxLength={200} placeholder="How can I help you?" onChange={(e) => setGreetEn(e.target.value)} />
+          </Field>
+        </Group>
+
+        <Group title="Tider" info="Tomt betyder att assistenten inte svarar den dagen. Läget Alltid svarar dygnet runt."
+          setFieldErrors={setErrs('hours')} onSave={async () => {
+            if (Object.values(hours).some((spans) => (spans ?? []).some((x) => !x.from || !x.to || x.from >= x.to))) {
+              return { agentHours: ERRORS.invalid_hours }
+            }
+            const saved = await saveLocationPatch(locationId, loc, { agentHours: hours }, onLoc)
+            onLoc(saved)
+            setHours(saved.agentHours)              // servern sorterar perioderna
+          }}>
+          {loc.mode === 'always' ? <p className="telefon-hint">Läget är Alltid: assistenten svarar dygnet runt.</p> : (
+            <fieldset className="telefon-hours">
+              <legend className="bq-sr-only">Assistentens tider</legend>
+              {DAYS.map((d) => (
+                <div key={d.key} className="telefon-hours__day">
+                  <span className="telefon-hours__label">{d.label}</span>
+                  {spansOf(d.key).length ? spansOf(d.key).map((span, i) => (
+                    <div key={i} className="telefon-hours__row">
+                      <TimeInput inputClassName="bq-input" aria-label={`${d.label} från${i ? ` (${i + 1})` : ''}`} value={span.from}
+                        onChange={(e) => setSpan(d.key, i, 'from', e.target.value)} />
+                      <TimeInput inputClassName="bq-input" aria-label={`${d.label} till${i ? ` (${i + 1})` : ''}`} value={span.to}
+                        onChange={(e) => setSpan(d.key, i, 'to', e.target.value)} />
+                      <Button type="button" size="sm" variant="secondary" aria-label={`Ta bort ${d.label.toLowerCase()} ${span.from}-${span.to}`}
+                        onClick={() => removeSpan(d.key, i)}>Ta bort</Button>
+                    </div>
+                  )) : <span className="telefon-hint">Svarar inte</span>}
+                  {spansOf(d.key).length < 3 ? (
+                    <Button type="button" size="sm" variant="secondary" aria-label={`Lägg till tid ${d.label.toLowerCase()}`}
+                      onClick={() => addSpan(d.key)}>Lägg till tid</Button>
+                  ) : null}
+                </div>
+              ))}
+              {errs('hours').agentHours ? <span className="bq-field__msg">{errs('hours').agentHours}</span> : null}
+            </fieldset>
+          )}
+        </Group>
+
+        <Group title="Koppla samtal till" info="Vill den som ringer prata med er kopplar assistenten hit. Svarar ingen inom 25 sekunder erbjuder den att ni ringer upp. Tomt: ingen koppling."
+          setFieldErrors={setErrs('transfer')}
+          onSave={async () => {
+            if (transfer && restaurantPhone && toE164(transfer) === toE164(restaurantPhone)) {
+              document.getElementById('pa-transfer')?.focus()
+              return { transferTo: ERRORS.transfer_is_forwarded }
+            }
+            await saveLoc({ transferTo: transfer || null })
+          }}>
+          <Field label="Nummer" error={errs('transfer').transferTo}>
+            <PhoneInput id="pa-transfer" className="bq-input" value={transfer} onChange={setTransfer} />
+          </Field>
+        </Group>
+
+        <Group title="Längsta samtal" info="2 till 15 minuter. Erbjudandena gäller när den tid gästen vill ha är full."
+          setFieldErrors={setErrs('call')}
+          onSave={async () => {
+            const minutes = Number(maxMin)
+            if (!Number.isInteger(minutes) || minutes < 2 || minutes > 15) {
+              document.getElementById('pa-maxcall')?.focus()
+              return { maxCallSeconds: ERRORS.invalid_max_call }
+            }
+            await saveLoc({ maxCallSeconds: minutes * 60, counterOffers: offers })
+          }}>
+          <Field label="Minuter" error={errs('call').maxCallSeconds}>
+            <Input id="pa-maxcall" type="number" inputMode="numeric" min={2} max={15} value={maxMin} onChange={(e) => setMaxMin(e.target.value)} />
+          </Field>
+          <label className="telefon-check">
+            <input type="checkbox" checked={offers.nearbyTables} onChange={(e) => setOffers({ ...offers, nearbyTables: e.target.checked })} />
+            Erbjud bord bredvid varandra eller ett större bord
+          </label>
+          <label className="telefon-check">
+            <input type="checkbox" checked={offers.phoneOnlyTables} onChange={(e) => setOffers({ ...offers, phoneOnlyTables: e.target.checked })} />
+            Erbjud bord ni bara bokar per telefon
+          </label>
+        </Group>
+
+        <Group title="Minuttak" info={includedMinutes !== null ? `Minuter per månad. Ingår i er plan: ${includedMinutes}.` : 'Minuter per månad.'}
+          setFieldErrors={setErrs('cap')}
+          onSave={async () => {
+            const n = Number(cap)
+            if (!Number.isInteger(n) || n < 0) {
+              document.getElementById('pa-cap')?.focus()
+              return { minutesCapPerMonth: ERRORS.invalid_cap }
+            }
+            await saveCfg({ minutesCapPerMonth: n })
+          }}>
+          <Field label="Minuter per månad" error={errs('cap').minutesCapPerMonth}>
+            <Input id="pa-cap" type="number" inputMode="numeric" min={0} value={cap} onChange={(e) => setCap(e.target.value)} />
+          </Field>
+        </Group>
+
+        <Group title="Inspelning" info="Av som standard. När den är på hör den som ringer: Samtalet spelas in."
+          setFieldErrors={setErrs('rec')}
+          onSave={async () => {
+            if (rec.enabled && (rec.purpose ?? '').trim().length < 5) {
+              document.getElementById('pa-purpose')?.focus()
+              return { 'recording.purpose': 'Skriv varför, minst 5 tecken.' }
+            }
+            await saveCfg({ recording: rec.enabled ? { enabled: true, purpose: (rec.purpose ?? '').trim(), retentionDays: rec.retentionDays ?? 30 } : { enabled: false } })
+          }}>
+          <label className="telefon-check">
+            <input type="checkbox" checked={rec.enabled} onChange={(e) => setRec({ ...rec, enabled: e.target.checked })} />
+            Spela in samtalen
+          </label>
+          {rec.enabled ? (
+            <>
+              <Field label="Varför spelar ni in?" error={errs('rec')['recording.purpose']}>
+                <Input id="pa-purpose" value={rec.purpose ?? ''} maxLength={300} onChange={(e) => setRec({ ...rec, purpose: e.target.value })} />
+              </Field>
+              <Field label="Spara inspelningarna">
+                <Select value={String(rec.retentionDays ?? 30)} onChange={(e) => setRec({ ...rec, retentionDays: Number(e.target.value) })}>
+                  <option value="7">7 dagar</option><option value="30">30 dagar</option><option value="90">90 dagar</option>
+                </Select>
+              </Field>
+            </>
+          ) : null}
+        </Group>
+
+        <section className="telefon-group" aria-label="Prova att skriva">
+          <div className="telefon-q telefon-q--small">
+            <h3>Prova att skriva</h3>
+            <InfoTooltip label="Prova att skriva">Skriv som om du ringde. Assistenten kollar riktiga lediga tider men bokar ingenting här.</InfoTooltip>
+          </div>
+          <SimulatorPanel locationId={locationId} />
+        </section>
+
+        {loc.enabled ? (
+          <section className="telefon-group" aria-label="Stäng av">
+            {stopError ? (
+              <Bar variant="banner" tone="danger" action={<Button size="sm" variant="secondary" onClick={() => void stop()}>Försök igen</Button>}>{stopError}</Bar>
+            ) : null}
+            {confirmStop ? (
+              <div className="telefon-confirm" role="group" aria-label="Stäng av?">
+                <p className="telefon-line"><strong>Stäng av? Numret sparas i 30 dagar.</strong></p>
+                <div className="telefon-row">
+                  <Button variant="danger" busy={stopping} busyLabel="Sparar…" onClick={() => void stop()}>Stäng av</Button>
+                  <Button variant="secondary" disabled={stopping} onClick={() => setConfirmStop(false)}>Avbryt</Button>
+                </div>
+              </div>
+            ) : (
+              <Button variant="danger" onClick={() => setConfirmStop(true)}>Stäng av assistenten för platsen</Button>
+            )}
+          </section>
+        ) : null}
+      </div>
+    </Disclosure>
+  )
+}

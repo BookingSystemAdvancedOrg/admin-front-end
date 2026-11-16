@@ -1,3 +1,5 @@
+import { useLiveRefresh } from '../../shared/live'
+import { RowActions } from '../../shared/RowActions'
 import { useCallback, useEffect, useState } from 'react'
 import { ApiError, isApiConfigured } from '../../shared/api'
 import { getPublicMenu, listMenuItems } from '../meny/menuApi'
@@ -25,6 +27,9 @@ import type {
 } from '../catering/cateringApi'
 import { Num } from '../../shared/motion/Num'
 import { parseKronor } from './data'
+import ModalOverlay from '../../shared/ModalOverlay'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { TitleInfo } from '../../shared/TitleInfo'
 
 const kr = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 2 })
 
@@ -75,6 +80,8 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
   useEffect(() => {
     reload().catch((err: unknown) => setError(errorText(err, 'Kunde inte hämta cateringmenyn.')))
   }, [reload])
+  // Levande: rätter och paket som en kollega ändrar syns av sig själva (dialogen har sin egen kopia).
+  useLiveRefresh(reload, { enabled: Boolean(locationId) })
 
   async function run(action: () => Promise<unknown>): Promise<boolean> {
     setError(null)
@@ -95,10 +102,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
     <section className="admin-card table-card">
       <div className="card-head">
         <div>
-          <h2 className="card-title">Cateringmeny</h2>
-          <p className="cell-muted">
-            Rätter och paket som gästen kan välja i kalkylen. Skild från den vanliga menyn.
-          </p>
+          <TitleInfo title="Cateringmeny" info="Rätter och paket som gästen kan välja i kalkylen. Skild från den vanliga menyn." />
         </div>
         {isOwner && locationId && (
           <span className="cm-head-actions">
@@ -115,15 +119,15 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
           </span>
         )}
       </div>
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <ErrorNote text={error} />
 
       <h3 className="cm-subtitle">Rätter</h3>
       {dishes.length === 0 ? (
         <p className="cm-empty">
-          Inga cateringrätter än. Skapa en ny rätt eller hämta rätter från den vanliga menyn.
+          Inga rätter än.
         </p>
       ) : (
-        <div className="table-scroll">
+        <div className="table-scroll" tabIndex={0}>
           <table className="data-table">
             <thead>
               <tr>
@@ -132,7 +136,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
                 <th>Allergener</th>
                 <th>Status</th>
                 {isOwner && <th>Aktiv</th>}
-                {isOwner && <th>Åtgärder</th>}
+                {isOwner && <th className="right">Åtgärder</th>}
               </tr>
             </thead>
             <tbody>
@@ -161,8 +165,8 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
                     </td>
                   )}
                   {isOwner && (
-                    <td>
-                      <span className="row-actions">
+                    <td className="right">
+                      <RowActions label="Åtgärder">
                         <button type="button" className="link-action" onClick={() => setModal({ kind: 'dish', dish: d })}>
                           Redigera
                         </button>
@@ -171,7 +175,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
                             run: async () => { await deleteCateringDish(locationId!, d.dishId) } })}>
                           Radera
                         </button>
-                      </span>
+                      </RowActions>
                     </td>
                   )}
                 </tr>
@@ -183,9 +187,9 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
 
       <h3 className="cm-subtitle">Paket</h3>
       {packages.length === 0 ? (
-        <p className="cm-empty">Inga paket än. Ett paket är flera rätter till ett pris per gäst.</p>
+        <p className="cm-empty">Inga paket än.</p>
       ) : (
-        <div className="table-scroll">
+        <div className="table-scroll" tabIndex={0}>
           <table className="data-table">
             <thead>
               <tr>
@@ -194,7 +198,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
                 <th>Rätter</th>
                 <th>Minst</th>
                 <th>Status</th>
-                {isOwner && <th>Åtgärder</th>}
+                {isOwner && <th className="right">Åtgärder</th>}
               </tr>
             </thead>
             <tbody>
@@ -210,8 +214,8 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
                     </span>
                   </td>
                   {isOwner && (
-                    <td>
-                      <span className="row-actions">
+                    <td className="right">
+                      <RowActions label="Åtgärder">
                         <button type="button" className="link-action" onClick={() => setModal({ kind: 'package', pkg: p })}>
                           Redigera
                         </button>
@@ -220,7 +224,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
                             run: async () => { await deleteCateringPackage(locationId!, p.packageId) } })}>
                           Radera
                         </button>
-                      </span>
+                      </RowActions>
                     </td>
                   )}
                 </tr>
@@ -255,7 +259,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
           }} />
       )}
       {modal?.kind === 'delete' && (
-        <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && setModal(null)}>
+        <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && setModal(null)}>
           <div className="modal modal--confirm" role="dialog" aria-modal="true" aria-label={`Radera ${modal.label}`}>
             <h2>Radera {modal.label}?</h2>
             <p className="modal-text">
@@ -269,7 +273,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </section>
   )
@@ -290,12 +294,12 @@ function toggle<T>(list: T[], value: T): T[] {
 function ModalShell({ title, onCancel, children }: { title: string; onCancel: () => void; children: React.ReactNode }) {
   useEscape(onCancel)
   return (
-    <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && onCancel()}>
+    <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="modal cm-modal" role="dialog" aria-modal="true" aria-label={title}>
         <h2>{title}</h2>
         {children}
       </div>
-    </div>
+    </ModalOverlay>
   )
 }
 
@@ -512,13 +516,12 @@ function ImportModal({ locationId, dishes, onImport, onCancel }: {
   return (
     <ModalShell title="Hämta från menyn" onCancel={onCancel}>
       <p className="modal-subtitle">
-        Rätterna kopieras med namn, beskrivning och pris. Ändringar i menyn följer inte med, och allergener lägger du
-        till efteråt.
+        Kopieras med namn, beskrivning och pris. Allergener lägger du till efteråt.
       </p>
       {menu === null ? (
         <p className="cell-muted">Hämtar menyn…</p>
       ) : menu.length === 0 ? (
-        <p className="cm-empty">Menyn har inga aktiva rätter att hämta.</p>
+        <p className="cm-empty">Inga aktiva rätter.</p>
       ) : (
         <div className="cm-checks cm-checks--wide">
           {menu.map((m) => (

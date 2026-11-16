@@ -31,7 +31,7 @@
 
 .date-input-btn:hover:not(:disabled),
 .date-input-btn[aria-expanded='true'] {
-  background: var(--fill);
+  background: var(--glass-fill);
   color: var(--ink);
 }
 
@@ -48,6 +48,16 @@
 .time-input {
   width: 6.5em;
   font-variant-numeric: tabular-nums;
+}
+
+/* I ett Field från @booqy/brand (klassen bq-input): fältet fyller sin cell
+   som de andra fälten och går aldrig utanför kortet. */
+.date-input > input.bq-input,
+.time-input.bq-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .date-input > input[aria-invalid='true'],
@@ -79,13 +89,20 @@
 .date-cal {
   position: fixed;
   z-index: 1000;
+  /* popover (top layer): utan webbläsarens centrering och ram. */
+  inset: auto;
+  margin: 0;
+  overflow: visible;
   width: 280px;
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
+  /* Helt täckande: Safari suddar inte bakgrunden bakom ett element i top layer. */
   background: var(--surface);
   color: var(--ink);
   box-shadow: var(--shadow-lg);
+  -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
+  backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
 }
 
 .date-cal-head {
@@ -119,7 +136,7 @@
 
 .date-cal-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 2px;
 }
 
@@ -139,7 +156,7 @@
 .date-cal-nav:hover,
 .date-cal-day:hover:not(:disabled),
 .date-cal-today:hover:not(:disabled) {
-  background: var(--fill);
+  background: var(--glass-fill);
 }
 
 .date-cal-day.is-today {

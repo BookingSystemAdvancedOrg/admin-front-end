@@ -5,6 +5,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { AuthLayout } from './AuthLayout'
 import { requestPasswordReset } from './cognito'
 import { EMAIL_PATTERN } from './resetLink'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /**
  * "Glömt lösenordet?": skickar ett mejl med en länk till /aterstall-losenord
@@ -47,8 +48,7 @@ export default function ForgotPasswordPage() {
         <div className="auth-heading">
           <h1>Kolla din e-post</h1>
           <p>
-            Finns det ett konto för <strong>{sentTo}</strong> har vi skickat ett mejl med en
-            länk där du väljer ett nytt lösenord. Länken gäller i en timme.
+            Länk skickad till <strong>{sentTo}</strong>. Gäller en timme.
           </p>
         </div>
 
@@ -81,7 +81,7 @@ export default function ForgotPasswordPage() {
     <AuthLayout>
       <div className="auth-heading">
         <h1>Glömt lösenordet?</h1>
-        <p>Fyll i din e-postadress så skickar vi en länk där du väljer ett nytt lösenord.</p>
+        <p>Vi mejlar en länk.</p>
       </div>
 
       <form className="auth-form" onSubmit={handleSubmit} noValidate>
@@ -102,9 +102,7 @@ export default function ForgotPasswordPage() {
         </div>
 
         {error && (
-          <p className="auth-error" role="alert">
-            {error}
-          </p>
+          <ErrorNote className="auth-error" text={error} />
         )}
 
         <button className="auth-submit" type="submit" disabled={busy}>

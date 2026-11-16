@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { Bar, Button, Card, Field, Input, Modal, Select, toast } from '@booqy/brand'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { sameData, useLiveRefresh } from '../../shared/live'
+import { isConflict, mergeDeep } from '../../shared/merge'
+import { Bar, Button, Card, Field, Input, Modal, toast } from '@booqy/brand'
+import { BrandSelect as Select } from '../../shared/Select'
 import { ApiError } from '../../shared/api'
 import { AdminTopbar } from '../../shared/AdminTopbar'
+import { useUnsavedGuard } from '../../shared/unsaved'
 import { errorText } from '../../shared/errors'
 import { currentLocation, useTenant } from '../../shared/tenant'
 import './webbplats.css'
@@ -19,6 +23,7 @@ import {
   freeSlug,
   getSite,
   listVersions,
+  conflictPlace,
   locate,
   moveBlock,
   newId,
@@ -32,6 +37,7 @@ import {
   type SiteState,
   type Version,
 } from './api'
+import { ErrorActions } from '../../shared/ErrorNote'
 
 const POLL_MS = 2000
 /** Längsta väntan på en publicering eller återställning (cirka 5 minuter). */
@@ -62,7 +68,7 @@ export default function WebbplatsPage() {
           <section className="admin-card table-card">
             <h2 className="card-title">{enabled ? 'Bara för ägare' : 'Ingår inte i er plan'}</h2>
             <p className="cell-muted">
-              {enabled ? 'Webbplatsen ändras av restaurangens ägare.' : 'Webbplatsbyggaren ingår inte i er plan. Kontakta oss för att uppgradera.'}
+              {enabled ? 'Bara ägaren ändrar webbplatsen.' : 'Kontakta oss för att uppgradera.'}
             </p>
           </section>
         )}
@@ -77,13 +83,17 @@ function Editor() {
   const [site, setSite] = useState<SiteState | null>(null)
   const [doc, setDoc] = useState<SiteDoc | null>(null)
   const [version, setVersion] = useState(0)
+  /** Utkastet som det var sparat när du började ändra (för att lägga ihop vid en krock). */
+  const [baseDoc, setBaseDoc] = useState<SiteDoc | null>(null)
   const [dirty, setDirty] = useState(false)
+  // Osparat utkast: uppdateringsrutan frågar innan den laddar om.
+  useUnsavedGuard(dirty)
   const [pageIndex, setPageIndex] = useState(0)
   const [error, setError] = useState<{ text: string; page?: number; block?: number; slug?: boolean } | null>(null)
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [width, setWidth] = useState<'mobile' | 'desktop'>('mobile')
-  const [images, setImages] = useState<MenuItem[]>([])
+  const [images, setImages] = useState<(MenuItem & { imageKey: string })[]>([])
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [versionsOpen, setVersionsOpen] = useState(false)
 
@@ -92,6 +102,7 @@ function Editor() {
       const s = await getSite()
       setSite(s)
       setDoc(s.draft.doc)
+      setBaseDoc(s.draft.doc)
       setVersion(s.draft.version)
       setDirty(false)
     } catch (err) {
@@ -100,8 +111,29 @@ function Editor() {
   }, [])
 
   useEffect(() => { void load() }, [load])
+  // Levande: publiceringar och ändringar från en kollega syns av sig själva.
+  // Har du osparade ändringar skrivs utkastet inte över; de läggs ovanpå det
+  // senaste när du sparar.
+  const dirtyRef = useRef(dirty)
+  const versionRef = useRef(version)
   useEffect(() => {
-    if (location) listMenuItems(location.locationId).then((items) => setImages(items.filter((i) => i.imageKey))).catch(() => setImages([]))
+    dirtyRef.current = dirty
+    versionRef.current = version
+  }, [dirty, version])
+  useLiveRefresh(async () => {
+    const s = await getSite()
+    // Ett svar som hämtades före din sparning har ett äldre utkast: det får
+    // inte ta tillbaka det du nyss sparade (nästa puls har det nya).
+    if (s.draft.version < versionRef.current) return
+    setSite((cur) => (sameData(cur, s) ? cur : s))
+    if (!dirtyRef.current) {
+      setDoc((cur) => (sameData(cur, s.draft.doc) ? cur : s.draft.doc))
+      setBaseDoc(s.draft.doc)
+      setVersion(s.draft.version)
+    }
+  }, { enabled: site !== null && !saving && !publishing })
+  useEffect(() => {
+    if (location) listMenuItems(location.locationId).then((items) => setImages(items.filter((i): i is MenuItem & { imageKey: string } => Boolean(i.imageKey)))).catch(() => setImages([]))
   }, [location])
 
   function change(next: SiteDoc) {
@@ -121,8 +153,30 @@ function Editor() {
     setSaving(true)
     setError(null)
     try {
-      const saved = await saveDraft(doc, version)
+      let sent = doc
+      let saved
+      try {
+        saved = await saveDraft(doc, version)
+      } catch (err) {
+        if (!isConflict(err) || !baseDoc) throw err
+        // Någon annan sparade utkastet emellan: dina ändringar ovanpå det senaste, en gång till.
+        const latest = await getSite()
+        const { merged, conflicts } = mergeDeep(baseDoc, doc, latest.draft.doc)
+        setSite(latest)
+        setBaseDoc(latest.draft.doc)
+        setVersion(latest.draft.version)
+        setDoc(merged)
+        if (conflicts.length) {
+          const where = conflictPlace(merged, conflicts[0])
+          setError({ text: `${where.name} ändrades nyss på en annan plats. Din version står kvar; spara igen för att använda den, eller ändra först.`, page: where.page, block: where.block })
+          if (where.page !== undefined) setPageIndex(where.page)
+          return null
+        }
+        sent = merged
+        saved = await saveDraft(merged, latest.draft.version)
+      }
       setVersion(saved.version)
+      setBaseDoc(sent)
       setDirty(false)
       return saved.version
     } catch (err) {
@@ -175,10 +229,10 @@ function Editor() {
   }
 
   if (!doc || !site) {
-    return error ? <Bar variant="banner" tone="danger">{error.text}</Bar> : <p className="cell-muted">Hämtar webbplatsen…</p>
+    return error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error.text} />}>{error.text}</Bar> : <p className="cell-muted">Hämtar webbplatsen…</p>
   }
   if (site.mode === 'custom') {
-    return <Card title="Webbplats"><p>Er webbplats byggs av Booqy. Kontakta oss om ni vill ändra något.</p></Card>
+    return <Card title="Webbplats"><p>Byggs av Booqy. Kontakta oss för ändringar.</p></Card>
   }
 
   const page = doc.pages[Math.min(pageIndex, doc.pages.length - 1)]
@@ -235,7 +289,7 @@ function Editor() {
             Länken är kopierad och fungerar i 7 dagar: {shareUrl}
           </Bar>
         ) : null}
-        {error ? <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng">{error.text}</Bar> : null}
+        {error ? <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng" action={<ErrorActions text={error.text} />}>{error.text}</Bar> : null}
         <Bar variant="tab" label="Sidor" value={page.id} onChange={(key) => setPageIndex(doc.pages.findIndex((p) => p.id === key))}
           items={doc.pages.map((p) => ({ key: p.id, label: p.title || 'Startsida' }))} />
         <div className="row-actions">
@@ -262,7 +316,7 @@ function Editor() {
           </Field>
         </div>
         <h4 className="webbplats-heading">Block på sidan</h4>
-        {page.blocks.length === 0 ? <p className="cell-muted">Sidan har inga block än. Lägg till ett nedan.</p> : null}
+        {page.blocks.length === 0 ? <p className="cell-muted">Inga block än.</p> : null}
         <ol className="webbplats-blocks" aria-label="Block på sidan">
           {page.blocks.map((block, i) => (
             <li key={block.id} className={error?.page === pageIndex && error.block === i ? 'webbplats-block webbplats-block--invalid' : 'webbplats-block'}>
@@ -299,7 +353,7 @@ function Editor() {
           <Field label="Huvudfärg">
             <Input type="color" value={doc.theme.primaryColor} onChange={(e) => change({ ...doc, theme: { ...doc.theme, primaryColor: e.target.value } })} />
           </Field>
-          <Field label="Accentfärg" hint="Knappar och länkar. Booqy justerar färgen så att texten alltid går att läsa.">
+          <Field label="Accentfärg" hint="Knappar och länkar">
             <Input type="color" value={doc.theme.accentColor} onChange={(e) => change({ ...doc, theme: { ...doc.theme, accentColor: e.target.value } })} />
           </Field>
           <Field label="Typsnitt">
@@ -318,7 +372,6 @@ function Editor() {
         <Bar variant="tab" kind="track" label="Bredd" value={width} onChange={(k) => setWidth(k as 'mobile' | 'desktop')}
           items={[{ key: 'mobile', label: 'Mobil' }, { key: 'desktop', label: 'Dator' }]} />
         <Outline doc={doc} pageIndex={pageIndex} width={width} />
-        <p className="field-hint">Förhandsgranska visar sidan precis som gästerna ser den.</p>
       </Card>
 
       <Bar variant="action" sticky label="Spara utkast" status={dirty ? 'Osparade ändringar' : 'Sparat'}>
@@ -332,7 +385,7 @@ function Editor() {
 
 function BlockEditor({ block, images, pages, invalid, onChange, actions }: {
   block: Block
-  images: MenuItem[]
+  images: (MenuItem & { imageKey: string })[]
   pages: { id: string; title: string }[]
   invalid: boolean
   onChange: (b: Block) => void
@@ -374,10 +427,17 @@ function BlockEditor({ block, images, pages, invalid, onChange, actions }: {
           </Field>
         ) : null}
         {block.type === 'contact' ? (
-          <label className="toggle-row">
-            <input type="checkbox" className="switch" checked={Boolean(block.showMap)} onChange={(e) => onChange({ ...block, showMap: e.target.checked })} />
+          <div className="toggle-row toggle-row--field">
             <span className="toggle-row-label">Visa karta</span>
-          </label>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={Boolean(block.showMap)}
+              aria-label="Visa karta"
+              className="switch"
+              onClick={() => onChange({ ...block, showMap: !block.showMap })}
+            />
+          </div>
         ) : null}
       </div>
     </div>

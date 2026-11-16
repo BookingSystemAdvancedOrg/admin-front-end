@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useEffect, useState } from 'react'
 import { StatTile } from '../../shared/motion/StatTile'
 import { Num } from '../../shared/motion/Num'
@@ -9,6 +10,9 @@ import { NEEDS_OWNER, formatDate, kronor, listRequests, statusClass, statusLabel
 import type { CateringStatus, RequestSummary } from './cateringApi'
 import './catering.css'
 import { SkelCard, SkelPage, SkelRows, SkelTiles } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { booqyFaultText } from '../../shared/errors'
+import { Select } from '../../shared/Select'
 
 type Filter = 'aktiva' | 'alla'
 const ACTIVE: CateringStatus[] = ['requested', 'offer_sent', 'change_requested', 'signed', 'confirmed', 'delivered']
@@ -35,6 +39,12 @@ export default function CateringPage() {
       cancelled = true
     }
   }, [locationId])
+  // Levande: nya förfrågningar och ändringar från kollegor syns av sig själva.
+  useLiveRefresh(async () => {
+    if (!locationId) return
+    setRows(await listRequests(locationId))
+    setError(false)
+  }, { enabled: Boolean(locationId) })
 
   const visible = (rows ?? [])
     .filter((r) => filter === 'alla' || ACTIVE.includes(r.status))
@@ -52,10 +62,10 @@ export default function CateringPage() {
   const upcoming = ongoing.filter((r) => r.deliveryDate >= today && r.deliveryDate <= weekAhead).length
   const value = ongoing.reduce((sum, r) => sum + (r.total ?? 0), 0)
   const tiles = [
-    { label: 'Väntar på dig', value: String(waiting), note: waiting ? 'Nya eller ändring önskas' : 'Inget att svara på', tone: waiting ? ('attention' as const) : undefined },
-    { label: 'Pågående', value: String(ongoing.length), note: 'Offert, signerad eller bekräftad' },
-    { label: 'Kommande 7 dagar', value: String(upcoming), note: upcoming ? 'Leveranser att förbereda' : 'Inga leveranser' },
-    { label: 'Värde pågående', value: kronor(value), note: `${ongoing.length} ${ongoing.length === 1 ? 'beställning' : 'beställningar'}` },
+    { label: 'Väntar på dig', value: String(waiting), tone: waiting ? ('attention' as const) : undefined },
+    { label: 'Pågående', value: String(ongoing.length) },
+    { label: 'Kommande 7 dagar', value: String(upcoming) },
+    { label: 'Värde pågående', value: kronor(value) },
   ]
 
   return (
@@ -76,7 +86,7 @@ export default function CateringPage() {
               <SkelTiles />
               <SkelCard rows={5} cols={4} />
             </SkelPage>
-          ) : <p className="cell-muted">Ingen plats är vald.</p>
+          ) : <p className="cell-muted">Ingen plats vald.</p>
         ) : (
           <>
           <section className="stats-row" aria-label="Cateringens siffror">
@@ -87,21 +97,20 @@ export default function CateringPage() {
           <section className="admin-card table-card" data-tour="catering-list">
             <div className="card-head">
               <h2 className="card-title">Förfrågningar och beställningar</h2>
-              <select className="compact-select" aria-label="Visa" value={filter} onChange={(e) => setFilter(e.target.value as Filter)}>
+              <Select className="compact-select" aria-label="Visa" value={filter} onChange={(e) => setFilter(e.target.value as Filter)}>
                 <option value="aktiva">Pågående</option>
                 <option value="alla">Alla</option>
-              </select>
+              </Select>
             </div>
-            {error && <p className="form-error" role="alert">Kunde inte hämta förfrågningarna.</p>}
+            {error && <ErrorNote text={booqyFaultText('Kunde inte hämta förfrågningarna.')} />}
             {rows === null && !error && <SkelRows n={5} cols={4} />}
             {rows !== null && visible.length === 0 && (
               <p className="cell-muted">
-                Inga {filter === 'aktiva' ? 'pågående ' : ''}cateringförfrågningar. Gäster skickar dem från
-                cateringkalkylen på er webbplats.
+                Inga {filter === 'aktiva' ? 'pågående ' : ''}förfrågningar.
               </p>
             )}
             {visible.length > 0 && (
-              <div className="table-scroll">
+              <div className="table-scroll" tabIndex={0}>
                 <table className="data-table">
                   <thead>
                     <tr>

@@ -119,4 +119,10 @@ describe('WebbplatsPage', () => {
     expect(api.locate('/pages/2/blocks/5/heading')).toEqual({ page: 2, block: 5 })
     expect(api.slugify('Om oss & meny')).toBe('om-oss-meny')
   })
+
+  it('names the block a save conflict is in', () => {
+    expect(api.conflictPlace(doc, 'pages.0.blocks.1.heading')).toEqual({ name: 'Blocket Meny på sidan Bistro', page: 0, block: 1 })
+    expect(api.conflictPlace(doc, 'pages.0.title')).toEqual({ name: 'Sidan Bistro', page: 0 })
+    expect(api.conflictPlace(doc, 'theme.font').name).toBe('Samma del av webbplatsen')
+  })
 })

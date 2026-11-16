@@ -55,7 +55,7 @@ describe('CancellationPolicyCard', () => {
     getLocation.mockResolvedValue({ locationId: 'loc-1', guarantee: { enabled: true, minPartySize: 2,
       noShowFeePerPerson: 200, lateCancelFeePerPerson: 0, cancelCutoffHours: 12 } })
     render(<CancellationPolicyCard locationId="loc-1" isOwner={false} stripeReady={false} />)
-    expect(await screen.findByText(/Kräver att restaurangens Stripe-konto är klart/)).toBeInTheDocument()
+    expect(await screen.findByText(/Kräver Stripe/)).toBeInTheDocument()
     expect(await screen.findByText(/kort från 2 pers/)).toBeInTheDocument()
     expect(screen.getByRole('switch', { name: 'Kortgaranti vid onlinebokning' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Spara policy' })).toBeNull()
@@ -66,7 +66,7 @@ describe('CancellationPolicyCard', () => {
     getLocation.mockResolvedValue({ locationId: 'loc-1' })
     updateLocation.mockImplementation(async (_id, body) => ({ locationId: 'loc-1', ...body }))
     render(<CancellationPolicyCard locationId="loc-1" isOwner stripeReady />)
-    expect(await screen.findByText(/kortgaranti är avstängd - gästerna bokar utan kort/)).toBeInTheDocument()
+    expect(await screen.findByText(/Nu: avstängd/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Spara policy' }))
     expect(await screen.findByText('Sparat - kortgarantin är avstängd.')).toBeInTheDocument()
     expect(updateLocation.mock.calls[0][1].guarantee.enabled).toBe(false)

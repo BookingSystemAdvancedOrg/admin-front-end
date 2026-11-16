@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { sameData, useLiveRefresh } from '../../shared/live'
+import { ChangedNote } from '../../shared/ChangedNote'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useTenant } from '../../shared/tenant'
@@ -32,6 +34,8 @@ import { DateInput } from '../../shared/DateInput'
 import { focusErrorField } from '../../shared/errors'
 import { Num } from '../../shared/motion/Num'
 import { SkelCard, SkelPage } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { Select } from '../../shared/Select'
 
 /** API:ts fältnamn i offerten -> fältets id, så ett fel flyttar fokus dit. */
 const OFFER_FIELD_IDS: Record<string, string> = {
@@ -78,6 +82,8 @@ export default function CateringRequestPage() {
   const isOwner = tenant?.role === 'owner_user'
   const [request, setRequest] = useState<CateringRequest | null>(null)
   const [offer, setOffer] = useState<OfferInput | null>(null)
+  /** Förfrågan som offerten i formuläret utgår från. */
+  const [offerBase, setOfferBase] = useState<CateringRequest | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -92,6 +98,7 @@ export default function CateringRequestPage() {
       const r = await getRequest(locationId, requestId)
       setRequest(r)
       setOffer(offerFromRequest(r))
+      setOfferBase(r)
       setLoadError(null)
     } catch (err) {
       setLoadError(errorText(err))
@@ -105,6 +112,7 @@ export default function CateringRequestPage() {
         if (!active) return
         setRequest(r)
         setOffer(offerFromRequest(r))
+        setOfferBase(r)
         setLoadError(null)
       },
       (err: unknown) => {
@@ -115,6 +123,27 @@ export default function CateringRequestPage() {
       active = false
     }
   }, [locationId, requestId])
+
+  // Levande: kundens svar, signeringar och ändringar från en kollega syns av sig
+  // själva. Offerten du håller på med skrivs inte över: bara en orörd offert
+  // följer med; annars visas en rad om att den ändrats på annat håll.
+  const requestRef = useRef(request)
+  const offerRef = useRef(offer)
+  useEffect(() => {
+    requestRef.current = request
+    offerRef.current = offer
+  })
+  useLiveRefresh(async () => {
+    const r = await getRequest(locationId, requestId)
+    const prev = requestRef.current
+    const draft = offerRef.current
+    if (!prev || !draft || sameData(draft, offerFromRequest(prev))) {
+      setOffer(offerFromRequest(r))
+      setOfferBase(r)
+    }
+    setRequest((cur) => (sameData(cur, r) ? cur : r))
+    setLoadError(null)
+  }, { enabled: request !== null && !busy })
 
   // Paket och rätter att lägga till i offerten (bara ägaren redigerar).
   useEffect(() => {
@@ -133,6 +162,7 @@ export default function CateringRequestPage() {
     if (r) {
       setRequest(r)
       setOffer(offerFromRequest(r))
+      setOfferBase(r)
     } else void load()
   }, [load])
 
@@ -171,7 +201,7 @@ export default function CateringRequestPage() {
       <>
         <AdminTopbar title="Catering" />
         <main className="admin-main">
-          <p className="form-error" role="alert">{loadError}</p>
+          <ErrorNote text={loadError} />
           <Link to="/catering">Till alla förfrågningar</Link>
         </main>
       </>
@@ -208,6 +238,10 @@ export default function CateringRequestPage() {
   const nextVersion = (request.currentOfferVersion ?? 0) + 1
   const setLine = (i: number, patch: Partial<OfferInput['lines'][number]>) =>
     setOffer({ ...offer, lines: offer.lines.map((l, n) => (n === i ? { ...l, ...patch } : l)) })
+  // Offerten sparades på annat håll medan du ändrade din: din står kvar, deras visas på en rad.
+  const offerChangedThere = Boolean(offerBase) && offerBase !== request &&
+    !sameData(offerFromRequest(request), offerFromRequest(offerBase as CateringRequest)) &&
+    !sameData(offer, offerFromRequest(request))
   const overPriced = offer.lines.some((l) => l.unitPrice > MAX_ITEM_PRICE_KR)
   const offerValid =
     offer.lines.length > 0 &&
@@ -326,11 +360,20 @@ export default function CateringRequestPage() {
                   {request.status === 'requested' ? 'Offert' : `Ny offertversion (v${nextVersion})`}
                 </h2>
                 <p className="cell-muted">
-                  Justera fritt - priser i kronor inkl. moms. Kunden signerar exakt den version du skickar.
+                  Priser inkl. moms
                 </p>
+                {offerChangedThere && (
+                  <ChangedNote
+                    value={`offert på ${kronor(offerTotals(offerFromRequest(request), request.deliveryDate).total)}`}
+                    onUse={() => {
+                      setOffer(offerFromRequest(request))
+                      setOfferBase(request)
+                    }}
+                  />
+                )}
               </div>
             </div>
-            <div className="table-scroll">
+            <div className="table-scroll" tabIndex={0}>
               <table className="data-table offer-table">
                 <thead>
                   <tr><th>Rad</th><th>Á-pris (kr)</th><th>Antal</th><th>Summa</th><th /></tr>
@@ -355,7 +398,7 @@ export default function CateringRequestPage() {
             </div>
             <div className="offer-add-row">
               {(menu.packages.length > 0 || menu.dishes.length > 0) && (
-                <select aria-label="Lägg till från cateringmenyn" value=""
+                <Select aria-label="Lägg till från cateringmenyn" value=""
                   onChange={(e) => addFromMenu(e.target.value)}>
                   <option value="">+ Lägg till från cateringmenyn</option>
                   {menu.packages.length > 0 && (
@@ -372,7 +415,7 @@ export default function CateringRequestPage() {
                       ))}
                     </optgroup>
                   )}
-                </select>
+                </Select>
               )}
               <button type="button" className="link-action"
                 onClick={() => setOffer({ ...offer, lines: [...offer.lines, { name: '', unitPrice: 0, quantity: 1 }] })}>
@@ -393,11 +436,11 @@ export default function CateringRequestPage() {
               </div>
               <div className="form-field">
                 <label htmlFor="offer-return">Retur av utrustning</label>
-                <select id="offer-return" value={offer.equipmentReturn}
+                <Select id="offer-return" value={offer.equipmentReturn}
                   onChange={(e) => setOffer({ ...offer, equipmentReturn: e.target.value as EquipmentReturn })}>
                   <option value="cleaned">{EQUIPMENT_RETURN_LABEL.cleaned} (ingen avgift)</option>
                   <option value="not_cleaned">{EQUIPMENT_RETURN_LABEL.not_cleaned} (rengöringsavgift)</option>
-                </select>
+                </Select>
               </div>
               {offer.equipmentReturn === 'not_cleaned' && (
                 <div className="form-field">
@@ -408,11 +451,11 @@ export default function CateringRequestPage() {
               )}
               <div className="form-field">
                 <label htmlFor="offer-service">Moms</label>
-                <select id="offer-service" value={offer.serviceIncluded ? 'service' : 'food'}
+                <Select id="offer-service" value={offer.serviceIncluded ? 'service' : 'food'}
                   onChange={(e) => setOffer({ ...offer, serviceIncluded: e.target.value === 'service' })}>
                   <option value="service">Med servering (12 %)</option>
                   <option value="food">Bara mat, utan servering ({vatRateFor(false, request.deliveryDate)} %)</option>
-                </select>
+                </Select>
               </div>
               <div className="form-field">
                 <label htmlFor="offer-valid">Giltig till och med</label>
@@ -438,7 +481,7 @@ export default function CateringRequestPage() {
                 Pris per rad får vara högst {MAX_ITEM_PRICE_KR.toLocaleString('sv-SE')} kr.
               </p>
             )}
-            {error && <p className="form-error" role="alert">{error}</p>}
+            <ErrorNote text={error} />
             {notice && <p className="save-notice" role="status">{notice}</p>}
             <span className="row-actions">
               <button type="button" className="btn primary square" disabled={busy || !offerValid}
@@ -580,7 +623,7 @@ export default function CateringRequestPage() {
             {request.refundNote === 'refund_manually' && (
               <p className="form-error">Fakturan var betald via Bankgiro - betala tillbaka till kunden manuellt.</p>
             )}
-            {!editable && error && <p className="form-error" role="alert">{error}</p>}
+            {!editable && error && <ErrorNote text={error} />}
             {!editable && notice && <p className="save-notice" role="status">{notice}</p>}
           </section>
         )}

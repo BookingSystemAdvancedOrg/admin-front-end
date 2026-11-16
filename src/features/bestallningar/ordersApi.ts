@@ -1,5 +1,5 @@
 import { errorText as commonError } from '../../shared/errors'
-import { ApiError, apiFetch } from '../../shared/api'
+import { ApiError, apiFetch, isApiConfigured } from '../../shared/api'
 
 /**
  * Matbeställningar (backend manage-order, docs/ORDERS.md i application).
@@ -29,6 +29,12 @@ export interface OrderLine {
   quantity: number
   total: number
   vatRate: number
+  /** Gästens tillval med pristillägg (öre per styck, ingår i unitPrice). */
+  options?: { group: string; choice: string; price: number }[]
+  /** Gästens önskemål på raden ("ingen lök"); följer rätten till bongen. */
+  note?: string
+  /** Allergi på raden ("jordnötsallergi"): fet på bongen, egen allergibong. */
+  allergy?: string
 }
 
 export interface Order {
@@ -38,6 +44,9 @@ export interface Order {
   status: OrderStatus
   paymentStatus?: 'processing' | 'paid' | 'failed' | 'refunded'
   mode: OrderMode
+  /** Bordets id i planritningen (QR-koden); står kvar om bordet byter namn. */
+  tableId?: string
+  /** Bordets namn när gästen beställde. */
   tableLabel?: string
   lines: OrderLine[]
   /** Öre. */
@@ -75,19 +84,43 @@ export interface OrderList {
 
 export type StaffMove = 'preparing' | 'ready' | 'completed' | 'cancelled'
 
-export interface TableCode {
-  tableId: string
-  label: string
-  code: string
-  /** Gästsidans adress att lägga i QR-koden; null = restaurangen saknar webbadress. */
-  url: string | null
-}
-
 function base(locationId: string): string {
   return `/locations/${encodeURIComponent(locationId)}/orders`
 }
 
+/** Utan API: en bordsbeställning med burgarmeny, drink och allergi (köks- och barbong). */
+export function mockOrders(): OrderList {
+  const now = Date.now()
+  const at = (min: number) => new Date(now - min * 60_000).toISOString()
+  const line = (menuItemId: string, name: string, kr: number, quantity: number, extra: Partial<OrderLine> = {}) =>
+    ({ menuItemId, name, unitPrice: kr * 100, quantity, total: kr * 100 * quantity, vatRate: 12, ...extra })
+  return {
+    date: new Date(now).toISOString().slice(0, 10),
+    ordering: { open: true, pickup: true, table: true, prepMinutes: 20, lastOrderAt: '21:45' },
+    orders: [
+      {
+        orderId: 'mockorder00000000000000000000001', locationId: 'mock', number: 12, status: 'confirmed',
+        paymentStatus: 'paid', mode: 'table', tableId: 't7', tableLabel: '7', totalAmount: 51500,
+        customerName: 'Åsa Öberg', confirmedAt: at(3),
+        lines: [
+          line('burgarmeny', 'Burgarmeny', 159, 1, { note: 'ingen lök', allergy: 'jordnötsallergi' }),
+          line('skagen', 'Toast Skagen', 98, 2),
+          line('mojito', 'Mojito', 125, 1),
+          line('cola', 'Coca-Cola', 35, 2),
+        ],
+      },
+      {
+        orderId: 'mockorder00000000000000000000002', locationId: 'mock', number: 11, status: 'preparing',
+        paymentStatus: 'paid', mode: 'pickup', totalAmount: 28500, customerName: 'Johan Lind',
+        customerPhone: '070-123 45 67', confirmedAt: at(14), readyEstimate: new Date(now + 6 * 60_000).toISOString(),
+        lines: [line('pizza', 'Pizza Margherita', 125, 2), line('cola', 'Coca-Cola', 35, 1)],
+      },
+    ],
+  }
+}
+
 export function listOrders(locationId: string, date?: string): Promise<OrderList> {
+  if (!isApiConfigured()) return Promise.resolve(date ? { ...mockOrders(), orders: [] } : mockOrders())
   const query = date ? `?date=${encodeURIComponent(date)}` : ''
   return apiFetch<OrderList>(`${base(locationId)}${query}`)
 }
@@ -110,16 +143,6 @@ export function pauseOrdering(locationId: string, minutes: number): Promise<{ or
   })
 }
 
-export function tableCodes(
-  locationId: string,
-  tables: { tableId: string; label: string }[],
-): Promise<{ tables: TableCode[] }> {
-  return apiFetch(`${base(locationId)}/table-codes`, {
-    method: 'POST',
-    body: JSON.stringify({ tables }),
-  })
-}
-
 /** "285,50 kr" från öre. */
 export function kronor(ore: number): string {
   const text = (ore / 100).toFixed(2).replace('.', ',')
@@ -137,7 +160,7 @@ export function clock(iso: string | undefined): string {
 const MOVE_ERRORS: Record<string, string> = {
   changed_retry: 'Beställningen har just ändrats av någon annan. Listan är uppdaterad.',
   refund_failed: 'Stripe kunde inte återbetala beställningen. Den är inte avbruten - försök igen eller kontakta support.',
-  payment_unavailable: 'Stripe svarar inte just nu. Försök igen om en stund.',
+  payment_unavailable: 'Stripe svarar inte just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
 }
 
 export function moveErrorText(err: unknown): string {

@@ -13,7 +13,7 @@ const DONE_MS = 900
  * av Bar i @booqy/brand (pilot för det gemensamma märket); fasen räknas här.
  */
 export function BusyBar() {
-  const { active, finishedAt } = useBusy()
+  const { active, finishedAt, ok } = useBusy()
   const [phase, setPhase] = useState<'idle' | 'busy' | 'done'>('idle')
 
   useEffect(() => {
@@ -22,10 +22,15 @@ export function BusyBar() {
       return
     }
     if (!finishedAt) return
+    // Misslyckades något: strimman går bort utan "Sparat" (felet visas vid fältet).
+    if (!ok) {
+      setPhase('idle')
+      return
+    }
     setPhase('done')
     const t = window.setTimeout(() => setPhase('idle'), DONE_MS)
     return () => window.clearTimeout(t)
-  }, [active, finishedAt])
+  }, [active, finishedAt, ok])
 
   useEffect(() => {
     document.documentElement.classList.toggle('is-saving', phase === 'busy')

@@ -210,7 +210,7 @@ export default function InslappPage({ locationId, eventId, occurrenceId }: { loc
         </Field>
         {list && rows.length === 0 ? <p className="admin-empty">Inga biljetter.</p> : null}
         {rows.length ? (
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0}>
             <table className="data-table">
               <thead><tr><th scope="col">Namn</th><th scope="col">Biljett</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Åtgärd</span></th></tr></thead>
               <tbody>

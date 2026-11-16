@@ -1,0 +1,29 @@
+/* Översikt, Kom igång: delstegen under en rad (telefonassistentens fem steg). */
+.setup-step__label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.setup-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+.setup-sub__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.setup-sub__item.done {
+  border-color: var(--green);
+  color: var(--ink);
+}
+.setup-sub__item.done svg {
+  color: var(--green);
+}

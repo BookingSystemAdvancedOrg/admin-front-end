@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SubscribersTab } from './SubscribersTab'
 import type { Subscriber } from './marketingApi'
+import { chooseOption } from '../../test/select'
 
 const api = vi.hoisted(() => ({
   listSubscribers: vi.fn(),
@@ -92,7 +93,7 @@ describe('SubscribersTab', () => {
     api.listSubscribers.mockResolvedValue({
       subscribers: [{ ...anna, email: null, name: null, status: 'bounced' }], cursor: null,
     })
-    await user.selectOptions(screen.getByLabelText('Visa'), 'suppressed')
+    await chooseOption(screen.getByLabelText('Visa'), 'suppressed')
     expect(api.listSubscribers).toHaveBeenLastCalledWith('suppressed')
     expect(await screen.findByText('Adressen raderad, spärren finns kvar')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Radera' })).not.toBeInTheDocument()

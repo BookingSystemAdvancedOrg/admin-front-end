@@ -8,7 +8,8 @@
 
 .auth-screen {
   position: relative;
-  background: var(--ox);
+  /* Vinröd glasvägg: bakgrunden syns igenom, ordmärket läses ändå. */
+  background: color-mix(in srgb, var(--ox) 66%, transparent);
 }
 
 
@@ -26,10 +27,10 @@
 .auth-card {
   border-radius: 0;
   padding-bottom: 46px;
-  background: #ffffff;
   color: #1a120e;
-  box-shadow: none;
-  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.28)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.18));
+  box-shadow: var(--liquid-edge);
+  -webkit-backdrop-filter: blur(var(--blur-modal)) saturate(1.6);
+  backdrop-filter: blur(var(--blur-modal)) saturate(1.6);
   -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 12px 6px
       repeat-x,
     linear-gradient(#000 0 0) top / 100% calc(100% - 5px) no-repeat;
@@ -41,13 +42,11 @@
 .auth-screen .auth-card {
   --auth-ink: #1a120e;
   --auth-muted: #4a4a46;
-  --auth-bg: #f6f1ea;
   --auth-error: #9e1d26;
   --auth-error-bg: #f6e6e4;
-  --fill: #f6f1ea;
   --accent: #1a120e;
   --accent-hover: #3a2418;
-  --on-accent: #ffffff;
+  --on-accent: var(--bq-snow);
   --accent-ink: #6b4a2e;
   --focus: rgba(168, 132, 98, 0.45);
   --success-ink: #2c6a3f;
@@ -55,28 +54,22 @@
 }
 
 :root[data-theme='dark'] .auth-card {
-  background: var(--surface);
+  background: var(--glass-text-bg) var(--liquid-sheen);
   color: var(--ink);
 }
 
 :root[data-theme='dark'] .auth-screen .auth-card {
   --auth-ink: #f6ece9;
   --auth-muted: #b8aca6;
-  --auth-bg: #332e2b;
   --auth-error: #ee8a90;
   --auth-error-bg: #432326;
-  --fill: #332e2b;
   --accent: #f6ece9;
-  --accent-hover: #ffffff;
+  --accent-hover: var(--bq-snow);
   --on-accent: #1a120e;
   --accent-ink: #ee8a90;
   --focus: rgba(238, 138, 144, 0.4);
   --success-ink: #7cc695;
   color-scheme: dark;
-}
-
-:root[data-theme='dark'] .auth-field input {
-  box-shadow: inset 0 0 0 1.5px #463f3b;
 }
 
 :root[data-theme='dark'] .auth-link--quiet {
@@ -86,15 +79,6 @@
 .auth-heading h1 {
   font: 820 28px/1.05 var(--font);
   font-stretch: 118%;
-}
-
-.auth-field input {
-  border-radius: var(--r-md);
-  box-shadow: inset 0 0 0 1.5px #e3d6c4;
-}
-
-.auth-field input:focus {
-  box-shadow: inset 0 0 0 2px var(--auth-ink);
 }
 
 .auth-rules,

@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Bar, Button, Card, Field, Input, Select, toast } from '@booqy/brand'
+import { useLiveRefresh } from '../../shared/live'
+import { isConflict, mergeEdits } from '../../shared/merge'
+import { Bar, Button, Card, Field, Input, toast } from '@booqy/brand'
+import { BrandSelect as Select } from '../../shared/Select'
 import { errorText } from '../../shared/errors'
 import { useTenant } from '../../shared/tenant'
 import {
@@ -16,6 +19,7 @@ import {
   type SegmentTemplate,
 } from './api'
 import './gaster.css'
+import { ErrorActions } from '../../shared/ErrorNote'
 
 /** Målgrupper på Marknadsföring > Mottagare (ägare): sparade regler, antal och "Använd i kampanj". */
 export default function SegmentsPanel() {
@@ -24,7 +28,14 @@ export default function SegmentsPanel() {
   const [segments, setSegments] = useState<Segment[] | null>(null)
   const [templates, setTemplates] = useState<SegmentTemplate[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [draft, setDraft] = useState<Draft | null>(null)
+  const [draft, setDraftState] = useState<Draft | null>(null)
+  /** Målgruppen som formuläret öppnades med (dina ändringar räknas mot den). */
+  const [draftBase, setDraftBase] = useState<Draft | null>(null)
+  /** Öppnar eller stänger formuläret: utgångsläget följer med. */
+  const setDraft = (next: Draft | null) => {
+    setDraftState(next)
+    setDraftBase(next)
+  }
   const [saving, setSaving] = useState(false)
   const [counts, setCounts] = useState<Record<string, { total: number; reachable: number }>>({})
 
@@ -39,6 +50,12 @@ export default function SegmentsPanel() {
   }
 
   useEffect(() => { void load() }, [])
+  // Levande: målgrupper som en kollega ändrar syns av sig själva (formuläret du skriver i rörs inte).
+  useLiveRefresh(async () => {
+    const out = await listSegments()
+    setSegments(out.segments)
+    setTemplates(out.templates)
+  }, { enabled: segments !== null && !saving })
 
   async function count(segmentId: string) {
     try {
@@ -53,10 +70,29 @@ export default function SegmentsPanel() {
     e.preventDefault()
     if (!draft) return
     setSaving(true)
+    const send = (d: Draft) => saveSegment(d.segmentId, {
+      name: d.name.trim(), rules: rulesFrom(d), ...(d.version ? { version: d.version } : {}),
+    })
     try {
-      const saved = await saveSegment(draft.segmentId, {
-        name: draft.name.trim(), rules: rulesFrom(draft), ...(draft.version ? { version: draft.version } : {}),
-      })
+      let saved
+      try {
+        saved = await send(draft)
+      } catch (err) {
+        if (!isConflict(err) || !draftBase) throw err
+        // Någon annan sparade målgruppen emellan: dina ändrade fält ovanpå den senaste, en gång till.
+        const latest = (await listSegments()).segments.find((x) => x.segmentId === draft.segmentId)
+        if (!latest) throw err
+        const theirs = draftFrom(latest.segmentId, latest.name, latest.rules, latest.version)
+        const { merged, conflicts } = mergeEdits(draftBase, draft, theirs, ['version', 'segmentId'])
+        const next = { ...merged, version: latest.version }
+        if (conflicts.length) {
+          setDraftState(next)
+          setDraftBase(theirs)
+          toast('Samma regel ändrades nyss på en annan plats. Dina värden står kvar; spara igen för att använda dem.', { tone: 'danger' })
+          return
+        }
+        saved = await send(next)
+      }
       setDraft(null)
       await load()
       void count(saved.segmentId)
@@ -64,7 +100,7 @@ export default function SegmentsPanel() {
     } catch (err) {
       toast(errorText(err, 'Kunde inte spara målgruppen.', {
         invalid_rules: 'Kontrollera reglerna: till exempel minst 7 dagar sedan senaste besöket.',
-        changed_retry: 'Målgruppen ändrades samtidigt. Ladda om sidan och försök igen.',
+        changed_retry: 'Målgruppen ändrades samtidigt. Det senaste visas nu; spara igen om ändringen fortfarande behövs.',
       }, { name: 'namnet' }), { tone: 'danger' })
     } finally {
       setSaving(false)
@@ -81,16 +117,13 @@ export default function SegmentsPanel() {
   }
 
   const locationName = (id: string) => locations.find((l) => l.locationId === id)?.name ?? ''
-  const set = (patch: Partial<Draft>) => setDraft((d) => (d ? { ...d, ...patch } : d))
+  const set = (patch: Partial<Draft>) => setDraftState((d) => (d ? { ...d, ...patch } : d))
 
   return (
     <Card title="Målgrupper" actions={
       <Button size="sm" variant="secondary" onClick={() => setDraft(draftFrom(newId(), '', {}))}>Ny målgrupp</Button>
     }>
-      <p className="cell-muted">
-        Bara gäster som har sagt ja till erbjudanden kan få utskick. Gäster som inte vill ingå räknas aldrig med.
-      </p>
-      {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
+      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
       {segments && segments.length === 0 && !draft ? (
         <div className="quick-links-row">
           {templates.map((t) => (
@@ -128,7 +161,7 @@ export default function SegmentsPanel() {
           <Field label="Namn" required>
             <Input value={draft.name} maxLength={60} required onChange={(e) => set({ name: e.target.value })} />
           </Field>
-          <Field label="Inte varit här på (dagar)" hint="Lämna tomt för att inte använda regeln.">
+          <Field label="Inte varit här på (dagar)" hint="Tomt = ingen regel">
             <Input type="number" min={7} max={3650} value={draft.lapsedDays} onChange={(e) => set({ lapsedDays: e.target.value })} />
           </Field>
           <Field label="Fyller år inom (dagar)">

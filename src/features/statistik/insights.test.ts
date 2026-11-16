@@ -122,18 +122,55 @@ describe('insightsApi', () => {
 
   it('asks once per filter set within a minute', async () => {
     const apiFetch = vi.fn().mockResolvedValue({ current: {} })
-    vi.doMock('../../shared/api', () => ({ apiFetch }))
+    vi.doMock('../../shared/api', () => ({ apiFetch, DATA_CHANGED_EVENT: 'booqy:data-changed' }))
     const { fetchInsights } = await import('./insightsApi')
     let t = 0
     const now = () => t
-    await fetchInsights(filters(), now)
-    await fetchInsights(filters(), now)
+    await fetchInsights(filters(), { now })
+    await fetchInsights(filters(), { now })
     expect(apiFetch).toHaveBeenCalledTimes(1)
     expect(apiFetch.mock.calls[0][0]).toBe(
       '/insights?from=2026-09-23&to=2026-10-22&locationId=loc-1&service=all&channel=all&compare=previous',
     )
     t = 61_000
-    await fetchInsights(filters(), now)
+    await fetchInsights(filters(), { now })
     expect(apiFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('asks again after anything was saved, and when told to', async () => {
+    const apiFetch = vi.fn().mockResolvedValue({ current: {} })
+    vi.doMock('../../shared/api', () => ({ apiFetch, DATA_CHANGED_EVENT: 'booqy:data-changed' }))
+    const { fetchInsights } = await import('./insightsApi')
+    await fetchInsights({ ...filters(), ahead: 7 })
+    expect(apiFetch.mock.calls[0][0]).toContain('&ahead=7')
+    window.dispatchEvent(new CustomEvent('booqy:data-changed', { detail: { path: '/locations/loc-1/reservations' } }))
+    await fetchInsights({ ...filters(), ahead: 7 })
+    await fetchInsights({ ...filters(), ahead: 7 }, { fresh: true })
+    expect(apiFetch).toHaveBeenCalledTimes(3)
+  })
+})
+
+describe('weeks', () => {
+  it('numbers weeks the Swedish way and adds the bookings ahead to this week only', async () => {
+    const { byWeek, isoWeek } = await import('./weeks')
+    expect([isoWeek('2026-01-01'), isoWeek('2026-11-13'), isoWeek('2027-01-03')]).toEqual([1, 46, 53])
+    const day = (date: string, guests: number, noShows = 0) => ({
+      date, bookings: 1, guests, arrived: 0, orders: 0, noShows, cancelled: 0, visits: 0, occupancy: null,
+    })
+    const weeks = byWeek(
+      [day('2026-11-02', 4), day('2026-11-09', 3, 1), day('2026-11-13', 2)],
+      [{ date: '2026-11-14', bookings: 2, guests: 5 }, { date: '2026-11-16', bookings: 1, guests: 9 }],
+      '2026-11-13',
+      3,
+    )
+    expect(weeks.map((w) => [w.week, w.guests, w.ahead, w.noShows])).toEqual([[44, 0, 0, 0], [45, 4, 0, 0], [46, 10, 5, 1]])
+  })
+
+  it('leaves walk-ins out of the lead time share', async () => {
+    const { leadSoonPct } = await import('./insights')
+    const s = sampleSummary('2026-10-01', '2026-10-07', '2026-10-22', { service: 'all', channel: 'all' })
+    const total = s.lead.reduce((n, l) => n + l.bookings, 0)
+    expect(total).toBeLessThan(s.bookings)
+    expect(leadSoonPct(s)).toBeCloseTo(((s.lead[0].bookings + s.lead[1].bookings) / total) * 100)
   })
 })

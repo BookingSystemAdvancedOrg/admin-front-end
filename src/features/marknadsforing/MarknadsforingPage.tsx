@@ -78,7 +78,7 @@ export default function MarknadsforingPage() {
             <p className="cell-muted">
               {enabled
                 ? 'Marknadsföringen hanteras av restaurangens ägare.'
-                : 'Marknadsföring med besöksstatistik och e-postutskick ingår inte i er plan. Kontakta oss för att uppgradera.'}
+                : 'Kontakta oss för att uppgradera.'}
             </p>
           </section>
         </main>

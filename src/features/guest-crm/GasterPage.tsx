@@ -1,5 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Bar, Button, Card, Field, Input, Modal, Select, toast } from '@booqy/brand'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLiveRefresh } from '../../shared/live'
+import { ConflictError, isConflict, mergeEdits } from '../../shared/merge'
+import { ChangedNote } from '../../shared/ChangedNote'
+import { Bar, Button, Card, Field, Input, Modal, toast } from '@booqy/brand'
+import { BrandSelect as Select } from '../../shared/Select'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { errorText } from '../../shared/errors'
 import { useTenant } from '../../shared/tenant'
@@ -15,6 +19,7 @@ import {
   type GuestSummary,
 } from './api'
 import './gaster.css'
+import { ErrorActions } from '../../shared/ErrorNote'
 
 const KIND_LABEL = { booking: 'Bokning', order: 'Beställning', catering: 'Catering' } as const
 const CONSENT_LABEL = { granted: 'Ja', withdrawn: 'Nej, återkallat', none: 'Inget svar' } as const
@@ -35,7 +40,7 @@ export default function GasterPage() {
         ) : (
           <section className="admin-card table-card">
             <h2 className="card-title">Ingår inte i er plan</h2>
-            <p className="cell-muted">Gästregistret ingår inte i er plan. Kontakta oss för att uppgradera.</p>
+            <p className="cell-muted">Kontakta oss för att uppgradera.</p>
           </section>
         )}
       </main>
@@ -54,8 +59,17 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
   const [open, setOpen] = useState<string | null>(null)
   const [rebuilding, setRebuilding] = useState(false)
 
+  // Levande bara för första sidan av listan (inte sökträffar eller "Visa fler").
+  const [paging, setPaging] = useState<'first' | 'more' | 'search'>('first')
+  useLiveRefresh(async () => {
+    const page = await listGuests({ cursor: null, locationId: locationId || null })
+    setGuests(page.guests)
+    setCursor(page.cursor)
+  }, { enabled: paging === 'first' && guests !== null })
+
   const load = useCallback(async (next: string | null, append: boolean) => {
     setError(null)
+    setPaging(append ? 'more' : 'first')
     try {
       const page = await listGuests({ cursor: next, locationId: locationId || null })
       setGuests((prev) => (append && prev ? [...prev, ...page.guests] : page.guests))
@@ -78,6 +92,7 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
     try {
       const body = kind === 'email' ? { email: value } : kind === 'phone' ? { phone: value } : { name: value }
       const found = await searchGuests(body)
+      setPaging('search')
       setGuests(found.guests)
       setCursor(null)
     } catch (err) {
@@ -144,15 +159,15 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
             ) : null}
           </div>
         </form>
-        {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
+        {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
         {guests === null && !error ? <p className="cell-muted">Hämtar gäster…</p> : null}
         {guests && guests.length === 0 ? (
           <p className="admin-empty">
-            Inga gäster än. Gäster läggs till när de har varit här, beställt eller fått sin catering.
+            Inga gäster än.
           </p>
         ) : null}
         {guests && guests.length > 0 ? (
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0}>
             <table className="data-table">
               <caption className="bq-sr-only">Gäster, senast här först</caption>
               <thead>
@@ -201,43 +216,95 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
 }) {
   const [guest, setGuest] = useState<GuestDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [note, setNote] = useState('')
-  const [tags, setTags] = useState('')
-  const [birthday, setBirthday] = useState('')
-  const [excluded, setExcluded] = useState(false)
+  // Formuläret och värdena det utgår från (för att se vad du ändrat och vad som
+  // ändrats på annat håll medan du skrev).
+  const [form, setForm] = useState<GuestForm>(EMPTY_GUEST_FORM)
+  const [base, setBase] = useState<GuestForm>(EMPTY_GUEST_FORM)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const formRef = useRef(form)
+  const baseRef = useRef(base)
+  useEffect(() => {
+    formRef.current = form
+    baseRef.current = base
+  })
+  const set = (patch: Partial<GuestForm>) => setForm((f) => ({ ...f, ...patch }))
+
+  /** Ny version från servern: fält du inte rört följer med, dina står kvar. */
+  const take = useCallback((g: GuestDetail) => {
+    const server = guestForm(g)
+    const f = formRef.current
+    const b = baseRef.current
+    const nextForm = { ...f }
+    const nextBase = { ...b }
+    for (const k of Object.keys(server) as (keyof GuestForm)[]) {
+      if (f[k] === b[k]) {
+        ;(nextForm as Record<string, unknown>)[k] = server[k]
+        ;(nextBase as Record<string, unknown>)[k] = server[k]
+      }
+    }
+    setGuest(g)
+    setForm(nextForm)
+    setBase(nextBase)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
     getGuest(guestId).then((g) => {
       if (cancelled) return
+      const f = guestForm(g)
       setGuest(g)
-      setNote(g.note ?? '')
-      setTags(g.tags.join(', '))
-      setBirthday(g.birthday ?? '')
-      setExcluded(g.segmentsExcluded)
+      setForm(f)
+      setBase(f)
     }).catch((err) => { if (!cancelled) setError(errorText(err, 'Kunde inte hämta gästen.')) })
     return () => { cancelled = true }
   }, [guestId])
+  useLiveRefresh(() => getGuest(guestId).then(take), { enabled: guest !== null && !saving })
+
+  const there = guest ? guestForm(guest) : null
+  /** Det andra värdet för ett fält du ändrat, när det ändrats på annat håll också. */
+  const clash = <K extends keyof GuestForm>(k: K): GuestForm[K] | undefined =>
+    there && there[k] !== base[k] && there[k] !== form[k] ? there[k] : undefined
+
+  const textNote = (k: 'note' | 'tags' | 'birthday') => {
+    const v = clash(k)
+    return v === undefined ? null : <ChangedNote as="span" value={v} onUse={() => set({ [k]: v })} />
+  }
 
   async function save() {
     if (!guest) return
     setSaving(true)
     setSaveError(null)
+    const send = (f: GuestForm, version: number) => updateGuest(guestId, {
+      note: f.note.trim() || null,
+      tags: splitTags(f.tags),
+      birthday: f.birthday.trim() || null,
+      segmentsExcluded: f.excluded,
+      version,
+    })
     try {
-      const saved = await updateGuest(guestId, {
-        note: note.trim() || null,
-        tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
-        birthday: birthday.trim() || null,
-        segmentsExcluded: excluded,
-        version: guest.version,
-      })
-      setGuest({ ...guest, ...saved })
+      let saved
+      try {
+        saved = await send(form, guest.version)
+      } catch (err) {
+        if (!isConflict(err)) throw err
+        // Någon annan sparade gästen emellan: dina fält ovanpå det senaste, en gång till.
+        const latest = await getGuest(guestId)
+        const { merged, conflicts } = mergeEdits(base, form, guestForm(latest))
+        if (conflicts.length) {
+          // Fält du inte rört tar det senaste; dina står kvar, nästa sparning går mot den nya versionen.
+          take(latest)
+          throw new ConflictError(conflicts, latest)
+        }
+        saved = await send(merged, latest.version)
+      }
+      const next = { ...guest, ...saved }
+      setGuest(next)
+      setBase(guestForm(next))
+      setForm(guestForm(next))
       toast('Sparat.', { tone: 'success' })
     } catch (err) {
       setSaveError(errorText(err, 'Kunde inte spara.', {
-        changed_retry: 'Någon annan ändrade gästen samtidigt. Stäng och öppna igen.',
         invalid_birthday: 'Skriv födelsedagen som MM-DD, till exempel 03-14.',
         note_too_long: 'Anteckningen får vara högst 300 tecken.',
       }, { tags: 'taggarna' }))
@@ -257,7 +324,7 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
         <Button busy={saving} busyLabel="Sparar…" onClick={save}>Spara</Button>
       ) : undefined}
     >
-      {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
+      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
       {!guest && !error ? <p className="cell-muted">Hämtar…</p> : null}
       {guest ? (
         <>
@@ -277,7 +344,7 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
           </dl>
           <h3 className="form-section-label">Historik</h3>
           {guest.history.length === 0 ? <p className="cell-muted">Ingen historik.</p> : (
-            <div className="table-scroll">
+            <div className="table-scroll" tabIndex={0}>
               <table className="data-table">
                 <thead>
                   <tr><th scope="col">Datum</th><th scope="col">Vad</th><th scope="col">Restaurang</th>{guest.spendSek ? <th scope="col">Belopp</th> : null}</tr>
@@ -297,20 +364,23 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
           )}
           {owner ? (
             <div className="form-grid">
-              <Field label="Anteckning" hint="Skriv aldrig allergier eller hälsouppgifter här.">
-                <textarea className="bq-input" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} />
+              <Field label="Anteckning" hint={textNote('note') ?? 'Skriv aldrig allergier eller hälsouppgifter här.'}>
+                <textarea className="bq-input" maxLength={300} value={form.note} onChange={(e) => set({ note: e.target.value })} />
               </Field>
-              <Field label="Taggar" hint="Skilj med komma, högst 10.">
-                <Input value={tags} onChange={(e) => setTags(e.target.value)} />
+              <Field label="Taggar" hint={textNote('tags') ?? 'Max 10, skilj med komma'}>
+                <Input value={form.tags} onChange={(e) => set({ tags: e.target.value })} />
               </Field>
-              <Field label="Födelsedag" hint="MM-DD. Bara om gästen själv vill.">
-                <Input value={birthday} placeholder="03-14" inputMode="numeric" onChange={(e) => setBirthday(e.target.value)} />
+              <Field label="Födelsedag" hint={textNote('birthday') ?? 'MM-DD'}>
+                <Input value={form.birthday} placeholder="03-14" inputMode="numeric" onChange={(e) => set({ birthday: e.target.value })} />
               </Field>
               <label className="toggle-row">
-                <input type="checkbox" className="switch" checked={excluded} onChange={(e) => setExcluded(e.target.checked)} />
+                <input type="checkbox" className="switch" checked={form.excluded} onChange={(e) => set({ excluded: e.target.checked })} />
                 <span className="toggle-row-label">Gästen vill inte ingå i utskick</span>
               </label>
-              {saveError ? <Bar variant="banner" tone="danger">{saveError}</Bar> : null}
+              {clash('excluded') !== undefined && (
+                <ChangedNote value={clash('excluded') ? 'ingår inte i utskick' : 'ingår i utskick'} onUse={() => set({ excluded: Boolean(clash('excluded')) })} />
+              )}
+              {saveError ? <Bar variant="banner" tone="danger" action={<ErrorActions text={saveError} />}>{saveError}</Bar> : null}
             </div>
           ) : (
             guest.note ? <p><strong>Anteckning:</strong> {guest.note}</p> : null
@@ -319,4 +389,21 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
       ) : null}
     </Modal>
   )
+}
+
+interface GuestForm {
+  note: string
+  tags: string
+  birthday: string
+  excluded: boolean
+}
+
+const EMPTY_GUEST_FORM: GuestForm = { note: '', tags: '', birthday: '', excluded: false }
+
+function guestForm(g: GuestDetail): GuestForm {
+  return { note: g.note ?? '', tags: g.tags.join(', '), birthday: g.birthday ?? '', excluded: g.segmentsExcluded }
+}
+
+function splitTags(text: string): string[] {
+  return text.split(',').map((t) => t.trim()).filter(Boolean)
 }

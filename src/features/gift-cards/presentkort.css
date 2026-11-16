@@ -10,7 +10,7 @@
   background: none;
   padding: 0;
   font: inherit;
-  cursor: pointer;
+  cursor: default;
 }
 .presentkort-facts {
   display: grid;

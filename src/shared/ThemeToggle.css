@@ -51,3 +51,27 @@
   animation: none;
   mix-blend-mode: normal;
 }
+
+/* Under bytet (switchTheme) tonar ingen yta: inga övergångar på bakgrund,
+   ton eller oskärpa, så att inget mellanläge blir grått. */
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
+/* Skrivbordsappen: under svepet har den nya bilden en tät botten i ungefär
+   det nya glasets färg (switchTheme i theme.ts). När skalet bytt glaset tonar
+   botten bort, så att det levande glaset tar över utan ryck. */
+html.is-desktop-glass {
+  transition: background-color 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+html.is-desktop-glass.theme-settling[data-theme='light'],
+html.is-desktop-glass[data-theme='light']::view-transition-new(root) {
+  background-color: rgb(236 232 227);
+}
+html.is-desktop-glass.theme-settling[data-theme='dark'],
+html.is-desktop-glass[data-theme='dark']::view-transition-new(root) {
+  background-color: rgb(40 33 29);
+}

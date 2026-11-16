@@ -1,6 +1,9 @@
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { dedupe, sameData, useLiveRefresh } from '../../shared/live'
+import { ChangedNote } from '../../shared/ChangedNote'
+import { CtaButton } from '../../shared/CtaButton'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { InfoTooltip } from '../../shared/InfoTooltip'
@@ -25,6 +28,8 @@ import { BookingTimeCard } from './BookingTimeCard'
 import { BusinessHoursEditor } from './BusinessHoursEditor'
 import { BokforingCard } from './BokforingCard'
 import { AppearanceCard } from './AppearanceCard'
+import { DesktopAppCard } from './DesktopAppCard'
+import { PlanCard } from './PlanCard'
 import {
   createLocation,
   getLocation,
@@ -40,20 +45,6 @@ import {
   validateTimezone,
 } from './locationApi'
 import type { BusinessHours, LocationCreateRequest } from './locationApi'
-import { StaffModal } from './StaffModal'
-import type { StaffFormValues } from './StaffModal'
-import {
-  ROLE_TO_GROUP,
-  canManageTarget,
-  changeUserGroup,
-  deactivateUser,
-  deleteUser,
-  inviteUser,
-  listUsers,
-  reactivateUser,
-  updateUserProfile,
-} from './usersApi'
-import type { User } from './usersApi'
 import {
   clearLocationSummaryCache,
   resolveLocationId,
@@ -62,15 +53,9 @@ import {
 import { hasFeature, useTenant } from '../../shared/tenant'
 import { Slot } from '../../shared/slots'
 import { PhoneInput } from '../../shared/PhoneInput'
-import { SkelBlock } from '../../shared/Skeleton'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { Select } from '../../shared/Select'
 
-const ROLE_LABEL: Record<User['role'], string> = {
-  staff: 'Personal',
-  owner_user: 'Ägare',
-}
-
-
-type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
 
 /**
  * Figma: admin-installningar-page (43:2).
@@ -81,8 +66,7 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * de fält som faktiskt ändrats. Plats-ID:t är också det layout-editorn
  * behöver för att kunna spara.
  *
- * Personal & behörigheter går mot det riktiga /users/*-API:t (usersApi.ts);
- * listan hämtas från GET /list-users vid sidladdning. Ingen mockdata.
+ * Personalen hanteras på egen sida (/personal, features/personal).
  *
  * Betalningar visar restaurangens riktiga Stripe-status (GET /tenant) och
  * öppnar Stripes onboarding. Avbokningspolicyn (kortgaranti, avgifter för
@@ -92,11 +76,10 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * andra användare - de rutterna är bara för ägare.
  */
 /** Flikarna - en sektion i taget i stället för en lång sida. */
-type SettingsTab = 'profil' | 'personal' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'skrivare' | 'dagar' | 'bord' | 'statistik' | 'bokforing' | 'integritet' | 'utseende'
+type SettingsTab = 'profil' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'skrivare' | 'dagar' | 'bord' | 'statistik' | 'bokforing' | 'integritet' | 'utseende'
 
 const TAB_LABEL: Record<SettingsTab, string> = {
   profil: 'Restaurang',
-  personal: 'Personal',
   betalningar: 'Betalningar',
   notiser: 'Notiser',
   avbokning: 'Avbokning',
@@ -111,25 +94,24 @@ const TAB_LABEL: Record<SettingsTab, string> = {
 }
 
 /**
- * Inställningarna i fem grupper. Menyn visar först grupperna under varandra,
- * var och en med en rad om vad som finns där; ett klick öppnar gruppen och
- * dess delar, och "Alla inställningar" leder tillbaka. Texterna ska gå att
- * förstå utan att kunna systemet.
+ * Inställningarna i fem grupper. Menyn visar först grupperna under varandra;
+ * ett klick öppnar gruppen och dess delar, och "Alla inställningar" leder
+ * tillbaka. Bara namnen syns, så att menyn går att läsa med en blick.
  */
-const GROUPS: { id: string; label: string; hint: string; tabs: SettingsTab[] }[] = [
-  { id: 'verksamhet', label: 'Verksamheten', hint: 'Namn, adress, öppettider, bord och personal', tabs: ['profil', 'dagar', 'bord', 'personal'] },
-  { id: 'gaster', label: 'Gäster', hint: 'Sms och mejl till gästerna, avbokning och beställning', tabs: ['notiser', 'avbokning', 'bestallning', 'skrivare'] },
-  { id: 'ekonomi', label: 'Ekonomi', hint: 'Ta betalt online och underlag till bokföringen', tabs: ['betalningar', 'bokforing'] },
-  { id: 'data', label: 'Data och integritet', hint: 'Vad personalen ser i Statistik och gästernas uppgifter', tabs: ['statistik', 'integritet'] },
-  { id: 'enhet', label: 'Den här enheten', hint: 'Ljust eller mörkt läge och klickljud på just den här skärmen', tabs: ['utseende'] },
+const GROUPS: { id: string; label: string; tabs: SettingsTab[] }[] = [
+  { id: 'verksamhet', label: 'Verksamheten', tabs: ['profil', 'dagar', 'bord'] },
+  { id: 'gaster', label: 'Gäster', tabs: ['notiser', 'avbokning', 'bestallning', 'skrivare'] },
+  { id: 'ekonomi', label: 'Ekonomi', tabs: ['betalningar', 'bokforing'] },
+  { id: 'data', label: 'Data och integritet', tabs: ['statistik', 'integritet'] },
+  { id: 'enhet', label: 'Den här enheten', tabs: ['utseende'] },
 ]
 
-/** En rad under varje del som säger vad man ställer in där. */
-const TAB_HINT: Record<SettingsTab, string> = {
+
+/** En rad om vad varje del ställer in. Syns inte i menyn; hjälpassistenten läser den (scripts/help-corpus.mjs). */
+export const TAB_HINT: Record<SettingsTab, string> = {
   profil: 'Namn, adress, telefon, e-post och öppettider',
   dagar: 'Helgdagar, stängt eller andra tider en viss dag',
   bord: 'Hur många gäster varje bord tar och vilka bord som kan ställas ihop',
-  personal: 'Bjud in medarbetare och välj vad de får göra',
   notiser: 'Sms och mejl till gästerna, och mejl till er',
   avbokning: 'Kortgaranti och avgift om gästen inte kommer',
   bestallning: 'Avhämtning, beställning vid bordet och QR-koder',
@@ -141,10 +123,19 @@ const TAB_HINT: Record<SettingsTab, string> = {
   utseende: 'Ljust eller mörkt läge och klickljud, bara på den här skärmen',
 }
 
+/** Delar som har egen länk (#del) och fliken de ligger i. */
+const SECTION_TAB: Record<string, SettingsTab> = { skrivbordsappen: 'utseende', google: 'profil' }
+
+/** #flik eller #del ur adressen, som flik; null om den inte finns. */
+function tabFromHash(hash: string): SettingsTab | null {
+  const id = hash.replace(/^#/, '')
+  if (id in SECTION_TAB) return SECTION_TAB[id]
+  return id in TAB_LABEL ? (id as SettingsTab) : null
+}
+
 function initialTab(stripeReturn: string | null): SettingsTab {
   if (stripeReturn) return 'betalningar'
-  const fromHash = window.location.hash.replace(/^#/, '') as SettingsTab
-  return fromHash in TAB_LABEL ? fromHash : 'profil'
+  return tabFromHash(window.location.hash) ?? 'profil'
 }
 
 /** Grace period i 5-minuterssteg. Bokningslängden ställs in i kortet Bokningstid. */
@@ -157,7 +148,8 @@ function clampGraceHours(hours: number): number {
 }
 
 export default function InstallningarPage() {
-  const { sub, groups } = useAuth()
+  const { sub } = useAuth()
+  const navigate = useNavigate()
   const { tenant, refresh: refreshTenant } = useTenant()
   const [searchParams] = useSearchParams()
   const stripeReturn = searchParams.get('stripe')
@@ -165,9 +157,13 @@ export default function InstallningarPage() {
   // Länkar (och guiden) kan öppna en flik via #flik i adressen.
   const { hash } = useLocation()
   useEffect(() => {
-    const fromHash = hash.replace(/^#/, '') as SettingsTab
-    if (fromHash in TAB_LABEL) setTab(fromHash)
-  }, [hash])
+    // Personalen har flyttat till en egen sida; gamla länkar leds dit.
+    if (hash === '#personal') navigate('/personal', { replace: true })
+    else {
+      const next = tabFromHash(hash)
+      if (next) setTab(next)
+    }
+  }, [hash, navigate])
   // Menyn: grupplistan eller den öppna gruppens delar. Grupplistan hör till
   // fliken den öppnades vid, så byts fliken (ett klick, en länk eller guiden
   // via #flik) visas gruppen igen. Sidan börjar på grupplistan, utom när en
@@ -203,23 +199,11 @@ export default function InstallningarPage() {
     null,
   )
 
-  const [staff, setStaff] = useState<User[]>([])
-  const [staffLoading, setStaffLoading] = useState(true)
-  const [staffError, setStaffError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
-  const [modal, setModal] = useState<ModalState>(null)
-  const [rowError, setRowError] = useState<string | null>(null)
-  const [busySub, setBusySub] = useState<string | null>(null)
 
-  const caller = { sub, groups }
   // Rollen kommer från servern (GET /tenant), inte från klientens tolkning
   // av tokenens grupper.
   const isOwner = tenant?.role === 'owner_user'
-  const canManageStaff = isOwner
-  const locationOptions = (tenant?.locations ?? []).map((l) => ({
-    locationId: l.locationId,
-    name: l.name || 'Namnlös plats',
-  }))
 
   // En plats är redan skapad - hämta den riktiga datan istället för att
   // visa kvarvarande mockvärden.
@@ -263,28 +247,47 @@ export default function InstallningarPage() {
     }
   }, [locationId])
 
-  // Hämta restaurangens användare (bara ägare får lista dem).
-  useEffect(() => {
-    if (!isOwner) return
-    let cancelled = false
-    listUsers()
-      .then((users) => {
-        if (!cancelled) setStaff(users)
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setStaffError(
-            errorText(err, 'Kunde inte hämta användarna.'),
-          )
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setStaffLoading(false)
-      })
-    return () => {
-      cancelled = true
+  // Levande: ändrar en kollega eller en annan enhet platsen syns det av sig
+  // självt. Fält du inte rört följer med; fält du ändrat står kvar och får en
+  // rad med det andra värdet.
+  const [drift, setDrift] = useState<Partial<LocationCreateRequest>>({})
+  useLiveRefresh(async () => {
+    if (!locationId || !savedLocation) return
+    const loc = await dedupe(`location:${locationId}`, () => getLocation(locationId))
+    const next: LocationCreateRequest = {
+      name: loc.name, address: loc.address, email: loc.email ?? '', phoneNumber: loc.phoneNumber ?? '', timezone: loc.timezone,
+      businessHours: loc.businessHours, bookingDurationHours: loc.bookingDurationHours, gracePeriodHours: loc.gracePeriodHours,
     }
-  }, [isOwner])
+    if (sameData(next, savedLocation)) return
+    const current: LocationCreateRequest = {
+      name: profile.name, address: profile.address, email: profile.email, phoneNumber: profile.phone, timezone,
+      businessHours, bookingDurationHours, gracePeriodHours,
+    }
+    const notes: Partial<LocationCreateRequest> = {}
+    for (const k of Object.keys(next) as (keyof LocationCreateRequest)[]) {
+      if (sameData(next[k], savedLocation[k])) continue
+      if (!sameData(current[k], savedLocation[k])) {
+        if (!sameData(current[k], next[k])) (notes as Record<string, unknown>)[k] = next[k]
+        continue
+      }
+      // Orört fält: ta det nya värdet.
+      if (k === 'name' || k === 'address' || k === 'email') setProfile((p) => ({ ...p, [k]: next[k] }))
+      else if (k === 'phoneNumber') setProfile((p) => ({ ...p, phone: next.phoneNumber ?? '' }))
+      else if (k === 'timezone') setTimezone(next.timezone)
+      else if (k === 'businessHours') setBusinessHours(next.businessHours)
+      else if (k === 'bookingDurationHours') setBookingDurationHours(next.bookingDurationHours ?? DEFAULT_BOOKING_DURATION_HOURS)
+      else if (k === 'gracePeriodHours') setGracePeriodHours(clampGraceHours(next.gracePeriodHours ?? DEFAULT_GRACE_PERIOD_HOURS))
+    }
+    setSavedLocation(next)
+    setDrift((d) => ({ ...d, ...notes }))
+  }, { enabled: Boolean(locationId) && savedLocation !== null && !savingLocation })
+  /** Raden under ett fält du ändrat som också ändrats på annat håll. */
+  const driftNote = (k: 'name' | 'address' | 'email' | 'phoneNumber', mine: string, use: (v: string) => void) => {
+    const v = drift[k]
+    return typeof v === 'string' && v !== mine
+      ? <ChangedNote value={v} onUse={() => { use(v); setDrift((d) => ({ ...d, [k]: undefined })) }} />
+      : null
+  }
 
   function updateProfile(field: keyof RestaurantProfile, value: string) {
     setSaved(false)
@@ -331,7 +334,7 @@ export default function InstallningarPage() {
           // Platsen finns men uppgifterna kunde inte hämtas - att ramla ner
           // i skapa-grenen här var det som gav dubblettplatser förr.
           setLocationError(
-            'Platsens sparade uppgifter kunde inte hämtas - ladda om sidan och försök igen.',
+            'Platsens sparade uppgifter kunde inte hämtas än. Sidan försöker igen av sig själv; spara igen om en stund.',
           )
           return
         }
@@ -344,6 +347,7 @@ export default function InstallningarPage() {
         }
         await updateLocation(locationId, updates)
         setSavedLocation(values)
+        setDrift({})
       } else {
         // Sista koll mot servern innan något skapas: har restaurangen redan
         // en plats (t.ex. sparad från en annan enhet) ska den återanvändas,
@@ -372,83 +376,19 @@ export default function InstallningarPage() {
     }
   }
 
-  function replaceStaff(updated: User) {
-    setStaff((prev) =>
-      prev.map((s) => (s.cognitoSub === updated.cognitoSub ? updated : s)),
-    )
-  }
-
-  async function handleSave(values: StaffFormValues) {
-    if (modal?.mode === 'invite') {
-      const created = await inviteUser(values)
-      setStaff((prev) => [...prev, created])
-      setModal(null)
-      return
-    }
-    if (modal?.mode === 'edit') {
-      const original = modal.user
-      const roleChanged = values.group !== ROLE_TO_GROUP[original.role]
-
-      const profileUpdates: Record<string, string> = {}
-      if (values.name !== original.name) profileUpdates.name = values.name
-      if (values.email !== original.email) profileUpdates.email = values.email
-      if (values.phone !== original.phone) profileUpdates.phone = values.phone
-
-      if (!roleChanged && values.locationId !== original.locationId) {
-        profileUpdates.locationId = values.locationId
-      }
-
-      let updated = original
-      if (Object.keys(profileUpdates).length > 0) {
-        updated = await updateUserProfile(original.cognitoSub, profileUpdates)
-      }
-      if (roleChanged) {
-        updated = await changeUserGroup(original.cognitoSub, {
-          group: values.group,
-          locationId: values.locationId,
-        })
-      }
-      replaceStaff(updated)
-      setModal(null)
-    }
-  }
-
-  async function handleToggleStatus(user: User) {
-    setRowError(null)
-    setBusySub(user.cognitoSub)
-    try {
-      const updated =
-        user.status === 'active'
-          ? await deactivateUser(user.cognitoSub)
-          : await reactivateUser(user.cognitoSub)
-      replaceStaff(updated)
-    } catch (err) {
-      setRowError(errorText(err, 'Kunde inte ändra status.'))
-    } finally {
-      setBusySub(null)
-    }
-  }
-
-  async function handleDelete(user: User) {
-    if (!window.confirm(`Ta bort ${user.name} permanent?`)) return
-    setRowError(null)
-    setBusySub(user.cognitoSub)
-    try {
-      await deleteUser(user.cognitoSub)
-      setStaff((prev) => prev.filter((s) => s.cognitoSub !== user.cognitoSub))
-    } catch (err) {
-      setRowError(errorText(err, 'Kunde inte ta bort användaren.'))
-    } finally {
-      setBusySub(null)
-    }
-  }
 
   const showTab = (t: SettingsTab) =>
-    t === 'personal' || t === 'statistik' || t === 'bokforing' || t === 'integritet'
+    t === 'statistik' || t === 'bokforing' || t === 'integritet'
       ? isOwner
       : t === 'bestallning' || t === 'skrivare'
         ? Boolean(tenant?.entitlements.features.ordering)
         : true
+  // Personalen som följer en länk till en ägarflik (#bokforing m.fl.) hamnar på Profil.
+  useEffect(() => {
+    if (tenant && !showTab(tab)) setTab('profil')
+    // showTab beror bara på tenant
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, tenant])
   const tabGroups = GROUPS.map((g) => ({ ...g, tabs: g.tabs.filter(showTab) })).filter((g) => g.tabs.length > 0)
   const activeGroup = tabGroups.find((g) => g.tabs.includes(tab))?.id ?? tabGroups[0]?.id
   const openGroup = tabGroups.find((g) => g.id === activeGroup)
@@ -460,16 +400,14 @@ export default function InstallningarPage() {
         actions={
           tab === 'profil' && <span className="row-actions">
             {saved && <span className="save-notice">Sparat</span>}
-            <button
-              type="button"
-              className="btn primary square"
+            <CtaButton
+              label={savingLocation ? 'Sparar…' : 'Spara ändringar'}
+              win="Klart!"
               data-tour="settings-save"
               disabled={savingLocation || resolvingLocation || !isOwner}
               title={isOwner ? undefined : 'Bara ägaren kan ändra restaurangens uppgifter'}
               onClick={handleSaveAll}
-            >
-              {savingLocation ? 'Sparar…' : 'Spara ändringar'}
-            </button>
+            />
           </span>
         }
       />
@@ -489,7 +427,6 @@ export default function InstallningarPage() {
                   >
                     <span className="settings-menu-text">
                       <span className="settings-menu-title">{g.label}</span>
-                      <span className="settings-menu-hint">{g.hint}</span>
                     </span>
                     <span className="settings-menu-arrow" aria-hidden="true">›</span>
                   </button>
@@ -509,11 +446,11 @@ export default function InstallningarPage() {
                     type="button"
                     className={tab === t ? 'active' : ''}
                     data-tour={`settings-tab-${t}`}
+                    data-help={`settings-tab:${t}`}
                     aria-current={tab === t ? 'page' : undefined}
                     onClick={() => openTab(t)}
                   >
                     <span className="settings-tab-title">{TAB_LABEL[t]}</span>
-                    <span className="settings-tab-hint">{TAB_HINT[t]}</span>
                   </button>
                 ))}
               </div>
@@ -522,7 +459,7 @@ export default function InstallningarPage() {
         </nav>
         <div className="settings-body">
           {/* Flikar döljs (hidden) i stället för att tas bort - osparade ändringar ligger kvar. */}
-          <section className="admin-card table-card" hidden={tab !== 'profil'}>
+          <section className="admin-card table-card" data-help="settings:profil:InstallningarPage" hidden={tab !== 'profil'}>
             <div className="card-head">
               <div>
                 <h2 className="card-title">Restaurangprofil</h2>
@@ -531,18 +468,16 @@ export default function InstallningarPage() {
                     ? 'Letar efter restaurangens plats…'
                     : locationId
                       ? isOwner
-                        ? 'Namn, kontakt och öppettider. Spara med knappen uppe till höger.'
-                        : 'Uppgifter för din plats. Bara ägaren kan ändra dem.'
+                        ? null
+                        : 'Bara ägaren kan ändra.'
                       : isOwner
-                        ? 'Restaurangen har ingen plats än. Fyll i uppgifterna och spara för att skapa den första.'
-                        : 'Du är inte kopplad till någon plats än. Be ägaren att koppla dig till en plats.'}
+                        ? 'Ingen plats än. Fyll i och spara.'
+                        : 'Ingen plats än. Fråga ägaren.'}
                 </p>
               </div>
             </div>
             {locationError && (
-              <p className="form-error" role="alert">
-                {locationError}
-              </p>
+              <ErrorNote text={locationError} />
             )}
             <div className="form-grid">
               <div className="form-field">
@@ -552,10 +487,12 @@ export default function InstallningarPage() {
                   value={profile.name}
                   onChange={(e) => updateProfile('name', e.target.value)}
                 />
+                {driftNote('name', profile.name, (v) => updateProfile('name', v))}
               </div>
               <div className="form-field">
                 <label htmlFor="rp-phone">Telefon</label>
                 <PhoneInput id="rp-phone" value={profile.phone} onChange={(v) => updateProfile('phone', v)} />
+                {driftNote('phoneNumber', profile.phone, (v) => updateProfile('phone', v))}
               </div>
               <div className="form-field">
                 <label htmlFor="rp-address">Adress</label>
@@ -564,6 +501,7 @@ export default function InstallningarPage() {
                   value={profile.address}
                   onChange={(e) => updateProfile('address', e.target.value)}
                 />
+                {driftNote('address', profile.address, (v) => updateProfile('address', v))}
               </div>
               <div className="form-field">
                 <label htmlFor="rp-email">E-post</label>
@@ -573,16 +511,17 @@ export default function InstallningarPage() {
                   value={profile.email}
                   onChange={(e) => updateProfile('email', e.target.value)}
                 />
+                {driftNote('email', profile.email, (v) => updateProfile('email', v))}
               </div>
               <div className="form-field">
                 <span className="form-field-label-row">
-                  <label htmlFor="rp-grace">Grace period (minuter)</label>
-                  <InfoTooltip label="Grace period (minuter)">
+                  <label htmlFor="rp-grace">Väntetid för sena gäster (minuter)</label>
+                  <InfoTooltip label="Väntetid för sena gäster (minuter)">
                     Hur länge bordet hålls om gästen är sen. Därefter blir bordet
                     ledigt igen.
                   </InfoTooltip>
                 </span>
-                <select
+                <Select
                   id="rp-grace"
                   value={graceMinutes}
                   onChange={(e) => {
@@ -595,11 +534,22 @@ export default function InstallningarPage() {
                       {m} min
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
             <div style={{ height: 20 }} />
-            <p className="form-section-label">Öppettider</p>
+            <div className="title-info">
+              <p className="form-section-label">Öppettider</p>
+              <InfoTooltip label="Öppettider">
+                Har ni öppet efter midnatt? Ange stängningstiden som vanligt, t.ex. lördag 18:00-02:00. Passet räknas då in på natten till söndag.
+              </InfoTooltip>
+            </div>
+            {drift.businessHours && !sameData(drift.businessHours, businessHours) ? (
+              <ChangedNote onUse={() => {
+                setBusinessHours(drift.businessHours as BusinessHours)
+                setDrift((d) => ({ ...d, businessHours: undefined }))
+              }} />
+            ) : null}
             <div style={{ height: 8 }} />
             <BusinessHoursEditor
               value={businessHours}
@@ -614,130 +564,17 @@ export default function InstallningarPage() {
             <Slot id="installningar.verksamhet.google" props={{ locationId }} />
           )}
 
-          <div hidden={tab !== 'profil'}>
+          {tenant && isOwner && (
+            <div className="settings-row" data-help="settings:profil:PlanCard" hidden={tab !== 'profil'}>
+              <PlanCard tenant={tenant} />
+            </div>
+          )}
+
+          <div data-help="settings:profil:BookingTimeCard" hidden={tab !== 'profil'}>
             <BookingTimeCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
           </div>
 
-          {isOwner && (
-          <section className="admin-card table-card" hidden={tab !== 'personal'}>
-            <div className="card-head">
-              <div>
-                <h2 className="card-title">Personal &amp; behörigheter</h2>
-                <p className="cell-muted">
-                  {staffLoading
-                    ? <SkelBlock w={200} h={14} />
-                    : `${staff.length} användare, varav ${
-                        staff.filter((s) => s.status === 'active').length
-                      } aktiva`}
-                </p>
-              </div>
-              {canManageStaff && (
-                <button
-                  type="button"
-                  className="btn primary square"
-                  onClick={() => setModal({ mode: 'invite' })}
-                >
-                  + Bjud in personal
-                </button>
-              )}
-            </div>
-            {(staffError ?? rowError) && (
-              <p className="form-error" role="alert">
-                {staffError ?? rowError}
-              </p>
-            )}
-            <div className="table-scroll">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Namn</th>
-                    <th>Roll</th>
-                    <th>E-post</th>
-                    <th>Status</th>
-                    <th>Åtgärder</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {!staffLoading && staff.length === 0 && !staffError && (
-                    <tr>
-                      <td colSpan={5} className="cell-muted">
-                        Inga användare att visa än.
-                      </td>
-                    </tr>
-                  )}
-                  {staff.map((s) => {
-                    const canEdit = canManageTarget(caller, s, 'profile')
-                    const statusAction = s.status === 'active' ? 'deactivate' : 'reactivate'
-                    const canToggleStatus = canManageTarget(caller, s, statusAction)
-                    const canDelete = canManageTarget(caller, s, 'delete')
-                    const busy = busySub === s.cognitoSub
-                    return (
-                      <tr key={s.cognitoSub}>
-                        <td className="cell-strong">{s.name}</td>
-                        <td>
-                          {ROLE_LABEL[s.role] ?? s.role}
-                          {s.role === 'staff' && (
-                            <span className="cell-muted">
-                              {' · '}
-                              {locationOptions.find((l) => l.locationId === s.locationId)
-                                ?.name ?? 'Ingen plats'}
-                            </span>
-                          )}
-                        </td>
-                        <td className="cell-muted">{s.email}</td>
-                        <td>
-                          <span
-                            className={`status-badge ${
-                              s.status === 'active' ? 'reserved' : 'cancelled'
-                            }`}
-                          >
-                            {s.status === 'active' ? 'Aktiv' : 'Inaktiv'}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="row-actions">
-                            {canEdit && (
-                              <button
-                                type="button"
-                                className="link-action"
-                                disabled={busy}
-                                onClick={() => setModal({ mode: 'edit', user: s })}
-                              >
-                                Redigera
-                              </button>
-                            )}
-                            {canToggleStatus && (
-                              <button
-                                type="button"
-                                className="link-action"
-                                disabled={busy}
-                                onClick={() => handleToggleStatus(s)}
-                              >
-                                {s.status === 'active' ? 'Inaktivera' : 'Aktivera'}
-                              </button>
-                            )}
-                            {canDelete && (
-                              <button
-                                type="button"
-                                className="link-action danger"
-                                disabled={busy}
-                                onClick={() => handleDelete(s)}
-                              >
-                                Ta bort
-                              </button>
-                            )}
-                          </span>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-          )}
-
-          <div className="settings-row" hidden={tab !== 'betalningar'}>
+          <div className="settings-row" data-help="settings:betalningar:PaymentsCard" hidden={tab !== 'betalningar'}>
             {tenant && (
               <PaymentsCard
                 tenant={tenant}
@@ -748,7 +585,7 @@ export default function InstallningarPage() {
             )}
           </div>
 
-          <div className="settings-row" hidden={tab !== 'notiser'}>
+          <div className="settings-row" data-help="settings:notiser:NotificationsCard" hidden={tab !== 'notiser'}>
             {tenant && (
               <NotificationsCard
                 key={`${tenant.tenantId}:${JSON.stringify(tenant.notifications)}:${tenant.senderName ?? ''}`}
@@ -758,7 +595,7 @@ export default function InstallningarPage() {
             )}
           </div>
 
-          <div className="settings-row" hidden={tab !== 'avbokning'}>
+          <div className="settings-row" data-help="settings:avbokning:CancellationPolicyCard" hidden={tab !== 'avbokning'}>
             <CancellationPolicyCard
               key={locationId ?? 'none'}
               locationId={locationId}
@@ -768,7 +605,7 @@ export default function InstallningarPage() {
           </div>
 
           {tenant?.entitlements.features.ordering && (
-            <div className="settings-row" hidden={tab !== 'bestallning'}>
+            <div className="settings-row" data-help="settings:bestallning:OrderingCard" hidden={tab !== 'bestallning'}>
               <OrderingCard
                 key={locationId ?? 'none'}
                 locationId={locationId}
@@ -779,16 +616,16 @@ export default function InstallningarPage() {
           )}
 
           {tenant?.entitlements.features.ordering && tab === 'skrivare' && (
-            <div className="settings-row">
+            <div className="settings-row" data-help="settings:skrivare:PrinterCard">
               <PrinterCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
             </div>
           )}
 
-          <div className="settings-row" hidden={tab !== 'dagar'}>
+          <div className="settings-row" data-help="settings:dagar:SpecialDaysCard" hidden={tab !== 'dagar'}>
             <SpecialDaysCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
           </div>
 
-          <div className="settings-row" hidden={tab !== 'bord'}>
+          <div className="settings-row" data-help="settings:bord:TableRulesCard" hidden={tab !== 'bord'}>
             <TableRulesCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
           </div>
 
@@ -797,7 +634,7 @@ export default function InstallningarPage() {
           )}
 
           {isOwner && tenant && (
-            <div className="settings-row" hidden={tab !== 'statistik'}>
+            <div className="settings-row" data-help="settings:statistik:InsightsSettingsCard" hidden={tab !== 'statistik'}>
               <InsightsSettingsCard
                 key={`${locationId ?? 'none'}:${tenant.insights?.staffAccess ?? 'operations'}`}
                 tenant={tenant}
@@ -807,7 +644,7 @@ export default function InstallningarPage() {
           )}
 
           {isOwner && tab === 'bokforing' && (
-            <div className="settings-row">
+            <div className="settings-row" data-help="settings:bokforing:BokforingCard">
               <Slot id="installningar.bokforing.sync" props={{}} />
               <BokforingCard
                 key={locationId ?? 'none'}
@@ -818,31 +655,24 @@ export default function InstallningarPage() {
           )}
 
           {isOwner && tab === 'integritet' && (
-            <div className="settings-row">
+            <div className="settings-row" data-help="settings:integritet:PrivacyCard">
               <PrivacyCard />
             </div>
           )}
 
           {tab === 'utseende' && (
-            <div className="settings-row">
-              <AppearanceCard />
-            </div>
+            <>
+              <div className="settings-row" data-help="settings:utseende:AppearanceCard">
+                <AppearanceCard />
+              </div>
+              <div className="settings-row" data-help="settings:utseende:DesktopAppCard">
+                <DesktopAppCard />
+              </div>
+            </>
           )}
         </div>
       </div>
 
-      {modal && (
-        <StaffModal
-          title={modal.mode === 'invite' ? 'Bjud in personal' : 'Redigera användare'}
-          initial={modal.mode === 'edit' ? modal.user : null}
-          callerGroups={groups}
-          lockRole={modal.mode === 'edit' && modal.user.cognitoSub === sub}
-          locations={locationOptions}
-          defaultLocationId={locationId ?? undefined}
-          onSave={handleSave}
-          onCancel={() => setModal(null)}
-        />
-      )}
     </>
   )
 }

@@ -1,6 +1,8 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Bar, Button, Card, Field, Input, Select, toast } from '@booqy/brand'
+import { Bar, Button, Card, Field, Input, toast } from '@booqy/brand'
+import { BrandSelect as Select } from '../../shared/Select'
 import { errorText } from '../../shared/errors'
 import { currentLocation, useTenant } from '../../shared/tenant'
 import AdWizard from './AdWizard'
@@ -22,6 +24,8 @@ import {
   type Campaign,
   type Connection,
 } from './api'
+import { ErrorActions } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 
 /** Marknadsföring > Annonser: koppla Meta, skapa annonser på två minuter, starta och pausa. */
 export default function AnnonserTab() {
@@ -39,6 +43,7 @@ export default function AnnonserTab() {
       setError(errorText(err, 'Kunde inte hämta annonserna.', ERRORS))
     }
   }, [])
+  useLiveRefresh(async () => setConnection(await getConnection()))
 
   // Meta skickar tillbaka hit med ?code=&state= efter inloggningen.
   const started = useRef(false)
@@ -73,17 +78,18 @@ export default function AnnonserTab() {
 
   return (
     <>
-      {error ? <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng">{error}</Bar> : null}
+      {error ? <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng" action={<ErrorActions text={error} />}>{error}</Bar> : null}
       {connection?.killSwitch ? (
         <Bar variant="banner" tone="warning">Annonser är pausade av Booqy just nu. Inga nya annonser kan startas.</Bar>
       ) : null}
       {connection === null && !error ? <p className="cell-muted">Hämtar…</p> : null}
       {connection && connection.status !== 'connected' ? (
-        <Card title="Koppla Meta">
-          <p>
+        <Card title="Koppla Meta" actions={
+          <InfoTooltip label="Koppla Meta">
             Koppla restaurangens Facebook- och Instagramkonto för att annonsera. Ni loggar in hos Meta och väljer
             vilka konton Booqy får använda. Inga uppgifter om era gäster skickas till Meta.
-          </p>
+          </InfoTooltip>
+        }>
           <Button busy={connecting} busyLabel="Öppnar Meta…" onClick={connect}>Koppla Meta</Button>
         </Card>
       ) : null}
@@ -188,10 +194,10 @@ function ConnectionCard({ connection, onSaved, onDisconnected }: {
           <Field label="Annonsör" hint="Den som annonsen gör reklam för. Visas i annonsen enligt EU:s regler." required>
             <Input value={beneficiary} maxLength={120} required onChange={(e) => setBeneficiary(e.target.value)} />
           </Field>
-          <Field label="Betalare" hint="Den som betalar annonsen." required>
+          <Field label="Betalare"  required>
             <Input value={payor} maxLength={120} required onChange={(e) => setPayor(e.target.value)} />
           </Field>
-          <Field label="Månadstak (kr)" hint="Booqy pausar alla annonser när taket nås. Ni får ett mejl vid 80 %." required>
+          <Field label="Månadstak (kr)" hint="Pausar allt vid taket" required>
             <Input type="number" min={100} value={cap} required onChange={(e) => setCap(e.target.value)} />
           </Field>
           <Bar variant="action" label="Spara Meta-konton">
@@ -218,6 +224,7 @@ function Campaigns({ locationId, blocked }: { locationId: string; blocked: boole
   }, [locationId])
 
   useEffect(() => { void load() }, [load])
+  useLiveRefresh(async () => setCampaigns((await listCampaigns(locationId)).campaigns))
 
   // Medan en annons skapas hos Meta: fråga igen tills den är klar.
   useEffect(() => {
@@ -241,10 +248,10 @@ function Campaigns({ locationId, blocked }: { locationId: string; blocked: boole
   return (
     <Card title="Annonser" actions={<Button size="sm" disabled={blocked} onClick={() => setWizard(true)}>Ny annons</Button>}>
       {campaigns && campaigns.length === 0 ? (
-        <p className="admin-empty">Inga annonser än. Tryck på Ny annons, det tar ungefär två minuter.</p>
+        <p className="admin-empty">Inga annonser än.</p>
       ) : null}
       {campaigns && campaigns.length > 0 ? (
-        <div className="table-scroll">
+        <div className="table-scroll" tabIndex={0}>
           <table className="data-table">
             <thead>
               <tr><th scope="col">Annons</th><th scope="col">Period</th><th scope="col">Budget</th><th scope="col">Status</th></tr>

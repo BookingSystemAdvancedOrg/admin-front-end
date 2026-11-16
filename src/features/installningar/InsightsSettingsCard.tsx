@@ -5,6 +5,10 @@ import { replaceTenant, updateTenant } from '../../shared/tenant'
 import type { Tenant, TenantInsightsSettings } from '../../shared/tenant'
 import { clearInsightsCache } from '../statistik/insightsApi'
 import { getLocation, updateLocation } from './locationApi'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { TitleInfo } from '../../shared/TitleInfo'
+import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Select } from '../../shared/Select'
 
 /**
  * Statistik: vad personalen får se och var lunchen slutar.
@@ -76,20 +80,20 @@ export function InsightsSettingsCard({ tenant, locationId }: { tenant: Tenant; l
 
   return (
     <section id="statistik" className="admin-card table-card">
-      <h2 className="card-title">Statistik</h2>
-      <div style={{ height: 8 }} />
-      <p className="cell-muted">Du ser alltid alla siffror. Här väljer du vad personalen ser och hur dagen delas i lunch och middag.</p>
+      <TitleInfo title="Statistik" info="Du ser alltid alla siffror. Här väljer du vad personalen ser och hur dagen delas i lunch och middag." />
       <div style={{ height: 16 }} />
       <form onSubmit={save} className="notifications-form">
         <div className="toggle-row">
           <div>
-            <p className="toggle-row-label" id="insights-staff-label">
-              Personalen ser statistik
-            </p>
-            <p className="cell-muted">
-              Gäster, beläggning, uteblivna, beställningar och rätter för sin egen plats. Aldrig omsättning, avgifter eller
-              andra belopp.
-            </p>
+            <div className="title-info">
+              <p className="toggle-row-label" id="insights-staff-label">
+                Personalen ser statistik
+              </p>
+              <InfoTooltip label="Personalen ser statistik">
+                Gäster, beläggning, uteblivna, beställningar och rätter för sin egen plats. Aldrig omsättning, avgifter eller
+                andra belopp.
+              </InfoTooltip>
+            </div>
           </div>
           <button
             type="button"
@@ -108,7 +112,7 @@ export function InsightsSettingsCard({ tenant, locationId }: { tenant: Tenant; l
         {locationId && (
           <div className="form-field">
             <label htmlFor="insights-lunch">Lunchen slutar</label>
-            <select
+            <Select
               id="insights-lunch"
               value={lunch ?? DEFAULT_LUNCH}
               disabled={busy || lunch === null}
@@ -122,15 +126,12 @@ export function InsightsSettingsCard({ tenant, locationId }: { tenant: Tenant; l
                   {h}
                 </option>
               ))}
-            </select>
-            <p className="cell-muted">Bokningar och beställningar före klockan {lunch ?? DEFAULT_LUNCH} räknas som lunch, resten som middag.</p>
+            </Select>
           </div>
         )}
 
         {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
+          <ErrorNote text={error} />
         )}
         <span className="row-actions">
           <button type="submit" className="btn primary square" disabled={busy || !dirty}>

@@ -1,5 +1,7 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
-import { Bar, Button, Card, Field, Input, Modal, Select, toast } from '@booqy/brand'
+import { Bar, Button, Card, Field, Input, Modal, toast } from '@booqy/brand'
+import { BrandSelect as Select } from '../../shared/Select'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { errorText } from '../../shared/errors'
 import { currentLocation, useTenant } from '../../shared/tenant'
@@ -26,6 +28,8 @@ import {
   type Row,
 } from './api'
 import './personalliggare.css'
+import { ErrorActions } from '../../shared/ErrorNote'
+import { DateInput, TimeInput } from '../../shared/DateInput'
 
 type Tab = 'idag' | 'personer' | 'rattelser' | 'exportera'
 
@@ -46,7 +50,7 @@ export default function PersonalliggarePage() {
         {enabled ? <Ledger /> : (
           <section className="admin-card table-card">
             <h2 className="card-title">Ingår inte i er plan</h2>
-            <p className="cell-muted">Personalliggare ingår inte i er plan. Kontakta oss för att uppgradera.</p>
+            <p className="cell-muted">Kontakta oss för att uppgradera.</p>
           </section>
         )}
       </main>
@@ -71,6 +75,9 @@ function Ledger() {
   }, [owner])
 
   useEffect(() => { void loadPersons() }, [loadPersons])
+  useLiveRefresh(async () => {
+    if (owner) setPersons(await listPersons())
+  }, { enabled: owner })
 
   if (!location) return <p className="cell-muted">Hämtar…</p>
   const items = [
@@ -80,7 +87,7 @@ function Ledger() {
   return (
     <>
       <Bar variant="banner" tone="warning">
-        Personalliggaren är under juridisk granskning. Fungerar inte appen? För liggaren på papper och lägg in rättelser efteråt.
+        Under juridisk granskning. Fungerar inte appen? För liggaren på papper.
       </Bar>
       {owner ? (
         <div className="pl-section">
@@ -116,6 +123,8 @@ function Today({ locationId, owner, persons }: { locationId: string; owner: bool
   }, [locationId, day])
 
   useEffect(() => { void load() }, [load])
+  // Levande: in- och utcheckningar från en annan enhet syns av sig själva.
+  useLiveRefresh(async () => setData(await getDay(locationId, day)), { enabled: busy === null })
 
   async function register(kind: Kind, personId?: string) {
     setBusy(`${kind}:${personId ?? 'me'}`)
@@ -180,7 +189,7 @@ function Today({ locationId, owner, persons }: { locationId: string; owner: bool
       </Card>
 
       <Card title="På plats nu" actions={<Button variant="secondary" onClick={() => setInspecting(true)}>Visa för Skatteverket</Button>}>
-        {!data ? <p className="cell-muted">Hämtar…</p> : data.present.length === 0 ? <p className="admin-empty">Ingen är incheckad just nu.</p> : (
+        {!data ? <p className="cell-muted">Hämtar…</p> : data.present.length === 0 ? <p className="admin-empty">Ingen incheckad.</p> : (
           <ul className="pl-present">
             {data.present.map((p) => <li key={p.personId}><span>{p.name}</span><span className="cell-muted">sedan {clock(p.since)}</span></li>)}
           </ul>
@@ -189,7 +198,7 @@ function Today({ locationId, owner, persons }: { locationId: string; owner: bool
 
       <Card title="Liggaren">
         <Field label="Dag">
-          <Input type="date" value={day} max={today()} onChange={(e) => e.target.value && setDay(e.target.value)} />
+          <DateInput inputClassName="bq-input" value={day} max={today()} onChange={(e) => e.target.value && setDay(e.target.value)} />
         </Field>
         {data ? <Rows rows={data.records} /> : null}
       </Card>
@@ -200,9 +209,9 @@ function Today({ locationId, owner, persons }: { locationId: string; owner: bool
 }
 
 function Rows({ rows, identity = false }: { rows: Row[]; identity?: boolean }) {
-  if (rows.length === 0) return <p className="admin-empty">Inga registreringar den här dagen.</p>
+  if (rows.length === 0) return <p className="admin-empty">Inga registreringar.</p>
   return (
-    <div className="table-scroll">
+    <div className="table-scroll" tabIndex={0}>
       <table className="data-table pl-table">
         <thead>
           <tr>
@@ -239,7 +248,7 @@ function InspectionView({ locationId, day, onClose }: { locationId: string; day:
 
   return (
     <Modal open size="wide" title="Personalliggare" onClose={onClose} closeLabel="Stäng">
-      {error ? <Bar variant="banner" tone="danger">{error}</Bar> : !view ? <p className="cell-muted">Hämtar…</p> : (
+      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : !view ? <p className="cell-muted">Hämtar…</p> : (
         <div className="pl-inspection">
           <dl className="pl-facts">
             <dt>Arbetsgivare</dt><dd>{view.employer.legalName} ({view.employer.orgNumber || 'organisationsnummer saknas'})</dd>
@@ -248,7 +257,7 @@ function InspectionView({ locationId, day, onClose }: { locationId: string; day:
             <dt>Visad</dt><dd>{new Date(view.generatedAt).toLocaleString('sv-SE', { timeZone: 'Europe/Stockholm' })}</dd>
           </dl>
           <h3 className="pl-sub">På plats nu</h3>
-          {view.present.length === 0 ? <p>Ingen är incheckad just nu.</p> : (
+          {view.present.length === 0 ? <p>Ingen incheckad.</p> : (
             <ul className="pl-present">
               {view.present.map((p) => (
                 <li key={p.personId}><span>{p.name}</span><span className="pl-mono">{p.personalIdentity}</span><span>sedan {clock(p.since)}</span></li>
@@ -270,9 +279,8 @@ function Persons({ persons, onSaved }: { persons: Person[]; onSaved: () => Promi
   const blank: Person = { personId: '', name: '', personalIdentity: '', userSub: null, locationIds: [], active: true, version: 0 }
   return (
     <Card title="Personer" actions={<Button onClick={() => setEditing(blank)}>Lägg till person</Button>}>
-      <p className="cell-muted">Alla som arbetar ska finnas här, även du som ägare och de som hjälper till utan inloggning.</p>
       {persons.length === 0 ? <p className="admin-empty">Inga personer än.</p> : (
-        <div className="table-scroll">
+        <div className="table-scroll" tabIndex={0}>
           <table className="data-table">
             <thead><tr><th scope="col">Namn</th><th scope="col">Personnummer</th><th scope="col">Inloggning</th><th scope="col">Status</th></tr></thead>
             <tbody>
@@ -329,7 +337,7 @@ function PersonForm({ person, onClose, onSaved }: { person: Person; onClose: () 
   return (
     <Modal open title={person.personId ? person.name : 'Ny person'} onClose={onClose} closeLabel="Stäng">
       <form className="form-grid" onSubmit={save} aria-label="Person">
-        {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
+        {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
         <Field label="Namn" required>
           <Input value={draft.name} maxLength={80} autoComplete="off" onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
         </Field>
@@ -388,6 +396,7 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
   }, [locationId, day])
 
   useEffect(() => { void load() }, [load])
+  useLiveRefresh(async () => setData(await getDay(locationId, day)), { enabled: !saving })
 
   function pick(row: Row | null) {
     setTarget(row)
@@ -416,13 +425,10 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
   return (
     <>
       <Card title="Rätta eller efterregistrera">
-        <p className="cell-muted">
-          Inget skrivs över. En rättelse blir en ny rad med orsak, och den ursprungliga registreringen syns bredvid.
-          Välj en rad nedan för att rätta den, eller fyll i formuläret för att efterregistrera.
-        </p>
+        <p className="cell-muted">Välj en rad nedan, eller fyll i för att efterregistrera.</p>
         <form className="form-grid" onSubmit={save} aria-label="Rättelse">
           <Field label="Dag" required>
-            <Input type="date" value={day} max={today()} onChange={(e) => { if (e.target.value) { setDay(e.target.value); pick(null) } }} />
+            <DateInput inputClassName="bq-input" value={day} max={today()} onChange={(e) => { if (e.target.value) { setDay(e.target.value); pick(null) } }} />
           </Field>
           <Field label="Person" required>
             <Select value={personId} onChange={(e) => setPersonId(e.target.value)}>
@@ -437,9 +443,9 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
             </Select>
           </Field>
           <Field label="Rätt tid" required>
-            <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            <TimeInput inputClassName="bq-input" value={time} onChange={(e) => setTime(e.target.value)} />
           </Field>
-          <Field label="Orsak" hint="5–300 tecken. Sparas i liggaren." required>
+          <Field label="Orsak" hint="5-300 tecken. Sparas i liggaren." required>
             <Input value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} />
           </Field>
           <Bar variant="action" label="Spara rättelse"
@@ -450,7 +456,7 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
         </form>
       </Card>
       <Card title="Registreringar den dagen">
-        {!data ? <p className="cell-muted">Hämtar…</p> : data.records.length === 0 ? <p className="admin-empty">Inga registreringar den här dagen.</p> : (
+        {!data ? <p className="cell-muted">Hämtar…</p> : data.records.length === 0 ? <p className="admin-empty">Inga registreringar.</p> : (
           <ul className="pl-present">
             {data.records.map((r) => (
               <li key={`${r.seq}-${r.correctedBySeq ?? 0}`}>
@@ -494,10 +500,10 @@ function Export({ locationId }: { locationId: string }) {
 
   return (
     <Card title="Exportera">
-      <p className="cell-muted">Hämta liggaren som en CSV-fil, till exempel om Skatteverket ber om en kopia. Filen innehåller personnummer: spara den säkert.</p>
+      <p className="cell-muted">Innehåller personnummer: spara filen säkert.</p>
       <form className="form-grid" onSubmit={run} aria-label="Exportera liggaren">
-        <Field label="Från" required><Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
-        <Field label="Till" required><Input type="date" value={to} max={today()} onChange={(e) => setTo(e.target.value)} /></Field>
+        <Field label="Från" required><DateInput inputClassName="bq-input" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
+        <Field label="Till" required><DateInput inputClassName="bq-input" value={to} max={today()} onChange={(e) => setTo(e.target.value)} /></Field>
         <Bar variant="action" label="Exportera">
           <Button type="submit" busy={busy} busyLabel="Exporterar…" disabled={!from || !to}>Ladda ner CSV</Button>
         </Bar>

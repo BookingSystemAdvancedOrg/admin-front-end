@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import GasterPage from './GasterPage'
 import GuestBadge from './GuestBadge'
 import * as api from './api'
+import { chooseOption } from '../../test/select'
 
 let tenant: Record<string, unknown>
 vi.mock('../../shared/tenant', () => ({ useTenant: () => ({ tenant }) }))
@@ -74,7 +75,7 @@ describe('GasterPage', () => {
     vi.mocked(api.searchGuests).mockResolvedValue({ guests: [] })
     render(<GasterPage />)
     await screen.findByRole('button', { name: 'Anna Andersson' })
-    fireEvent.change(screen.getByLabelText('Sök på'), { target: { value: 'email' } })
+    chooseOption(screen.getByLabelText('Sök på'), 'email')
     fireEvent.change(screen.getByLabelText('E-postadress'), { target: { value: 'b@x.se' } })
     fireEvent.click(screen.getByRole('button', { name: 'Sök' }))
     await waitFor(() => expect(api.searchGuests).toHaveBeenCalledWith({ email: 'b@x.se' }))

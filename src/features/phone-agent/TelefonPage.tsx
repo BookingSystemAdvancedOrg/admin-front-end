@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLiveRefresh } from '../../shared/live'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Bar, Button, toast } from '@booqy/brand'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { errorText } from '../../shared/errors'
@@ -8,7 +9,8 @@ import CallDetail from './CallDetail'
 import CallbacksTab from './CallbacksTab'
 import CallsTab from './CallsTab'
 import SettingsWizard from './SettingsWizard'
-import { ERRORS, getLocation, setKillSwitch, type LocationConfig } from './api'
+import { ERRORS, MODE_LABEL, getLocation, setKillSwitch, type LocationConfig } from './api'
+import { STEPS, type Step } from './setup'
 import './telefon.css'
 
 type Tab = 'samtal' | 'uppringningar' | 'installningar'
@@ -16,7 +18,7 @@ type Tab = 'samtal' | 'uppringningar' | 'installningar'
 /**
  * Telefon (planfunktionen "phoneAgent", ägare och personal): samtalen med
  * utskrift, vem som vill bli uppringd och en knapp som stänger av assistenten
- * direkt. Inställningarna ("Så svarar vi i telefon") är ägarens.
+ * direkt. Inställningarna (kom igång och Fler inställningar) är ägarens.
  */
 export default function TelefonPage() {
   const { tenant } = useTenant()
@@ -29,7 +31,7 @@ export default function TelefonPage() {
         {enabled ? <Telefon /> : (
           <section className="admin-card table-card">
             <h2 className="card-title">Ingår inte i er plan</h2>
-            <p className="cell-muted">Telefonassistenten ingår inte i er plan. Kontakta oss för att uppgradera.</p>
+            <p className="cell-muted">Kontakta oss för att uppgradera.</p>
           </section>
         )}
       </main>
@@ -44,9 +46,29 @@ function Telefon() {
   const locationId = location?.locationId
   const { callId } = useParams()
   const navigate = useNavigate()
-  const [tab, setTab] = useState<Tab>('samtal')
+  // Från Kom igång på Översikt: /telefon?flik=installningar&steg=koppla öppnar guiden på steget.
+  const [params, setParams] = useSearchParams()
+  const linkedStep = STEPS.find((s) => s === params.get('steg')) ?? null
+  const [tab, setTab] = useState<Tab>(owner && params.get('flik') === 'installningar' ? 'installningar' : 'samtal')
+  const [startAt] = useState<Step | null>(linkedStep)
   const [config, setConfig] = useState<LocationConfig | null>(null)
   const [busy, setBusy] = useState(false)
+  const tabs = useRef<HTMLDivElement>(null)
+
+  // Länken är läst: ta bort flik och steg, så att en omladdning inte öppnar guiden på ett gammalt steg.
+  useEffect(() => {
+    if (params.has('flik') || params.has('steg')) setParams({}, { replace: true })
+  }, [params, setParams])
+
+  // På en smal skärm rullar flikarna i sidled: visa den valda helt.
+  useEffect(() => {
+    // Flikraden själv rullar (brand), annars rutan runt den.
+    const el = tabs.current?.querySelector<HTMLElement>('[aria-selected="true"]')
+    const bar = [el?.closest<HTMLElement>('[role="tablist"]'), tabs.current].find((b) => b && b.scrollWidth > b.clientWidth)
+    if (!el || !bar) return
+    const at = el.getBoundingClientRect().left - bar.getBoundingClientRect().left + bar.scrollLeft
+    bar.scrollLeft = at - (bar.clientWidth - el.offsetWidth) / 2
+  }, [tab, config])
 
   const load = useCallback(async () => {
     if (!locationId) return
@@ -58,6 +80,9 @@ function Telefon() {
   }, [locationId])
 
   useEffect(() => { void load() }, [load])
+  useLiveRefresh(async () => {
+    if (locationId) setConfig(await getLocation(locationId))
+  }, { enabled: Boolean(locationId) })
 
   if (!locationId) return <p className="cell-muted">Hämtar…</p>
 
@@ -85,28 +110,30 @@ function Telefon() {
   ]
   return (
     <>
-      {config?.enabled ? (
+      {/* På först när numret är vidarekopplat: innan dess når inga samtal assistenten. */}
+      {config?.enabled && (config.setup?.forwardedAt || config.killSwitch) ? (
         <Bar variant="banner" tone={config.killSwitch ? 'warning' : 'info'} action={
           <Button size="sm" variant={config.killSwitch ? 'primary' : 'danger'} busy={busy} busyLabel="Sparar…" onClick={() => void toggleKill()}>
             {config.killSwitch ? 'Slå på assistenten' : 'Stäng av assistenten nu'}
           </Button>
         }>
           {config.killSwitch ? 'Assistenten är avstängd. Samtalen går som vanligt till er.'
-            : `Assistenten svarar på ${config.number ?? 'ert Booqy-nummer'}.`}
+            : `Assistenten svarar ${MODE_LABEL[config.mode].toLowerCase()}.`}
         </Bar>
       ) : (
-        <Bar variant="banner" tone="info">
-          {owner ? 'Assistenten är inte på än. Ställ in den under Inställningar.' : 'Assistenten är inte på för den här platsen.'}
+        <Bar variant="banner" tone="info" action={owner && tab !== 'installningar'
+          ? <Button size="sm" variant="primary" onClick={() => setTab('installningar')}>Kom igång</Button> : undefined}>
+          {owner ? (config?.enabled ? 'Assistenten är inte klar än.' : 'Assistenten är inte på än.') : 'Assistenten är inte på för den här platsen.'}
         </Bar>
       )}
-      <div className="telefon-section">
+      <div className="telefon-section" ref={tabs}>
         <Bar variant="tab" kind="track" label="Telefon" items={items} value={tab} onChange={(k) => setTab(k as Tab)}
           panelId={(k) => `telefon-panel-${k}`} />
       </div>
       <div id={`telefon-panel-${tab}`} role="tabpanel">
         {tab === 'samtal' ? <CallsTab locationId={locationId} owner={owner} /> : null}
         {tab === 'uppringningar' ? <CallbacksTab locationId={locationId} /> : null}
-        {tab === 'installningar' && owner ? <SettingsWizard locationId={locationId} onSaved={(c) => setConfig(c)} /> : null}
+        {tab === 'installningar' && owner ? <SettingsWizard locationId={locationId} startAt={startAt} onSaved={(c) => setConfig(c)} /> : null}
       </div>
     </>
   )

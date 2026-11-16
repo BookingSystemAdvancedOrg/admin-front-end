@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bar, Button, Field, Input, Modal, Select } from '@booqy/brand'
+import { Bar, Button, Field, Input, Modal } from '@booqy/brand'
+import { BrandSelect as Select } from '../../shared/Select'
 import { errorText } from '../../shared/errors'
 import { listMenuItems, menuImageUrl, type MenuItem } from '../meny/menuApi'
 import { ERRORS, GOALS, createCampaign, newCampaignId, suggestCopy, type Goal } from './api'
 import './annonser.css'
+import { ErrorActions } from '../../shared/ErrorNote'
 
 const STEPS = ['Mål', 'Bild och text', 'Budget', 'Område', 'Förhandsvisning', 'Skapa'] as const
 const MAX_HEADLINE = 40
@@ -91,7 +93,7 @@ export default function AdWizard({ locationId, onClose, onCreated }: {
       </>
     }>
       <Bar variant="progress" value={(step + 1) / STEPS.length} label="Steg" valueText={`${step + 1} av ${STEPS.length}: ${STEPS[step]}`} />
-      {error ? <Bar variant="banner" tone="danger">{error}</Bar> : null}
+      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
 
       {step === 0 ? (
         <fieldset className="annons-choices">
@@ -139,10 +141,10 @@ export default function AdWizard({ locationId, onClose, onCreated }: {
 
       {step === 2 ? (
         <div className="form-grid">
-          <Field label="Total budget (kr)" hint="100-20 000 kr. Meta slutar visa annonsen när budgeten är slut." required>
+          <Field label="Total budget (kr)" hint="100-20 000 kr" required>
             <Input type="number" min={100} max={20000} value={budget} onChange={(e) => setBudget(e.target.value)} />
           </Field>
-          <Field label="Antal dagar" hint="3-30 dagar. Annonsen slutar av sig själv." required>
+          <Field label="Antal dagar" hint="3-30 dagar" required>
             <Input type="number" min={3} max={30} value={days} onChange={(e) => setDays(e.target.value)} />
           </Field>
         </div>
@@ -172,10 +174,7 @@ export default function AdWizard({ locationId, onClose, onCreated }: {
 
       {step === 5 ? (
         <div>
-          <p>
-            Annonsen skapas hos Meta och blir <strong>pausad</strong>. Den visas först när du trycker på
-            "Starta annonsen" i listan.
-          </p>
+          <p>Skapas <strong>pausad</strong>. Starta den i listan.</p>
           <dl className="annons-facts">
             <dt>Rätt</dt><dd>{dish?.name}</dd>
             <dt>Budget</dt><dd>{Number(budget).toLocaleString('sv-SE')} kr under {days} dagar</dd>

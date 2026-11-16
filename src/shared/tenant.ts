@@ -1,3 +1,4 @@
+import { sameData } from './live'
 import { useEffect, useSyncExternalStore } from 'react'
 import { useAuth } from '../features/auth/useAuth'
 import { ApiError, apiFetch, isApiConfigured } from './api'
@@ -39,7 +40,7 @@ export interface TenantStripeStatus {
 
 /** Gäst- och restaurangnotiser (bokningsbekräftelser, påminnelser m.m.). */
 export interface TenantNotifications {
-  /** SMS till gästen (utöver e-post). Kostar per SMS. */
+  /** SMS till gästen (utöver e-post). Ingår i priset. */
   sms: boolean
   /** E-post till restaurangen vid ny onlinebokning och avbokning. */
   staffEmails: boolean
@@ -64,12 +65,39 @@ export interface TenantDpa {
   upToDate: boolean
 }
 
+/** Allmänna villkor för restauranger: godkänd version. */
+export interface TenantTerms {
+  currentVersion: string
+  acceptedVersion: string | null
+  acceptedAt: string | null
+  upToDate: boolean
+}
+
+/**
+ * Restaurangen som Booqys kund (Booqys eget Stripe-konto, aldrig
+ * restaurangens): dras månadsavgiften från ett kort, eller kommer fakturan
+ * med e-post (10 dagars betalningstid utan kort, 30 om faktura är avtalat).
+ */
+export interface TenantBilling {
+  /** Booqy har startat avtalet (kunden finns hos Stripe). */
+  customer: boolean
+  hasCard: boolean
+  cardBrand: string | null
+  cardLast4: string | null
+  collection: 'card' | 'invoice'
+  preference: 'card' | 'invoice'
+  daysUntilDue: number | null
+  pastDue: boolean
+}
+
 export interface Tenant {
   tenantId: string
   name: string
   slug: string | null
   status: 'active'
   planId: string | null
+  /** Gratisplanen (planId "free"): sista gratisdagen, null = inget slutdatum. Saknas på andra planer. */
+  free?: { until: string | null } | null
   entitlements: {
     maxLocations: number | null
     features: Record<string, boolean>
@@ -86,6 +114,10 @@ export interface Tenant {
   insights?: TenantInsightsSettings
   /** Saknas från äldre API-versioner: då visas ingen avtalsruta. */
   dpa?: TenantDpa
+  /** Allmänna villkor för restauranger (features/dpa/termsText.ts). Saknas från äldre API-versioner. */
+  terms?: TenantTerms
+  /** Booqys abonnemang (bara ägare; null för personal, saknas från äldre API-versioner). */
+  billing?: TenantBilling | null
   role: TenantRole
   locations: TenantLocation[]
 }
@@ -162,6 +194,11 @@ const LOCAL_DEMO_TENANT: Tenant = {
   replyToEmail: null,
   notifications: { sms: false, staffEmails: true, reminderHours: 24 },
   dpa: { currentVersion: '2026-10-v1', acceptedVersion: null, acceptedAt: null, required: false, upToDate: false },
+  terms: { currentVersion: '2026-11-v1', acceptedVersion: null, acceptedAt: null, upToDate: false },
+  billing: {
+    customer: true, hasCard: false, cardBrand: null, cardLast4: null,
+    collection: 'invoice', preference: 'card', daysUntilDue: 10, pastDue: false,
+  },
   role: 'owner_user',
   locations: [],
 }
@@ -287,6 +324,8 @@ export function loadTenant(
   const request = (isApiConfigured() ? getTenant() : Promise.resolve(LOCAL_DEMO_TENANT))
     .then((tenant) => {
       if (inflight !== request) return tenant
+      // En levande omhämtning utan ändring: samma objekt, inget ritas om.
+      if (state.status === 'ready' && sameData(state.tenant, tenant)) return state.tenant
       const preferred = state.locationId ?? readStoredLocation(tenant.tenantId)
       const locationId = pickLocation(tenant, preferred)
       if (locationId) writeStoredLocation(tenant.tenantId, locationId)

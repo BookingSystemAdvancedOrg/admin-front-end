@@ -1,5 +1,9 @@
-import { useEffect, useState } from 'react'
+import { RowActions } from '../../shared/RowActions'
+import { useEffect, useRef, useState } from 'react'
+import { sameData, useLiveRefresh } from '../../shared/live'
+import { ChangedNote } from '../../shared/ChangedNote'
 import { useAuth } from '../auth/useAuth'
+import { CtaButton } from '../../shared/CtaButton'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useLocationId } from '../../shared/location'
 import { DiscountTierModal } from './DiscountTierModal'
@@ -23,6 +27,9 @@ import {
 } from '../catering/cateringApi'
 import type { CateringSettings, DeliveryBand, LeadTimeRule, Tier } from '../catering/cateringApi'
 import './cateringkalkyl.css'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { TitleInfo } from '../../shared/TitleInfo'
+import { Select } from '../../shared/Select'
 
 function rulesOf(s: CateringSettings): OrderRules {
   return {
@@ -87,6 +94,7 @@ export default function CateringkalkylPage() {
         const saved = withBands({ ...DEFAULT_SETTINGS, ...stored })
         setSettings(saved)
         setOrderRules(rulesOf(saved))
+        savedSettings.current = saved
         setTiers(loadedTiers.map(tierOf))
         setLoaded(true)
       })
@@ -95,6 +103,36 @@ export default function CateringkalkylPage() {
       cancelled = true
     }
   }, [locationId])
+
+  // Levande: rabatter och inställningar som en kollega sparar syns av sig själva.
+  // Inställningar du har börjat ändra skrivs inte över (bara orörda följer med).
+  const savedSettings = useRef<CateringSettings | null>(null)
+  const [changedThere, setChangedThere] = useState<CateringSettings | null>(null)
+  useLiveRefresh(async () => {
+    if (!locationId) return
+    const [loc, loadedTiers] = await Promise.all([getLocation(locationId), listTiers(locationId)])
+    setTiers(loadedTiers.map(tierOf))
+    const stored = (loc as { cateringSettings?: Partial<CateringSettings> }).cateringSettings ?? {}
+    const next = withBands({ ...DEFAULT_SETTINGS, ...stored })
+    const base = savedSettings.current
+    if (!base || sameData(next, base)) return
+    if (sameData(settings, base) && sameData(orderRules, rulesOf(base))) {
+      setSettings(next)
+      setOrderRules(rulesOf(next))
+      savedSettings.current = next
+      setChangedThere(null)
+    } else {
+      setChangedThere(next)
+    }
+  }, { enabled: Boolean(locationId) && loaded && isApiConfigured() && !saving })
+
+  function takeTheirs() {
+    if (!changedThere) return
+    setSettings(changedThere)
+    setOrderRules(rulesOf(changedThere))
+    savedSettings.current = changedThere
+    setChangedThere(null)
+  }
 
   function updateOrderRules(patch: Partial<OrderRules>) {
     setOrderRules((prev) => ({ ...prev, ...patch }))
@@ -146,6 +184,8 @@ export default function CateringkalkylPage() {
       const { originFound, ...stored } = await saveSettings(locationId, next)
       const saved = withBands({ ...DEFAULT_SETTINGS, ...stored })
       setSettings(saved)
+      savedSettings.current = saved
+      setChangedThere(null)
       setSaveNotice(saved.enabled ? 'Sparat. Kalkylen visas på webbplatsen.' : 'Sparat. Kalkylen är dold för gäster.')
       if (originFound === false) {
         setSaveError('Leveransernas startadress hittades inte på kartan. Leveranspriset får då sättas för hand i varje offert. Kontrollera adressen.')
@@ -197,12 +237,9 @@ export default function CateringkalkylPage() {
     <>
       <AdminTopbar
         title="Cateringkalkyl"
-        subtitle="Regler, rabattnivåer och leveranspriser för catering"
         actions={
           isOwner ? (
-            <button type="button" className="btn primary" disabled={!loaded || saving} onClick={() => void save()}>
-              {saving ? 'Sparar…' : 'Spara inställningar'}
-            </button>
+            <CtaButton label={saving ? 'Sparar…' : 'Spara inställningar'} win="Klart!" disabled={!loaded || saving} onClick={() => void save()} />
           ) : (
             <span className="cell-muted">Bara ägaren kan ändra</span>
           )
@@ -210,18 +247,14 @@ export default function CateringkalkylPage() {
       />
 
       <main className="admin-main">
-        {saveError && <p className="form-error" role="alert">{saveError}</p>}
+        <ErrorNote text={saveError} />
         {saveNotice && <p className="save-notice" role="status">{saveNotice}</p>}
+        {changedThere && <ChangedNote onUse={takeTheirs} />}
         {/* Huvudreglaget först: syns catering på webbplatsen eller inte. */}
         <section className="admin-card table-card catering-visibility">
           <div className="toggle-row">
             <div>
               <h2 className="card-title">Catering på webbplatsen</h2>
-              <p className="cell-muted">
-                {orderRules.visibleToCustomers
-                  ? 'På - gästerna ser kalkylen och kan skicka förfrågningar. Spara efter ändringar.'
-                  : 'Av - gästerna ser inte catering. Slå på och tryck Spara inställningar.'}
-              </p>
             </div>
             <button
               type="button"
@@ -238,8 +271,7 @@ export default function CateringkalkylPage() {
         <CateringMenuCard locationId={locationId} isOwner={isOwner} />
         <div className="settings-row">
           <section className="admin-card table-card">
-            <h2 className="card-title">Beställningsregler</h2>
-            <p className="cell-muted">Minsta och högsta tillåtna beställning</p>
+            <TitleInfo title="Beställningsregler" info="Förfrågningar med färre gäster än minsta antal går inte att skicka. Rabatt och förberedelsetid räknas på antal gäster." />
             <div style={{ height: 16 }} />
             <div className="form-grid">
               <div className="form-field">
@@ -275,7 +307,7 @@ export default function CateringkalkylPage() {
               </div>
               <div className="form-field">
                 <label htmlFor="discount-scope">Rabatten gäller</label>
-                <select
+                <Select
                   id="discount-scope"
                   value={orderRules.discountScope}
                   onChange={(e) =>
@@ -289,26 +321,20 @@ export default function CateringkalkylPage() {
                       {label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
-            <div style={{ height: 16 }} />
-            <p className="calc-hint">
-              Förfrågningar med färre gäster än minsta antal går inte att skicka. Rabatt och
-              förberedelsetid räknas på antal gäster.
-            </p>
           </section>
 
           <section className="admin-card table-card">
-            <h2 className="card-title">Leveranspris per avstånd</h2>
-            <p className="cell-muted">Avstånd från restaurangen till leveransadressen, längs vägen</p>
+            <TitleInfo title="Leveranspris per avstånd" info="Avstånd från restaurangen till leveransadressen, längs vägen. Längre bort än sista intervallet går det inte att beställa leverans." />
             <div style={{ height: 16 }} />
             <div className="form-field">
               <label htmlFor="delivery-origin">Leveranser utgår från</label>
               <input id="delivery-origin" value={settings.originAddress} autoComplete="street-address"
                 placeholder="Restaurangens adress" aria-describedby="delivery-origin-hint"
                 onChange={(e) => updateSettings({ originAddress: e.target.value })} />
-              <p className="field-hint" id="delivery-origin-hint">Gata, postnummer och ort. Tomt = restaurangens adress.</p>
+              <p className="field-hint" id="delivery-origin-hint">Tomt = restaurangens adress</p>
             </div>
             <div style={{ height: 12 }} />
             <div className="form-field">
@@ -348,8 +374,7 @@ export default function CateringkalkylPage() {
             </button>
             <div style={{ height: 16 }} />
             <p className="calc-hint">
-              Längsta leveransavstånd: {bands[bands.length - 1]?.upToKm ?? 0} km. Längre bort än så går det inte att
-              beställa leverans.
+              Max {bands[bands.length - 1]?.upToKm ?? 0} km
             </p>
           </section>
         </div>
@@ -357,10 +382,10 @@ export default function CateringkalkylPage() {
         <section className="admin-card table-card">
           <div className="card-head">
             <div>
-              <h2 className="card-title">Förberedelsetid per antal gäster</h2>
-              <p className="cell-muted">
-                Hur många dagar i förväg en beställning måste komma in, beroende på storleken
-              </p>
+              <TitleInfo
+                title="Förberedelsetid per antal gäster"
+                info={`Hur många dagar i förväg en beställning måste komma in, beroende på storleken. Intervallen ska följa direkt på varandra utan luckor. Lämna "Till" tomt på sista raden för "och uppåt". Beställningar utanför intervallen får ${orderRules.advanceDays} dagars framförhållning.`}
+              />
             </div>
             <button type="button" className="btn outline" disabled={settings.leadTimeRules.length >= 10}
               onClick={addRule}>
@@ -369,10 +394,10 @@ export default function CateringkalkylPage() {
           </div>
           {settings.leadTimeRules.length === 0 ? (
             <p className="cm-empty">
-              Inga intervall: framförhållningen {orderRules.advanceDays} dagar gäller alla beställningar.
+              Inga intervall. {orderRules.advanceDays} dagar gäller alla.
             </p>
           ) : (
-            <div className="table-scroll">
+            <div className="table-scroll" tabIndex={0}>
               <table className="data-table lead-table">
                 <thead>
                   <tr>
@@ -410,17 +435,16 @@ export default function CateringkalkylPage() {
               </table>
             </div>
           )}
-          <div style={{ height: 12 }} />
-          <p className="calc-hint">
-            Intervallen ska följa direkt på varandra utan luckor. Lämna "Till" tomt på sista raden för "och uppåt".
-            Beställningar utanför intervallen får {orderRules.advanceDays} dagars framförhållning.
-          </p>
         </section>
 
         <div className="settings-row">
           <section className="admin-card table-card">
-            <h2 className="card-title">Moms och servering</h2>
-            <p className="cell-muted">Vad en ny offert utgår från. Du kan ändra det per offert.</p>
+            <TitleInfo
+              title="Moms och servering"
+              info={`Vad en ny offert utgår från. Du kan ändra det per offert. ${settings.defaultServiceIncluded
+                ? 'Med servering räknas catering som restaurangtjänst (12 % moms).'
+                : 'Bara mat räknas som livsmedel (6 % moms 1 april 2026 till 31 december 2027, annars 12 %).'} Stäm av med er redovisningskonsult.`}
+            />
             <div style={{ height: 16 }} />
             <div className="toggle-row">
               <span className="toggle-row-label" id="cat-service-label">Servering ingår som standard</span>
@@ -428,18 +452,10 @@ export default function CateringkalkylPage() {
                 aria-labelledby="cat-service-label" className="switch"
                 onClick={() => updateSettings({ defaultServiceIncluded: !settings.defaultServiceIncluded })} />
             </div>
-            <div style={{ height: 16 }} />
-            <p className="calc-hint">
-              {settings.defaultServiceIncluded
-                ? 'Med servering räknas catering som restaurangtjänst (12 % moms).'
-                : 'Bara mat räknas som livsmedel (6 % moms 1 april 2026 till 31 december 2027, annars 12 %).'}{' '}
-              Stäm av med er redovisningskonsult.
-            </p>
           </section>
 
           <section className="admin-card table-card">
-            <h2 className="card-title">Påminnelser</h2>
-            <p className="cell-muted">Automatiska påminnelser per e-post. 0 = ingen påminnelse.</p>
+            <TitleInfo title="Påminnelser" info="Automatiska påminnelser per e-post. 0 = ingen påminnelse." />
             <div style={{ height: 16 }} />
             <div className="form-grid">
               <div className="form-field">
@@ -464,10 +480,10 @@ export default function CateringkalkylPage() {
         </div>
 
         <section className="admin-card table-card">
-          <h2 className="card-title">Retur av utrustning</h2>
-          <p className="cell-muted">
-            Gästen väljer om fat och utrustning lämnas tillbaka rengjorda (ingen extra kostnad) eller ej rengjorda
-          </p>
+          <TitleInfo
+            title="Retur av utrustning"
+            info="Gästen väljer om fat och utrustning lämnas tillbaka rengjorda (ingen extra kostnad) eller ej rengjorda. Avgiften visas som egen rad i offerten. Ändrar du avgiften gäller den nya förfrågningar och nya offertversioner; redan skickade och signerade offerter behåller sitt pris."
+          />
           <div style={{ height: 16 }} />
           <div className="form-grid">
             <div className="form-field">
@@ -476,18 +492,10 @@ export default function CateringkalkylPage() {
                 onChange={(e) => updateSettings({ cleaningFee: numberIn(e.target.value) })} />
             </div>
           </div>
-          <div style={{ height: 16 }} />
-          <p className="calc-hint">
-            Visas som egen rad i offerten. Ändrar du avgiften gäller den nya förfrågningar och nya
-            offertversioner; redan skickade och signerade offerter behåller sitt pris.
-          </p>
         </section>
 
         <section className="admin-card table-card">
           <h2 className="card-title">Offert, betalning och notiser</h2>
-          <p className="cell-muted">
-            Hur förfrågningar blir offerter, hur länge de gäller och vart du får besked om nya förfrågningar
-          </p>
           <div style={{ height: 16 }} />
           <div className="form-grid">
             <div className="form-field">
@@ -551,10 +559,7 @@ export default function CateringkalkylPage() {
         <section className="admin-card table-card">
           <div className="card-head">
             <div>
-              <h2 className="card-title">Rabattnivåer</h2>
-              <p className="cell-muted">
-                Räknas på antal gäster. När nivån nås rabatteras alla rätter.
-              </p>
+              <TitleInfo title="Rabattnivåer" info="Räknas på antal gäster. När nivån nås rabatteras alla rätter." />
             </div>
             <button
               type="button"
@@ -564,8 +569,8 @@ export default function CateringkalkylPage() {
               + Ny rabattnivå
             </button>
           </div>
-          {tierError && <p className="form-error" role="alert">{tierError}</p>}
-          <div className="table-scroll">
+          <ErrorNote text={tierError} />
+          <div className="table-scroll" tabIndex={0}>
             <table className="data-table">
               <thead>
                 <tr>
@@ -575,15 +580,15 @@ export default function CateringkalkylPage() {
                   <th>Rabatt</th>
                   <th>Status</th>
                   <th>Aktiv</th>
-                  <th>Åtgärder</th>
+                  <th className="right">Åtgärder</th>
                 </tr>
               </thead>
               <tbody>
                 {tiers.map((t) => (
                   <tr key={t.id}>
                     <td className="cell-strong">{t.name}</td>
-                    <td>{t.fromPortions} gäster</td>
-                    <td>{t.toPortions != null ? `${t.toPortions} gäster` : 'och uppåt'}</td>
+                    <td data-label="Från">{t.fromPortions} gäster</td>
+                    <td data-label={t.toPortions != null ? "Till" : undefined}>{t.toPortions != null ? `${t.toPortions} gäster` : 'och uppåt'}</td>
                     <td>
                       {t.discountPercent > 0 ? (
                         <span className="cell-price">-{t.discountPercent} %</span>
@@ -606,8 +611,8 @@ export default function CateringkalkylPage() {
                         onClick={() => toggleTierActive(t.id)}
                       />
                     </td>
-                    <td>
-                      <span className="row-actions">
+                    <td className="right">
+                      <RowActions label="Åtgärder">
                         <button
                           type="button"
                           className="link-action"
@@ -622,7 +627,7 @@ export default function CateringkalkylPage() {
                         >
                           Radera
                         </button>
-                      </span>
+                      </RowActions>
                     </td>
                   </tr>
                 ))}

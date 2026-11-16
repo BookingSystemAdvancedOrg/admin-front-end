@@ -6,6 +6,7 @@ import { useAuth } from './useAuth'
 import { AuthLayout } from './AuthLayout'
 import { meetsAllRules, passwordProblem } from './passwordRules'
 import { PasswordRulesList } from './PasswordRulesList'
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /** Figma: nytt-losenord-page (41:26). */
 export default function NewPasswordPage() {
@@ -49,10 +50,7 @@ export default function NewPasswordPage() {
     <AuthLayout>
       <div className="auth-heading">
         <h1>Välj ett nytt lösenord</h1>
-        <p>
-          Det här är första gången du loggar in. Ange ett nytt lösenord för att
-          aktivera ditt konto.
-        </p>
+        <p>Första inloggningen.</p>
       </div>
 
       <form className="auth-form" onSubmit={handleSubmit}>
@@ -86,9 +84,7 @@ export default function NewPasswordPage() {
         <PasswordRulesList password={password} />
 
         {error && (
-          <p className="auth-error" role="alert">
-            {error}
-          </p>
+          <ErrorNote className="auth-error" text={error} />
         )}
 
         <button

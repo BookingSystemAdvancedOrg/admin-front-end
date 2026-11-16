@@ -84,7 +84,7 @@ describe('BokningarPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Nästa dag' }))
     expect(screen.queryByText('Anna')).toBeNull()
-    expect(screen.getAllByText('Hämtar…').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('…').length).toBeGreaterThan(0)
 
     await act(async () => second.resolve([booking({ reservationId: 'r2', customerName: 'Bertil' })]))
     expect(await screen.findByText('Bertil')).toBeInTheDocument()
@@ -111,7 +111,9 @@ describe('BokningarPage', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     const refresh = deferred<Reservation[]>()
+    // After the old refresh, the save's own refetch runs (it is queued, not dropped) and sees the change.
     listReservations.mockResolvedValueOnce([booking()]).mockReturnValueOnce(refresh.promise)
+      .mockResolvedValue([booking({ status: 'arrived' })])
     changeStatus.mockResolvedValue(booking({ status: 'arrived' }))
     const { container } = render(<BokningarPage />)
     const row = () => container.querySelector('.bookings-table tbody tr') as HTMLElement
@@ -128,18 +130,32 @@ describe('BokningarPage', () => {
 
     await act(async () => refresh.resolve([booking()]))
     expect(within(row()).getByText('Anlänt')).toBeInTheDocument()
+    expect(listReservations).toHaveBeenCalledTimes(3)
   })
 
-  it('keeps the list and shows the error when a refresh fails', async () => {
+  it('keeps the list quietly when a live refresh fails, and picks up changes on the next one', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
-    listReservations.mockResolvedValueOnce([booking()]).mockRejectedValueOnce(new Error('offline'))
+    listReservations
+      .mockResolvedValueOnce([booking()])
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue([booking(), booking({ reservationId: 'r2', customerName: 'Nadia', startTime: '20:00' })])
     render(<BokningarPage />)
     expect(await screen.findByText('Lamo')).toBeInTheDocument()
     await act(async () => {
-      vi.advanceTimersByTime(60_000)
+      vi.advanceTimersByTime(15_000)
     })
-    expect(await screen.findByRole('alert')).toHaveTextContent('Kunde inte hämta bokningarna.')
+    expect(listReservations).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.getByText('Lamo')).toBeInTheDocument()
+    // Efter ett fel väntar nästa hämtning längre (30 s), sedan kommer den nya bokningen av sig själv.
+    await act(async () => {
+      vi.advanceTimersByTime(15_000)
+    })
+    expect(listReservations).toHaveBeenCalledTimes(2)
+    await act(async () => {
+      vi.advanceTimersByTime(30_000)
+    })
+    expect(await screen.findByText('Nadia')).toBeInTheDocument()
   })
 
   it('a booking made before the day list arrived still shows up', async () => {

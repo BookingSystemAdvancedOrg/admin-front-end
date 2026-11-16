@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react'
 import { Bar, Button, Field, Input } from '@booqy/brand'
 import { MENU_IMAGE_CONTENT_TYPES, menuImageUrl } from '../meny/menuApi'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 import { EVENT_IMAGE_ALT_MAX, imageAltError, imageFileError, type EventImage } from './eventImage'
 
 /** Bildväljaren i evenemangsredigeraren: förhandsvisning, byt/ta bort och alt-text. */
@@ -8,6 +9,7 @@ export default function EventImageField({ value, onChange, showErrors }: {
   value: EventImage; onChange: (next: EventImage) => void; showErrors: boolean
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
+  const legendId = useId()
   const [fileError, setFileError] = useState<string | null>(null)
   // Förhandsvisning av en nyvald fil; frigörs när filen byts eller rutan stängs.
   const [fileUrl, setFileUrl] = useState<string | null>(null)
@@ -29,8 +31,11 @@ export default function EventImageField({ value, onChange, showErrors }: {
   const altError = showErrors ? imageAltError(value) : null
 
   return (
-    <fieldset className="evenemang-fieldset">
-      <legend>Bild</legend>
+    <fieldset className="evenemang-fieldset" aria-labelledby={legendId}>
+      <legend className="evenemang-image-legend">
+        <span id={legendId}>Bild</span>
+        <InfoTooltip label="Bild">AVIF, JPEG, PNG eller WebP, högst 5 MB. Visas på evenemangssidan.</InfoTooltip>
+      </legend>
       <div className="evenemang-image">
         {preview ? (
           <img className="evenemang-image-preview" src={preview} alt="" />
@@ -52,12 +57,9 @@ export default function EventImageField({ value, onChange, showErrors }: {
             aria-label="Välj bild till evenemanget" data-testid="event-image-input" />
         </div>
       </div>
-      {fileError ? <Bar variant="banner" tone="danger">{fileError}</Bar> : (
-        <p className="evenemang-sub evenemang-image-hint">AVIF, JPEG, PNG eller WebP, högst 5 MB. Visas på evenemangssidan.</p>
-      )}
+      {fileError ? <Bar variant="banner" tone="danger">{fileError}</Bar> : null}
       {hasImage ? (
-        <Field label="Bildtext för skärmläsare" required error={altError}
-          hint="Beskriv vad bilden visar, till exempel ”Långbord dukat för vinmiddag”.">
+        <Field label="Bildtext för skärmläsare" required error={altError}>
           <Input value={value.alt} maxLength={EVENT_IMAGE_ALT_MAX} onChange={(e) => onChange({ ...value, alt: e.target.value })} />
         </Field>
       ) : null}

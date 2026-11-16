@@ -9,6 +9,10 @@ import { useSyncExternalStore } from 'react'
  */
 let count = 0
 let finishedAt = 0
+// Gick allt i den senaste omgången bra? Ett misslyckat sparande får aldrig
+// visas som "Sparat".
+let failed = false
+let lastOk = true
 const listeners = new Set<() => void>()
 
 function emit() {
@@ -20,19 +24,28 @@ export function busyStart(): void {
   emit()
 }
 
-export function busyEnd(): void {
+/** `ok` = false när skrivningen misslyckades (fel från servern, offline ...). */
+export function busyEnd(ok = true): void {
   count = Math.max(0, count - 1)
-  if (count === 0) finishedAt = Date.now()
+  if (!ok) failed = true
+  if (count === 0) {
+    finishedAt = Date.now()
+    lastOk = !failed
+    failed = false
+  }
   emit()
 }
 
 /** Kör `work` som en pågående skrivning. */
 export async function withBusy<T>(work: () => Promise<T>): Promise<T> {
   busyStart()
+  let ok = false
   try {
-    return await work()
+    const result = await work()
+    ok = true
+    return result
   } finally {
-    busyEnd()
+    busyEnd(ok)
   }
 }
 
@@ -40,13 +53,15 @@ export interface BusyState {
   active: boolean
   /** När den senaste skrivningen blev klar (för "klart"-skimret). */
   finishedAt: number
+  /** Lyckades allt i den senaste omgången? Annars inget "klart". */
+  ok: boolean
 }
 
-let snapshot: BusyState = { active: false, finishedAt: 0 }
+let snapshot: BusyState = { active: false, finishedAt: 0, ok: true }
 
 function getSnapshot(): BusyState {
-  if (snapshot.active !== count > 0 || snapshot.finishedAt !== finishedAt) {
-    snapshot = { active: count > 0, finishedAt }
+  if (snapshot.active !== count > 0 || snapshot.finishedAt !== finishedAt || snapshot.ok !== lastOk) {
+    snapshot = { active: count > 0, finishedAt, ok: lastOk }
   }
   return snapshot
 }
@@ -64,5 +79,7 @@ export function useBusy(): BusyState {
 export function resetBusyForTests(): void {
   count = 0
   finishedAt = 0
+  failed = false
+  lastOk = true
   emit()
 }

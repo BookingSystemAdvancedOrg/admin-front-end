@@ -1,3 +1,5 @@
+import { ChangedNote } from '../../shared/ChangedNote'
+import { serverChanges } from '../../shared/merge'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { SlotTablePicker } from './SlotTablePicker'
@@ -27,6 +29,9 @@ import { tableNames, useTables } from '../../shared/tables'
 import { PhoneInput } from '../../shared/PhoneInput'
 import { ApiError } from '../../shared/api'
 import { minutesLabel } from '../installningar/bookingTime'
+import ModalOverlay from '../../shared/ModalOverlay'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { Select } from '../../shared/Select'
 
 type Panel = null | 'no_show' | 'cancel' | 'refund' | 'edit' | 'extend'
 
@@ -133,7 +138,7 @@ export function ReservationModal({
   const p = r.payment
 
   return (
-    <div className="modal-overlay" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+    <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal booking-modal" role="dialog" aria-modal="true" aria-label="Bokning">
         <div className="booking-modal-head">
           <div>
@@ -348,9 +353,7 @@ export function ReservationModal({
             )}
 
             {error && (
-              <p className="form-error" role="alert">
-                {error}
-              </p>
+              <ErrorNote text={error} />
             )}
 
             {r.history && r.history.length > 0 && (
@@ -375,7 +378,7 @@ export function ReservationModal({
           </>
         )}
       </div>
-    </div>
+    </ModalOverlay>
   )
 }
 
@@ -452,12 +455,12 @@ function ExtendPanel({
       <p className="form-section-label">Ändra sluttid</p>
       <p className="cell-muted">
         Nu {r.startTime}-{r.endTime}. {rule.extensionAllowed
-          ? `Regeln tillåter till ${toClock(allowedEnd)}.`
-          : 'Regeln tillåter ingen förlängning.'}
+          ? `Max ${toClock(allowedEnd)}.`
+          : 'Ingen förlängning enligt regeln.'}
       </p>
       <div className="form-field">
         <label htmlFor="extend-end">Ny sluttid</label>
-        <select
+        <Select
           id="extend-end"
           value={end}
           onChange={(e) => {
@@ -473,7 +476,7 @@ function ExtendPanel({
               {m === current ? ', nu' : m > current && m > allowedEnd ? ', över regeln' : `, ${minutesLabel(m - start)}`}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
       {needsOverride && (
         <label className="check-row">
@@ -481,11 +484,8 @@ function ExtendPanel({
           Förläng ändå, utöver bokningens regel (sparas i historiken)
         </label>
       )}
-      <p className="cell-muted">Borden kontrolleras igen; nästa bokning på samma bord stoppar förlängningen.</p>
       {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
+        <ErrorNote text={error} />
       )}
       <div className="modal-actions">
         <button type="button" className="btn outline square" onClick={onCancel}>
@@ -502,7 +502,7 @@ function ExtendPanel({
 function ReasonField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div className="form-field">
-      <label htmlFor="status-reason">Intern anteckning (valfritt, visas inte för gästen)</label>
+      <label htmlFor="status-reason">Intern anteckning (valfri)</label>
       <input id="status-reason" maxLength={300} value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
   )
@@ -539,7 +539,7 @@ function PanelButtons({
 }
 
 function EditForm({
-  reservation: r,
+  reservation: latest,
   today,
   onSaved,
   onCancel,
@@ -549,6 +549,10 @@ function EditForm({
   onSaved: (r: Reservation) => void
   onCancel: () => void
 }) {
+  // Bokningen som formuläret öppnades med: bara det du ändrar mot den skickas,
+  // så en ändring en kollega gjort under tiden (listan är levande) står kvar.
+  const [r] = useState(latest)
+  const drift = serverChanges(r, latest, ['customerName', 'customerPhone', 'customerEmail', 'notes', 'partySize'])
   const [name, setName] = useState(r.customerName ?? '')
   const [phone, setPhone] = useState(r.customerPhone ?? '')
   const [email, setEmail] = useState(r.customerEmail ?? '')
@@ -626,6 +630,9 @@ function EditForm({
       <div className="form-field">
         <label htmlFor="ed-name">Namn</label>
         <input id="ed-name" maxLength={NAME_MAX} value={name} onChange={(e) => setName(e.target.value)} />
+        {drift.customerName !== undefined && (drift.customerName ?? '') !== name.trim() && (
+          <ChangedNote value={drift.customerName ?? ''} onUse={() => setName(drift.customerName ?? '')} />
+        )}
       </div>
       <div className="form-grid">
         <div className="form-field">
@@ -641,6 +648,9 @@ function EditForm({
             <p id="ed-phone-error" className="field-hint error">
               {phone.trim() ? 'Skriv ett giltigt nummer, t.ex. 070-123 45 67.' : 'En onlinebokning måste ha telefon.'}
             </p>
+          )}
+          {drift.customerPhone !== undefined && (drift.customerPhone ?? '') !== (normalizedPhone ?? '') && (
+            <ChangedNote value={drift.customerPhone ?? ''} onUse={() => setPhone(drift.customerPhone ?? '')} />
           )}
         </div>
         <div className="form-field">
@@ -659,6 +669,9 @@ function EditForm({
               {email.trim() ? 'Ange en giltig e-postadress.' : 'En onlinebokning måste ha e-post.'}
             </p>
           )}
+          {drift.customerEmail !== undefined && (drift.customerEmail ?? '') !== email.trim().toLowerCase() && (
+            <ChangedNote value={drift.customerEmail ?? ''} onUse={() => setEmail(drift.customerEmail ?? '')} />
+          )}
         </div>
       </div>
       <div className="form-field">
@@ -675,6 +688,9 @@ function EditForm({
           <p id="ed-size-error" className="field-hint error">
             Borden rymmer {r.seats} - ångra Anlänt först för att byta till större bord.
           </p>
+        )}
+        {drift.partySize !== undefined && drift.partySize !== size && (
+          <ChangedNote value={`${drift.partySize} personer`} onUse={() => setPartySize(String(drift.partySize))} />
         )}
       </div>
       {!arrived && (
@@ -697,6 +713,9 @@ function EditForm({
       <div className="form-field">
         <label htmlFor="ed-notes">Meddelande / anteckning</label>
         <textarea id="ed-notes" rows={2} maxLength={NOTES_MAX} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        {drift.notes !== undefined && (drift.notes ?? '') !== notes.trim() && (
+          <ChangedNote value={drift.notes ?? ''} onUse={() => setNotes(drift.notes ?? '')} />
+        )}
       </div>
       {moved && (r.customerEmail || r.customerPhone) && (
         <label className="check-row">
@@ -705,9 +724,7 @@ function EditForm({
         </label>
       )}
       {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
+        <ErrorNote text={error} />
       )}
       <div className="modal-actions">
         <button type="button" className="btn outline square" onClick={onCancel}>

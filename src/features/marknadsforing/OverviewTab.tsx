@@ -1,3 +1,4 @@
+import { useLiveRefresh } from '../../shared/live'
 import { useEffect, useState } from 'react'
 import { ChartTip } from '../../shared/ChartTip'
 import { useChartTip } from '../../shared/chartTipState'
@@ -13,10 +14,12 @@ import {
   getOverview,
   isoDay,
   kronorFromOre,
-  percent,
 } from './marketingApi'
 import type { Overview } from './marketingApi'
 import type { TabId } from './MarknadsforingPage'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Select } from '../../shared/Select'
 
 const PERIODS = [
   { days: 7, label: '7 dagar' },
@@ -119,16 +122,22 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
       cancelled = true
     }
   }, [days, forLocation, key])
+  // Levande: nya prenumeranter och utskick räknas in av sig själva.
+  useLiveRefresh(async () => {
+    const { from, to } = range(days)
+    const d = await getOverview(from, to, forLocation)
+    setResult((cur) => (cur?.key === key ? { key, data: d } : cur))
+  }, { enabled: result?.key === key && !result?.error })
 
   const t = data?.totals
   const p = data?.previous
   const against = `de ${days} dagarna innan`
   const tiles = t && p
     ? [
-        { label: 'Besök', value: t.visits.toLocaleString('sv-SE'), trend: trendOf(t.visits, p.visits, 'visits', against), note: `${t.pageviews.toLocaleString('sv-SE')} sidvisningar` },
-        { label: 'Bokningar via webbplatsen', value: t.bookings.toLocaleString('sv-SE'), trend: trendOf(t.bookings, p.bookings, 'bookings', against), note: `${t.guests} gäster · ${percent(t.bookings, t.visits)} av besöken` },
-        { label: 'Beställningar', value: t.orders.toLocaleString('sv-SE'), trend: trendOf(t.orders, p.orders, 'orders', against), note: `${kronorFromOre(t.revenueOre)} i omsättning` },
-        { label: 'Prenumeranter', value: data.subscribers.toLocaleString('sv-SE'), trend: undefined, note: `${data.emailsThisMonth} av ${data.monthlyLimit} utskick denna månad` },
+        { label: 'Besök', value: t.visits.toLocaleString('sv-SE'), trend: trendOf(t.visits, p.visits, 'visits', against) },
+        { label: 'Bokningar via webbplatsen', value: t.bookings.toLocaleString('sv-SE'), trend: trendOf(t.bookings, p.bookings, 'bookings', against) },
+        { label: 'Beställningar', value: t.orders.toLocaleString('sv-SE'), trend: trendOf(t.orders, p.orders, 'orders', against) },
+        { label: 'Prenumeranter', value: data.subscribers.toLocaleString('sv-SE'), trend: undefined },
       ]
     : []
 
@@ -149,7 +158,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
           ))}
         </div>
         {multi && (
-          <select
+          <Select
             className="compact-select"
             aria-label="Platser"
             value={allLocations ? 'all' : 'one'}
@@ -157,11 +166,11 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
           >
             <option value="all">Alla platser</option>
             <option value="one">Bara vald plats</option>
-          </select>
+          </Select>
         )}
       </div>
 
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <ErrorNote text={error} />
       {!data && !error && <OverviewSkeleton />}
 
       {data && (
@@ -172,7 +181,6 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
                 key={tile.label}
                 label={tile.label}
                 value={tile.value}
-                note={tile.note}
                 index={i}
                 trend={tile.trend}
               />
@@ -188,7 +196,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
             </div>
             {t && t.visits === 0 ? (
               <p className="cell-muted">
-                Inga besök registrerade under perioden. Besök räknas automatiskt på er webbplats, utan cookies.
+                Inga besök.
               </p>
             ) : (
               <VisitsChart series={data.series} />
@@ -203,7 +211,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
               {data.channels.length === 0 ? (
                 <p className="cell-muted">Inget att visa än.</p>
               ) : (
-                <div className="table-scroll">
+                <div className="table-scroll" tabIndex={0}>
                   <table className="data-table">
                     <thead>
                       <tr>
@@ -237,10 +245,10 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
               </div>
               {data.campaigns.length === 0 ? (
                 <p className="cell-muted">
-                  Inga kampanjbesök än. Skicka ett utskick eller dela en spårbar länk, så syns resultatet här.
+                  Inga kampanjbesök än.
                 </p>
               ) : (
-                <div className="table-scroll">
+                <div className="table-scroll" tabIndex={0}>
                   <table className="data-table">
                     <thead>
                       <tr>
@@ -269,10 +277,13 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
             </section>
           </div>
 
-          <p className="mk-footnote cell-muted">
-            Statistiken räknas utan cookies och utan att något sparas hos besökaren, så ingen samtyckesruta
-            behövs. Samma person som kommer tillbaka räknas som ett nytt besök.
-          </p>
+          <div className="mk-footnote cell-muted">
+            Om siffrorna
+            <InfoTooltip label="Om siffrorna">
+              Statistiken räknas utan cookies och utan att något sparas hos besökaren, så ingen samtyckesruta
+              behövs. Samma person som kommer tillbaka räknas som ett nytt besök.
+            </InfoTooltip>
+          </div>
         </>
       )}
     </div>

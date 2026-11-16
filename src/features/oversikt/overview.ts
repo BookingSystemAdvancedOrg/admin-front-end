@@ -5,6 +5,8 @@ import type { Reservation } from '../bokningar/bookingsApi'
 import type { Order } from '../bestallningar/ordersApi'
 import type { RequestSummary } from '../catering/cateringApi'
 import type { PrintStatus } from '../bestallningar/printApi'
+import { STEPS, firstOpen, type Progress } from '../phone-agent/setup'
+import { SETUP } from '../phone-agent/api'
 
 /**
  * Ren logik för Översikten - utan React, så den går att testa direkt.
@@ -46,11 +48,28 @@ export function hasAnyOpeningHours(hours: BusinessHours | undefined): boolean {
 }
 
 export interface SetupStep {
-  id: 'dpa' | 'hours' | 'menu' | 'layout' | 'stripe' | 'staff'
+  id: 'dpa' | 'hours' | 'menu' | 'layout' | 'stripe' | 'staff' | 'google' | 'phone'
   label: string
   /** null = okänt (data kunde inte hämtas) - visas varken som klart eller ej. */
   done: boolean | null
   to: string
+  /** Delstegen (telefonassistentens fem steg), visas under raden. */
+  sub?: { label: string; done: boolean }[]
+}
+
+/**
+ * Telefonassistenten som ett steg i Kom igång: klart först när alla fem
+ * delsteg är klara; länken öppnar guiden på första steget som inte är klart.
+ */
+export function phoneSetupStep(progress: Progress | null): SetupStep {
+  const next = progress ? firstOpen(progress) : null
+  return {
+    id: 'phone',
+    label: 'Telefonassistent',
+    done: progress ? next === null : null,
+    to: `/telefon?flik=installningar${next ? `&steg=${next}` : ''}`,
+    sub: progress ? STEPS.map((s, i) => ({ label: SETUP.STEP_LABEL[i], done: progress[s] })) : undefined,
+  }
 }
 
 export interface SetupInput {
@@ -62,6 +81,13 @@ export interface SetupInput {
   staffCount: number | null
   /** Personuppgiftsbiträdesavtalet: undefined = API:t saknar det (inget steg). */
   dpaAccepted?: boolean
+  /**
+   * Google-profilen (valfri): klart när en plats är kopplad eller ägaren
+   * hoppat över. undefined = ingår inte i planen (inget steg), null = kunde inte hämtas.
+   */
+  google?: boolean | null
+  /** Telefonassistentens steg: undefined = ingår inte i planen (inget steg), null = kunde inte hämtas. */
+  phone?: Progress | null
 }
 
 /**
@@ -106,8 +132,12 @@ export function setupSteps(input: SetupInput): SetupStep[] {
       id: 'staff',
       label: 'Bjud in personal',
       done: input.staffCount === null ? null : input.staffCount > 0,
-      to: '/installningar#personal',
+      to: '/personal',
     },
+    ...(input.google === undefined
+      ? []
+      : [{ id: 'google' as const, label: 'Google-profil (valfritt)', done: input.google, to: '/installningar#google' }]),
+    ...(input.phone === undefined ? [] : [phoneSetupStep(input.phone)]),
   ]
 }
 

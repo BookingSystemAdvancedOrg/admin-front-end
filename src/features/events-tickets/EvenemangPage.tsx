@@ -1,8 +1,10 @@
+import { sameData, useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Bar, Button, Card, Field, Input, Modal, Printing, toast } from '@booqy/brand'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { errorText } from '../../shared/errors'
+import { isRowOpenKey, shouldOpenRow } from '../meny/rowClick'
 import { useTenant } from '../../shared/tenant'
 import {
   ERRORS, STATUS_LABEL, cancelOccurrence, eventEditable, getEvent, getJob, kr, listEvents, listOrders,
@@ -34,7 +36,7 @@ export default function EvenemangPage() {
         {!enabled ? (
           <section className="admin-card table-card">
             <h2 className="card-title">Ingår inte i er plan</h2>
-            <p className="cell-muted">Evenemang och biljetter ingår inte i er plan. Kontakta oss för att uppgradera.</p>
+            <p className="cell-muted">Kontakta oss för att uppgradera.</p>
           </section>
         ) : !locationId ? (
           <Printing label="Hämtar restaurangen" />
@@ -61,6 +63,8 @@ function EventList({ locationId, isOwner }: { locationId: string; isOwner: boole
       .catch((err) => toast(errorText(err, 'Kunde inte hämta evenemangen.', ERRORS), { tone: 'danger' }))
     return () => { live = false }
   }, [locationId])
+  // Levande: försäljning och ändringar från en annan plats syns av sig själva.
+  useLiveRefresh(async () => setEvents((await listEvents(locationId)).events), { enabled: events !== null && !creating })
 
   if (creating) {
     return <EventEditor locationId={locationId} onCancel={() => setCreating(false)}
@@ -70,16 +74,23 @@ function EventList({ locationId, isOwner }: { locationId: string; isOwner: boole
     <Card title="Evenemang" actions={isOwner ? <Button variant="primary" onClick={() => setCreating(true)}>Nytt evenemang</Button> : undefined}>
       {!events ? <Printing label="Hämtar evenemangen" /> : null}
       {events && events.length === 0 ? (
-        <p className="admin-empty">{isOwner ? 'Inga evenemang än. Skapa ett, till exempel en vinmiddag eller ett quiz, och sälj biljetter på er webbplats.' : 'Inga evenemang än.'}</p>
+        <p className="admin-empty">Inga evenemang än.</p>
       ) : null}
       {events?.length ? (
-        <div className="table-scroll">
+        <div className="table-scroll" tabIndex={0}>
           <table className="data-table">
             <thead><tr><th scope="col">Evenemang</th><th scope="col">Nästa tillfälle</th><th scope="col">Sålda</th><th scope="col">Status</th></tr></thead>
             <tbody>
               {events.map((e) => (
-                <tr key={e.eventId}>
-                  <td><Link to={`/evenemang/${encodeURIComponent(e.eventId)}`}>{e.title}</Link></td>
+                <tr
+                  key={e.eventId}
+                  className="person-row"
+                  tabIndex={0}
+                  aria-label={`${e.title}, öppna`}
+                  onClick={(ev) => { if (shouldOpenRow(ev.target, ev.currentTarget)) navigate(`/evenemang/${encodeURIComponent(e.eventId)}`) }}
+                  onKeyDown={(ev) => { if (isRowOpenKey(ev)) { ev.preventDefault(); navigate(`/evenemang/${encodeURIComponent(e.eventId)}`) } }}
+                >
+                  <td className="cell-strong">{e.title}</td>
                   <td>{e.nextOccurrence ? when(e.nextOccurrence) : '-'}</td>
                   <td>{e.sold} av {e.capacity}</td>
                   <td><span className="status-badge">{STATUS_LABEL[e.status]}</span></td>
@@ -96,7 +107,8 @@ function EventList({ locationId, isOwner }: { locationId: string; isOwner: boole
 function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId: string; eventId: string; isOwner: boolean; primaryDomain?: string | null }) {
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [missing, setMissing] = useState(false)
-  const [editing, setEditing] = useState(false)
+  /** Evenemanget som det såg ut när ändringen började (formuläret utgår från det). */
+  const [editing, setEditing] = useState<EventDetail | null>(null)
   const [busy, setBusy] = useState(false)
   const [cancelling, setCancelling] = useState<Occurrence | null>(null)
   const [editingType, setEditingType] = useState<TicketType | null>(null)
@@ -115,12 +127,18 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
   }, [eventId, locationId])
 
   useEffect(() => { void load() }, [load])
+  // Levande: sålda biljetter och ändringar från en kollega syns av sig själva.
+  useLiveRefresh(async () => {
+    const next = await getEvent(locationId, eventId)
+    setEvent((cur) => (sameData(cur, next) ? cur : next))
+  }, { enabled: event !== null && !busy })
 
   if (missing && !event) return <p className="admin-empty"><Link to="/evenemang">Tillbaka till evenemangen</Link></p>
   if (!event) return <Printing label="Hämtar evenemanget" />
   if (editing) {
-    return <EventEditor locationId={locationId} existing={event} onCancel={() => setEditing(false)}
-      onSaved={(e) => { setEvent(e); setEditing(false) }} />
+    return <EventEditor locationId={locationId} existing={editing} fetchLatest={() => getEvent(locationId, eventId)}
+      onCancel={() => setEditing(null)}
+      onSaved={(e) => { setEvent(e); setEditing(null) }} />
   }
 
   async function publish() {
@@ -148,7 +166,7 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
   const actions = isOwner ? (
     <div className="evenemang-actions">
       {event.status === 'draft' ? <Button variant="primary" busy={busy} onClick={() => { void publish() }}>Publicera</Button> : null}
-      {event.status !== 'cancelled' ? <Button variant="secondary" onClick={() => setEditing(true)}>Ändra</Button> : null}
+      {event.status !== 'cancelled' ? <Button variant="secondary" onClick={() => setEditing(event)}>Ändra</Button> : null}
       {event.status === 'published' ? <Button variant="ghost" onClick={() => { void poster() }}>Skriv ut affisch</Button> : null}
     </div>
   ) : undefined
@@ -219,6 +237,8 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
       {isOwner && event.status !== 'draft' ? <Orders locationId={locationId} eventId={event.eventId} onChanged={() => void load()} /> : null}
       {editingType ? (
         <TypeEditModal locationId={locationId} eventId={event.eventId} type={editingType}
+          latest={event.ticketTypes.find((t) => t.typeId === editingType.typeId) ?? null}
+          fetchLatest={async () => (await getEvent(locationId, eventId)).ticketTypes.find((t) => t.typeId === editingType.typeId) ?? null}
           onClose={() => { setEditingType(null); refocus(); void load() }}
           onSaved={(t) => {
             setEditingType(null)
@@ -228,6 +248,8 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
       ) : null}
       {editingOcc ? (
         <CapacityModal locationId={locationId} eventId={event.eventId} occurrence={editingOcc}
+          latest={event.occurrences.find((o) => o.occurrenceId === editingOcc.occurrenceId) ?? null}
+          fetchLatest={async () => (await getEvent(locationId, eventId)).occurrences.find((o) => o.occurrenceId === editingOcc.occurrenceId) ?? null}
           onClose={() => { setEditingOcc(null); refocus(); void load() }}
           onSaved={(o) => {
             setEditingOcc(null)
@@ -330,6 +352,7 @@ function Orders({ locationId, eventId, onChanged }: { locationId: string; eventI
   }, [eventId, locationId])
 
   useEffect(() => { void load() }, [load])
+  useLiveRefresh(async () => setOrders((await listOrders(locationId, eventId)).orders), { enabled: orders !== null && !busy })
 
   async function refund() {
     if (!refunding) return
@@ -353,7 +376,7 @@ function Orders({ locationId, eventId, onChanged }: { locationId: string; eventI
       {!orders ? <Printing label="Hämtar köpen" /> : null}
       {orders && orders.length === 0 ? <p className="admin-empty">Inga köp än.</p> : null}
       {orders?.length ? (
-        <div className="table-scroll">
+        <div className="table-scroll" tabIndex={0}>
           <table className="data-table">
             <thead><tr><th scope="col">Köpare</th><th scope="col">Belopp</th><th scope="col">Biljetter</th></tr></thead>
             <tbody>

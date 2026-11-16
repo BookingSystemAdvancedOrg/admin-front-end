@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { sameData, useLiveRefresh } from '../../shared/live'
 import { StatTile } from '../../shared/motion/StatTile'
+import { onPageAction, takePageAction } from '../../shared/nav'
+import { CtaButton } from '../../shared/CtaButton'
 import { Num } from '../../shared/motion/Num'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { isApiConfigured } from '../../shared/api'
@@ -15,6 +18,7 @@ import {
   addDays,
   dayLabel,
   errorMessage,
+  LOCATION_NOT_BOOKABLE,
   feeSummary,
   isCancelled,
   listReservations,
@@ -26,14 +30,14 @@ import './bokningar.css'
 import { DateInput } from '../../shared/DateInput'
 import { Icon } from '../../shared/Icon'
 import { SkelBlock, SkelTableRows } from '../../shared/Skeleton'
-
-const REFRESH_MS = 60_000
+import { ErrorNote } from '../../shared/ErrorNote'
 
 /**
  * Bokningar för vald plats och dag (GET /locations/{id}/reservations).
  * Klick på en rad öppnar bokningen: anlänt/ångra, ändra/flytta, uteblev
  * (med eller utan no-show-avgift), avboka, debitera igen och återbetala.
- * Listan hämtas om varje minut så nya onlinebokningar dyker upp av sig själva.
+ * Listan är levande (shared/live.ts): nya onlinebokningar och ändringar från
+ * kollegor eller andra platser dyker upp av sig själva.
  */
 export default function BokningarPage() {
   const tenantState = useTenant()
@@ -51,7 +55,9 @@ export default function BokningarPage() {
   )
   const [showCancelled, setShowCancelled] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
-  const [creating, setCreating] = useState(false)
+  const [creating, setCreating] = useState(() => takePageAction('new-booking'))
+  // Kommandopaletten (⌘K) kan öppna formuläret direkt.
+  useEffect(() => onPageAction('new-booking', () => setCreating(true)), [])
   // Räknas upp vid varje ändring härifrån: ett svar som hämtades före
   // ändringen skriver inte över den.
   const edits = useRef(0)
@@ -62,33 +68,42 @@ export default function BokningarPage() {
   const items = !loading && loaded ? loaded.items : []
   const error = !loading && loaded ? loaded.error : null
 
+  // Hämtar dagens lista. `quiet`: en levande omhämtning, som inte visar ett
+  // fel när listan redan syns (nästa puls försöker igen).
+  const seq = useRef(0)
+  const current = useRef(key)
   useEffect(() => {
-    if (!key || !locationId || !isApiConfigured()) return
-    let cancelled = false
-    const fetchList = () => {
-      const at = edits.current
-      listReservations(locationId, date).then(
-        (list) => {
-          if (cancelled || edits.current !== at) return
-          setLoaded({ key, items: list, error: null })
-        },
-        (err) => {
-          if (cancelled) return
-          setLoaded((prev) => ({
-            key,
-            items: prev?.key === key ? prev.items : [],
-            error: errorMessage(err, 'Kunde inte hämta bokningarna.'),
-          }))
-        },
-      )
+    current.current = key
+  }, [key])
+  const fetchList = useCallback(async (quiet: boolean): Promise<boolean> => {
+    if (!key || !locationId || !isApiConfigured()) return true
+    const at = edits.current
+    // Bara det senast startade svaret gäller: ett äldre som kommer sist skriver inte över.
+    const id = ++seq.current
+    try {
+      const list = await listReservations(locationId, date)
+      if (current.current !== key || edits.current !== at || id !== seq.current) return true
+      setLoaded((prev) => (prev?.key === key && !prev.error && sameData(prev.items, list) ? prev : { key, items: list, error: null }))
+      return true
+    } catch (err) {
+      if (current.current !== key || id !== seq.current) return false
+      setLoaded((prev) => {
+        if (quiet && prev?.key === key) return prev
+        return {
+          key,
+          items: prev?.key === key ? prev.items : [],
+          error: errorMessage(err, 'Kunde inte hämta bokningarna.', LOCATION_NOT_BOOKABLE),
+        }
+      })
+      return false
     }
-    fetchList()
-    const timer = window.setInterval(fetchList, REFRESH_MS)
-    return () => {
-      cancelled = true
-      window.clearInterval(timer)
-    }
-  }, [key, locationId, date, reload])
+  }, [key, locationId, date])
+
+  useEffect(() => {
+    void fetchList(false)
+  }, [fetchList, reload])
+  // Levande: bokningar från gäster, kollegor och andra platser syns av sig själva.
+  useLiveRefresh(() => fetchList(true), { enabled: Boolean(key) && isApiConfigured() })
 
   function replace(updated: Reservation) {
     const moved = updated.date !== date || updated.locationId !== locationId
@@ -114,12 +129,11 @@ export default function BokningarPage() {
   const cancelledCount = items.length - items.filter((r) => !isCancelled(r.status)).length
   const arrived = items.filter((r) => r.status === 'arrived').length
   const open = items.find((r) => r.reservationId === openId) ?? null
-  const dayWord = date === today ? 'idag' : 'den dagen'
   const tiles = [
-    { label: 'Bokningar', value: String(active.length), note: `Aktiva ${dayWord}` },
-    { label: 'Gäster', value: String(guests), note: active.length ? `${(guests / active.length).toFixed(1).replace('.', ',')} per bokning` : 'Inga bokningar' },
-    { label: 'Anlända', value: String(arrived), note: active.length ? `${Math.round((arrived / active.length) * 100)} % av bokningarna` : 'Ingen än' },
-    { label: 'Avbokade', value: String(cancelledCount), note: cancelledCount ? 'Visa dem under listan' : 'Inga avbokningar' },
+    { label: 'Bokningar', value: String(active.length) },
+    { label: 'Gäster', value: String(guests) },
+    { label: 'Anlända', value: String(arrived) },
+    { label: 'Avbokade', value: String(cancelledCount) },
   ]
 
   if (!isApiConfigured()) {
@@ -140,15 +154,13 @@ export default function BokningarPage() {
       <AdminTopbar
         title="Bokningar"
         actions={
-          <button
-            type="button"
-            className="btn primary square"
+          <CtaButton
+            label="+ Ny bokning"
+            win="Kör!"
             data-tour="booking-new"
             disabled={!locationId}
             onClick={() => setCreating(true)}
-          >
-            + Ny bokning
-          </button>
+          />
         }
       />
       <div className="admin-main">
@@ -202,12 +214,10 @@ export default function BokningarPage() {
           </div>
 
           {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
+            <ErrorNote text={error} />
           )}
 
-          <div className="table-scroll" data-tour="booking-list">
+          <div className="table-scroll" tabIndex={0} data-tour="booking-list">
             <table className="data-table bookings-table">
               <thead>
                 <tr>
@@ -223,7 +233,7 @@ export default function BokningarPage() {
                 {!loading && visible.length === 0 && (
                   <tr>
                     <td colSpan={5} className="cell-muted">
-                      Inga bokningar den här dagen.
+                      Inga bokningar.
                     </td>
                   </tr>
                 )}
@@ -258,7 +268,7 @@ export default function BokningarPage() {
                         <div className="cell-muted">{SOURCE_LABEL[r.source]}</div>
                       )}
                     </td>
-                    <td><Num>{r.partySize}</Num></td>
+                    <td data-label="Pers"><Num>{r.partySize}</Num></td>
                     <td>{tableNames(r.tableIds, labels)}</td>
                     <td>
                       <span className={`status-badge ${STATUS_CLASS[r.status]}`}>

@@ -89,10 +89,10 @@ export const ERRORS: Record<string, string> = {
   invalid_link: 'En länk pekar på en sida som inte finns.',
   unknown_image: 'En bild kan inte användas. Välj en av era egna bilder.',
   contrast_too_low: 'Färgerna går inte att läsa tillräckligt bra. Välj en annan färg.',
-  changed_retry: 'Någon annan ändrade webbplatsen samtidigt. Ladda om sidan.',
+  changed_retry: 'Någon annan ändrade webbplatsen samtidigt. Det senaste visas nu; spara igen om din ändring fortfarande behövs.',
   publish_running: 'En publicering pågår redan. Vänta tills den är klar.',
   wrong_mode: 'Er webbplats sköts av Booqy och kan inte ändras här.',
-  render_missing: 'Sidan kunde inte byggas. Försök igen om en stund.',
+  render_missing: 'Sidan kunde inte byggas. Felet ligger hos Booqy, inte hos er. Försök igen; kvarstår det, rapportera det till Booqy.',
 }
 
 /**
@@ -113,6 +113,17 @@ export function locate(field: string | undefined): { page?: number; block?: numb
   const m = /^\/pages\/(\d+)(?:\/blocks\/(\d+)|\/(slug)$)?/.exec(field ?? '')
   if (!m) return {}
   return { page: Number(m[1]), ...(m[2] !== undefined ? { block: Number(m[2]) } : {}), ...(m[3] ? { slug: true } : {}) }
+}
+
+/** Var en krock sitter ("pages.0.blocks.2.heading"), med blockets namn för meddelandet. */
+export function conflictPlace(doc: SiteDoc, path: string): { name: string; page?: number; block?: number } {
+  const at = locate(`/${path.split('.').join('/')}`)
+  const page = at.page !== undefined ? doc.pages[at.page] : undefined
+  const pageName = page ? `sidan ${page.title || 'Startsida'}` : null
+  const block = page && at.block !== undefined ? page.blocks[at.block] : undefined
+  if (block) return { name: `Blocket ${BLOCK_LABEL[block.type]} på ${pageName}`, page: at.page, block: at.block }
+  if (pageName) return { name: pageName.charAt(0).toUpperCase() + pageName.slice(1), page: at.page }
+  return { name: 'Samma del av webbplatsen' }
 }
 
 /** En ledig adress för en ny sida: aldrig en annan sidas eller sajtens egen. */

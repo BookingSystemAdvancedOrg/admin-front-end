@@ -1,73 +1,54 @@
 import { errorText } from '../../shared/errors'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useLiveRefresh } from '../../shared/live'
+import { ConflictError, isConflict } from '../../shared/merge'
+import { ApiError } from '../../shared/api'
+import { onPageAction, takePageAction } from '../../shared/nav'
+import { CtaButton } from '../../shared/CtaButton'
 import { StatTile } from '../../shared/motion/StatTile'
-import { Num } from '../../shared/motion/Num'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useLocationId } from '../../shared/location'
 import { currentLocation, useTenant } from '../../shared/tenant'
 import { DEFAULT_TIMEZONE } from '../installningar/data'
-import { CATEGORY_LABEL } from './data'
-import type { Dish, DishCategory } from './data'
+import { categoryName, DEFAULT_CATEGORIES } from './data'
+import type { Dish, DishCategory, MenuCategoryEntry } from './data'
 import { DishModal } from './DishModal'
-import { Slot } from '../../shared/slots'
 import type { DishFormValues } from './DishModal'
+import { CategoriesModal } from './CategoriesModal'
 import {
-  CATEGORY_TO_API,
   createMenuItem,
   deleteMenuItem,
+  dishAsCreate,
   dishChanges,
+  getMenuCategories,
   getPublicMenu,
   isMenuRoutesMissing,
   listMenuItems,
   MENU_ROUTES_MISSING_MESSAGE,
   publicToDish,
+  putMenuCategories,
   toDish,
   updateMenuItem,
   uploadMenuImage,
 } from './menuApi'
 import type { MenuItemCreate } from './menuApi'
-import { dishStatus, dishStatusLabel, matchesStatus } from './schedule'
-import type { DishStatus, StatusFilter } from './schedule'
+import { dishStatus, matchesStatus } from './schedule'
+import type { StatusFilter } from './schedule'
 import './meny.css'
-import { Icon } from '../../shared/Icon'
+import { ImageLightbox } from '../../shared/ImageLightbox'
+import { DishRow } from './DishRow'
+import { isCentre } from './imageFocus'
 import { SkelBlock, SkelTableRows } from '../../shared/Skeleton'
-
-type ModalState = { mode: 'add' } | { mode: 'edit'; id: string } | null
-
-const STATUS_BADGE: Record<DishStatus, string> = {
-  active: 'reserved',
-  scheduled: 'arrived',
-  expired: 'waiting',
-  off: 'cancelled-free',
-}
-
-const ALL_CATEGORIES = Object.keys(CATEGORY_LABEL) as DishCategory[]
+import { ErrorNote } from '../../shared/ErrorNote'
+import { Select } from '../../shared/Select'
 
 /**
- * Rättens bild med platshållare som reserv. Bild-URL:en byggs från
- * VITE_MENU_IMAGE_BASE_URL + imageKey; pekar basen fel (eller saknas
- * CDN-regeln) svarar CDN:et med HTML och webbläsaren hade visat en trasig
- * ikon - då är platshållaren ärligare, och felet syns i nätverksfliken.
+ * `base` är rätten som dialogen öppnades med (dina ändringar räknas mot den,
+ * även när listan hämtas om under tiden); `updatedAt` den version som skickas
+ * med sparningen (byts när en krock har lagts ihop med det senaste).
  */
-function DishImage({ src, alt }: { src: string | null; alt: string }) {
-  const [failed, setFailed] = useState(false)
-  if (!src || failed) {
-    return (
-      <span className="dish-placeholder" aria-hidden="true">
-        <Icon name="dish" size={22} />
-      </span>
-    )
-  }
-  return (
-    <img
-      className="dish-photo"
-      src={src}
-      alt={alt}
-      onError={() => setFailed(true)}
-    />
-  )
-}
+type ModalState = { mode: 'add' } | { mode: 'edit'; id: string; base: Dish; updatedAt: string | undefined } | null
 
 /**
  * Figma: admin-meny-page (34:2). Kopplad mot det riktiga meny-API:t
@@ -90,13 +71,29 @@ export default function MenyPage() {
     return () => window.clearInterval(id)
   }, [])
   const [dishes, setDishes] = useState<Dish[]>([])
+  /** Platsens kategorier i visningsordning; standard tills de hämtats. */
+  const [categories, setCategories] = useState<MenuCategoryEntry[]>(DEFAULT_CATEGORIES)
+  const [categoriesVersion, setCategoriesVersion] = useState(0)
+  const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [rowError, setRowError] = useState<string | null>(null)
   /** Sant när adminrutterna saknas och publika menyn visas i stället. */
   const [readOnly, setReadOnly] = useState(false)
-  const [busyId, setBusyId] = useState<string | null>(null)
-  const [modal, setModal] = useState<ModalState>(null)
+  /** Rader med ett pågående anrop (reglage eller radering). */
+  const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(() => new Set())
+  const markBusy = (id: string, on: boolean) =>
+    setBusyIds((prev) => {
+      const next = new Set(prev)
+      if (on) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  /** Rätten vars bild visas i stort (bildrutan). */
+  const [preview, setPreview] = useState<Dish | null>(null)
+  const [modal, setModal] = useState<ModalState>(() => (takePageAction('new-dish') ? { mode: 'add' } : null))
+  // Kommandopaletten (⌘K) kan öppna formuläret direkt.
+  useEffect(() => onPageAction('new-dish', () => setModal({ mode: 'add' })), [])
 
   const [filterName, setFilterName] = useState('')
   const [filterCategory, setFilterCategory] = useState<DishCategory | 'alla'>('alla')
@@ -107,6 +104,14 @@ export default function MenyPage() {
   useEffect(() => {
     if (!locationId) return
     let cancelled = false
+    // Kategorierna: utan svar (äldre API) gäller de fyra standard.
+    getMenuCategories(locationId)
+      .then((res) => {
+        if (cancelled || !res.categories?.length) return
+        setCategories(res.categories)
+        setCategoriesVersion(res.version ?? 0)
+      })
+      .catch(() => undefined)
     listMenuItems(locationId)
       .then((items) => {
         if (cancelled) return
@@ -144,6 +149,26 @@ export default function MenyPage() {
     }
   }, [locationId])
 
+  // Levande: rätter och kategorier som en kollega eller en annan plats ändrar
+  // syns av sig själva. Ett svar som hämtades före en egen ändring härifrån
+  // (reglaget, en radering) skriver inte över den.
+  const edits = useRef(0)
+  useLiveRefresh(async () => {
+    if (!locationId) return
+    const at = edits.current
+    const [items, cats] = await Promise.all([
+      listMenuItems(locationId),
+      getMenuCategories(locationId).catch(() => null),
+    ])
+    if (edits.current !== at) return
+    setDishes(items.map(toDish))
+    setLoadError(null)
+    if (cats?.categories?.length) {
+      setCategories(cats.categories)
+      setCategoriesVersion(cats.version ?? 0)
+    }
+  }, { enabled: Boolean(locationId) && !readOnly && !loading })
+
   // Härledd i stället för att sättas synkront i effekten: "hämtar" gäller
   // medan platsen letas upp eller medan menyn för en känd plats laddas.
   const fetching = resolvingLocation || (Boolean(locationId) && loading)
@@ -155,14 +180,41 @@ export default function MenyPage() {
     ? Math.round(visibleDishes.reduce((sum, d) => sum + d.price, 0) / activeCount)
     : 0
   const tiles = [
-    { label: 'Rätter på menyn', value: String(dishes.length), note: `${new Set(dishes.map((d) => d.category)).size} kategorier` },
-    { label: 'Aktiva', value: String(activeCount), note: dishes.length ? `${dishes.length - activeCount} dolda för gästerna` : 'Lägg till din första rätt' },
-    { label: 'Med bild', value: String(withImage), note: dishes.length ? `${Math.round((withImage / dishes.length) * 100)} % av rätterna` : '-' },
-    { label: 'Snittpris', value: activeCount ? `${avgPrice} kr` : '-', note: 'Aktiva rätter' },
+    { label: 'Rätter på menyn', value: String(dishes.length) },
+    { label: 'Aktiva', value: String(activeCount) },
+    { label: 'Med bild', value: String(withImage) },
+    { label: 'Snittpris', value: activeCount ? `${avgPrice} kr` : '-' },
   ]
+  /** Rätten som den ser ut i listan nu (kan ha ändrats på annat håll sedan dialogen öppnades). */
   const editingDish =
     modal?.mode === 'edit' ? dishes.find((d) => d.id === modal.id) ?? null : null
+  const editBase = modal?.mode === 'edit' ? modal.base : null
   const canEdit = Boolean(locationId) && !readOnly
+
+  const dishCounts = dishes.reduce<Record<string, number>>((acc, d) => {
+    acc[d.category] = (acc[d.category] ?? 0) + 1
+    return acc
+  }, {})
+  const toneOf = (id: string) => categories.findIndex((c) => c.categoryId === id)
+
+  async function saveCategories(rows: { categoryId?: string; name: string }[], version: number) {
+    if (!locationId) return
+    const saved = await putMenuCategories(locationId, rows, version)
+    edits.current += 1
+    setCategories(saved.categories)
+    setCategoriesVersion(saved.version)
+    setCategoriesOpen(false)
+  }
+
+  /** Den senaste sparade kategorilistan (CategoriesModal lägger ihop vid 409). */
+  async function latestCategories() {
+    if (!locationId) throw new Error('Ingen plats vald.')
+    const res = await getMenuCategories(locationId)
+    const latest = { categories: res.categories?.length ? res.categories : DEFAULT_CATEGORIES, version: res.version ?? 0 }
+    setCategories(latest.categories)
+    setCategoriesVersion(latest.version)
+    return latest
+  }
 
   const priceMin = filterPriceMin.trim() ? Number(filterPriceMin) : null
   const priceMax = filterPriceMax.trim() ? Number(filterPriceMax) : null
@@ -199,22 +251,28 @@ export default function MenyPage() {
   }
 
   function replaceDish(updated: Dish) {
+    edits.current += 1
     setDishes((prev) => prev.map((d) => (d.id === updated.id ? updated : d)))
   }
 
+  /**
+   * Reglaget byter direkt (optimistiskt); svarar API:t med fel går raden
+   * tillbaka till hur den var och felet visas ovanför listan.
+   */
   async function toggleActive(dish: Dish) {
-    if (!locationId) return
+    if (!locationId || busyIds.has(dish.id)) return
+    const next = !dish.active
     setRowError(null)
-    setBusyId(dish.id)
+    markBusy(dish.id, true)
+    replaceDish({ ...dish, active: next })
     try {
-      const saved = await updateMenuItem(locationId, dish.id, {
-        active: !dish.active,
-      })
+      const saved = await updateMenuItem(locationId, dish.id, { active: next })
       replaceDish(toDish(saved))
     } catch (err) {
-      setRowError(errorText(err, 'Kunde inte spara.'))
+      setDishes((prev) => prev.map((d) => (d.id === dish.id && d.active === next ? { ...d, active: dish.active } : d)))
+      setRowError(errorText(err, `Kunde inte ${next ? 'aktivera' : 'pausa'} ${dish.name}.`))
     } finally {
-      setBusyId(null)
+      markBusy(dish.id, false)
     }
   }
 
@@ -222,14 +280,15 @@ export default function MenyPage() {
     if (!locationId) return
     if (!window.confirm(`Ta bort ${dish.name} permanent?`)) return
     setRowError(null)
-    setBusyId(dish.id)
+    markBusy(dish.id, true)
     try {
       await deleteMenuItem(locationId, dish.id)
+      edits.current += 1
       setDishes((prev) => prev.filter((d) => d.id !== dish.id))
     } catch (err) {
       setRowError(errorText(err, 'Kunde inte ta bort rätten.'))
     } finally {
-      setBusyId(null)
+      markBusy(dish.id, false)
     }
   }
 
@@ -241,8 +300,9 @@ export default function MenyPage() {
       )
     }
     // Ny bild laddas upp till S3 först; rätten sparas med nyckeln vi får
-    // tillbaka. Utan ny fil behålls den befintliga nyckeln.
-    let imageKey = editingDish?.imageKey ?? ''
+    // tillbaka. Utan ny fil behålls den befintliga nyckeln; bilden är
+    // frivillig, så en ny rätt utan bild sparas utan nyckel.
+    let imageKey: string | null = values.removeImage ? null : editBase?.imageKey || null
     if (values.imageFile) {
       imageKey = await uploadMenuImage(locationId, values.imageFile)
     }
@@ -250,23 +310,53 @@ export default function MenyPage() {
       name: values.name,
       description: values.description,
       price: values.price,
-      category: CATEGORY_TO_API[values.category],
+      category: values.category,
       imageKey,
       active: values.active,
       alcohol: values.alcohol,
       availableFrom: values.availableFrom,
       availableUntil: values.availableUntil,
+      station: values.station,
+      components: values.components,
+      allergens: values.allergens,
+      options: values.options,
+    }
+    // Fokuspunkten skickas bara när den inte är mitten (ny rätt) eller när
+    // den ändrats (dishChanges), så äldre API:er utan fältet inte påverkas.
+    if (!isCentre(values.imageFocus) || editBase?.imageFocus) {
+      desired.imageFocus = values.imageFocus
     }
 
-    if (modal?.mode === 'edit' && editingDish) {
-      // API:t kräver minst ett fält - en tom diff skickas aldrig.
-      const updates = dishChanges(editingDish, desired)
+    if (modal?.mode === 'edit') {
+      const base = modal.base
+      // Bara det du ändrat sedan dialogen öppnades; API:t kräver minst ett fält.
+      const updates = dishChanges(base, desired)
       if (Object.keys(updates).length > 0) {
-        const saved = await updateMenuItem(locationId, editingDish.id, updates)
-        replaceDish(toDish(saved))
+        try {
+          // updatedAt som dialogen laddade: har någon annan sparat sedan dess blir det 409.
+          replaceDish(toDish(await updateMenuItem(locationId, base.id, updates, modal.updatedAt)))
+        } catch (err) {
+          if (!isConflict(err)) throw err
+          // Någon annan sparade rätten emellan: hämta den, lägg dina fält ovanpå och spara en gång till.
+          const latest = (await listMenuItems(locationId)).map(toDish).find((d) => d.id === base.id)
+          if (!latest) throw new ApiError(404, 'Rätten finns inte längre; den har tagits bort på en annan plats.')
+          replaceDish(latest)
+          const theirs = dishChanges(base, dishAsCreate(latest)) as Record<string, unknown>
+          const clashes = Object.entries(updates)
+            .filter(([field, mine]) => field in theirs && JSON.stringify(theirs[field]) !== JSON.stringify(mine))
+            .map(([field, mine]) => ({ field, mine, theirs: theirs[field] }))
+          if (clashes.length) {
+            // Nästa sparning går mot den senaste versionen; ditt värde står kvar i fältet.
+            setModal({ ...modal, updatedAt: latest.updatedAt })
+            throw new ConflictError(clashes, latest)
+          }
+          replaceDish(toDish(await updateMenuItem(locationId, base.id, updates, latest.updatedAt)))
+        }
       }
     } else {
-      const created = await createMenuItem(locationId, desired)
+      const { imageKey: key, ...rest } = desired
+      const created = await createMenuItem(locationId, key ? desired : (rest as MenuItemCreate))
+      edits.current += 1
       setDishes((prev) => [...prev, toDish(created)])
     }
     setModal(null)
@@ -277,29 +367,28 @@ export default function MenyPage() {
       <AdminTopbar
         title="Meny"
         actions={
-          <button
+          <>
+          <button type="button" className="btn outline square" disabled={!canEdit} onClick={() => setCategoriesOpen(true)}>
+            Kategorier
+          </button>
+          <CtaButton
+            label="+ Lägg till rätt"
+            win="Kör!"
             data-tour="menu-add"
-            type="button"
-            className="btn primary"
             disabled={!canEdit}
             onClick={() => setModal({ mode: 'add' })}
-          >
-            + Lägg till rätt
-          </button>
+          />
+          </>
         }
       />
       <div className="admin-main">
         {!locationId && !resolvingLocation && (
           <p className="form-error" role="alert">
-            Menyn kan inte hämtas: ingen restaurangplats är skapad än. Gå till
-            Inställningar och spara restaurangprofilen först - menyn lagras per
-            plats i API:t.
+            Ingen plats än. Spara restaurangen under Inställningar först.
           </p>
         )}
         {readOnly && (
-          <p className="form-error" role="alert">
-            {MENU_ROUTES_MISSING_MESSAGE}
-          </p>
+          <ErrorNote text={MENU_ROUTES_MISSING_MESSAGE} />
         )}
         <section className="stats-row" aria-label="Menyns siffror">
           {tiles.map((t, i) => (
@@ -313,8 +402,8 @@ export default function MenyPage() {
               {fetching
                 ? <SkelBlock w={150} h={14} />
                 : hasActiveFilters
-                  ? `${filteredDishes.length} av ${dishes.length} rätter · ${activeCount} aktiva totalt`
-                  : `${dishes.length} rätter · ${activeCount} aktiva`}
+                  ? `${filteredDishes.length} av ${dishes.length}`
+                  : null}
             </span>
           </div>
           <div className="meny-filters">
@@ -329,7 +418,7 @@ export default function MenyPage() {
             </div>
             <div className="form-field">
               <label htmlFor="menu-filter-category">Kategori</label>
-              <select
+              <Select
                 id="menu-filter-category"
                 value={filterCategory}
                 onChange={(e) =>
@@ -337,16 +426,16 @@ export default function MenyPage() {
                 }
               >
                 <option value="alla">Alla kategorier</option>
-                {ALL_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {CATEGORY_LABEL[c]}
+                {categories.map((c) => (
+                  <option key={c.categoryId} value={c.categoryId}>
+                    {c.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="form-field">
               <label htmlFor="menu-filter-status">Status</label>
-              <select
+              <Select
                 id="menu-filter-status"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}
@@ -356,7 +445,7 @@ export default function MenyPage() {
                 <option value="scheduled">Schemalagda</option>
                 <option value="expired">Utgångna</option>
                 <option value="inactive">Inaktiva</option>
-              </select>
+              </Select>
             </div>
             {hasActiveFilters && (
               <div className="form-field meny-filters-clear">
@@ -368,12 +457,10 @@ export default function MenyPage() {
             )}
           </div>
           {(loadError ?? rowError) && (
-            <p className="form-error" role="alert">
-              {loadError ?? rowError}
-            </p>
+            <ErrorNote text={loadError ?? rowError} />
           )}
-          <div className="table-scroll">
-            <table className="data-table">
+          <div className="table-scroll" tabIndex={0}>
+            <table className="data-table meny-table">
               <thead>
                 <tr>
                   <th aria-label="Bild" />
@@ -381,7 +468,7 @@ export default function MenyPage() {
                   <th>Kategori</th>
                   <th>Pris</th>
                   <th>Status</th>
-                  <th>Åtgärder</th>
+                  <th className="right">Åtgärder</th>
                 </tr>
               </thead>
               <tbody>
@@ -389,7 +476,7 @@ export default function MenyPage() {
                 {Boolean(locationId) && !fetching && dishes.length === 0 && !loadError && (
                   <tr>
                     <td colSpan={6} className="cell-muted">
-                      Inga rätter i menyn än.
+                      Inga rätter än.
                     </td>
                   </tr>
                 )}
@@ -405,61 +492,22 @@ export default function MenyPage() {
                     </tr>
                   )}
                 {filteredDishes.map((d, index) => (
-                  <tr key={d.id}>
-                    <td>
-                      <DishImage src={d.image} alt={d.name} />
-                    </td>
-                    <td className="cell-strong">
-                      {d.name}
-                      {d.description && (
-                        <div className="cell-muted">{d.description}</div>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`status-badge cat-${d.category}`}>
-                        {CATEGORY_LABEL[d.category]}
-                      </span>
-                    </td>
-                    <td className="cell-price"><Num>{`${d.price} kr`}</Num></td>
-                    <td>
-                      <span className="dish-status">
-                        <button
-                          type="button"
-                          role="switch"
-                          data-tour={index === 0 ? 'menu-row-toggle' : undefined}
-                          aria-checked={d.active}
-                          aria-label={`${d.name} aktiv`}
-                          className="switch"
-                          disabled={!canEdit || busyId === d.id}
-                          onClick={() => toggleActive(d)}
-                        />
-                        <span className={`status-badge ${STATUS_BADGE[dishStatus(d, now)]}`}>
-                          {dishStatusLabel(d, now, timeZone)}
-                        </span>
-                      </span>
-                    </td>
-                    <td>
-                      <span className="row-actions" data-tour={index === 0 ? 'menu-row-actions' : undefined}>
-                        <button
-                          type="button"
-                          className="link-action"
-                          disabled={!canEdit || busyId === d.id}
-                          onClick={() => setModal({ mode: 'edit', id: d.id })}
-                        >
-                          Redigera
-                        </button>
-                        <button
-                          type="button"
-                          className="link-action danger"
-                          disabled={!canEdit || busyId === d.id}
-                          onClick={() => removeDish(d)}
-                        >
-                          Radera
-                        </button>
-                        {locationId && <Slot id="meny.dish.share" props={{ locationId, menuItemId: d.id }} />}
-                      </span>
-                    </td>
-                  </tr>
+                  <DishRow
+                    key={d.id}
+                    dish={d}
+                    index={index}
+                    now={now}
+                    timeZone={timeZone}
+                    canEdit={canEdit}
+                    busy={busyIds.has(d.id)}
+                    locationId={locationId}
+                    onOpen={(dish) => setModal({ mode: 'edit', id: dish.id, base: dish, updatedAt: dish.updatedAt })}
+                    onToggle={toggleActive}
+                    onDelete={removeDish}
+                    onPreview={setPreview}
+                    categoryLabel={categoryName(categories, d.category)}
+                    categoryTone={toneOf(d.category)}
+                  />
                 ))}
               </tbody>
             </table>
@@ -469,13 +517,29 @@ export default function MenyPage() {
 
       {modal && (
         <DishModal
+          key={modal.mode === 'edit' ? modal.id : 'new'}
           title={modal.mode === 'add' ? 'Lägg till rätt' : 'Redigera rätt'}
-          initial={editingDish}
+          initial={editBase}
+          latest={editingDish}
           timeZone={timeZone}
           locationId={locationId}
+          categories={categories}
           onSave={handleSave}
           onCancel={() => setModal(null)}
         />
+      )}
+      {categoriesOpen && (
+        <CategoriesModal
+          categories={categories}
+          version={categoriesVersion}
+          dishCounts={dishCounts}
+          onSave={saveCategories}
+          fetchLatest={latestCategories}
+          onCancel={() => setCategoriesOpen(false)}
+        />
+      )}
+      {preview?.image && (
+        <ImageLightbox src={preview.image} alt={preview.name} onClose={() => setPreview(null)} />
       )}
     </>
   )

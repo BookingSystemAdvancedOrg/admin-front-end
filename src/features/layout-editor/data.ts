@@ -58,17 +58,6 @@ export interface Opening {
   length: number
 }
 
-/** Fasta inventarier på golvet, t.ex. kassan. */
-export interface Fixture {
-  id: string
-  type: 'counter'
-  label: string
-  x: number
-  y: number
-  w: number
-  h: number
-}
-
 /** En ritad markyta - golvet byggs av en eller flera sådana rektanglar. */
 export interface GroundRect {
   id: string
@@ -85,7 +74,6 @@ export interface Floor {
   grounds: GroundRect[]
   walls: WallSegment[]
   openings: Opening[]
-  fixtures: Fixture[]
   tables: TableElement[]
 }
 
@@ -111,7 +99,6 @@ export function emptyFloor(n: number): Floor {
     grounds: [],
     walls: [],
     openings: [],
-    fixtures: [],
     tables: [],
   }
 }

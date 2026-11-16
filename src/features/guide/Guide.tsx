@@ -17,15 +17,18 @@ import './guide.css'
  *
  * Den startar av sig själv EN gång per användare - första gången hen
  * loggar in - och sparas på kontot, så den kommer inte tillbaka på en annan
- * dator. Efter det startas den bara från Hjälp-sidan.
+ * dator. Efter det startas den bara från Hjälp-sidan. När den startar av sig
+ * själv stannar den på sidan man öppnade tills man trycker vidare.
  */
 
 interface GuideApi {
   start: () => void
   active: boolean
+  /** Målet (data-tour) för steget guiden står på eller väntar på; null utan mål. */
+  target: string | null
 }
 
-const GuideCtx = createContext<GuideApi>({ start: () => {}, active: false })
+const GuideCtx = createContext<GuideApi>({ start: () => {}, active: false, target: null })
 
 export function useGuide(): GuideApi {
   return useContext(GuideCtx)
@@ -38,9 +41,10 @@ const SAME_PAGE_WAIT_MS = 300
 
 function targetOf(step: GuideStep): HTMLElement | null {
   if (!step.target) return null
-  const el = document.querySelector<HTMLElement>(`[data-tour="${step.target}"]`)
-  // Dolda element (display: none) har ingen yta att peka på.
-  return el && el.getClientRects().length > 0 ? el : null
+  // Samma mål kan finnas två gånger (sidomenyn och telefonens rad eller ark):
+  // det som syns. Dolda element (display: none) har ingen yta att peka på.
+  const all = document.querySelectorAll<HTMLElement>(`[data-tour="${step.target}"]`)
+  return Array.from(all).find((el) => el.getClientRects().length > 0) ?? null
 }
 
 function routeMatches(route: string, pathname: string, hash: string): boolean {
@@ -75,8 +79,15 @@ export function GuideProvider({
   const navigatedFor = useRef<string | null>(null)
   const contextRef = useRef(context)
   contextRef.current = context
+  /**
+   * Startade guiden av sig själv? Då visas välkomststeget på sidan man
+   * öppnade (en direktlänk som /meny eller /avtal ska fungera) - guiden byter
+   * sida först när användaren själv trycker vidare.
+   */
+  const stayPut = useRef(false)
 
   const start = useCallback(() => {
+    stayPut.current = false
     direction.current = 1
     setIndex(0)
     setShown(null)
@@ -102,7 +113,10 @@ export function GuideProvider({
     void guideDoneOnAccount().then((done) => {
       if (cancelled) return
       if (done === true) rememberLocally(user)
-      else if (done === false) start()
+      else if (done === false) {
+        start()
+        stayPut.current = true
+      }
     })
     return () => {
       cancelled = true
@@ -113,7 +127,8 @@ export function GuideProvider({
   const step = steps?.[index] ?? null
   useEffect(() => {
     if (!steps || !step) return
-    if (step.route && !routeMatches(step.route, location.pathname, location.hash)) {
+    const keepPage = stayPut.current && index === 0 && !step.target
+    if (step.route && !keepPage && !routeMatches(step.route, location.pathname, location.hash)) {
       navigatedFor.current = step.id
       // Ny sida: börja överst, som när man klickar i menyn.
       if (step.route.split('#')[0] !== location.pathname) window.scrollTo({ top: 0 })
@@ -141,7 +156,8 @@ export function GuideProvider({
     return () => window.clearInterval(timer)
   }, [steps, step, index, location.pathname, location.hash, navigate, finish])
 
-  const api = useMemo(() => ({ start, active: steps !== null }), [start, steps])
+  const target = step?.target ?? null
+  const api = useMemo(() => ({ start, active: steps !== null, target }), [start, steps, target])
   const waiting = !shown || shown.step !== step
 
   return (
@@ -154,6 +170,7 @@ export function GuideProvider({
           number={shown?.number ?? 1}
           total={steps.length}
           onNext={() => {
+            stayPut.current = false
             direction.current = 1
             if (index + 1 < steps.length) setIndex(index + 1)
             else finish()
@@ -161,6 +178,7 @@ export function GuideProvider({
           onBack={
             index > 0
               ? () => {
+                  stayPut.current = false
                   direction.current = -1
                   setIndex(index - 1)
                 }
@@ -275,12 +293,27 @@ function GuideOverlay({
       const next = place(step, bubbleRef.current?.offsetHeight ?? 180)
       if (next) setPlacement(next)
     }
+    // Målet glider in (telefonens ark bakom Mer): mät igen när det står still,
+    // och rulla fram det om det då ligger utanför skärmen.
+    const settled = (e: Event) => {
+      if ((e.target as Element | null)?.closest?.('.guide-layer')) return
+      const now = step ? targetOf(step) : null
+      if (now) {
+        const r = now.getBoundingClientRect()
+        if (r.top < 0 || r.bottom > window.innerHeight) now.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+      }
+      update()
+    }
     update()
     window.addEventListener('resize', update)
     window.addEventListener('scroll', update, true)
+    document.addEventListener('animationend', settled, true)
+    document.addEventListener('transitionend', settled, true)
     return () => {
       window.removeEventListener('resize', update)
       window.removeEventListener('scroll', update, true)
+      document.removeEventListener('animationend', settled, true)
+      document.removeEventListener('transitionend', settled, true)
     }
   }, [step])
 

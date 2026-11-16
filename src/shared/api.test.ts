@@ -1,6 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('../features/auth/cognito', () => ({ getAccessToken: () => Promise.resolve('tok') }))
+const auth = vi.hoisted(() => ({
+  AuthUnavailableError: class AuthUnavailableError extends Error {},
+  getAccessToken: vi.fn(() => Promise.resolve<string | null>('tok')),
+  refreshAfterUnauthorized: vi.fn(() => Promise.resolve<string | null>('tok2')),
+}))
+
+vi.mock('../features/auth/cognito', () => ({
+  AuthUnavailableError: auth.AuthUnavailableError,
+  getAccessToken: auth.getAccessToken,
+  refreshAfterUnauthorized: auth.refreshAfterUnauthorized,
+}))
 
 async function loadApi() {
   vi.resetModules()
@@ -14,6 +24,8 @@ const json = (code: number, body: unknown, headers: Record<string, string> = {})
 afterEach(() => {
   vi.unstubAllEnvs()
   vi.unstubAllGlobals()
+  auth.getAccessToken.mockClear()
+  auth.refreshAfterUnauthorized.mockClear()
 })
 
 describe('apiFetch omförsök', () => {
@@ -64,11 +76,66 @@ describe('apiFetch fel', () => {
     await expect(apiFetch('/x', { method: 'POST' })).rejects.toMatchObject({ code: 'internal_error', status: 502 })
   })
 
+  it('ett 404 utan error-fält (gatewayens egen väg saknas) är route_not_found, ett 404 från funktionen är not_found', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(json(404, { message: 'Not Found' }))
+      .mockResolvedValueOnce(new Response('', { status: 404 }))
+      .mockResolvedValueOnce(json(404, { error: 'not found', code: 'not_found' }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { apiFetch } = await loadApi()
+    await expect(apiFetch('/x')).rejects.toMatchObject({ code: 'route_not_found', status: 404 })
+    await expect(apiFetch('/x')).rejects.toMatchObject({ code: 'route_not_found', status: 404 })
+    await expect(apiFetch('/x')).rejects.toMatchObject({ code: 'not_found', status: 404 })
+  })
+
   it('ingen anslutning blir ett NetworkError med svensk text', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
     const { apiFetch } = await loadApi()
     await expect(apiFetch('/x', { method: 'POST' })).rejects.toMatchObject({
       name: 'NetworkError', code: 'network', message: expect.stringMatching(/^Ingen kontakt med servern/),
     })
+  })
+})
+
+describe('apiFetch och ett 401', () => {
+  it('förnyar tokenen en gång och försöker anropet igen, utan att logga ut', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(json(401, { message: 'Unauthorized' }))
+      .mockResolvedValueOnce(json(200, { ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { apiFetch } = await loadApi()
+
+    await expect(apiFetch('/tenant')).resolves.toEqual({ ok: true })
+    expect(auth.refreshAfterUnauthorized).toHaveBeenCalledTimes(1)
+    expect(auth.refreshAfterUnauthorized).toHaveBeenCalledWith('tok')
+    expect(fetchMock.mock.calls[1][1].headers.Authorization).toBe('Bearer tok2')
+  })
+
+  it('försöker bara en gång: ett nytt 401 efter förnyelsen blir felet', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(json(401, { message: 'Unauthorized' }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { apiFetch } = await loadApi()
+
+    await expect(apiFetch('/tenant')).rejects.toMatchObject({ status: 401 })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(auth.refreshAfterUnauthorized).toHaveBeenCalledTimes(1)
+  })
+
+  it('utloggad på riktigt: inget nytt anrop', async () => {
+    auth.refreshAfterUnauthorized.mockResolvedValueOnce(null)
+    const fetchMock = vi.fn().mockResolvedValue(json(401, { message: 'Unauthorized' }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { apiFetch } = await loadApi()
+
+    await expect(apiFetch('/tenant')).rejects.toMatchObject({ status: 401 })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('servern nås inte för att förnya: nätverksfel, inte utloggad', async () => {
+    auth.getAccessToken.mockRejectedValueOnce(new auth.AuthUnavailableError())
+    vi.stubGlobal('fetch', vi.fn())
+    const { apiFetch, NetworkError } = await loadApi()
+
+    await expect(apiFetch('/tenant')).rejects.toBeInstanceOf(NetworkError)
   })
 })

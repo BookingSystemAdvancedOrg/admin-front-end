@@ -7,6 +7,8 @@ import {
   changeStatus,
   dayLabel,
   errorMessage,
+  LOCATION_NOT_BOOKABLE,
+  RESERVATION_NOT_FOUND,
   feeSummary,
   formatKr,
   getAvailability,
@@ -80,12 +82,19 @@ describe('bookingsApi', () => {
     expect(feeSummary(booking({ payment: { status: 'failed', amount: 20000 } }))).toBe('200 kr misslyckades')
   })
 
+  it('says a 404 is the booking only where it is about a booking', () => {
+    const notFound = new ApiError(404, 'location not found', { fromServer: true })
+    expect(errorMessage(notFound)).toBe(RESERVATION_NOT_FOUND)
+    expect(errorMessage(notFound, 'Kunde inte hämta lediga tider.', LOCATION_NOT_BOOKABLE)).toBe(LOCATION_NOT_BOOKABLE)
+    expect(LOCATION_NOT_BOOKABLE).not.toMatch(/Bokningen hittades inte/)
+  })
+
   it('maps server codes to Swedish messages', () => {
-    expect(errorMessage(new ApiError(409, 'grace_period_not_over'))).toMatch(/grace period/)
+    expect(errorMessage(new ApiError(409, 'grace_period_not_over'))).toMatch(/väntetid för sena gäster/)
     expect(errorMessage(new ApiError(402, 'authentication_required'))).toMatch(/godkänner/)
     expect(errorMessage(new ApiError(402, 'weird', { fromServer: true }))).toMatch(/^Betalningen gick inte igenom\. /)
     expect(errorMessage(new ApiError(402, 'weird', { fromServer: true }))).not.toMatch(/weird/)
-    expect(errorMessage(new Error('x'))).toBe('Det gick inte att spara bokningen. Försök igen om en stund.')
+    expect(errorMessage(new Error('x'))).toBe('Det gick inte att spara bokningen. Felet ligger hos Booqy, inte hos er. Försök igen; kvarstår det, rapportera det till Booqy.')
     expect(errorMessage(new ApiError(400, 'name must be at most 80 characters', { fromServer: true }))).toMatch(/högst/)
     expect(errorMessage(new ApiError(400, 'tags must be a list', { fromServer: true, code: 'invalid_value', field: 'tags' })))
       .toBe('Det gick inte att spara bokningen. Något av fälten har ett värde som inte godtas. Kontrollera uppgifterna och försök igen.')

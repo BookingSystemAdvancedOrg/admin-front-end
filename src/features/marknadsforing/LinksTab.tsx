@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
+import { tokens } from '@booqy/brand'
 import { DESTINATION_LABEL, LINK_SOURCES, campaignSlug, trackedLink } from './marketingApi'
 import type { Destination } from './marketingApi'
+import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Select } from '../../shared/Select'
 
 type Page = Exclude<Destination, 'custom'>
 const PAGES: Page[] = ['home', 'book', 'menu', 'order', 'catering']
@@ -26,7 +29,7 @@ export function LinksTab({ primaryDomain }: { primaryDomain: string | null }) {
   useEffect(() => {
     if (!link) return
     let cancelled = false
-    QRCode.toDataURL(link, { margin: 1, width: 512, errorCorrectionLevel: 'M' })
+    QRCode.toDataURL(link, { margin: 1, width: 512, errorCorrectionLevel: 'M', color: { light: tokens.palette.snow } })
       .then((image) => !cancelled && setQrFor({ link, image }))
       .catch(() => undefined)
     return () => {
@@ -59,19 +62,19 @@ export function LinksTab({ primaryDomain }: { primaryDomain: string | null }) {
             </div>
             <div className="form-field">
               <label htmlFor="mk-l-page">Sida</label>
-              <select id="mk-l-page" value={page} onChange={(e) => setPage(e.target.value as Page)}>
+              <Select id="mk-l-page" value={page} onChange={(e) => setPage(e.target.value as Page)}>
                 {PAGES.map((p) => (
                   <option key={p} value={p}>{DESTINATION_LABEL[p]}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="form-field">
               <label htmlFor="mk-l-src">Var länken delas</label>
-              <select id="mk-l-src" value={source} onChange={(e) => setSource(e.target.value)}>
+              <Select id="mk-l-src" value={source} onChange={(e) => setSource(e.target.value)}>
                 {LINK_SOURCES.map((s) => (
                   <option key={s.value} value={s.value}>{s.label}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="form-field">
               <label htmlFor="mk-l-cmp">Kampanjnamn</label>
@@ -105,10 +108,13 @@ export function LinksTab({ primaryDomain }: { primaryDomain: string | null }) {
           </div>
         </div>
       </section>
-      <p className="mk-footnote cell-muted">
-        Besök via länken räknas på kanalen och kampanjnamnet, och bokningar som görs under samma besök räknas till
-        kampanjen. Inga cookies används.
-      </p>
+      <div className="mk-footnote cell-muted">
+        Om siffrorna
+        <InfoTooltip label="Om siffrorna">
+          Besök via länken räknas på kanalen och kampanjnamnet, och bokningar som görs under samma besök räknas till
+          kampanjen. Inga cookies används.
+        </InfoTooltip>
+      </div>
     </div>
   )
 }

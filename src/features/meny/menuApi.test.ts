@@ -260,6 +260,9 @@ describe('uploadMenuImage', () => {
     await expect(uploadMenuImage('loc-1', file)).resolves.toBe(
       'locations/loc-1/menu/new.webp',
     )
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/menu-images/presigned-url?locationId=loc-1&contentType=image%2Fwebp&size=1',
+    )
     expect(fetchSpy).toHaveBeenCalledWith(
       'https://s3.example/upload',
       expect.objectContaining({

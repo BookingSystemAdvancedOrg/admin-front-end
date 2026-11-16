@@ -446,8 +446,10 @@ export interface MenuImageUpload {
 export function createMenuImageUploadUrl(
   locationId: string,
   contentType: MenuImageContentType,
+  size: number,
 ): Promise<MenuImageUpload> {
-  const query = new URLSearchParams({ locationId, contentType })
+  // Storleken signeras in i URL:en (och krävs av API:t framöver).
+  const query = new URLSearchParams({ locationId, contentType, size: String(size) })
   return call(() =>
     apiFetch<MenuImageUpload>(`/menu-images/presigned-url?${query.toString()}`),
   )
@@ -467,7 +469,7 @@ export async function uploadMenuImage(
   if (!MENU_IMAGE_CONTENT_TYPES.includes(contentType)) {
     throw new Error('Bilden måste vara AVIF, JPEG, PNG eller WebP.')
   }
-  const grant = await createMenuImageUploadUrl(locationId, contentType)
+  const grant = await createMenuImageUploadUrl(locationId, contentType, file.size)
   // Själva uppladdningen går till S3, inte via apiFetch: visa den som pågående själv.
   await withBusy(async () => {
     const res = await fetch(grant.uploadUrl, {

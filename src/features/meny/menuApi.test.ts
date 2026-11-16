@@ -245,6 +245,15 @@ describe('uploadMenuImage', () => {
     expect(mockedApiFetch).not.toHaveBeenCalled()
   })
 
+  it('stops an empty or too large file before any API call', async () => {
+    const empty = new File([], 'tom.webp', { type: 'image/webp' })
+    await expect(uploadMenuImage('loc-1', empty)).rejects.toThrow(/tom/)
+    const big = new File(['x'], 'stor.webp', { type: 'image/webp' })
+    Object.defineProperty(big, 'size', { value: 10 * 1024 * 1024 + 1 })
+    await expect(uploadMenuImage('loc-1', big)).rejects.toThrow(/högst 10 MB/)
+    expect(mockedApiFetch).not.toHaveBeenCalled()
+  })
+
   it('PUTs the file to the presigned URL and returns the imageKey', async () => {
     mockedApiFetch.mockResolvedValue({
       uploadUrl: 'https://s3.example/upload',

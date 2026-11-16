@@ -443,6 +443,9 @@ export interface MenuImageUpload {
 }
 
 /** Kräver owner_user/super_user - personal får 403 här enligt kontraktet. */
+/** Största bild som presigned-url godtar (pre-signed-url MAX_IMAGE_BYTES). */
+export const MENU_IMAGE_MAX_BYTES = 10 * 1024 * 1024
+
 export function createMenuImageUploadUrl(
   locationId: string,
   contentType: MenuImageContentType,
@@ -469,6 +472,9 @@ export async function uploadMenuImage(
   if (!MENU_IMAGE_CONTENT_TYPES.includes(contentType)) {
     throw new Error('Bilden måste vara AVIF, JPEG, PNG eller WebP.')
   }
+  // API:t signerar storleken och tar 1 byte till 10 MB: säg det här i stället för ett 400.
+  if (file.size < 1) throw new Error('Bildfilen är tom. Välj en annan bild.')
+  if (file.size > MENU_IMAGE_MAX_BYTES) throw new Error('Bilden får vara högst 10 MB.')
   const grant = await createMenuImageUploadUrl(locationId, contentType, file.size)
   // Själva uppladdningen går till S3, inte via apiFetch: visa den som pågående själv.
   await withBusy(async () => {

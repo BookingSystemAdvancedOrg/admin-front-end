@@ -1,8 +1,8 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { dockPaths, dockSlots, fullLayerOpen, isKeyboardField, PHONE_NAV_QUERY, sheetGroups, useDockHiding } from './dock'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { NAV_GROUPS, visibleNav } from './nav'
+import { visibleNav } from './nav'
 import type { Tenant } from './tenant'
 
 function tenant(features: Record<string, boolean>, role: Tenant['role'] = 'owner_user'): Tenant {
@@ -41,18 +41,16 @@ describe('dockSlots and sheetGroups', () => {
 })
 
 describe('dockSlots without Bokningar', () => {
-  const bookings = NAV_GROUPS.flatMap((g) => g.items).find((i) => i.to === '/bokningar')!
-  afterEach(() => {
-    delete bookings.ownerOnly
-  })
+  // Personal utan behörighet till Bokningar (bara Statistik, Meny och Beställningar).
+  const withoutBookings = (features: Record<string, boolean>) =>
+    ({ ...tenant(features, 'staff_user'), access: { areas: ['statistik', 'meny', 'bestallningar'] } }) as Tenant
 
   // (c) Utan Bokningar: ingen Ny bokning, platserna delar raden.
   it('has no raised button and fewer slots', () => {
-    bookings.ownerOnly = true
-    const slots = dockSlots(tenant({}, 'staff_user'))
+    const slots = dockSlots(withoutBookings({}))
     expect(slots.some((s) => s.kind === 'new-booking')).toBe(false)
     expect(slots).toHaveLength(3)
-    const withOrders = dockSlots(tenant({ ordering: true }, 'staff_user'))
+    const withOrders = dockSlots(withoutBookings({ ordering: true }))
     expect(withOrders.map((s) => s.kind)).toEqual(['page', 'page', 'more'])
   })
 })

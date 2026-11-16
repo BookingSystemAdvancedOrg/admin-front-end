@@ -24,7 +24,7 @@ describe('MarknadsforingPage feature tabs', () => {
   it('keeps the guard for staff and for a plan without any of the four', () => {
     owner({ metaAds: true }, 'staff_user')
     const { unmount } = render(<MemoryRouter><MarknadsforingPage /></MemoryRouter>)
-    expect(screen.getByRole('heading', { name: 'Bara för ägare' })).toBeInTheDocument()
+    expect(screen.getByText(/Be ägaren om behörighet/)).toBeInTheDocument()
     unmount()
     owner({ giftCards: true })
     render(<MemoryRouter><MarknadsforingPage /></MemoryRouter>)

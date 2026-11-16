@@ -37,7 +37,7 @@ describe('PresentkortPage', () => {
   it('tells staff it is for the owner', () => {
     tenant = { role: 'staff_user', entitlements: { maxLocations: null, features: { giftCards: true } } }
     render(<PresentkortPage />)
-    expect(screen.getByRole('heading', { name: 'Bara för ägare' })).toBeInTheDocument()
+    expect(screen.getByText(/Be ägaren om behörighet/)).toBeInTheDocument()
     expect(api.listCards).not.toHaveBeenCalled()
   })
 

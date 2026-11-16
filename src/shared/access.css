@@ -1,0 +1,112 @@
+/* Behörigheter per område (AreaChecklist): två spalter på bredare skärmar. */
+.area-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  column-gap: 24px;
+  max-width: 760px;
+}
+@media (min-width: 601px) {
+  .area-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.area-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  border-bottom: 1px dashed var(--paper-line, rgba(0, 0, 0, 0.12));
+}
+.area-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  flex: 1;
+  min-height: 44px;
+  color: var(--ink);
+}
+
+/* Booqys kryssruta: samma i ljust och mörkt läge, aldrig systemets blå. */
+.bq-check {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 1.5px solid var(--muted);
+  border-radius: 5px;
+  background: var(--surface);
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.bq-check::after {
+  content: '';
+  width: 10px;
+  height: 6px;
+  border-left: 2px solid var(--on-accent);
+  border-bottom: 2px solid var(--on-accent);
+  transform: translateY(-1px) rotate(-45deg) scale(0);
+  transition: transform 120ms ease;
+}
+.bq-check:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.bq-check:checked::after {
+  transform: translateY(-1px) rotate(-45deg) scale(1);
+}
+.bq-check:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.bq-check:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.area-tag {
+  flex: none;
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--paper-line, rgba(0, 0, 0, 0.12));
+  color: var(--muted);
+}
+.area-tag.own {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+.area-tag.removed {
+  text-decoration: line-through;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bq-check,
+  .bq-check::after {
+    transition: none;
+  }
+}
+
+/* Behörigheter i dialogen Redigera medarbetare. */
+.staff-access {
+  border: 0;
+  padding: 0;
+  margin: 16px 0 0;
+  min-width: 0;
+}
+.staff-access legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  margin-bottom: 4px;
+  font-weight: 600;
+}

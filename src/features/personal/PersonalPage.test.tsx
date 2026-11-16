@@ -167,7 +167,7 @@ describe('PersonalPage', () => {
   it('shows staff a note and never loads the list', () => {
     tenant = { role: 'staff_user', locations: LOCATIONS, entitlements: { features: {} } }
     renderPage()
-    expect(screen.getByText(/Bara ägaren hanterar personalen/)).toBeInTheDocument()
+    expect(screen.getByText(/Be ägaren om behörighet/)).toBeInTheDocument()
     expect(users.listUsers).not.toHaveBeenCalled()
   })
 })

@@ -117,13 +117,13 @@ describe('AdminLayout role gate', () => {
     renderAt('/personal')
     expect(screen.queryByText('Personalsidan')).toBeNull()
     expect(screen.getByText('Översiktssidan')).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('bara för restaurangens ägare')
+    expect(screen.getByRole('status')).toHaveTextContent('Be ägaren om behörighet')
   })
 
   it('lets the owner open the page, without a notice', () => {
     owner({})
     renderAt('/personal')
     expect(screen.getByText('Personalsidan')).toBeInTheDocument()
-    expect(screen.queryByText(/bara för restaurangens ägare/)).toBeNull()
+    expect(screen.queryByText(/Be ägaren om behörighet/)).toBeNull()
   })
 })

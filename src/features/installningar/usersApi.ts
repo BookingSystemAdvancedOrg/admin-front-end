@@ -139,18 +139,22 @@ export type UserAction = 'profile' | 'deactivate' | 'reactivate' | 'delete' | 'g
 /**
  * Kan caller utföra åtgärden mot den här användaren? Speglar _authorize_target:
  * ingen får agera på sig själv (utom att redigera sin egen profil), ägare
- * hanterar personal (role "staff"), och personal hanterar inga andra
- * användare alls.
+ * hanterar personal (role "staff"), och personal hanterar andra bara om
+ * ägaren har gett dem området Personal.
  */
 export function canManageTarget(
-  caller: { sub: string | null; groups: string[] },
+  caller: { sub: string | null; groups: string[]; personal?: boolean },
   target: User,
   action: UserAction,
 ): boolean {
   const isSelf = Boolean(caller.sub) && target.cognitoSub === caller.sub
   if (action !== 'profile' && isSelf) return false
   if (action === 'profile' && isSelf) return true
-  return caller.groups.includes('owner_user') && target.role === 'staff'
+  if (target.role !== 'staff') return false
+  if (caller.groups.includes('owner_user')) return true
+  // Personal som ägaren gett Personal: redigera, inaktivera och aktivera
+  // personalen på sin plats (servern listar bara dem). Roller och borttagning är ägarens.
+  return Boolean(caller.personal) && (action === 'profile' || action === 'deactivate' || action === 'reactivate')
 }
 
 /** Mappar API:ts { error: string } + statuskod till svenska meddelanden. */

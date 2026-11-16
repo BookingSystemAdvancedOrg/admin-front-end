@@ -171,7 +171,11 @@ export function candidates(corpus: HelpCorpus, question: string, view: HelpView)
   const top = all[0]
   // Frågan gäller något som användaren inte får se (ägarens, eller inte i planen).
   if (top && !entryVisible(top.doc, view) && (found.length === 0 || top.score >= found[0].score * HIDDEN_LEAD)) {
-    const ownerHit = view.role !== 'owner_user' && top.doc.audience === 'owner' && entryVisible({ ...top.doc, audience: 'all' }, view)
+    const blockedArea = Boolean(top.doc.area && view.areas && !view.areas.includes(top.doc.area))
+    const ownerHit =
+      view.role !== 'owner_user' &&
+      (top.doc.audience === 'owner' || blockedArea) &&
+      entryVisible({ ...top.doc, audience: 'all', area: undefined, insights: false }, view)
     return { found: [], ownerHit }
   }
   return { found, ownerHit: false }

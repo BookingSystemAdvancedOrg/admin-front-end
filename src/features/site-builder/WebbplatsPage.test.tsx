@@ -86,7 +86,7 @@ describe('WebbplatsPage', () => {
   it('tells staff it is for the owner', () => {
     tenant = { role: 'staff_user', entitlements: { maxLocations: null, features: { siteBuilder: true } } }
     render(<WebbplatsPage />)
-    expect(screen.getByRole('heading', { name: 'Bara för ägare' })).toBeInTheDocument()
+    expect(screen.getByText(/Be ägaren om behörighet/)).toBeInTheDocument()
     expect(api.getSite).not.toHaveBeenCalled()
   })
 

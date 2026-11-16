@@ -4,6 +4,7 @@ import { Bar, Button, Card, Field, Input, Modal, StatTile, toast } from '@booqy/
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { errorText } from '../../shared/errors'
 import { useTenant } from '../../shared/tenant'
+import { canOpen } from '../../shared/access'
 import {
   ERRORS,
   KIND_LABEL,
@@ -30,11 +31,16 @@ import { PlanLocked } from '../../shared/PlanLocked'
 import { SkelCard } from '../../shared/Skeleton'
 import './presentkort.css'
 
-/** Presentkort (planfunktionen "giftCards", bara ägare): sålda kort, saldo, historik och inställningar. */
+/**
+ * Presentkort (planfunktionen "giftCards"): sålda kort, saldo, historik och
+ * inställningar. Ägaren, och personal som ägaren gett området; återbetalning
+ * och inställningar är bara ägarens.
+ */
 export default function PresentkortPage() {
   const { tenant } = useTenant()
   const enabled = Boolean(tenant?.entitlements?.features?.giftCards)
-  const allowed = tenant?.role === 'owner_user'
+  const allowed = canOpen(tenant, 'presentkort')
+  const owner = tenant?.role === 'owner_user'
 
   return (
     <>
@@ -42,16 +48,15 @@ export default function PresentkortPage() {
       <main className="admin-main">
         {!enabled ? <PlanLocked /> : !allowed ? (
           <section className="admin-card table-card">
-            <h2 className="card-title">Bara för ägare</h2>
-            <p className="cell-muted">Presentkorten hanteras av restaurangens ägare.</p>
+            <p className="cell-muted">Du har inte behörighet till Presentkort. Be ägaren om behörighet.</p>
           </section>
-        ) : <GiftCards />}
+        ) : <GiftCards owner={owner} />}
       </main>
     </>
   )
 }
 
-function GiftCards() {
+function GiftCards({ owner }: { owner: boolean }) {
   const [listing, setListing] = useState<Listing | null>(null)
   const [search, setSearch] = useState('')
   const [openId, setOpenId] = useState<string | null>(null)
@@ -79,7 +84,7 @@ function GiftCards() {
         <StatTile label="Aktiva kort" value={listing ? String(listing.cards.filter((c) => c.status === 'active').length) : '-'}
           loading={!listing} index={1} />
       </div>
-      <SettingsCard />
+      {owner && <SettingsCard />}
       <Card title="Sålda presentkort">
         <Field label="Sök på de fyra sista tecknen">
           <Input value={search} maxLength={4} onChange={(e) => setSearch(e.target.value)} />
@@ -104,12 +109,12 @@ function GiftCards() {
           </div>
         ) : null}
       </Card>
-      {openId ? <CardModal cardId={openId} onClose={() => setOpenId(null)} onChanged={() => void load()} /> : null}
+      {openId ? <CardModal cardId={openId} owner={owner} onClose={() => setOpenId(null)} onChanged={() => void load()} /> : null}
     </>
   )
 }
 
-function CardModal({ cardId, onClose, onChanged }: { cardId: string; onClose: () => void; onChanged: () => void }) {
+function CardModal({ cardId, owner, onClose, onChanged }: { cardId: string; owner: boolean; onClose: () => void; onChanged: () => void }) {
   const [card, setCard] = useState<CardDetail | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [extendTo, setExtendTo] = useState('')
@@ -178,7 +183,7 @@ function CardModal({ cardId, onClose, onChanged }: { cardId: string; onClose: ()
                     Skicka ny kod
                   </Button>
                 )}
-                <Button variant="danger" disabled={!reason.trim()} busy={busy === 'refund'}
+                {owner && <Button variant="danger" disabled={!reason.trim()} busy={busy === 'refund'}
                   onClick={async () => {
                     const ok = await ask({
                       title: `Återbetala ${kr(card.balanceOre)}?`,
@@ -190,7 +195,7 @@ function CardModal({ cardId, onClose, onChanged }: { cardId: string; onClose: ()
                     if (ok) await run('refund', () => refundCard(card.cardId, reason.trim()), 'Det som var kvar är återbetalt till köparen.')
                   }}>
                   Återbetala
-                </Button>
+                </Button>}
               </Bar>
               {confirmResend ? (
                 <div className="presentkort-confirm" role="alertdialog" aria-labelledby="presentkort-confirm-text">

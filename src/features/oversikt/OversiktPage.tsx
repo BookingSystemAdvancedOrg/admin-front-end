@@ -9,6 +9,9 @@ import { MonthCard } from './MonthCard'
 import { StatTile } from './StatTile'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { currentLocation, stripeStage, useTenant } from '../../shared/tenant'
+import { canOpen } from '../../shared/access'
+import type { Area } from '../../shared/access'
+
 import { getLocation } from '../installningar/locationApi'
 import type { Location } from '../installningar/locationApi'
 import { listMenuItems } from '../meny/menuApi'
@@ -56,11 +59,11 @@ import './setup.css'
 // Genvägskorten längst ned som länkar till de andra sidorna. Ägaren får
 // Statistik i stället för "Se alla bokningar" (dagens bokningar har redan
 // "Visa alla" ovanför).
-const QUICK_LINKS: { to: string; icon: IconName; label: string; ownerOnly?: boolean; staffOnly?: boolean }[] = [
+const QUICK_LINKS: { to: string; icon: IconName; label: string; ownerOnly?: boolean; staffOnly?: boolean; area?: Area }[] = [
   { to: '/statistik?period=month', icon: 'chart', label: 'Månadens statistik', ownerOnly: true },
-  { to: '/meny', icon: 'book', label: 'Hantera meny' },
-  { to: '/layout', icon: 'tool-floor', label: 'Redigera layout' },
-  { to: '/bokningar', icon: 'calendar', label: 'Se alla bokningar', staffOnly: true },
+  { to: '/meny', icon: 'book', label: 'Hantera meny', area: 'meny' },
+  { to: '/layout', icon: 'tool-floor', label: 'Redigera layout', area: 'layout' },
+  { to: '/bokningar', icon: 'calendar', label: 'Se alla bokningar', staffOnly: true, area: 'bokningar' },
   { to: '/installningar', icon: 'gear', label: 'Inställningar' },
 ]
 
@@ -145,8 +148,10 @@ export default function OversiktPage() {
     : sample
       ? { ...fetched, ...sampleData(todayIn(timezoneSetting)) }
       : fetched
-  const hasOrdering = sample || Boolean(tenant?.entitlements.features.ordering)
-  const hasCatering = sample || Boolean(tenant?.entitlements.features.catering)
+  // Personalen ser bara rutorna för de områden ägaren har gett dem (access.ts).
+  const seeBookings = sample || canOpen(tenant, 'bokningar')
+  const hasOrdering = sample || (Boolean(tenant?.entitlements.features.ordering) && canOpen(tenant, 'bestallningar'))
+  const hasCatering = sample || (Boolean(tenant?.entitlements.features.catering) && canOpen(tenant, 'catering'))
   // Telefonassistenten i planen: ägarens Kom igång får ett steg med fem delsteg.
   const hasPhone = isOwner && Boolean(tenant?.entitlements.features.phoneAgent)
   // Google-profilen i planen: ett valfritt steg som går att hoppa över.
@@ -159,7 +164,7 @@ export default function OversiktPage() {
       orNull(listMenuItems(locationId)),
       isOwner ? orNull(listLayoutVersions(locationId)) : Promise.resolve(null),
       isOwner ? orNull(listUsers()) : Promise.resolve(null),
-      orNull(listReservations(locationId, todayIn(timezoneSetting))),
+      seeBookings ? orNull(listReservations(locationId, todayIn(timezoneSetting))) : Promise.resolve(null),
       hasOrdering ? orNull(listOrders(locationId)) : Promise.resolve(null),
       hasCatering ? orNull(listRequests(locationId)) : Promise.resolve(null),
       hasOrdering ? orNull(listOrders(locationId, addDays(todayIn(timezoneSetting), -7))) : Promise.resolve(null),
@@ -184,7 +189,7 @@ export default function OversiktPage() {
         phone,
         google,
       })),
-  [isOwner, timezoneSetting, hasOrdering, hasCatering, hasPhone, hasGoogle])
+  [isOwner, timezoneSetting, seeBookings, hasOrdering, hasCatering, hasPhone, hasGoogle])
 
   useEffect(() => {
     if (!locationId) return
@@ -292,18 +297,22 @@ export default function OversiktPage() {
     tone?: 'attention'
     trend?: Trend
   }[] = [
-    {
-      label: 'Att hantera',
-      value: todo ? String(todo.total) : '-',
-      // Till det mest brådskande först.
-      to: todo?.items[0]?.to ?? '/bokningar',
-      tone: todo && todo.total > 0 ? 'attention' : undefined,
-    },
-    {
-      label: 'Bokningar idag',
-      value: bookings ? String(bookings.count) : '-',
-      to: '/bokningar',
-    },
+    ...(seeBookings || hasOrdering || hasCatering
+      ? [{
+          label: 'Att hantera',
+          value: todo ? String(todo.total) : '-',
+          // Till det mest brådskande först.
+          to: todo?.items[0]?.to ?? (seeBookings ? '/bokningar' : hasOrdering ? '/bestallningar' : '/catering'),
+          tone: todo && todo.total > 0 ? ('attention' as const) : undefined,
+        }]
+      : []),
+    ...(seeBookings
+      ? [{
+          label: 'Bokningar idag',
+          value: bookings ? String(bookings.count) : '-',
+          to: '/bokningar',
+        }]
+      : []),
     ...(hasOrdering
       ? [
         {
@@ -367,11 +376,13 @@ export default function OversiktPage() {
           </div>
         )}
         {acceptedNotice}
-        <section className="stats-row" aria-label="Idag" style={{ '--stat-cols': stats.length } as CSSProperties}>
-          {stats.map((stat, i) => (
-            <StatTile key={stat.label} {...stat} loading={loading} index={i} />
-          ))}
-        </section>
+        {stats.length > 0 && (
+          <section className="stats-row" aria-label="Idag" style={{ '--stat-cols': stats.length } as CSSProperties}>
+            {stats.map((stat, i) => (
+              <StatTile key={stat.label} {...stat} loading={loading} index={i} />
+            ))}
+          </section>
+        )}
 
         {setupIncomplete && (
           <section className="admin-card activity-card setup-card" aria-label="Kom igång" data-tour="getting-started">
@@ -387,7 +398,7 @@ export default function OversiktPage() {
           </section>
         )}
 
-        <div className="oversikt-row">
+        {seeBookings && <div className="oversikt-row">
           <section className="admin-card bookings-card" aria-label="Dagens bokningar">
             <div className="card-head">
               <h2 className="card-title">Dagens bokningar</h2>
@@ -428,7 +439,7 @@ export default function OversiktPage() {
             )}
           </section>
 
-        </div>
+        </div>}
 
         {isOwner && (
           <MonthCard
@@ -441,7 +452,7 @@ export default function OversiktPage() {
 
         <Disclosure title="Genvägar" className="ds-acc--line">
           <section className="quick-links-row" aria-label="Genvägar">
-            {QUICK_LINKS.filter((link) => (link.ownerOnly ? isOwner : link.staffOnly ? !isOwner : true)).map((link) => (
+            {QUICK_LINKS.filter((link) => (link.ownerOnly ? isOwner : link.staffOnly ? !isOwner : true) && (!link.area || canOpen(tenant, link.area))).map((link) => (
               <Link key={link.to + link.label} className="admin-card quick-link" to={link.to}>
                 <span className="quick-link-label">
                   <span className="quick-link-icon" aria-hidden="true">

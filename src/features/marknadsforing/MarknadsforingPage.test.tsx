@@ -116,7 +116,7 @@ describe('MarknadsforingPage', () => {
   it('is owner only', () => {
     tenant = { ...tenant, role: 'staff_user' }
     renderAt()
-    expect(screen.getByText('Bara för ägare')).toBeInTheDocument()
+    expect(screen.getByText(/Be ägaren om behörighet/)).toBeInTheDocument()
   })
 
   it('shows visits, channels and campaign results', async () => {

@@ -13,7 +13,8 @@ import { StatTile } from '../../shared/motion/StatTile'
 import { SkelTableRows } from '../../shared/Skeleton'
 import { onPageAction, takePageAction } from '../../shared/nav'
 import { useLocationId } from '../../shared/location'
-import { useTenant } from '../../shared/tenant'
+import { replaceTenant, updateTenant, useTenant } from '../../shared/tenant'
+import { canOpen } from '../../shared/access'
 import { useAuth } from '../auth/useAuth'
 import { StaffModal } from '../installningar/StaffModal'
 import type { StaffFormValues } from '../installningar/StaffModal'
@@ -46,8 +47,10 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * Allt går mot det befintliga /users/*-API:t (manage-user); tenant tas från
  * token på servern och inbjudan mejlas av Cognito.
  *
- * Bara ägare ser sidan: personalens e-post och telefon är personuppgifter
- * som medarbetare inte behöver, och GET /list-users är ägarens.
+ * Ägaren ser sidan, och personal som ägaren har gett området Personal (de
+ * ser och bjuder in personalen på sin egen plats, men ändrar inga roller,
+ * behörigheter eller tar bort konton). Ägaren bockar här i vad varje person
+ * får öppna utöver gruppen (Inställningar > Behörigheter).
  * Fler ägare läggs upp av Booqy, inte här.
  */
 export default function PersonalPage() {
@@ -56,6 +59,7 @@ export default function PersonalPage() {
   const { tenant } = useTenant()
   const { locationId } = useLocationId(sub)
   const isOwner = tenant?.role === 'owner_user'
+  const canUse = canOpen(tenant, 'personal')
 
   const [staff, setStaff] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -81,7 +85,7 @@ export default function PersonalPage() {
     locations.find((l) => l.locationId === id)?.name ?? 'Ingen plats'
 
   useEffect(() => {
-    if (!isOwner) return
+    if (!canUse) return
     let cancelled = false
     listUsers()
       .then((users) => {
@@ -96,27 +100,27 @@ export default function PersonalPage() {
     return () => {
       cancelled = true
     }
-  }, [isOwner])
+  }, [canUse])
   // Levande: inbjudningar som accepteras och ändringar från en annan plats syns av sig själva.
   useLiveRefresh(async () => {
     setStaff(await listUsers())
     setLoadError(null)
-  }, { enabled: isOwner && !loading })
+  }, { enabled: canUse && !loading })
 
-  if (tenant && !isOwner) {
+  if (tenant && !canUse) {
     return (
       <>
         <AdminTopbar title="Personal" />
         <div className="admin-main">
           <section className="admin-card">
-            <p className="cell-muted">Bara ägaren hanterar personalen.</p>
+            <p className="cell-muted">Du har inte behörighet till Personal. Be ägaren om behörighet.</p>
           </section>
         </div>
       </>
     )
   }
 
-  const caller = { sub, groups }
+  const caller = { sub, groups, personal: canUse }
   const shown = place ? staff.filter((s) => s.role !== 'staff' || s.locationId === place) : staff
   const staffOnly = staff.filter((s) => s.role === 'staff')
   const active = staffOnly.filter((s) => s.status === 'active').length
@@ -152,6 +156,11 @@ export default function PersonalPage() {
       updated = await changeUserGroup(original.cognitoSub, { group: values.group, locationId: values.locationId })
     }
     replace(updated)
+    if (values.access && tenant?.staffAccess) {
+      replaceTenant(await updateTenant({
+        staffAccess: { version: tenant.staffAccess.version, users: { [original.cognitoSub]: values.access } },
+      }))
+    }
     setModal(null)
   }
 
@@ -240,7 +249,7 @@ export default function PersonalPage() {
         <section className="admin-card table-card">
           <div className="card-head">
             <div>
-              <TitleInfo title="Medarbetare" info="Inbjudan går till e-posten med ett tillfälligt lösenord. Personen ser bokningar, beställningar och menyn för sin plats." />
+              <TitleInfo title="Medarbetare" info="Inbjudan går till e-posten med ett tillfälligt lösenord. Personen ser sin plats och det som är ibockat under Behörigheter." />
             </div>
             {locations.length > 1 && (
               <div className="form-field">
@@ -369,6 +378,12 @@ export default function PersonalPage() {
           title={modal.mode === 'invite' ? 'Bjud in personal' : 'Redigera medarbetare'}
           initial={modal.mode === 'edit' ? modal.user : null}
           callerGroups={groups}
+          tenant={tenant}
+          access={
+            isOwner && modal.mode === 'edit' && modal.user.role === 'staff' && tenant?.staffAccess
+              ? tenant.staffAccess
+              : null
+          }
           lockRole={modal.mode === 'edit' && modal.user.cognitoSub === sub}
           locations={locations}
           defaultLocationId={place || (locationId ?? undefined)}

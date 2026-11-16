@@ -17,6 +17,7 @@ import {
 import type { RestaurantProfile } from './data'
 import { CancellationPolicyCard } from './CancellationPolicyCard'
 import { InsightsSettingsCard } from './InsightsSettingsCard'
+import { StaffAccessCard } from './StaffAccessCard'
 import { NotificationsCard } from './NotificationsCard'
 import { OrderingCard } from './OrderingCard'
 import { PrivacyCard } from './PrivacyCard'
@@ -77,7 +78,7 @@ import { Icon } from '../../shared/Icon'
  * andra användare - de rutterna är bara för ägare.
  */
 /** Flikarna - en sektion i taget i stället för en lång sida. */
-type SettingsTab = 'profil' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'skrivare' | 'dagar' | 'bord' | 'statistik' | 'bokforing' | 'integritet' | 'utseende'
+type SettingsTab = 'profil' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'skrivare' | 'dagar' | 'bord' | 'statistik' | 'behorighet' | 'bokforing' | 'integritet' | 'utseende'
 
 const TAB_LABEL: Record<SettingsTab, string> = {
   profil: 'Restaurang',
@@ -89,6 +90,7 @@ const TAB_LABEL: Record<SettingsTab, string> = {
   dagar: 'Avvikande dagar',
   bord: 'Bord',
   statistik: 'Statistik',
+  behorighet: 'Behörigheter',
   bokforing: 'Bokföring',
   integritet: 'Integritet',
   utseende: 'Utseende och ljud',
@@ -100,7 +102,7 @@ const TAB_LABEL: Record<SettingsTab, string> = {
  * tillbaka. Bara namnen syns, så att menyn går att läsa med en blick.
  */
 const GROUPS: { id: string; label: string; tabs: SettingsTab[] }[] = [
-  { id: 'verksamhet', label: 'Verksamheten', tabs: ['profil', 'dagar', 'bord'] },
+  { id: 'verksamhet', label: 'Verksamheten', tabs: ['profil', 'dagar', 'bord', 'behorighet'] },
   { id: 'gaster', label: 'Gäster', tabs: ['notiser', 'avbokning', 'bestallning', 'skrivare'] },
   { id: 'ekonomi', label: 'Ekonomi', tabs: ['betalningar', 'bokforing'] },
   { id: 'data', label: 'Data och integritet', tabs: ['statistik', 'integritet'] },
@@ -119,7 +121,8 @@ export const TAB_HINT: Record<SettingsTab, string> = {
   skrivare: 'Skrivaren i köket som skriver ut beställningarna',
   betalningar: 'Koppla Stripe så att gästerna kan betala online',
   bokforing: 'Exportera försäljningen till bokföringsprogrammet',
-  statistik: 'Vad personalen får se och när lunchen slutar',
+  statistik: 'När lunchen slutar och middagen börjar i statistiken',
+  behorighet: 'Vilka sidor personalen får öppna, för alla eller en person i taget',
   integritet: 'Integritetspolicyn och gästernas uppgifter',
   utseende: 'Ljust eller mörkt läge och klickljud, bara på den här skärmen',
 }
@@ -383,7 +386,7 @@ export default function InstallningarPage() {
 
 
   const showTab = (t: SettingsTab) =>
-    t === 'statistik' || t === 'bokforing' || t === 'integritet'
+    t === 'statistik' || t === 'behorighet' || t === 'bokforing' || t === 'integritet'
       ? isOwner
       : t === 'bestallning' || t === 'skrivare'
         ? Boolean(tenant?.entitlements.features.ordering)
@@ -640,11 +643,13 @@ export default function InstallningarPage() {
 
           {isOwner && tenant && (
             <div className="settings-row" data-help="settings:statistik:InsightsSettingsCard" hidden={tab !== 'statistik'}>
-              <InsightsSettingsCard
-                key={`${locationId ?? 'none'}:${tenant.insights?.staffAccess ?? 'operations'}`}
-                tenant={tenant}
-                locationId={locationId}
-              />
+              <InsightsSettingsCard key={locationId ?? 'none'} locationId={locationId} />
+            </div>
+          )}
+
+          {isOwner && tenant && (
+            <div className="settings-row" data-help="settings:behorighet:StaffAccessCard" hidden={tab !== 'behorighet'}>
+              <StaffAccessCard tenant={tenant} />
             </div>
           )}
 

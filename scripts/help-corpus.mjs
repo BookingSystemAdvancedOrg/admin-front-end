@@ -43,6 +43,9 @@ const SETTINGS_STAFF = ['utseende', 'skrivbordsappen']
 const SETTINGS_FEATURE = { bestallning: 'ordering', skrivare: 'ordering' }
 // Inte delar av den inloggade appen (eller assistenten själv).
 const SKIP_DIRS = ['features/auth', 'features/help', 'test']
+// Områden personalen hade innan behörigheterna (src/shared/access.ts
+// LEGACY_STAFF_AREAS): de andra märks "owner" för läsare som inte känner till `area`.
+const LEGACY_STAFF_AREAS = ['statistik', 'bokningar', 'bestallningar', 'catering', 'personalliggare', 'telefon', 'meny', 'layout', 'gaster', 'evenemang']
 
 function walk(dir) {
   return readdirSync(dir).flatMap((name) => {
@@ -77,8 +80,7 @@ function parseNav() {
     items.push({
       to: m[1],
       label: m[2],
-      ownerOnly: /ownerOnly: true/.test(rest),
-      insights: /insights: true/.test(rest),
+      area: rest.match(/area: '([^']+)'/)?.[1] ?? null,
       feature: feature ? (feature.startsWith('[') ? [...feature.matchAll(/'([^']+)'/g)].map((f) => f[1]) : feature.slice(1, -1)) : null,
     })
   }
@@ -224,7 +226,7 @@ export function buildCorpus() {
     const item = nav.find((n) => (n.to === '/' ? route === '/' : route === n.to || route.startsWith(`${n.to}/`)))
     if (item) return item
     const extra = EXTRA_PAGES[route]
-    return extra ? { to: route, label: extra.label, feature: extra.feature ?? null, ownerOnly: Boolean(extra.ownerOnly), insights: false } : null
+    return extra ? { to: route, label: extra.label, feature: extra.feature ?? null, ownerOnly: Boolean(extra.ownerOnly), area: null } : null
   }
   const { tabLabel, tabHint, groupOf } = settingsSections()
 
@@ -237,10 +239,14 @@ export function buildCorpus() {
     docs.push(doc)
   }
   const access = (route, hash) => {
-    const info = pageInfo(route) ?? { ownerOnly: false, feature: null, insights: false }
-    const ownerOnly = info.ownerOnly || (route === '/installningar' && !SETTINGS_STAFF.includes(hash ?? ''))
+    const info = pageInfo(route) ?? { ownerOnly: false, feature: null, area: null }
+    const ownerOnly =
+      Boolean(info.ownerOnly) ||
+      (info.area && !LEGACY_STAFF_AREAS.includes(info.area)) ||
+      (route === '/installningar' && !SETTINGS_STAFF.includes(hash ?? ''))
     const feature = (hash && SETTINGS_FEATURE[hash]) || info.feature || null
-    return { audience: ownerOnly ? 'owner' : 'all', ...(feature ? { feature } : {}), ...(info.insights ? { insights: true } : {}) }
+    // `area`: personalen ser texten bara med behörighet till området (ägaren alltid).
+    return { audience: ownerOnly ? 'owner' : 'all', ...(feature ? { feature } : {}), ...(info.area ? { area: info.area } : {}) }
   }
   const where = (route, hash) => {
     const page = pageInfo(route)?.label ?? route

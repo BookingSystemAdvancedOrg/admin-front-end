@@ -64,6 +64,7 @@ const COMMON: Record<string, Mapped> = {
   not_signed_in: user('Du har loggats ut. Logga in igen och gör om det du höll på med.', LINK.login),
   forbidden: user('Ditt konto har inte behörighet till det här. Be restaurangens ägare ge dig åtkomst under Personal.'),
   staff_no_access: user('Ditt konto har inte behörighet till det här. Be restaurangens ägare ge dig åtkomst under Personal.'),
+  no_access: user('Du har inte behörighet till det här. Be ägaren om behörighet under Personal.'),
   owner_only: user('Bara restaurangens ägare kan göra det här. Be ägaren göra det, eller logga in med ägarens konto.'),
   tenant_inactive: user('Restaurangens konto är pausat. Ägaren öppnar det igen genom att kontakta Booqy (svara på senaste fakturan eller mejlet från oss).'),
   feature_not_in_plan: user('Funktionen ingår inte i ert abonnemang. Ägaren kan se vad som ingår och be Booqy lägga till den.', LINK.plan),

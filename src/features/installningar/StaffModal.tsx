@@ -14,6 +14,11 @@ import { PhoneInput } from '../../shared/PhoneInput'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { Select } from '../../shared/Select'
+import { InfoTooltip } from '../../shared/InfoTooltip'
+import { AreaChecklist } from '../../shared/AreaChecklist'
+import { personSource, togglePerson } from '../../shared/access'
+import type { StaffAccessConfig, StaffAccessPerson } from '../../shared/access'
+import type { Tenant } from '../../shared/tenant'
 
 export interface StaffFormValues {
   name: string
@@ -21,6 +26,8 @@ export interface StaffFormValues {
   phone: string
   group: CognitoGroup
   locationId: string
+  /** Personens egna behörigheter, bara om ägaren ändrade dem. */
+  access?: StaffAccessPerson
 }
 
 const ALL_GROUPS: CognitoGroup[] = ['staff_user', 'owner_user']
@@ -38,6 +45,8 @@ export function StaffModal({
   title,
   initial,
   callerGroups,
+  tenant = null,
+  access = null,
   lockRole,
   locations,
   defaultLocationId,
@@ -47,6 +56,10 @@ export function StaffModal({
   title: string
   initial: User | null
   callerGroups: string[]
+  /** Planens funktioner (vilka områden som visas). */
+  tenant?: Pick<Tenant, 'entitlements'> | null
+  /** Ägaren redigerar en medarbetare: gruppens och personernas behörigheter. */
+  access?: StaffAccessConfig | null
   lockRole: boolean
   /** Restaurangens platser - personal kopplas till en av dem. */
   locations: { locationId: string; name: string }[]
@@ -73,6 +86,12 @@ export function StaffModal({
   })
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const personSub = initial?.cognitoSub ?? ''
+  const savedPerson: StaffAccessPerson = access?.users[personSub] ?? { add: [], remove: [] }
+  const [person, setPerson] = useState<StaffAccessPerson>(savedPerson)
+  const draftConfig = access ? { defaults: access.defaults, users: { ...access.users, [personSub]: person } } : null
+  const accessChanged =
+    person.add.join() !== savedPerson.add.join() || person.remove.join() !== savedPerson.remove.join()
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -109,6 +128,7 @@ export function StaffModal({
         phone: phone.trim(),
         group,
         locationId: effectiveLocationId,
+        ...(access && accessChanged && group === 'staff_user' ? { access: person } : {}),
       })
     } catch (err) {
       setError(errorText(err, 'Kunde inte spara.'))
@@ -195,6 +215,29 @@ export function StaffModal({
               </div>
             )}
           </div>
+
+          {draftConfig && group === 'staff_user' && (
+            <fieldset className="staff-access">
+              <legend className="title-info">
+                <span>Behörigheter</span>
+                <InfoTooltip label="Behörigheter">
+                  Gruppen: det all personal får (Inställningar, Behörigheter). Extra: bara den här personen. Borttagen:
+                  gruppens, men inte för den här personen.
+                </InfoTooltip>
+              </legend>
+              <AreaChecklist
+                tenant={tenant}
+                idPrefix="person-area"
+                checked={(area) => {
+                  const s = personSource(draftConfig, personSub, area)
+                  return s === 'group' || s === 'own'
+                }}
+                source={(area) => personSource(draftConfig, personSub, area)}
+                disabled={busy}
+                onChange={(area, on) => setPerson(togglePerson(draftConfig, personSub, area, on))}
+              />
+            </fieldset>
+          )}
 
           {error && (
             <ErrorNote text={error} />

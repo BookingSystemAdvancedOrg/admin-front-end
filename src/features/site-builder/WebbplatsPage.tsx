@@ -11,6 +11,7 @@ import { PlanLocked } from '../../shared/PlanLocked'
 import { Loading } from '../../shared/Loading'
 import { SkelCard, SkelPage } from '../../shared/Skeleton'
 import { currentLocation, useTenant } from '../../shared/tenant'
+import { canOpen } from '../../shared/access'
 import './webbplats.css'
 import { listMenuItems, type MenuItem } from '../meny/menuApi'
 import {
@@ -58,19 +59,19 @@ export async function waitForPublish(publishId: string, wait = (ms: number) => n
   return null
 }
 
-/** Webbplats (planfunktionen "siteBuilder", bara ägare): Utkast och Publicerad. */
+/** Webbplats (planfunktionen "siteBuilder"; ägaren och personal med behörighet): Utkast och Publicerad. */
 export default function WebbplatsPage() {
   const { tenant } = useTenant()
   const enabled = Boolean(tenant?.entitlements?.features?.siteBuilder)
-  const owner = tenant?.role === 'owner_user'
+  const allowed = canOpen(tenant, 'webbplats')
 
   return (
     <>
       <AdminTopbar title="Webbplats" />
       <main className="admin-main">
-        {!enabled ? <PlanLocked /> : owner ? <Editor /> : (
+        {!enabled ? <PlanLocked /> : allowed ? <Editor /> : (
           <section className="admin-card table-card">
-            <h2 className="card-title">Bara för ägare</h2>
+            <p className="cell-muted">Du har inte behörighet till Webbplats. Be ägaren om behörighet.</p>
           </section>
         )}
       </main>

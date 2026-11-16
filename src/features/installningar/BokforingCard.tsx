@@ -17,6 +17,7 @@ import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
 import { Select } from '../../shared/Select'
 import { DateInput } from '../../shared/DateInput'
+import { SkelPage, SkelRows } from '../../shared/Skeleton'
 
 /**
  * Bokföring: dagens försäljning som en verifikation per dag, till Fortnox,
@@ -324,7 +325,11 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
         />
         <div style={{ height: 16 }} />
         <ErrorNote text={loadError} />
-        {!accounts && !loadError && <p className="cell-muted">Hämtar kontona…</p>}
+        {!accounts && !loadError && (
+          <SkelPage label="Hämtar kontona">
+            <SkelRows n={6} cols={2} />
+          </SkelPage>
+        )}
         {accounts && settings && (
           <form onSubmit={save} className="notifications-form" noValidate>
             {groups.map((group) => (

@@ -1,3 +1,4 @@
+import { Disclosure } from '../../shared/Disclosure'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
@@ -241,8 +242,7 @@ function DesktopAppCardBody({ heading }: { heading: boolean }) {
         })}
       </ul>
 
-      <details className="desktop-app__help">
-        <summary>Första gången du öppnar appen</summary>
+      <Disclosure className="desktop-app__help" title="Första gången du öppnar appen">
         <p className="cell-muted">Appen är ännu inte signerad hos Apple och Microsoft, så datorn varnar första gången.</p>
         <p>
           <strong>Mac:</strong> dra Booqy Admin till Program och öppna den. Säger macOS att den inte kan kontrolleras: klicka
@@ -255,7 +255,7 @@ function DesktopAppCardBody({ heading }: { heading: boolean }) {
         <p>
           <strong>Linux:</strong> öppna .deb-filen i programhanteraren, eller gör AppImage-filen körbar och starta den.
         </p>
-      </details>
+      </Disclosure>
     </section>
   )
 }

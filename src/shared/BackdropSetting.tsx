@@ -1,3 +1,4 @@
+import { Icon } from './Icon'
 import { useEffect, useState, type MouseEvent } from 'react'
 import { BackdropLibrary } from './BackdropLibrary'
 import { getLibrary, selectedItem } from './backdropStore'
@@ -96,7 +97,7 @@ export function BackdropSetting() {
             data-selected={colour !== null && !SWATCHES.some((s) => s.colour === colour) ? 'true' : undefined}
             style={colour && !SWATCHES.some((s) => s.colour === colour) ? { background: colour } : undefined}
           >
-            <span aria-hidden="true">+</span>
+            <Icon name="plus" size={18} />
             <input type="color" aria-label="Egen färg" value={colour ?? lastColour} onChange={(e) => pick(e.currentTarget.value)} />
           </label>
         </div>

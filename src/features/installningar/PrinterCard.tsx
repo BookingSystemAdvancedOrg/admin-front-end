@@ -107,7 +107,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
     if (untouched) apply(next)
     else setData(next)
     setLoadError(false)
-  }, { enabled: Boolean(locationId) && data !== null && !busy })
+  }, { enabled: Boolean(locationId) && !busy })
 
   useEffect(() => {
     if (!locationId) return
@@ -213,7 +213,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
         {!locationId ? (
           <p className="cell-muted">Välj en plats först.</p>
         ) : loadError && !data ? (
-          <ErrorNote text={booqyFaultText('Kunde inte hämta skrivarna. Sidan försöker igen av sig själv.')} />
+          <ErrorNote text={booqyFaultText('Kunde inte hämta skrivarna.')} onRetry={() => { setLoadError(false); void reload() }} />
         ) : !data ? (
           <SkelLines n={3} />
         ) : (

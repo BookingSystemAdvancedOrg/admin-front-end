@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../shared/api'
 import * as api from '../../shared/api'
+import { describeError } from '../../shared/errors'
 import {
   canInvite,
   canManageTarget,
@@ -213,9 +214,14 @@ describe('request shaping', () => {
     expect(await listUsers()).toEqual([])
   })
 
-  it('listUsers maps 404 to a route-missing message, not "user not found"', async () => {
+  it('listUsers treats 404 as a missing route (Booqys fault), not "user not found"', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(404, 'Not Found'))
-    await expect(listUsers()).rejects.toThrow(/inte deployad/)
+    const err = await listUsers().catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as ApiError).code).toBe('route_not_found')
+    const info = describeError(err, 'Kunde inte hämta personalen.')
+    expect(info.actor).toBe('booqy')
+    expect(info.text).toContain('Felet ligger hos Booqy')
   })
 
   it('getUser GETs /users/{cognitoSub}', async () => {

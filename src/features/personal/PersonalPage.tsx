@@ -5,7 +5,8 @@ import { isRowOpenKey, shouldOpenRow } from '../meny/rowClick'
 import { getMyAvatar, removeUserAvatar, subscribeMyAvatar } from '../../shared/avatarStore'
 import { RowActions } from '../../shared/RowActions'
 import { useEffect, useState, useSyncExternalStore } from 'react'
-import { errorText } from '../../shared/errors'
+import { booqyFaultText, errorText } from '../../shared/errors'
+import { useConfirm } from '../../shared/ConfirmDialog'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { CtaButton } from '../../shared/CtaButton'
 import { StatTile } from '../../shared/motion/StatTile'
@@ -60,8 +61,11 @@ export default function PersonalPage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [rowError, setRowError] = useState<string | null>(null)
+  // Det som misslyckades, så att Försök igen gör om just det (utan ny fråga).
+  const [rowRetry, setRowRetry] = useState<(() => void) | null>(null)
   const [busySub, setBusySub] = useState<string | null>(null)
   const [viewing, setViewing] = useState<User | null>(null)
+  const [confirmEl, ask] = useConfirm()
   const avatarFor = (u: User) => (u.cognitoSub === sub ? (myAvatar.url ?? u.avatarUrl) : u.avatarUrl)
   const [place, setPlace] = useState('')
   const [modal, setModal] = useState<ModalState>(() =>
@@ -151,39 +155,57 @@ export default function PersonalPage() {
     setModal(null)
   }
 
-  async function handleToggle(user: User) {
+  function failRow(text: string, retry: () => void) {
+    setRowError(text)
+    setRowRetry(() => retry)
+  }
+
+  function clearRow() {
     setRowError(null)
+    setRowRetry(null)
+  }
+
+  async function handleToggle(user: User) {
+    clearRow()
     setBusySub(user.cognitoSub)
     try {
       replace(user.status === 'active' ? await deactivateUser(user.cognitoSub) : await reactivateUser(user.cognitoSub))
     } catch (err) {
-      setRowError(errorText(err, 'Kunde inte ändra status.'))
+      failRow(errorText(err, 'Kunde inte ändra status.'), () => void handleToggle(user))
     } finally {
       setBusySub(null)
     }
   }
 
   async function handleRemoveAvatar(user: User) {
-    if (!window.confirm(`Ta bort profilbilden för ${user.name}? Initialerna visas i stället.`)) return
-    setRowError(null)
+    if (!(await ask({ title: `Ta bort profilbilden för ${user.name}?`, text: 'Initialerna visas i stället.', confirmLabel: 'Ta bort', danger: true }))) return
+    await removeAvatar(user)
+  }
+
+  async function removeAvatar(user: User) {
+    clearRow()
     setBusySub(user.cognitoSub)
     if (await removeUserAvatar(user.cognitoSub)) {
       setStaff((prev) => prev.map((s) => (s.cognitoSub === user.cognitoSub ? { ...s, avatarUrl: null } : s)))
     } else {
-      setRowError('Kunde inte ta bort profilbilden.')
+      failRow(booqyFaultText('Kunde inte ta bort profilbilden.'), () => void removeAvatar(user))
     }
     setBusySub(null)
   }
 
   async function handleDelete(user: User) {
-    if (!window.confirm(`Ta bort ${user.name} permanent? Inloggningen försvinner och kan inte återställas.`)) return
-    setRowError(null)
+    if (!(await ask({ title: `Ta bort ${user.name}?`, text: 'Inloggningen försvinner och kan inte återställas.', confirmLabel: 'Ta bort', danger: true }))) return
+    await removeUser(user)
+  }
+
+  async function removeUser(user: User) {
+    clearRow()
     setBusySub(user.cognitoSub)
     try {
       await deleteUser(user.cognitoSub)
       setStaff((prev) => prev.filter((s) => s.cognitoSub !== user.cognitoSub))
     } catch (err) {
-      setRowError(errorText(err, 'Kunde inte ta bort medarbetaren.'))
+      failRow(errorText(err, 'Kunde inte ta bort medarbetaren.'), () => void removeUser(user))
     } finally {
       setBusySub(null)
     }
@@ -195,7 +217,7 @@ export default function PersonalPage() {
         title="Personal"
         actions={
           <CtaButton
-            label="+ Bjud in personal"
+            label="Bjud in personal"
             win="Välkommen!"
             data-tour="personal-invite"
             disabled={!tenant || locations.length === 0}
@@ -235,7 +257,7 @@ export default function PersonalPage() {
             )}
           </div>
           {(loadError ?? rowError) && (
-            <ErrorNote text={loadError ?? rowError} />
+            <ErrorNote text={loadError ?? rowError} onRetry={!loadError && rowRetry ? rowRetry : undefined} />
           )}
           <div className="table-scroll" tabIndex={0}>
             <table className="data-table" style={{ minWidth: 600 }}>
@@ -338,6 +360,7 @@ export default function PersonalPage() {
         </section>
       </div>
 
+      {confirmEl}
       {viewing && (
         <AvatarLightbox url={avatarFor(viewing)} name={viewing.name} email={viewing.email} onClose={() => setViewing(null)} />
       )}

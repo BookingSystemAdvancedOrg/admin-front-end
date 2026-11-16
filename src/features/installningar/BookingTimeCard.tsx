@@ -1,3 +1,4 @@
+import { Icon } from '../../shared/Icon'
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
@@ -381,7 +382,8 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
           )}
           {isOwner && rules.windows.length < MAX_WINDOWS && (
             <button type="button" className="btn outline square bt-add" disabled={disabled} onClick={addWindow}>
-              + Lägg till specialtid
+              <Icon name="plus" size={16} />
+              Lägg till specialtid
             </button>
           )}
           {warnings.length > 0 && (

@@ -101,7 +101,8 @@ export function BusinessHoursEditor({
                 className="link-action"
                 onClick={() => addInterval(day)}
               >
-                + Lägg till tid
+                <Icon name="plus" size={16} />
+                Lägg till tid
               </button>
             )}
           </div>

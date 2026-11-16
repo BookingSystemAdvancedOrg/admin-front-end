@@ -233,10 +233,9 @@ export async function listUsers(): Promise<User[]> {
     return (res.items ?? []).map(normalizeUser)
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
-      // 404 här betyder att rutten saknas (inte att en användare saknas).
-      throw new Error(
-        'Listan kan inte hämtas - GET /list-users är inte deployad på API:t än.',
-      )
+      // 404 här betyder att rutten saknas (inte att en användare saknas):
+      // Booqys fel, med Rapportera till Booqy (shared/errors).
+      throw new ApiError(404, 'route_not_found', { code: 'route_not_found' })
     }
     throw toFriendlyUserError(err)
   }

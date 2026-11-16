@@ -1,3 +1,4 @@
+import { Icon } from './Icon'
 import { useEffect, useRef, useState } from 'react'
 import ModalOverlay from './ModalOverlay'
 import type { BackdropItem } from './backdropStore'
@@ -55,7 +56,7 @@ export function BackdropPreview({
         <div className="bg-preview-head">
           <h2>{selected ? 'Din bakgrund' : 'Egen bild'}</h2>
           <button ref={closeBtn} type="button" className="row-action bg-preview-close" aria-label="Stäng" onClick={onClose}>
-            <span aria-hidden="true">✕</span>
+            <Icon name="close" size={18} />
           </button>
         </div>
         <div
@@ -81,10 +82,10 @@ export function BackdropPreview({
           {items.length > 1 && (
             <>
               <button type="button" className="bg-preview-nav bg-preview-nav--prev" aria-label="Föregående bild" onClick={() => go(-1)}>
-                <span aria-hidden="true">‹</span>
+                <Icon name="chevron-left" size={22} />
               </button>
               <button type="button" className="bg-preview-nav bg-preview-nav--next" aria-label="Nästa bild" onClick={() => go(1)}>
-                <span aria-hidden="true">›</span>
+                <Icon name="chevron-right" size={22} />
               </button>
             </>
           )}

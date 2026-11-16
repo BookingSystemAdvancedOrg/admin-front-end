@@ -60,7 +60,7 @@ function Pages({ emptyMenu = false }: { emptyMenu?: boolean }) {
         path="/meny"
         element={
           <div>
-            <button type="button" data-tour="menu-add">+ Lägg till rätt</button>
+            <button type="button" data-tour="menu-add">Lägg till rätt</button>
             {!emptyMenu && <span data-tour="menu-row-toggle" />}
             {!emptyMenu && <span data-tour="menu-row-actions" />}
           </div>
@@ -69,7 +69,7 @@ function Pages({ emptyMenu = false }: { emptyMenu?: boolean }) {
       <Route path="/bokningar" element={<div><div data-tour="booking-day" /><div data-tour="booking-list" /><button type="button" data-tour="booking-new" /></div>} />
       <Route path="/bestallningar" element={<div><div data-tour="orders-board" /><div data-tour="orders-pause" /></div>} />
       <Route path="/catering" element={<div><div data-tour="catering-list" /><a data-tour="catering-settings" /></div>} />
-      <Route path="/personal" element={<button type="button" data-tour="personal-invite">+ Bjud in personal</button>} />
+      <Route path="/personal" element={<button type="button" data-tour="personal-invite">Bjud in personal</button>} />
       <Route path="/layout" element={<div><div data-tour="layout-tools" /><button type="button" data-tour="layout-publish" /></div>} />
       <Route path="*" element={null} />
     </Routes>

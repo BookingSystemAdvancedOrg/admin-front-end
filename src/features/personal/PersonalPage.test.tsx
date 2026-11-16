@@ -5,6 +5,7 @@ import PersonalPage from './PersonalPage'
 import * as users from '../installningar/usersApi'
 import type { User } from '../installningar/usersApi'
 import { chooseOption } from '../../test/select'
+import { ApiError } from '../../shared/api'
 
 let tenant: Record<string, unknown>
 vi.mock('../../shared/tenant', () => ({ useTenant: () => ({ tenant }) }))
@@ -23,6 +24,7 @@ vi.mock('../installningar/usersApi', async (orig) => ({
   listUsers: vi.fn(),
   inviteUser: vi.fn(),
   deactivateUser: vi.fn(),
+  deleteUser: vi.fn(),
 }))
 
 const LOCATIONS = [
@@ -63,6 +65,34 @@ describe('PersonalPage', () => {
     expect(within(row).getByRole('button', { name: 'Redigera' })).toBeInTheDocument()
     expect(within(row).queryByRole('button', { name: 'Ta bort' })).not.toBeInTheDocument()
     expect(within(row).queryByRole('button', { name: 'Inaktivera' })).not.toBeInTheDocument()
+  })
+
+  it('asks in the Booqy confirm dialog before removing a staff member', async () => {
+    const native = vi.spyOn(window, 'confirm')
+    vi.mocked(users.deleteUser).mockResolvedValue(undefined as never)
+    renderPage()
+    const row = (await screen.findByText('Anna Servis')).closest('tr') as HTMLElement
+    fireEvent.click(within(row).getByRole('button', { name: 'Ta bort' }))
+    const dialog = screen.getByRole('alertdialog', { name: 'Ta bort Anna Servis?' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Avbryt' }))
+    expect(users.deleteUser).not.toHaveBeenCalled()
+    fireEvent.click(within(row).getByRole('button', { name: 'Ta bort' }))
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Ta bort' }))
+    await waitFor(() => expect(screen.queryByText('Anna Servis')).not.toBeInTheDocument())
+    expect(users.deleteUser).toHaveBeenCalledWith('staff-1')
+    expect(native).not.toHaveBeenCalled()
+  })
+
+  it('Försök igen redoes a failed removal without asking again', async () => {
+    vi.mocked(users.deleteUser).mockRejectedValueOnce(new ApiError(500, 'internal_error')).mockResolvedValueOnce(undefined as never)
+    renderPage()
+    const row = (await screen.findByText('Anna Servis')).closest('tr') as HTMLElement
+    fireEvent.click(within(row).getByRole('button', { name: 'Ta bort' }))
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Ta bort' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    await waitFor(() => expect(screen.queryByText('Anna Servis')).not.toBeInTheDocument())
+    expect(users.deleteUser).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
   it('deactivates a staff member', async () => {

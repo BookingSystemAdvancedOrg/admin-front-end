@@ -96,7 +96,7 @@ export const GUIDE_STEPS: GuideStep[] = [
     ownerOnly: true,
     title: 'Personal',
     text:
-      'Bjud in medarbetare med "+ Bjud in personal". De får ett mejl, loggar in och ser bokningar, beställningar och menyn för sin plats.',
+      'Bjud in medarbetare med "Bjud in personal". De får ett mejl, loggar in och ser bokningar, beställningar och menyn för sin plats.',
   },
   {
     id: 'set-betalningar',

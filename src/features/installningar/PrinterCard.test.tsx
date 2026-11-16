@@ -36,6 +36,15 @@ const ONE: PrintOverview = { ...EMPTY, settings: { ...EMPTY.settings, printerId:
 beforeEach(() => Object.values(api).forEach((f) => f.mockReset()))
 
 describe('PrinterCard', () => {
+  it('loads again after a failed first load when Försök igen is tapped', async () => {
+    const user = userEvent.setup()
+    api.getPrinting.mockRejectedValueOnce(new ApiError(500, 'internal_error')).mockResolvedValue(ONE)
+    render(<PrinterCard locationId="loc-1" isOwner />)
+    expect(await screen.findByText(/Kunde inte hämta skrivarna\./)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Försök igen' }))
+    expect(await screen.findByRole('list', { name: 'Skrivare' })).toHaveTextContent('Köket')
+  })
+
   it('adds a printer and shows its credentials once', async () => {
     const user = userEvent.setup()
     api.getPrinting.mockResolvedValueOnce(EMPTY).mockResolvedValue(ONE)

@@ -1,3 +1,4 @@
+import { Icon } from '../../shared/Icon'
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
@@ -295,7 +296,8 @@ export function SpecialDaysCard({
                         }))
                       }
                     >
-                      + Lägg till tid
+                      <Icon name="plus" size={16} />
+                      Lägg till tid
                     </button>
                   )}
                 </div>

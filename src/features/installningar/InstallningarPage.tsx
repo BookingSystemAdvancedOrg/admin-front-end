@@ -1,5 +1,5 @@
 import { errorText } from '../../shared/errors'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { dedupe, sameData, useLiveRefresh } from '../../shared/live'
 import { ChangedNote } from '../../shared/ChangedNote'
 import { CtaButton } from '../../shared/CtaButton'
@@ -55,6 +55,7 @@ import { Slot } from '../../shared/slots'
 import { PhoneInput } from '../../shared/PhoneInput'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { Select } from '../../shared/Select'
+import { Icon } from '../../shared/Icon'
 
 
 /**
@@ -154,6 +155,10 @@ export default function InstallningarPage() {
   const [searchParams] = useSearchParams()
   const stripeReturn = searchParams.get('stripe')
   const [tab, setTab] = useState<SettingsTab>(() => initialTab(stripeReturn))
+  // Skrivare, Bokföring och Integritet hämtar först när fliken öppnas, och
+  // ligger sedan kvar (dolda) så osparade ändringar inte försvinner.
+  const opened = useRef(new Set<SettingsTab>())
+  opened.current.add(tab)
   // Länkar (och guiden) kan öppna en flik via #flik i adressen.
   const { hash } = useLocation()
   useEffect(() => {
@@ -428,7 +433,7 @@ export default function InstallningarPage() {
                     <span className="settings-menu-text">
                       <span className="settings-menu-title">{g.label}</span>
                     </span>
-                    <span className="settings-menu-arrow" aria-hidden="true">›</span>
+                    <span className="settings-menu-arrow" aria-hidden="true"><Icon name="chevron-right" size={16} /></span>
                   </button>
                 </li>
               ))}
@@ -436,7 +441,7 @@ export default function InstallningarPage() {
           ) : (
             <div className="settings-group-view">
               <button type="button" className="settings-back" onClick={() => setMenuAt(tab)}>
-                <span aria-hidden="true">‹</span> Alla inställningar
+                <Icon name="chevron-left" size={16} /> Alla inställningar
               </button>
               <p className="settings-group-name">{openGroup.label}</p>
               <div className="settings-tabs">
@@ -615,8 +620,8 @@ export default function InstallningarPage() {
             </div>
           )}
 
-          {tenant?.entitlements.features.ordering && tab === 'skrivare' && (
-            <div className="settings-row" data-help="settings:skrivare:PrinterCard">
+          {tenant?.entitlements.features.ordering && opened.current.has('skrivare') && (
+            <div className="settings-row" data-help="settings:skrivare:PrinterCard" hidden={tab !== 'skrivare'}>
               <PrinterCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
             </div>
           )}
@@ -643,8 +648,8 @@ export default function InstallningarPage() {
             </div>
           )}
 
-          {isOwner && tab === 'bokforing' && (
-            <div className="settings-row" data-help="settings:bokforing:BokforingCard">
+          {isOwner && opened.current.has('bokforing') && (
+            <div className="settings-row" data-help="settings:bokforing:BokforingCard" hidden={tab !== 'bokforing'}>
               <Slot id="installningar.bokforing.sync" props={{}} />
               <BokforingCard
                 key={locationId ?? 'none'}
@@ -654,8 +659,8 @@ export default function InstallningarPage() {
             </div>
           )}
 
-          {isOwner && tab === 'integritet' && (
-            <div className="settings-row" data-help="settings:integritet:PrivacyCard">
+          {isOwner && opened.current.has('integritet') && (
+            <div className="settings-row" data-help="settings:integritet:PrivacyCard" hidden={tab !== 'integritet'}>
               <PrivacyCard />
             </div>
           )}

@@ -1,3 +1,4 @@
+import { Icon } from './Icon'
 import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from 'react'
 import { isApiConfigured } from './api'
 import {
@@ -12,13 +13,14 @@ import {
 } from './backdropStore'
 import { BackdropPreview } from './BackdropPreview'
 import { ErrorNote } from './ErrorNote'
+import { booqyFaultText } from './errors'
 
 const UPLOAD_ERRORS: Record<UploadError, string> = {
   'not-image': 'Det där är ingen bild. Välj en JPG-, PNG-, WebP- eller HEIC-bild.',
   unreadable: 'Bilden gick inte att läsa här. Prova en JPG eller PNG.',
   'too-large': 'Bilden är för stor, även förminskad. Prova en annan bild.',
   limit: 'Biblioteket är fullt. Ta bort en bild för att ladda upp en ny.',
-  failed: 'Bilden kunde inte sparas. Försök igen.',
+  failed: 'Bilden kunde inte sparas.',
 }
 
 const at = (e: MouseEvent) => (e.clientX || e.clientY ? { x: e.clientX, y: e.clientY } : undefined)
@@ -29,6 +31,8 @@ export function BackdropLibrary() {
   const lib = useSyncExternalStore(subscribeLibrary, getLibrary, getLibrary)
   const [progress, setProgress] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Försök igen i felrutan gör om borttagningen som misslyckades.
+  const [retryRemove, setRetryRemove] = useState<BackdropItem | null>(null)
   const [menuFor, setMenuFor] = useState<string | null>(null)
   const [confirmFor, setConfirmFor] = useState<string | null>(null)
   const [preview, setPreview] = useState<number | null>(null)
@@ -54,10 +58,11 @@ export function BackdropLibrary() {
   async function onFile(f: File | undefined) {
     if (!f) return
     setError(null)
+    setRetryRemove(null)
     const err = await uploadBackdrop(f, setProgress)
     setProgress(null)
     if (err) {
-      setError(UPLOAD_ERRORS[err])
+      setError(err === 'failed' ? booqyFaultText('Bilden kunde inte sparas.') : UPLOAD_ERRORS[err])
       file.current?.focus()
     }
     if (file.current) file.current.value = ''
@@ -66,7 +71,11 @@ export function BackdropLibrary() {
   async function remove(item: BackdropItem) {
     setConfirmFor(null)
     setMenuFor(null)
-    if (!(await deleteBackdrop(item.id))) setError('Bilden kunde inte tas bort. Försök igen.')
+    setError(null)
+    if (!(await deleteBackdrop(item.id))) {
+      setRetryRemove(item)
+      setError(booqyFaultText('Bilden kunde inte tas bort.'))
+    }
   }
 
   const full = lib.items.length >= lib.max
@@ -99,7 +108,7 @@ export function BackdropLibrary() {
             />
             {progress === null ? (
               <span className="bg-upload-label">
-                <span aria-hidden="true" className="bg-upload-plus">+</span>
+                <span className="bg-upload-plus"><Icon name="plus" size={22} /></span>
                 {full ? 'Biblioteket är fullt' : 'Ladda upp ny'}
               </span>
             ) : (
@@ -134,7 +143,7 @@ export function BackdropLibrary() {
                       setMenuFor(menuFor === item.id ? null : item.id)
                     }}
                   >
-                    <span aria-hidden="true">…</span>
+                    <Icon name="more" size={18} />
                   </button>
                   {menuFor === item.id && (
                     <div className="bg-menu" role="menu">
@@ -165,7 +174,7 @@ export function BackdropLibrary() {
       </ul>
 
       {error && (
-        <ErrorNote id="bg-library-error" className="bg-library-error" text={error} />
+        <ErrorNote id="bg-library-error" className="bg-library-error" text={error} onRetry={() => (retryRemove ? void remove(retryRemove) : file.current?.click())} />
       )}
 
       {preview !== null && lib.items[preview] && (

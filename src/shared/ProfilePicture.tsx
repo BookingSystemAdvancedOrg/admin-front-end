@@ -3,6 +3,7 @@ import { coverCrop, cropSquare, getMyAvatar, loadMyAvatar, removeMyAvatar, saveM
 import { Avatar } from './Avatar'
 import ModalOverlay from './ModalOverlay'
 import { ErrorNote } from './ErrorNote'
+import { booqyFaultText } from './errors'
 
 const VIEW = 240
 
@@ -28,6 +29,14 @@ function ProfilePictureDialog({ name, email, onClose }: { name?: string | null; 
   const [src, setSrc] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
+  const [removeFailed, setRemoveFailed] = useState(false)
+  const remove = () => {
+    setError(null)
+    void removeMyAvatar().then((ok) => {
+      setRemoveFailed(!ok)
+      if (!ok) setError(booqyFaultText('Bilden kunde inte tas bort.'))
+    })
+  }
 
   useEffect(() => {
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -44,9 +53,11 @@ function ProfilePictureDialog({ name, email, onClose }: { name?: string | null; 
           <CropStep
             src={src}
             onCancel={() => setSrc(null)}
-            onSaved={(ok) => {
+            onSaved={(result) => {
               setSrc(null)
-              if (!ok) setError('Bilden kunde inte sparas. Försök igen, eller prova en JPG eller PNG.')
+              setRemoveFailed(false)
+              if (result === 'unreadable') setError('Bilden kunde inte läsas. Välj en JPG eller PNG.')
+              else if (result === 'failed') setError(booqyFaultText('Bilden kunde inte sparas.'))
             }}
           />
         ) : (
@@ -55,10 +66,10 @@ function ProfilePictureDialog({ name, email, onClose }: { name?: string | null; 
               <Avatar url={mine.url} name={name} email={email} size="lg" />
               <p className="modal-text">Frivilligt</p>
             </div>
-            <ErrorNote text={error} />
+            <ErrorNote text={error} onRetry={removeFailed ? remove : () => input.current?.click()} />
             <div className="modal-actions">
               {mine.url && (
-                <button type="button" className="row-action danger" onClick={() => void removeMyAvatar().then((ok) => !ok && setError('Bilden kunde inte tas bort. Försök igen.'))}>
+                <button type="button" className="row-action danger" onClick={remove}>
                   Ta bort bild
                 </button>
               )}
@@ -88,7 +99,7 @@ function ProfilePictureDialog({ name, email, onClose }: { name?: string | null; 
   )
 }
 
-function CropStep({ src, onCancel, onSaved }: { src: string; onCancel: () => void; onSaved: (ok: boolean) => void }) {
+function CropStep({ src, onCancel, onSaved }: { src: string; onCancel: () => void; onSaved: (result: 'saved' | 'failed' | 'unreadable') => void }) {
   const img = useRef<HTMLImageElement>(null)
   const [size, setSize] = useState<{ w: number; h: number } | null>(null)
   const [zoom, setZoom] = useState(1)
@@ -108,7 +119,7 @@ function CropStep({ src, onCancel, onSaved }: { src: string; onCancel: () => voi
       ok = false
     }
     setBusy(false)
-    onSaved(ok)
+    onSaved(ok ? 'saved' : 'failed')
   }
 
   return (
@@ -144,7 +155,7 @@ function CropStep({ src, onCancel, onSaved }: { src: string; onCancel: () => voi
           alt=""
           draggable={false}
           onLoad={(e) => setSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
-          onError={() => onSaved(false)}
+          onError={() => onSaved('unreadable')}
           style={crop ? { transform: `translate(${crop.x}px, ${crop.y}px) scale(${crop.scale})` } : { opacity: 0 }}
         />
       </div>

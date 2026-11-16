@@ -26,7 +26,8 @@ import {
   paymentFailureLabel,
 } from './bookingsApi'
 import type { HistoryEntry, Reservation, ReservationEdit } from './bookingsApi'
-import { tableNames, useTables } from '../../shared/tables'
+import { useTables } from '../../shared/tables'
+import { TableLinks } from '../../shared/TableLinks'
 import { PhoneInput } from '../../shared/PhoneInput'
 import { ApiError } from '../../shared/api'
 import { minutesLabel } from '../installningar/bookingTime'
@@ -164,7 +165,7 @@ export function ReservationModal({
           <div>
             <h2>{r.customerName || 'Gäst'}</h2>
             <p className="cell-muted">
-              {dayLabel(r.date)} · {r.startTime}-{r.endTime} · {r.partySize} pers · {tableNames(r.tableIds, labels)}
+              {dayLabel(r.date)} · {r.startTime}-{r.endTime} · {r.partySize} pers · <TableLinks ids={r.tableIds} labels={labels} date={r.date} />
             </p>
           </div>
           <span className={`status-badge ${STATUS_CLASS[r.status]}`}>{STATUS_LABEL[r.status]}</span>

@@ -247,6 +247,19 @@ a {
   color: var(--accent-ink);
 }
 
+/* "Bord 3": numret leder till bordskartan med bordet markerat. */
+.table-link {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+.table-link:hover,
+.table-link:focus-visible {
+  text-decoration-style: solid;
+}
+
 /* Glasrummet: tokens och det suddiga rummet bakom allt (samma som booqy.se). */
 :root {
   --glass: rgb(var(--bq-snow-rgb) / 0.62);

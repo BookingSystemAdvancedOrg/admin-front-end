@@ -105,7 +105,16 @@ function bounds(floor: Floor): { x: number; y: number; w: number; h: number } {
  * POST /reservations som Bokningar, så servern prövar tiden och bordet
  * igen och nekar en dubbelbokning (409), varpå tiderna hämtas om.
  */
-export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?: ReactNode }) {
+export function FloorBooking({
+  actions,
+  notice,
+  focus,
+}: {
+  actions?: ReactNode
+  notice?: ReactNode
+  /** Bordet att markera (länk "Bord 3" från Bokningar, Översikt eller Kön) och dagen. */
+  focus?: { tableId: string; date: string | null } | null
+}) {
   const tenantState = useTenant()
   const { locationId } = tenantState
   const location = currentLocation(tenantState)
@@ -137,6 +146,10 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<HTMLElement>(null)
+  // Bordet som länken pekade på blinkar till en kort stund; vilket fokus som redan visats.
+  const [flashId, setFlashId] = useState<string | null>(null)
+  const [focusDone, setFocusDone] = useState<string | null>(null)
 
   const canLoad = Boolean(locationId) && isApiConfigured()
   useEffect(() => {
@@ -223,6 +236,27 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
   const allTables = plan?.floors.flatMap((f) => f.tables) ?? []
   const table = allTables.find((t) => t.id === tableId) ?? null
   const label = (t: TableElement) => plan?.labels.get(t.id) ?? t.label
+
+  // Länkens bord: rätt våning, rätt dag (inom bokningsfönstret), markerat och i bild.
+  const focusKey = focus ? `${focus.tableId}|${focus.date ?? ''}|${planFor ?? ''}` : null
+  useEffect(() => {
+    if (!focus || !plan || !focusKey || focusDone === focusKey) return
+    const home = plan.floors.find((f) => f.tables.some((t) => t.id === focus.tableId))
+    setFocusDone(focusKey)
+    if (!home) return
+    setFloorId(home.id)
+    const d = focus.date
+    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= today && d <= addDays(today, HORIZON_DAYS)) setDate(d)
+    setTableId(focus.tableId)
+    setStartTime('')
+    setFlashId(focus.tableId)
+    requestAnimationFrame(() => mapRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }))
+  }, [focus, plan, focusKey, focusDone, today])
+  useEffect(() => {
+    if (!flashId) return
+    const timer = window.setTimeout(() => setFlashId(null), 2600)
+    return () => window.clearTimeout(timer)
+  }, [flashId])
   const size = Number(partySize)
   const sizeOk = /^\d+$/.test(partySize) && size >= 1 && size <= 50
   const normalizedPhone = phone.trim() ? normalizePhone(phone) : null
@@ -374,7 +408,7 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
             )}
 
             <div className="floor-booking-grid">
-              <section className="admin-card floor-map-card" aria-label="Bordskarta">
+              <section className="admin-card floor-map-card" aria-label="Bordskarta" ref={mapRef}>
                 {plan.floors.length > 1 && (
                   <div className="floor-tabs" role="tablist" aria-label="Våning">
                     {plan.floors.map((f) => (
@@ -441,7 +475,7 @@ export function FloorBooking({ actions, notice }: { actions?: ReactNode; notice?
                     return (
                       <g
                         key={t.id}
-                        className={`floor-map-table is-${state}${t.id === tableId ? ' is-selected' : ''}${t.id === hoverId ? ' is-hover' : ''}`}
+                        className={`floor-map-table is-${state}${t.id === tableId ? ' is-selected' : ''}${t.id === hoverId ? ' is-hover' : ''}${t.id === flashId ? ' is-focus' : ''}`}
                         transform={`translate(${t.x} ${t.y}) rotate(${t.rotation})`}
                         role="button"
                         tabIndex={state === 'full' || state === 'loading' ? -1 : 0}

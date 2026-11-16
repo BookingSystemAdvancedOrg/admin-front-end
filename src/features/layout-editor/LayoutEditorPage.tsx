@@ -5,6 +5,7 @@ import { sameData, useLiveRefresh } from '../../shared/live'
 import { LayoutPrep } from './LayoutPrep'
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { FloorBooking } from './FloorBooking'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useUnsavedGuard } from '../../shared/unsaved'
@@ -199,7 +200,18 @@ function useSmallScreen(): boolean {
  */
 export default function LayoutEditorPage() {
   const small = useSmallScreen()
-  const [mode, setMode] = useState<'book' | 'edit'>('edit')
+  // ?bord=<id>[&datum=YYYY-MM-DD]: en länk "Bord 3" från Bokningar, Översikt
+  // eller Kön öppnar bordskartan med det bordet markerat.
+  const [params] = useSearchParams()
+  const focusTableId = params.get('bord')
+  const focusDate = params.get('datum')
+  const [mode, setMode] = useState<'book' | 'edit'>(focusTableId ? 'book' : 'edit')
+  const [lastFocus, setLastFocus] = useState(focusTableId)
+  if (focusTableId !== lastFocus) {
+    setLastFocus(focusTableId)
+    if (focusTableId) setMode('book')
+  }
+  const focus = focusTableId ? { tableId: focusTableId, date: focusDate } : null
   // Monteras första gången skärmen är stor nog, och ligger sedan kvar.
   const [editorMounted, setEditorMounted] = useState(!small)
   if (!small && !editorMounted) setEditorMounted(true)
@@ -207,6 +219,7 @@ export default function LayoutEditorPage() {
   if (small) {
     return (
       <FloorBooking
+        focus={focus}
         notice={
           <p className="layout-small-notice" role="note">
             <Icon name="tool-floor" size={20} />
@@ -229,7 +242,7 @@ export default function LayoutEditorPage() {
   )
   return (
     <>
-      {mode === 'book' && <FloorBooking actions={modeSwitch} />}
+      {mode === 'book' && <FloorBooking actions={modeSwitch} focus={focus} />}
       {editorMounted && (
         <div style={{ display: mode === 'edit' ? 'contents' : 'none' }}>
           <LayoutEditor modeSwitch={modeSwitch} active={mode === 'edit'} />

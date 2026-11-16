@@ -27,6 +27,7 @@ import {
 } from './bookingsApi'
 import type { Reservation } from './bookingsApi'
 import { tableNames, useTables } from '../../shared/tables'
+import { TableLinks } from '../../shared/TableLinks'
 import './bokningar.css'
 import { DateInput } from '../../shared/DateInput'
 import { Icon } from '../../shared/Icon'
@@ -265,7 +266,7 @@ export default function BokningarPage() {
                           )}
                         </td>
                         <td data-label="Pers"><Num>{r.partySize}</Num></td>
-                        <td>{tableNames(r.tableIds, labels)}</td>
+                        <td>{locationId === MOCK_LOCATION_ID ? tableNames(r.tableIds, labels) : <TableLinks ids={r.tableIds} labels={labels} date={r.date} />}</td>
                         <td>
                           <span className={`status-badge ${STATUS_CLASS[r.status]}`}>
                             {STATUS_LABEL[r.status]}

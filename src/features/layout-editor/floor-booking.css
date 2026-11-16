@@ -271,3 +271,20 @@
     font-size: 13px;
   }
 }
+
+/* Bordet en länk "Bord 3" pekade på: en ring pulserar runt det en kort stund. */
+.floor-map-table.is-focus .floor-map-top {
+  animation: floor-map-focus 0.8s ease-in-out 3;
+}
+
+@keyframes floor-map-focus {
+  0%, 100% { stroke-width: 3; }
+  50% { stroke-width: 9; stroke: var(--accent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floor-map-table.is-focus .floor-map-top {
+    animation: none;
+    stroke-width: 6;
+  }
+}

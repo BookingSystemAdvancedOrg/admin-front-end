@@ -4,7 +4,8 @@ import { Bar, Button, Card, Field, Input, Modal, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { SkelCard } from '../../shared/Skeleton'
-import { tableNames, useTables } from '../../shared/tables'
+import { useTables } from '../../shared/tables'
+import { TableLinks } from '../../shared/TableLinks'
 import { SlotTablePicker, type SlotValue } from '../bokningar/SlotTablePicker'
 import {
   ERRORS,
@@ -31,7 +32,7 @@ export default function QueuePanel({ locationId, date }: { locationId: string; d
   const [loadError, setLoadError] = useState<string | null>(null)
   const { labels } = useTables(locationId)
   // Utan bordsnamn (laddar eller misslyckades): aldrig bordens id.
-  const where = (ids: string[]) => tableNames(ids, labels)
+  const where = (ids: string[]) => <TableLinks ids={ids} labels={labels} date={date} />
 
   const load = useCallback(async () => {
     try {

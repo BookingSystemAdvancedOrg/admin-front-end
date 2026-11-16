@@ -18,6 +18,9 @@ import { Icon } from './Icon'
 import { placeList, type Place } from './selectPlace'
 import './select.css'
 
+/** Popover-API:t (översta lagret). Saknas bara i gamla webbläsare och i jsdom. */
+const CAN_POPOVER = typeof HTMLElement !== 'undefined' && typeof HTMLElement.prototype.showPopover === 'function'
+
 /**
  * Rullistan i hela adminen: en knapp med det valda värdet och en lista i
  * Booqys glas (aldrig systemets grå meny). Mönstret är WAI-ARIA:s
@@ -144,6 +147,11 @@ export function Select({
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
   const [phone, setPhone] = useState(false)
+  // Öppen <dialog> runt knappen (Modal i @booqy/brand öppnas med showModal()):
+  // dialogen ligger i webbläsarens översta lager, över all z-index, och resten
+  // av sidan är inert. Listan läggs därför IN i dialogen och visas som popover,
+  // så att den hamnar överst, inte klipps av dialogen och går att klicka i.
+  const [host, setHost] = useState<HTMLDialogElement | null>(null)
   const [place, setPlace] = useState<Place | null>(null)
   const [title_, setTitle] = useState('')
   const trigger = useRef<HTMLButtonElement>(null)
@@ -169,6 +177,7 @@ export function Select({
     setActive(at ?? sel)
     const r = trigger.current?.getBoundingClientRect()
     anchor.current = r ? { top: r.top, left: r.left } : null
+    setHost((trigger.current?.closest('dialog[open]') as HTMLDialogElement | null) ?? null)
     setOpen(true)
     // Safari fokuserar inte knappar vid klick: utan fokus når piltangenterna aldrig listan.
     if (document.activeElement !== trigger.current) trigger.current?.focus({ preventScroll: true })
@@ -201,6 +210,16 @@ export function Select({
     if (isPhone()) return setPlace(null)
     setPlace(placeList(a.getBoundingClientRect(), l.scrollHeight, window.innerWidth, window.innerHeight, l.offsetWidth))
   }, [])
+
+  useLayoutEffect(() => {
+    const el = layer.current
+    if (!open || !host || !el || typeof el.showPopover !== 'function') return
+    try {
+      el.showPopover()
+    } catch {
+      // redan visad
+    }
+  }, [open, host])
 
   useLayoutEffect(() => {
     if (open) position()
@@ -372,8 +391,13 @@ export function Select({
     ? createPortal(
         <div
           ref={layer}
-          className={`b-select-layer${phone ? ' is-sheet' : ''}`}
-          onClick={(e) => e.stopPropagation()}
+          className={`b-select-layer${phone ? ' is-sheet' : ''}${host ? ' in-dialog' : ''}`}
+          {...(host && CAN_POPOVER ? { popover: 'manual' as const } : {})}
+          // I en dialog fångar lagret klick bredvid listan: de stänger bara listan, inte dialogen.
+          onClick={(e) => {
+            e.stopPropagation()
+            if (host && e.target === e.currentTarget) close(false)
+          }}
           onMouseDown={(e) => e.preventDefault()}
         >
           {phone && <div className="b-select-scrim" aria-hidden="true" onClick={() => close()} />}
@@ -420,7 +444,7 @@ export function Select({
             </ul>
           </div>
         </div>,
-        document.body,
+        host ?? document.body,
       )
     : null
 

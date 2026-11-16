@@ -313,3 +313,26 @@ describe('placeList', () => {
     expect(p.maxHeight).toBe(340)
   })
 })
+
+describe('Select in an open dialog', () => {
+  it('puts the list inside the dialog (top layer, not inert) and a pick does not close the dialog', () => {
+    const onChange = vi.fn()
+    render(
+      <dialog open aria-label="Placera">
+        <Select aria-label="Tid" value="" onChange={(e) => onChange(e.target.value)}>
+          <option value="">Välj tid</option>
+          <option value="17:00">17:00</option>
+          <option value="17:30">17:30</option>
+        </Select>
+      </dialog>,
+    )
+    const dialog = screen.getByRole('dialog', { hidden: true })
+    fireEvent.click(screen.getByRole('combobox', { name: 'Tid' }))
+    const list = screen.getByRole('listbox', { hidden: true })
+    expect(dialog.contains(list)).toBe(true)
+    expect(list.closest('.b-select-layer')).toHaveClass('in-dialog')
+    fireEvent.click(screen.getByRole('option', { name: '17:30', hidden: true }))
+    expect(onChange).toHaveBeenCalledWith('17:30')
+    expect(dialog).toHaveAttribute('open')
+  })
+})

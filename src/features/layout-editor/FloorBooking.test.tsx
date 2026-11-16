@@ -112,6 +112,25 @@ describe('FloorBooking', () => {
     expect(getAvailability.mock.calls.length).toBeGreaterThan(calls)
   })
 
+  it('opens on the linked table: its floor, its day, selected and highlighted', async () => {
+    apiFetch.mockResolvedValue({
+      floors: [{ floorId: 'f1', name: 'Entréplan', level: 0 }, { floorId: 'f2', name: 'Övervåning', level: 1 }],
+      elements: [table('t-a', 1, 4), { ...table('t-up', 2, 2), floorId: 'f2' }],
+    })
+    render(
+      <MemoryRouter>
+        <FloorBooking focus={{ tableId: 't-up', date: '2026-11-15' }} />
+      </MemoryRouter>,
+    )
+    // numbered across floors like the guest site: the upstairs table is Bord 2
+    const up = await screen.findByRole('button', { name: /^Bord 2, 2 pl/ })
+    expect(up).toHaveAttribute('aria-pressed', 'true')
+    expect(up.getAttribute('class')).toContain('is-focus')
+    expect(screen.getByRole('tab', { name: 'Övervåning' })).toHaveAttribute('aria-selected', 'true')
+    expect(getAvailability).toHaveBeenLastCalledWith('loc-1', '2026-11-15', { walkIn: false })
+    expect(screen.getByRole('heading', { name: 'Bord 2' })).toBeInTheDocument()
+  })
+
   it('explains when no layout is published', async () => {
     apiFetch.mockRejectedValue(new ApiError(404, 'not found'))
     renderIt()

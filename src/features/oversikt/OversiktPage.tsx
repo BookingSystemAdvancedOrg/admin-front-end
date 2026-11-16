@@ -31,6 +31,7 @@ import type { RequestSummary } from '../catering/cateringApi'
 import { getPrintStatus } from '../bestallningar/printApi'
 import type { PrintStatus } from '../bestallningar/printApi'
 import { tableNames, useTables } from '../../shared/tables'
+import { TableLinks } from '../../shared/TableLinks'
 import {
   ACTIVE_STATUSES,
   STATUS_CLASS,
@@ -400,7 +401,7 @@ export default function OversiktPage() {
                   <li key={r.reservationId}>
                     <span className="cell-strong">{r.startTime}</span>
                     <span>
-                      {r.customerName || 'Gäst'} · <Num>{r.partySize}</Num> pers · {tableNames(r.tableIds, tableLabels)}
+                      {r.customerName || 'Gäst'} · <Num>{r.partySize}</Num> pers · {sample ? tableNames(r.tableIds, tableLabels) : <TableLinks ids={r.tableIds} labels={tableLabels} date={r.date} />}
                     </span>
                     <span className={`status-badge ${STATUS_CLASS[r.status]}`}>
                       {STATUS_LABEL[r.status]}

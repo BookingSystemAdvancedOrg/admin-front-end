@@ -100,7 +100,7 @@ export default function OmdomenTab() {
     <>
       {!connected || !view.link ? (
         <Bar variant="banner" tone="warning">
-          Koppla er Google-profil under Inställningar &gt; Profil först, annars vet vi inte vart gästen ska skriva omdömet.
+          Koppla er Google-profil under Inställningar, Restaurangen, Google-profil först, annars vet vi inte vart gästen ska skriva omdömet.
         </Bar>
       ) : null}
       <div className="omdomen-stats">

@@ -1561,35 +1561,6 @@ dialog.modal-layer::backdrop {
 }
 
 
-/* Inställningar: flikar - en sektion i taget. */
-.settings-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 4px;
-}
-
-.settings-tabs button {
-  min-height: 36px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: var(--r-pill);
-  background: var(--glass-fill);
-  font: 500 14px/1 var(--font);
-  color: var(--ink);
-  cursor: default;
-}
-
-.settings-tabs button:hover {
-  background: color-mix(in srgb, var(--ink) 8%, var(--glass-fill));
-}
-
-.settings-tabs button.active {
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 600;
-}
-
 [hidden] {
   display: none !important;
 }

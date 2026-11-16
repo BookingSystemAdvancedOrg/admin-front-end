@@ -1,7 +1,7 @@
 /**
  * Introduktionsguidens steg, i den ordning de visas.
  *
- * - `route`: sidan (och ev. #flik) guiden går till innan bubblan visas.
+ * - `route`: sidan (och ev. #gren) guiden går till innan bubblan visas.
  * - `target`: värdet på ett `data-tour`-attribut på den sidan. Finns målet
  *   inte (t.ex. en tom meny) hoppar guiden vidare till nästa steg.
  *   Steg utan `target` visas mitt på skärmen.
@@ -65,21 +65,20 @@ export const GUIDE_STEPS: GuideStep[] = [
   // --- Inställningar (viktigast för ägaren) ---------------------------------
   {
     id: 'installningar',
-    route: '/installningar#profil',
+    route: '/installningar',
     target: 'nav-installningar',
     section: 'Inställningar',
     title: 'Inställningar',
     text:
-      'Det viktigaste att gå igenom först. Inställningarna är uppdelade i flikar - vi tar dem en i taget.',
+      'Det viktigaste att gå igenom först. Inställningarna är ordnade i områden, och det viktigaste (som Stripe och sms) syns direkt på varje kort. Vi tar delarna en i taget.',
   },
   {
     id: 'set-profil',
     route: '/installningar#profil',
     target: 'settings-tab-profil',
     ownerOnly: true,
-    title: 'Restaurang',
-    text:
-      'Namn, adress, telefon, e-post och öppettider. Gästerna ser detta på er webbplats och kan bara boka när ni har öppet.',
+    title: 'Profil och kontakt',
+    text: 'Namn, adress, telefon och e-post. Gästerna ser detta på er webbplats.',
   },
   {
     id: 'set-save',
@@ -87,7 +86,16 @@ export const GUIDE_STEPS: GuideStep[] = [
     target: 'settings-save',
     ownerOnly: true,
     title: 'Spara',
-    text: 'Ändringar under Restaurang sparas med den här knappen. De andra flikarna har var sin Spara-knapp.',
+    text: 'Profil och öppettider sparas med den här knappen. De andra delarna har var sin Spara-knapp.',
+  },
+  {
+    id: 'set-dagar',
+    route: '/installningar#dagar',
+    target: 'settings-tab-dagar',
+    ownerOnly: true,
+    title: 'Öppettider och avvikande dagar',
+    text:
+      'Öppettider per veckodag, och helgdagar, stängt för privat fest eller andra tider. Gästerna kan bara boka när ni har öppet.',
   },
   {
     id: 'set-personal',
@@ -120,7 +128,7 @@ export const GUIDE_STEPS: GuideStep[] = [
     route: '/installningar#avbokning',
     target: 'settings-tab-avbokning',
     ownerOnly: true,
-    title: 'Avbokning',
+    title: 'Avbokning och kortgaranti',
     text:
       'Kortgaranti för större sällskap: gästen lägger in sitt kort när hen bokar, och ni kan ta en avgift om ingen kommer.',
   },
@@ -130,25 +138,17 @@ export const GUIDE_STEPS: GuideStep[] = [
     target: 'settings-tab-bestallning',
     ownerOnly: true,
     feature: 'ordering',
-    title: 'Beställning',
+    title: 'Beställning och QR-koder',
     text: 'Slå på avhämtning och beställning vid bordet, och skapa QR-koder att ställa på borden.',
-  },
-  {
-    id: 'set-dagar',
-    route: '/installningar#dagar',
-    target: 'settings-tab-dagar',
-    ownerOnly: true,
-    title: 'Avvikande dagar',
-    text: 'Helgdagar, stängt för privat fest eller andra tider - lägg in dem här så stämmer bokningen.',
   },
   {
     id: 'set-bord',
     route: '/installningar#bord',
     target: 'settings-tab-bord',
     ownerOnly: true,
-    title: 'Bord',
+    title: 'Bokning',
     text:
-      'Hur många gäster varje bord passar online, och vilka bord som kan ställas ihop för större sällskap.',
+      'Hur länge en bokning varar, hur många gäster varje bord passar online och vilka bord som kan ställas ihop för större sällskap.',
   },
 
   // --- Meny ------------------------------------------------------------------

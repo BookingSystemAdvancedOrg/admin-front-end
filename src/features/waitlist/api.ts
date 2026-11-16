@@ -45,7 +45,7 @@ export const saveSettings = (locationId: string, s: Settings) =>
   apiFetch<Settings>(`${base(locationId)}/settings`, { method: 'PUT', body: JSON.stringify(s) })
 
 export const ERRORS: Record<string, string> = {
-  queue_full: 'Kön är full. Höj max antal under Inställningar > Bord eller ta bort någon.',
+  queue_full: 'Kön är full. Höj max antal under Inställningar, Restaurangen, Bokning eller ta bort någon.',
   already_queued: 'Det numret står redan i kön i dag.',
   table_taken: 'Bordet hann bli upptaget. Välj ett annat.',
   hold_expired: 'Tiden för erbjudandet gick ut. Erbjud bordet igen.',

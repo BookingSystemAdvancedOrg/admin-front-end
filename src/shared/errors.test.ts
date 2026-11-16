@@ -126,7 +126,7 @@ describe('vem gör något', () => {
   it('användarens fel säger vad man gör, och leder till rätt ställe när det finns ett', () => {
     expect(who(server(403, 'dpa_version_outdated')).link).toEqual({ to: '/avtal', label: 'Öppna Avtal' })
     expect(who(server(403, 'dpa_version_outdated')).text).toMatch(/under Avtal/)
-    expect(who(server(403, 'feature_not_in_plan')).link?.to).toBe('/installningar#profil')
+    expect(who(server(403, 'feature_not_in_plan')).link?.to).toBe('/installningar#abonnemang')
     expect(who(server(409, 'no_stripe_account')).link?.to).toBe('/installningar#betalningar')
     expect(who(server(401, 'Unauthorized', { code: 'unauthorized' })).link?.to).toBe('/logga-in')
     for (const err of [

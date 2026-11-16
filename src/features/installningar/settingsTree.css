@@ -1,0 +1,546 @@
+/* Inställningarnas fält, träd och grenar (SettingsTreeView.tsx).
+   Datorn (från 1100 px): trädet till vänster, klistrat medan sidan rullar.
+   Mindre skärmar: fältet, trädet och grenen en i taget, med tillbaka-knapp.
+   Allt rör sig lugnt och bara en gång; inget rör sig med reducerad rörelse. */
+
+.stree-nav {
+  display: none;
+  min-width: 0;
+}
+
+.stree,
+.stree-group,
+.stree-apples,
+.stree-card-branches,
+.stree-rows,
+.stree-crumbs ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stree [role='treeitem'] {
+  outline: none;
+  cursor: default;
+}
+
+.stree-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: var(--r-md);
+  font: 650 15px/1.25 var(--font);
+  color: var(--ink);
+  transition: background-color 200ms var(--ease);
+}
+.stree-label {
+  flex: 1;
+  min-width: 0;
+}
+.stree-icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--wall-tint);
+  color: var(--accent-ink);
+}
+.stree-chevron {
+  display: inline-flex;
+  color: var(--muted);
+  rotate: -90deg;
+  transition: rotate 240ms var(--ease);
+}
+.stree-tree[aria-expanded='true'] > .stree-row .stree-chevron {
+  rotate: 0deg;
+}
+.stree-tree:focus-visible > .stree-row,
+.stree-branch:focus-visible {
+  box-shadow: 0 0 0 2px var(--focus);
+}
+
+.stree-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0 8px 44px;
+}
+.stree-group:not(:empty) {
+  animation: stree-unfold 260ms var(--ease) both;
+}
+.stree-fold:not([data-open='true']) .stree-group {
+  padding: 0;
+}
+
+.stree-branch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  color: var(--ink);
+  transition: background-color 200ms var(--ease), color 200ms var(--ease);
+}
+.stree-branch .settings-tab-title {
+  font: 550 14.5px/1.25 var(--font);
+}
+.stree-branch.active {
+  background: var(--slip);
+  color: var(--on-slip);
+}
+.stree-link {
+  color: var(--accent-ink);
+}
+
+/* --- Fältet ------------------------------------------------------------- */
+.stree-field {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.stree-search {
+  position: relative;
+  max-width: 560px;
+}
+.stree-search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--field-bg, rgb(var(--bq-snow-rgb) / 0.6));
+  box-shadow: inset 0 0 0 1px var(--field-border, var(--border));
+  color: var(--muted);
+  transition: box-shadow 200ms var(--ease), background-color 200ms var(--ease);
+}
+.stree-search-box:focus-within {
+  background: var(--field-bg-focus, var(--field-bg));
+  box-shadow: inset 0 0 0 1.5px var(--ink), 0 0 0 4px var(--field-ring, transparent);
+}
+.stree-search-box input {
+  flex: 1;
+  min-width: 0;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font: 400 16px/1 var(--font);
+  color: var(--ink);
+  outline: none;
+}
+.stree-search-box input:focus,
+.stree-search-box input:focus-visible {
+  border: 0;
+  box-shadow: none;
+  outline: none;
+}
+
+.stree-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: var(--radius-card, 18px);
+  background: var(--glass-pop, var(--glass-surface));
+  -webkit-backdrop-filter: var(--blur-pop, blur(18px));
+  backdrop-filter: var(--blur-pop, blur(18px));
+  box-shadow: var(--elev-3, var(--shadow));
+  animation: stree-pop 180ms var(--ease) both;
+}
+.stree-result {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 48px;
+  padding: 6px 12px;
+  border-radius: var(--radius-inner, 12px);
+  color: var(--ink);
+  cursor: default;
+}
+.stree-result[aria-selected='true'] {
+  background: var(--slip);
+  color: var(--on-slip);
+}
+.stree-result-label {
+  font: 600 15px/1.25 var(--font);
+}
+.stree-result-path {
+  font: 400 13px/1.3 var(--font);
+  color: var(--muted);
+}
+.stree-result[aria-selected='true'] .stree-result-path {
+  color: inherit;
+  opacity: 0.75;
+}
+.stree-empty {
+  margin: 0;
+  padding: 12px;
+  font: 400 14px/1.4 var(--font);
+  color: var(--muted);
+}
+
+.stree-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.stree-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 18px 20px 12px;
+  animation: stree-rise 420ms var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+.stree-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: default;
+}
+.stree-card-head .stree-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+}
+.stree-card-title {
+  flex: 1;
+  margin: 0;
+  font: 400 21px/1.2 var(--serif-face);
+  color: var(--ink);
+}
+.stree-card-go {
+  color: var(--muted);
+  transition: translate 200ms var(--ease);
+}
+
+.stree-apples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.stree-apple {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-pill, 999px);
+  background: rgb(var(--bq-snow-rgb) / 0.6);
+  box-shadow: inset 0 0 0 1px var(--hairline, rgba(58, 36, 24, 0.12));
+  font: 600 13px/1.2 var(--font);
+  color: var(--ink);
+  cursor: default;
+  transition: background-color 200ms var(--ease), box-shadow 200ms var(--ease);
+}
+/* Träffytan når 44 px utan att chipet växer. */
+.stree-apple::after {
+  content: '';
+  position: absolute;
+  inset: -7px -2px;
+}
+.stree-apple-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--success);
+}
+.stree-apple.warn {
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 45%, transparent);
+  color: var(--warning-ink);
+}
+.stree-apple.warn .stree-apple-dot {
+  background: var(--warning);
+}
+
+.stree-card-branches {
+  display: flex;
+  flex-direction: column;
+}
+.stree-card-branch {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  border-top: 1px dashed var(--border);
+  background: transparent;
+  font: 500 15px/1.25 var(--font);
+  color: var(--ink);
+  text-align: left;
+  cursor: default;
+  transition: color 200ms var(--ease), padding 200ms var(--ease);
+}
+.stree-card-branch:focus-visible,
+.stree-card-head:focus-visible,
+.stree-apple:focus-visible,
+.stree-pager-link:focus-visible,
+.stree-crumbs button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--r-md);
+}
+
+/* --- Ett träd och en gren -------------------------------------------------- */
+.stree-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: stree-in 260ms var(--ease) both;
+}
+.stree-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stree-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  animation: stree-in 260ms var(--ease) both;
+}
+.stree-head .settings-back {
+  margin-bottom: 4px;
+  min-height: 44px;
+}
+.stree-crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font: 400 13px/1.3 var(--font);
+  color: var(--muted);
+}
+.stree-crumbs li + li::before {
+  content: '\203A';
+  margin-right: 6px;
+}
+.stree-crumbs button {
+  min-height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: default;
+  transition: color 200ms var(--ease);
+}
+.stree-crumbs [aria-current='page'] {
+  color: var(--ink);
+}
+.stree-title {
+  margin: 2px 0 0;
+  font: 400 28px/1.15 var(--serif-face);
+  color: var(--ink);
+}
+
+.settings-branch {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-width: 0;
+}
+.settings-branch:not([hidden]) {
+  animation: stree-in 260ms var(--ease) both;
+}
+
+.stree-pager {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border);
+}
+.stree-pager-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-pill, 999px);
+  background: transparent;
+  font: 600 14px/1.2 var(--font);
+  color: var(--accent-ink);
+  cursor: default;
+  transition: background-color 200ms var(--ease);
+}
+.stree-pager-link.next {
+  margin-left: auto;
+}
+
+/* Bladet man sökte: en ring som tonar bort. */
+.stree-leaf-flash {
+  border-radius: 12px;
+  animation: stree-flash 2400ms var(--ease) both;
+}
+
+@media (hover: hover) {
+  .stree-row:hover,
+  .stree-branch:not(.active):hover {
+    background: rgb(var(--bq-snow-rgb) / 0.6);
+  }
+  .stree-card-head:hover .stree-card-go {
+    translate: 3px 0;
+  }
+  .stree-card-branch:hover {
+    padding-left: 6px;
+    color: var(--accent-ink);
+  }
+  .stree-apple:hover {
+    background: rgb(var(--bq-snow-rgb) / 0.9);
+  }
+  .stree-apple.warn:hover {
+    background: color-mix(in srgb, var(--warning) 26%, transparent);
+  }
+  .stree-crumbs button:hover {
+    color: var(--ink);
+  }
+  .stree-pager-link:hover {
+    background: var(--glass-fill);
+  }
+  :root[data-theme='dark'] .stree-row:hover,
+  :root[data-theme='dark'] .stree-branch:not(.active):hover {
+    background: rgb(var(--bq-snow-rgb) / 0.07);
+  }
+  :root[data-theme='dark'] .stree-apple:hover {
+    background: rgb(var(--bq-snow-rgb) / 0.12);
+  }
+}
+
+:root[data-theme='dark'] .stree-apple {
+  background: rgb(var(--bq-snow-rgb) / 0.06);
+  box-shadow: inset 0 0 0 1px rgba(213, 196, 174, 0.16);
+}
+:root[data-theme='dark'] .stree-apple.warn {
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 50%, transparent);
+}
+:root[data-theme='dark'] .stree-search-box {
+  background: var(--field-bg, rgb(var(--bq-snow-rgb) / 0.05));
+}
+
+@media (min-width: 1100px) {
+  .stree-nav {
+    display: block;
+    position: sticky;
+    top: 24px;
+    max-height: calc(100vh - 48px);
+    overflow: auto;
+    padding-right: 20px;
+    border-right: 1px dashed var(--border);
+  }
+  .stree-head .settings-back {
+    display: none;
+  }
+}
+
+/* Telefonen: lite tätare kort, rubriken mindre. */
+@media (max-width: 640px) {
+  .stree-card {
+    padding: 16px 16px 10px;
+  }
+  .stree-title {
+    font-size: 24px;
+  }
+  .stree-search {
+    max-width: none;
+  }
+}
+
+@keyframes stree-in {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+@keyframes stree-rise {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+}
+@keyframes stree-unfold {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
+@keyframes stree-pop {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
+@keyframes stree-flash {
+  0%,
+  60% {
+    box-shadow: 0 0 0 3px var(--focus);
+  }
+  100% {
+    box-shadow: 0 0 0 3px transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stree-group:not(:empty),
+  .stree-results,
+  .stree-card,
+  .stree-view,
+  .stree-head,
+  .settings-branch:not([hidden]) {
+    animation: none;
+  }
+  .stree-chevron,
+  .stree-card-go,
+  .stree-card-branch {
+    transition: none;
+  }
+  .stree-leaf-flash {
+    animation: none;
+    box-shadow: 0 0 0 3px var(--focus);
+  }
+}

@@ -105,7 +105,7 @@ export function setupSteps(input: SetupInput): SetupStep[] {
       id: 'hours',
       label: 'Lägg in öppettider',
       done: input.hasOpeningHours,
-      to: '/installningar#profil',
+      to: '/installningar#dagar',
     },
     {
       id: 'menu',

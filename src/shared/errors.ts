@@ -51,7 +51,7 @@ const booqy = (text: string): Mapped => ({ text, actor: 'booqy' })
 
 const LINK = {
   avtal: { to: '/avtal', label: 'Öppna Avtal' },
-  plan: { to: '/installningar#profil', label: 'Se abonnemanget' },
+  plan: { to: '/installningar#abonnemang', label: 'Se abonnemanget' },
   payments: { to: '/installningar#betalningar', label: 'Öppna Betalningar' },
   personal: { to: '/personal', label: 'Öppna Personal' },
   login: { to: '/logga-in', label: 'Logga in' },

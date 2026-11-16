@@ -50,7 +50,7 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * Ägaren ser sidan, och personal som ägaren har gett området Personal (de
  * ser och bjuder in personalen på sin egen plats, men ändrar inga roller,
  * behörigheter eller tar bort konton). Ägaren bockar här i vad varje person
- * får öppna utöver gruppen (Inställningar > Behörigheter).
+ * får öppna utöver gruppen (Inställningar, Personal, Behörigheter).
  * Fler ägare läggs upp av Booqy, inte här.
  */
 export default function PersonalPage() {

@@ -25,6 +25,7 @@ import { preloadPages } from '../pages'
 import { NAV_FOOTER, NAV_GROUPS, navVisible, onItem, recentPages, rememberPage, requestPageAction, visibleNav } from './nav'
 import type { NavItem } from './nav'
 import { Icon } from './Icon'
+import { BRANCHES, BRANCH_LABEL, LEAVES, branchVisible, treeOf } from '../features/installningar/settingsTree'
 import { RoleGate } from './RoleGate'
 import { CommandPalette } from './CommandPalette'
 import type { PaletteItem } from './CommandPalette'
@@ -384,6 +385,19 @@ function ShellPalette({ onLogout }: { onLogout: () => void }) {
       { id: 'a-logout', group: 'Åtgärder', label: 'Logga ut', icon: 'logout', run: onLogout },
     ]
     const goto: PaletteItem[] = nav.map((n) => ({ id: `n-${n.to}`, group: 'Gå till', label: n.label, icon: n.icon, run: () => navigate(n.to) }))
+    // Inställningarnas grenar och blad: syns när man söker, leder rätt in.
+    const settings: PaletteItem[] = BRANCHES.filter((b) => branchVisible(b, tenant)).flatMap((b) => [
+      {
+        id: `s-${b}`, group: 'Inställningar' as const, label: BRANCH_LABEL[b], hint: treeOf(b).label, icon: 'gear' as const, searchOnly: true,
+        keywords: LEAVES.filter((l) => l.branch === b).map((l) => l.label).join(' '),
+        run: () => navigate(`/installningar#${b}`),
+      },
+      ...LEAVES.filter((l) => l.branch === b && l.label !== BRANCH_LABEL[b]).map((l) => ({
+        id: `s-${b}-${l.label}`, group: 'Inställningar' as const, label: l.label, hint: BRANCH_LABEL[b], icon: 'gear' as const, searchOnly: true,
+        keywords: l.keywords,
+        run: () => navigate(`/installningar#${b}`, { state: { leaf: l.label } }),
+      })),
+    ])
     const here = window.location.pathname
     const recent: PaletteItem[] = recentPages()
       .filter((p) => p !== here)
@@ -392,7 +406,7 @@ function ShellPalette({ onLogout }: { onLogout: () => void }) {
       .filter((n, i, arr) => arr.indexOf(n) === i)
       .slice(0, 4)
       .map((n) => ({ id: `r-${n.to}`, group: 'Senaste', label: n.label, icon: n.icon, run: () => navigate(n.to) }))
-    return [...actions, ...goto, ...recent]
+    return [...actions, ...goto, ...settings, ...recent]
   }, [tenant, navigate, start, onLogout])
   return <CommandPalette items={items} />
 }

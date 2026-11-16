@@ -37,10 +37,10 @@ const EXTRA_PAGES = {
   '/cateringkalkyl': { label: 'Cateringinställningar', feature: 'catering', ownerOnly: true },
   '/avtal': { label: 'Avtal', ownerOnly: true },
 }
-// Inställningar: personalen kan bara ändra Utseende och ljud (och se skrivbordsappen),
-// resten är ägarens. De som kräver en funktion i planen.
+// Inställningar: personalen kan bara ändra Utseende och ljud (och se appen),
+// resten är ägarens. Grenar som kräver en funktion i planen.
 const SETTINGS_STAFF = ['utseende', 'skrivbordsappen']
-const SETTINGS_FEATURE = { bestallning: 'ordering', skrivare: 'ordering' }
+const SETTINGS_FEATURE = { bestallning: 'ordering', skrivare: 'ordering', google: 'googleBusiness' }
 // Inte delar av den inloggade appen (eller assistenten själv).
 const SKIP_DIRS = ['features/auth', 'features/help', 'test']
 // Områden personalen hade innan behörigheterna (src/shared/access.ts
@@ -193,26 +193,27 @@ function hints(text) {
 }
 
 /**
- * Inställningarnas flikar ur InstallningarPage.tsx: namn (TAB_LABEL), en rad
- * om vad som finns där (TAB_HINT) och gruppen fliken ligger i (GROUPS), så som
- * menyn visar dem: först gruppen (Verksamheten), sedan fliken (Restaurang).
+ * Inställningarnas grenar ur settingsTree.ts: namn (BRANCH_LABEL), en rad om
+ * vad som finns där (BRANCH_HINT) och trädet grenen sitter i (TREES), så som
+ * sidan visar dem: först trädet (Gäster), sedan grenen (Notiser). Nycklarna
+ * heter fortfarande tabLabel/groupOf: grenarnas id är de gamla flikarnas.
  */
 export function settingsSections() {
-  const text = readFileSync(join(SRC, 'features/installningar/InstallningarPage.tsx'), 'utf8')
+  const text = readFileSync(join(SRC, 'features/installningar/settingsTree.ts'), 'utf8')
   const block = (name) => {
     const start = text.indexOf(`const ${name}`)
-    if (start < 0) throw new Error(`InstallningarPage.tsx: hittar inte ${name}`)
+    if (start < 0) throw new Error(`settingsTree.ts: hittar inte ${name}`)
     return text.slice(start, text.indexOf('\n}', start) + 2)
   }
-  const tabLabel = Object.fromEntries([...block('TAB_LABEL').matchAll(/^\s{2}(\w+): '([^']+)',$/gm)].map((m) => [m[1], m[2]]))
-  const tabHint = hints(block('TAB_HINT'))
-  const groups = text.slice(text.indexOf('const GROUPS'), text.indexOf('\n]', text.indexOf('const GROUPS')))
+  const tabLabel = Object.fromEntries([...block('BRANCH_LABEL').matchAll(/^\s{2}(\w+): '([^']+)',$/gm)].map((m) => [m[1], m[2]]))
+  const tabHint = hints(block('BRANCH_HINT'))
+  const trees = text.slice(text.indexOf('const TREES'), text.indexOf('\n]', text.indexOf('const TREES')))
   const groupOf = {}
-  for (const m of groups.matchAll(/label: '([^']+)'[^\n]*?tabs: \[([^\]]*)\]/g)) {
+  for (const m of trees.matchAll(/label: '([^']+)'[^\n]*?branches: \[([^\]]*)\]/g)) {
     for (const t of m[2].matchAll(/'(\w+)'/g)) groupOf[t[1]] = m[1]
   }
   for (const tab of Object.keys(tabLabel)) {
-    if (!groupOf[tab]) throw new Error(`InstallningarPage.tsx: fliken ${tab} ligger inte i någon grupp (GROUPS)`)
+    if (!groupOf[tab]) throw new Error(`settingsTree.ts: grenen ${tab} sitter inte i något träd (TREES)`)
   }
   return { tabLabel, tabHint, groupOf }
 }
@@ -253,7 +254,7 @@ export function buildCorpus() {
     return hash && tabLabel[hash] ? `${page}, ${groupOf[hash]}, ${tabLabel[hash]}` : page
   }
 
-  // Menyvalen och inställningsflikarna. Två menyval kan leda till samma ställe
+  // Menyvalen och inställningarnas grenar. Två menyval kan leda till samma ställe
   // (Ladda ner appen på datorn, Installera appen på mobilen): id:t får då valets tour.
   const navIds = new Set()
   for (const item of nav) {

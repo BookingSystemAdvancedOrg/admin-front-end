@@ -30,7 +30,7 @@ describe('PresentkortPage', () => {
     render(<MemoryRouter><PresentkortPage /></MemoryRouter>)
     expect(screen.getByRole('heading', { level: 1, name: 'Presentkort' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Ingår inte i er plan' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Se abonnemanget/ })).toHaveAttribute('href', '/installningar#profil')
+    expect(screen.getByRole('link', { name: /Se abonnemanget/ })).toHaveAttribute('href', '/installningar#abonnemang')
     expect(api.listCards).not.toHaveBeenCalled()
   })
 

@@ -221,7 +221,7 @@ export function StaffModal({
               <legend className="title-info">
                 <span>Behörigheter</span>
                 <InfoTooltip label="Behörigheter">
-                  Gruppen: det all personal får (Inställningar, Behörigheter). Extra: bara den här personen. Borttagen:
+                  Gruppen: det all personal får (Inställningar, Personal, Behörigheter). Extra: bara den här personen. Borttagen:
                   gruppens, men inte för den här personen.
                 </InfoTooltip>
               </legend>

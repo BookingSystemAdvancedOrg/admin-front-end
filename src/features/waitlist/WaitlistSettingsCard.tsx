@@ -11,7 +11,7 @@ function today(): string {
   return new Date().toLocaleDateString('sv-SE')
 }
 
-/** Inställningar > Bord: kön på/av, hålltid, max antal och kö från hemsidan (ägaren). */
+/** Inställningar, Restaurangen, Bokning: kön på/av, hålltid, max antal och kö från hemsidan (ägaren). */
 export default function WaitlistSettingsCard({ locationId }: { locationId: string }) {
   // Bara ägaren kan spara köinställningarna (servern svarar owner_only).
   const { tenant } = useTenant()

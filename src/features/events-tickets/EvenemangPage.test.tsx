@@ -261,7 +261,7 @@ describe('load errors and the door', () => {
   it('says where to see the plan when events are not included', () => {
     tenant = { role: 'owner_user', entitlements: { maxLocations: null, features: {} } }
     at('/evenemang')
-    expect(screen.getByRole('link', { name: /Se abonnemanget/ })).toHaveAttribute('href', '/installningar#profil')
+    expect(screen.getByRole('link', { name: /Se abonnemanget/ })).toHaveAttribute('href', '/installningar#abonnemang')
   })
 
   it('shows the list error with Försök igen instead of printing forever', async () => {

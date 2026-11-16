@@ -6,7 +6,7 @@ import { SOUND_KEY, SOUND_VOLUME_KEY } from './storageRegistry'
  * ett krispigt musklick som på en gamingmus (Web Audio, uträknat i förväg, inga filer) och en klämning plus
  * en brun krusning, vid tryck och vid Enter eller mellanslag. Aldrig vid
  * hovring. Ljudet är på från början och startar vid första trycket
- * (webbläsarnas regler för ljud); Inställningar, Utseende och ljud stänger av det
+ * (webbläsarnas regler för ljud); Inställningar, Den här enheten, Utseende och ljud stänger av det
  * ("booqy-sound" i localStorage). Minska rörelse: krusningen blir en kort
  * blinkning, ljudet är kvar.
  */

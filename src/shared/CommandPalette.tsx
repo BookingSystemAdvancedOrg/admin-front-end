@@ -13,17 +13,19 @@ import type { IconName } from './Icon'
 
 export type PaletteItem = {
   id: string
-  group: 'Åtgärder' | 'Gå till' | 'Senaste'
+  group: 'Åtgärder' | 'Gå till' | 'Inställningar' | 'Senaste'
   label: string
   hint?: string
   icon: IconName
   /** Fler ord som ska ge träff (t.ex. "tema" för Utseende). */
   keywords?: string
+  /** Syns bara när man har skrivit något (enskilda inställningar). */
+  searchOnly?: boolean
   run: () => void
 }
 
 const OPEN_EVENT = 'booqy:palette'
-const GROUP_ORDER: PaletteItem['group'][] = ['Åtgärder', 'Gå till', 'Senaste']
+const GROUP_ORDER: PaletteItem['group'][] = ['Åtgärder', 'Gå till', 'Inställningar', 'Senaste']
 
 /** Öppnar paletten (sökrutan i sidhuvudet). */
 export function openPalette() {
@@ -94,7 +96,7 @@ export function CommandPalette({ items }: { items: () => PaletteItem[] }) {
   const all = useMemo(() => (open ? items() : []), [open])
   const results = useMemo(() => {
     const q = fold(query.trim())
-    const hit = q ? all.filter((i) => fold(`${i.label} ${i.hint ?? ''} ${i.keywords ?? ''}`).includes(q)) : all
+    const hit = q ? all.filter((i) => fold(`${i.label} ${i.hint ?? ''} ${i.keywords ?? ''}`).includes(q)) : all.filter((i) => !i.searchOnly)
     return GROUP_ORDER.flatMap((g) => hit.filter((i) => i.group === g))
   }, [all, query])
   const current = Math.min(active, Math.max(results.length - 1, 0))

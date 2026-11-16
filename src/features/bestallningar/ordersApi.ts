@@ -182,9 +182,9 @@ export function moveErrorText(err: unknown): string {
 export function closedText(state: OrderingState): string {
   switch (state.reason) {
     case 'disabled':
-      return 'Beställning är avstängd. Slå på den under Inställningar → Beställning.'
+      return 'Beställning är avstängd. Slå på den under Inställningar, Beställning, Beställning och QR-koder.'
     case 'no_payments':
-      return 'Stripe-kontot kan inte ta emot betalningar än (se Inställningar → Betalningar).'
+      return 'Stripe-kontot kan inte ta emot betalningar än (se Inställningar, Ekonomi, Betalningar).'
     case 'paused':
       return `Pausat till ${clock(state.pausedUntil)} - gästerna kan inte beställa.`
     case 'closed':

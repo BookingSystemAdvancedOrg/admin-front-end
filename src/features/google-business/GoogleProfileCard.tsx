@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Bar, Button, Card, Field, toast } from '@booqy/brand'
 import { BrandSelect as Select } from '../../shared/Select'
 import { errorText } from '../../shared/errors'
@@ -30,9 +30,10 @@ import { Disclosure } from '../../shared/Disclosure'
 import { Icon } from '../../shared/Icon'
 import { withBusy } from '../../shared/motion/busy'
 
-/** Inställningar > Verksamheten: koppla Google (valfritt), välj Google-plats, synka öppettider (Booqy styr). */
+/** Inställningar, Restaurangen, Google-profil: koppla Google (valfritt), välj Google-plats, synka öppettider (Booqy styr). */
 export default function GoogleProfileCard({ locationId }: { locationId: string }) {
-  const [params, setParams] = useSearchParams()
+  const [params] = useSearchParams()
+  const navigate = useNavigate()
   const { hash } = useLocation()
   const [connection, setConnection] = useState<Connection | null>(null)
   const [view, setView] = useState<LocationView | null>(null)
@@ -67,7 +68,8 @@ export default function GoogleProfileCard({ locationId }: { locationId: string }
     }
     const next = new URLSearchParams(params)
     for (const key of ['code', 'state', 'google', 'scope']) next.delete(key)
-    setParams(next, { replace: true })
+    // Grenen (#google) ligger kvar i adressen, annars visar Inställningar fältet.
+    navigate({ search: next.size ? `?${next}` : '', hash: '#google' }, { replace: true })
     finishConnect(code, oauthState)
       .then(() => { toast('Google är kopplat. Välj er restaurang i listan.', { tone: 'success' }); return load() })
       .catch((err) => {
@@ -75,7 +77,7 @@ export default function GoogleProfileCard({ locationId }: { locationId: string }
         setError(errorText(err, 'Det gick inte att koppla Google. Försök igen.', ERRORS))
         return load()
       })
-  }, [params, setParams, load])
+  }, [params, navigate, load])
 
   // Kom igång länkar hit (#google): kortet rullas fram när det har laddat.
   const ready = Boolean(connection && view)

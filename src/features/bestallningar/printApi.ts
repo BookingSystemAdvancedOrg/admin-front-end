@@ -345,7 +345,7 @@ export function printBannerText(status: PrintStatus | null): string | null {
 }
 
 const PRINT_ERRORS: Record<string, string> = {
-  no_printer: 'Ingen skrivare är vald. Lägg till en under Inställningar → Skrivare.',
+  no_printer: 'Ingen skrivare är vald. Lägg till en under Inställningar, Beställning, Skrivare och stationer.',
   order_not_paid: 'Beställningen är inte betald och kan inte skrivas ut.',
   order_cancelled: 'Beställningen är avbruten och skrivs inte ut igen.',
   too_many_printers: `Platsen har redan ${MAX_PRINTERS} skrivare. Ta bort en först.`,

@@ -42,7 +42,7 @@ src/
 | `/bokningar` | Bokningar (`BokningarPage`) | Platshållare - byggs härnäst. |
 | `/meny` | Meny (`MenyPage`) | Platshållare. |
 | `/layout` | Layout (`LayoutEditorPage`) | Platshållare - live layout-editor för bord. |
-| `/installningar` | Inställningar (`InstallningarPage`) | Platshållare - bl.a. tänkt för att bjuda in personal. |
+| `/installningar` | Inställningar (`InstallningarPage`) | Ett fält med träd (`settingsTree.ts`): startsidan visar träden med det viktigaste (äpplena) och en sökruta; varje gren (`#profil`, `#betalningar` ...) visar sina kort. Datorn har trädet till vänster. |
 
 Okända sökvägar (`*`) skickas tillbaka till `/` istället för att visa en
 404-sida (se `src/App.tsx`).

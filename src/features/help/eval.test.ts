@@ -64,7 +64,7 @@ describe('follow-ups (admin)', () => {
       const a = answerLocally(corpus, 'Var ändrar jag öppettiderna?', owner, previous, today)
       expect(a.known).toBe(true)
       expect(a.sources).toEqual(['inst-oppettider'])
-      expect(a.text).toContain('Inställningar, Verksamheten, Restaurang')
+      expect(a.text).toContain('Inställningar, Restaurangen, Öppettider och avvikande dagar')
       expect(a.live).toBeUndefined()
     })
 

@@ -11,7 +11,7 @@ const SOURCE_TAG: Partial<Record<TickSource, string>> = {
 }
 
 /**
- * Bockar per område (Inställningar > Behörigheter och en person i Personal).
+ * Bockar per område (Inställningar, Personal, Behörigheter och en person i Personal).
  * Bara områden som ingår i planen visas. `source` ger en liten etikett per
  * rad: från gruppen, extra för personen eller gruppens men borttagen.
  */

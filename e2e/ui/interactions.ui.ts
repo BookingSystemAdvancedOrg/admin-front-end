@@ -55,7 +55,7 @@ for (const vp of SIZES) {
     }
 
     test(`info tooltip stays inside the window ${vp.name} ${theme}`, async ({ page }, info) => {
-      await open(page, '/installningar', vp, theme)
+      await open(page, '/installningar#profil', vp, theme)
       const issues: Issue[] = []
       const triggers = page.locator('.info-tooltip-trigger')
       const n = await triggers.count()

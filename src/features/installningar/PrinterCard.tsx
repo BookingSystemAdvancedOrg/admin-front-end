@@ -23,7 +23,7 @@ import { Disclosure } from '../../shared/Disclosure'
 import { Select } from '../../shared/Select'
 
 /**
- * Inställningar > Skrivare: bongskrivarna för matbeställningar.
+ * Inställningar, Beställning, Skrivare och stationer: bongskrivarna för matbeställningar.
  *
  * Skrivaren (Star CloudPRNT, t.ex. mC-Print3, eller Epson Server Direct
  * Print, t.ex. TM-m30III, med nätverkskabel eller wifi) frågar Booqy var

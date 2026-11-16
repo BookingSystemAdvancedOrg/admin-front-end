@@ -32,7 +32,7 @@ function badge(rec: Recommendation): string {
 /**
  * Skrivbordsappens nedladdningar: hela listan och, när datorn går att avgöra
  * säkert, en markerad rad "Rekommenderas för din dator". Används på sidan
- * Inställningar > Den här enheten (sidomenyns "Ladda ner appen" leder hit). Inte signerad ännu, så rutan
+ * Inställningar, Den här enheten, Appen (sidomenyns "Ladda ner appen" leder hit). Inte signerad ännu, så rutan
  * säger hur man öppnar den första gången (Gatekeeper och SmartScreen).
  */
 export function DesktopAppCard({ heading = true }: { heading?: boolean }) {

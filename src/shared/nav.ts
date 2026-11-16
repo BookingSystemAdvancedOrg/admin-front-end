@@ -91,7 +91,7 @@ export const NAV_GROUPS: NavGroup[] = [
 export const NAV_FOOTER: NavItem[] = [
   { to: '/installningar', label: 'Inställningar', icon: 'gear', tour: 'nav-installningar' },
   { to: '/hjalp', label: 'Hjälp', icon: 'help', tour: 'nav-hjalp' },
-  // Leder till kortet Skrivbordsappen i Inställningar > Den här enheten.
+  // Leder till grenen Appen i Inställningar, Den här enheten.
   { to: '/installningar#skrivbordsappen', label: 'Ladda ner appen', icon: 'download', tour: 'nav-ladda-ner', browserOnly: true },
   // Samma kort på telefonen: där installeras appen på hemskärmen.
   { to: '/installningar#skrivbordsappen', label: 'Installera appen', icon: 'phone', tour: 'nav-installera-appen', phoneOnly: true },

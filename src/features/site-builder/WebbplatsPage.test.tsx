@@ -37,7 +37,7 @@ describe('WebbplatsPage', () => {
     render(<MemoryRouter><WebbplatsPage /></MemoryRouter>)
     expect(screen.getByRole('heading', { level: 1, name: 'Webbplats' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Ingår inte i er plan' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Se abonnemanget/ })).toHaveAttribute('href', '/installningar#profil')
+    expect(screen.getByRole('link', { name: /Se abonnemanget/ })).toHaveAttribute('href', '/installningar#abonnemang')
     expect(api.getSite).not.toHaveBeenCalled()
   })
 

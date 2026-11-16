@@ -122,7 +122,7 @@ async function next(user: ReturnType<typeof userEvent.setup>, name = 'Nästa') {
 }
 
 describe('Guide', () => {
-  it('starts for a new owner and walks page by page: Kom igång, settings tab by tab, then the menu CRUD', async () => {
+  it('starts for a new owner and walks page by page: Kom igång, settings branch by branch, then the menu CRUD', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     await renderGuide()
     const total = stepsFor({ isOwner: true, features: ALL }).length
@@ -140,16 +140,20 @@ describe('Guide', () => {
 
     await next(user)
     expect(screen.getByRole('dialog', { name: 'Inställningar' })).toBeInTheDocument()
+    expect(screen.getByTestId('where')).toHaveTextContent(/^\/installningar$/)
+    await next(user)
+    expect(screen.getByRole('dialog', { name: 'Profil och kontakt' })).toBeInTheDocument()
     expect(screen.getByTestId('where')).toHaveTextContent('/installningar#profil')
     await next(user)
-    expect(screen.getByRole('dialog', { name: 'Restaurang' })).toBeInTheDocument()
-    await next(user)
     expect(screen.getByRole('dialog', { name: 'Spara' })).toBeInTheDocument()
+    await next(user)
+    expect(screen.getByRole('dialog', { name: 'Öppettider och avvikande dagar' })).toBeInTheDocument()
+    expect(screen.getByTestId('where')).toHaveTextContent('/installningar#dagar')
     await next(user)
     expect(screen.getByRole('dialog', { name: 'Personal' })).toBeInTheDocument()
     expect(screen.getByTestId('where')).toHaveTextContent('/personal')
 
-    for (const title of ['Betalningar', 'Notiser', 'Avbokning', 'Beställning', 'Avvikande dagar', 'Bord']) {
+    for (const title of ['Betalningar', 'Notiser', 'Avbokning och kortgaranti', 'Beställning och QR-koder', 'Bokning']) {
       await next(user)
       expect(screen.getByRole('dialog', { name: title })).toBeInTheDocument()
     }

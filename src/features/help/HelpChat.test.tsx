@@ -98,8 +98,8 @@ describe('HelpChat', () => {
     renderChat()
     await openPanel(user)
     await user.type(screen.getByRole('textbox', { name: 'Din fråga' }), 'Hur ändrar jag öppettiderna?{Enter}')
-    await user.click(await screen.findByRole('button', { name: 'Öppna Restaurang' }))
-    expect(screen.getByTestId('where')).toHaveTextContent('/installningar#profil')
+    await user.click(await screen.findByRole('button', { name: 'Öppna Öppettider' }))
+    expect(screen.getByTestId('where')).toHaveTextContent('/installningar#dagar')
   })
 
   it('never gives staff the owner-only steps', async () => {

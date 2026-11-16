@@ -62,7 +62,7 @@ import { Select } from '../../shared/Select'
  * servern, även ett helt år. Filtren står i adressen, så en länk, ett
  * bokmärke och en omladdning visar samma sak. Ägaren ser allt; personalen
  * ser sin plats utan belopp när ägaren tillåter det (Inställningar,
- * Statistik). I exempelläget och lokalt utan API visas en påhittad
+ * Ekonomi, Statistik). I exempelläget och lokalt utan API visas en påhittad
  * restaurang.
  */
 

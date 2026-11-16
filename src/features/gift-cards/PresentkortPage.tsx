@@ -8,6 +8,7 @@ import {
   ERRORS,
   KIND_LABEL,
   STATUS_LABEL,
+  endOfStockholmDay,
   extendCard,
   getCard,
   getSettings,
@@ -16,11 +17,17 @@ import {
   refundCard,
   resendCode,
   saveSettings,
+  stockholmDate,
   type CardDetail,
   type Listing,
   type Settings,
 } from './api'
 import { DateInput } from '../../shared/DateInput'
+import { useConfirm } from '../../shared/ConfirmDialog'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { Loading } from '../../shared/Loading'
+import { PlanLocked } from '../../shared/PlanLocked'
+import { SkelCard } from '../../shared/Skeleton'
 import './presentkort.css'
 
 /** Presentkort (planfunktionen "giftCards", bara ägare): sålda kort, saldo, historik och inställningar. */
@@ -28,19 +35,15 @@ export default function PresentkortPage() {
   const { tenant } = useTenant()
   const enabled = Boolean(tenant?.entitlements?.features?.giftCards)
   const allowed = tenant?.role === 'owner_user'
-  const blocked = !enabled ? 'Ingår inte i er plan' : !allowed ? 'Bara för ägare' : null
 
   return (
     <>
       <AdminTopbar title="Presentkort" />
       <main className="admin-main">
-        {blocked ? (
+        {!enabled ? <PlanLocked /> : !allowed ? (
           <section className="admin-card table-card">
-            <h2 className="card-title">{blocked}</h2>
-            <p className="cell-muted">
-              {!enabled ? 'Kontakta oss för att uppgradera.'
-                : 'Presentkorten hanteras av restaurangens ägare.'}
-            </p>
+            <h2 className="card-title">Bara för ägare</h2>
+            <p className="cell-muted">Presentkorten hanteras av restaurangens ägare.</p>
           </section>
         ) : <GiftCards />}
       </main>
@@ -52,12 +55,14 @@ function GiftCards() {
   const [listing, setListing] = useState<Listing | null>(null)
   const [search, setSearch] = useState('')
   const [openId, setOpenId] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
       setListing(await listCards())
+      setLoadError(null)
     } catch (err) {
-      toast(errorText(err, 'Kunde inte hämta presentkorten.', ERRORS), { tone: 'danger' })
+      setLoadError(errorText(err, 'Kunde inte hämta presentkorten.', ERRORS))
     }
   }, [])
 
@@ -79,6 +84,7 @@ function GiftCards() {
         <Field label="Sök på de fyra sista tecknen">
           <Input value={search} maxLength={4} onChange={(e) => setSearch(e.target.value)} />
         </Field>
+        {!listing ? (loadError ? <ErrorNote text={loadError} onRetry={() => { setLoadError(null); void load() }} /> : <Loading variant="inline" label="Hämtar presentkorten" />) : null}
         {listing && cards.length === 0 ? <p className="admin-empty">Inga presentkort än.</p> : null}
         {cards.length ? (
           <div className="table-scroll" tabIndex={0}>
@@ -90,7 +96,7 @@ function GiftCards() {
                     <td><button type="button" className="card-link presentkort-open" onClick={() => setOpenId(c.cardId)}>****{c.last4}</button></td>
                     <td>{c.balanceSek.toLocaleString('sv-SE')} av {c.initialSek.toLocaleString('sv-SE')} kr</td>
                     <td><span className="status-badge">{STATUS_LABEL[c.status]}</span></td>
-                    <td>{c.expiresAt.slice(0, 10)}</td>
+                    <td>{stockholmDate(c.expiresAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -109,12 +115,15 @@ function CardModal({ cardId, onClose, onChanged }: { cardId: string; onClose: ()
   const [extendTo, setExtendTo] = useState('')
   const [reason, setReason] = useState('')
   const [confirmResend, setConfirmResend] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [confirmEl, ask] = useConfirm()
 
   const load = useCallback(async () => {
     try {
       setCard(await getCard(cardId))
+      setLoadError(null)
     } catch (err) {
-      toast(errorText(err, 'Kunde inte hämta kortet.', ERRORS), { tone: 'danger' })
+      setLoadError(errorText(err, 'Kunde inte hämta kortet.', ERRORS))
     }
   }, [cardId])
 
@@ -137,19 +146,20 @@ function CardModal({ cardId, onClose, onChanged }: { cardId: string; onClose: ()
 
   return (
     <Modal open title={card ? `Presentkort ****${card.last4}` : 'Presentkort'} onClose={onClose} size="wide">
-      {!card ? <p className="cell-muted">Hämtar…</p> : (
+      {confirmEl}
+      {!card ? (loadError ? <ErrorNote text={loadError} onRetry={() => { setLoadError(null); void load() }} /> : <Loading variant="inline" label="Hämtar kortet" />) : (
         <>
           <dl className="presentkort-facts">
             <dt>Saldo</dt><dd>{kr(card.balanceOre)} av {card.initialSek.toLocaleString('sv-SE')} kr</dd>
             <dt>Status</dt><dd>{STATUS_LABEL[card.status]}</dd>
-            <dt>Gäller till</dt><dd>{card.expiresAt.slice(0, 10)}</dd>
+            <dt>Gäller till</dt><dd>{stockholmDate(card.expiresAt)}</dd>
             {card.recipientName ? <><dt>Till</dt><dd>{card.recipientName}</dd></> : null}
           </dl>
           <h3 className="presentkort-sub">Historik</h3>
           <ul className="presentkort-history">
             {card.transactions.map((t) => (
               <li key={t.txId}>
-                <span>{t.at.slice(0, 10)} {KIND_LABEL[t.kind] ?? t.kind}</span>
+                <span>{stockholmDate(t.at)} {KIND_LABEL[t.kind] ?? t.kind}</span>
                 <span>{t.amountOre ? kr(t.amountOre) : ''}</span>
               </li>
             ))}
@@ -160,7 +170,7 @@ function CardModal({ cardId, onClose, onChanged }: { cardId: string; onClose: ()
               <Field label="Anledning" hint="Sparas i historiken." required><Input value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
               <Bar variant="action" label="Presentkortet" className="presentkort-actions">
                 <Button variant="secondary" disabled={!extendTo || !reason.trim()} busy={busy === 'extend'}
-                  onClick={() => void run('extend', () => extendCard(card.cardId, `${extendTo}T21:59:59Z`, reason.trim()), 'Giltigheten är förlängd.')}>
+                  onClick={() => void run('extend', () => extendCard(card.cardId, endOfStockholmDay(extendTo), reason.trim()), 'Giltigheten är förlängd.')}>
                   Förläng
                 </Button>
                 {confirmResend ? null : (
@@ -169,7 +179,16 @@ function CardModal({ cardId, onClose, onChanged }: { cardId: string; onClose: ()
                   </Button>
                 )}
                 <Button variant="danger" disabled={!reason.trim()} busy={busy === 'refund'}
-                  onClick={() => void run('refund', () => refundCard(card.cardId, reason.trim()), 'Det som var kvar är återbetalt till köparen.')}>
+                  onClick={async () => {
+                    const ok = await ask({
+                      title: `Återbetala ${kr(card.balanceOre)}?`,
+                      text: 'Saldot återbetalas till köparen och kortet slutar gälla. Det går inte att ångra.',
+                      confirmLabel: 'Återbetala',
+                      cancelLabel: 'Behåll kortet',
+                      danger: true,
+                    })
+                    if (ok) await run('refund', () => refundCard(card.cardId, reason.trim()), 'Det som var kvar är återbetalt till köparen.')
+                  }}>
                   Återbetala
                 </Button>
               </Bar>
@@ -200,12 +219,21 @@ function SettingsCard() {
   const [draft, setDraft] = useState<Settings | null>(null)
   const [amounts, setAmounts] = useState('')
   const [saving, setSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
-  useEffect(() => {
-    getSettings().then((s) => { setDraft(s); setAmounts(s.amountsSek.join(', ')) }).catch(() => setDraft(null))
+  const load = useCallback(() => {
+    setLoadError(null)
+    getSettings().then((s) => { setDraft(s); setAmounts(s.amountsSek.join(', ')) })
+      .catch((err) => setLoadError(errorText(err, 'Kunde inte hämta inställningarna.', ERRORS)))
   }, [])
 
-  if (!draft) return null
+  useEffect(() => { load() }, [load])
+
+  if (!draft) {
+    return loadError
+      ? <Card title="Inställningar"><ErrorNote text={loadError} onRetry={load} /></Card>
+      : <SkelCard rows={3} cols={2} aside={false} />
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault()

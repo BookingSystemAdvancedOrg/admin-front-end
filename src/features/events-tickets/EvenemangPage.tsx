@@ -3,7 +3,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Bar, Button, Card, Field, Input, Modal, Printing, toast } from '@booqy/brand'
 import { AdminTopbar } from '../../shared/AdminTopbar'
-import { errorText } from '../../shared/errors'
+import { ApiError } from '../../shared/api'
+import { errorCode, errorText } from '../../shared/errors'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { NoLocation } from '../../shared/NoLocation'
+import { PlanLocked } from '../../shared/PlanLocked'
 import { isRowOpenKey, shouldOpenRow } from '../meny/rowClick'
 import { useTenant } from '../../shared/tenant'
 import {
@@ -24,7 +28,7 @@ import './evenemang.css'
  * personalen ser evenemangen och sköter insläppet.
  */
 export default function EvenemangPage() {
-  const { tenant, locationId } = useTenant()
+  const { tenant, locationId, status } = useTenant()
   const enabled = Boolean(tenant?.entitlements?.features?.events)
   const { eventId, occurrenceId } = useParams()
   const isOwner = tenant?.role === 'owner_user'
@@ -34,12 +38,9 @@ export default function EvenemangPage() {
       <AdminTopbar title="Evenemang" />
       <main className="admin-main">
         {!enabled ? (
-          <section className="admin-card table-card">
-            <h2 className="card-title">Ingår inte i er plan</h2>
-            <p className="cell-muted">Kontakta oss för att uppgradera.</p>
-          </section>
+          <PlanLocked />
         ) : !locationId ? (
-          <Printing label="Hämtar restaurangen" />
+          status === 'loading' || status === 'idle' ? <Printing label="Hämtar restaurangen" /> : <NoLocation />
         ) : eventId && occurrenceId ? (
           <InslappPage locationId={locationId} eventId={eventId} occurrenceId={occurrenceId} />
         ) : eventId ? (
@@ -55,14 +56,17 @@ export default function EvenemangPage() {
 function EventList({ locationId, isOwner }: { locationId: string; isOwner: boolean }) {
   const [events, setEvents] = useState<EventSummary[] | null>(null)
   const [creating, setCreating] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
   const navigate = useNavigate()
 
   useEffect(() => {
     let live = true
+    setLoadError(null)
     listEvents(locationId).then((r) => { if (live) setEvents(r.events) })
-      .catch((err) => toast(errorText(err, 'Kunde inte hämta evenemangen.', ERRORS), { tone: 'danger' }))
+      .catch((err) => { if (live) setLoadError(errorText(err, 'Kunde inte hämta evenemangen.', ERRORS)) })
     return () => { live = false }
-  }, [locationId])
+  }, [locationId, attempt])
   // Levande: försäljning och ändringar från en annan plats syns av sig själva.
   useLiveRefresh(async () => setEvents((await listEvents(locationId)).events), { enabled: events !== null && !creating })
 
@@ -72,7 +76,9 @@ function EventList({ locationId, isOwner }: { locationId: string; isOwner: boole
   }
   return (
     <Card title="Evenemang" actions={isOwner ? <Button variant="primary" onClick={() => setCreating(true)}>Nytt evenemang</Button> : undefined}>
-      {!events ? <Printing label="Hämtar evenemangen" /> : null}
+      {!events ? (loadError
+        ? <ErrorNote text={loadError} onRetry={() => setAttempt((n) => n + 1)} />
+        : <Printing label="Hämtar evenemangen" />) : null}
       {events && events.length === 0 ? (
         <p className="admin-empty">Inga evenemang än.</p>
       ) : null}
@@ -107,6 +113,7 @@ function EventList({ locationId, isOwner }: { locationId: string; isOwner: boole
 function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId: string; eventId: string; isOwner: boolean; primaryDomain?: string | null }) {
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [missing, setMissing] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   /** Evenemanget som det såg ut när ändringen började (formuläret utgår från det). */
   const [editing, setEditing] = useState<EventDetail | null>(null)
   const [busy, setBusy] = useState(false)
@@ -120,9 +127,10 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
   const load = useCallback(async () => {
     try {
       setEvent(await getEvent(locationId, eventId))
+      setLoadError(null)
     } catch (err) {
-      setMissing(true)
-      toast(errorText(err, 'Kunde inte hämta evenemanget.', ERRORS), { tone: 'danger' })
+      if ((err instanceof ApiError && err.status === 404) || errorCode(err) === 'not_found') setMissing(true)
+      else setLoadError(errorText(err, 'Kunde inte hämta evenemanget.', ERRORS))
     }
   }, [eventId, locationId])
 
@@ -133,7 +141,22 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
     setEvent((cur) => (sameData(cur, next) ? cur : next))
   }, { enabled: event !== null && !busy })
 
-  if (missing && !event) return <p className="admin-empty"><Link to="/evenemang">Tillbaka till evenemangen</Link></p>
+  if (missing && !event) {
+    return (
+      <section className="admin-card table-card">
+        <h2 className="card-title">Evenemanget finns inte</h2>
+        <Link className="card-link" to="/evenemang">Tillbaka till evenemangen</Link>
+      </section>
+    )
+  }
+  if (!event && loadError) {
+    return (
+      <>
+        <p className="evenemang-back"><Link to="/evenemang">Tillbaka till evenemangen</Link></p>
+        <ErrorNote text={loadError} onRetry={() => { setLoadError(null); void load() }} />
+      </>
+    )
+  }
   if (!event) return <Printing label="Hämtar evenemanget" />
   if (editing) {
     return <EventEditor locationId={locationId} existing={editing} fetchLatest={() => getEvent(locationId, eventId)}
@@ -342,12 +365,19 @@ function Orders({ locationId, eventId, onChanged }: { locationId: string; eventI
   const [refunding, setRefunding] = useState<Ticket | null>(null)
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const shown = useRef(false)
+  shown.current = orders !== null
 
   const load = useCallback(async () => {
     try {
       setOrders((await listOrders(locationId, eventId)).orders)
+      setLoadError(null)
     } catch (err) {
-      toast(errorText(err, 'Kunde inte hämta köpen.', ERRORS), { tone: 'danger' })
+      const text = errorText(err, 'Kunde inte hämta köpen.', ERRORS)
+      // Redan visade köp står kvar; bara en första hämtning som misslyckas visas i kortet.
+      if (shown.current) toast(text, { tone: 'danger' })
+      else setLoadError(text)
     }
   }, [eventId, locationId])
 
@@ -373,7 +403,9 @@ function Orders({ locationId, eventId, onChanged }: { locationId: string; eventI
 
   return (
     <Card title="Köp">
-      {!orders ? <Printing label="Hämtar köpen" /> : null}
+      {!orders ? (loadError
+        ? <ErrorNote text={loadError} onRetry={() => { setLoadError(null); void load() }} />
+        : <Printing label="Hämtar köpen" />) : null}
       {orders && orders.length === 0 ? <p className="admin-empty">Inga köp än.</p> : null}
       {orders?.length ? (
         <div className="table-scroll" tabIndex={0}>

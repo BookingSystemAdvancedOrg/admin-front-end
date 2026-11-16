@@ -49,7 +49,8 @@ describe('tables', () => {
     expect(tableNames(['uuid-1', 'uuid-3'], labels)).toBe('Bord 1, 3')
     expect(tableNames(['gone'], labels)).toBe('Bord ?')
     expect(tableNames([], labels)).toBe('-')
-    expect(tableNames(['raw'], null)).toBe('Bord raw')
+    expect(tableNames(['raw'], null)).toBe('Ett bord')
+    expect(tableNames(['a', 'b'], null)).toBe('2 bord')
   })
 
   it('caches the layout for a minute and treats no layout as no tables', async () => {

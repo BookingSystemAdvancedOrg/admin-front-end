@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bar, Button, Card, Field, Input, toast } from '@booqy/brand'
+import { Bar, Button, Card, Field, Input, Printing } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
+import { ErrorNote } from '../../shared/ErrorNote'
 import { ERRORS, TICKET_LABEL, getGuestList, newId, sendCheckIns, type CheckIn, type Ticket } from './api'
 import { clearScan, loadScan, parseCode, saveScan, signature, type ScanState } from './scanStore'
 
@@ -25,10 +26,15 @@ export default function InslappPage({ locationId, eventId, occurrenceId }: { loc
   const [search, setSearch] = useState('')
   const [code, setCode] = useState('')
   const [notice, setNotice] = useState<{ tone: 'success' | 'warning' | 'danger'; text: string } | null>(null)
-  const [syncing, setSyncing] = useState(false)
   const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine)
   const [camera, setCamera] = useState(false)
+  /** Gästlistan kunde inte hämtas och det finns ingen sparad: visas med Försök igen. */
+  const [loadError, setLoadError] = useState<string | null>(null)
   const stateRef = useRef<ScanState | null>(null)
+  /** Pågående sändning: en ref, så sync och admit inte byts ut (kameran startar annars om). */
+  const syncingRef = useRef(false)
+  /** Senaste sync, för att skicka det som köades under en pågående sändning direkt efteråt. */
+  const syncRef = useRef<() => Promise<void>>(async () => {})
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
   const update = useCallback(async (next: ScanState) => {
@@ -39,20 +45,25 @@ export default function InslappPage({ locationId, eventId, occurrenceId }: { loc
 
   const refresh = useCallback(async () => {
     const saved = stateRef.current ?? await loadScan(occurrenceId)
-    try {
-      const list = await getGuestList(locationId, eventId, occurrenceId)
-      await update({ ...saved, list })
-    } catch (err) {
+    if (!stateRef.current) {
       stateRef.current = saved
       setState(saved)
-      if (!saved.list) toast(errorText(err, 'Kunde inte hämta gästlistan.', ERRORS), { tone: 'danger' })
+    }
+    try {
+      const list = await getGuestList(locationId, eventId, occurrenceId)
+      // Insläpp som gjordes medan listan hämtades ligger i stateRef, inte i `saved`.
+      await update({ ...(stateRef.current ?? saved), list })
+      setLoadError(null)
+    } catch (err) {
+      if (!stateRef.current?.list) setLoadError(errorText(err, 'Kunde inte hämta gästlistan.', ERRORS))
     }
   }, [eventId, locationId, occurrenceId, update])
 
   const sync = useCallback(async () => {
     const current = stateRef.current
-    if (!current || !current.queue.length || syncing) return
-    setSyncing(true)
+    if (!current || !current.queue.length || syncingRef.current) return
+    syncingRef.current = true
+    let ok = false
     try {
       const batch = current.queue.slice(0, 200)
       const { results } = await sendCheckIns(locationId, eventId, occurrenceId, batch)
@@ -70,17 +81,25 @@ export default function InslappPage({ locationId, eventId, occurrenceId }: { loc
       const done = stateRef.current
       const ended = done?.list && done.queue.length === 0 && Date.now() > Date.parse(occurrenceEnd(occurrenceId)) + 86400000
       if (ended) await clearScan(occurrenceId)
+      ok = true
     } catch {
       // Inget nät eller servern svarar inte: kön ligger kvar och skickas nästa gång.
     } finally {
-      setSyncing(false)
+      syncingRef.current = false
     }
-  }, [eventId, locationId, occurrenceId, refresh, syncing, update])
+    // Insläpp som köades medan vi skickade går iväg direkt, inte först vid nästa intervall.
+    if (ok && stateRef.current?.queue.length) void syncRef.current()
+  }, [eventId, locationId, occurrenceId, refresh, update])
+  useEffect(() => { syncRef.current = sync }, [sync])
 
   useEffect(() => { void refresh() }, [refresh])
 
   useEffect(() => {
-    const up = () => { setOnline(true); void sync() }
+    const up = () => {
+      setOnline(true)
+      if (stateRef.current?.list) void sync()
+      else void refresh()
+    }
     const down = () => setOnline(false)
     window.addEventListener('online', up)
     window.addEventListener('offline', down)
@@ -90,7 +109,7 @@ export default function InslappPage({ locationId, eventId, occurrenceId }: { loc
       window.removeEventListener('offline', down)
       window.clearInterval(timer)
     }
-  }, [sync])
+  }, [refresh, sync])
 
   const admit = useCallback(async (ticketId: string, sig: string | null) => {
     const current = stateRef.current
@@ -108,9 +127,16 @@ export default function InslappPage({ locationId, eventId, occurrenceId }: { loc
         : { tone: 'danger', text: `Biljetten gäller inte (${TICKET_LABEL[ticket.status].toLowerCase()}).` })
       return
     }
+    // Efter väntan på signaturen: utgå från det senaste läget, så ett annat insläpp
+    // eller en uppdaterad gästlista under tiden inte skrivs över.
+    const now = stateRef.current ?? current
+    if (now.local[ticketId]) {
+      setNotice({ tone: 'warning', text: `Redan insläppt ${time(now.local[ticketId])}.` })
+      return
+    }
     const at = new Date().toISOString()
     const item: CheckIn = { ticketId, sig: realSig, at, clientId: newId() }
-    await update({ ...current, queue: [...current.queue, item], local: { ...current.local, [ticketId]: at } })
+    await update({ ...now, queue: [...now.queue, item], local: { ...now.local, [ticketId]: at } })
     setNotice({ tone: 'success', text: `Välkommen, ${ticket.holderName || 'gäst'}! ${ticket.typeName}` })
     void sync()
   }, [sync, update])
@@ -185,56 +211,62 @@ export default function InslappPage({ locationId, eventId, occurrenceId }: { loc
           {online ? `${state?.queue.length} insläpp skickas…` : `Ingen anslutning. Insläppen sparas här och skickas när nätet är tillbaka (${state?.queue.length ?? 0} i kö).`}
         </Bar>
       ) : null}
-      <Card title="Insläpp">
-        <Bar variant="meter" value={checkedIn} max={Math.max(sold, 1)} label="Insläppta"
-          valueText={`${checkedIn} insläppta av ${sold} sålda (${list?.counters.capacity ?? 0} platser)`} />
-        <div className="evenemang-scan">
-          <form onSubmit={(e) => { void submitCode(e) }} className="evenemang-code">
-            <Field label="Biljettkod" hint="Står under QR-koden på biljetten.">
-              <Input value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" spellCheck={false} />
+      {!list ? (loadError
+        ? <ErrorNote text={loadError} onRetry={() => { setLoadError(null); void refresh() }} />
+        : <Printing label="Hämtar gästlistan" />) : (
+        <>
+          <Card title="Insläpp">
+            <Bar variant="meter" value={checkedIn} max={Math.max(sold, 1)} label="Insläppta"
+              valueText={`${checkedIn} insläppta av ${sold} sålda (${list?.counters.capacity ?? 0} platser)`} />
+            <div className="evenemang-scan">
+              <form onSubmit={(e) => { void submitCode(e) }} className="evenemang-code">
+                <Field label="Biljettkod" hint="Står under QR-koden på biljetten.">
+                  <Input value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" spellCheck={false} />
+                </Field>
+                <Button type="submit" variant="primary" disabled={!list}>Släpp in</Button>
+              </form>
+              <Button type="button" variant="secondary" onClick={() => setCamera((c) => !c)} disabled={!list}>
+                {camera ? 'Stäng kameran' : 'Skanna med kameran'}
+              </Button>
+            </div>
+            {camera ? <video ref={videoRef} className="evenemang-video" muted playsInline aria-label="Kamerabild för QR-koder" /> : null}
+            <div aria-live="polite">
+              {notice ? <Bar variant="banner" tone={notice.tone} onDismiss={() => setNotice(null)} dismissLabel="Stäng">{notice.text}</Bar> : null}
+            </div>
+          </Card>
+          <Card title="Gästlista">
+            <Field label="Sök på namn">
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} />
             </Field>
-            <Button type="submit" variant="primary" disabled={!list}>Släpp in</Button>
-          </form>
-          <Button type="button" variant="secondary" onClick={() => setCamera((c) => !c)} disabled={!list}>
-            {camera ? 'Stäng kameran' : 'Skanna med kameran'}
-          </Button>
-        </div>
-        {camera ? <video ref={videoRef} className="evenemang-video" muted playsInline aria-label="Kamerabild för QR-koder" /> : null}
-        <div aria-live="polite">
-          {notice ? <Bar variant="banner" tone={notice.tone} onDismiss={() => setNotice(null)} dismissLabel="Stäng">{notice.text}</Bar> : null}
-        </div>
-      </Card>
-      <Card title="Gästlista">
-        <Field label="Sök på namn">
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} />
-        </Field>
-        {list && rows.length === 0 ? <p className="admin-empty">Inga biljetter.</p> : null}
-        {rows.length ? (
-          <div className="table-scroll" tabIndex={0}>
-            <table className="data-table">
-              <thead><tr><th scope="col">Namn</th><th scope="col">Biljett</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Åtgärd</span></th></tr></thead>
-              <tbody>
-                {rows.map((t) => {
-                  const localAt = state?.local[t.ticketId]
-                  const label = localAt && t.status === 'valid' ? `Insläppt ${time(localAt)}` : t.status === 'checked_in' ? `Insläppt ${time(t.checkedInAt)}` : TICKET_LABEL[t.status]
-                  return (
-                    <tr key={t.ticketId}>
-                      <td>{t.holderName || 'Namn saknas'}</td>
-                      <td>{t.typeName}</td>
-                      <td><span className="status-badge">{label}</span></td>
-                      <td>
-                        {t.status === 'valid' && !localAt ? (
-                          <Button size="sm" variant="secondary" onClick={() => { void admit(t.ticketId, null) }}>Släpp in</Button>
-                        ) : null}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-      </Card>
+            {list && rows.length === 0 ? <p className="admin-empty">Inga biljetter.</p> : null}
+            {rows.length ? (
+              <div className="table-scroll" tabIndex={0}>
+                <table className="data-table">
+                  <thead><tr><th scope="col">Namn</th><th scope="col">Biljett</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Åtgärd</span></th></tr></thead>
+                  <tbody>
+                    {rows.map((t) => {
+                      const localAt = state?.local[t.ticketId]
+                      const label = localAt && t.status === 'valid' ? `Insläppt ${time(localAt)}` : t.status === 'checked_in' ? `Insläppt ${time(t.checkedInAt)}` : TICKET_LABEL[t.status]
+                      return (
+                        <tr key={t.ticketId}>
+                          <td>{t.holderName || 'Namn saknas'}</td>
+                          <td>{t.typeName}</td>
+                          <td><span className="status-badge">{label}</span></td>
+                          <td>
+                            {t.status === 'valid' && !localAt ? (
+                              <Button size="sm" variant="secondary" onClick={() => { void admit(t.ticketId, null) }}>Släpp in</Button>
+                            ) : null}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </Card>
+        </>
+      )}
     </>
   )
 }

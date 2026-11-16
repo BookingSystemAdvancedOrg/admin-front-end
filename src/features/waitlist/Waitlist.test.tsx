@@ -3,11 +3,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import QueuePanel from './QueuePanel'
 import WaitlistSettingsCard from './WaitlistSettingsCard'
 import * as api from './api'
+import { ApiError } from '../../shared/api'
 
 vi.mock('../bokningar/SlotTablePicker', () => ({
   SlotTablePicker: ({ onChange }: { onChange: (v: { date: string; startTime: string; tableIds: string[] }) => void }) => (
     <button type="button" onClick={() => onChange({ date: '2026-11-04', startTime: '19:00', tableIds: ['t9'] })}>Välj bord 9</button>
   ),
+}))
+let role = 'owner_user'
+let labels: Map<string, string> | null = new Map([['t4', '4'], ['t9', '9']])
+vi.mock('../../shared/tenant', () => ({ useTenant: () => ({ tenant: { role } }) }))
+vi.mock('../../shared/tables', async (orig) => ({
+  ...(await orig<typeof import('../../shared/tables')>()),
+  useTables: () => ({ tables: null, labels, error: false }),
 }))
 vi.mock('./api', async (orig) => ({
   ...(await orig<typeof import('./api')>()),
@@ -23,6 +31,8 @@ const sara: api.Entry = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  role = 'owner_user'
+  labels = new Map([['t4', '4'], ['t9', '9']])
   vi.mocked(api.getQueue).mockResolvedValue({ settings, entries: [sara], suggestions: [{ entryId: 'e1', tableIds: ['t4'], startTime: '18:00' }] })
 })
 
@@ -30,7 +40,7 @@ describe('QueuePanel', () => {
   it('shows the suggestion line and offers the suggested table', async () => {
     vi.mocked(api.offerTable).mockResolvedValue({ ...sara, status: 'offered', version: 2 })
     render(<QueuePanel locationId="loc-1" date="2026-11-04" />)
-    expect(await screen.findByText('Bord t4 är ledigt för Sara, 2 pers.')).toBeInTheDocument()
+    expect(await screen.findByText('Bord 4 är ledigt för Sara, 2 pers.')).toBeInTheDocument()
     expect(screen.getByText('Sms ej skickat')).toBeInTheDocument()
     fireEvent.click(screen.getAllByRole('button', { name: 'Erbjud bord' })[0])
     await waitFor(() => expect(api.offerTable).toHaveBeenCalledWith('loc-1', sara, ['t4'], '18:00'))
@@ -59,7 +69,39 @@ describe('QueuePanel', () => {
   })
 })
 
+describe('QueuePanel errors', () => {
+  it('never shows table ids while the table names are missing', async () => {
+    labels = null
+    vi.mocked(api.getQueue).mockResolvedValue({ settings, entries: [{ ...sara, status: 'offered', offer: { reservationId: 'r1', tableIds: ['t4'], startTime: '18:00', endTime: '20:00', expiresAt: '2026-11-04T16:10:00Z' } }],
+      suggestions: [{ entryId: 'e1', tableIds: ['t4'], startTime: '18:00' }] })
+    const { container } = render(<QueuePanel locationId="loc-1" date="2026-11-04" />)
+    expect(await screen.findByText('Ett bord är ledigt för Sara, 2 pers.')).toBeInTheDocument()
+    expect(container.textContent).not.toContain('t4')
+  })
+
+  it('shows the load error with Försök igen instead of vanishing', async () => {
+    vi.mocked(api.getQueue).mockRejectedValueOnce(new ApiError(500, 'internal_error', { code: 'internal_error', fromServer: true }))
+    render(<QueuePanel locationId="loc-1" date="2026-11-04" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    expect(await screen.findByText('Bord 4 är ledigt för Sara, 2 pers.')).toBeInTheDocument()
+  })
+})
+
 describe('WaitlistSettingsCard', () => {
+  it('is not shown to staff (owner only on the server)', () => {
+    role = 'staff_user'
+    const { container } = render(<WaitlistSettingsCard locationId="loc-1" />)
+    expect(container).toBeEmptyDOMElement()
+    expect(api.getQueue).not.toHaveBeenCalled()
+  })
+
+  it('shows the load error with Försök igen', async () => {
+    vi.mocked(api.getQueue).mockRejectedValueOnce(new ApiError(503, 'service_unavailable', { code: 'service_unavailable', fromServer: true }))
+    render(<WaitlistSettingsCard locationId="loc-1" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    expect(await screen.findByLabelText(/Hålltid/)).toBeInTheDocument()
+  })
+
   it('saves the settings with the version', async () => {
     vi.mocked(api.saveSettings).mockResolvedValue({ ...settings, holdMinutes: 15, version: 2 })
     render(<WaitlistSettingsCard locationId="loc-1" />)

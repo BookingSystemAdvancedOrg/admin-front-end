@@ -57,3 +57,22 @@ export const ERRORS: Record<string, string> = {
   // E10: koden är redan bytt men mejlet gick inte ut; ett nytt försök byter koden igen och skickar den.
   notification_unavailable: 'Mejlet kunde inte skickas just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
 }
+
+const TZ = 'Europe/Stockholm'
+
+/**
+ * Sista sekunden av dagen `date` (YYYY-MM-DD) i Stockholm, i UTC:
+ * 22:59:59Z på vintern, 21:59:59Z på sommaren. Sommartiden byter kl. 01 UTC,
+ * så förskjutningen mitt på dagen gäller också vid midnatt.
+ */
+export function endOfStockholmDay(date: string): string {
+  const noon = new Date(`${date}T12:00:00Z`)
+  const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', hourCycle: 'h23' }).format(noon))
+  const offsetH = hour - 12
+  return new Date(Date.parse(`${date}T23:59:59Z`) - offsetH * 3600000).toISOString().replace('.000Z', 'Z')
+}
+
+/** Datumet (YYYY-MM-DD) i Stockholm för en tidpunkt i UTC. */
+export function stockholmDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('sv-SE', { timeZone: TZ })
+}

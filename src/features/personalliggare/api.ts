@@ -91,6 +91,7 @@ export const ERRORS: Record<string, string> = {
   user_already_linked: 'Inloggningen är redan kopplad till en annan person.',
   invalid_range: 'Välj ett datumintervall på högst ett år där från-datumet kommer först.',
   owner_only: 'Bara ägaren kan göra det här.',
+  export_too_large: 'Exporten blir för stor för en fil. Välj en kortare period, till exempel en månad i taget.',
 }
 
 /** Klockslag i Stockholmstid, "08:15". */

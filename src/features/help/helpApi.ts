@@ -22,7 +22,31 @@ export async function getHelpStatus(): Promise<{ enabled: boolean; mode: HelpMod
   }
 }
 
+/** 429: för många frågor på kort tid. Försöks aldrig om. */
 export class HelpLimited extends Error {}
+
+/** 403 help_assistant_off: Booqy har stängt av assistenten. Inget svar ur kunskapsbasen. */
+export class HelpOff extends Error {}
+
+/**
+ * Varken servern eller kunskapsbasen gav ett svar: Booqys fel. Bär serverns
+ * kod, status och requestId (när den skickade ett) till Rapportera till Booqy.
+ */
+export class HelpUnavailable extends Error {
+  code: string
+  status: number
+  requestId?: string
+  constructor(server: unknown) {
+    super('help_unavailable')
+    const api = server instanceof ApiError ? server : null
+    this.code = api && api.status >= 500 ? api.code : 'help_unavailable'
+    this.status = api?.status ?? 0
+    if (api?.requestId) this.requestId = api.requestId
+  }
+}
+
+/** Så länge väntar frågan på servern innan kunskapsbasen svarar i stället. */
+export const HELP_TIMEOUT_MS = 20_000
 
 async function locally(question: string, history: HelpTurn[], view: HelpView): Promise<HelpAnswer> {
   const previous = [...history].reverse().find((t) => t.role === 'user')?.text ?? ''
@@ -30,16 +54,33 @@ async function locally(question: string, history: HelpTurn[], view: HelpView): P
 }
 
 export async function askHelp(question: string, history: HelpTurn[], view: HelpView): Promise<HelpAnswer> {
-  if (!isApiConfigured()) return locally(question, history, view)
+  if (!isApiConfigured()) {
+    try {
+      return await locally(question, history, view)
+    } catch {
+      throw new HelpUnavailable(null)
+    }
+  }
+  const abort = new AbortController()
+  const timer = setTimeout(() => abort.abort(), HELP_TIMEOUT_MS)
   try {
     const res = await apiFetch<{ answer: HelpAnswer }>('/tenant/help-assistant/answers', {
       method: 'POST',
+      quiet: true,
+      signal: abort.signal,
       body: JSON.stringify({ question, history: history.slice(-4) }),
     })
     return res.answer
   } catch (err) {
     if (err instanceof ApiError && err.status === 429) throw new HelpLimited()
-    // Servern svarar inte: kunskapsbasen finns ändå här.
-    return locally(question, history, view)
+    if (err instanceof ApiError && err.status === 403 && err.code === 'help_assistant_off') throw new HelpOff()
+    // Servern svarar inte (fel, nätverk, 20 s): kunskapsbasen finns ändå här.
+    try {
+      return await locally(question, history, view)
+    } catch {
+      throw new HelpUnavailable(err)
+    }
+  } finally {
+    clearTimeout(timer)
   }
 }

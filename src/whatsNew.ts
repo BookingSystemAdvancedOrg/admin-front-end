@@ -28,6 +28,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
   { n: 16, text: 'Meny längst ner' },
   { n: 17, text: 'Datumfält i mobilen' },
   { n: 18, text: 'Väntetid för sena gäster' },
+  { n: 19, text: 'Muspekare' },
+  { n: 20, text: 'Fråga Booqy felrapport' },
 ]
 
 declare const __WHATS_NEW_N__: number | undefined

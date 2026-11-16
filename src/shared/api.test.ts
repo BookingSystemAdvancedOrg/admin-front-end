@@ -139,3 +139,31 @@ describe('apiFetch och ett 401', () => {
     await expect(apiFetch('/tenant')).rejects.toBeInstanceOf(NetworkError)
   })
 })
+
+describe('apiFetch quiet', () => {
+  it('ingen strimma, ingen data-changed och inget omförsök (Fråga Booqy)', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(json(429, {}, { 'Retry-After': '1' }))
+      .mockResolvedValueOnce(json(200, { answer: 1 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { apiFetch, DATA_CHANGED_EVENT } = await loadApi()
+    const busy = await import('./motion/busy')
+    const start = vi.spyOn(busy, 'busyStart')
+    const changed = vi.fn()
+    window.addEventListener(DATA_CHANGED_EVENT, changed)
+
+    await expect(apiFetch('/x', { method: 'POST', body: '{}', quiet: true })).rejects.toMatchObject({ status: 429 })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][1]).not.toHaveProperty('quiet')
+
+    fetchMock.mockReset().mockImplementation(async () => json(200, { answer: 1 }))
+    await expect(apiFetch('/x', { method: 'POST', body: '{}', quiet: true })).resolves.toEqual({ answer: 1 })
+    expect(start).not.toHaveBeenCalled()
+    expect(changed).not.toHaveBeenCalled()
+
+    await apiFetch('/x', { method: 'POST', body: '{}' })
+    expect(start).toHaveBeenCalledTimes(1)
+    expect(changed).toHaveBeenCalledTimes(1)
+    window.removeEventListener(DATA_CHANGED_EVENT, changed)
+  })
+})

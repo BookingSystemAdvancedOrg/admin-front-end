@@ -28,7 +28,7 @@
   color: inherit;
   text-decoration: underline;
   text-underline-offset: 2px;
-  cursor: pointer;
+  cursor: default;
 }
 
 .changed-note-use:focus-visible {

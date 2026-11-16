@@ -131,9 +131,9 @@ function worthRetrying(method: string, res: Response): boolean {
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-async function fetchWithRetry(method: string, send: () => Promise<Response>): Promise<Response> {
+async function fetchWithRetry(method: string, send: () => Promise<Response>, retry = true): Promise<Response> {
   for (let attempt = 0; ; attempt++) {
-    const last = attempt >= RETRY_DELAYS_MS.length
+    const last = !retry || attempt >= RETRY_DELAYS_MS.length
     let res: Response
     try {
       res = await send()
@@ -168,9 +168,16 @@ async function fetchWithRetry(method: string, send: () => Promise<Response>): Pr
  */
 export const DATA_CHANGED_EVENT = 'booqy:data-changed'
 
+/**
+ * `quiet`: ett anrop som inte ändrar något på sidorna (Fråga Booqy). Ingen
+ * strimma överst, ingen DATA_CHANGED_EVENT (sidorna hämtar inte om) och
+ * inget omförsök (ett 429 spenderar inte en plats till i taket).
+ */
+export type ApiFetchOptions = RequestInit & { quiet?: boolean }
+
 export async function apiFetch<T>(
   path: string,
-  options: RequestInit = {},
+  { quiet = false, ...options }: ApiFetchOptions = {},
 ): Promise<T> {
   if (!API_BASE_URL) {
     throw new Error(
@@ -179,7 +186,7 @@ export async function apiFetch<T>(
   }
   const method = (options.method ?? 'GET').toUpperCase()
   // Skrivningar syns som en strimma överst (shared/motion/BusyBar) tills de är klara.
-  const writing = method !== 'GET'
+  const writing = method !== 'GET' && !quiet
   if (writing) busyStart()
   const send = (token: string | null) => fetchWithRetry(method, () => fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -188,7 +195,7 @@ export async function apiFetch<T>(
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
-  }))
+  }), !quiet)
   let res: Response
   let ok = false
   try {

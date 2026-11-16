@@ -12,7 +12,7 @@
   gap: var(--bq-space-3);
   padding: var(--bq-space-3) 0;
   border-top: 1px solid var(--bq-line);
-  cursor: pointer;
+  cursor: default;
 }
 .annons-choice input {
   flex: none;

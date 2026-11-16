@@ -5,7 +5,10 @@ import { Icon } from '../../shared/Icon'
 import { Loading } from '../../shared/Loading'
 import { requestPageAction } from '../../shared/nav'
 import { useTenant } from '../../shared/tenant'
-import { HelpLimited, askHelp, getHelpStatus } from './helpApi'
+import { HelpLimited, HelpOff, HelpUnavailable, askHelp, getHelpStatus } from './helpApi'
+import { ErrorActions } from '../../shared/ErrorNote'
+import { BOOQY_FAULT } from '../../shared/errors'
+import type { ErrorInfo } from '../../shared/errors'
 import { METRICS, resolveLive } from './live'
 import { spotlight } from './spotlight'
 import { useDodge, useHideOnScroll } from './dodge'
@@ -29,7 +32,7 @@ import './helpChat.css'
 type Message =
   | { id: number; role: 'user'; text: string }
   | { id: number; role: 'assistant'; answer: HelpAnswer }
-  | { id: number; role: 'notice'; text: string }
+  | { id: number; role: 'notice'; text: string; info?: ErrorInfo; retry?: string }
 
 let nextId = 1
 
@@ -120,15 +123,36 @@ export function HelpChat() {
       // En levande siffra visas också där den står (Statistik), upplyst.
       if (answer.live && answer.actions[0] && actionAllowed(answer.actions[0], tenant)) go(answer.actions[0], { keepOpen: true })
     } catch (err) {
-      const notice =
-        err instanceof HelpLimited
-          ? 'Du har ställt många frågor på kort tid. Vänta en stund och fråga igen.'
-          : 'Det gick inte att få ett svar just nu. Felet ligger hos Booqy, inte hos dig: fråga igen, eller öppna hjälptexterna under Hjälp.'
-      setMessages((ms) => [...ms, { id: nextId++, role: 'notice', text: notice }])
+      if (err instanceof HelpOff) {
+        // Booqy har stängt av assistenten: borta direkt, knappen och ⌘K också.
+        turnOff()
+        return
+      }
+      if (err instanceof HelpLimited) {
+        setMessages((ms) => [...ms, { id: nextId++, role: 'notice', text: 'Du har ställt många frågor på kort tid. Vänta en stund och fråga igen.' }])
+        return
+      }
+      const fault = err instanceof HelpUnavailable ? err : new HelpUnavailable(null)
+      const notice = `Det gick inte att få ett svar just nu. ${BOOQY_FAULT}`
+      const info: ErrorInfo = {
+        text: notice,
+        actor: 'booqy',
+        code: fault.code,
+        status: fault.status,
+        ...(fault.requestId ? { requestId: fault.requestId } : {}),
+      }
+      setMessages((ms) => [...ms, { id: nextId++, role: 'notice', text: notice, info, retry: text }])
     } finally {
       setWaiting(false)
       inputRef.current?.focus()
     }
+  }
+
+  const turnOff = () => {
+    setHelpChatEnabled(false)
+    setMessages([])
+    close()
+    setEnabled(false)
   }
 
   const withLive = async (answer: HelpAnswer): Promise<HelpAnswer> => {
@@ -264,8 +288,11 @@ export function HelpChat() {
                   {m.text}
                 </li>
               ) : m.role === 'notice' ? (
-                <li key={m.id} className="help-msg help-msg--notice">
+                <li key={m.id} className={`help-msg help-msg--notice${m.info ? ' help-msg--fault' : ''}`}>
                   <span role="status">{m.text}</span>
+                  {m.info && (
+                    <ErrorActions text={m.text} info={m.info} onRetry={m.retry ? () => void ask(m.retry!) : undefined} />
+                  )}
                 </li>
               ) : (
                 <li key={m.id} className="help-msg help-msg--bot">

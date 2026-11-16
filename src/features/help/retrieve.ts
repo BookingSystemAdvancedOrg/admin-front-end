@@ -192,12 +192,22 @@ export function docActions(doc: HelpDoc): HelpAction[] {
   }]
 }
 
-/** Ber frågan om en hemlighet eller om andra restauranger? Då svarar assistenten nej. */
+/**
+ * Ber frågan om en hemlighet eller om andra restauranger, kunder eller
+ * någon annans data? Då svarar assistenten nej. Samma regel som serverns
+ * is_secret_question för admin, på svenska och engelska.
+ */
 export function isSecretQuestion(question: string): boolean {
   const q = ` ${fold(question)} `
-  const secret = / (losenord\w*|password|api ?nyckel\w*|nyckel\w*|nycklar\w*|token\w*|hemlig\w*|secret\w*|pin ?kod\w*|kortnummer\w*|personnummer\w*) /
-  const show = / (vad ar|vilket ar|vilken ar|visa|ge mig|skicka|beratta|lista|kopiera|what is|show) /
-  return (secret.test(q) && show.test(q)) || / andra (restauranger|restaurangers|kunder|kunders|foretag) /.test(q)
+  const secret = / (losenord\w*|password\w*|api ?nyckel\w*|nyckel\w*|nycklar\w*|token\w*|hemlig\w*|secret\w*|pin ?kod\w*|kortnummer\w*|personnummer\w*|api key\w*|credential\w*) /
+  const show = / (vad ar|vilket ar|vilken ar|visa|ge mig|skicka|beratta|lista|kopiera|what is|what s|show|give me|send|tell me|list|copy|reveal) /
+  const others = [
+    / andra (restauranger|restaurangers|kunder|kunders|foretag|foretags) /,
+    / other (restaurants?|tenants?|customers?|compan(y|ies)|business(es)?|organi[sz]ations?)( s)? /,
+    / another (restaurant|tenant|customer|company|business|organi[sz]ation) s /,
+    / (someone|somebody|anyone|anybody) else s /,
+  ]
+  return (secret.test(q) && show.test(q)) || others.some((r) => r.test(q))
 }
 
 /** "Var ser jag ..." vill ha platsen, inte siffran. */

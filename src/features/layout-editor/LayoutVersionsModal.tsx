@@ -1,16 +1,18 @@
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import {
+  BookingsOnRemovedTablesError,
   activateLayoutVersion,
   archiveLayoutVersion,
   cancelPendingLayoutActivation,
   listLayoutVersions,
 } from './layoutApi'
-import type { LayoutActivation, PublishedLayoutSnapshot } from './layoutApi'
+import type { LayoutActivation, PublishedLayoutSnapshot, RemovedTableBooking } from './layoutApi'
 import { SkelRows } from '../../shared/Skeleton'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { useConfirm } from '../../shared/ConfirmDialog'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { RemovedTablesBookings } from './RemovedTablesBookings'
 
 /** "2026-10-05T01:00:00Z" -> "5 oktober 2026, 03:00" i lokal tid. */
 function formatMoment(iso: string): string {
@@ -75,6 +77,8 @@ export function LayoutVersionsModal({
   const [confirmEl, ask] = useConfirm()
   const [versions, setVersions] = useState<PublishedLayoutSnapshot[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Bokningar på bord som versionen tar bort (409 bookings_on_removed_tables).
+  const [removed, setRemoved] = useState<RemovedTableBooking[]>([])
   const [busyVersion, setBusyVersion] = useState<number | null>(null)
   const [archivingVersion, setArchivingVersion] = useState<number | null>(null)
   const [cancelling, setCancelling] = useState(false)
@@ -102,6 +106,7 @@ export function LayoutVersionsModal({
 
   async function activate(version: number) {
     setError(null)
+    setRemoved([])
     setResult(null)
     setBusyVersion(version)
     try {
@@ -113,6 +118,7 @@ export function LayoutVersionsModal({
       onActivated()
     } catch (err) {
       setError(errorText(err, 'Kunde inte aktivera versionen.'))
+      if (err instanceof BookingsOnRemovedTablesError) setRemoved(err.bookings)
     } finally {
       setBusyVersion(null)
     }
@@ -177,6 +183,9 @@ export function LayoutVersionsModal({
 
         {error && (
           <ErrorNote text={error} />
+        )}
+        {error && removed.length > 0 && (
+          <RemovedTablesBookings locationId={locationId} bookings={removed} />
         )}
 
         {result && (

@@ -1504,3 +1504,34 @@
 .props-tip p {
   margin: 8px 0 0;
 }
+
+/* Bokningar på bord som en ny version tar bort (409 bookings_on_removed_tables) */
+.removed-bookings {
+  list-style: none;
+  margin: 8px 0 12px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--glass-well);
+  max-height: 240px;
+  overflow-y: auto;
+}
+.removed-bookings li {
+  display: grid;
+  grid-template-columns: 5.5em 3.5em minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: baseline;
+  padding: 8px 12px;
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.removed-bookings li + li { border-top: 1px solid var(--border); }
+.removed-bookings-day,
+.removed-bookings-table { color: var(--muted); }
+.removed-bookings-guest { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 600px) {
+  .removed-bookings li { grid-template-columns: 5.5em 3.5em minmax(0, 1fr); }
+  .removed-bookings-table { grid-column: 3; }
+}

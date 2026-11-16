@@ -43,6 +43,8 @@ import {
 } from './layoutApi'
 import type { PublishedLayoutSnapshot } from './layoutApi'
 import { activatePublished, labelFor } from './publishFlow'
+import { RemovedTablesBookings } from './RemovedTablesBookings'
+import type { RemovedTableBooking } from './layoutApi'
 import {
   actionForKey,
   isTypingTarget,
@@ -366,6 +368,8 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
   // Ökas efter en publicering så QR-panelen hämtar de publicerade borden igen.
   const [publishCount, setPublishCount] = useState(0)
   const [layoutError, setLayoutError] = useState<string | null>(null)
+  // Publiceringens fel "bokningar på borttagna bord": listan hör till just den texten.
+  const [removedBookings, setRemovedBookings] = useState<{ text: string; locationId: string; bookings: RemovedTableBooking[] } | null>(null)
   // Vilken plats vars sparade layout är inläst; tills dess ligger planen bakom glaset (LayoutPrep).
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
   // "Se live": byter tillfälligt ut `floors`/`currentFloorId` mot den
@@ -2086,7 +2090,10 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       setPublishCount((n) => n + 1)
       setVersionLabel(outcome.label)
       if (outcome.ok) setStatusText(outcome.text)
-      else setLayoutError(outcome.text)
+      else {
+        setLayoutError(outcome.text)
+        setRemovedBookings(outcome.removed?.length ? { text: outcome.text, locationId: loc, bookings: outcome.removed } : null)
+      }
     } catch (err) {
       setLayoutError(
         `Utkastet sparades, men publiceringen misslyckades: ${errorText(err, 'Kunde inte publicera layouten.')}`,
@@ -2217,6 +2224,9 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
         )}
         {shownLayoutError && (
           <ErrorNote text={shownLayoutError} />
+        )}
+        {shownLayoutError && removedBookings?.text === shownLayoutError && (
+          <RemovedTablesBookings locationId={removedBookings.locationId} bookings={removedBookings.bookings} />
         )}
         {liveError && (
           <ErrorNote text={liveError} />

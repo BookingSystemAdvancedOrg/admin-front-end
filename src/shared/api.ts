@@ -42,11 +42,13 @@ export class ApiError extends Error {
   fromServer: boolean
   /** API Gatewayns request id (svarshuvudet apigw-requestid), för Rapportera till Booqy. */
   requestId?: string
+  /** Svarets hela JSON-kropp, för fel som bär mer än en text (t.ex. en lista bokningar). */
+  details?: Record<string, unknown>
 
   constructor(
     status: number,
     message: string,
-    opts: { code?: string; field?: string; fromServer?: boolean; requestId?: string } = {},
+    opts: { code?: string; field?: string; fromServer?: boolean; requestId?: string; details?: Record<string, unknown> } = {},
   ) {
     super(message)
     this.name = 'ApiError'
@@ -55,6 +57,7 @@ export class ApiError extends Error {
     this.field = opts.field
     this.fromServer = opts.fromServer ?? false
     if (opts.requestId) this.requestId = opts.requestId
+    if (opts.details) this.details = opts.details
   }
 }
 
@@ -99,7 +102,8 @@ async function toApiError(res: Response): Promise<ApiError> {
         // API Gateways eget {"message":"Not Found"}: vägen finns inte (appen och API:t i otakt), inte posten.
         : res.status === 404 && body.error === undefined ? 'route_not_found'
           : statusCode(res.status)
-    return new ApiError(res.status, message, { code, field: body.field, fromServer: true, requestId: requestIdOf(res, body) })
+    const details = body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : undefined
+    return new ApiError(res.status, message, { code, field: body.field, fromServer: true, requestId: requestIdOf(res, body), details })
   } catch {
     // CloudFront/API Gateway kan svara med HTML eller tom text (502/504).
     return new ApiError(res.status, text || res.statusText, { code: res.status === 404 ? 'route_not_found' : statusCode(res.status), fromServer: true, requestId: requestIdOf(res) })

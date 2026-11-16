@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../shared/api'
+import { BookingsOnRemovedTablesError } from './layoutApi'
 import type { LayoutActivation, PublishedLayoutSnapshot } from './layoutApi'
 
 type Activate = (locationId: string, version: number) => Promise<LayoutActivation>
@@ -76,6 +77,19 @@ describe('activatePublished (first publish)', () => {
         'Aktivera den under Versioner.',
       label: 'Version 1 · ej aktiverad',
     })
+  })
+
+  it('does not retry bookings on removed tables and hands the bookings on', async () => {
+    const bookings = [{ reservationId: 'r1', date: '2026-11-20', startTime: '18:00', tableIds: ['t9'] }]
+    const activate = vi.fn<Activate>().mockRejectedValue(
+      new BookingsOnRemovedTablesError('Flytta bokningarna och aktivera sedan igen.', bookings),
+    )
+    const d = deps(activate, [version(2, false)])
+    const out = await activatePublished('loc', 2, d)
+    expect(activate).toHaveBeenCalledTimes(1)
+    expect(out.ok).toBe(false)
+    expect(out.text).toBe('Version 2 är publicerad men inte aktiverad: Flytta bokningarna och aktivera sedan igen.')
+    expect(out.removed).toEqual(bookings)
   })
 
   it('does not trust "active" when the list says the version is not current', async () => {

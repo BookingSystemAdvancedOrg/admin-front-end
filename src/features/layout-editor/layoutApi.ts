@@ -543,6 +543,47 @@ export type LayoutActivation =
       cutoverAt: string
     }
 
+/** En bokning efter bytet på bord som den nya versionen tar bort. */
+export interface RemovedTableBooking {
+  reservationId: string
+  /** Lokalt datum, YYYY-MM-DD. */
+  date: string
+  /** Lokal tid, HH:MM. */
+  startTime: string
+  /** Borden (i den gällande ritningen) som försvinner. */
+  tableIds: string[]
+}
+
+const REMOVED_TABLES_TEXT =
+  'Det finns bokningar efter bytet på bord som inte finns i den nya planlösningen. ' +
+  'Flytta bokningarna till andra bord (eller lägg tillbaka borden) och aktivera sedan igen.'
+
+/** 409 bookings_on_removed_tables: texten plus bokningarna som måste flyttas först. */
+export class BookingsOnRemovedTablesError extends ApiError {
+  bookings: RemovedTableBooking[]
+
+  constructor(message: string, bookings: RemovedTableBooking[]) {
+    super(409, message, { code: 'bookings_on_removed_tables' })
+    this.name = 'BookingsOnRemovedTablesError'
+    this.bookings = bookings
+  }
+}
+
+function removedTableBookings(raw: unknown): RemovedTableBooking[] {
+  if (!Array.isArray(raw)) return []
+  return raw.flatMap((item): RemovedTableBooking[] => {
+    if (!item || typeof item !== 'object') return []
+    const r = item as Record<string, unknown>
+    if (typeof r.date !== 'string' || typeof r.startTime !== 'string') return []
+    return [{
+      reservationId: typeof r.reservationId === 'string' ? r.reservationId : '',
+      date: r.date,
+      startTime: r.startTime,
+      tableIds: Array.isArray(r.tableIds) ? r.tableIds.map(String) : [],
+    }]
+  })
+}
+
 /**
  * POST .../layout/versions/{n}/activate - utan body.
  *
@@ -564,9 +605,16 @@ export async function activateLayoutVersion(
       { method: 'POST' },
     )
   } catch (err) {
-    // 409 betyder här något annat än i resten av layout-API:t: ett byte till
-    // en annan version är redan inbokat. Den generiska "ändrades samtidigt"
-    // hade pekat användaren helt fel.
+    // 409 betyder här något annat än i resten av layout-API:t. Antingen
+    // ligger bokningar efter bytet på bord som den nya versionen tar bort
+    // (egen kod och lista), eller så är ett byte till en annan version redan
+    // inbokat. Den generiska "ändrades samtidigt" hade pekat användaren fel.
+    if (err instanceof ApiError && err.status === 409 && err.code === 'bookings_on_removed_tables') {
+      throw new BookingsOnRemovedTablesError(
+        err.fromServer && /\s/.test(err.message) ? err.message : REMOVED_TABLES_TEXT,
+        removedTableBookings(err.details?.reservations),
+      )
+    }
     if (err instanceof ApiError && err.status === 409) {
       throw new ApiError(
         409,

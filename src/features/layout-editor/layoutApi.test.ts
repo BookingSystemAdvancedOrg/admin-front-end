@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../shared/api'
+import { errorText } from '../../shared/errors'
 import * as api from '../../shared/api'
 import {
   LEGACY_FLOOR_ID,
   UNITS_PER_METER,
+  BookingsOnRemovedTablesError,
   activateLayoutVersion,
   archiveLayoutVersion,
   cancelPendingLayoutActivation,
@@ -529,6 +531,39 @@ describe('publishing', () => {
     await expect(activateLayoutVersion('loc-1', 3)).rejects.toThrow(
       /versionsbyte är redan inbokat/,
     )
+  })
+
+  it('explains a 409 bookings_on_removed_tables with the server text and the bookings', async () => {
+    const message = 'Det finns bokningar efter bytet på bord som inte finns i den nya planlösningen. Flytta bokningarna.'
+    mockedApiFetch.mockRejectedValue(new ApiError(409, message, {
+      code: 'bookings_on_removed_tables',
+      fromServer: true,
+      details: {
+        error: message,
+        code: 'bookings_on_removed_tables',
+        reservations: [
+          { reservationId: 'r1', date: '2026-11-20', startTime: '18:00', tableIds: ['t9'] },
+          { bogus: true },
+        ],
+      },
+    }))
+    const err = await activateLayoutVersion('loc-1', 3).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(BookingsOnRemovedTablesError)
+    const typed = err as BookingsOnRemovedTablesError
+    expect(typed.status).toBe(409)
+    expect(typed.message).toBe(message)
+    expect(typed.message).not.toMatch(/redan inbokat/)
+    expect(typed.bookings).toEqual([
+      { reservationId: 'r1', date: '2026-11-20', startTime: '18:00', tableIds: ['t9'] },
+    ])
+    expect(errorText(typed, 'Kunde inte aktivera versionen.')).toBe(message)
+  })
+
+  it('keeps the pending-cutover text for a plain 409 even with a body', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError(409, 'cutover pending', { code: 'conflict', fromServer: true, details: { error: 'cutover pending' } }))
+    const err = await activateLayoutVersion('loc-1', 3).catch((e: unknown) => e)
+    expect(err).not.toBeInstanceOf(BookingsOnRemovedTablesError)
+    expect((err as Error).message).toMatch(/versionsbyte är redan inbokat/)
   })
 
   it('maps 403 on activate to the permission message (staff may not activate)', async () => {

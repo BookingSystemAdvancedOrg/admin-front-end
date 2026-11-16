@@ -67,6 +67,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
   { n: 55, text: 'Fråga Booqy tillgänglighet' },
   { n: 56, text: 'Bordsnummer som länk' },
   { n: 57, text: 'Bordsknapp, flera bord' },
+  { n: 58, text: 'Versionsbyte, bokningar att flytta' },
 ]
 
 declare const __WHATS_NEW_N__: number | undefined

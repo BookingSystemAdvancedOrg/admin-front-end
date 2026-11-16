@@ -103,6 +103,19 @@ describe('WebbplatsPage', () => {
     expect(saved.pages[0].blocks.map((b) => b.type)).toEqual(['menu', 'hero'])
   })
 
+  it('has no colour pickers and saves the stored theme untouched', async () => {
+    tenant = on
+    vi.mocked(api.saveDraft).mockResolvedValue({ doc, version: 4, basedOn: null })
+    render(<WebbplatsPage />)
+    expect(await screen.findByText('Utkast · inte publicerad än')).toBeInTheDocument()
+    expect(screen.queryByText('Huvudfärg')).not.toBeInTheDocument()
+    expect(screen.queryByText('Accentfärg')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Flytta ner Stor rubrik' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Spara utkast' }))
+    await waitFor(() => expect(api.saveDraft).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(api.saveDraft).mock.calls[0][0].theme).toEqual(doc.theme)
+  })
+
   it('publishes and waits until the version is live', async () => {
     tenant = on
     vi.mocked(api.publish).mockResolvedValue({ publishId: 'p', status: 'running' })
@@ -154,6 +167,19 @@ describe('WebbplatsPage', () => {
     expect(api.freeSlug('Meny', [])).toBe('meny-2')
     expect(api.freeSlug('Sida 2', ['sida-2'])).toBe('sida-2-2')
     expect(api.locate('/pages/1/slug')).toEqual({ page: 1, slug: true })
+  })
+
+  it('offers the booking, order and catering buttons only with that feature', () => {
+    const plan = (features: Record<string, boolean>) => ({ entitlements: { maxLocations: null, features } }) as never
+    const none = api.addableBlocks(plan({ siteBuilder: true }))
+    expect(none).not.toContain('bookingCta')
+    expect(none).not.toContain('orderCta')
+    expect(none).not.toContain('cateringCta')
+    expect(none).toContain('hero')
+    const all = api.addableBlocks(plan({ siteBuilder: true, reservations: true, ordering: true, catering: true }))
+    expect(all).toEqual(expect.arrayContaining(['bookingCta', 'orderCta', 'cateringCta', 'contact']))
+    expect(api.addableBlocks(plan({ ordering: true }))).toEqual(expect.arrayContaining(['orderCta']))
+    expect(api.addableBlocks(plan({ ordering: true }))).not.toContain('cateringCta')
   })
 
   it('moves blocks without losing any', () => {

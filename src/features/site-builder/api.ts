@@ -1,4 +1,6 @@
 import { apiFetch } from '../../shared/api'
+import type { FeatureKey } from '../../shared/contracts'
+import type { Tenant } from '../../shared/tenant'
 
 /** Webbplatsbyggaren (CONTRACTS.md 6.B). Dokumentets form: application/shared/site_schema/v1.json. */
 
@@ -71,6 +73,19 @@ export const rollback = (publishId: string, versionNo: number) =>
 export const BLOCK_LABEL: Record<BlockType, string> = {
   hero: 'Stor rubrik', text: 'Text', image: 'Bild', gallery: 'Bildgalleri', menu: 'Meny',
   openingHours: 'Öppettider', bookingCta: 'Boka bord', orderCta: 'Beställ mat', cateringCta: 'Catering', contact: 'Kontakt',
+}
+
+/** Knappblock som bara gäller med en viss funktion i planen (gästsajten döljer dem annars). */
+const BLOCK_FEATURE: Partial<Record<BlockType, FeatureKey>> = {
+  bookingCta: 'reservations', orderCta: 'ordering', cateringCta: 'catering',
+}
+
+/** Blocktyperna som går att lägga till med restaurangens plan. */
+export function addableBlocks(tenant: Pick<Tenant, 'entitlements'> | null | undefined): BlockType[] {
+  return (Object.keys(BLOCK_LABEL) as BlockType[]).filter((t) => {
+    const feature = BLOCK_FEATURE[t]
+    return !feature || Boolean(tenant?.entitlements?.features?.[feature])
+  })
 }
 
 /** Vilka fält varje block har i redigeraren (resten är fasta, t.ex. menyn som hämtas live). */

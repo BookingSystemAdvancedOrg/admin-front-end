@@ -39,6 +39,7 @@ import {
   type SiteDoc,
   type SiteState,
   type Version,
+  addableBlocks,
 } from './api'
 import { ErrorActions, ErrorNote } from '../../shared/ErrorNote'
 
@@ -79,6 +80,7 @@ export default function WebbplatsPage() {
 
 function Editor() {
   const state = useTenant()
+  const tenant = state.tenant
   const location = currentLocation(state)
   const [site, setSite] = useState<SiteState | null>(null)
   const [doc, setDoc] = useState<SiteDoc | null>(null)
@@ -359,19 +361,13 @@ function Editor() {
         <Field label="Lägg till block">
           <Select value="" disabled={page.blocks.length >= 40} onChange={(e) => e.target.value && addBlock(e.target.value as BlockType)}>
             <option value="">Välj…</option>
-            {(Object.keys(BLOCK_LABEL) as BlockType[]).map((t) => <option key={t} value={t}>{BLOCK_LABEL[t]}</option>)}
+            {addableBlocks(tenant).map((t) => <option key={t} value={t}>{BLOCK_LABEL[t]}</option>)}
           </Select>
         </Field>
       </Card>
 
       <Card title="Utseende" level={3}>
         <div className="webbplats-fields">
-          <Field label="Huvudfärg">
-            <Input type="color" value={doc.theme.primaryColor} onChange={(e) => change({ ...doc, theme: { ...doc.theme, primaryColor: e.target.value } })} />
-          </Field>
-          <Field label="Accentfärg" hint="Knappar och länkar">
-            <Input type="color" value={doc.theme.accentColor} onChange={(e) => change({ ...doc, theme: { ...doc.theme, accentColor: e.target.value } })} />
-          </Field>
           <Field label="Typsnitt">
             <Select value={doc.theme.font} onChange={(e) => change({ ...doc, theme: { ...doc.theme, font: e.target.value as 'serif' | 'sans' } })}>
               <option value="serif">Klassiskt (serif)</option>

@@ -634,6 +634,7 @@ const CATERING_FIELDS: Record<string, string> = {
   cleaningFee: 'städavgiften', equipmentReturn: 'returen av utrustning', validUntil: 'giltighetstiden',
   message: 'meddelandet', portions: 'antalet portioner', reason: 'anledningen', price: 'priset',
   signatoryAuthority: 'rutan om firmateckning', name: 'namnet', email: 'e-postadressen', phone: 'telefonnumret',
+  fromPortions: 'från antal gäster', toPortions: 'till antal gäster',
 }
 
 export function formatDate(day: string): string {

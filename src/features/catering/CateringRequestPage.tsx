@@ -36,6 +36,7 @@ import { Num } from '../../shared/motion/Num'
 import { SkelCard, SkelPage } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { Select } from '../../shared/Select'
+import { KronorInput } from './KronorInput'
 
 /** API:ts fältnamn i offerten -> fältets id, så ett fel flyttar fokus dit. */
 const OFFER_FIELD_IDS: Record<string, string> = {
@@ -201,7 +202,7 @@ export default function CateringRequestPage() {
       <>
         <AdminTopbar title="Catering" />
         <main className="admin-main">
-          <ErrorNote text={loadError} />
+          <ErrorNote text={loadError} onRetry={() => { setLoadError(null); void load() }} />
           <Link to="/catering">Till alla förfrågningar</Link>
         </main>
       </>
@@ -382,8 +383,8 @@ export default function CateringRequestPage() {
                   {offer.lines.map((l, i) => (
                     <tr key={i}>
                       <td><input aria-label={`Rad ${i + 1} namn`} value={l.name} onChange={(e) => setLine(i, { name: e.target.value })} /></td>
-                      <td><input aria-label={`Rad ${i + 1} pris`} inputMode="decimal" value={String(l.unitPrice)}
-                        onChange={(e) => setLine(i, { unitPrice: Number(e.target.value.replace(',', '.')) || 0 })} /></td>
+                      <td><KronorInput aria-label={`Rad ${i + 1} pris`} value={l.unitPrice}
+                        onValue={(unitPrice) => setLine(i, { unitPrice })} /></td>
                       <td><input aria-label={`Rad ${i + 1} antal`} inputMode="numeric" value={String(l.quantity)}
                         onChange={(e) => setLine(i, { quantity: Number(e.target.value.replace(/\D/g, '')) || 0 })} /></td>
                       <td><Num>{kronor(Math.round(l.unitPrice * 100) * l.quantity)}</Num></td>
@@ -431,8 +432,8 @@ export default function CateringRequestPage() {
               </div>
               <div className="form-field">
                 <label htmlFor="offer-delivery">Leverans (kr)</label>
-                <input id="offer-delivery" inputMode="decimal" value={String(offer.deliveryFee)}
-                  onChange={(e) => setOffer({ ...offer, deliveryFee: Number(e.target.value.replace(',', '.')) || 0 })} />
+                <KronorInput id="offer-delivery" value={offer.deliveryFee}
+                  onValue={(deliveryFee) => setOffer({ ...offer, deliveryFee })} />
               </div>
               <div className="form-field">
                 <label htmlFor="offer-return">Retur av utrustning</label>
@@ -445,8 +446,8 @@ export default function CateringRequestPage() {
               {offer.equipmentReturn === 'not_cleaned' && (
                 <div className="form-field">
                   <label htmlFor="offer-cleaning">Rengöringsavgift (kr)</label>
-                  <input id="offer-cleaning" inputMode="decimal" value={String(offer.cleaningFee)}
-                    onChange={(e) => setOffer({ ...offer, cleaningFee: Number(e.target.value.replace(',', '.')) || 0 })} />
+                  <KronorInput id="offer-cleaning" value={offer.cleaningFee}
+                    onValue={(cleaningFee) => setOffer({ ...offer, cleaningFee })} />
                 </div>
               )}
               <div className="form-field">

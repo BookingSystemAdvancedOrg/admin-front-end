@@ -13,6 +13,9 @@ import { SkelCard, SkelPage, SkelRows, SkelTiles } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { booqyFaultText } from '../../shared/errors'
 import { Select } from '../../shared/Select'
+import { NoLocation } from '../../shared/NoLocation'
+import { currentLocation, useTenant } from '../../shared/tenant'
+import { addDays, todayIn } from '../bokningar/bookingsApi'
 
 type Filter = 'aktiva' | 'alla'
 const ACTIVE: CateringStatus[] = ['requested', 'offer_sent', 'change_requested', 'signed', 'confirmed', 'delivered']
@@ -28,6 +31,7 @@ export default function CateringPage() {
   const [rows, setRows] = useState<RequestSummary[] | null>(null)
   const [error, setError] = useState(false)
   const [filter, setFilter] = useState<Filter>('aktiva')
+  const timezone = currentLocation(useTenant())?.timezone
 
   useEffect(() => {
     if (!locationId) return
@@ -55,10 +59,9 @@ export default function CateringPage() {
     })
   const waiting = (rows ?? []).filter((r) => NEEDS_OWNER.includes(r.status)).length
   const ongoing = (rows ?? []).filter((r) => ACTIVE.includes(r.status))
-  const [{ today, weekAhead }] = useState(() => ({
-    today: new Date().toISOString().slice(0, 10),
-    weekAhead: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
-  }))
+  // Platsens datum (Stockholm), inte UTC: strax efter midnatt är det redan i dag.
+  const today = todayIn(timezone)
+  const weekAhead = addDays(today, 7)
   const upcoming = ongoing.filter((r) => r.deliveryDate >= today && r.deliveryDate <= weekAhead).length
   const value = ongoing.reduce((sum, r) => sum + (r.total ?? 0), 0)
   const tiles = [
@@ -86,7 +89,7 @@ export default function CateringPage() {
               <SkelTiles />
               <SkelCard rows={5} cols={4} />
             </SkelPage>
-          ) : <p className="cell-muted">Ingen plats vald.</p>
+          ) : <NoLocation />
         ) : (
           <>
           <section className="stats-row" aria-label="Cateringens siffror">

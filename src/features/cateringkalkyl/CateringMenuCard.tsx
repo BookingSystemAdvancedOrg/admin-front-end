@@ -30,6 +30,7 @@ import { parseKronor } from './data'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
+import { Loading } from '../../shared/Loading'
 
 const kr = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 2 })
 
@@ -519,7 +520,7 @@ function ImportModal({ locationId, dishes, onImport, onCancel }: {
         Kopieras med namn, beskrivning och pris. Allergener lägger du till efteråt.
       </p>
       {menu === null ? (
-        <p className="cell-muted">Hämtar menyn…</p>
+        <Loading variant="inline" label="Hämtar menyn" />
       ) : menu.length === 0 ? (
         <p className="cm-empty">Inga aktiva rätter.</p>
       ) : (

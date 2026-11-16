@@ -40,7 +40,7 @@ vi.mock('../../shared/AdminTopbar', () => ({
   ),
 }))
 let role = 'owner_user'
-vi.mock('../../shared/tenant', () => ({ useTenant: () => ({ tenant: { role } }) }))
+vi.mock('../../shared/tenant', () => ({ useTenant: () => ({ tenant: { role } }), currentLocation: () => null }))
 vi.mock('../auth/useAuth', () => ({ useAuth: () => ({ sub: 'owner' }) }))
 vi.mock('../../shared/location', () => ({
   useLocationId: () => ({ locationId: 'loc-1', resolving: false, setLocationId: () => {} }),
@@ -187,6 +187,36 @@ describe('CateringRequestPage', () => {
     expect(screen.queryByText('Rengöringsavgift')).not.toBeInTheDocument()
   })
 
+  it('takes decimal prices typed with a comma', async () => {
+    const user = userEvent.setup()
+    getRequest.mockResolvedValue(request())
+    sendOffer.mockResolvedValue(request({ status: 'offer_sent' }))
+    renderAt()
+    const price = await screen.findByLabelText('Rad 1 pris')
+    await user.clear(price)
+    await user.type(price, '89,50')
+    expect(price).toHaveValue('89,50')
+    await user.type(price, 'x')
+    expect(price).toHaveValue('89,50')
+    const delivery = screen.getByLabelText('Leverans (kr)')
+    await user.clear(delivery)
+    await user.type(delivery, '49.5')
+    expect(delivery).toHaveValue('49.5')
+    await user.click(screen.getByRole('button', { name: 'Skicka offert' }))
+    expect(sendOffer).toHaveBeenCalledWith('loc-1', 'req-1', expect.objectContaining({
+      lines: [expect.objectContaining({ unitPrice: 89.5 })], deliveryFee: 49.5,
+    }))
+  })
+
+  it('loads the request again on Försök igen after a failed first load', async () => {
+    const user = userEvent.setup()
+    getRequest.mockRejectedValueOnce(new ApiError(503, 'service_unavailable')).mockResolvedValue(request())
+    renderAt()
+    await user.click(await screen.findByRole('button', { name: /Försök igen/ }))
+    expect(await screen.findByLabelText('Rad 1 namn')).toHaveValue('Lasagne')
+    expect(getRequest).toHaveBeenCalledTimes(2)
+  })
+
   it('will not send an offer line priced above 10 000 kr', async () => {
     const user = userEvent.setup()
     getRequest.mockResolvedValue(request())
@@ -309,6 +339,24 @@ describe('CateringPage', () => {
     expect(rows[2]).toHaveTextContent('Offert skickad')
     expect(screen.getByText('1 väntar på dig')).toBeInTheDocument()
     expect(within(rows[1]).getByRole('link', { name: 'Öppna' })).toHaveAttribute('href', '/catering/loc-1/r-new')
+  })
+
+  it('counts deliveries in the coming 7 days by the Stockholm date, not UTC', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    // 00:30 in Stockholm on 21 November is still 20 November in UTC.
+    vi.setSystemTime(new Date('2026-11-20T23:30:00Z'))
+    try {
+      listRequests.mockResolvedValue([
+        request({ requestId: 'r-past', deliveryDate: '2026-11-20', status: 'confirmed' }),
+        request({ requestId: 'r-week', deliveryDate: '2026-11-28', status: 'confirmed' }),
+      ])
+      render(<MemoryRouter><CateringPage /></MemoryRouter>)
+      await screen.findAllByRole('row')
+      const tile = screen.getByText('Kommande 7 dagar').closest('.stat-tile')!
+      expect(tile).toHaveTextContent('1')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('flags requests whose equipment comes back not cleaned', async () => {

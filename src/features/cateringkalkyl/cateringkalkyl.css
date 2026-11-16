@@ -145,6 +145,24 @@
   gap: 10px;
 }
 
+.band-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.band-field input {
+  flex: 1;
+  min-width: 0;
+}
+
+.band-unit {
+  font-size: 13px;
+  color: var(--muted);
+  flex: none;
+}
+
 .band-from {
   font-size: 13px;
   color: var(--muted);
@@ -185,4 +203,10 @@
   .cm-head-actions {
     justify-content: flex-start;
   }
+}
+
+/* "Hela kronor." under ett leveransintervall: hela raden. */
+.band-hint {
+  grid-column: 1 / -1;
+  margin: 0;
 }

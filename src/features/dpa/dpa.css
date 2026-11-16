@@ -1,8 +1,9 @@
 /* Personuppgiftsbiträdesavtalet: remsan i admin-skalet och /avtal. */
 
-/* The wrap is only spacing; the banner itself is the glass. */
+/* The wrap carries no inset: the banner lines up with the topbar and the
+   main panel; the shell's gap gives the vertical spacing. */
 .dpa-banner-wrap {
-  padding: 20px 40px 0;
+  padding: 0;
 }
 
 .dpa-banner {
@@ -80,7 +81,7 @@
 }
 
 .dpa-status,
-.dpa-accept {
+.dpa-accept-card {
   max-width: 760px;
 }
 
@@ -107,18 +108,7 @@
   accent-color: var(--accent);
 }
 
-@media (max-width: 900px) {
-  .dpa-banner-wrap {
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-}
-
 @media (max-width: 600px) {
-  .dpa-banner-wrap {
-    padding: 16px 16px 0;
-  }
-
   .dpa-banner-actions {
     width: 100%;
   }

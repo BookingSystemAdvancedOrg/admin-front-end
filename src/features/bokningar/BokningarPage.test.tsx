@@ -1,3 +1,4 @@
+import { MemoryRouter } from 'react-router-dom'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -33,8 +34,9 @@ vi.mock('./NewReservationModal', () => ({
   ),
 }))
 const location = { locationId: 'loc-1', name: 'Roma', timezone: 'Europe/Stockholm' }
+let tenantLocationId: string | null = 'loc-1'
 vi.mock('../../shared/tenant', () => ({
-  useTenant: () => ({ tenant: { role: 'owner_user', locations: [location] }, locationId: 'loc-1' }),
+  useTenant: () => ({ tenant: { role: 'owner_user', locations: [location] }, locationId: tenantLocationId, status: 'ready' }),
   currentLocation: () => location,
 }))
 
@@ -63,6 +65,7 @@ function deferred<T>() {
 }
 
 beforeEach(() => {
+  tenantLocationId = 'loc-1'
   listReservations.mockReset()
   changeStatus.mockReset()
 })
@@ -72,6 +75,17 @@ afterEach(() => {
 })
 
 describe('BokningarPage', () => {
+  it('shows the shared no-location card when the restaurant has no location', () => {
+    tenantLocationId = null
+    render(
+      <MemoryRouter>
+        <BokningarPage />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('heading', { name: 'Ingen plats än' })).toBeInTheDocument()
+    expect(listReservations).not.toHaveBeenCalled()
+  })
+
   it("never shows another day's bookings under the wrong heading", async () => {
     const user = userEvent.setup()
     const first = deferred<Reservation[]>()
@@ -167,7 +181,7 @@ describe('BokningarPage', () => {
     created.mockReturnValue(booking({ reservationId: 'r9', date: today, customerName: 'Cecilia' }))
     render(<BokningarPage />)
 
-    await user.click(screen.getByRole('button', { name: '+ Ny bokning' }))
+    await user.click(screen.getByRole('button', { name: 'Ny bokning' }))
     await user.click(screen.getByRole('button', { name: 'Skapa (test)' }))
     expect(listReservations).toHaveBeenCalledTimes(2)
 

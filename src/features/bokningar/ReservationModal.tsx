@@ -23,6 +23,7 @@ import {
   timestampLabel,
   updateReservation,
   validEmail,
+  paymentFailureLabel,
 } from './bookingsApi'
 import type { HistoryEntry, Reservation, ReservationEdit } from './bookingsApi'
 import { tableNames, useTables } from '../../shared/tables'
@@ -56,6 +57,25 @@ function who(by: string | undefined): string {
   return 'personal'
 }
 
+/** Ändrade fält i historiken, på svenska. Interna fält (tider i UTC, ttl,
+ * planversion m.m.) följer med en ändring men visas inte. */
+const FIELD_LABEL: Record<string, string> = {
+  date: 'tid',
+  startTime: 'tid',
+  endTime: 'tid',
+  tableIds: 'bord',
+  partySize: 'antal',
+  customerName: 'namn',
+  customerEmail: 'e-post',
+  customerPhone: 'telefon',
+  notes: 'meddelande',
+}
+
+function editedFieldsText(fields: unknown[]): string {
+  const labels = fields.map((f) => (typeof f === 'string' ? FIELD_LABEL[f] : undefined)).filter(Boolean)
+  return [...new Set(labels)].join(', ')
+}
+
 function historyText(h: HistoryEntry): string {
   const base = HISTORY_ACTION[h.action ?? ''] ?? h.action ?? ''
   const status = typeof h.status === 'string' ? STATUS_LABEL[h.status as keyof typeof STATUS_LABEL] : ''
@@ -68,7 +88,7 @@ function historyText(h: HistoryEntry): string {
     parts.push(`${String(h.previous ?? '')} till ${String(h.endTime ?? '')}`)
     if (h.override) parts.push('utanför regeln')
   }
-  if (h.action === 'edited' && Array.isArray(h.fields)) parts.push((h.fields as string[]).join(', '))
+  if (h.action === 'edited' && Array.isArray(h.fields)) parts.push(editedFieldsText(h.fields))
   if (typeof h.reason === 'string' && h.reason) parts.push(`"${h.reason}"`)
   return parts.filter(Boolean).join(' · ')
 }
@@ -207,7 +227,7 @@ export function ReservationModal({
                     {p.status === 'succeeded'
                       ? 'dragen'
                       : p.status === 'failed'
-                        ? `misslyckades${p.error ? ` (${p.error})` : ''}`
+                        ? `misslyckades${paymentFailureLabel(p.error) ? ` (${paymentFailureLabel(p.error)})` : ''}`
                         : p.status === 'refunded'
                           ? 'återbetald'
                           : 'pågår'}

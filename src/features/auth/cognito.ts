@@ -95,6 +95,8 @@ let refreshing: Promise<StoredSession | null> | null = null
 // Räknas upp vid varje utloggning: en förnyelse som startade före den
 // kastas, så att den inte lägger tillbaka sessionen efteråt.
 let signOutGeneration = 0
+/** Ökas vid varje lyckad inloggning; en utloggning som pågår ser då att den är passé. */
+let signInGeneration = 0
 
 // Utloggning i en flik loggar ut alla flikar.
 const channel: BroadcastChannel | null =
@@ -228,6 +230,10 @@ async function toFriendlyError(res: Response): Promise<Error> {
 function toSignInResult(response: AuthResponse, fallbackUsername: string): SignInResult {
   if (response.status === 'authenticated') {
     const session = toStoredSession(response.authenticationResult)
+    // En ny inloggning ersätter cookien: en utloggning som inte nådde
+    // servern ska inte längre göras klart (den skulle logga ut den nya).
+    signInGeneration += 1
+    setLogoutPending(false)
     current = session
     setUnreachable(false)
     scheduleProactiveRefresh()
@@ -647,9 +653,14 @@ export function clearSession(): void {
   clearTimeout(proactiveTimer)
 }
 
-/** Ber servern återkalla refresh-tokenen och radera cookien. true = klart. */
-async function revokeOnServer(): Promise<boolean> {
+/**
+ * Ber servern återkalla refresh-tokenen och radera cookien. true = klart.
+ * generation = inloggningen som ska loggas ut: loggar någon in under tiden
+ * skickas inget mer, så att den nya cookien inte återkallas.
+ */
+async function revokeOnServer(generation = signInGeneration): Promise<boolean> {
   for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (generation !== signInGeneration) return false
     try {
       const res = await fetch(`${API_BASE_URL}/auth/logout`, {
         method: 'POST',
@@ -666,7 +677,8 @@ async function revokeOnServer(): Promise<boolean> {
     }
   }
   // Kvar till nästa start: då görs utloggningen klart innan någon förnyelse.
-  setLogoutPending(true)
+  // Inte om någon hann logga in under tiden: den nya cookien ska vara kvar.
+  if (generation === signInGeneration) setLogoutPending(true)
   console.error('[Auth] Utloggningen nådde inte servern; försöker igen vid nästa start.')
   return false
 }
@@ -690,11 +702,16 @@ export async function signOut(): Promise<boolean> {
   // Markeringen först: stängs appen innan servern nåtts loggar nästa start
   // ut i stället för att förnya med cookien. revokeOnServer tar bort den.
   setLogoutPending(true)
+  const generation = signInGeneration
   wakeRetryWait?.()
   if (refreshing) {
     await refreshing.catch(() => null)
   }
-  const ok = await revokeOnServer()
+  // En inloggning under väntan har redan ersatt cookien: rör den inte.
+  if (generation !== signInGeneration) return false
+  const ok = await revokeOnServer(generation)
+  // En inloggning som blev klar under tiden behåller sin session.
+  if (generation !== signInGeneration) return ok
   current = null
   channel?.postMessage('signed-out')
   return ok

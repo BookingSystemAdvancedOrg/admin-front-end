@@ -41,7 +41,7 @@ describe('Allmänna villkor för restauranger', () => {
     expect(text).toMatch(/450 kronor enligt 4 a § lagen \(1981:739\)/)
     expect(text).toMatch(/referensränta plus åtta procentenheter/)
     expect(text).toMatch(/10 dagars betalningstid/)
-    expect(text).not.toMatch(/[–—]/)
+    expect(text).not.toMatch(/[\u2013\u2014]/)
   })
 
   it('lets the owner accept the current version', async () => {

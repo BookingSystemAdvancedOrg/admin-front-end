@@ -22,6 +22,7 @@ import {
   feeSummary,
   isCancelled,
   listReservations,
+  MOCK_LOCATION_ID,
   todayIn,
 } from './bookingsApi'
 import type { Reservation } from './bookingsApi'
@@ -29,7 +30,8 @@ import { tableNames, useTables } from '../../shared/tables'
 import './bokningar.css'
 import { DateInput } from '../../shared/DateInput'
 import { Icon } from '../../shared/Icon'
-import { SkelBlock, SkelTableRows } from '../../shared/Skeleton'
+import { SkelCard, SkelPage, SkelTableRows, SkelTiles } from '../../shared/Skeleton'
+import { NoLocation } from '../../shared/NoLocation'
 import { ErrorNote } from '../../shared/ErrorNote'
 
 /**
@@ -41,11 +43,14 @@ import { ErrorNote } from '../../shared/ErrorNote'
  */
 export default function BokningarPage() {
   const tenantState = useTenant()
-  const { tenant, locationId } = tenantState
+  const { tenant } = tenantState
+  // Utan API (lokal utveckling): exempeldatan på en påhittad plats.
+  const locationId = tenantState.locationId ?? (isApiConfigured() ? null : MOCK_LOCATION_ID)
+  const resolving = isApiConfigured() && (tenantState.status === 'idle' || tenantState.status === 'loading')
   const location = currentLocation(tenantState)
   const isOwner = tenant?.role === 'owner_user'
   const today = todayIn(location?.timezone)
-  const { labels } = useTables(locationId)
+  const { labels } = useTables(locationId === MOCK_LOCATION_ID ? null : locationId)
 
   const [date, setDate] = useState(today)
   // Listan hör alltid ihop med den plats/dag den hämtades för - en annan
@@ -76,7 +81,7 @@ export default function BokningarPage() {
     current.current = key
   }, [key])
   const fetchList = useCallback(async (quiet: boolean): Promise<boolean> => {
-    if (!key || !locationId || !isApiConfigured()) return true
+    if (!key || !locationId) return true
     const at = edits.current
     // Bara det senast startade svaret gäller: ett äldre som kommer sist skriver inte över.
     const id = ++seq.current
@@ -136,162 +141,155 @@ export default function BokningarPage() {
     { label: 'Avbokade', value: String(cancelledCount) },
   ]
 
-  if (!isApiConfigured()) {
-    return (
-      <>
-        <AdminTopbar title="Bokningar" />
-        <div className="admin-main">
-          <section className="admin-card table-card">
-            <p className="cell-muted">Bokningar kräver API:t (VITE_API_BASE_URL).</p>
-          </section>
-        </div>
-      </>
-    )
-  }
-
   return (
     <>
       <AdminTopbar
         title="Bokningar"
         actions={
           <CtaButton
-            label="+ Ny bokning"
+            label="Ny bokning"
             win="Kör!"
             data-tour="booking-new"
-            disabled={!locationId}
+            disabled={!locationId || !isApiConfigured()}
             onClick={() => setCreating(true)}
           />
         }
       />
       <div className="admin-main">
-        <section className="stats-row" aria-label="Dagens siffror">
-          {tiles.map((t, i) => (
-            <StatTile key={t.label} {...t} loading={loading} index={i} />
-          ))}
-        </section>
-        <section className="admin-card table-card">
-          <div className="card-head bookings-head">
-            <div className="day-nav" data-tour="booking-day">
-              <button
-                type="button"
-                className="btn outline square day-step"
-                aria-label="Föregående dag"
-                onClick={() => setDate(addDays(date, -1))}
-              >
-                ‹
-              </button>
-              <div className="day-nav-label">
-                <h2 className="card-title">{date === today ? `Idag · ${dayLabel(date)}` : dayLabel(date)}</h2>
-                {loading ? (
-                  <SkelBlock w={150} h={14} />
-                ) : (
-                  <span className="cell-muted">
-                    <Num>{active.length}</Num> {active.length === 1 ? 'bokning' : 'bokningar'} · <Num>{guests}</Num> gäster
-                  </span>
-                )}
+        {!locationId ? (
+          resolving ? (
+            <SkelPage label="Hämtar platsen">
+              <SkelTiles />
+              <SkelCard />
+            </SkelPage>
+          ) : (
+            <NoLocation />
+          )
+        ) : (
+          <>
+            <section className="stats-row" aria-label="Dagens siffror">
+              {tiles.map((t, i) => (
+                <StatTile key={t.label} {...t} loading={loading} index={i} />
+              ))}
+            </section>
+            <section className="admin-card table-card">
+              <div className="card-head bookings-head">
+                <div className="day-nav" data-tour="booking-day">
+                  <button
+                    type="button"
+                    className="btn outline square day-step"
+                    aria-label="Föregående dag"
+                    onClick={() => setDate(addDays(date, -1))}
+                  >
+                    <Icon name="chevron-left" />
+                  </button>
+                  <div className="day-nav-label">
+                    <h2 className="card-title">{date === today ? `Idag · ${dayLabel(date)}` : dayLabel(date)}</h2>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn outline square day-step"
+                    aria-label="Nästa dag"
+                    onClick={() => setDate(addDays(date, 1))}
+                  >
+                    <Icon name="chevron-right" />
+                  </button>
+                </div>
+                <div className="day-tools">
+                  {date !== today && (
+                    <button type="button" className="btn outline square" onClick={() => setDate(today)}>
+                      Idag
+                    </button>
+                  )}
+                  <DateInput
+                    aria-label="Välj datum"
+                    value={date}
+                    onChange={(e) => e.target.value && setDate(e.target.value)}
+                  />
+                </div>
               </div>
-              <button
-                type="button"
-                className="btn outline square day-step"
-                aria-label="Nästa dag"
-                onClick={() => setDate(addDays(date, 1))}
-              >
-                ›
-              </button>
-            </div>
-            <div className="day-tools">
-              {date !== today && (
-                <button type="button" className="btn outline square" onClick={() => setDate(today)}>
-                  Idag
+
+              {error && (
+                <ErrorNote text={error} />
+              )}
+
+              <div className="table-scroll" tabIndex={0} data-tour="booking-list">
+                <table className="data-table bookings-table">
+                  <thead>
+                    <tr>
+                      <th>Tid</th>
+                      <th>Gäst</th>
+                      <th>Pers</th>
+                      <th>Bord</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading && <SkelTableRows n={5} cols={5} />}
+                    {!loading && visible.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="cell-muted">
+                          Inga bokningar.
+                        </td>
+                      </tr>
+                    )}
+                    {visible.map((r) => (
+                      <tr
+                        key={r.reservationId}
+                        className={`booking-row${isCancelled(r.status) ? ' muted' : ''}`}
+                        tabIndex={0}
+                        onClick={() => setOpenId(r.reservationId)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            setOpenId(r.reservationId)
+                          }
+                        }}
+                      >
+                        <td className="cell-strong">{r.startTime}</td>
+                        <td>
+                          <span className="cell-strong">{r.customerName || 'Gäst'}</span>
+                          {locationId && (
+                            <Slot
+                              id="bokningar.reservation.badge"
+                              props={{ locationId, reservationId: r.reservationId, email: r.customerEmail, phone: r.customerPhone }}
+                            />
+                          )}
+                          {locationId && (
+                            <Slot id="bokningar.reservation.call" props={{ locationId, reservationId: r.reservationId }} />
+                          )}
+                          {r.notes && <span className="note-dot" title={r.notes}> <Icon name="note" size={14} /></span>}
+                          {r.customerPhone && <div className="cell-muted">{r.customerPhone}</div>}
+                          {r.source && r.source !== 'online' && (
+                            <div className="cell-muted">{SOURCE_LABEL[r.source]}</div>
+                          )}
+                        </td>
+                        <td data-label="Pers"><Num>{r.partySize}</Num></td>
+                        <td>{tableNames(r.tableIds, labels)}</td>
+                        <td>
+                          <span className={`status-badge ${STATUS_CLASS[r.status]}`}>
+                            {STATUS_LABEL[r.status]}
+                          </span>
+                          {r.cardOnFile && r.status === 'reserved' && (
+                            <span className="cell-muted" title="Kort sparat (kortgaranti)"> <Icon name="card" size={15} /></span>
+                          )}
+                          {feeSummary(r) && <div className="cell-muted">{feeSummary(r)}</div>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {cancelledCount > 0 && (
+                <button type="button" className="link-btn" onClick={() => setShowCancelled((v) => !v)}>
+                  {showCancelled ? 'Dölj avbokade' : `Visa avbokade (${cancelledCount})`}
                 </button>
               )}
-              <DateInput
-                aria-label="Välj datum"
-                value={date}
-                onChange={(e) => e.target.value && setDate(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {error && (
-            <ErrorNote text={error} />
-          )}
-
-          <div className="table-scroll" tabIndex={0} data-tour="booking-list">
-            <table className="data-table bookings-table">
-              <thead>
-                <tr>
-                  <th>Tid</th>
-                  <th>Gäst</th>
-                  <th>Pers</th>
-                  <th>Bord</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && <SkelTableRows n={5} cols={5} />}
-                {!loading && visible.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="cell-muted">
-                      Inga bokningar.
-                    </td>
-                  </tr>
-                )}
-                {visible.map((r) => (
-                  <tr
-                    key={r.reservationId}
-                    className={`booking-row${isCancelled(r.status) ? ' muted' : ''}`}
-                    tabIndex={0}
-                    onClick={() => setOpenId(r.reservationId)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        setOpenId(r.reservationId)
-                      }
-                    }}
-                  >
-                    <td className="cell-strong">{r.startTime}</td>
-                    <td>
-                      <span className="cell-strong">{r.customerName || 'Gäst'}</span>
-                      {locationId && (
-                        <Slot
-                          id="bokningar.reservation.badge"
-                          props={{ locationId, reservationId: r.reservationId, email: r.customerEmail, phone: r.customerPhone }}
-                        />
-                      )}
-                      {locationId && (
-                        <Slot id="bokningar.reservation.call" props={{ locationId, reservationId: r.reservationId }} />
-                      )}
-                      {r.notes && <span className="note-dot" title={r.notes}> <Icon name="note" size={14} /></span>}
-                      {r.customerPhone && <div className="cell-muted">{r.customerPhone}</div>}
-                      {r.source && r.source !== 'online' && (
-                        <div className="cell-muted">{SOURCE_LABEL[r.source]}</div>
-                      )}
-                    </td>
-                    <td data-label="Pers"><Num>{r.partySize}</Num></td>
-                    <td>{tableNames(r.tableIds, labels)}</td>
-                    <td>
-                      <span className={`status-badge ${STATUS_CLASS[r.status]}`}>
-                        {STATUS_LABEL[r.status]}
-                      </span>
-                      {r.cardOnFile && r.status === 'reserved' && (
-                        <span className="cell-muted" title="Kort sparat (kortgaranti)"> <Icon name="card" size={15} /></span>
-                      )}
-                      {feeSummary(r) && <div className="cell-muted">{feeSummary(r)}</div>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {cancelledCount > 0 && (
-            <button type="button" className="link-btn" onClick={() => setShowCancelled((v) => !v)}>
-              {showCancelled ? 'Dölj avbokade' : `Visa avbokade (${cancelledCount})`}
-            </button>
-          )}
-        </section>
-        {locationId && <Slot id="bokningar.panel.waitlist" props={{ locationId, date }} />}
-        {locationId && <Slot id="bokningar.panel.callbacks" props={{ locationId, date }} />}
+            </section>
+            {locationId && <Slot id="bokningar.panel.waitlist" props={{ locationId, date }} />}
+            {locationId && <Slot id="bokningar.panel.callbacks" props={{ locationId, date }} />}
+          </>
+        )}
       </div>
 
       {open && (

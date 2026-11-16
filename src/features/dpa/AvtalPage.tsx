@@ -10,6 +10,7 @@ import { DPA_INTRO, DPA_SECTIONS, DPA_TITLE, DPA_VERSION } from './dpaText'
 import './dpa.css'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TermsSection } from './TermsSection'
+import { NewVersionNote } from './NewVersionNote'
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
@@ -33,6 +34,7 @@ export default function AvtalPage() {
   const [checked, setChecked] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [outdated, setOutdated] = useState(false)
   const navigate = useNavigate()
 
   const dpa = tenant?.dpa
@@ -44,21 +46,23 @@ export default function AvtalPage() {
     if (!tenant || !checked) return
     setBusy(true)
     setError(null)
+    setOutdated(false)
     try {
       const updated = await acceptDpa(tenant)
       replaceTenant(updated)
       navigate('/', { state: { dpaAccepted: true, sitePublished: Boolean(updated.dpa?.required) } })
     } catch (err) {
-      const updatedMeanwhile = err instanceof ApiError && err.status === 409
-      if (updatedMeanwhile) {
-        // En ny version kom medan sidan var öppen: hämta den och låt ägaren läsa och kryssa igen.
+      if (err instanceof ApiError && err.status === 409) {
+        // Servern har en nyare version än texten i appen: den kommer med
+        // nästa version av appen, så ägaren laddar om (en hämtning av
+        // restaurangen ger samma gamla text).
         setChecked(false)
+        setOutdated(true)
         void refresh()
+        return
       }
       setError(
-        updatedMeanwhile
-          ? 'Avtalet har uppdaterats sedan du öppnade sidan. Den nya versionen visas nu; läs den och godkänn igen.'
-          : err instanceof ApiError && err.status === 403
+        err instanceof ApiError && err.status === 403
             ? 'Bara restaurangens ägare kan godkänna avtalet.'
             : errorText(err, 'Kunde inte spara.'),
       )
@@ -116,7 +120,7 @@ export default function AvtalPage() {
         </article>
 
         {!upToDate && (
-          <section className="admin-card table-card">
+          <section className="admin-card table-card dpa-accept-card">
             {isOwner ? (
               <form className="dpa-accept" onSubmit={accept}>
                 <label className="dpa-check">
@@ -125,6 +129,7 @@ export default function AvtalPage() {
                     Jag har läst avtalet och har rätt att godkänna det för {tenant?.name ?? 'restaurangen'}.
                   </span>
                 </label>
+                {outdated && <NewVersionNote what="avtalet" />}
                 {error && (
                   <ErrorNote text={error} />
                 )}

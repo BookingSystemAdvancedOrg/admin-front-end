@@ -15,3 +15,14 @@ describe('ordersApi', () => {
     expect(moveErrorText(new Error('x'))).toMatch(/Kunde inte spara/)
   })
 })
+
+describe('clock', () => {
+  it('shows the restaurant time (Europe/Stockholm), not the device zone', async () => {
+    const { clock } = await import('./ordersApi')
+    // 16:40 UTC in November is 17:40 in Stockholm.
+    expect(clock('2026-11-16T16:40:00Z')).toBe('17:40')
+    expect(clock('2026-11-16T16:40:00Z', 'Europe/London')).toBe('16:40')
+    expect(clock('2026-11-16T16:40:00Z', 'Not/AZone')).toBe('17:40')
+    expect(clock(undefined)).toBe('')
+  })
+})

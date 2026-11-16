@@ -23,7 +23,7 @@ import type { Reservation } from './bookingsApi'
 
 vi.mock('../../shared/api', async () => {
   const actual = await vi.importActual<typeof import('../../shared/api')>('../../shared/api')
-  return { ...actual, apiFetch: vi.fn() }
+  return { ...actual, apiFetch: vi.fn(), isApiConfigured: vi.fn(() => true) }
 })
 const apiFetch = vi.mocked(api.apiFetch)
 
@@ -106,6 +106,14 @@ describe('bookingsApi', () => {
     expect(apiFetch).toHaveBeenLastCalledWith('/locations/loc-1/availability?date=2026-10-12')
     await getAvailability('loc-1', '2026-10-12', { walkIn: true })
     expect(apiFetch).toHaveBeenLastCalledWith('/locations/loc-1/availability?date=2026-10-12&walkIn=true')
+  })
+
+  it('lists example bookings without an API (local development)', async () => {
+    vi.mocked(api.isApiConfigured).mockReturnValueOnce(false)
+    const list = await listReservations('mock', '2026-10-12')
+    expect(list.length).toBeGreaterThan(0)
+    expect(list.every((r) => r.date === '2026-10-12')).toBe(true)
+    expect(apiFetch).not.toHaveBeenCalled()
   })
 
   it('calls the staff routes', async () => {

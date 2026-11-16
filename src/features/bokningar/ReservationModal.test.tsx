@@ -469,4 +469,65 @@ describe('ReservationModal history', () => {
     )
     expect(screen.getByText(/Sluttid ändrad · 21:00 till 20:30/)).toBeInTheDocument()
   })
+
+  it('names edited fields in Swedish and hides internal keys', () => {
+    const fields = ['bookedFor', 'date', 'endTime', 'endsAt', 'layoutVersion', 'seats', 'startTime', 'tableIds', 'ttl']
+    render(
+      <ReservationModal
+        today={TODAY}
+        reservation={booking({ history: [{ action: 'edited', by: 'x', at: '2026-10-12T17:00:00Z', fields }] })}
+        isOwner
+        onChanged={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    expect(screen.getByText(/Ändrad · tid, bord/)).toBeInTheDocument()
+    expect(screen.queryByText(/bookedFor|layoutVersion|ttl/)).toBeNull()
+  })
+
+  it('shows a failed fee in Swedish, never the raw Stripe code', () => {
+    const { unmount } = render(
+      <ReservationModal
+        today={TODAY}
+        reservation={booking({
+          status: 'no_show_charge_failed',
+          payment: { kind: 'no_show', status: 'failed', amount: 25000, error: 'insufficient_funds' },
+        })}
+        isOwner
+        onChanged={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    expect(screen.getByText(/misslyckades \(för lite pengar på kortet\)/)).toBeInTheDocument()
+    expect(screen.queryByText(/insufficient_funds/)).toBeNull()
+    unmount()
+    const declined = render(
+      <ReservationModal
+        today={TODAY}
+        reservation={booking({
+          status: 'no_show_charge_failed',
+          payment: { kind: 'no_show', status: 'failed', amount: 25000, error: 'do_not_honor' },
+        })}
+        isOwner
+        onChanged={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    expect(screen.getByText(/misslyckades \(kortet nekades\)/)).toBeInTheDocument()
+    expect(screen.queryByText(/do_not_honor/)).toBeNull()
+    declined.unmount()
+    render(
+      <ReservationModal
+        today={TODAY}
+        reservation={booking({
+          status: 'no_show_charge_failed',
+          payment: { kind: 'no_show', status: 'failed', amount: 25000, error: 'processing_error' },
+        })}
+        isOwner
+        onChanged={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    expect(screen.queryByText(/processing_error/)).toBeNull()
+  })
 })

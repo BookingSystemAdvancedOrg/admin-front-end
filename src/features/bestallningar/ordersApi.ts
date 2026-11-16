@@ -149,12 +149,19 @@ export function kronor(ore: number): string {
   return `${text.endsWith(',00') ? text.slice(0, -3) : text} kr`
 }
 
-/** "18:40" i webbläsarens (restaurangens) tid. */
-export function clock(iso: string | undefined): string {
+/** "18:40" i restaurangens tid (platsens tidszon, annars Europe/Stockholm),
+ * inte enhetens: en surfplatta på UTC eller en ägare på resa ser samma tid. */
+export function clock(iso: string | undefined, timezone?: string | null): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return new Intl.DateTimeFormat('sv-SE', { hour: '2-digit', minute: '2-digit' }).format(d)
+  const fmt = (timeZone: string) =>
+    new Intl.DateTimeFormat('sv-SE', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false }).format(d)
+  try {
+    return fmt(timezone || 'Europe/Stockholm')
+  } catch {
+    return fmt('Europe/Stockholm')
+  }
 }
 
 const MOVE_ERRORS: Record<string, string> = {

@@ -128,9 +128,11 @@ describe('AvtalPage', () => {
     renderAt('/avtal', <AvtalPage />)
     await user.click(screen.getByRole('checkbox'))
     await user.click(screen.getByRole('button', { name: 'Godkänn avtalet' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Den nya versionen visas nu')
+    // The newer text ships with the next app version: offer a reload, never claim it is shown.
+    expect(await screen.findByRole('alert')).toHaveTextContent('En ny version av avtalet är på väg')
+    expect(screen.queryByText(/visas nu/)).not.toBeInTheDocument()
     expect(screen.getByRole('checkbox')).not.toBeChecked()
-    expect(screen.queryByText(/Ladda om/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ladda om' })).toBeInTheDocument()
   })
 
   it('lets staff read but not accept', () => {

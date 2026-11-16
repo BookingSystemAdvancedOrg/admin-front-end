@@ -282,6 +282,84 @@ describe('cognito.ts (backend /auth/* client)', () => {
     expect(localStorage.getItem('booqy-logout-pending')).toBeNull()
   })
 
+  it('a fresh login drops a logout that never reached the server, so the next start keeps the new session', async () => {
+    const { signIn, signOut } = await import('./cognito')
+    vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'))
+    await expect(signOut()).resolves.toBe(false)
+    expect(localStorage.getItem('booqy-logout-pending')).toBe('1')
+
+    vi.mocked(fetch).mockReset()
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(200, {
+        status: 'authenticated',
+        authenticationResult: { AccessToken: 'access', IdToken: idToken, ExpiresIn: 3600, TokenType: 'Bearer' },
+      }),
+    )
+    await signIn('anna@kallarestaurang.se', 'pw')
+    expect(localStorage.getItem('booqy-logout-pending')).toBeNull()
+
+    vi.resetModules()
+    vi.mocked(fetch).mockReset()
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(200, {
+        status: 'authenticated',
+        authenticationResult: { AccessToken: 'again', IdToken: idToken, ExpiresIn: 3600, TokenType: 'Bearer' },
+      }),
+    )
+    const fresh = await import('./cognito')
+    await expect(fresh.getAccessToken()).resolves.toBe('again')
+    expect(vi.mocked(fetch).mock.calls.map((c) => String(c[0]))).toEqual(['https://api.test/auth/refresh'])
+  })
+
+  it('a login that finishes while a failing logout is still running keeps its session', async () => {
+    const { signIn, signOut, getAccessToken } = await import('./cognito')
+    let failLogout!: () => void
+    vi.mocked(fetch).mockImplementation((url) =>
+      String(url).endsWith('/auth/logout')
+        ? new Promise<Response>((_, reject) => (failLogout = () => reject(new TypeError('Failed to fetch'))))
+        : Promise.resolve(
+            jsonResponse(200, {
+              status: 'authenticated',
+              authenticationResult: { AccessToken: 'new', IdToken: idToken, ExpiresIn: 3600, TokenType: 'Bearer' },
+            }),
+          ),
+    )
+    const out = signOut()
+    await signIn('anna@kallarestaurang.se', 'pw')
+    failLogout()
+    await expect(out).resolves.toBe(false)
+    // Inget andra utloggningsförsök efter inloggningen: den nya cookien får vara kvar.
+    expect(vi.mocked(fetch).mock.calls.filter((c) => String(c[0]).endsWith('/auth/logout'))).toHaveLength(1)
+    expect(localStorage.getItem('booqy-logout-pending')).toBeNull()
+    await expect(getAccessToken()).resolves.toBe('new')
+  })
+
+  it('a login that finishes while logout waits on a refresh sends no logout', async () => {
+    const { signIn, signOut, getCurrentSession, getAccessToken } = await import('./cognito')
+    const auth = (access: string, expiresIn: number) =>
+      jsonResponse(200, {
+        status: 'authenticated',
+        authenticationResult: { AccessToken: access, IdToken: idToken, ExpiresIn: expiresIn, TokenType: 'Bearer' },
+      })
+    vi.mocked(fetch).mockResolvedValue(auth('old', -10))
+    await signIn('anna@kallarestaurang.se', 'pw')
+    let finishRefresh!: () => void
+    vi.mocked(fetch).mockImplementation((url) =>
+      String(url).endsWith('/auth/refresh')
+        ? new Promise<Response>((resolve) => (finishRefresh = () => resolve(jsonResponse(401, { error: 'x' }))))
+        : Promise.resolve(auth('new', 3600)),
+    )
+    const refresh = getCurrentSession()
+    await new Promise((r) => setTimeout(r, 0))
+    const out = signOut()
+    await signIn('anna@kallarestaurang.se', 'pw')
+    finishRefresh()
+    await refresh
+    await expect(out).resolves.toBe(false)
+    expect(vi.mocked(fetch).mock.calls.filter((c) => String(c[0]).endsWith('/auth/logout'))).toHaveLength(0)
+    await expect(getAccessToken()).resolves.toBe('new')
+  })
+
   it('getCurrentSession clears the session when refresh fails', async () => {
     const { signIn, getCurrentSession, getIdToken, getAccessToken } =
       await import('./cognito')

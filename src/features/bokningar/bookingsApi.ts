@@ -1,5 +1,5 @@
 import { errorText } from '../../shared/errors'
-import { apiFetch, ApiError } from '../../shared/api'
+import { apiFetch, ApiError, isApiConfigured } from '../../shared/api'
 
 /**
  * Klient mot bokningsrutterna (backend functions/mark-arrived,
@@ -283,6 +283,29 @@ const ERROR_TEXT: Record<string, string> = {
   after_closing: 'Bokningen kan inte sluta efter stängning.',
 }
 
+/** Stripes felkod för en avgift som inte gick igenom, som kort etikett.
+ * Okända koder visas inte (de är tekniska och på engelska). */
+const PAYMENT_FAILURE_LABEL: Record<string, string> = {
+  card_declined: 'kortet nekades',
+  // Stripe-webhooken sparar decline_code före code.
+  generic_decline: 'kortet nekades',
+  do_not_honor: 'kortet nekades',
+  lost_card: 'kortet nekades',
+  stolen_card: 'kortet nekades',
+  pickup_card: 'kortet nekades',
+  fraudulent: 'kortet nekades',
+  card_velocity_exceeded: 'kortet nekades',
+  incorrect_cvc: 'kortet nekades',
+  processing_error: 'tillfälligt fel hos kortbolaget',
+  insufficient_funds: 'för lite pengar på kortet',
+  expired_card: 'kortet har gått ut',
+  authentication_required: 'gästen behöver godkänna',
+}
+
+export function paymentFailureLabel(code: unknown): string {
+  return typeof code === 'string' ? (PAYMENT_FAILURE_LABEL[code] ?? '') : ''
+}
+
 /** Svar där personalen kan välja att förlänga ändå (loggas). */
 export const OVERRIDABLE = ['not_extendable', 'extension_too_long', 'window_not_extendable']
 
@@ -354,7 +377,47 @@ export function isStaleSlotError(err: unknown): boolean {
 
 const base = (locationId: string) => `/locations/${encodeURIComponent(locationId)}`
 
+/** Plats-id för exempeldatan när admin körs utan API. */
+export const MOCK_LOCATION_ID = 'mock'
+
+/** Utan API: en kväll med några bokningar i olika lägen (samma lista varje dag). */
+export function mockReservations(date: string): Reservation[] {
+  const r = (
+    id: string,
+    startTime: string,
+    endTime: string,
+    partySize: number,
+    tableIds: string[],
+    status: ReservationStatus,
+    extra: Partial<Reservation> = {},
+  ): Reservation => ({
+    reservationId: `mockres${id}`,
+    locationId: MOCK_LOCATION_ID,
+    date,
+    startTime,
+    endTime,
+    partySize,
+    tableIds,
+    status,
+    timezone: 'Europe/Stockholm',
+    source: 'online',
+    ...extra,
+  })
+  return [
+    r('1', '17:00', '19:00', 2, ['3'], 'arrived', { customerName: 'Åsa Öberg', customerPhone: '070-123 45 67' }),
+    r('2', '17:30', '19:30', 4, ['7'], 'reserved', {
+      customerName: 'Johan Lind',
+      notes: 'Barnstol, en glutenfri',
+      cardOnFile: true,
+    }),
+    r('3', '18:00', '20:00', 6, ['9', '10'], 'reserved', { customerName: 'Sara Ek', source: 'phone' }),
+    r('4', '19:00', '21:00', 2, ['4'], 'reserved', { customerName: 'Erik Holm', source: 'walk_in' }),
+    r('5', '19:30', '21:30', 3, ['5'], 'cancelled_no_charge', { customerName: 'Lina Berg' }),
+  ]
+}
+
 export async function listReservations(locationId: string, date: string): Promise<Reservation[]> {
+  if (!isApiConfigured()) return mockReservations(date)
   const res = await apiFetch<{ items?: Reservation[] }>(
     `${base(locationId)}/reservations?date=${encodeURIComponent(date)}`,
   )

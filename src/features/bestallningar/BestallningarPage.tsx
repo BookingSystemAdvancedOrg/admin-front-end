@@ -28,6 +28,7 @@ import { SkelBlock, SkelBox, SkelPage, SkelTiles } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { booqyFaultText } from '../../shared/errors'
 import { Select } from '../../shared/Select'
+import { NoLocation } from '../../shared/NoLocation'
 
 /** Hur ofta listan hämtas om (köksskärmen står öppen hela kvällen). */
 export const POLL_MS = 10_000
@@ -370,7 +371,9 @@ export default function BestallningarPage() {
               <SkelTiles />
               <OrdersBoardSkeleton />
             </SkelPage>
-          ) : <p className="cell-muted">Ingen plats vald.</p>
+          ) : (
+            <NoLocation />
+          )
         ) : (
           <>
             {ordering && !ordering.open && (

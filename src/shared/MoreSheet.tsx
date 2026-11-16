@@ -62,14 +62,20 @@ export function MoreSheet({
   const sheetRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  // Fokus in i arket när det öppnas, tillbaka till Mer när det stängs.
+  // Fokus in i arket när det öppnas, tillbaka till Mer när det stängs. Bara om
+  // fokus fortfarande ligger i arket (eller ingenstans): det man valde i arket
+  // (Fråga Booqy, Sök) har redan tagit fokus innan arket hunnit glida undan, och
+  // då får arket inte ta tillbaka det mitt i en fråga.
   useEffect(() => {
     if (guided) return
-    const first = sheetRef.current?.querySelector<HTMLElement>('.bq-more__list a, .bq-more__list button')
+    const sheet = sheetRef.current
+    const first = sheet?.querySelector<HTMLElement>('.bq-more__list a, .bq-more__list button')
     first?.focus({ preventScroll: true })
     const back = returnFocus.current
     return () => {
-      if (back?.isConnected) back.focus({ preventScroll: true })
+      const active = document.activeElement
+      const free = !active || active === document.body || !!sheet?.contains(active)
+      if (free && back?.isConnected) back.focus({ preventScroll: true })
     }
   }, [guided, returnFocus])
 

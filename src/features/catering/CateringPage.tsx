@@ -144,6 +144,9 @@ export default function CateringPage() {
                         <td>
                           <span className={`status-badge ${statusClass(r.status)}`}>{statusLabel(r)}</span>
                           {r.paid && <span className="cell-muted"> · betald</span>}
+                          {(r.refundedAmount ?? 0) > 0 && (
+                            <span className="cell-muted"> · återbetalt <Num>{kronor(r.refundedAmount)}</Num></span>
+                          )}
                         </td>
                         <td>
                           <Link className="link-action" to={`/catering/${locationId}/${r.requestId}`}>

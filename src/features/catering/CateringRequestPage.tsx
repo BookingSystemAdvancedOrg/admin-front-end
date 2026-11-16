@@ -19,6 +19,7 @@ import {
   markInvoicePaid,
   offerFromRequest,
   offerTotals,
+  refundRequest,
   saveDraft,
   vatRateFor,
   sendOffer,
@@ -37,6 +38,7 @@ import { SkelCard, SkelPage } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { Select } from '../../shared/Select'
 import { KronorInput } from './KronorInput'
+import { RefundDialog } from '../../shared/RefundDialog'
 
 /** API:ts fältnamn i offerten -> fältets id, så ett fel flyttar fokus dit. */
 const OFFER_FIELD_IDS: Record<string, string> = {
@@ -70,6 +72,17 @@ const ACTION_LABEL: Record<string, string> = {
   delivered: 'Levererad',
   cancelled: 'Avbokad',
   expired: 'Gick ut',
+  refunded: 'Återbetalning',
+}
+
+/** Betald via bankgiro: en återbetalning görs för hand, inte via Stripe. */
+function paidByBankgiro(r: CateringRequest): boolean {
+  return r.customerType === 'company' && r.history.some((h) => h.action === 'invoice_marked_paid')
+}
+
+/** Återbetalningar som restaurangen själv ska betala tillbaka (bankgiro). */
+function manualOwed(r: CateringRequest): number {
+  return (r.refunds ?? []).filter((x) => x.manual).reduce((sum, x) => sum + x.amount, 0)
 }
 
 /**
@@ -90,6 +103,7 @@ export default function CateringRequestPage() {
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState<'decline' | 'cancel' | null>(null)
+  const [refunding, setRefunding] = useState(false)
   const [reason, setReason] = useState('')
   const returnedFromSigning = new URLSearchParams(useLocation().search).get('signering') === 'klar'
   const [menu, setMenu] = useState<{ dishes: CateringDish[]; packages: CateringPackage[] }>({ dishes: [], packages: [] })
@@ -575,6 +589,15 @@ export default function CateringRequestPage() {
                     : request.paid ? 'Betald online' : 'Väntar på kundens betalning'}
                 </dd>
               </div>
+              {(request.refundedAmount ?? 0) > 0 && (
+                <div>
+                  <dt>Återbetalt</dt>
+                  <dd>
+                    <Num>{kronor(request.refundedAmount)}</Num>
+                    {manualOwed(request) > 0 ? ` (${kronor(manualOwed(request))} betalas tillbaka för hand)` : ''}
+                  </dd>
+                </div>
+              )}
             </dl>
             <span className="row-actions">
               {request.signedPdfKey && (
@@ -596,6 +619,11 @@ export default function CateringRequestPage() {
                 <button type="button" className="btn primary square" disabled={busy}
                   onClick={() => void run(() => markDelivered(locationId, requestId), 'Markerad som levererad.')}>
                   Markera levererad
+                </button>
+              )}
+              {isOwner && (request.refundable ?? 0) > 0 && confirm !== 'cancel' && (
+                <button type="button" className="btn outline square" disabled={busy} onClick={() => setRefunding(true)}>
+                  Återbetala
                 </button>
               )}
               {isOwner && ['signed', 'confirmed', 'delivered'].includes(request.status) && confirm !== 'cancel' && (
@@ -621,6 +649,23 @@ export default function CateringRequestPage() {
                 </span>
               </div>
             )}
+            {refunding && (
+              <RefundDialog
+                title="Återbetala cateringen"
+                remaining={request.refundable ?? 0}
+                manual={paidByBankgiro(request)}
+                canNotify={Boolean(request.customerEmail || request.customerPhone)}
+                onRefund={async (input) => {
+                  setRequest(await refundRequest(locationId, requestId, input))
+                  setNotice(`${kronor(input.amount)} återbetalt.`)
+                }}
+                onDone={() => setRefunding(false)}
+                onClose={() => {
+                  setRefunding(false)
+                  void load()
+                }}
+              />
+            )}
             {request.refundNote === 'refund_manually' && (
               <p className="form-error">Fakturan var betald via Bankgiro - betala tillbaka till kunden manuellt.</p>
             )}
@@ -637,6 +682,8 @@ export default function CateringRequestPage() {
                 <span className="cell-muted">{h.at.replace('T', ' ').slice(0, 16)}</span>{' '}
                 {ACTION_LABEL[h.action] ?? h.action}
                 {typeof h.version === 'number' ? ` (v${h.version})` : ''}
+                {h.action === 'refunded' && typeof h.amount === 'number' ? ` ${kronor(h.amount)}` : ''}
+                {h.action === 'refunded' && h.manual ? ' (för hand)' : ''}
               </li>
             ))}
           </ul>

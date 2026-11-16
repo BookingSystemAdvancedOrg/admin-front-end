@@ -173,13 +173,15 @@ export function bookingsToday(
   }
 }
 
-/** Dagens omsättning i öre: betalda beställningar som inte avbrutits eller återbetalats. */
+/** Dagens omsättning i öre: betalda beställningar som inte avbrutits eller
+ * återbetalats helt; en delvis återbetald räknas med det som är kvar. */
 export function revenueToday(orders: Order[] | null): { amount: number; count: number } | null {
   if (!orders) return null
   const paid = orders.filter(
-    (o) => o.paymentStatus === 'paid' && o.status !== 'cancelled' && o.status !== 'failed',
+    (o) => (o.paymentStatus === 'paid' || o.paymentStatus === 'partly_refunded')
+      && o.status !== 'cancelled' && o.status !== 'failed',
   )
-  return { amount: paid.reduce((sum, o) => sum + o.totalAmount, 0), count: paid.length }
+  return { amount: paid.reduce((sum, o) => sum + o.totalAmount - (o.refund?.amount ?? 0), 0), count: paid.length }
 }
 
 /**

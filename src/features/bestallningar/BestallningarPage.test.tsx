@@ -9,8 +9,12 @@ import { chooseOption, optionTexts } from '../../test/select'
 const listOrders = vi.fn()
 const moveOrder = vi.fn()
 const pauseOrdering = vi.fn()
+const refundOrder = vi.fn()
+let role = 'owner_user'
+vi.mock('../../shared/tenant', () => ({ useTenant: () => ({ tenant: { role } }) }))
 vi.mock('./ordersApi', async (orig) => ({
   ...(await orig<typeof import('./ordersApi')>()),
+  refundOrder: (...a: unknown[]) => refundOrder(...a),
   listOrders: (...a: unknown[]) => listOrders(...a),
   moveOrder: (...a: unknown[]) => moveOrder(...a),
   pauseOrdering: (...a: unknown[]) => pauseOrdering(...a),
@@ -42,6 +46,8 @@ function list(orders: Order[], ordering: OrderList['ordering'] = { open: true, l
 }
 
 beforeEach(() => {
+  role = 'owner_user'
+  refundOrder.mockReset()
   listOrders.mockReset()
   moveOrder.mockReset()
   pauseOrdering.mockReset()
@@ -113,6 +119,44 @@ describe('BestallningarPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Stripe kunde inte återbetala')
     // Dagens lista hämtas om; förra veckans dag (med datum) räknas inte.
     expect(listOrders.mock.calls.filter((c) => c.length === 1)).toHaveLength(2)
+  })
+
+  it('owner refunds part of an order without cancelling it', async () => {
+    const user = userEvent.setup()
+    listOrders.mockResolvedValue(list([order({ status: 'preparing', paymentStatus: 'paid', refundable: 28550 })]))
+    refundOrder.mockResolvedValue(order({
+      status: 'preparing', paymentStatus: 'partly_refunded', refund: { amount: 5000 }, refundable: 23550,
+    }))
+    render(<BestallningarPage />)
+    await user.click(await screen.findByRole('button', { name: 'Återbetala' }))
+    const dialog = screen.getByRole('dialog', { name: 'Återbetala #7' })
+    await user.clear(within(dialog).getByLabelText('Belopp (kr)'))
+    await user.type(within(dialog).getByLabelText('Belopp (kr)'), '50')
+    await user.click(within(dialog).getByRole('button', { name: 'Återbetala 50 kr' }))
+    expect(refundOrder).toHaveBeenCalledWith('loc-1', expect.objectContaining({ orderId: 'a'.repeat(32) }),
+      { amount: 5000, notifyGuest: true })
+    expect(await screen.findByText(/Delvis återbetald 50 kr/)).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('refunds a completed order from the done list and says when a gift card was used', async () => {
+    const user = userEvent.setup()
+    listOrders.mockResolvedValue(list([order({
+      status: 'completed', paymentStatus: 'paid', refundable: 18550, giftCard: { debitedOre: 10000 },
+    })]))
+    render(<BestallningarPage />)
+    await user.click(await screen.findByText('Avslutade idag (1)'))
+    await user.click(screen.getByRole('button', { name: 'Återbetala #7' }))
+    expect(screen.getByText('Presentkortets del (100 kr) kommer tillbaka bara om beställningen avbryts.')).toBeInTheDocument()
+    expect(screen.getByText('Kvar att återbetala', { exact: false })).toHaveTextContent('185,50 kr')
+  })
+
+  it('staff see no refund button', async () => {
+    role = 'staff_user'
+    listOrders.mockResolvedValue(list([order({ paymentStatus: 'paid', refundable: 28550 })]))
+    render(<BestallningarPage />)
+    await screen.findByRole('region', { name: 'Nya' })
+    expect(screen.queryByRole('button', { name: 'Återbetala' })).toBeNull()
   })
 
   it('pauses and resumes ordering', async () => {

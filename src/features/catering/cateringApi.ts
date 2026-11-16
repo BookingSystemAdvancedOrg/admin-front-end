@@ -229,6 +229,8 @@ export interface RequestSummary {
   portions?: number
   total?: number
   paid?: boolean
+  /** Återbetalt hittills (öre). */
+  refundedAmount?: number
   invoiceStatus?: string
   /** Saknas på förfrågningar från innan valet fanns (= rengjord). */
   equipmentReturn?: EquipmentReturn
@@ -264,6 +266,10 @@ export interface CateringRequest extends RequestSummary {
   rejectReason?: string
   cancelReason?: string
   refundNote?: string
+  /** En rad per återbetalning; manual = bankgiro, betalas tillbaka för hand. */
+  refunds?: { amount: number; at?: string; reason?: string; manual?: boolean; external?: boolean }[]
+  /** Vad ägaren fortfarande kan återbetala (öre). */
+  refundable?: number
   signature?: { name: string; personalNumberMasked?: string; signedAt: string; documentHash?: string; method?: string;
     role?: string; pdfSha256?: string }
   signing?: { offerVersion: number; pdfSha256?: string; restaurant?: SignerState; customer?: SignerState }
@@ -472,6 +478,15 @@ export function declineRequest(locationId: string, requestId: string, reason: st
 
 export function cancelRequest(locationId: string, requestId: string, reason: string): Promise<CateringRequest> {
   return apiFetch(`${req(locationId, requestId)}/cancel`, { method: 'POST', body: JSON.stringify({ reason }) })
+}
+
+/** Ägaren återbetalar (en del av) en betald beställning utan att avboka. */
+export function refundRequest(
+  locationId: string,
+  requestId: string,
+  input: { amount: number; reason?: string; notifyGuest: boolean },
+): Promise<CateringRequest> {
+  return apiFetch(`${req(locationId, requestId)}/refund`, { method: 'POST', body: JSON.stringify(input) })
 }
 
 export function markDelivered(locationId: string, requestId: string): Promise<CateringRequest> {

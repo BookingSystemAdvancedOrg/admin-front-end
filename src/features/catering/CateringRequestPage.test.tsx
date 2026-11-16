@@ -18,8 +18,10 @@ const markDelivered = vi.fn()
 const listRequests = vi.fn()
 const restaurantSign = vi.fn()
 const restaurantSignStatus = vi.fn()
+const refundRequest = vi.fn()
 vi.mock('./cateringApi', async (orig) => ({
   ...(await orig<typeof import('./cateringApi')>()),
+  refundRequest: (...a: unknown[]) => refundRequest(...a),
   getRequest: (...a: unknown[]) => getRequest(...a),
   sendOffer: (...a: unknown[]) => sendOffer(...a),
   saveDraft: (...a: unknown[]) => saveDraft(...a),
@@ -72,7 +74,8 @@ function renderAt() {
 
 beforeEach(() => {
   role = 'owner_user'
-  for (const fn of [getRequest, sendOffer, saveDraft, declineRequest, cancelRequest, markDelivered, listRequests]) fn.mockReset()
+  for (const fn of [getRequest, sendOffer, saveDraft, declineRequest, cancelRequest, markDelivered, listRequests,
+    refundRequest]) fn.mockReset()
 })
 
 describe('offerTotals', () => {
@@ -306,6 +309,52 @@ describe('CateringRequestPage', () => {
     expect(screen.getByText('Betald online')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Markera levererad' }))
     expect(markDelivered).toHaveBeenCalledWith('loc-1', 'req-1')
+  })
+
+  it('owner refunds part of a paid order without cancelling it', async () => {
+    const user = userEvent.setup()
+    const offer = { version: 1, lines: request().request.lines, totals: TOTALS, validUntil: '2026-11-01' }
+    const paid = request({
+      status: 'confirmed', paid: true, offer, offers: [offer], currentOfferVersion: 1, refundable: 100000,
+      signature: { name: 'A', personalNumberMasked: 'x', signedAt: '2026-10-13T09:00:00Z', documentHash: 'h' },
+    })
+    getRequest.mockResolvedValue(paid)
+    refundRequest.mockResolvedValue({
+      ...paid, refundedAmount: 25000, refundable: 75000,
+      history: [...paid.history, { action: 'refunded', by: 'owner', at: '2026-10-14T09:00:00Z', amount: 25000 }],
+    })
+    renderAt()
+    await user.click(await screen.findByRole('button', { name: 'Återbetala' }))
+    const dialog = screen.getByRole('dialog', { name: 'Återbetala cateringen' })
+    expect(within(dialog).getByText('1 000 kr', { selector: 'strong' })).toBeInTheDocument()
+    await user.clear(within(dialog).getByLabelText('Belopp (kr)'))
+    await user.type(within(dialog).getByLabelText('Belopp (kr)'), '250')
+    await user.type(within(dialog).getByLabelText('Anledning (valfri)'), 'En låda saknades')
+    await user.click(within(dialog).getByRole('button', { name: 'Återbetala 250 kr' }))
+    expect(refundRequest).toHaveBeenCalledWith('loc-1', 'req-1', { amount: 25000, reason: 'En låda saknades', notifyGuest: true })
+    expect(await screen.findByText('Återbetalt')).toBeInTheDocument()
+    expect(screen.getByText('Återbetalning 250 kr', { exact: false })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('a Bankgiro invoice is refunded by hand and staff see no refund button', async () => {
+    const user = userEvent.setup()
+    const offer = { version: 1, lines: request().request.lines, totals: TOTALS, validUntil: '2026-11-01' }
+    const paid = request({
+      status: 'delivered', paid: true, offer, offers: [offer], currentOfferVersion: 1, refundable: 100000,
+      customerType: 'company', stripeInvoiceId: 'in_1', invoiceNumber: 'R-1',
+      history: [{ action: 'invoice_marked_paid', by: 'owner', at: '2026-10-14T09:00:00Z' }],
+      signature: { name: 'A', personalNumberMasked: 'x', signedAt: '2026-10-13T09:00:00Z', documentHash: 'h' },
+    })
+    getRequest.mockResolvedValue(paid)
+    const { unmount } = renderAt()
+    await user.click(await screen.findByRole('button', { name: 'Återbetala' }))
+    expect(screen.getByText('1 000 kr betalas tillbaka för hand till gästen.')).toBeInTheDocument()
+    unmount()
+    role = 'staff_user'
+    renderAt()
+    await screen.findByText('Signerad av båda parter')
+    expect(screen.queryByRole('button', { name: 'Återbetala' })).toBeNull()
   })
 
   it('cancelling needs a reason', async () => {

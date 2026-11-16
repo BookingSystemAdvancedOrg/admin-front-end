@@ -465,11 +465,11 @@ export function paymentAction(
   locationId: string,
   id: string,
   action: 'charge' | 'refund',
-  amount?: number,
+  refund?: { amount?: number; reason?: string; notifyGuest?: boolean },
 ): Promise<Reservation> {
   return apiFetch<Reservation>(
     `${base(locationId)}/reservations/${encodeURIComponent(id)}/payment`,
-    { method: 'POST', body: JSON.stringify(amount ? { action, amount } : { action }) },
+    { method: 'POST', body: JSON.stringify({ action, ...(action === 'refund' ? refund : {}) }) },
   )
 }
 

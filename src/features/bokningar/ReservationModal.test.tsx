@@ -136,8 +136,13 @@ describe('ReservationModal', () => {
     await user.click(screen.getByRole('button', { name: 'Återbetala' }))
     await user.clear(screen.getByLabelText(/Belopp/))
     await user.type(screen.getByLabelText(/Belopp/), '200')
-    await user.click(screen.getAllByRole('button', { name: 'Återbetala' }).at(-1)!)
-    expect(paymentAction).toHaveBeenLastCalledWith('loc-1', 'r1', 'refund', 20000)
+    expect(screen.getByText('Kvar att återbetala', { exact: false })).toHaveTextContent('500 kr')
+    await user.type(screen.getByLabelText('Anledning (valfri)'), 'Sjukdom')
+    await user.click(screen.getByRole('button', { name: 'Återbetala 200 kr' }))
+    expect(paymentAction).toHaveBeenLastCalledWith('loc-1', 'r1', 'refund', {
+      amount: 20000, reason: 'Sjukdom', notifyGuest: true,
+    })
+    expect(screen.queryByRole('dialog', { name: 'Återbetala avgiften' })).toBeNull()
   })
 
   it('moves a booking to another time and table', async () => {

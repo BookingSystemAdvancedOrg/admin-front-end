@@ -128,9 +128,9 @@ describe('bookingsApi', () => {
     })
 
     apiFetch.mockResolvedValueOnce(booking())
-    await paymentAction('loc-1', 'r1', 'refund', 1500)
+    await paymentAction('loc-1', 'r1', 'refund', { amount: 1500, reason: 'Sjuk', notifyGuest: false })
     expect(apiFetch).toHaveBeenLastCalledWith('/locations/loc-1/reservations/r1/payment', {
-      method: 'POST', body: JSON.stringify({ action: 'refund', amount: 1500 }),
+      method: 'POST', body: JSON.stringify({ action: 'refund', amount: 1500, reason: 'Sjuk', notifyGuest: false }),
     })
   })
 })

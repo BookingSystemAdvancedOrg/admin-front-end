@@ -1,5 +1,6 @@
 import { errorText as commonError } from '../../shared/errors'
 import { ApiError, apiFetch, isApiConfigured } from '../../shared/api'
+import { withBusy } from '../../shared/motion/busy'
 
 /**
  * Matbeställningar (backend manage-order, docs/ORDERS.md i application).
@@ -7,7 +8,8 @@ import { ApiError, apiFetch, isApiConfigured } from '../../shared/api'
  * Gästen beställer och betalar online (Stripe). Betalda beställningar syns
  * här som "confirmed"; personalen flyttar dem till tillagas -> klar ->
  * hämtad/serverad. "Klar" på en avhämtning skickar sms:et "klar att hämta"
- * till gästen. "Avbryt" återbetalar hela beloppet via Stripe.
+ * till gästen. "Avbryt" återbetalar det som är kvar via Stripe; ägaren kan
+ * också återbetala en del (eller allt) utan att avbryta ("Återbetala").
  */
 
 export type OrderStatus =
@@ -42,7 +44,7 @@ export interface Order {
   locationId: string
   number?: number
   status: OrderStatus
-  paymentStatus?: 'processing' | 'paid' | 'failed' | 'refunded'
+  paymentStatus?: 'processing' | 'paid' | 'failed' | 'partly_refunded' | 'refunded'
   mode: OrderMode
   /** Bordets id i planritningen (QR-koden); står kvar om bordet byter namn. */
   tableId?: string
@@ -63,6 +65,12 @@ export interface Order {
   readyAt?: string
   completedAt?: string
   cancelledAt?: string
+  /** Kortdelen som är återbetald (öre), en rad per återbetalning. */
+  refund?: { amount: number; at?: string; items?: { amount: number; at?: string; reason?: string }[] }
+  /** Vad ägaren fortfarande kan återbetala av kortdelen (öre). */
+  refundable?: number
+  /** Presentkortets del; den kommer bara tillbaka om beställningen avbryts. */
+  giftCard?: { last4?: string; debitedOre?: number; refundedOre?: number }
 }
 
 export interface OrderingState {
@@ -100,7 +108,7 @@ export function mockOrders(): OrderList {
     orders: [
       {
         orderId: 'mockorder00000000000000000000001', locationId: 'mock', number: 12, status: 'confirmed',
-        paymentStatus: 'paid', mode: 'table', tableId: 't7', tableLabel: '7', totalAmount: 51500,
+        paymentStatus: 'paid', mode: 'table', tableId: 't7', tableLabel: '7', totalAmount: 51500, refundable: 51500,
         customerName: 'Åsa Öberg', confirmedAt: at(3),
         lines: [
           line('burgarmeny', 'Burgarmeny', 159, 1, { note: 'ingen lök', allergy: 'jordnötsallergi' }),
@@ -111,7 +119,8 @@ export function mockOrders(): OrderList {
       },
       {
         orderId: 'mockorder00000000000000000000002', locationId: 'mock', number: 11, status: 'preparing',
-        paymentStatus: 'paid', mode: 'pickup', totalAmount: 28500, customerName: 'Johan Lind',
+        paymentStatus: 'partly_refunded', mode: 'pickup', totalAmount: 28500, customerName: 'Johan Lind',
+        refund: { amount: 5000 }, refundable: 23500,
         customerPhone: '070-123 45 67', confirmedAt: at(14), readyEstimate: new Date(now + 6 * 60_000).toISOString(),
         lines: [line('pizza', 'Pizza Margherita', 125, 2), line('cola', 'Coca-Cola', 35, 1)],
       },
@@ -134,6 +143,35 @@ export function moveOrder(
     method: 'PUT',
     body: JSON.stringify({ status, expectedStatus: order.status }),
   })
+}
+
+/** Ägaren återbetalar (en del av) kortbetalningen utan att avbryta. */
+export function refundOrder(
+  locationId: string,
+  order: Order,
+  input: { amount: number; reason?: string; notifyGuest: boolean },
+): Promise<Order> {
+  if (!isApiConfigured()) {
+    const amount = (order.refund?.amount ?? 0) + input.amount
+    const refundable = Math.max((order.refundable ?? 0) - input.amount, 0)
+    return withBusy(async (): Promise<Order> => ({
+      ...order,
+      refund: { amount, items: [...(order.refund?.items ?? []), { amount: input.amount, reason: input.reason }] },
+      refundable,
+      paymentStatus: refundable > 0 ? 'partly_refunded' : 'refunded',
+    }))
+  }
+  return apiFetch<Order>(`${base(locationId)}/${order.orderId}/refund`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+/** "Delvis återbetald 50 kr" / "Återbetald 285,50 kr", eller null. */
+export function refundLabel(order: Order): string | null {
+  const amount = order.refund?.amount ?? 0
+  if (amount <= 0 || order.status === 'cancelled') return null
+  return `${order.paymentStatus === 'refunded' ? 'Återbetald' : 'Delvis återbetald'} ${kronor(amount)}`
 }
 
 export function pauseOrdering(locationId: string, minutes: number): Promise<{ ordering: OrderingState }> {

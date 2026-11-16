@@ -34,8 +34,9 @@ import { minutesLabel } from '../installningar/bookingTime'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { Select } from '../../shared/Select'
+import { RefundDialog } from '../../shared/RefundDialog'
 
-type Panel = null | 'no_show' | 'cancel' | 'refund' | 'edit' | 'extend'
+type Panel = null | 'no_show' | 'cancel' | 'edit' | 'extend'
 
 const HISTORY_ACTION: Record<string, string> = {
   created: 'Bokad',
@@ -118,7 +119,7 @@ export function ReservationModal({
   const [chargeFee, setChargeFee] = useState(true)
   const [notifyGuest, setNotifyGuest] = useState(true)
   const [reason, setReason] = useState('')
-  const [refundKr, setRefundKr] = useState(String(actions.refundable / 100))
+  const [refunding, setRefunding] = useState(false)
 
   const noShowFee = r.cardOnFile ? (r.guarantee?.noShowFee ?? 0) : 0
   const canNotify = Boolean(r.customerEmail || r.customerPhone)
@@ -145,16 +146,6 @@ export function ReservationModal({
 
   const status = (s: 'arrived' | 'reserved' | 'no_show' | 'cancelled', opts = {}) =>
     run(() => changeStatus(r.locationId, r.reservationId, s, opts))
-
-  function submitRefund(e: FormEvent) {
-    e.preventDefault()
-    const ore = Math.round(Number(refundKr.replace(',', '.')) * 100)
-    if (!Number.isFinite(ore) || ore < 1 || ore > actions.refundable) {
-      setError(`Ange ett belopp mellan 0,01 och ${formatKr(actions.refundable)}.`)
-      return
-    }
-    void run(() => paymentAction(r.locationId, r.reservationId, 'refund', ore))
-  }
 
   const p = r.payment
 
@@ -276,7 +267,7 @@ export function ReservationModal({
                   </button>
                 )}
                 {actions.refund && (
-                  <button type="button" className="btn outline square" disabled={busy} onClick={() => open('refund')}>
+                  <button type="button" className="btn outline square" disabled={busy} onClick={() => setRefunding(true)}>
                     Återbetala
                   </button>
                 )}
@@ -350,27 +341,15 @@ export function ReservationModal({
               </div>
             )}
 
-            {panel === 'refund' && (
-              <form className="booking-panel" onSubmit={submitRefund}>
-                <p className="form-section-label">Återbetala avgiften</p>
-                <div className="form-field">
-                  <label htmlFor="refund-amount">Belopp (kr), högst {formatKr(actions.refundable)}</label>
-                  <input
-                    id="refund-amount"
-                    inputMode="decimal"
-                    value={refundKr}
-                    onChange={(e) => setRefundKr(e.target.value)}
-                  />
-                </div>
-                <div className="modal-actions">
-                  <button type="button" className="btn outline square" onClick={() => setPanel(null)}>
-                    Tillbaka
-                  </button>
-                  <button type="submit" className="btn primary square" disabled={busy}>
-                    {busy ? 'Återbetalar…' : 'Återbetala'}
-                  </button>
-                </div>
-              </form>
+            {refunding && (
+              <RefundDialog
+                title="Återbetala avgiften"
+                remaining={actions.refundable}
+                canNotify={canNotify}
+                onRefund={async (input) => onChanged(await paymentAction(r.locationId, r.reservationId, 'refund', input))}
+                onDone={() => setRefunding(false)}
+                onClose={() => setRefunding(false)}
+              />
             )}
 
             {error && (

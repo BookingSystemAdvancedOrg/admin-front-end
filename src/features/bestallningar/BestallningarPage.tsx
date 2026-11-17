@@ -533,7 +533,7 @@ export default function BestallningarPage() {
       </div>
       {refunding && (
         <RefundDialog
-          title={`Återbetala #${refunding.number ?? ''}`}
+          title={`Återbetala #${refunding.number ?? ''}, ${where(refunding)}`}
           remaining={refunding.refundable ?? 0}
           canNotify={Boolean(refunding.customerEmail || refunding.customerPhone)}
           note={refunding.giftCard?.debitedOre

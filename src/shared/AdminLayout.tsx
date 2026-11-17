@@ -384,7 +384,7 @@ function ShellPalette({ onLogout }: { onLogout: () => void }) {
         : []),
       { id: 'a-logout', group: 'Åtgärder', label: 'Logga ut', icon: 'logout', run: onLogout },
     ]
-    const goto: PaletteItem[] = nav.map((n) => ({ id: `n-${n.to}`, group: 'Gå till', label: n.label, icon: n.icon, run: () => navigate(n.to) }))
+    const goto: PaletteItem[] = nav.map((n) => ({ id: `n-${n.to}`, group: 'Gå till', label: n.label, icon: n.icon, keywords: n.keywords, run: () => navigate(n.to) }))
     // Inställningarnas grenar och blad: syns när man söker, leder rätt in.
     const settings: PaletteItem[] = BRANCHES.filter((b) => branchVisible(b, tenant)).flatMap((b) => [
       {

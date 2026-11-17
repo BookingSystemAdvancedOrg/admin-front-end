@@ -18,7 +18,7 @@ export const PAGES: { name: string; path: string; heading?: RegExp }[] = [
   { name: 'personalliggare', path: '/personalliggare' },
   { name: 'telefon', path: '/telefon' },
   { name: 'layout', path: '/layout' },
-  { name: 'gaster', path: '/gaster' },
+  { name: 'kunder', path: '/kunder' },
   { name: 'presentkort', path: '/presentkort' },
   { name: 'evenemang', path: '/evenemang' },
   { name: 'marknadsforing', path: '/marknadsforing' },

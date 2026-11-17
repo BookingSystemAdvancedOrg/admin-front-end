@@ -9,7 +9,7 @@ import { adminLogin } from '../lib/login'
 const PAGES: [string, RegExp][] = [
   ['/', /Översikt/], ['/statistik', /Statistik/], ['/bokningar', /Bokningar/], ['/bestallningar', /Beställningar/],
   ['/catering', /Catering/], ['/personalliggare', /Personalliggare/], ['/telefon', /Telefon/], ['/meny', /Meny/],
-  ['/layout', /Layout/], ['/personal', /Personal/], ['/gaster', /Gäster/], ['/presentkort', /Presentkort/],
+  ['/layout', /Layout/], ['/personal', /Personal/], ['/kunder', /Kunder/], ['/presentkort', /Presentkort/],
   ['/evenemang', /Evenemang/], ['/marknadsforing', /Marknadsföring/],
   ['/installningar', /Inställningar/], ['/hjalp', /Hjälp/], ['/avtal', /Avtal/],
 ]

@@ -369,6 +369,14 @@ describe('CateringRequestPage', () => {
     const { unmount } = renderAt()
     await user.click(await screen.findByRole('button', { name: 'Återbetala' }))
     expect(screen.getByText('1 000 kr betalas tillbaka för hand till gästen.')).toBeInTheDocument()
+    refundRequest.mockResolvedValue({
+      ...paid, refundedAmount: 100000, refundable: 0,
+      refunds: [{ amount: 100000, at: '2026-10-15T09:00:00Z', manual: true }],
+    })
+    const dialog = screen.getByRole('dialog', { name: 'Återbetala cateringen' })
+    await user.click(within(dialog).getByRole('button', { name: /Återbetala 1\s000 kr/ }))
+    expect(await screen.findByText('1 000 kr att betala tillbaka för hand.')).toBeInTheDocument()
+    expect(screen.queryByText('1 000 kr återbetalt.')).toBeNull()
     unmount()
     role = 'staff_user'
     renderAt()

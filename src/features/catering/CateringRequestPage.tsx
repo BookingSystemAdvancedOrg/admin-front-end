@@ -656,14 +656,20 @@ export default function CateringRequestPage() {
                 manual={paidByBankgiro(request)}
                 canNotify={Boolean(request.customerEmail || request.customerPhone)}
                 onRefund={async (input) => {
+                  let updated: CateringRequest
                   try {
-                    setRequest(await refundRequest(locationId, requestId, input))
+                    updated = await refundRequest(locationId, requestId, input)
                   } catch (err) {
                     // Det senaste beloppet i dialogen (t.ex. efter 409), utan att röra offertformuläret.
                     await getRequest(locationId, requestId).then(setRequest, () => {})
                     throw err
                   }
-                  setNotice(`${kronor(input.amount)} återbetalt.`)
+                  setRequest(updated)
+                  const last = updated.refunds?.[updated.refunds.length - 1]
+                  const byHand = last ? Boolean(last.manual) : paidByBankgiro(request)
+                  setNotice(byHand
+                    ? `${kronor(input.amount)} att betala tillbaka för hand.`
+                    : `${kronor(input.amount)} återbetalt.`)
                 }}
                 onDone={() => setRefunding(false)}
                 onClose={() => {

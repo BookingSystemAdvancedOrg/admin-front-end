@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Icon } from './Icon'
-import { orderTable, tableNames, tableTitle } from './tables'
+import { orderTable, removedSuffix, tableNames, tableTitle } from './tables'
 
 /** Adressen till bordskartan med bokningens bord markerade (Layout, "Boka bord"). */
 export function tableHref(tableIds: string | string[], date?: string): string {
@@ -21,7 +21,7 @@ function joined(labels: string[]): string {
  * öppnar bordskartan med alla bokningens bord markerade. Numren är desamma
  * som gästerna ser (shared/tables.ts); bordens id visas aldrig. Innan
  * namnen hämtats står "Ett bord" utan knapp; ett bord som inte finns i den
- * gällande ritningen blir "?".
+ * gällande ritningen blir "borttaget bord".
  */
 export function TableLinks({
   ids,
@@ -35,9 +35,16 @@ export function TableLinks({
   if (ids.length === 0) return <>-</>
   if (!labels) return <>{tableNames(ids, null)}</>
   const known = ids.filter((id) => labels.has(id))
-  const names = ids.map((id) => labels.get(id) ?? '?')
-  const text = `Bord ${joined(names)}`
-  if (known.length === 0) return <>{text}</>
+  if (known.length < ids.length) {
+    if (known.length === 0) return <>{tableNames(ids, labels)}</>
+    return (
+      <>
+        <TableLinks ids={known} labels={labels} date={date} />
+        {removedSuffix(ids.length - known.length)}
+      </>
+    )
+  }
+  const text = `Bord ${joined(known.map((id) => labels.get(id)!))}`
   const spoken = known.length === 1 ? `Bord ${labels.get(known[0])}` : `Bord ${joined(known.map((id) => labels.get(id)!)).replace(' + ', ' och ')}`
   return (
     <Link

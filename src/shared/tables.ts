@@ -105,15 +105,28 @@ export function useTables(locationId: string | null | undefined): TablesState {
   return { tables, labels, error: state.key === locationId && state.error }
 }
 
+/** Ett bord som inte längre finns i den gällande ritningen och saknar sparat namn. */
+export const REMOVED_TABLE = 'Borttaget bord'
+
 /**
- * "Bord 1, 3". Med kända etiketter visas de (ett bord som inte finns i den
- * gällande ritningen - en äldre bokning - blir "?"); går ritningen inte att
- * hämta visas id:na som de är.
+ * "Bord 1, 3". Med kända etiketter visas de; bord som inte finns i den
+ * gällande ritningen (en äldre bokning) blir "Borttaget bord" ("Bord 1,
+ * borttaget bord" när bara några är borta). Går ritningen inte att hämta
+ * står antalet.
  */
 export function tableNames(ids: string[], labels: Map<string, string> | null): string {
   if (ids.length === 0) return '-'
   if (!labels) return ids.length === 1 ? 'Ett bord' : `${ids.length} bord`
-  return `Bord ${ids.map((id) => labels.get(id) ?? '?').join(', ')}`
+  const known = ids.filter((id) => labels.has(id)).map((id) => labels.get(id)!)
+  const removed = ids.length - known.length
+  if (known.length === 0) return removed === 1 ? REMOVED_TABLE : `${removed} borttagna bord`
+  return `Bord ${known.join(', ')}${removedSuffix(removed)}`
+}
+
+/** ", borttaget bord" efter de bord som finns kvar ("" när inget är borta). */
+export function removedSuffix(removed: number): string {
+  if (removed <= 0) return ''
+  return removed === 1 ? ', borttaget bord' : `, ${removed} borttagna bord`
 }
 
 /** "Bord 3"; ett bord med eget namn ("Bar") visas som det heter. */
@@ -125,15 +138,15 @@ export function tableTitle(label: string): string {
  * En äldre bordsbeställnings bord i den gällande ritningen (QR-beställning vid
  * bordet är borttagen). Bordets id i första hand (det står kvar om bordet byter nummer); saknas id:t letas bordet upp på
  * namnet. Finns bordet inte längre i ritningen blir id null och det sparade
- * namnet visas.
+ * namnet visas, eller "Borttaget bord" när inget namn sparades.
  */
 export function orderTable(
   tableId: string | undefined,
   tableLabel: string | undefined,
   labels: Map<string, string> | null,
 ): { id: string | null; label: string } {
-  const stored = tableLabel?.trim() || '?'
-  if (!labels) return { id: null, label: stored }
+  const stored = tableLabel?.trim() || REMOVED_TABLE
+  if (!labels) return { id: null, label: tableLabel?.trim() || 'Bord' }
   if (tableId) return labels.has(tableId) ? { id: tableId, label: labels.get(tableId)! } : { id: null, label: stored }
   const hits = [...labels].filter(([, label]) => label === tableLabel?.trim())
   return hits.length === 1 ? { id: hits[0][0], label: hits[0][1] } : { id: null, label: stored }

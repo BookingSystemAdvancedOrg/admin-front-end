@@ -546,6 +546,20 @@
   }
 }
 
+.cta.cta-turn.is-flying:not(:disabled) .cta-plane-fly {
+  animation-name: cta-turn;
+}
+
+@keyframes cta-turn {
+  0% {
+    transform: rotate(0deg);
+  }
+  50%,
+  100% {
+    transform: rotate(90deg);
+  }
+}
+
 .cta-label {
   position: relative;
   display: inline-grid;

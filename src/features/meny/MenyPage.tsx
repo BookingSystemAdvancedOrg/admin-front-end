@@ -409,6 +409,7 @@ export default function MenyPage() {
           </button>
           <CtaButton
             label="Lägg till rätt"
+            icon="plus"
             win="Kör!"
             data-tour="menu-add"
             disabled={!canEdit}
@@ -494,7 +495,7 @@ export default function MenyPage() {
           {(loadError ?? rowError) && (
             <ErrorNote text={loadError ?? rowError} />
           )}
-          <div className="table-scroll" tabIndex={0}>
+          <div className="table-scroll meny-scroll" tabIndex={0}>
             <table className="data-table meny-table">
               <thead>
                 <tr>

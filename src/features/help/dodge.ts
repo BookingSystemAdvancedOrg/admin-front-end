@@ -3,6 +3,9 @@ import { useEffect, type RefObject } from 'react'
 /** Controls the button must never cover (see useDodge). Big focusable scroll areas are not controls. */
 const CONTROL = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button], [role=link], [role=switch], [role=checkbox], [role=radio], [role=tab], [role=menuitem], [role=option], [role=slider], [contenteditable=true]'
 export const YIELD_CLASS = 'help-launcher--yield'
+/** How far apart the spots are that the button tries when a control is under it, and how high it may go. */
+const STEP = 8
+const MIN_TOP = 72
 
 /**
  * The floating help button never covers anything that stays put on the screen
@@ -10,8 +13,8 @@ export const YIELD_CLASS = 'help-launcher--yield'
  * under the button, the button floats up above it, and back down when it is
  * gone. Content that scrolls past is left alone (it can be scrolled free).
  * The lift is the CSS variable --dodge, used by `translate` in the CSS.
- * A control that scrolls with the page is never covered either: the button
- * steps aside (YIELD_CLASS) while one is under it.
+ * A control is never covered either: the button floats up to the nearest
+ * free spot, and only steps aside (YIELD_CLASS) when there is none.
  */
 export function useDodge(ref: RefObject<HTMLElement | null>, active: boolean): void {
   useEffect(() => {
@@ -55,7 +58,7 @@ export function useDodge(ref: RefObject<HTMLElement | null>, active: boolean): v
           }
         }
       }
-      const nextLift = obstacle ? Math.max(0, Math.ceil(bottom - obstacleTop + 10)) : 0
+      let nextLift = obstacle ? Math.max(0, Math.ceil(bottom - obstacleTop + 10)) : 0
       // Line the button's right edge up with the bar's right edge (owner
       // 2026-11-14: Fråga Booqy ends on the same vertical line as the brown
       // save bar under it). Kept inside the window.
@@ -66,28 +69,46 @@ export function useDodge(ref: RefObject<HTMLElement | null>, active: boolean): v
         nextShift = Math.min(nextShift, Math.max(0, left - 12)) // not off the left side
         nextShift = Math.max(nextShift, -Math.max(0, vw - 12 - right)) // not off the right side
       }
+      // Where the button ends up (after the lift) it may still sit on a
+      // control (a row's menu, a link, a select). It never covers one: it
+      // floats further up to the nearest spot with no control and no bar
+      // under it, so it stays reachable even on a page that cannot scroll
+      // the control free (Översikt at 1280 x 720). Text may pass under it.
+      const blocked = (lift: number, shift: number) => {
+        for (const x of xs) for (const y of ys) {
+          const px = x - shift
+          const py = y - lift
+          if (px < 0 || px > vw) continue
+          if (py < 0) return true
+          for (const n of document.elementsFromPoint(px, py)) {
+            if (el.contains(n)) continue
+            const pin = pinnedAncestor(n)
+            if (pin && !pin.contains(el) && pin.getBoundingClientRect().height <= vh * 0.5) return true
+            if (!pin && n.closest(CONTROL)) return true
+            break
+          }
+        }
+        return false
+      }
+      let onControl = false
+      if (blocked(nextLift, nextShift)) {
+        onControl = true
+        for (let up = nextLift + STEP; top - up >= MIN_TOP; up += STEP) {
+          if (!blocked(up, nextShift)) {
+            nextLift = up
+            onControl = false
+            break
+          }
+        }
+      }
       if (nextLift !== lift || nextShift !== shift) {
         lift = nextLift
         shift = nextShift
         el.style.setProperty('--dodge', `${lift}px`)
         el.style.setProperty('--dodge-x', `${shift}px`)
       }
-      // Where the button ends up (after the lift) it may still sit on a
-      // control that scrolls with the page (a row's menu, a select). It never
-      // covers a control: it steps aside (YIELD_CLASS) until that control has
-      // scrolled away. Text may pass under it; pages keep room at the end.
-      let onControl = false
-      for (const x of xs) for (const y of ys) {
-        const px = x - nextShift
-        const py = y - nextLift
-        if (onControl || px < 0 || py < 0 || px > vw || py > vh) continue
-        for (const n of document.elementsFromPoint(px, py)) {
-          if (el.contains(n)) continue
-          const control = n.closest(CONTROL)
-          if (control && !pinnedAncestor(control)) onControl = true
-          break
-        }
-      }
+      // No free spot at all (rare): it steps aside (YIELD_CLASS) until the
+      // control has scrolled away.
       // With keyboard focus it stays, so focus is never on something unseen.
       el.classList.toggle(YIELD_CLASS, onControl && document.activeElement !== el)
     }

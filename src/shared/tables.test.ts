@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as api from './api'
 import { ApiError } from './api'
-import { clearTablesCache, loadTables, tableNames, tablesFromLayout } from './tables'
+import { clearTablesCache, loadTables, orderTable, tableNames, tableTitle, tablesFromLayout } from './tables'
 
 vi.mock('./api', async (orig) => ({
   ...(await orig<typeof import('./api')>()),
@@ -47,10 +47,21 @@ describe('tables', () => {
   it('names tables, never shows the long ids', () => {
     const labels = new Map([['uuid-1', '1'], ['uuid-3', '3']])
     expect(tableNames(['uuid-1', 'uuid-3'], labels)).toBe('Bord 1, 3')
-    expect(tableNames(['gone'], labels)).toBe('Bord ?')
+    expect(tableNames(['gone'], labels)).toBe('Borttaget bord')
+    expect(tableNames(['uuid-1', 'gone'], labels)).toBe('Bord 1, borttaget bord')
+    expect(tableNames(['gone', 'gone-2'], labels)).toBe('2 borttagna bord')
     expect(tableNames([], labels)).toBe('-')
     expect(tableNames(['raw'], null)).toBe('Ett bord')
     expect(tableNames(['a', 'b'], null)).toBe('2 bord')
+  })
+
+  it('an order at a table removed from the layout shows its stored label, or Borttaget bord', () => {
+    const labels = new Map([['uuid-1', '1']])
+    expect(tableTitle(orderTable('gone', '7', labels).label)).toBe('Bord 7')
+    expect(tableTitle(orderTable('gone', undefined, labels).label)).toBe('Borttaget bord')
+    expect(tableTitle(orderTable(undefined, '  ', labels).label)).toBe('Borttaget bord')
+    expect(tableTitle(orderTable('uuid-1', '9', labels).label)).toBe('Bord 1')
+    expect(tableTitle(orderTable('x', undefined, null).label)).not.toContain('?')
   })
 
   it('caches the layout for a minute and treats no layout as no tables', async () => {

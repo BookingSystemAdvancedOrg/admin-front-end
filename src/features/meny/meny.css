@@ -226,6 +226,103 @@
   border-spacing: 0;
 }
 
+/* Listan rullar aldrig i sidled (E2E 2026-11-17: Åtgärder klipptes vid
+   1280 px och Redigera/Radera låg bakom en inre rullning vid 768 px).
+   Bredden avgörs av kortet, inte fönstret, som i konsolen: smalare än
+   1000 px viks Redigera och Radera in i "…"-menyn, smalare än 600 px blir
+   varje rätt ett kort som i telefonen. */
+.meny-scroll {
+  container: meny-list / inline-size;
+}
+
+.data-table.meny-table {
+  min-width: 0;
+}
+
+@container meny-list (max-width: 1000px) {
+  .meny-table .row-actions.row-actions--inline {
+    display: none;
+  }
+
+  .meny-table .row-menu {
+    display: inline-grid;
+    justify-items: end;
+  }
+}
+
+@container meny-list (max-width: 600px) {
+  .meny-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .meny-table,
+  .meny-table tbody {
+    display: block;
+  }
+
+  .meny-table tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    padding: 14px 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  .meny-table tbody tr:first-child {
+    border-top: 0;
+  }
+
+  .meny-table td {
+    display: block;
+    min-width: 0;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  .meny-table .dish-cell-image {
+    width: auto;
+  }
+
+  /* namnet bredvid bilden, resten under */
+  .meny-table td.cell-strong {
+    flex: 1 1 calc(100% - 90px);
+  }
+
+  .meny-table td[colspan] {
+    flex: 1 1 100%;
+  }
+
+  /* "…" längst till höger på raden med reglaget */
+  .meny-table td:last-child {
+    margin-left: auto;
+  }
+
+  .dish-row {
+    border-radius: var(--r-md);
+    transition: background-color var(--dur-fast) var(--ease-out);
+  }
+
+  .dish-row:hover > td,
+  .dish-row:focus-visible > td {
+    background-color: transparent !important;
+  }
+
+  .dish-row:hover,
+  .dish-row:focus-visible {
+    background-color: color-mix(in srgb, var(--glass-highlight) 55%, transparent);
+  }
+
+  .dish-row:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--focus);
+  }
+}
+
 .meny-table th:first-child,
 .meny-table td:first-child {
   padding-left: 10px;

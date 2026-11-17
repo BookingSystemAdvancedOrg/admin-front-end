@@ -80,6 +80,23 @@ describe('Fråga Booqy launcher', () => {
     expect(btn).not.toHaveClass(YIELD_CLASS)
   })
 
+  it('floats up off a control it would cover and stays reachable (Översikt at 1280 x 720)', () => {
+    const control = document.createElement('a')
+    control.setAttribute('href', '/bokningar')
+    document.body.appendChild(control)
+    const vh = window.innerHeight
+    // the control fills the bottom 80 px of a page that cannot scroll it free
+    document.elementsFromPoint = (_x: number, y: number) => (y > vh - 80 ? [control] : [])
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(40)
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(120)
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1280)
+    const { getByRole } = render(<Launcher />)
+    const btn = getByRole('button', { name: 'Fråga Booqy' })
+    frame()
+    expect(btn).not.toHaveClass(YIELD_CLASS)
+    expect(parseFloat(btn.style.getPropertyValue('--dodge'))).toBeGreaterThanOrEqual(80)
+  })
+
   it('floats up above a pinned bar under it', () => {
     const bar = document.createElement('div')
     bar.style.position = 'fixed'

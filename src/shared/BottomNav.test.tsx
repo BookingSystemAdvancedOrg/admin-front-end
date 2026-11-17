@@ -197,7 +197,8 @@ describe('BottomNav on phones', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
     await waitFor(() => expect(sheet()).toBeNull())
     expect(more()).toHaveAttribute('aria-expanded', 'false')
-    expect(document.activeElement).toBe(more())
+    // Fokus går tillbaka till Mer när arket glidit undan, inte i samma tick.
+    await waitFor(() => expect(document.activeElement).toBe(more()))
     expect(document.documentElement).not.toHaveClass('drawer-lock')
   })
 

@@ -227,7 +227,7 @@ describe('CateringRequestPage', () => {
     const price = await screen.findByLabelText('Rad 1 pris')
     await user.clear(price)
     await user.type(price, '12000')
-    expect(screen.getByRole('alert')).toHaveTextContent('Pris per rad får vara högst')
+    expect(screen.getByRole('alert')).toHaveTextContent('Priset på en rad är för högt. Skriv högst')
     expect(screen.getByRole('button', { name: 'Skicka offert' })).toBeDisabled()
   })
 
@@ -351,7 +351,7 @@ describe('CateringRequestPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Återbetala' }))
     const dialog = screen.getByRole('dialog', { name: 'Återbetala cateringen' })
     await user.click(within(dialog).getByRole('button', { name: /Återbetala 1\s000 kr/ }))
-    expect(await within(dialog).findByText(/registrerades nyss/)).toBeInTheDocument()
+    expect(await within(dialog).findByText(/betalade nyss tillbaka/)).toBeInTheDocument()
     expect(within(dialog).getByText('400 kr', { selector: 'strong' })).toBeInTheDocument()
     expect(within(dialog).getByLabelText('Belopp (kr)')).toHaveValue('400')
   })

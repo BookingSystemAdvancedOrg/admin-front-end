@@ -79,7 +79,7 @@ describe('bookingsApi', () => {
   it('summarises fees', () => {
     expect(feeSummary(booking())).toBeNull()
     expect(feeSummary(booking({ payment: { status: 'succeeded', amount: 20000 } }))).toBe('200 kr')
-    expect(feeSummary(booking({ payment: { status: 'failed', amount: 20000 } }))).toBe('200 kr misslyckades')
+    expect(feeSummary(booking({ payment: { status: 'failed', amount: 20000 } }))).toBe('200 kr drogs inte')
   })
 
   it('says a 404 is the booking only where it is about a booking', () => {
@@ -90,14 +90,14 @@ describe('bookingsApi', () => {
   })
 
   it('maps server codes to Swedish messages', () => {
-    expect(errorMessage(new ApiError(409, 'grace_period_not_over'))).toMatch(/väntetid för sena gäster/)
+    expect(errorMessage(new ApiError(409, 'grace_period_not_over'))).toMatch(/tiden för sena gäster/)
     expect(errorMessage(new ApiError(402, 'authentication_required'))).toMatch(/godkänner/)
     expect(errorMessage(new ApiError(402, 'weird', { fromServer: true }))).toMatch(/^Betalningen gick inte igenom\. /)
     expect(errorMessage(new ApiError(402, 'weird', { fromServer: true }))).not.toMatch(/weird/)
-    expect(errorMessage(new Error('x'))).toBe('Det gick inte att spara bokningen. Felet ligger hos Booqy, inte hos er. Försök igen; kvarstår det, rapportera det till Booqy.')
+    expect(errorMessage(new Error('x'))).toBe('Bokningen sparades inte. Felet ligger hos Booqy, inte hos er. Försök igen, eller tryck Rapportera till Booqy.')
     expect(errorMessage(new ApiError(400, 'name must be at most 80 characters', { fromServer: true }))).toMatch(/högst/)
     expect(errorMessage(new ApiError(400, 'tags must be a list', { fromServer: true, code: 'invalid_value', field: 'tags' })))
-      .toBe('Det gick inte att spara bokningen. Något av fälten har ett värde som inte godtas. Kontrollera uppgifterna och försök igen.')
+      .toBe('Bokningen sparades inte. Ett av fälten ser inte rätt ut. Kolla fälten och försök igen.')
   })
 
   it('asks for walk-in times only for drop-ins', async () => {
@@ -162,10 +162,10 @@ describe('guest fields (same rules as the server)', () => {
     expect(errorMessage(new ApiError(400, 'startTime is not a bookable time for this date'))).toBe(
       'Den tiden går inte att boka längre. Välj en annan tid i listan.',
     )
-    expect(errorMessage(new ApiError(400, 'phone must be a valid phone number, e.g. +46701234567'))).toMatch(/telefonnummer/i)
-    expect(errorMessage(new ApiError(400, 'a walk-in is booked for today'))).toBe('En drop-in bokas alltid idag.')
+    expect(errorMessage(new ApiError(400, 'phone must be a valid phone number, e.g. +46701234567'))).toMatch(/Telefonnumret ser fel ut\. Skriv det så här: 070 123 45 67/)
+    expect(errorMessage(new ApiError(400, 'a walk-in is booked for today'))).toBe('En drop-in gäller alltid idag. Välj dagens datum.')
     expect(errorMessage(new ApiError(400, 'a walk-in stays on its day'))).toBe(
-      'En drop-in kan inte flyttas till en annan dag.',
+      'En drop-in kan inte flyttas till en annan dag. Gör en ny bokning i stället.',
     )
     expect(errorMessage(new ApiError(400, 'something new', { fromServer: true }))).not.toMatch(/something new/)
   })

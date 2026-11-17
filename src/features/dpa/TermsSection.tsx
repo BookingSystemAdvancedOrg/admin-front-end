@@ -47,7 +47,7 @@ export function TermsSection() {
         void refresh()
         return
       }
-      setError(errorText(err, 'Kunde inte spara.'))
+      setError(errorText(err, 'Villkoren godkändes inte.'))
     } finally {
       setBusy(false)
     }

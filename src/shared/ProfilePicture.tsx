@@ -56,7 +56,7 @@ function ProfilePictureDialog({ name, email, onClose }: { name?: string | null; 
             onSaved={(result) => {
               setSrc(null)
               setRemoveFailed(false)
-              if (result === 'unreadable') setError('Bilden kunde inte läsas. Välj en JPG eller PNG.')
+              if (result === 'unreadable') setError('Bilden gick inte att öppna. Välj en JPG- eller PNG-bild i stället.')
               else if (result === 'failed') setError(booqyFaultText('Bilden kunde inte sparas.'))
             }}
           />

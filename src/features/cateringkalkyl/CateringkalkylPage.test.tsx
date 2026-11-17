@@ -100,7 +100,7 @@ describe('CateringkalkylPage', () => {
     await user.type(screen.getByLabelText('Leveranser utgår från'), 'Okänd väg 1')
     await user.click(screen.getByRole('button', { name: 'Spara inställningar' }))
     expect(saveSettings).toHaveBeenCalledWith('loc-1', expect.objectContaining({ originAddress: 'Okänd väg 1' }))
-    expect(await screen.findByText(/startadress hittades inte på kartan/)).toBeInTheDocument()
+    expect(await screen.findByText(/Startadressen för leveranser hittades inte på kartan/)).toBeInTheDocument()
     expect(saveSettings.mock.calls[0][1]).not.toHaveProperty('originFound')
   })
 
@@ -176,7 +176,7 @@ describe('CateringkalkylPage', () => {
     await user.click(screen.getByRole('button', { name: 'Spara inställningar' }))
     expect(from).toHaveValue('15')
     expect(saveSettings).not.toHaveBeenCalled()
-    expect(screen.getByRole('alert')).toHaveTextContent(/luckor/)
+    expect(screen.getByRole('alert')).toHaveTextContent(/glappar/)
   })
 
   it('shows a skeleton until the settings are loaded, not the defaults', async () => {
@@ -210,12 +210,12 @@ describe('CateringkalkylPage', () => {
     expect(price).toHaveValue('39')
     await user.type(price, ',')
     expect(price).toHaveValue('39')
-    expect(screen.getByRole('alert')).toHaveTextContent('Hela kronor.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Skriv hela kronor, till exempel 250.')
     await user.type(price, '5')
     await user.click(screen.getByRole('button', { name: 'Spara inställningar' }))
     expect(saveSettings).toHaveBeenCalledWith('loc-1', expect.objectContaining({
       deliveryBands: [{ upToKm: 25, price: 395 }] }))
-    expect(screen.queryByText('Hela kronor.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Skriv hela kronor, till exempel 250.')).not.toBeInTheDocument()
   })
 
   it('shows the skeleton again when the location changes, so the old settings cannot be saved there', async () => {
@@ -251,7 +251,7 @@ describe('CateringkalkylPage', () => {
     await user.type(within(dialog).getByLabelText('Från antal gäster'), '10')
     await user.type(within(dialog).getByLabelText('Till antal gäster'), '20')
     await user.type(within(dialog).getByLabelText('Rabatt (%)'), '7,5')
-    expect(within(dialog).getByText('Ange ett heltal 0-50.')).toBeInTheDocument()
+    expect(within(dialog).getByText('Skriv ett helt tal från 0 till 50, till exempel 10.')).toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'Spara nivå' }))
     expect(createTier).not.toHaveBeenCalled()
     expect(within(dialog).getByLabelText('Rabatt (%)')).toHaveFocus()

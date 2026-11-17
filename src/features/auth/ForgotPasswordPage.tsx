@@ -28,7 +28,7 @@ export default function ForgotPasswordPage() {
     setError(null)
     const address = email.trim()
     if (!EMAIL_PATTERN.test(address)) {
-      setError('Fyll i en giltig e-postadress.')
+      setError('E-postadressen ser fel ut. Skriv den så här: namn@restaurang.se.')
       return
     }
     setBusy(true)
@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
       await requestPasswordReset(address)
       setSentTo(address)
     } catch (err) {
-      setError(errorText(err, 'Det gick inte att skicka mejlet.'))
+      setError(errorText(err, 'Mejlet skickades inte.'))
     } finally {
       setBusy(false)
     }

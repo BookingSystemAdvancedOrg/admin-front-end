@@ -54,10 +54,10 @@ describe('WebbplatsPage', () => {
     tenant = on
     vi.mocked(api.getSite).mockRejectedValueOnce(new TypeError('Failed to fetch'))
     render(<WebbplatsPage />)
-    expect(await screen.findByText(/Kontrollera internetanslutningen/)).toBeInTheDocument()
+    expect(await screen.findByText(/Kolla att wifi eller mobildata är på/)).toBeInTheDocument()
     window.dispatchEvent(new Event('online'))
     expect(await screen.findByText('Utkast · inte publicerad än')).toBeInTheDocument()
-    expect(screen.queryByText(/Kontrollera internetanslutningen/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Kolla att wifi eller mobildata är på/)).not.toBeInTheDocument()
   })
 
   it('Försök igen after a failed publish publishes again', async () => {
@@ -76,7 +76,7 @@ describe('WebbplatsPage', () => {
     vi.mocked(api.listVersions).mockRejectedValueOnce(new ApiError(503, 'service_unavailable', { code: 'service_unavailable', fromServer: true }))
     render(<WebbplatsPage />)
     fireEvent.click(await screen.findByRole('button', { name: 'Versioner' }))
-    expect(await screen.findByText(/Tjänsten är tillfälligt otillgänglig/)).toBeInTheDocument()
+    expect(await screen.findByText(/Booqy svarar inte just nu/)).toBeInTheDocument()
     expect(screen.queryByText('Inget är publicerat än.')).not.toBeInTheDocument()
     vi.mocked(api.listVersions).mockResolvedValueOnce({ versions: [] })
     fireEvent.click(screen.getByRole('button', { name: 'Försök igen' }))

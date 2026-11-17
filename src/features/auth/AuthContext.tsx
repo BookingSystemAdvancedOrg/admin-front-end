@@ -134,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const finishNewPassword = useCallback(async (newPassword: string) => {
     const pending = pendingChallenge.current
     if (!pending) {
-      throw new Error('Ingen pågående inloggning. Logga in igen.')
+      throw new Error('Inloggningen tog för lång tid. Logga in igen.')
     }
     const session = await completeNewPassword(pending, newPassword)
     resetMotion()

@@ -103,8 +103,8 @@ export function ErrorActions({
         <p className="error-note-status" role="status">
           {mine === 'sent' && 'Tack. Booqy har fått rapporten och tittar på felet.'}
           {mine === 'duplicate' && 'Booqy har redan fått en rapport om det här felet. Tack.'}
-          {mine === 'limited' && 'Du har skickat många rapporter den senaste timmen. Vänta en stund och försök igen.'}
-          {mine === 'failed' && 'Rapporten kom inte fram. Kontrollera internetanslutningen och tryck Rapportera till Booqy igen.'}
+          {mine === 'limited' && 'Du har skickat många rapporter den senaste timmen. Vänta en stund och skicka igen.'}
+          {mine === 'failed' && 'Rapporten kom inte fram. Kolla att wifi eller mobildata är på och tryck Rapportera till Booqy igen.'}
         </p>
       )}
     </div>

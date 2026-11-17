@@ -114,7 +114,7 @@ export default function CateringkalkylPage() {
     return null
   }
 
-  function wholeHint(key: string, text = 'Hela tal.') {
+  function wholeHint(key: string, text = 'Skriv ett helt tal, till exempel 10.') {
     return wholeOnly === key ? <p className="field-hint error" role="alert">{text}</p> : null
   }
 
@@ -141,7 +141,7 @@ export default function CateringkalkylPage() {
         setLoadError(null)
         setLoaded(true)
       })
-      .catch((err: unknown) => !cancelled && setLoadError(errorText(err, 'Kunde inte hämta cateringinställningarna.')))
+      .catch((err: unknown) => !cancelled && setLoadError(errorText(err, 'Cateringinställningarna kunde inte visas.')))
     return () => {
       cancelled = true
     }
@@ -231,10 +231,10 @@ export default function CateringkalkylPage() {
       setChangedThere(null)
       setSaveNotice(saved.enabled ? 'Sparat. Kalkylen visas på webbplatsen.' : 'Sparat. Kalkylen är dold för gäster.')
       if (originFound === false) {
-        setSaveError('Leveransernas startadress hittades inte på kartan. Leveranspriset får då sättas för hand i varje offert. Kontrollera adressen.')
+        setSaveError('Startadressen för leveranser hittades inte på kartan. Kolla adressen. Tills dess sätter du leveranspriset för hand i varje offert.')
       }
     } catch (err) {
-      setSaveError(errorText(err))
+      setSaveError(errorText(err, 'Inställningarna sparades inte.'))
     } finally {
       setSaving(false)
     }
@@ -247,7 +247,7 @@ export default function CateringkalkylPage() {
       await action()
       setTiers((await listTiers(locationId)).map(tierOf))
     } catch (err) {
-      setTierError(errorText(err))
+      setTierError(errorText(err, 'Rabattnivåerna ändrades inte.'))
     }
   }
 
@@ -274,9 +274,9 @@ export default function CateringkalkylPage() {
       if (id && err instanceof ApiError && err.status === 404) {
         // En kollega har raderat nivån: listan visar det som finns kvar.
         void tierCall(() => Promise.resolve())
-        return 'Nivån finns inte längre. Stäng rutan, listan visar det som finns kvar.'
+        return 'Nivån finns inte längre, någon har tagit bort den. Stäng rutan för att se det som finns kvar.'
       }
-      const text = errorText(err, 'Kunde inte spara nivån.')
+      const text = errorText(err, 'Nivån sparades inte.')
       focusErrorField(err, TIER_FIELD_IDS)
       return text
     }
@@ -443,7 +443,7 @@ export default function CateringkalkylPage() {
                   </button>
                   {(wholeOnly === `band-km-${i}` || wholeOnly === `band-kr-${i}`) && (
                     <p className="field-hint error band-hint" role="alert">
-                      {wholeOnly === `band-kr-${i}` ? 'Hela kronor.' : 'Hela km.'}
+                      {wholeOnly === `band-kr-${i}` ? 'Skriv hela kronor, till exempel 250.' : 'Skriv hela km, till exempel 15.'}
                     </p>
                   )}
                 </li>
@@ -579,7 +579,7 @@ export default function CateringkalkylPage() {
               <label htmlFor="cat-cleaning-fee">Rengöringsavgift, ej rengjord utrustning (kr inkl. moms)</label>
               <input id="cat-cleaning-fee" inputMode="numeric" value={settings.cleaningFee}
                 onChange={(e) => updateSettings({ cleaningFee: whole('cleaningFee', e.target.value, settings.cleaningFee) })} />
-              {wholeHint('cleaningFee', 'Hela kronor.')}
+              {wholeHint('cleaningFee', 'Skriv hela kronor, till exempel 250.')}
             </div>
           </div>
         </section>

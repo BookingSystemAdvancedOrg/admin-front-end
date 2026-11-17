@@ -113,7 +113,7 @@ export function SlotTablePicker({
         if (cancelled) return
         setSlots([])
         setDay(null)
-        setError(errorMessage(err, 'Kunde inte hämta lediga tider.', LOCATION_NOT_BOOKABLE))
+        setError(errorMessage(err, 'Lediga tider kunde inte visas.', LOCATION_NOT_BOOKABLE))
         setLoadedFor(requestKey)
       })
     return () => {

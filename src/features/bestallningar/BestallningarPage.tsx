@@ -47,7 +47,7 @@ const COLUMNS: { status: Order['status']; title: string; empty: string }[] = [
 const JOB_TEXT: Record<JobState, string> = {
   PENDING: 'Ej utskriven',
   PRINTING: 'Skrivs ut',
-  FAILED: 'Utskrift misslyckades',
+  FAILED: 'Skrevs inte ut',
 }
 
 function where(order: Order): string {
@@ -222,7 +222,7 @@ export default function BestallningarPage() {
       const result = await pauseOrdering(locationId, minutes)
       setOrdering(result.ordering)
     } catch (err) {
-      setActionError(errorText(err, 'Kunde inte ändra pausen just nu.'))
+      setActionError(errorText(err, 'Pausen ändrades inte.'))
     }
   }
 
@@ -433,7 +433,7 @@ export default function BestallningarPage() {
               <ErrorNote text={actionError} />
             )}
             {loadError && (
-              <ErrorNote text={booqyFaultText('Kunde inte hämta beställningarna. Sidan försöker igen av sig själv.')} />
+              <ErrorNote text={booqyFaultText('Beställningarna kunde inte visas.')} />
             )}
             <section className="stats-row" aria-label="Dagens siffror">
               {tiles.map((t, i) => (

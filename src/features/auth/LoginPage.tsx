@@ -43,7 +43,7 @@ export default function LoginPage() {
         navigate(from, { replace: true })
       }
     } catch (err) {
-      setError(errorText(err, 'Inloggningen misslyckades.'))
+      setError(errorText(err, 'Inloggningen gick inte.'))
     } finally {
       setBusy(false)
     }

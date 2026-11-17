@@ -100,7 +100,7 @@ describe('cognito.ts (backend /auth/* client)', () => {
     )
 
     await expect(signIn('anna@kallarestaurang.se', 'wrong')).rejects.toThrow(
-      'Fel e-post eller lösenord.',
+      'E-postadressen eller lösenordet stämmer inte.',
     )
   })
 
@@ -109,7 +109,7 @@ describe('cognito.ts (backend /auth/* client)', () => {
     vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'))
 
     await expect(signIn('anna@kallarestaurang.se', 'pw')).rejects.toThrow(
-      'Kunde inte nå inloggningstjänsten',
+      'Vi når inte inloggningen just nu',
     )
   })
 
@@ -584,12 +584,12 @@ describe('forgot password (backend /auth/forgot-password and /auth/reset-passwor
   it.each([
     [400, 'invalid code', /fungerar inte längre/, true],
     [400, 'code expired', /gått ut/, true],
-    [400, 'invalid reset request', /stämmer inte/, true],
-    [400, 'password does not meet requirements', /uppfyller inte kraven/, false],
-    [400, 'username must be an email address', /giltig e-postadress/, false],
+    [400, 'invalid reset request', /passar inte ihop med kontot/, true],
+    [400, 'password does not meet requirements', /följer inte reglerna/, false],
+    [400, 'username must be an email address', /namn@restaurang\.se/, false],
     [403, 'account_disabled', /avstängt/, false],
-    [429, 'too many attempts', /För många försök/, false],
-    [502, 'authentication service unavailable', /Ingen kontakt/, false],
+    [429, 'too many attempts', /för många försök/, false],
+    [502, 'authentication service unavailable', /svarar inte just nu/, false],
   ])('turns %i %s into a Swedish message', async (status, code, text, needsNewLink) => {
     const { PasswordResetError, confirmPasswordReset } = await import('./cognito')
     vi.mocked(fetch).mockResolvedValue(jsonResponse(status, { error: code }))
@@ -605,7 +605,7 @@ describe('forgot password (backend /auth/forgot-password and /auth/reset-passwor
     const { requestPasswordReset } = await import('./cognito')
     vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'))
 
-    await expect(requestPasswordReset('a@b.se')).rejects.toThrow('Kunde inte nå inloggningstjänsten')
+    await expect(requestPasswordReset('a@b.se')).rejects.toThrow('Vi når inte inloggningen just nu')
   })
 
   it('points a sign-in that needs a reset to "Glömt lösenordet?"', async () => {
@@ -619,6 +619,6 @@ describe('forgot password (backend /auth/forgot-password and /auth/reset-passwor
     const { signIn } = await import('./cognito')
     vi.mocked(fetch).mockResolvedValue(jsonResponse(403, { error: 'account_disabled' }))
 
-    await expect(signIn('a@b.se', 'pw')).rejects.toThrow('Kontot är avstängt')
+    await expect(signIn('a@b.se', 'pw')).rejects.toThrow('Ditt konto är avstängt')
   })
 })

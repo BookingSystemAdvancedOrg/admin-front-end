@@ -9,7 +9,7 @@ export function ConnectionNotice() {
   return (
     <div className="connection-notice" role="status" aria-live="polite">
       <span className="connection-notice__dot" aria-hidden="true" />
-      Ingen kontakt med servern, försöker igen...
+      Vi når inte Booqy just nu. Kolla wifi eller mobildata, appen försöker igen.
     </div>
   )
 }

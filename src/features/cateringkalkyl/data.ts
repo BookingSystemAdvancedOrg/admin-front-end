@@ -104,27 +104,27 @@ export function settingsProblem(s: {
   offerValidDays: number
   signReminderDaysBefore: number
 }): string | null {
-  if (s.minGuests < 1) return 'Minsta antal gäster måste vara minst 1.'
-  if (s.deliveryBands.length === 0) return 'Lägg till minst ett leveransintervall.'
+  if (s.minGuests < 1) return 'Minsta antal gäster är för lågt. Skriv 1 eller mer.'
+  if (s.deliveryBands.length === 0) return 'Det finns inget leveransintervall. Lägg till minst ett, till exempel upp till 10 km.'
   for (const [i, b] of s.deliveryBands.entries()) {
-    if (b.upToKm < 1 || b.upToKm > 1000) return 'Avståndet i varje leveransintervall ska vara 1-1000 km.'
-    if (i > 0 && b.upToKm <= s.deliveryBands[i - 1].upToKm) return 'Leveransintervallen ska ha stigande avstånd.'
+    if (b.upToKm < 1 || b.upToKm > 1000) return 'Ett avstånd i leveransintervallen går inte. Skriv mellan 1 och 1000 km.'
+    if (i > 0 && b.upToKm <= s.deliveryBands[i - 1].upToKm) return 'Leveransintervallen står i fel ordning. Varje intervall ska ha längre avstånd än det före, till exempel 10, 20, 30 km.'
   }
   const rules = [...s.leadTimeRules].sort((a, b) => a.fromGuests - b.fromGuests)
   for (const [i, r] of rules.entries()) {
-    if (r.fromGuests < 1) return 'Förberedelsetid: "Från" ska vara minst 1 gäst.'
-    if (r.toGuests !== null && r.toGuests < r.fromGuests) return 'Förberedelsetid: "Till" får inte vara mindre än "Från".'
-    if (r.days > 90) return 'Förberedelsetid: högst 90 dagar.'
+    if (r.fromGuests < 1) return 'Förberedelsetid: Från är för lågt. Skriv 1 eller mer.'
+    if (r.toGuests !== null && r.toGuests < r.fromGuests) return 'Förberedelsetid: Till är mindre än Från. Skriv samma eller ett högre tal.'
+    if (r.days > 90) return 'Förberedelsetid: för många dagar. Skriv högst 90.'
     const next = rules[i + 1]
     if (next && (r.toGuests === null || next.fromGuests !== r.toGuests + 1)) {
-      return 'Förberedelsetid: intervallen får inte överlappa eller ha luckor (nästa ska börja direkt efter föregående).'
+      return 'Förberedelsetid: intervallen glappar eller går in i varandra. Nästa ska börja direkt efter, till exempel 1-20 och 21-50.'
     }
   }
   if (s.ownerReminderHours > 0 && s.ownerReminderHours >= s.requestExpiryHours) {
-    return 'Påminnelsen till restaurangen måste komma innan förfrågan går ut.'
+    return 'Påminnelsen till restaurangen kommer för sent. Välj färre timmar än tiden tills förfrågan går ut.'
   }
   if (s.signReminderDaysBefore > 0 && s.signReminderDaysBefore >= s.offerValidDays) {
-    return 'Påminnelsen om signering måste komma inom offertens giltighetstid.'
+    return 'Påminnelsen om signering kommer för tidigt. Välj färre dagar än offerten gäller.'
   }
   return null
 }

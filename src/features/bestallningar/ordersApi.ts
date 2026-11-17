@@ -203,18 +203,19 @@ export function clock(iso: string | undefined, timezone?: string | null): string
 }
 
 const MOVE_ERRORS: Record<string, string> = {
-  changed_retry: 'Beställningen har just ändrats av någon annan. Listan är uppdaterad.',
-  refund_failed: 'Stripe kunde inte återbetala beställningen. Den är inte avbruten - försök igen eller kontakta support.',
-  payment_unavailable: 'Stripe svarar inte just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
+  changed_retry: 'Någon annan ändrade beställningen nyss. Nu syns det senaste.',
+  refund_failed: 'Stripe kunde inte betala tillbaka, så beställningen är inte avbruten. Försök igen om en stund, eller rapportera det till Booqy.',
+  payment_unavailable: 'Stripe svarar inte just nu. Det är inte ert fel. Försök igen om en stund, eller rapportera det till Booqy.',
 }
 
 export function moveErrorText(err: unknown): string {
   if (err instanceof ApiError) {
-    if (MOVE_ERRORS[err.message]) return MOVE_ERRORS[err.message]
-    if (err.message.startsWith('cannot_move_')) return 'Beställningen kan inte flyttas dit. Listan är uppdaterad.'
-    if (err.status === 404) return 'Beställningen finns inte längre.'
+    // Via errorText så felrutan vet vem som gör något (Stripe nere: Försök igen).
+    if (MOVE_ERRORS[err.message]) return commonError(err, 'Beställningen ändrades inte.', { [err.code]: MOVE_ERRORS[err.message] })
+    if (err.message.startsWith('cannot_move_')) return 'Beställningen kan inte flyttas dit längre. Nu syns det senaste.'
+    if (err.status === 404) return 'Beställningen finns inte längre. Nu syns det som finns kvar.'
   }
-  return commonError(err, 'Kunde inte spara beställningen.')
+  return commonError(err, 'Beställningen ändrades inte.')
 }
 
 export function closedText(state: OrderingState): string {

@@ -50,9 +50,9 @@ export default function ResetPasswordPage() {
     const address = email.trim()
     const digits = code.replace(/\s+/g, '')
     const problem = !EMAIL_PATTERN.test(address)
-      ? 'Fyll i en giltig e-postadress.'
+      ? 'E-postadressen ser fel ut. Skriv den så här: namn@restaurang.se.'
       : !CODE_PATTERN.test(digits)
-        ? 'Koden är de sex siffrorna i mejlet.'
+        ? 'Koden ska vara de sex siffrorna i mejlet, till exempel 123456.'
         : passwordProblem(password, confirm)
     if (problem) {
       setError({ text: problem, newLink: false })
@@ -63,7 +63,7 @@ export default function ResetPasswordPage() {
       await confirmPasswordReset(address, digits, password)
     } catch (err) {
       setError({
-        text: errorText(err, 'Det gick inte att byta lösenord.'),
+        text: errorText(err, 'Lösenordet byttes inte.'),
         newLink: err instanceof PasswordResetError && err.needsNewLink,
       })
       setBusy(false)

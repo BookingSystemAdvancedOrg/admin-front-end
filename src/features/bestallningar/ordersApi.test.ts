@@ -9,10 +9,10 @@ describe('ordersApi', () => {
   })
 
   it('turns server errors into Swedish', () => {
-    expect(moveErrorText(new ApiError(409, 'changed_retry'))).toMatch(/ändrats av någon annan/)
+    expect(moveErrorText(new ApiError(409, 'changed_retry'))).toMatch(/Någon annan ändrade beställningen/)
     expect(moveErrorText(new ApiError(409, 'cannot_move_completed_to_ready'))).toMatch(/kan inte flyttas/)
     expect(moveErrorText(new ApiError(404, 'not found'))).toMatch(/finns inte längre/)
-    expect(moveErrorText(new Error('x'))).toMatch(/Kunde inte spara/)
+    expect(moveErrorText(new Error('x'))).toMatch(/^Beställningen ändrades inte\. /)
   })
 })
 

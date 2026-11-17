@@ -232,7 +232,7 @@ describe('reloading', () => {
     click('.booqy-update__reload')
     await vi.advanceTimersByTimeAsync(FAILSAFE_MS + 500)
     window.removeEventListener('beforeunload', guard)
-    expect(box.textContent).toContain('Kunde inte ladda om. Försök igen.')
+    expect(box.textContent).toContain('Den nya versionen laddades inte. Tryck Ladda om igen.')
     expect(box.querySelector('.booqy-update__reload')).not.toBeNull()
   })
 
@@ -265,7 +265,7 @@ describe('reloading', () => {
     const btn = box.querySelector<HTMLButtonElement>('.booqy-update__reload')
     expect(btn?.textContent).toBe('Ladda om')
     expect(btn?.disabled).toBe(false)
-    expect(box.textContent).toContain('Kunde inte ladda om. Försök igen.')
+    expect(box.textContent).toContain('Den nya versionen laddades inte. Tryck Ladda om igen.')
     expect(sessionStorage.getItem('booqy-updated')).toBeNull()
     expect(document.querySelector('.booqy-curtain')).toBeNull()
   })

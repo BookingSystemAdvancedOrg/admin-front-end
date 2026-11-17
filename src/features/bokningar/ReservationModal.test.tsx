@@ -94,7 +94,7 @@ describe('ReservationModal', () => {
     render(<ReservationModal today={TODAY} reservation={booking()} isOwner onChanged={() => {}} onClose={() => {}} />)
     await user.click(screen.getByRole('button', { name: 'Uteblev' }))
     await user.click(screen.getAllByRole('button', { name: 'Uteblev' }).at(-1)!)
-    expect(await screen.findByRole('alert')).toHaveTextContent('väntetid för sena gäster')
+    expect(await screen.findByRole('alert')).toHaveTextContent('tiden för sena gäster')
   })
 
   it('cancels and tells the guest unless unticked', async () => {
@@ -163,7 +163,7 @@ describe('ReservationModal', () => {
     render(<Host />)
     await user.click(screen.getByRole('button', { name: 'Återbetala' }))
     await user.click(screen.getByRole('button', { name: 'Återbetala 500 kr' }))
-    expect(await screen.findByText(/registrerades nyss/)).toBeInTheDocument()
+    expect(await screen.findByText(/betalade nyss tillbaka/)).toBeInTheDocument()
     expect(getReservation).toHaveBeenCalledWith('loc-1', 'r1')
     expect(screen.getByText('Kvar att återbetala', { exact: false })).toHaveTextContent('200 kr')
     expect(screen.getByLabelText(/Belopp/)).toHaveValue('200')
@@ -241,7 +241,7 @@ describe('time rules in the forms', () => {
     render(<ReservationModal today={TODAY} reservation={booking()} isOwner onChanged={() => {}} onClose={() => {}} />)
     await user.click(screen.getByRole('button', { name: 'Ändra' }))
     await user.clear(screen.getByLabelText('Telefon'))
-    expect(screen.getByText('En onlinebokning måste ha telefon.')).toBeInTheDocument()
+    expect(screen.getByText('En onlinebokning behöver ett telefonnummer. Skriv till exempel 070 123 45 67.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Spara' })).toBeDisabled()
   })
 
@@ -292,7 +292,7 @@ describe('time rules in the forms', () => {
     await user.click(screen.getByRole('button', { name: 'Ändra' }))
     await user.clear(screen.getByLabelText('Antal personer'))
     await user.type(screen.getByLabelText('Antal personer'), '5')
-    expect(screen.getByText(/Borden rymmer 4/)).toBeInTheDocument()
+    expect(screen.getByText(/Borden har bara 4 platser/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Spara' })).toBeDisabled()
   })
 
@@ -457,7 +457,7 @@ describe('ReservationModal extend', () => {
     await user.click(screen.getByRole('button', { name: 'Förläng' }))
     await chooseOption(screen.getByLabelText('Ny sluttid'), String(20 * 60 + 30))
     await user.click(screen.getByRole('button', { name: 'Förläng' }))
-    expect(screen.getByRole('alert')).toHaveTextContent('Bekräfta')
+    expect(screen.getByRole('alert')).toHaveTextContent('Kryssa i rutan')
     expect(updateReservation).not.toHaveBeenCalled()
     await user.click(screen.getByLabelText(/Förläng ändå/))
     await user.click(screen.getByRole('button', { name: 'Förläng' }))
@@ -527,7 +527,7 @@ describe('ReservationModal history', () => {
         onClose={() => {}}
       />,
     )
-    expect(screen.getByText(/misslyckades \(för lite pengar på kortet\)/)).toBeInTheDocument()
+    expect(screen.getByText(/drogs inte \(för lite pengar på kortet\)/)).toBeInTheDocument()
     expect(screen.queryByText(/insufficient_funds/)).toBeNull()
     unmount()
     const declined = render(
@@ -542,7 +542,7 @@ describe('ReservationModal history', () => {
         onClose={() => {}}
       />,
     )
-    expect(screen.getByText(/misslyckades \(kortet nekades\)/)).toBeInTheDocument()
+    expect(screen.getByText(/drogs inte \(kortet nekades\)/)).toBeInTheDocument()
     expect(screen.queryByText(/do_not_honor/)).toBeNull()
     declined.unmount()
     render(

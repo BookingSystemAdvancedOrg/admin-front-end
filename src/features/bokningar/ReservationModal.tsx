@@ -220,7 +220,7 @@ export function ReservationModal({
                     {p.status === 'succeeded'
                       ? 'dragen'
                       : p.status === 'failed'
-                        ? `misslyckades${paymentFailureLabel(p.error) ? ` (${paymentFailureLabel(p.error)})` : ''}`
+                        ? `drogs inte${paymentFailureLabel(p.error) ? ` (${paymentFailureLabel(p.error)})` : ''}`
                         : p.status === 'refunded'
                           ? 'återbetald'
                           : 'pågår'}
@@ -440,7 +440,7 @@ function ExtendPanel({
     e.preventDefault()
     if (busy || end === current) return
     if (needsOverride && !override) {
-      setError('Bekräfta att du förlänger utöver regeln.')
+      setError('Kryssa i rutan för att förlänga mer än regeln tillåter.')
       return
     }
     setBusy(true)
@@ -655,7 +655,7 @@ function EditForm({
           />
           {!phoneOk && (
             <p id="ed-phone-error" className="field-hint error">
-              {phone.trim() ? 'Skriv ett giltigt nummer, t.ex. 070-123 45 67.' : 'En onlinebokning måste ha telefon.'}
+              {phone.trim() ? 'Numret ser fel ut. Skriv det så här: 070 123 45 67.' : 'En onlinebokning behöver ett telefonnummer. Skriv till exempel 070 123 45 67.'}
             </p>
           )}
           {drift.customerPhone !== undefined && (drift.customerPhone ?? '') !== (normalizedPhone ?? '') && (
@@ -675,7 +675,7 @@ function EditForm({
           />
           {!emailOk && (
             <p id="ed-email-error" className="field-hint error">
-              {email.trim() ? 'Ange en giltig e-postadress.' : 'En onlinebokning måste ha e-post.'}
+              {email.trim() ? 'E-postadressen ser fel ut. Skriv den så här: namn@exempel.se.' : 'En onlinebokning behöver en e-postadress. Skriv till exempel namn@exempel.se.'}
             </p>
           )}
           {drift.customerEmail !== undefined && (drift.customerEmail ?? '') !== email.trim().toLowerCase() && (
@@ -695,7 +695,7 @@ function EditForm({
         />
         {overSeats && (
           <p id="ed-size-error" className="field-hint error">
-            Borden rymmer {r.seats} - ångra Anlänt först för att byta till större bord.
+            Borden har bara {r.seats} platser. Ångra Anlänt först, sedan kan du byta till större bord.
           </p>
         )}
         {drift.partySize !== undefined && drift.partySize !== size && (

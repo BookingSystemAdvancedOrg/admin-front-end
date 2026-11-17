@@ -17,9 +17,9 @@ import { booqyFaultText } from './errors'
 
 const UPLOAD_ERRORS: Record<UploadError, string> = {
   'not-image': 'Det där är ingen bild. Välj en JPG-, PNG-, WebP- eller HEIC-bild.',
-  unreadable: 'Bilden gick inte att läsa här. Prova en JPG eller PNG.',
-  'too-large': 'Bilden är för stor, även förminskad. Prova en annan bild.',
-  limit: 'Biblioteket är fullt. Ta bort en bild för att ladda upp en ny.',
+  unreadable: 'Bilden gick inte att öppna. Välj en JPG- eller PNG-bild i stället.',
+  'too-large': 'Bilden är för stor. Välj en mindre bild.',
+  limit: 'Det får inte plats fler bilder. Ta bort en bild först, sedan kan du lägga till en ny.',
   failed: 'Bilden kunde inte sparas.',
 }
 

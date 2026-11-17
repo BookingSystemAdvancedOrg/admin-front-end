@@ -170,7 +170,7 @@ async function authRequest(path: string, body: unknown): Promise<AuthResponse> {
     })
   } catch (err) {
     console.error('[Auth] Nätverksfel mot', path, err)
-    throw new Error('Kunde inte nå inloggningstjänsten. Kontrollera anslutningen och försök igen.')
+    throw new Error('Vi når inte inloggningen just nu. Kolla att wifi eller mobildata är på och försök igen.')
   }
   if (!res.ok) {
     throw await toFriendlyError(res)
@@ -191,39 +191,38 @@ async function toFriendlyError(res: Response): Promise<Error> {
 
   switch (res.status) {
     case 401:
-      return new Error('Fel e-post eller lösenord.')
+      return new Error('E-postadressen eller lösenordet stämmer inte. Skriv dem igen, eller tryck Glömt lösenordet?')
     case 403:
       if (message.includes('not confirmed')) {
-        return new Error(
-          'Kontot är inte bekräftat ännu. Kontakta en administratör.',
-        )
+        return new Error('Kontot är inte klart att använda än. Be restaurangens ägare skicka en ny inbjudan.')
       }
       if (message.includes('reset')) {
-        return new Error('Lösenordet måste återställas. Klicka på "Glömt lösenordet?".')
+        return new Error('Du behöver välja ett nytt lösenord. Tryck Glömt lösenordet? och följ mejlet.')
       }
       if (message === 'account_disabled') {
-        return new Error('Kontot är avstängt. Kontakta restaurangens ägare.')
+        return new Error('Ditt konto är avstängt. Be restaurangens ägare slå på det igen.')
       }
       if (message === 'account_not_provisioned') {
-        return new Error(
-          'Kontot är inte kopplat till någon restaurang. Kontakta restaurangens ägare.',
-        )
+        return new Error('Kontot är inte kopplat till någon restaurang. Be ägaren bjuda in dig under Personal.')
       }
-      return new Error(message)
+      return new Error('Du kan inte logga in med det här kontot just nu. Be restaurangens ägare om hjälp.')
     case 429:
-      return new Error('För många försök. Vänta en stund och försök igen.')
+      return new Error('Det blev för många försök på kort tid. Vänta en minut och försök igen.')
     case 502:
-      return new Error(
-        'Ingen kontakt med inloggningstjänsten just nu. Felet ligger hos Booqy, inte hos dig: försök igen om en liten stund.',
-      )
+      return new Error('Inloggningen svarar inte just nu. Felet ligger hos Booqy, inte hos dig. Försök igen om en liten stund.')
     case 400:
       return new Error(
         message === 'invalid challenge response'
-          ? 'Lösenordet uppfyller inte kraven, eller sessionen har gått ut. Logga in igen.'
-          : message,
+          ? 'Lösenordet följer inte reglerna, eller så tog det för lång tid. Logga in igen och försök på nytt.'
+          : 'Något av det du skrev ser inte rätt ut. Kolla e-post och lösenord och försök igen.',
       )
     default:
-      return new Error(message)
+      // Serverns egen text (engelska, Cognito) visas aldrig.
+      return new Error(
+        res.status >= 500
+          ? 'Inloggningen svarar inte just nu. Felet ligger hos Booqy, inte hos dig. Försök igen om en liten stund.'
+          : 'Inloggningen gick inte. Kolla e-post och lösenord och försök igen.',
+      )
   }
 }
 
@@ -269,7 +268,7 @@ export async function completeNewPassword(
   })
   const result = toSignInResult(response, pending.username)
   if (result.kind === 'new-password-required') {
-    throw new Error('Ytterligare en utmaning krävs, men stöds inte av gränssnittet ännu.')
+    throw new Error('Kontot kräver ett extra inloggningssteg som appen inte kan än. Kontakta Booqy.')
   }
   return result.session
 }
@@ -298,26 +297,26 @@ function resetErrorText(status: number, code: string): string {
   if (status === 400) {
     switch (code) {
       case 'invalid code':
-        return 'Länken eller koden fungerar inte längre - den kan redan ha använts eller ersatts av en nyare. Begär en ny länk.'
+        return 'Länken fungerar inte längre. Den kan redan ha använts. Be om en ny länk.'
       case 'code expired':
-        return 'Länken har gått ut (den gäller en timme). Begär en ny länk.'
+        return 'Länken har gått ut, den gäller bara en timme. Be om en ny länk.'
       case 'invalid reset request':
-        return 'Uppgifterna stämmer inte. Begär en ny länk.'
+        return 'Länken passar inte ihop med kontot. Be om en ny länk.'
       case 'password does not meet requirements':
-        return 'Lösenordet uppfyller inte kraven.'
+        return 'Lösenordet följer inte reglerna. Se listan under fältet och försök igen.'
       case 'username must be an email address':
-        return 'Fyll i en giltig e-postadress.'
+        return 'E-postadressen ser fel ut. Skriv den så här: namn@restaurang.se.'
       case 'code must be the 6-digit code from the email':
-        return 'Koden är de sex siffrorna i mejlet.'
+        return 'Koden ska vara de sex siffrorna i mejlet, till exempel 123456.'
       default:
-        return 'Kontrollera uppgifterna och försök igen.'
+        return 'Något av det du skrev ser inte rätt ut. Kolla fälten och försök igen.'
     }
   }
   if (status === 403 && code === 'account_disabled') {
-    return 'Kontot är avstängt. Kontakta restaurangens ägare.'
+    return 'Ditt konto är avstängt. Be restaurangens ägare slå på det igen.'
   }
-  if (status === 429) return 'För många försök. Vänta en stund och försök igen.'
-  return 'Ingen kontakt med inloggningstjänsten just nu. Felet ligger hos Booqy, inte hos dig: försök igen om en liten stund.'
+  if (status === 429) return 'Det blev för många försök på kort tid. Vänta en minut och försök igen.'
+  return 'Inloggningen svarar inte just nu. Felet ligger hos Booqy, inte hos dig. Försök igen om en liten stund.'
 }
 
 async function resetRequest(path: string, body: unknown): Promise<void> {
@@ -333,7 +332,7 @@ async function resetRequest(path: string, body: unknown): Promise<void> {
     })
   } catch (err) {
     console.error('[Auth] Nätverksfel mot', path, err)
-    throw new Error('Kunde inte nå inloggningstjänsten. Kontrollera anslutningen och försök igen.')
+    throw new Error('Vi når inte inloggningen just nu. Kolla att wifi eller mobildata är på och försök igen.')
   }
   if (res.ok) return
   let code = ''
@@ -374,7 +373,7 @@ export async function confirmPasswordReset(
  */
 export class AuthUnavailableError extends Error {
   constructor() {
-    super('Ingen kontakt med servern. Kontrollera internetanslutningen och försök igen.')
+    super('Vi når inte Booqy just nu. Kolla att wifi eller mobildata är på och försök igen.')
     this.name = 'AuthUnavailableError'
   }
 }

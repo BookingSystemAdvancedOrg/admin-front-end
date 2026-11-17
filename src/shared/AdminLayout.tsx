@@ -52,19 +52,19 @@ function storedClosedGroups(): string[] {
 const TENANT_ERROR: Record<TenantErrorCode, { title: string; text: string }> = {
   tenant_inactive: {
     title: 'Kontot är inte aktivt',
-    text: 'Restaurangens konto är pausat eller avslutat. Ägaren kontaktar Booqy (svara på senaste fakturan eller mejlet från oss) för att öppna det igen.',
+    text: 'Restaurangens konto är pausat. Ägaren kan öppna det igen genom att kontakta Booqy.',
   },
   no_tenant: {
     title: 'Inloggningen är inte kopplad till någon restaurang',
-    text: 'Be restaurangens ägare bjuda in dig på nytt under Personal, och logga sedan in igen.',
+    text: 'Be ägaren bjuda in dig igen under Personal. Logga sedan in igen.',
   },
   unauthorized: {
     title: 'Du är utloggad',
     text: 'Logga in igen för att fortsätta.',
   },
   unavailable: {
-    title: 'Kunde inte hämta restaurangen',
-    text: 'Tjänsten svarar inte just nu.',
+    title: 'Restaurangen kunde inte visas',
+    text: 'Booqy svarar inte just nu.',
   },
 }
 

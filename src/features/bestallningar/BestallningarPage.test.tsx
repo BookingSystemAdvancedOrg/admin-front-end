@@ -141,7 +141,7 @@ describe('BestallningarPage', () => {
     render(<BestallningarPage />)
     await user.click(await screen.findByRole('button', { name: 'Återbetala' }))
     await user.click(screen.getByRole('button', { name: 'Återbetala 235 kr' }))
-    expect(await screen.findByText(/registrerades nyss/)).toBeInTheDocument()
+    expect(await screen.findByText(/betalade nyss tillbaka/)).toBeInTheDocument()
     expect(await screen.findByText('135 kr', { selector: 'strong' })).toBeInTheDocument()
     expect(screen.getByLabelText('Belopp (kr)')).toHaveValue('135')
   })
@@ -153,7 +153,7 @@ describe('BestallningarPage', () => {
     render(<BestallningarPage />)
     await user.click(await screen.findByRole('button', { name: 'Avbryt' }))
     await user.click(screen.getByRole('button', { name: /Bekräfta/ }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Stripe kunde inte återbetala')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Stripe kunde inte betala tillbaka')
     // Dagens lista hämtas om; förra veckans dag (med datum) räknas inte.
     expect(listOrders.mock.calls.filter((c) => c.length === 1)).toHaveLength(2)
   })

@@ -32,9 +32,9 @@ export function meetsAllRules(pw: string): boolean {
 
 /** Varför lösenordet inte går att spara, eller null. */
 export function passwordProblem(pw: string, confirm: string): string | null {
-  if (!meetsAllRules(pw)) return 'Lösenordet uppfyller inte alla krav ännu.'
-  if (pw !== pw.trim()) return 'Lösenordet får inte börja eller sluta med mellanslag.'
-  if (pw.length > PASSWORD_MAX) return `Lösenordet får vara högst ${PASSWORD_MAX} tecken.`
-  if (pw !== confirm) return 'Lösenorden matchar inte.'
+  if (!meetsAllRules(pw)) return 'Lösenordet följer inte alla regler än. Se listan under fältet.'
+  if (pw !== pw.trim()) return 'Lösenordet börjar eller slutar med ett mellanslag. Ta bort mellanslaget.'
+  if (pw.length > PASSWORD_MAX) return `Lösenordet är för långt. Använd högst ${PASSWORD_MAX} tecken.`
+  if (pw !== confirm) return 'De två lösenorden är inte likadana. Skriv samma lösenord i båda fälten.'
   return null
 }

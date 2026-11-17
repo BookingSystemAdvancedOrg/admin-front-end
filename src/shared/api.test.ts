@@ -92,7 +92,7 @@ describe('apiFetch fel', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
     const { apiFetch } = await loadApi()
     await expect(apiFetch('/x', { method: 'POST' })).rejects.toMatchObject({
-      name: 'NetworkError', code: 'network', message: expect.stringMatching(/^Ingen kontakt med servern/),
+      name: 'NetworkError', code: 'network', message: expect.stringMatching(/^Vi når inte Booqy just nu/),
     })
   })
 })

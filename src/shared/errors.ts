@@ -14,7 +14,7 @@ import { ApiError } from './api'
  * Råtext från servern (engelska valideringsmeddelanden, Stripe, AWS) visas
  * aldrig: koden mappas, okända koder räknas som Booqys fel.
  *
- *   setError(errorText(err, 'Kunde inte spara.'))
+ *   setError(errorText(err, 'Menyn sparades inte.'))
  *   <ErrorNote text={error} />
  */
 
@@ -36,9 +36,9 @@ export interface ErrorInfo {
 }
 
 /** Läggs efter texten när felet ligger hos Booqy. */
-export const BOOQY_FAULT = 'Felet ligger hos Booqy, inte hos er. Försök igen; kvarstår det, rapportera det till Booqy.'
+export const BOOQY_FAULT = 'Felet ligger hos Booqy, inte hos er. Försök igen, eller tryck Rapportera till Booqy.'
 /** För en tjänst vi använder (Stripe, Google, Meta) som inte svarar. */
-export const NOT_YOUR_FAULT = 'Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.'
+export const NOT_YOUR_FAULT = 'Det är inte ert fel. Försök igen om en stund, eller rapportera det till Booqy.'
 
 interface Mapped {
   text: string
@@ -57,53 +57,61 @@ const LINK = {
   login: { to: '/logga-in', label: 'Logga in' },
 } satisfies Record<string, ErrorLink>
 
+/** Ingen kontakt alls: anslutningen, inte Booqy. */
+export const NETWORK = 'Vi når inte Booqy just nu. Kolla att wifi eller mobildata är på och försök igen.'
+const SIGNED_OUT = 'Du har blivit utloggad. Logga in igen och gör om det du höll på med.'
+const NO_ACCESS = 'Ditt konto får inte göra det här. Be ägaren ge dig tillgång under Personal.'
+const CHANGED = 'Någon annan ändrade samma sak samtidigt. Nu syns det senaste. Gör din ändring igen om den behövs.'
+const TOO_MANY = 'Det blev för många försök på kort tid. Vänta en minut och försök igen.'
+const OLD_APP = 'Appen behöver uppdateras först. Ladda om sidan, eller starta om appen, och gör ändringen igen.'
+
 /** Koder som betyder samma sak var de än kommer ifrån. */
 const COMMON: Record<string, Mapped> = {
-  network: user('Ingen kontakt med servern. Kontrollera internetanslutningen (wifi eller mobildata) och försök igen.'),
-  unauthorized: user('Du har loggats ut. Logga in igen och gör om det du höll på med.', LINK.login),
-  not_signed_in: user('Du har loggats ut. Logga in igen och gör om det du höll på med.', LINK.login),
-  forbidden: user('Ditt konto har inte behörighet till det här. Be restaurangens ägare ge dig åtkomst under Personal.'),
-  staff_no_access: user('Ditt konto har inte behörighet till det här. Be restaurangens ägare ge dig åtkomst under Personal.'),
-  no_access: user('Du har inte behörighet till det här. Be ägaren om behörighet under Personal.'),
-  owner_only: user('Bara restaurangens ägare kan göra det här. Be ägaren göra det, eller logga in med ägarens konto.'),
-  tenant_inactive: user('Restaurangens konto är pausat. Ägaren öppnar det igen genom att kontakta Booqy (svara på senaste fakturan eller mejlet från oss).'),
-  feature_not_in_plan: user('Funktionen ingår inte i ert abonnemang. Ägaren kan se vad som ingår och be Booqy lägga till den.', LINK.plan),
-  plan_limit_reached: user('Ni har nått gränsen i ert abonnemang. Ägaren kan se gränserna och be Booqy utöka abonnemanget.', LINK.plan),
-  dpa_version_outdated: user('Biträdesavtalet har uppdaterats. Ägaren godkänner det nya avtalet under Avtal, sedan går det igen.', LINK.avtal),
-  dpa_required: user('Biträdesavtalet behöver godkännas först. Ägaren godkänner det under Avtal.', LINK.avtal),
-  changed_retry: user('Någon annan ändrade samtidigt. Det senaste visas nu; gör ändringen igen om den fortfarande behövs.'),
-  conflict: user('Någon annan ändrade samtidigt. Det senaste visas nu; gör ändringen igen om den fortfarande behövs.'),
-  too_many_requests: user('För många försök på kort tid. Vänta en minut och försök igen.'),
-  too_many_attempts: user('För många försök på kort tid. Vänta en minut och försök igen.'),
-  rate_limited: user('För många försök på kort tid. Vänta en minut och försök igen.'),
-  too_large: user('Det du skickade är för stort. Gör det mindre (kortare text eller mindre bild) och försök igen.'),
-  unsupported_fields: user('Den här versionen av appen är för gammal för ändringen. Tryck Ladda om i rutan om den nya versionen och gör ändringen igen.'),
-  method_not_allowed: user('Den här versionen av appen är för gammal för ändringen. Tryck Ladda om i rutan om den nya versionen och gör ändringen igen.'),
-  stripe_refused: user('Stripe avvisade begäran. Kontrollera betalinställningarna under Betalningar och försök igen.', LINK.payments),
-  no_stripe_account: user('Kortbetalningar är inte aktiverade än. Ägaren slutför Stripe-kopplingen under Betalningar.', LINK.payments),
+  network: user(NETWORK),
+  unauthorized: user(SIGNED_OUT, LINK.login),
+  not_signed_in: user(SIGNED_OUT, LINK.login),
+  forbidden: user(NO_ACCESS),
+  staff_no_access: user(NO_ACCESS),
+  no_access: user(NO_ACCESS),
+  owner_only: user('Bara restaurangens ägare kan göra det här. Be ägaren göra det åt dig.'),
+  tenant_inactive: user('Restaurangens konto är pausat. Ägaren kan öppna det igen genom att kontakta Booqy.'),
+  feature_not_in_plan: user('Det här ingår inte i ert abonnemang. Ägaren kan be Booqy lägga till det.', LINK.plan),
+  plan_limit_reached: user('Ni har nått gränsen i ert abonnemang. Ägaren kan be Booqy om ett större abonnemang.', LINK.plan),
+  dpa_version_outdated: user('Avtalet med Booqy har ändrats. Ägaren behöver godkänna det nya under Avtal först.', LINK.avtal),
+  dpa_required: user('Ägaren behöver godkänna avtalet med Booqy först. Det görs under Avtal.', LINK.avtal),
+  changed_retry: user(CHANGED),
+  conflict: user(CHANGED),
+  too_many_requests: user(TOO_MANY),
+  too_many_attempts: user(TOO_MANY),
+  rate_limited: user(TOO_MANY),
+  too_large: user('Det du skickade är för stort. Korta texten eller välj en mindre bild, och försök igen.'),
+  unsupported_fields: user(OLD_APP),
+  method_not_allowed: user(OLD_APP),
+  stripe_refused: user('Stripe sa nej. Kolla inställningarna under Betalningar och försök igen.', LINK.payments),
+  no_stripe_account: user('Kortbetalning är inte påslaget än. Ägaren kopplar Stripe under Betalningar.', LINK.payments),
   no_tenant: booqy(`Ditt konto är inte kopplat till någon restaurang. Logga ut och in igen. ${BOOQY_FAULT}`),
-  timeout: booqy(`Servern svarade inte i tid. ${BOOQY_FAULT}`),
-  route_not_found: booqy(`Appen hittade inte den här delen av servern. ${BOOQY_FAULT}`),
-  invalid_json: booqy(`Appen skickade något servern inte kunde läsa. ${BOOQY_FAULT}`),
+  timeout: booqy(`Booqy svarade inte i tid. ${BOOQY_FAULT}`),
+  route_not_found: booqy(`Den här delen av Booqy svarar inte. ${BOOQY_FAULT}`),
+  invalid_json: booqy(`Booqy kunde inte läsa det appen skickade. ${BOOQY_FAULT}`),
   stripe_unavailable: booqy(`Stripe svarar inte just nu. ${NOT_YOUR_FAULT}`),
   payment_unavailable: booqy(`Betaltjänsten svarar inte just nu. ${NOT_YOUR_FAULT}`),
-  internal_error: booqy(`Något gick fel hos oss. ${BOOQY_FAULT}`),
-  service_unavailable: booqy(`Tjänsten är tillfälligt otillgänglig. ${BOOQY_FAULT}`),
-  access_denied: booqy(`Något gick fel hos oss. ${BOOQY_FAULT}`),
-  accessdenied: booqy(`Något gick fel hos oss. ${BOOQY_FAULT}`),
-  accessdeniedexception: booqy(`Något gick fel hos oss. ${BOOQY_FAULT}`),
+  internal_error: booqy(`Något gick snett. ${BOOQY_FAULT}`),
+  service_unavailable: booqy(`Booqy svarar inte just nu. ${BOOQY_FAULT}`),
+  access_denied: booqy(`Något gick snett. ${BOOQY_FAULT}`),
+  accessdenied: booqy(`Något gick snett. ${BOOQY_FAULT}`),
+  accessdeniedexception: booqy(`Något gick snett. ${BOOQY_FAULT}`),
 }
 
 /** Koder vars betydelse vi känner igen på formen, när ingen text finns för just den. */
 function byShape(status: number, code: string): Mapped | null {
   if (code === 'network') return COMMON.network
   if (status >= 500 || code.endsWith('_unavailable') || /access_?denied/i.test(code)) return booqy(BOOQY_FAULT)
-  if (code === 'required') return user('Ett obligatoriskt fält saknas. Fyll i det markerade fältet och försök igen.')
-  if (code === 'invalid_request') return user('Något av uppgifterna godtas inte. Kontrollera det du fyllt i och försök igen.')
-  if (code === 'invalid_value') return user('Något av fälten har ett värde som inte godtas. Kontrollera uppgifterna och försök igen.')
+  if (code === 'required') return user('Ett fält som måste fyllas i är tomt. Fyll i det markerade fältet och försök igen.')
+  if (code === 'invalid_request') return user('Något av det du fyllt i ser inte rätt ut. Kolla fälten och försök igen.')
+  if (code === 'invalid_value') return user('Ett av fälten ser inte rätt ut. Kolla fälten och försök igen.')
   if (code === 'route_not_found') return booqy(BOOQY_FAULT)
-  if (status === 404 || code === 'not_found' || code.endsWith('_not_found')) return user('Det har tagits bort på annat håll. Sidan visar nu det som finns kvar.')
-  if (status === 409) return user('Läget ändrades på annat håll. Det senaste visas nu; gör ändringen igen om den fortfarande behövs.')
+  if (status === 404 || code === 'not_found' || code.endsWith('_not_found')) return user('Det finns inte längre, någon har tagit bort det. Nu syns det som finns kvar.')
+  if (status === 409) return user('Något ändrades samtidigt på en annan enhet. Nu syns det senaste. Gör din ändring igen om den behövs.')
   if (status === 402) return user('Betalningen gick inte igenom. Försök igen eller använd ett annat kort.')
   if (status === 401) return COMMON.unauthorized
   if (status === 429) return COMMON.too_many_requests
@@ -119,9 +127,12 @@ export function isBooqyFault(status: number, code: string): boolean {
 
 const RAW = /^[a-z][a-z0-9_]*$|^(Failed to fetch|Load failed|NetworkError|Network request failed|Internal Server Error|Service Unavailable|Not Found|Forbidden|Unauthorized)/i
 
+/** Engelska ord som aldrig finns i våra svenska texter (webbläsarens och biblioteks egna fel). */
+const ENGLISH = /\b(the|was|were|failed|error|cannot|invalid|must|unexpected|undefined|exception|request|response|could not|unable)\b/i
+
 /** Våra egna texter är hela meningar; "offline", "x" eller engelska fragment är det inte. */
 function isSentence(text: string): boolean {
-  return /^[A-ZÅÄÖ0-9].*[.!?)]$/s.test(text.trim()) && !RAW.test(text)
+  return /^[A-ZÅÄÖ0-9].*[.!?)]$/s.test(text.trim()) && !RAW.test(text) && !ENGLISH.test(text)
 }
 
 function isTimeout(err: unknown): boolean {
@@ -162,7 +173,7 @@ export function describeError(
   const label = err instanceof ApiError && err.fromServer && err.field
     ? labels[err.field] ?? labels[err.field.split(/[.[]/)[0]]
     : undefined
-  if (label) return info(user(`${action} Kontrollera ${label} och försök igen.`))
+  if (label) return info(user(`${action} Kolla ${label} och försök igen.`))
   if (err instanceof ApiError && !err.fromServer && code !== 'network') {
     // redan översatt av en feature (new ApiError(409, 'Bordet är upptaget.'))
     if (isSentence(err.message)) return info({ text: err.message, actor: isBooqyFault(status, code) ? 'booqy' : 'user' })

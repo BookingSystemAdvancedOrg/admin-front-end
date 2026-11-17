@@ -64,7 +64,7 @@ export class ApiError extends Error {
 /** Ingen kontakt med API:t (offline, DNS, CORS, avbruten anslutning). */
 export class NetworkError extends ApiError {
   constructor() {
-    super(0, 'Ingen kontakt med servern. Kontrollera internetanslutningen och försök igen.', { code: 'network' })
+    super(0, 'Vi når inte Booqy just nu. Kolla att wifi eller mobildata är på och försök igen.', { code: 'network' })
     this.name = 'NetworkError'
   }
 }

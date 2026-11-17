@@ -345,18 +345,18 @@ export function printBannerText(status: PrintStatus | null): string | null {
 }
 
 const PRINT_ERRORS: Record<string, string> = {
-  no_printer: 'Ingen skrivare är vald. Lägg till en under Inställningar, Beställning, Skrivare och stationer.',
-  order_not_paid: 'Beställningen är inte betald och kan inte skrivas ut.',
-  order_cancelled: 'Beställningen är avbruten och skrivs inte ut igen.',
-  too_many_printers: `Platsen har redan ${MAX_PRINTERS} skrivare. Ta bort en först.`,
-  changed_retry: 'Inställningen har just ändrats av någon annan. Sidan är uppdaterad, försök igen.',
+  no_printer: 'Det finns ingen skrivare. Lägg till en under Inställningar, Beställning, Skrivare och stationer.',
+  order_not_paid: 'Beställningen är inte betald än, så den skrivs inte ut.',
+  order_cancelled: 'Beställningen är avbruten, så den skrivs inte ut igen.',
+  too_many_printers: `Platsen har redan ${MAX_PRINTERS} skrivare, som är max. Ta bort en först.`,
+  changed_retry: 'Någon annan ändrade samma inställning nyss. Nu syns det senaste. Försök igen.',
 }
 
 export function printErrorText(err: unknown): string {
   if (err instanceof ApiError) {
     if (PRINT_ERRORS[err.message]) return PRINT_ERRORS[err.message]
-    if (err.status === 403) return 'Bara restaurangens ägare kan ändra skrivarna.'
-    if (err.status === 404) return 'Hittades inte längre; den har tagits bort på en annan plats.'
+    if (err.status === 403) return 'Bara restaurangens ägare kan ändra skrivarna. Be ägaren göra det.'
+    if (err.status === 404) return 'Skrivaren finns inte längre, någon har tagit bort den. Nu syns det som finns kvar.'
   }
-  return commonError(err, 'Kunde inte nå skrivartjänsten.')
+  return commonError(err, 'Utskriften gick inte.')
 }

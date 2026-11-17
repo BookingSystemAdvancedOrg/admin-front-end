@@ -140,9 +140,9 @@ export const STATUS_LABEL: Record<ReservationStatus, string> = {
   cancelled_no_charge: 'Avbokad av gäst',
   cancelled_by_restaurant: 'Avbokad av er',
   cancelled_charged: 'Sen avbokning (debiterad)',
-  cancelled_charge_failed: 'Sen avbokning (debitering misslyckades)',
+  cancelled_charge_failed: 'Sen avbokning (avgiften drogs inte)',
   no_show_charged: 'Uteblev (debiterad)',
-  no_show_charge_failed: 'Uteblev (debitering misslyckades)',
+  no_show_charge_failed: 'Uteblev (avgiften drogs inte)',
   expired: 'Kort ej lagt in',
 }
 
@@ -202,7 +202,7 @@ export function feeSummary(r: Reservation): string | null {
       ? `${formatKr(p.amount)} (återbetalt ${formatKr(refunded)})`
       : formatKr(p.amount)
   }
-  if (p.status === 'failed') return `${formatKr(p.amount)} misslyckades`
+  if (p.status === 'failed') return `${formatKr(p.amount)} drogs inte`
   return `${formatKr(p.amount)} pågår`
 }
 
@@ -256,31 +256,31 @@ export function validEmail(raw: string): boolean {
 // --- errors -------------------------------------------------------------------
 
 const ERROR_TEXT: Record<string, string> = {
-  too_early: 'Gästen kan markeras som anländ tidigast 3 timmar före bokningen.',
-  already_ended: 'Bokningen har redan passerat.',
-  not_arrivable: 'Den här bokningen kan inte markeras som anländ.',
-  cannot_undo: 'Det går inte att ångra längre.',
-  not_reserved: 'Bara en aktiv bokning kan markeras som utebliven.',
+  too_early: 'Det är för tidigt. Gästen kan markeras som anländ tidigast 3 timmar före bokningen.',
+  already_ended: 'Bokningen är redan över. Den kan inte ändras längre.',
+  not_arrivable: 'Den här bokningen kan inte markeras som anländ. Kolla bokningens läge i listan.',
+  cannot_undo: 'Det har gått för lång tid, så det går inte att ångra längre.',
+  not_reserved: 'Bara en bokning som fortfarande gäller kan markeras som utebliven.',
   grace_period_not_over:
-    'För tidigt: gästen kan markeras som utebliven först när platsens väntetid för sena gäster har gått.',
-  not_cancellable: 'Den här bokningen kan inte avbokas.',
-  not_movable: 'Den här bokningen kan inte flyttas.',
-  not_editable: 'Den här bokningen kan inte ändras.',
-  table_taken: 'Bordet har hunnit bokas. Välj ett annat bord eller en annan tid.',
-  no_fee: 'Det finns ingen avgift att debitera på den här bokningen.',
-  not_chargeable: 'Den här bokningen kan inte debiteras.',
-  not_refundable: 'Det finns inget att återbetala.',
-  owner_only: 'Bara restaurangens ägare kan göra återbetalningar.',
-  payment_unavailable: 'Stripe svarar inte just nu (inget dras två gånger). Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
-  card_declined: 'Kortet nekades.',
+    'Det är för tidigt. Vänta tills tiden för sena gäster har gått, sedan kan gästen markeras som utebliven.',
+  not_cancellable: 'Den här bokningen kan inte avbokas längre. Nu syns det senaste.',
+  not_movable: 'Den här bokningen kan inte flyttas längre. Nu syns det senaste.',
+  not_editable: 'Den här bokningen kan inte ändras längre. Nu syns det senaste.',
+  table_taken: 'Någon hann boka bordet. Välj ett annat bord eller en annan tid.',
+  no_fee: 'Den här bokningen har ingen avgift att ta betalt för.',
+  not_chargeable: 'Det går inte att ta betalt för den här bokningen. Lös avgiften direkt med gästen.',
+  not_refundable: 'Det finns inget att betala tillbaka på den här bokningen.',
+  owner_only: 'Bara restaurangens ägare kan betala tillbaka. Be ägaren göra det.',
+  payment_unavailable: 'Stripe svarar inte just nu, och inget dras två gånger. Det är inte ert fel. Försök igen om en stund, eller rapportera det till Booqy.',
+  card_declined: 'Gästens kort sa nej. Be gästen betala på ett annat sätt.',
   authentication_required:
-    'Gästens bank kräver att gästen godkänner betalningen. Kontakta gästen och lös avgiften direkt.',
-  insufficient_funds: 'Det finns inte tillräckligt med pengar på kortet.',
-  expired_card: 'Kortet har gått ut.',
-  not_extendable: 'Bokningens regel tillåter inte förlängning.',
-  extension_too_long: 'Längre än regeln tillåter.',
-  window_not_extendable: 'Förlängningen går in i en tid som inte får förlängas (t.ex. buffé).',
-  after_closing: 'Bokningen kan inte sluta efter stängning.',
+    'Gästens bank vill att gästen godkänner betalningen. Kontakta gästen och lös avgiften direkt.',
+  insufficient_funds: 'Det finns inte tillräckligt med pengar på gästens kort. Lös avgiften direkt med gästen.',
+  expired_card: 'Gästens kort har gått ut. Lös avgiften direkt med gästen.',
+  not_extendable: 'Den här sortens bokning får inte förlängas.',
+  extension_too_long: 'Det är längre än bokningen får förlängas.',
+  window_not_extendable: 'Förlängningen går in i en tid som inte får förlängas, till exempel en buffé.',
+  after_closing: 'Bokningen kan inte sluta efter stängningstid. Välj en tidigare sluttid.',
 }
 
 /** Stripes felkod för en avgift som inte gick igenom, som kort etikett.
@@ -314,43 +314,43 @@ const VALIDATION_TEXT: [RegExp, string][] = [
   [/^startTime is not a bookable time/,
     'Den tiden går inte att boka längre. Välj en annan tid i listan.'],
   [/^tableIds contains a table that isn't bookable/,
-    'Ett av borden går inte att boka den tiden längre. Välj bord igen.'],
-  [/^the selected tables seat (\d+)/, 'Valda bord har för få platser för sällskapet. Välj fler bord.'],
-  [/^a walk-in is booked for today/, 'En drop-in bokas alltid idag.'],
-  [/^a walk-in stays on its day/, 'En drop-in kan inte flyttas till en annan dag.'],
-  [/^date must not be in the past/, 'Datumet har redan passerat.'],
-  [/^date must not be more than 21 days ahead/, 'Det går att boka högst 21 dagar fram.'],
-  [/^phone must be a valid/, 'Skriv ett giltigt telefonnummer, t.ex. 070-123 45 67.'],
-  [/^(email|phone) is required/, 'En onlinebokning måste ha både e-post och telefon.'],
-  [/^email must be a valid/, 'Ange en giltig e-postadress.'],
-  [/^name is required/, 'Ange gästens namn.'],
-  [/^name must be at most/, `Namnet får vara högst ${NAME_MAX} tecken.`],
-  [/^email must be at most/, `E-postadressen får vara högst ${EMAIL_MAX} tecken.`],
-  [/^notes must be at most/, `Anteckningen får vara högst ${NOTES_MAX} tecken.`],
-  [/^partySize must be/, 'Antal personer måste vara ett heltal mellan 1 och 50.'],
-  [/^tableIds must be a non-empty list/, 'Välj minst ett bord.'],
-  [/^tableIds must /, 'Välj bord i listan igen.'],
-  [/^at most \d+ tables per booking/, 'Välj högst 6 bord per bokning.'],
-  [/^endTime falls on a clock change/, 'Sluttiden hamnar i omställningen till sommar-/vintertid.'],
-  [/^endTime must be/, 'Välj en sluttid i kvartssteg, minst 15 minuter efter start.'],
+    'Ett av borden är inte ledigt den tiden längre. Välj bord igen.'],
+  [/^the selected tables seat (\d+)/, 'Borden du valt har för få platser för sällskapet. Välj fler bord.'],
+  [/^a walk-in is booked for today/, 'En drop-in gäller alltid idag. Välj dagens datum.'],
+  [/^a walk-in stays on its day/, 'En drop-in kan inte flyttas till en annan dag. Gör en ny bokning i stället.'],
+  [/^date must not be in the past/, 'Datumet har redan varit. Välj idag eller en senare dag.'],
+  [/^date must not be more than 21 days ahead/, 'Det går bara att boka 21 dagar fram. Välj ett tidigare datum.'],
+  [/^phone must be a valid/, 'Telefonnumret ser fel ut. Skriv det så här: 070 123 45 67.'],
+  [/^(email|phone) is required/, 'En onlinebokning behöver både e-post och telefon. Fyll i båda.'],
+  [/^email must be a valid/, 'E-postadressen ser fel ut. Skriv den så här: namn@exempel.se.'],
+  [/^name is required/, 'Gästens namn saknas. Skriv till exempel Anna Svensson.'],
+  [/^name must be at most/, `Namnet är för långt. Använd högst ${NAME_MAX} tecken.`],
+  [/^email must be at most/, `E-postadressen är för lång. Använd högst ${EMAIL_MAX} tecken.`],
+  [/^notes must be at most/, `Anteckningen är för lång. Använd högst ${NOTES_MAX} tecken.`],
+  [/^partySize must be/, 'Antal personer ska vara ett helt tal från 1 till 50, till exempel 4.'],
+  [/^tableIds must be a non-empty list/, 'Inget bord är valt. Välj minst ett bord.'],
+  [/^tableIds must /, 'Borden behöver väljas om. Välj bord i listan igen.'],
+  [/^at most \d+ tables per booking/, 'Det är för många bord. Välj högst 6 bord per bokning.'],
+  [/^endTime falls on a clock change/, 'Sluttiden hamnar när klockan ställs om. Välj en annan sluttid.'],
+  [/^endTime must be/, 'Sluttiden går inte. Välj en tid i kvartar, minst 15 minuter efter start, till exempel 20:15.'],
 ]
 
 /** 404 från en bokning (ändra, status, betalning): bokningen finns inte längre. */
-export const RESERVATION_NOT_FOUND = 'Bokningen hittades inte. Den kan ha tagits bort på en annan plats; listan visar det som finns kvar.'
+export const RESERVATION_NOT_FOUND = 'Bokningen finns inte längre, någon har tagit bort den. Nu syns det som finns kvar.'
 
 /** 404 från platsens bokningsrutter (lediga tider, ny bokning, listan): det
  * är platsen, inte en bokning, som saknas eller inte tar emot bokningar. */
 export const LOCATION_NOT_BOOKABLE =
-  'Restaurangen tar inte emot bokningar just nu. Kontrollera att bokning ingår i abonnemanget; sidan hämtar listan igen av sig själv.'
+  'Restaurangen tar inte emot bokningar just nu. Ägaren kan kolla att bokning ingår i abonnemanget.'
 
 export function errorMessage(
   err: unknown,
-  action = 'Det gick inte att spara bokningen.',
+  action = 'Bokningen sparades inte.',
   notFound: string = RESERVATION_NOT_FOUND,
 ): string {
   if (err instanceof ApiError) {
-    const known = ERROR_TEXT[err.message]
-    if (known) return known
+    // Via errorText så felrutan vet vem som gör något (Stripe nere: Försök igen).
+    if (ERROR_TEXT[err.message]) return errorText(err, action, { [err.code]: ERROR_TEXT[err.message] })
     if (err.status === 402) return 'Betalningen gick inte igenom. Be gästen använda ett annat kort, eller lös avgiften direkt med gästen.'
     if (err.status === 400) {
       const match = VALIDATION_TEXT.find(([pattern]) => pattern.test(err.message))

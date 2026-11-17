@@ -63,8 +63,8 @@ export default function AvtalPage() {
       }
       setError(
         err instanceof ApiError && err.status === 403
-            ? 'Bara restaurangens ägare kan godkänna avtalet.'
-            : errorText(err, 'Kunde inte spara.'),
+            ? 'Bara restaurangens ägare kan godkänna avtalet. Be ägaren logga in och godkänna det.'
+            : errorText(err, 'Avtalet godkändes inte.'),
       )
     } finally {
       setBusy(false)

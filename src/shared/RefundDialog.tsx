@@ -36,16 +36,15 @@ function krText(ore: number): string {
 
 /** Serverns koder för återbetalningar (bokning, beställning, catering). */
 export const REFUND_ERRORS: Record<string, string> = {
-  refund_in_progress: 'En återbetalning pågår redan. Vänta två minuter och försök igen.',
-  nothing_to_refund: 'Allt är redan återbetalt.',
-  not_refundable: 'Det här går inte att återbetala längre. Det senaste visas nu.',
-  not_paid: 'Det finns ingen kortbetalning att återbetala.',
-  changed_retry: 'En återbetalning registrerades nyss. Kontrollera beloppet innan du försöker igen.',
-  refund_failed: 'Stripe avvisade återbetalningen och inget har betalats tillbaka. Kontrollera saldot i Stripe och försök igen.',
-  payment_provider_rejected:
-    'Stripe avvisade återbetalningen och inget har betalats tillbaka. Kontrollera saldot i Stripe och försök igen.',
+  refund_in_progress: 'En återbetalning pågår redan. Vänta två minuter och försök sedan igen.',
+  nothing_to_refund: 'Allt är redan återbetalt. Det finns inget kvar att betala tillbaka.',
+  not_refundable: 'Det här går inte att betala tillbaka längre. Nu syns det senaste.',
+  not_paid: 'Gästen har inte betalat med kort här, så det finns inget att betala tillbaka.',
+  changed_retry: 'Någon betalade nyss tillbaka en del. Kolla beloppet innan du försöker igen.',
+  refund_failed: 'Stripe sa nej, så inget har betalats tillbaka. Kolla att det finns pengar i Stripe och försök igen.',
+  payment_provider_rejected: 'Stripe sa nej, så inget har betalats tillbaka. Kolla att det finns pengar i Stripe och försök igen.',
   payment_unavailable:
-    'Stripe svarar inte just nu. Gick återbetalningen igenom syns den här inom några minuter; annars försök igen om två minuter. Det är inte ert fel.',
+    'Stripe svarar inte just nu. Det är inte ert fel. Vänta två minuter: syns ingen återbetalning här då, försök igen.',
 }
 
 /**
@@ -132,7 +131,7 @@ export function RefundDialog({
     e.preventDefault()
     if (busyRef.current) return // dubbelklick
     if (!valid || amount === null) {
-      setError(`Ange ett belopp mellan 0,01 och ${refundKr(remaining)}.`)
+      setError(`Beloppet ser fel ut. Skriv ett belopp mellan 0,01 kr och ${refundKr(remaining)}.`)
       amountRef.current?.focus()
       return
     }
@@ -151,7 +150,7 @@ export function RefundDialog({
       setError(
         err instanceof ApiError && err.status === 402
           ? REFUND_ERRORS.refund_failed
-          : errorText(err, 'Kunde inte återbetala.', REFUND_ERRORS),
+          : errorText(err, 'Inget betalades tillbaka.', REFUND_ERRORS),
       )
     } finally {
       busyRef.current = false

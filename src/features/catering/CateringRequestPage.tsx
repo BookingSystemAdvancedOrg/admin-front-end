@@ -116,7 +116,7 @@ export default function CateringRequestPage() {
       setOfferBase(r)
       setLoadError(null)
     } catch (err) {
-      setLoadError(errorText(err))
+      setLoadError(errorText(err, 'Förfrågan kunde inte visas.'))
     }
   }, [locationId, requestId])
 
@@ -131,7 +131,7 @@ export default function CateringRequestPage() {
         setLoadError(null)
       },
       (err: unknown) => {
-        if (active) setLoadError(errorText(err))
+        if (active) setLoadError(errorText(err, 'Förfrågan kunde inte visas.'))
       },
     )
     return () => {
@@ -187,7 +187,7 @@ export default function CateringRequestPage() {
       // Same tab: a window opened after an await is blocked by iOS Safari. The link lives 5 minutes.
       window.location.assign((await documentLink(locationId, requestId, docId)).url)
     } catch (err) {
-      setError(errorText(err))
+      setError(errorText(err, 'Dokumentet kunde inte öppnas.'))
     }
   }
 
@@ -493,7 +493,7 @@ export default function CateringRequestPage() {
             </ul>
             {overPriced && (
               <p className="form-error" role="alert">
-                Pris per rad får vara högst {MAX_ITEM_PRICE_KR.toLocaleString('sv-SE')} kr.
+                Priset på en rad är för högt. Skriv högst {MAX_ITEM_PRICE_KR.toLocaleString('sv-SE')} kr per rad.
               </p>
             )}
             <ErrorNote text={error} />
@@ -679,7 +679,7 @@ export default function CateringRequestPage() {
               />
             )}
             {request.refundNote === 'refund_manually' && (
-              <p className="form-error">Fakturan var betald via Bankgiro - betala tillbaka till kunden manuellt.</p>
+              <p className="form-error">Fakturan betalades via Bankgiro. Betala tillbaka till kunden för hand.</p>
             )}
             {!editable && error && <ErrorNote text={error} />}
             {!editable && notice && <p className="save-notice" role="status">{notice}</p>}

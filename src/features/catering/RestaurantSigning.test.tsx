@@ -35,7 +35,7 @@ describe('RestaurantSigning back from the signing page', () => {
   it('explains a signing that timed out at the provider', async () => {
     restaurantSignStatus.mockResolvedValue({ state: 'failed', hint: 'timedout' })
     render(<RestaurantSigning request={request} onSigned={vi.fn()} returned />)
-    expect(await screen.findByRole('alert')).toHaveTextContent('Tiden för att signera har gått ut.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Tiden för att signera tog slut.')
     expect(screen.getByRole('button', { name: 'Signera med BankID' })).toBeInTheDocument()
   })
 })

@@ -604,41 +604,42 @@ export function kronor(ore: number | undefined | null): string {
 }
 
 const ERRORS: Record<string, string> = {
-  dish_in_package: 'Rätten ingår i ett paket. Ta bort den ur paketet först.',
-  changed_retry: 'Förfrågan har just ändrats (av kunden eller någon annan). Sidan är uppdaterad - försök igen.',
-  capacity_full: 'Dagen är fullbokad för catering (max portioner per dag). Minska antalet eller tacka nej.',
-  not_editable: 'Offerten kan inte ändras i den här statusen.',
-  not_declinable: 'Förfrågan kan inte nekas i den här statusen.',
-  not_cancellable: 'Beställningen kan inte avbokas i den här statusen.',
-  not_confirmed: 'Bara bekräftade beställningar kan markeras som levererade.',
-  payment_provider_rejected: 'Stripe nekade åtgärden. Kontrollera i Stripe och försök igen.',
-  payment_unavailable: 'Stripe svarar inte just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
-  signing_unavailable: 'Signeringstjänsten svarar inte just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
-  document_unavailable: 'Offerten kunde inte skapas som PDF just nu. Felet ligger hos Booqy, inte hos er. Försök igen; kvarstår det, rapportera det till Booqy.',
-  not_signable: 'Den här offertversionen kan inte signeras. Skicka offerten igen.',
-  already_signed: 'Offerten är redan signerad av restaurangen.',
-  signing_alreadyInProgress: 'En BankID-signering pågår redan. Avbryt den i appen och försök igen.',
-  signing_document_timedout: 'Tiden för att signera har gått ut. Skicka offerten igen.',
-  signing_document_canceled: 'Den här offertversionen går inte längre att signera. Skicka offerten igen.',
-  signing_document_rejected: 'Signeringen avbröts hos signeringstjänsten. Skicka offerten igen.',
-  signing_authentication_to_sign_method_disabled: 'BankID-signering är inte påslagen hos signeringstjänsten ännu. Kontakta Booqy.',
-  signing_document_closed: 'Offerten är redan färdigsignerad. Sidan visar det nu.',
-  no_signing_started: 'Ingen signering pågår. Tryck på Signera med BankID.',
-  offer_expired: 'Offerten har gått ut. Ändra giltighetstiden och skicka den igen.',
-  'validUntil must not be after the delivery date': 'Giltig till och med kan inte vara efter leveransdagen. Välj leveransdagen eller ett tidigare datum.',
-  'validUntil must not be in the past': 'Giltig till och med har redan passerat. Välj dagens datum eller senare.',
-  'validUntil must be YYYY-MM-DD': 'Skriv datumet i Giltig till och med som DD/MM/ÅÅÅÅ.',
+  dish_in_package: 'Rätten finns i ett paket. Ta bort den ur paketet först.',
+  changed_retry: 'Kunden eller någon annan ändrade förfrågan nyss. Nu syns det senaste. Gör din ändring igen.',
+  capacity_full: 'Dagen är fullbokad för catering. Minska antalet portioner eller tacka nej.',
+  not_editable: 'Offerten kan inte ändras just nu. Nu syns det senaste.',
+  not_declinable: 'Förfrågan kan inte nekas längre. Nu syns det senaste.',
+  not_cancellable: 'Beställningen kan inte avbokas längre. Nu syns det senaste.',
+  not_confirmed: 'Beställningen är inte bekräftad än. Bekräfta den först, sedan kan den markeras som levererad.',
+  payment_provider_rejected: 'Stripe sa nej. Kolla i Stripe att allt ser rätt ut och försök igen.',
+  payment_unavailable: 'Stripe svarar inte just nu. Det är inte ert fel. Försök igen om en stund, eller rapportera det till Booqy.',
+  signing_unavailable: 'Signeringen med BankID svarar inte just nu. Det är inte ert fel. Försök igen om en stund, eller rapportera det till Booqy.',
+  document_unavailable: 'Offerten kunde inte göras om till en PDF just nu. Felet ligger hos Booqy, inte hos er. Försök igen, eller tryck Rapportera till Booqy.',
+  not_signable: 'Den här versionen av offerten kan inte signeras. Skicka offerten igen.',
+  already_signed: 'Restaurangen har redan signerat offerten. Du behöver inte göra något mer.',
+  signing_alreadyInProgress: 'En BankID-signering pågår redan. Avbryt den i BankID-appen och försök igen.',
+  signing_document_timedout: 'Tiden för att signera tog slut. Skicka offerten igen.',
+  signing_document_canceled: 'Den här versionen av offerten kan inte signeras längre. Skicka offerten igen.',
+  signing_document_rejected: 'Signeringen avbröts. Skicka offerten igen för att börja om.',
+  signing_authentication_to_sign_method_disabled: 'Signering med BankID är inte påslagen än. Kontakta Booqy så slår vi på den.',
+  signing_document_closed: 'Offerten är redan signerad av alla. Nu syns det senaste.',
+  no_signing_started: 'Ingen signering är igång. Tryck på Signera med BankID.',
+  offer_expired: 'Offerten har gått ut. Välj ett senare datum i Giltig till och med och skicka den igen.',
+  'validUntil must not be after the delivery date': 'Giltig till och med är efter leveransdagen. Välj leveransdagen eller ett tidigare datum.',
+  'validUntil must not be in the past': 'Giltig till och med har redan varit. Välj idag eller ett senare datum.',
+  'validUntil must be YYYY-MM-DD': 'Datumet i Giltig till och med ser fel ut. Skriv det så här: 24/12/2026.',
 }
 
-export function errorText(err: unknown, action = 'Kunde inte spara.'): string {
+export function errorText(err: unknown, action = 'Ändringen sparades inte.'): string {
   if (err instanceof ApiError) {
-    if (ERRORS[err.message]) return ERRORS[err.message]
-    if (/^price may be at most/.test(err.message)) return 'Pris per rad får vara högst 10 000 kr.'
-    if (/^offer total may be at most/.test(err.message)) return 'Offerten är för stor (högst 500 000 kr totalt).'
-    if (err.status === 403 && err.code === 'forbidden') return 'Bara restaurangens ägare kan göra det.'
-    if (err.status === 404) return 'Förfrågan finns inte längre. Gå tillbaka till listan, den visar det som finns kvar.'
+    // Via commonError så felrutan vet vem som gör något (Stripe nere: Försök igen).
+    if (ERRORS[err.message]) return commonError(err, action, { [err.code]: ERRORS[err.message] })
+    if (/^price may be at most/.test(err.message)) return 'Priset på en rad är för högt. Skriv högst 10 000 kr per rad.'
+    if (/^offer total may be at most/.test(err.message)) return 'Offerten är för stor. Den får vara högst 500 000 kr totalt.'
+    if (err.status === 403 && err.code === 'forbidden') return 'Bara restaurangens ägare kan göra det här. Be ägaren göra det.'
+    if (err.status === 404) return 'Förfrågan finns inte längre. Gå tillbaka till listan för att se det som finns kvar.'
     if (err.status === 409 && err.message.startsWith('signing_')) {
-      return 'Signeringstjänsten tog inte emot offerten. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.'
+      return 'Signeringen med BankID tog inte emot offerten. Det är inte ert fel. Försök igen om en stund, eller rapportera det till Booqy.'
     }
   }
   return commonError(err, action, {}, CATERING_FIELDS)

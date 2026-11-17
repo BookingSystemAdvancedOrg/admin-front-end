@@ -82,7 +82,7 @@ describe('PrinterCard', () => {
     await user.click(await screen.findByRole('button', { name: 'Ta bort' }))
     await user.click(screen.getByRole('button', { name: 'Bekräfta: ta bort Köket' }))
     expect(api.removePrinter).toHaveBeenCalledWith('loc-1', PRINTER.deviceId)
-    expect(await screen.findByText(/har just ändrats av någon annan/)).toBeInTheDocument()
+    expect(await screen.findByText(/Någon annan ändrade samma inställning/)).toBeInTheDocument()
   })
 
   it('lets staff test print but not change anything', async () => {

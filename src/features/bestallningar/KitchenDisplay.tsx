@@ -172,7 +172,7 @@ export function KitchenDisplay({ locationId, station, onStation }: {
       )}
       <ErrorNote text={error} />
       {notice && <p className="save-notice" role="status">{notice}</p>}
-      {loadError && <ErrorNote text={booqyFaultText('Kunde inte hämta bongarna. Skärmen försöker igen av sig själv.')} />}
+      {loadError && <ErrorNote text={booqyFaultText('Bongarna kunde inte visas.')} />}
       {tickets === null || stations === null ? (
         <div className="kds-grid" aria-hidden="true">
           {[0, 1, 2].map((i) => (

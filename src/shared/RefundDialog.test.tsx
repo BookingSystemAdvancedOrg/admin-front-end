@@ -98,7 +98,7 @@ describe('kronor', () => {
     await user.click(screen.getByRole('button', { name: 'Återbetala 600 kr' }))
     const alert = await screen.findByRole('alert')
     expect(alert.textContent).not.toMatch(/annat kort/)
-    expect(alert.textContent).toMatch(/Kontrollera saldot i Stripe/)
+    expect(alert.textContent).toMatch(/Kolla att det finns pengar i Stripe/)
   })
 
   it('a 409 changed_retry asks to check the amount, and a new remaining resets the amount', async () => {
@@ -107,7 +107,7 @@ describe('kronor', () => {
     const { rerender } = render(<RefundDialog {...props} remaining={60000} />)
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: 'Återbetala 600 kr' }))
-    expect((await screen.findByRole('alert')).textContent).toMatch(/registrerades nyss/)
+    expect((await screen.findByRole('alert')).textContent).toMatch(/betalade nyss tillbaka/)
     rerender(<RefundDialog {...props} remaining={25050} />)
     expect(screen.getByLabelText('Belopp (kr)')).toHaveValue('250,50')
     expect(screen.getByText('Kvar att återbetala', { exact: false })).toHaveTextContent('250,50 kr')

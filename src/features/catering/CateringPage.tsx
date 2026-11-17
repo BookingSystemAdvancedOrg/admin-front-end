@@ -105,7 +105,7 @@ export default function CateringPage() {
                 <option value="alla">Alla</option>
               </Select>
             </div>
-            {error && <ErrorNote text={booqyFaultText('Kunde inte hämta förfrågningarna.')} />}
+            {error && <ErrorNote text={booqyFaultText('Förfrågningarna kunde inte visas.')} />}
             {rows === null && !error && <SkelRows n={5} cols={4} />}
             {rows !== null && visible.length === 0 && (
               <p className="cell-muted">

@@ -87,21 +87,21 @@ export function DiscountTierModal({
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const nameError = name.trim() === '' ? 'Ange ett namn.' : null
+  const nameError = name.trim() === '' ? 'Namnet saknas. Skriv till exempel Stor grupp.' : null
 
   const from = wholeNumber(fromPortions)
-  const fromError = from === null || from < 1 ? 'Ange ett heltal, minst 1.' : null
+  const fromError = from === null || from < 1 ? 'Skriv ett helt tal, 1 eller mer, till exempel 20.' : null
 
   const to = toPortions.trim() === '' ? null : wholeNumber(toPortions)
   const toError =
     toPortions.trim() !== '' && (to === null || (from !== null && to < from))
-      ? 'Minst lika med Från.'
+      ? 'Till är mindre än Från. Skriv samma eller ett högre tal.'
       : null
 
   const discount = wholeNumber(discountPercent)
   const discountError =
     discount === null || discount > MAX_DISCOUNT_PERCENT
-      ? `Ange ett heltal 0-${MAX_DISCOUNT_PERCENT}.`
+      ? `Skriv ett helt tal från 0 till ${MAX_DISCOUNT_PERCENT}, till exempel 10.`
       : null
 
   const overlap =
@@ -221,9 +221,8 @@ export function DiscountTierModal({
 
         {overlap ? (
           <p className="form-error" role="alert">
-            Överlappar {overlap.name} ({overlap.fromPortions}-
-            {overlap.toPortions ?? 'och uppåt'} gäster). Intervallen får inte
-            överlappa andra nivåer.
+            Antalet gäster går in i {overlap.name} ({overlap.fromPortions}-
+            {overlap.toPortions ?? 'och uppåt'} gäster). Ändra Från eller Till så de inte krockar.
           </p>
         ) : (
           <p className="field-note">Intervallen får inte överlappa andra nivåer.</p>

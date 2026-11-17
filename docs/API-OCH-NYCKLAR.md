@@ -209,7 +209,7 @@ en omladdning på `/logga-in` ett fel.
 | "Cognito är inte konfigurerat" | `.env` saknas eller är tom, eller dev-servern startades inte om efter ändring. |
 | `User pool client ... does not exist` | Fel `VITE_COGNITO_CLIENT_ID`, eller klienten hör till en annan pool/region. |
 | `Unable to verify secret hash for client` | App-klienten har en client secret - skapa en klient utan secret (avsnitt 2). |
-| "Fel e-post eller lösenord" direkt vid första inloggningen | Kontrollera att användaren skapades med e-posten som användarnamn och att det tillfälliga lösenordet kopierades exakt (inga mellanslag). |
+| "E-postadressen eller lösenordet stämmer inte" direkt vid första inloggningen | Kontrollera att användaren skapades med e-posten som användarnamn och att det tillfälliga lösenordet kopierades exakt (inga mellanslag). |
 | Cognito nekar det nya lösenordet trots grön checklista | Poolens password policy kräver mer än checklistan (t.ex. specialtecken) - synka policyn och `RULES` (avsnitt 2). |
 | Sidan blir 404/403 vid omladdning på `/logga-in` i dev/produktion | SPA-fallback saknas i CloudFront (avsnitt 5). |
 | Inloggningen fungerar lokalt men inte i deployad miljö | `VITE_COGNITO_*`-raderna i `.github/config/project.env` är inte ifyllda/kopplade för den miljön (avsnitt 5). |

@@ -119,6 +119,6 @@ describe('ERRORS', () => {
     const err = new ApiError(502, 'notification_unavailable', { code: 'notification_unavailable', fromServer: true })
     expect(errorText(err, 'Det gick inte.', api.ERRORS)).toBe('Mejlet kunde inte skickas just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.')
     expect(errorText(new ApiError(502, 'stripe_unavailable', { code: 'stripe_unavailable', fromServer: true }), 'Det gick inte.', api.ERRORS))
-      .toMatch(/rapportera det till Booqy om det kvarstår\.$/)
+      .toMatch(/rapportera det till Booqy\.$/)
   })
 })

@@ -295,6 +295,6 @@ describe('error mapping', () => {
         bookingDurationHours: 0,
         gracePeriodHours: 0,
       }),
-    ).rejects.toThrow('Platsen kunde inte sparas. Kontrollera bokningstiden och försök igen.')
+    ).rejects.toThrow('Platsen kunde inte sparas. Kolla bokningstiden och försök igen.')
   })
 })

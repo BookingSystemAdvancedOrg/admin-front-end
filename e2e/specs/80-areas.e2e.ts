@@ -187,7 +187,7 @@ test.describe('Admin: session', () => {
     const ctx = await browser.newContext({ baseURL: test.info().project.use.baseURL, storageState: { cookies: [], origins: [] } })
     const page = await ctx.newPage()
     await adminLogin(page)
-    if (!(await page.getByRole('button', { name: 'Logga ut' }).isVisible())) await page.getByRole('button', { name: /meny|Öppna menyn|Menu/i }).first().click()
+    if (!(await page.getByRole('button', { name: 'Logga ut' }).isVisible())) await page.getByRole('button', { name: /meny|Öppna menyn|Menu|^Mer$/i }).first().click()
     await page.getByRole('button', { name: 'Logga ut' }).click()
     const confirm = page.getByRole('alertdialog').getByRole('button', { name: 'Ja, logga ut' })
     if (await confirm.isVisible({ timeout: 3000 }).catch(() => false)) await confirm.click()

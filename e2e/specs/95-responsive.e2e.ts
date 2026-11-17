@@ -27,7 +27,7 @@ for (const width of [375, 393, 768]) {
       test.skip(width === 768 && info.project.name !== 'chromium', 'tablet once')
       await page.goto('/')
       await ready(page, 'Översikt')
-      const burger = page.getByRole('button', { name: /meny|Öppna menyn|Menu/i }).first()
+      const burger = page.getByRole('button', { name: /meny|Öppna menyn|Menu|^Mer$/i }).first()
       if (await burger.isVisible().catch(() => false)) await burger.click()
       await page.getByRole('link', { name: 'Bokningar' }).first().click()
       await ready(page, 'Bokningar')

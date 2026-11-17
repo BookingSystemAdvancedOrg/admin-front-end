@@ -45,7 +45,6 @@ import {
   validatePhoneNumber,
   validateTimezone,
 } from './locationApi'
-import { WEEKDAYS } from './locationApi'
 import type { BusinessHours, Location, LocationCreateRequest } from './locationApi'
 import {
   clearLocationSummaryCache,
@@ -61,10 +60,9 @@ import { useTheme } from '../../shared/theme'
 import { useSound } from '../../shared/press'
 import { NAV_GROUPS, navVisible } from '../../shared/nav'
 import type { NavItem } from '../../shared/nav'
-import type { Tenant } from '../../shared/tenant'
-import { planLabel } from './PlanCard'
-import { BranchHead, BranchPager, SettingsField, SettingsTreeNav, SettingsTreePage } from './SettingsTreeView'
-import type { Apple, VisibleTree } from './SettingsTreeView'
+import { BranchHead, BranchPager, SettingsField, SettingsTreeNav, SettingsTreePage, useViewFocus } from './SettingsTreeView'
+import type { VisibleTree } from './SettingsTreeView'
+import { buildApples } from './settingsApples'
 import { LEAVES, TREES, branchVisible, fold, isBranch, isTree, treeOf } from './settingsTree'
 import type { BranchId, Leaf, TreeId } from './settingsTree'
 
@@ -393,37 +391,18 @@ export default function InstallningarPage() {
   const { theme } = useTheme()
   const [sound] = useSound()
   const stripeReady = Boolean(tenant?.stripe.chargesEnabled)
-  const apples: Partial<Record<TreeId, Apple[]>> = {
-    restaurangen: [
-      ...(!locationId && !resolvingLocation ? [{ text: 'Ingen plats än', branch: 'profil' as const, warn: true }] : []),
-      ...(savedLocation ? [todayApple(businessHours)] : []),
-    ],
-    gaster: [
-      ...(tenant ? [{ text: tenant.notifications.sms ? 'SMS på' : 'SMS av', branch: 'notiser' as const }] : []),
-      ...(locExtra?.guarantee
-        ? [locExtra.guarantee.enabled
-          ? { text: stripeReady ? 'Kortgaranti på' : 'Kortgaranti väntar på Stripe', branch: 'avbokning' as const, warn: !stripeReady }
-          : { text: 'Kortgaranti av', branch: 'avbokning' as const }]
-        : []),
-    ],
-    bestallningar: locExtra?.ordering
-      ? [locExtra.ordering.enabled
-        ? { text: stripeReady ? 'Tar emot beställningar' : 'Beställning väntar på Stripe', branch: 'bestallning' as const, warn: !stripeReady }
-        : { text: 'Tar inte emot beställningar', branch: 'bestallning' as const }]
-      : [],
-    ekonomi: [
-      ...(tenant && isOwner ? [{ text: planLabel(tenant), branch: 'abonnemang' as const }] : []),
-      ...(isOwner && tenant?.billing ? billingApple(tenant.billing) : []),
-      ...(tenant ? [{ text: stripeReady ? 'Stripe aktiv' : 'Stripe ej klar', branch: 'betalningar' as const, warn: !stripeReady }] : []),
-    ],
-    personalen: isOwner && tenant?.staffAccess
-      ? [{ text: `${tenant.staffAccess.defaults.length} av ${tenant.staffAccess.areas.length} sidor`, branch: 'behorighet' as const }]
-      : [],
-    enheten: [
-      { text: theme === 'dark' ? 'Mörkt läge' : 'Ljust läge', branch: 'utseende' },
-      { text: sound ? 'Klickljud på' : 'Klickljud av', branch: 'utseende' },
-    ],
-  }
+  const apples = buildApples({
+    tenant,
+    isOwner,
+    noLocation: !locationId && !resolvingLocation,
+    hours: savedLocation ? businessHours : null,
+    locExtra,
+    theme,
+    sound,
+  })
+  // Fokus följer vyn (rubriken, eller kortet/raden man kom från).
+  const body = useRef<HTMLDivElement>(null)
+  useViewFocus(hash.replace(/^#/, ''), body)
 
   const pane = (b: BranchId) => ({ className: 'settings-branch', 'data-branch': b, hidden: branch !== b })
 
@@ -453,7 +432,7 @@ export default function InstallningarPage() {
           onBranch={go}
           onPersonal={() => navigate('/personal')}
         />
-        <div className="settings-body">
+        <div className="settings-body" ref={body}>
           {view.kind === 'field' && (
             <SettingsField
               trees={trees}
@@ -753,24 +732,6 @@ export default function InstallningarPage() {
 
 function reducedMotion(): boolean {
   return Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
-}
-
-/** Dagens öppettider som äpple ("Öppet i dag 11:00-22:00" eller "Stängt i dag"). */
-function todayApple(hours: BusinessHours): Apple {
-  const day = WEEKDAYS[(new Date().getDay() + 6) % 7]
-  const spans = hours[day] ?? []
-  return spans.length
-    ? { text: `Öppet i dag ${spans.map((s) => `${s.opensAt}-${s.closesAt}`).join(', ')}`, branch: HOURS_BRANCH }
-    : { text: 'Stängt i dag', branch: HOURS_BRANCH }
-}
-
-/** Abonnemangets betalning som äpple: kortet, eller det som behöver göras. */
-function billingApple(billing: NonNullable<Tenant['billing']>): Apple[] {
-  if (billing.pastDue) return [{ text: 'Obetald faktura', branch: 'abonnemang', warn: true }]
-  if (billing.hasCard && billing.cardLast4) return [{ text: `Kort ••${billing.cardLast4}`, branch: 'abonnemang' }]
-  if (billing.customer && billing.collection === 'card' && !billing.hasCard) return [{ text: 'Inget kort', branch: 'abonnemang', warn: true }]
-  if (billing.collection === 'invoice') return [{ text: 'Faktura', branch: 'abonnemang' }]
-  return []
 }
 
 /**

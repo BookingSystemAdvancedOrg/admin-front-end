@@ -215,6 +215,10 @@
   animation: stree-rise 420ms var(--ease) both;
   animation-delay: calc(var(--i, 0) * 45ms);
 }
+.stree-card-heading {
+  margin: 0;
+  font: inherit;
+}
 .stree-card-head {
   display: flex;
   align-items: center;
@@ -236,6 +240,7 @@
 }
 .stree-card-title {
   flex: 1;
+  min-width: 0;
   margin: 0;
   font: 400 21px/1.2 var(--serif-face);
   color: var(--ink);
@@ -273,12 +278,20 @@
   position: absolute;
   inset: -7px -2px;
 }
+/* Pricken: grön bara när något är igång och fungerar, gul när något behöver
+   göras, annars (val, avstängt) en tom ring. */
 .stree-apple-dot {
   width: 7px;
   height: 7px;
   flex: none;
   border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--muted);
+  opacity: 0.7;
+}
+.stree-apple.ok .stree-apple-dot {
   background: var(--success);
+  box-shadow: none;
+  opacity: 1;
 }
 .stree-apple.warn {
   background: color-mix(in srgb, var(--warning) 16%, transparent);
@@ -287,6 +300,8 @@
 }
 .stree-apple.warn .stree-apple-dot {
   background: var(--warning);
+  box-shadow: none;
+  opacity: 1;
 }
 
 .stree-card-branches {
@@ -313,7 +328,8 @@
 .stree-card-head:focus-visible,
 .stree-apple:focus-visible,
 .stree-pager-link:focus-visible,
-.stree-crumbs button:focus-visible {
+.stree-crumbs button:focus-visible,
+.stree-title:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
   border-radius: var(--r-md);
@@ -371,6 +387,8 @@
 }
 .stree-title {
   margin: 2px 0 0;
+  border-radius: var(--r-md);
+  outline: none;
   font: 400 28px/1.15 var(--serif-face);
   color: var(--ink);
 }

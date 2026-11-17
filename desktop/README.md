@@ -231,6 +231,14 @@ from the 1024 px icon). `npm test` fails if a redrawn logo would end up under
 the pill. Linux installs made with `install.sh` get a changed icon when the
 install command is run again.
 
+Where each platform takes the icon from (all badged in dev, plain in prod):
+macOS Dock, Finder, About and the DMG volume use the `.icns`; Windows uses the
+`.exe` icon (window, taskbar, shortcuts, installer and uninstaller), and the
+app sets the shortcut's AppUserModelID (`appId` in `env.json`) so taskbar
+grouping and notifications pick the same icon; Linux menus use the hicolor
+set and `.desktop` file, while the window and taskbar use the window's own
+icon, which `build.mjs` copies in as `window-icon.png` (git-ignored).
+
 macOS "Dark" icon style (checked on macOS 27.2, 2026-11-16): macOS redraws a
 light icon with a dark tile, and the black b of the off-white Booqy Console
 icon then nearly disappears. An icon with light detail on a dark shape, like

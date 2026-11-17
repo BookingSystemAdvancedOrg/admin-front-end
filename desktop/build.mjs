@@ -12,7 +12,7 @@
 //           BOOQY_AZURE_SIGN_PROFILE (+ AZURE_TENANT_ID/CLIENT_ID/CLIENT_SECRET)
 import { build } from 'electron-builder'
 import devIcon from './dev-icon.cjs'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, readFileSync, writeFileSync } from 'node:fs'
 import { parseArgs } from 'node:util'
 
 const { values } = parseArgs({
@@ -43,13 +43,18 @@ const productName = (isProd ? config.productName : `${config.productName} Dev`) 
 const appId = (isProd ? config.appId : `${config.appId}.dev`) + (testSuffix ? `.${testSuffix.toLowerCase()}` : '')
 const fileBase = (isProd ? config.fileName : `${config.fileName}-dev`) + (testSuffix ? `-${testSuffix.toLowerCase()}` : '')
 
-// Adressen bakas in i appen; main.cjs läser den här filen.
-writeFileSync(new URL('./env.json', import.meta.url), JSON.stringify({ env, url }, null, 2) + '\n')
+// Adressen bakas in i appen; main.cjs läser den här filen. appId behövs på
+// Windows: samma AppUserModelID som genvägen, så att aktivitetsfältet och
+// notiserna visar genvägens (dev: DEV-märkta) ikon.
+writeFileSync(new URL('./env.json', import.meta.url), JSON.stringify({ env, url, appId }, null, 2) + '\n')
 
 // Ikonen: produktion får logotypen som den är. Utvecklingsbygget får samma
 // ikon med en DEV-bricka uppe till höger (ritas nu, till build/dev/), så att
 // de två apparna går att skilja åt i Dock och aktivitetsfält. Se dev-icon.cjs.
 const icons = devIcon.iconsFor(env)
+// Fönstrets egen ikon på Linux (aktivitetsfält, Alt+Tab): Linux tar den från
+// fönstret, inte från programfilen. Kopieras in i appen (build/ packas inte).
+copyFileSync(new URL(`./${icons.set}/512x512.png`, import.meta.url), new URL('./window-icon.png', import.meta.url))
 
 const env_ = process.env
 const macIdentity = env_.BOOQY_MAC_IDENTITY || null
@@ -78,7 +83,7 @@ const builderConfig = {
   copyright: 'Booqy',
   artifactName: `${fileBase}-\${version}-\${os}-\${arch}.\${ext}`,
   directories: { output: `release/${env}`, buildResources: 'build' },
-  files: ['main.cjs', 'updates.cjs', 'update-core.cjs', 'desktop.config.json', 'env.json', 'package.json'],
+  files: ['main.cjs', 'updates.cjs', 'update-core.cjs', 'desktop.config.json', 'env.json', 'window-icon.png', 'package.json'],
   extraMetadata: { name: fileBase, productName, ...(process.env.BOOQY_TEST_VERSION ? { version: process.env.BOOQY_TEST_VERSION } : {}) },
   asar: true,
   // Härdning av själva Electron-binären.

@@ -32,7 +32,7 @@ installGlide()
 installGlassFilter()
 installDesktopGlass()
 // "Ny version finns" efter en deploy (bara i bygget, inte i npm run dev).
-// Osparade utkast (webbplats, bordskarta) frågas om innan omladdningen.
+// Osparade utkast (bordskarta) frågas om innan omladdningen.
 // Rutan listar även det som är nytt sedan det här bygget (src/whatsNew.ts).
 if (import.meta.env.PROD) startUpdateNotice({ hasUnsaved, whatsNew: { since: BUILT_N } })
 // Appen på telefonen: service worker och installationsknappen (bara i bygget).

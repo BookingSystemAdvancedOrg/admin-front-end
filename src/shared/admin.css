@@ -1765,7 +1765,7 @@ dialog.modal-layer::backdrop {
 /* Spara-rader (Bar variant="action"): ingen egen ruta, bara knapparna till
    höger under formuläret. I ett form-grid tar raden hela bredden och följer
    inte grannfältets höjd (ägaren 2026-11-14: Telefon > Inställningar).
-   Den klistrade raden (sticky, t.ex. Webbplats) behåller glaset eftersom den
+   Den klistrade raden (sticky) behåller glaset eftersom den
    ligger ovanpå innehållet. */
 .bq-bar--action:not(.bq-bar--stuck) {
   padding: 0;
@@ -1778,7 +1778,7 @@ dialog.modal-layer::backdrop {
   align-self: start;
 }
 
-/* The sticky save bar (Bar sticky, e.g. Webbplats) floats over the page:
+/* The sticky save bar (Bar sticky) floats over the page:
    frosted enough that the text under it never shows through. */
 .bq-bar--stuck {
   background: var(--glass-pop);
@@ -1792,7 +1792,7 @@ dialog.modal-layer::backdrop {
 }
 
 /* A switch that sits in a form grid next to inputs: same height as an input,
-   aligned with the input's bottom edge (Webbplats > Kontakt > Visa karta). */
+   aligned with the input's bottom edge. */
 .toggle-row--field {
   align-self: end;
   min-height: 44px;

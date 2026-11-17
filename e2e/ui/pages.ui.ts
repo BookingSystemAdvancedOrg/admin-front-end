@@ -20,7 +20,6 @@ export const PAGES: { name: string; path: string; heading?: RegExp }[] = [
   { name: 'layout', path: '/layout' },
   { name: 'gaster', path: '/gaster' },
   { name: 'presentkort', path: '/presentkort' },
-  { name: 'webbplats', path: '/webbplats' },
   { name: 'evenemang', path: '/evenemang' },
   { name: 'marknadsforing', path: '/marknadsforing' },
   { name: 'installningar', path: '/installningar' },

@@ -325,7 +325,7 @@ export const GUIDE_STEPS: GuideStep[] = [
     text: 'Ändringar sparas som utkast. När du publicerar ser gästerna den nya planritningen.',
   },
 
-  // --- Gäster, presentkort och webbplats ----------------------------------------
+  // --- Gäster och presentkort ----------------------------------------------------
   {
     id: 'gaster',
     route: '/gaster',
@@ -344,16 +344,6 @@ export const GUIDE_STEPS: GuideStep[] = [
     section: 'Presentkort',
     title: 'Presentkort',
     text: 'Sälj presentkort på er hemsida och se vad som finns kvar att lösa in.',
-  },
-  {
-    id: 'webbplats',
-    route: '/webbplats',
-    target: 'nav-webbplats',
-    feature: 'siteBuilder',
-    ownerOnly: true,
-    section: 'Webbplats',
-    title: 'Webbplats',
-    text: 'Ändra er hemsida, förhandsgranska och publicera när ni är nöjda.',
   },
 
   // --- Evenemang ---------------------------------------------------------------

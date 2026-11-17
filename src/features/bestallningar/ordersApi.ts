@@ -497,7 +497,7 @@ export const TAB_ERRORS: Record<string, string> = {
   bill_empty: 'Notan är redan stängd. Nu syns det senaste.',
   changed_retry: 'Någon annan ändrade notan nyss. Nu syns det senaste.',
   owner_only: 'Bara ägaren kan skriva av en nota.',
-  ordering_no_site: 'Restaurangen har ingen webbadress än, så det finns ingen sida att betala på. Publicera webbplatsen först.',
+  ordering_no_site: 'Restaurangen har ingen webbadress än, så det finns ingen sida att betala på. Booqy lägger upp er webbplats; hör av er till Booqy om det dröjer.',
   payment_unavailable: 'Stripe svarar inte just nu. Det är inte ert fel. Försök igen om en stund, eller rapportera det till Booqy.',
 }
 

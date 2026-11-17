@@ -27,7 +27,6 @@ export type Area =
   | 'personal'
   | 'gaster'
   | 'presentkort'
-  | 'webbplats'
   | 'evenemang'
   | 'marknadsforing'
 
@@ -71,7 +70,6 @@ export const AREAS: { area: Area; label: string; feature?: FeatureKey | FeatureK
   { area: 'personal', label: 'Personal' },
   { area: 'gaster', label: 'Gäster', feature: 'guestCrm' },
   { area: 'presentkort', label: 'Presentkort', feature: 'giftCards' },
-  { area: 'webbplats', label: 'Webbplats', feature: 'siteBuilder' },
   { area: 'evenemang', label: 'Evenemang', feature: 'events' },
   { area: 'marknadsforing', label: 'Marknadsföring', feature: ['marketing', 'metaAds', 'googleBusiness', 'socialPosting'] },
 ]

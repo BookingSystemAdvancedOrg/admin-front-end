@@ -3,28 +3,28 @@ import { personAreas, personSource, togglePerson } from './access'
 import { canOpen } from './access'
 import type { Tenant } from './tenant'
 
-const config = { defaults: ['bokningar', 'meny'] as const, users: { s1: { add: ['webbplats'], remove: ['meny'] } } }
+const config = { defaults: ['bokningar', 'meny'] as const, users: { s1: { add: ['presentkort'], remove: ['meny'] } } }
 const cfg = config as unknown as Parameters<typeof personSource>[0]
 
 describe('staff access', () => {
   it('tells where each tick comes from', () => {
     expect(personSource(cfg, 's1', 'bokningar')).toBe('group')
     expect(personSource(cfg, 's1', 'meny')).toBe('removed')
-    expect(personSource(cfg, 's1', 'webbplats')).toBe('own')
+    expect(personSource(cfg, 's1', 'presentkort')).toBe('own')
     expect(personSource(cfg, 's1', 'gaster')).toBe('none')
     expect(personSource(cfg, 'new', 'meny')).toBe('group')
   })
 
   it('computes a person as group plus own minus removed', () => {
-    expect(personAreas(cfg, 's1')).toEqual(['bokningar', 'webbplats'])
+    expect(personAreas(cfg, 's1')).toEqual(['bokningar', 'presentkort'])
     expect(personAreas(cfg, 's2')).toEqual(['bokningar', 'meny'])
   })
 
   it('toggles: unticking a group area removes it for the person, ticking again undoes that', () => {
-    expect(togglePerson(cfg, 's1', 'bokningar', false)).toEqual({ add: ['webbplats'], remove: ['bokningar', 'meny'] })
-    expect(togglePerson(cfg, 's1', 'meny', true)).toEqual({ add: ['webbplats'], remove: [] })
-    expect(togglePerson(cfg, 's1', 'webbplats', false)).toEqual({ add: [], remove: ['meny'] })
-    expect(togglePerson(cfg, 's1', 'gaster', true)).toEqual({ add: ['gaster', 'webbplats'], remove: ['meny'] })
+    expect(togglePerson(cfg, 's1', 'bokningar', false)).toEqual({ add: ['presentkort'], remove: ['bokningar', 'meny'] })
+    expect(togglePerson(cfg, 's1', 'meny', true)).toEqual({ add: ['presentkort'], remove: [] })
+    expect(togglePerson(cfg, 's1', 'presentkort', false)).toEqual({ add: [], remove: ['meny'] })
+    expect(togglePerson(cfg, 's1', 'gaster', true)).toEqual({ add: ['gaster', 'presentkort'], remove: ['meny'] })
   })
 
   it('canOpen: owner always, staff by the server list, older API as before', () => {

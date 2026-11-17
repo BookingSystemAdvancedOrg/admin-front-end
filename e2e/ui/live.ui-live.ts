@@ -2,7 +2,7 @@ import { expect } from '@playwright/test'
 import { test } from '../lib/live'
 import { VIEWPORTS, CROSS_BROWSER, fullAudit, axeIssues, assertNoIssues, record, setTheme, STABLE_CSS, type Issue } from '../lib/ui-audit'
 
-const PAGES = ['', 'statistik', 'bokningar', 'bestallningar', 'meny', 'cateringkalkyl', 'catering', 'personal', 'personalliggare', 'telefon', 'layout', 'gaster', 'presentkort', 'webbplats', 'evenemang', 'marknadsforing', 'installningar', 'hjalp', 'avtal']
+const PAGES = ['', 'statistik', 'bokningar', 'bestallningar', 'meny', 'cateringkalkyl', 'catering', 'personal', 'personalliggare', 'telefon', 'layout', 'gaster', 'presentkort', 'evenemang', 'marknadsforing', 'installningar', 'hjalp', 'avtal']
 
 for (const pg of PAGES) {
   const name = pg || 'oversikt'

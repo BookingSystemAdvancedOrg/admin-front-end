@@ -30,7 +30,7 @@ function renderLayout() {
   )
 }
 
-const NEW = ['Personalliggare', 'Gäster', 'Presentkort', 'Webbplats']
+const NEW = ['Personalliggare', 'Gäster', 'Presentkort']
 
 describe('AdminLayout sidebar', () => {
   beforeEach(() => owner({}))
@@ -43,11 +43,11 @@ describe('AdminLayout sidebar', () => {
   })
 
   it('shows the new items in contract order when on', () => {
-    owner({ catering: true, personalliggare: true, guestCrm: true, giftCards: true, siteBuilder: true, marketing: true })
+    owner({ catering: true, personalliggare: true, guestCrm: true, giftCards: true, marketing: true })
     renderLayout()
     expect(navLabels()).toEqual([
       'Översikt', 'Statistik', 'Bokningar', 'Catering', 'Personalliggare',
-      'Meny', 'Layout', 'Personal', 'Gäster', 'Presentkort', 'Webbplats', 'Marknadsföring',
+      'Meny', 'Layout', 'Personal', 'Gäster', 'Presentkort', 'Marknadsföring',
     ])
   })
 
@@ -64,28 +64,28 @@ describe('AdminLayout sidebar', () => {
   })
 
   it('hides owner-only items from staff', () => {
-    owner({ personalliggare: true, guestCrm: true, giftCards: true, siteBuilder: true, metaAds: true }, 'staff_user')
+    owner({ personalliggare: true, guestCrm: true, giftCards: true, metaAds: true }, 'staff_user')
     renderLayout()
     const labels = navLabels()
     expect(labels).toContain('Personalliggare')
     expect(labels).toContain('Gäster')
-    for (const l of ['Personal', 'Presentkort', 'Webbplats', 'Marknadsföring']) expect(labels).not.toContain(l)
+    for (const l of ['Personal', 'Presentkort', 'Marknadsföring']) expect(labels).not.toContain(l)
   })
 
   it('hides Telefon and Evenemang while phoneAgent and events are off', () => {
-    owner({ personalliggare: true, siteBuilder: true })
+    owner({ personalliggare: true })
     renderLayout()
     const labels = navLabels()
     expect(labels).not.toContain('Telefon')
     expect(labels).not.toContain('Evenemang')
   })
 
-  it('shows Telefon after Personalliggare and Evenemang after Webbplats when on', () => {
-    owner({ personalliggare: true, siteBuilder: true, phoneAgent: true, events: true })
+  it('shows Telefon after Personalliggare and Evenemang after Personal when on', () => {
+    owner({ personalliggare: true, phoneAgent: true, events: true })
     renderLayout()
     expect(navLabels()).toEqual([
       'Översikt', 'Statistik', 'Bokningar', 'Personalliggare', 'Telefon',
-      'Meny', 'Layout', 'Personal', 'Webbplats', 'Evenemang',
+      'Meny', 'Layout', 'Personal', 'Evenemang',
     ])
   })
 

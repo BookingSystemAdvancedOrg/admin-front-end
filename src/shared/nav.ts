@@ -71,7 +71,6 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/gaster', label: 'Gäster', icon: 'users', tour: 'nav-gaster', feature: 'guestCrm', area: 'gaster' },
       { to: '/presentkort', label: 'Presentkort', icon: 'gift', tour: 'nav-presentkort', feature: 'giftCards', area: 'presentkort' },
-      { to: '/webbplats', label: 'Webbplats', icon: 'globe', tour: 'nav-webbplats', feature: 'siteBuilder', area: 'webbplats' },
       // Biljetter till kvällar och middagar; personalen scannar vid dörren, ägaren redigerar.
       { to: '/evenemang', label: 'Evenemang', icon: 'ticket', tour: 'nav-evenemang', feature: 'events', area: 'evenemang' },
       // Utskick, annonser, omdömen och inlägg, när minst en av dem ingår i planen.

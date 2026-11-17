@@ -1228,67 +1228,6 @@
       ]
     },
     {
-      "id": "webbplats-redigera",
-      "route": "/webbplats",
-      "title": "Ändra hemsidan",
-      "audience": "owner",
-      "feature": "siteBuilder",
-      "keywords": [
-        "webbplats",
-        "hemsida",
-        "hemsidan",
-        "sida",
-        "block",
-        "färger",
-        "typsnitt",
-        "utseende hemsida"
-      ],
-      "answer": "Ägaren ändrar hemsidan under Webbplats: sidor, block och utseende.",
-      "steps": [
-        "Öppna Webbplats.",
-        "Välj sida, eller tryck Ny sida.",
-        "Tryck Lägg till block för text, bild, meny, öppettider, boka bord med mera.",
-        "Under Utseende väljer du färger och typsnitt.",
-        "Tryck Spara utkast."
-      ],
-      "actions": [
-        {
-          "id": "webbplats-open",
-          "label": "Öppna Webbplats",
-          "to": "/webbplats"
-        }
-      ]
-    },
-    {
-      "id": "webbplats-publicera",
-      "route": "/webbplats",
-      "title": "Publicera hemsidan",
-      "audience": "owner",
-      "feature": "siteBuilder",
-      "keywords": [
-        "publicera hemsida",
-        "publicera",
-        "förhandsgranska",
-        "förhandsvisning",
-        "versioner hemsida",
-        "återställ"
-      ],
-      "answer": "Ändringar på hemsidan syns för gästerna först när du publicerar. Personuppgiftsbiträdesavtalet måste vara godkänt.",
-      "steps": [
-        "Öppna Webbplats och tryck Spara utkast.",
-        "Tryck Förhandsgranska för att se resultatet.",
-        "Tryck Publicera.",
-        "Vill du gå tillbaka: Versioner, Återställ."
-      ],
-      "actions": [
-        {
-          "id": "webbplats-open",
-          "label": "Öppna Webbplats",
-          "to": "/webbplats"
-        }
-      ]
-    },
-    {
       "id": "evenemang-skapa",
       "route": "/evenemang",
       "title": "Skapa ett evenemang med biljetter",

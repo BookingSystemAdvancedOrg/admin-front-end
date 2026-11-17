@@ -116,7 +116,6 @@ export const ROUTE_PATTERNS = [
   '/layout',
   '/gaster',
   '/presentkort',
-  '/webbplats',
   '/evenemang',
   '/evenemang/:eventId',
   '/evenemang/:eventId/inslapp/:occurrenceId',

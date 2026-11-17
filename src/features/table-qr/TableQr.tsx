@@ -30,7 +30,7 @@ async function save(card: QrCard, kind: 'png' | 'svg' | 'pdf') {
   download(blob, fileName(card.title, kind))
 }
 
-const NO_SITE = 'Ingen webbadress än. Publicera webbplatsen först.'
+const NO_SITE = 'Ingen webbadress än. Booqy lägger upp er webbplats; hör av er till Booqy om det dröjer.'
 
 /** Kortet, knapparna för utskrift/nedladdning och "Ny kod" för ett bord. */
 function CodeCard({

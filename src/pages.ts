@@ -21,7 +21,6 @@ export const pages = {
   personalliggare: () => import('./features/personalliggare/PersonalliggarePage'),
   gaster: () => import('./features/guest-crm/GasterPage'),
   presentkort: () => import('./features/gift-cards/PresentkortPage'),
-  webbplats: () => import('./features/site-builder/WebbplatsPage'),
   telefon: () => import('./features/phone-agent/TelefonPage'),
   evenemang: () => import('./features/events-tickets/EvenemangPage'),
 }

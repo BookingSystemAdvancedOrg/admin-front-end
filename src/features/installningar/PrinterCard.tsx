@@ -1,9 +1,10 @@
 import { useLiveRefresh } from '../../shared/live'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   getPrinting,
   printErrorText,
+  saveCategoryRouting,
   saveRouting,
   savePrintSettings,
 } from '../bestallningar/printApi'
@@ -20,6 +21,7 @@ import { Select } from '../../shared/Select'
 import { Loading } from '../../shared/Loading'
 import { PrinterTiles } from '../printers/PrinterTiles'
 import { CategoryRouting } from '../printers/CategoryRouting'
+import { drinkDefaults } from '../printers/kinds'
 
 /**
  * Inställningar, Beställning, Kvittoskrivare (och steget i Kom igång).
@@ -94,6 +96,20 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
       cancelled = true
     }
   }, [locationId])
+
+  // Äldre kategorier som låter som dryck ("Öl", "Vin") utan eget val går till
+  // Dryck, aldrig till köket (en gång per kategori; syns som vanliga chips).
+  const healed = useRef(new Set<string>())
+  const routingNow = data?.routing ?? null
+  useEffect(() => {
+    if (!locationId || !isOwner || !routingNow) return
+    const todo = Object.fromEntries(Object.entries(drinkDefaults(routingNow, categories)).filter(([id]) => !healed.current.has(id)))
+    if (!Object.keys(todo).length) return
+    Object.keys(todo).forEach((id) => healed.current.add(id))
+    saveCategoryRouting(locationId, todo)
+      .then((routing) => setData((d) => (d ? { ...d, routing } : d)))
+      .catch(() => undefined)
+  }, [locationId, isOwner, routingNow, categories])
 
   async function run(action: () => Promise<void>) {
     setBusy(true)

@@ -43,11 +43,42 @@ export function stationKind(station: Pick<Station, 'stationId' | 'kind'>): Print
 }
 
 /** Kategorier som låter som dryck (för förslaget på en ny kategori). */
-const DRINKISH = /dryck|drink|bar\b|öl|vin\b|viner|wine|beer|cocktail|läsk|kaffe|coffee|\bte\b|juice|alkohol|sprit|cider|dricka|smoothie|shot|mocktail|lemonad/i
+// Hela ord eller ordets början/slut (Fatöl, Rödvin), aldrig mitt i ett matord
+// (Pölsa, Mjölk, Salladsbar). \b räknar inte å, ä, ö som bokstäver, därav klassen.
+const L = 'a-zåäöéü'
+const START = `(?:^|[^${L}])`
+const END = `(?:$|[^${L}])`
+const DRINKISH = new RegExp(
+  [
+    'dryck', 'drink', 'cocktail', 'läsk', 'kaffe', 'coffee', 'juice', 'alkohol', 'sprit', 'cider', 'dricka',
+    'mocktail', 'lemonad', 'beer', 'wine', 'viner',
+    `${START}(?:bar|baren|te|shots?)${END}`,
+    `${START}öl`, `öl${END}`, `vin${END}`, `${START}vin(?:er|erna|lista|kort|meny)${END}`,
+  ].join('|'),
+  'i',
+)
 
 export function soundsLikeDrinks(name: string): boolean {
   return DRINKISH.test(name)
 }
+
+/**
+ * Kategorier som låter som dryck men saknar eget val: de ska till Dryck
+ * ("bar"), aldrig till köket. Tomt när platsen saknar routing eller allt är valt.
+ */
+export function drinkDefaults(
+  routing: Pick<TicketRouting, 'categories'> | null | undefined,
+  categories: Pick<MenuCategoryLike, 'categoryId' | 'name'>[],
+): Record<string, string> {
+  if (!routing) return {}
+  return Object.fromEntries(
+    categories
+      .filter((c) => c.categoryId !== 'drinks' && !routing.categories[c.categoryId] && soundsLikeDrinks(c.name))
+      .map((c) => [c.categoryId, 'bar']),
+  )
+}
+
+type MenuCategoryLike = { categoryId: string; name: string }
 
 /**
  * Stationen en kategori går till: ägarens val, annars Dryck för drycker

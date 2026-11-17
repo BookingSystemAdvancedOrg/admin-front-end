@@ -67,7 +67,10 @@ const ONE: PrintOverview = {
   routing: ROUTING,
 }
 
-beforeEach(() => Object.values(api).forEach((f) => f.mockReset()))
+beforeEach(() => {
+  Object.values(api).forEach((f) => f.mockReset())
+  api.saveCategoryRouting.mockResolvedValue(ROUTING)
+})
 
 describe('PrinterCard', () => {
   it('loads again after a failed first load when Försök igen is tapped', async () => {
@@ -139,8 +142,12 @@ describe('PrinterCard', () => {
   it('sends a whole category with one tap under Vad skickas vart?', async () => {
     const user = userEvent.setup()
     api.getPrinting.mockResolvedValue(ONE)
-    api.saveCategoryRouting.mockResolvedValue({ ...ROUTING, categories: { ...ROUTING.categories, mains: 'none' } })
+    const healed = { ...ROUTING, categories: { ...ROUTING.categories, c0a1b2c3d4: 'bar' } }
+    api.saveCategoryRouting
+      .mockResolvedValueOnce(healed) // Öl och vin hade inget val: Dryck när sidan öppnas
+      .mockResolvedValue({ ...healed, categories: { ...healed.categories, mains: 'none' } })
     render(<PrinterCard locationId="loc-1" isOwner />)
+    await vi.waitFor(() => expect(api.saveCategoryRouting).toHaveBeenCalledWith('loc-1', { c0a1b2c3d4: 'bar' }))
     const row = await screen.findByRole('radiogroup', { name: 'Varmrätter skickas till' })
     expect(within(row).getByRole('radio', { name: 'Kök' })).toHaveAttribute('aria-checked', 'true')
     await user.click(within(row).getByRole('radio', { name: 'Ingen bong' }))
@@ -186,5 +193,19 @@ describe('PrinterCard', () => {
     expect(screen.queryByRole('button', { name: 'Lägg till skrivare' })).toBeNull()
     expect(screen.queryByRole('radiogroup', { name: 'Sort för Köket' })).toBeNull()
     expect(within(screen.getByRole('radiogroup', { name: 'Varmrätter skickas till' })).getByRole('radio', { name: 'Kök' })).toBeDisabled()
+  })
+
+  it('sends an older drink category with no choice to Dryck when the owner opens the page', async () => {
+    api.getPrinting.mockResolvedValue({ ...EMPTY, routing: ROUTING })
+    render(<PrinterCard locationId="loc-1" isOwner />)
+    await vi.waitFor(() => expect(api.saveCategoryRouting).toHaveBeenCalledWith('loc-1', { c0a1b2c3d4: 'bar' }))
+    expect(api.saveCategoryRouting).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves the routing alone for staff', async () => {
+    api.getPrinting.mockResolvedValue({ ...EMPTY, routing: ROUTING })
+    render(<PrinterCard locationId="loc-1" isOwner={false} />)
+    await screen.findByText('Öl och vin')
+    expect(api.saveCategoryRouting).not.toHaveBeenCalled()
   })
 })

@@ -20,7 +20,7 @@ import { InfoTooltip } from '../../shared/InfoTooltip'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { useConfirm } from '../../shared/ConfirmDialog'
 import { Num } from '../../shared/motion/Num'
-import { KIND_ICON, KIND_LABEL, KINDS, categoryStation, kindOf, soundsLikeDrinks, suggestName } from './kinds'
+import { KIND_ICON, KIND_LABEL, KINDS, categoryStation, drinkDefaults, kindOf, suggestName } from './kinds'
 import { SimPaperDialog } from './SimPaper'
 import './printers.css'
 
@@ -140,12 +140,9 @@ export function PrinterTiles({
     void run(async () => {
       const made = await addPrinter(locationId, name, adding.protocol, kind)
       // Kategorier som låter som dryck ("Öl", "Vin") går till Dryck från början.
-      const routing = data.routing
-      const drinks = routing
-        ? categories.filter((c) => !routing.categories[c.categoryId] && c.categoryId !== 'drinks' && soundsLikeDrinks(c.name))
-        : []
-      if (drinks.length) {
-        await saveCategoryRouting(locationId, Object.fromEntries(drinks.map((c) => [c.categoryId, 'bar']))).catch(() => undefined)
+      const drinks = drinkDefaults(data.routing, categories)
+      if (Object.keys(drinks).length) {
+        await saveCategoryRouting(locationId, drinks).catch(() => undefined)
       }
       const next = await getPrinting(locationId)
       onChange(next)

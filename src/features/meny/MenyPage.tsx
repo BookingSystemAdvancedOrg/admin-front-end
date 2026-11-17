@@ -18,7 +18,7 @@ import type { DishFormValues } from './DishModal'
 import { CategoriesModal } from './CategoriesModal'
 import { getRouting, saveCategoryRouting } from '../bestallningar/printApi'
 import type { TicketRouting } from '../bestallningar/printApi'
-import { soundsLikeDrinks } from '../printers/kinds'
+import { drinkDefaults, soundsLikeDrinks } from '../printers/kinds'
 import {
   createMenuItem,
   deleteMenuItem,
@@ -208,6 +208,16 @@ export default function MenyPage() {
     modal?.mode === 'edit' ? dishes.find((d) => d.id === modal.id) ?? null : null
   const editBase = modal?.mode === 'edit' ? modal.base : null
   const canEdit = Boolean(locationId) && !readOnly
+  // Äldre kategorier som låter som dryck ("Öl", "Vin") utan eget val går till
+  // Dryck, aldrig till köket (en gång per kategori; sparas som vanliga chips).
+  const healed = useRef(new Set<string>())
+  useEffect(() => {
+    if (!ordering || !locationId || !canEdit || loading || !routing) return
+    const todo = Object.fromEntries(Object.entries(drinkDefaults(routing, categories)).filter(([id]) => !healed.current.has(id)))
+    if (!Object.keys(todo).length) return
+    Object.keys(todo).forEach((id) => healed.current.add(id))
+    saveCategoryRouting(locationId, todo).then(setRouting).catch(() => undefined)
+  }, [ordering, locationId, canEdit, loading, routing, categories])
 
   const dishCounts = dishes.reduce<Record<string, number>>((acc, d) => {
     acc[d.category] = (acc[d.category] ?? 0) + 1

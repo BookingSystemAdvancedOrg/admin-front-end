@@ -2,7 +2,9 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import { configDefaults } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import { fileURLToPath } from 'node:url'
 import { helpCorpusPlugin } from './scripts/help-corpus.mjs'
+import { devBadgePlugin, isDevBuild, readDevApiBaseUrl } from './scripts/dev-badge.mjs'
 import { WHATS_NEW, latestN } from './src/whatsNew.ts'
 
 /**
@@ -29,6 +31,8 @@ function whatsNewPlugin(): Plugin {
 }
 
 // https://vite.dev/config/
+const root = fileURLToPath(new URL('.', import.meta.url))
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const apiTarget = env.VITE_API_BASE_URL ?? ''
@@ -40,7 +44,19 @@ export default defineConfig(({ mode }) => {
   const useDevProxy = mode === 'development' && /^https?:/.test(apiTarget)
 
   return {
-    plugins: [react(), helpCorpusPlugin(), whatsNewPlugin()],
+    plugins: [
+      react(),
+      helpCorpusPlugin(),
+      whatsNewPlugin(),
+      // DEV-märke på appikonerna, bara i dev: dev-servern eller ett bygge mot
+      // dev-API:t (CI skickar bara VITE_API_BASE_URL). Prod och okänt: orört.
+      devBadgePlugin({
+        root,
+        devIconPath: `${root}desktop/dev-icon.cjs`,
+        decide: (command, m) =>
+          isDevBuild({ command, mode: m, apiBaseUrl: apiTarget, devApiBaseUrl: readDevApiBaseUrl(root) }),
+      }),
+    ],
     // Egen cache-mapp för testkörningar - annars kan `npm test` krocka med en
     // samtidigt körande `npm run dev` som skriver till samma node_modules/.vite.
     cacheDir: mode === 'test' ? 'node_modules/.vitest' : 'node_modules/.vite',

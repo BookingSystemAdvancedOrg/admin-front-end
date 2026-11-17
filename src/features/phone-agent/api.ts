@@ -48,6 +48,8 @@ export interface LocationConfig {
   transferTo?: string | null
   maxCallSeconds: number
   counterOffers: { nearbyTables: boolean; phoneOnlyTables: boolean }
+  /** Största sällskap assistenten bokar själv; null = samma gräns som online. */
+  phoneMaxPartySize?: number | null
   number: string | null
   /** Platsen svarar på en annan plats nummer (assistenten frågar först vilken restaurang). */
   numberSharedWith?: string | null
@@ -98,7 +100,7 @@ export interface SimReply { reply: string; language?: Lang; toolCalls: { name: s
 const loc = (id: string) => `/locations/${encodeURIComponent(id)}/phone-agent`
 
 export type LocationBody = Pick<LocationConfig, 'enabled' | 'mode' | 'agentHours' | 'greetingExtraSv' | 'greetingExtraEn'
-  | 'transferTo' | 'maxCallSeconds' | 'counterOffers' | 'version'> & { shareNumberWith?: string | null }
+  | 'transferTo' | 'maxCallSeconds' | 'counterOffers' | 'phoneMaxPartySize' | 'version'> & { shareNumberWith?: string | null }
 export interface SetupBody { operator?: Operator; forwarded?: boolean; tested?: boolean; version: number }
 
 export const getOverview = () => (isApiConfigured() ? apiFetch<Overview>('/tenant/phone-agent') : mock.overview())
@@ -244,6 +246,7 @@ export const ERRORS: Record<string, string> = {
   invalid_hours: 'Tiderna går inte ihop. Varje period ska sluta efter att den börjar, till exempel 11:00-22:00.',
   invalid_phone: 'Numret ser fel ut. Skriv det så här: 070 123 45 67.',
   invalid_max_call: 'Ett samtal får vara 2 till 15 minuter. Skriv till exempel 5.',
+  invalid_phone_max_party_size: 'Skriv ett helt tal från 1 till 50, till exempel 12. Lämna tomt för samma gräns som online.',
   text_too_long: 'Texten är för lång. Korta den och spara igen.',
   number_unavailable: 'Det finns inget ledigt nummer just nu. Det är Booqys fel, inte ert. Försök igen om en stund.',
   telephony_unavailable: 'Telefonbolaget svarar inte just nu. Det är inte ert fel. Försök igen om en stund.',
@@ -262,7 +265,7 @@ function mockLoc(): LocationConfig {
   return {
     locationId: 'mock-location', enabled: false, killSwitch: false, mode: 'after_hours', agentHours: {},
     greetingExtraSv: '', greetingExtraEn: '', transferTo: null, maxCallSeconds: 480,
-    counterOffers: { nearbyTables: true, phoneOnlyTables: true }, number: null, numberSharedWith: null, version: 0,
+    counterOffers: { nearbyTables: true, phoneOnlyTables: true }, phoneMaxPartySize: null, number: null, numberSharedWith: null, version: 0,
     setup: { operator: null, forwardedAt: null, testedAt: null }, simulated: true,
     forwarding: { number: null, operator: 'other', codes: [] },
   }
@@ -276,7 +279,7 @@ interface MockState { config: Config; loc: LocationConfig; calls: CallRow[]; pla
 let mockState: MockState = freshMock()
 function freshMock(): MockState {
   return {
-    config: { agentName: 'Booqy', tone: 'friendly', languages: ['sv', 'en'], recording: { enabled: false }, minutesCapPerMonth: 300, version: 0 },
+    config: { agentName: 'Booqy', tone: 'formal', languages: ['sv', 'en'], recording: { enabled: false }, minutesCapPerMonth: 300, version: 0 },
     loc: mockLoc(), calls: [], place: { businessHours: MOCK_HOURS, phoneNumber: '+46812345678' },
   }
 }
@@ -342,7 +345,7 @@ const mock = {
     return later(mockState.loc)
   },
   simulate: (text: string) => later<SimReply>({
-    reply: `Hej, du pratar med ${mockState.config.agentName}, en AI-assistent för Demo. Du sa: ${text}`, language: 'sv',
+    reply: `Hej och välkommen till Demo. Du talar med ${mockState.config.agentName}, restaurangens AI-assistent. Du sa: ${text}`, language: 'sv',
     toolCalls: [], state: {}, disclosure: true,
   }),
   calls: () => later({ calls: mockState.calls, cursor: null }),
@@ -375,7 +378,8 @@ export function locationBody(l: LocationConfig, patch: LocationPatch = {}): Loca
   const share = patch.shareNumberWith !== undefined ? patch.shareNumberWith : l.numberSharedWith
   const next = {
     enabled: l.enabled, mode: l.mode, agentHours: l.agentHours, greetingExtraSv: l.greetingExtraSv, greetingExtraEn: l.greetingExtraEn,
-    transferTo: l.transferTo || null, maxCallSeconds: l.maxCallSeconds, counterOffers: l.counterOffers, ...patch, version: l.version,
+    transferTo: l.transferTo || null, maxCallSeconds: l.maxCallSeconds, counterOffers: l.counterOffers,
+    phoneMaxPartySize: l.phoneMaxPartySize ?? null, ...patch, version: l.version,
   }
   const { shareNumberWith: _drop, ...body } = next as LocationBody
   return next.enabled && share ? { ...body, shareNumberWith: share } : body

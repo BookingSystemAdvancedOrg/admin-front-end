@@ -256,7 +256,7 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
   const hidePrimary = (d.step === 'koppla' && !loc.forwarding?.number) || d.step === 'prova'
 
   const info: Partial<Record<Step, string>> = {
-    namn: `Assistenten säger alltid: Hej, du pratar med ${d.name.trim() || 'Booqy'}, en AI-assistent för ${restaurant}.`,
+    namn: `Assistenten säger alltid: Hej och välkommen till ${restaurant}. Du talar med ${d.name.trim() || 'Booqy'}, restaurangens AI-assistent.`,
     tider: 'Ni kan ändra tiderna under Fler inställningar.',
     nummer: [
       includedMinutes > 0 ? `Numret ingår i er plan, med ${includedMinutes} samtalsminuter per månad.` : 'Numret ingår i er plan.',
@@ -291,7 +291,7 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
               <Input id="pa-name" value={d.name} maxLength={40} autoFocus enterKeyHint="next" autoComplete="off"
                 onChange={(e) => set({ name: e.target.value, errors: {} })} />
             </Field>
-            <p className="telefon-preview">”Hej, du pratar med {d.name.trim() || 'Booqy'}, en AI-assistent för {restaurant}.”</p>
+            <p className="telefon-preview">”Hej och välkommen till {restaurant}. Du talar med {d.name.trim() || 'Booqy'}, restaurangens AI-assistent.”</p>
           </div>
         ) : null}
 

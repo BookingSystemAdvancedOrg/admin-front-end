@@ -90,6 +90,7 @@ export default function AdvancedSettings({ locationId, config, loc, open, onOpen
   const [transfer, setTransfer] = useState(loc.transferTo ?? '')
   const [maxMin, setMaxMin] = useState(String(Math.round(loc.maxCallSeconds / 60)))
   const [offers, setOffers] = useState(loc.counterOffers)
+  const [maxParty, setMaxParty] = useState(loc.phoneMaxPartySize != null ? String(loc.phoneMaxPartySize) : '')
   const [cap, setCap] = useState(String(config.minutesCapPerMonth))
   const [rec, setRec] = useState(config.recording)
   const [errors, setErrors] = useState<Record<string, Errors>>({})
@@ -142,14 +143,14 @@ export default function AdvancedSettings({ locationId, config, loc, open, onOpen
           </Field>
         </Group>
 
-        <Group title="Hälsning" info="Det assistenten säger efter: Hej, du pratar med ..., en AI-assistent för ... Den meningen går inte att ändra."
+        <Group title="Hälsning" info="Det assistenten säger efter: Hej och välkommen till ... Du talar med ..., restaurangens AI-assistent. Den meningen går inte att ändra."
           setFieldErrors={setErrs('greet')}
           onSave={() => saveLoc({ greetingExtraSv: greetSv, greetingExtraEn: greetEn })}>
           <Field label="Svenska" error={errs('greet').greetingExtraSv}>
             <Input value={greetSv} maxLength={200} placeholder="Vad kan jag hjälpa dig med?" onChange={(e) => setGreetSv(e.target.value)} />
           </Field>
           <Field label="Engelska" error={errs('greet').greetingExtraEn}>
-            <Input value={greetEn} maxLength={200} placeholder="How can I help you?" onChange={(e) => setGreetEn(e.target.value)} />
+            <Input value={greetEn} maxLength={200} placeholder="How may I help you?" onChange={(e) => setGreetEn(e.target.value)} />
           </Field>
         </Group>
 
@@ -224,6 +225,22 @@ export default function AdvancedSettings({ locationId, config, loc, open, onOpen
             <input type="checkbox" checked={offers.phoneOnlyTables} onChange={(e) => setOffers({ ...offers, phoneOnlyTables: e.target.checked })} />
             Erbjud bord ni bara bokar per telefon
           </label>
+        </Group>
+
+        <Group title="Stora sällskap" info="Största sällskap assistenten bokar själv. Större sällskap: assistenten ber restaurangen ringa upp. Tomt: samma gräns som online."
+          setFieldErrors={setErrs('party')}
+          onSave={async () => {
+            const n = maxParty.trim() === '' ? null : Number(maxParty)
+            if (n !== null && (!Number.isInteger(n) || n < 1 || n > 50)) {
+              document.getElementById('pa-maxparty')?.focus()
+              return { phoneMaxPartySize: ERRORS.invalid_phone_max_party_size }
+            }
+            await saveLoc({ phoneMaxPartySize: n })
+          }}>
+          <Field label="Största sällskap" error={errs('party').phoneMaxPartySize}>
+            <Input id="pa-maxparty" type="number" inputMode="numeric" min={1} max={50} placeholder="Som online" value={maxParty}
+              onChange={(e) => setMaxParty(e.target.value)} />
+          </Field>
         </Group>
 
         <Group title="Minuttak" info={includedMinutes !== null ? `Minuter per månad. Ingår i er plan: ${includedMinutes}.` : 'Minuter per månad.'}

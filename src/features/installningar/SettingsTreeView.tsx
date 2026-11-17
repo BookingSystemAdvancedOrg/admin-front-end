@@ -1,15 +1,16 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, FocusEvent, KeyboardEvent, RefObject } from 'react'
 import { Icon } from '../../shared/Icon'
-import { BRANCH_LABEL, searchLeaves, treeOf } from './settingsTree'
+import { BRANCH_LABEL, fold, searchLeaves, treeOf } from './settingsTree'
 import type { BranchId, Leaf, Tree, TreeId } from './settingsTree'
 import type { Apple } from './settingsApples'
 import './settingsTree.css'
 
 /**
  * Inställningarnas fält, träd och grenar (settingsTree.ts). Datorn (från
- * 1100 px): trädet till vänster, alltid synligt. Mindre skärmar: fältet,
- * sedan trädet, sedan grenen, med en tillbaka-knapp.
+ * 1100 px): fältet över hela bredden, trädet till vänster i ett träd och en
+ * gren, med var man är överst. Mindre skärmar: fältet, sedan trädet, sedan
+ * grenen, med en tillbaka-knapp i stället.
  */
 
 export type { Apple }
@@ -37,6 +38,33 @@ export function useViewFocus(view: string, body: RefObject<HTMLElement | null>) 
       root.querySelector<HTMLElement>('.stree-search input')
     target?.focus({ preventScroll: true })
   }, [view, body])
+}
+
+/**
+ * Har grenen ett enda kort med samma rubrik som grenen (Betalningar,
+ * Bokföring ...) står namnet redan överst: kortets rubrik döljs då för
+ * ögat (data-stree-quiet) men finns kvar för skärmläsare. Korten ritar
+ * sina rubriker när de hämtat, så grenen bevakas medan den är öppen.
+ */
+export function useQuietCardTitle(branch: BranchId | null, body: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const pane = branch ? body.current?.querySelector<HTMLElement>(`.settings-branch[data-branch="${branch}"]`) : null
+    if (!branch || !pane) return
+    const label = fold(BRANCH_LABEL[branch])
+    const check = () => {
+      const cards = Array.from(pane.querySelectorAll<HTMLElement>('.admin-card')).filter((c) => !c.parentElement?.closest('.admin-card'))
+      const heading = cards.length === 1 ? cards[0].querySelector<HTMLElement>('h2, h3') : null
+      const quiet = heading && fold((heading.textContent ?? '').trim()) === label ? heading : null
+      pane.querySelectorAll<HTMLElement>('[data-stree-quiet]').forEach((el) => {
+        if (el !== quiet) el.removeAttribute('data-stree-quiet')
+      })
+      if (quiet && !quiet.hasAttribute('data-stree-quiet')) quiet.setAttribute('data-stree-quiet', '')
+    }
+    check()
+    const watch = new MutationObserver(check)
+    watch.observe(pane, { childList: true, subtree: true, characterData: true })
+    return () => watch.disconnect()
+  }, [branch, body])
 }
 
 /** Trädet med bara de grenar den inloggade ser. */

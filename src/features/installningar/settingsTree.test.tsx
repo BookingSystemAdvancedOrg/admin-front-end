@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BRANCHES, BRANCH_HINT, BRANCH_LABEL, LEAVES, TREES, branchVisible, isBranch, isTree, searchLeaves } from './settingsTree'
 import type { BranchId, TreeId } from './settingsTree'
-import { BranchHead, BranchPager, SettingsField, SettingsTreeNav, SettingsTreePage, useViewFocus } from './SettingsTreeView'
+import { BranchHead, BranchPager, SettingsField, SettingsTreeNav, SettingsTreePage, useQuietCardTitle, useViewFocus } from './SettingsTreeView'
 import { buildApples } from './settingsApples'
 import type { AppleInput } from './settingsApples'
 import type { Tenant } from '../../shared/tenant'
@@ -158,6 +158,41 @@ describe('focus follows the view', () => {
     // Träd -> fältet: trädets kort.
     await user.click(screen.getAllByRole('button', { name: 'Inställningar' })[0])
     expect(screen.getByRole('button', { name: 'Gäster' })).toHaveFocus()
+  })
+})
+
+/** En gren med kort, som i InstallningarPage. */
+function Branch({ branch, cards }: { branch: BranchId; cards: string[] }) {
+  const body = useRef<HTMLDivElement>(null)
+  useQuietCardTitle(branch, body)
+  return (
+    <div ref={body}>
+      <BranchHead branch={branch} onField={() => {}} onTree={() => {}} />
+      <div className="settings-branch" data-branch={branch}>
+        {cards.map((c) => (
+          <section key={c} className="admin-card">
+            <h2 className="card-title">{c}</h2>
+          </section>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+describe('a branch says its name once', () => {
+  it('quiets a lone card whose title is the branch name, but keeps it for screen readers', async () => {
+    const { rerender } = render(<Branch branch="betalningar" cards={['Betalningar']} />)
+    const card = screen.getAllByRole('heading', { level: 2, name: 'Betalningar' })[1]
+    expect(card).toHaveAttribute('data-stree-quiet')
+    // Ett kort till: inget döljs längre.
+    rerender(<Branch branch="betalningar" cards={['Betalningar', 'Utbetalningar']} />)
+    await act(async () => {})
+    expect(card).not.toHaveAttribute('data-stree-quiet')
+  })
+
+  it('leaves a card with its own title alone', () => {
+    render(<Branch branch="profil" cards={['Restaurangprofil']} />)
+    expect(screen.getByRole('heading', { name: 'Restaurangprofil' })).not.toHaveAttribute('data-stree-quiet')
   })
 })
 

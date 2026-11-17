@@ -60,7 +60,7 @@ import { useTheme } from '../../shared/theme'
 import { useSound } from '../../shared/press'
 import { NAV_GROUPS, navVisible } from '../../shared/nav'
 import type { NavItem } from '../../shared/nav'
-import { BranchHead, BranchPager, SettingsField, SettingsTreeNav, SettingsTreePage, useViewFocus } from './SettingsTreeView'
+import { BranchHead, BranchPager, SettingsField, SettingsTreeNav, SettingsTreePage, useQuietCardTitle, useViewFocus } from './SettingsTreeView'
 import type { VisibleTree } from './SettingsTreeView'
 import { buildApples } from './settingsApples'
 import { LEAVES, TREES, branchVisible, fold, isBranch, isTree, treeOf } from './settingsTree'
@@ -403,6 +403,7 @@ export default function InstallningarPage() {
   // Fokus följer vyn (rubriken, eller kortet/raden man kom från).
   const body = useRef<HTMLDivElement>(null)
   useViewFocus(hash.replace(/^#/, ''), body)
+  useQuietCardTitle(branch, body)
 
   const pane = (b: BranchId) => ({ className: 'settings-branch', 'data-branch': b, hidden: branch !== b })
 

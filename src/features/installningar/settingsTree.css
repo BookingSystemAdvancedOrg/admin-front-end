@@ -1,6 +1,8 @@
 /* Inställningarnas fält, träd och grenar (SettingsTreeView.tsx).
-   Datorn (från 1100 px): trädet till vänster, klistrat medan sidan rullar.
-   Mindre skärmar: fältet, trädet och grenen en i taget, med tillbaka-knapp.
+   Datorn (från 1100 px): fältet över hela bredden; i ett träd och en gren
+   står trädet till vänster, klistrat medan sidan rullar, och var man är
+   överst. Mindre skärmar: fältet, trädet och grenen en i taget, med
+   tillbaka-knapp i stället för var man är.
    Allt rör sig lugnt och bara en gång; inget rör sig med reducerad rörelse. */
 
 .stree-nav {
@@ -86,7 +88,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 8px 12px;
   border-radius: var(--r-md);
   color: var(--ink);
@@ -371,7 +373,11 @@
   content: '\203A';
   margin-right: 6px;
 }
+.stree-crumbs {
+  display: none;
+}
 .stree-crumbs button {
+  position: relative;
   min-height: 28px;
   margin: 0;
   padding: 0;
@@ -382,6 +388,12 @@
   cursor: default;
   transition: color 200ms var(--ease);
 }
+/* Träffytan når 44 px utan att länken växer. */
+.stree-crumbs button::after {
+  content: '';
+  position: absolute;
+  inset: -8px -4px;
+}
 .stree-crumbs [aria-current='page'] {
   color: var(--ink);
 }
@@ -391,6 +403,28 @@
   outline: none;
   font: 400 28px/1.15 var(--serif-face);
   color: var(--ink);
+}
+
+/* Ett ensamt kort med grenens namn som rubrik: namnet står redan överst
+   (useQuietCardTitle). Rubriken finns kvar för skärmläsare, (i) står kvar
+   till höger. */
+.settings-branch [data-stree-quiet] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.settings-branch .title-info:has(> [data-stree-quiet]) {
+  justify-content: flex-end;
+}
+.settings-branch [data-stree-quiet] + div:empty,
+.settings-branch .title-info:has(> [data-stree-quiet]):not(:has(> :nth-child(2))) + div:empty {
+  display: none;
 }
 
 .settings-branch {
@@ -493,6 +527,19 @@
   }
   .stree-head .settings-back {
     display: none;
+  }
+  .stree-crumbs {
+    display: block;
+  }
+  /* Fältet: inga träd två gånger, korten får hela bredden. */
+  .settings-main[data-view='field'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .settings-main[data-view='field'] .stree-nav {
+    display: none;
+  }
+  .stree-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

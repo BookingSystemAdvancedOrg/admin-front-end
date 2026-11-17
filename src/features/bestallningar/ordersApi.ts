@@ -50,6 +50,8 @@ export interface Order {
   tableId?: string
   /** Bordets namn när gästen beställde. */
   tableLabel?: string
+  /** Serveringsdagen i platsens tidszon (YYYY-MM-DD). */
+  date?: string
   lines: OrderLine[]
   /** Öre. */
   totalAmount: number

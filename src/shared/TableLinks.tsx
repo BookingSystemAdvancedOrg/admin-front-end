@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Icon } from './Icon'
-import { tableNames } from './tables'
+import { orderTable, tableNames, tableTitle } from './tables'
 
 /** Adressen till bordskartan med bokningens bord markerade (Layout, "Boka bord"). */
 export function tableHref(tableIds: string | string[], date?: string): string {
@@ -48,6 +48,44 @@ export function TableLinks({
       onClick={(e) => e.stopPropagation()}
     >
       <Icon name={known.length > 1 ? 'table-square' : 'table-round'} size={14} />
+      <span>{text}</span>
+    </Link>
+  )
+}
+
+/**
+ * En bordsbeställnings bord som en knapp: "Bord 3" med samma nummer som i
+ * Layout. Ett tryck öppnar bordskartan för beställningens dag med bordet
+ * markerat, så personalen ser vart maten ska. Utan bord i ritningen står
+ * namnet som text.
+ */
+export function OrderTableLink({
+  tableId,
+  tableLabel,
+  labels,
+  date,
+  className,
+  iconSize = 16,
+}: {
+  tableId?: string
+  tableLabel?: string
+  labels: Map<string, string> | null
+  date?: string
+  className?: string
+  iconSize?: number
+}) {
+  const table = orderTable(tableId, tableLabel, labels)
+  const text = tableTitle(table.label)
+  if (!table.id) return <span className={className}>{text}</span>
+  return (
+    <Link
+      className={`table-chip-link${className ? ` ${className}` : ''}`}
+      to={tableHref(table.id, date)}
+      aria-label={`${text}, visa i bordskartan`}
+      title="Visa i bordskartan"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <Icon name="table-round" size={iconSize} />
       <span>{text}</span>
     </Link>
   )

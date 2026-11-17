@@ -197,6 +197,55 @@
   letter-spacing: 0.01em;
 }
 
+/* Bordet som knapp (samma som på bokningarna): öppnar Layout med bordet markerat. */
+.table-chip-link.order-place--table {
+  gap: 6px;
+  margin: 0;
+  padding: 5px 12px 5px 10px;
+  min-height: 34px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: var(--slip);
+  color: var(--on-slip);
+  font: 700 18px/1.2 var(--sans);
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 2px rgb(26 18 14 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.12);
+}
+
+.table-chip-link.order-place--table:hover {
+  border-color: var(--accent-ink);
+  background: color-mix(in srgb, var(--slip) 88%, var(--on-slip));
+  color: var(--on-slip);
+}
+
+.table-chip-link.order-place--table svg {
+  opacity: 0.85;
+}
+
+.table-chip-link.kds-place {
+  min-height: 40px;
+  font-size: 22px;
+}
+
+.table-chip-link.order-serve-chip {
+  margin: 0 0 0 4px;
+  border-color: color-mix(in srgb, var(--success) 45%, transparent);
+  color: var(--success-ink);
+  font-size: 1em;
+}
+
+.table-chip-link.orders-serve-table {
+  display: flex;
+  width: fit-content;
+  margin: 6px 0 0;
+  padding: 4px 16px 4px 12px;
+  gap: 8px;
+  border-color: color-mix(in srgb, var(--success) 45%, transparent);
+  border-radius: var(--r-md);
+  color: var(--success-ink);
+  font: 700 32px/1.1 var(--serif);
+}
+
 .order-serve-to {
   margin: 0;
   padding: 8px 12px;

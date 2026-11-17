@@ -1,4 +1,5 @@
 import { apiFetch, isApiConfigured } from '../../shared/api'
+import { tableTitle } from '../../shared/tables'
 
 /**
  * Bordens QR-koder (manage-order, shared/table_qr.py i application).
@@ -26,9 +27,7 @@ function base(locationId: string): string {
   return `/locations/${encodeURIComponent(locationId)}/orders/table-codes`
 }
 
-export function tableTitle(label: string): string {
-  return /^\d/.test(label) ? `Bord ${label}` : label
-}
+export { tableTitle }
 
 /* Utan API (lokal utveckling): påhittade koder för borden som skickas in. */
 const mockCodes = new Map<string, string>()

@@ -80,6 +80,8 @@ export interface StationTicket {
   orderId?: string
   number?: number
   mode?: 'pickup' | 'table'
+  /** Bordets id i planritningen, när servern skickar det. */
+  tableId?: string
   tableLabel?: string
   placedAt?: string
   createdAt?: string

@@ -115,3 +115,26 @@ export function tableNames(ids: string[], labels: Map<string, string> | null): s
   if (!labels) return ids.length === 1 ? 'Ett bord' : `${ids.length} bord`
   return `Bord ${ids.map((id) => labels.get(id) ?? '?').join(', ')}`
 }
+
+/** "Bord 3"; ett bord med eget namn ("Bar") visas som det heter. */
+export function tableTitle(label: string): string {
+  return /^\d/.test(label) ? `Bord ${label}` : label
+}
+
+/**
+ * Beställningens bord i den gällande ritningen. QR-kodens id i första hand
+ * (det står kvar om bordet byter nummer); saknas id:t letas bordet upp på
+ * namnet. Finns bordet inte längre i ritningen blir id null och det sparade
+ * namnet visas.
+ */
+export function orderTable(
+  tableId: string | undefined,
+  tableLabel: string | undefined,
+  labels: Map<string, string> | null,
+): { id: string | null; label: string } {
+  const stored = tableLabel?.trim() || '?'
+  if (!labels) return { id: null, label: stored }
+  if (tableId) return labels.has(tableId) ? { id: tableId, label: labels.get(tableId)! } : { id: null, label: stored }
+  const hits = [...labels].filter(([, label]) => label === tableLabel?.trim())
+  return hits.length === 1 ? { id: hits[0][0], label: hits[0][1] } : { id: null, label: stored }
+}

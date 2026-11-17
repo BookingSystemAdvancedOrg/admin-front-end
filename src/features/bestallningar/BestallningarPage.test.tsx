@@ -196,7 +196,7 @@ describe('BestallningarPage', () => {
     })]))
     render(<BestallningarPage />)
     await user.click(await screen.findByText('Avslutade idag (1)'))
-    expect(screen.getByText(/#7 · Bord 3 ·/)).toBeInTheDocument()
+    expect(screen.getByText(/^#7 ·/)).toHaveTextContent(/^#7 · Bord 3 ·/)
     await user.click(screen.getByRole('button', { name: 'Återbetala #7' }))
     expect(screen.getByRole('dialog', { name: 'Återbetala #7, Bord 3' })).toBeInTheDocument()
   })
@@ -253,7 +253,7 @@ describe('BestallningarPage', () => {
     await user.click(within(card).getByRole('button', { name: 'Klar att servera' }))
     expect(screen.getByText(/är klar\. Bär maten till/)).toBeInTheDocument()
     const klara = screen.getByRole('region', { name: 'Klara' })
-    expect(within(klara).getByText('Bär till Bord 7')).toBeInTheDocument()
+    expect(within(klara).getByText(/Bär till/)).toHaveTextContent('Bär till Bord 7')
     expect(within(klara).getByRole('button', { name: 'Serverad vid Bord 7' })).toBeInTheDocument()
   })
 

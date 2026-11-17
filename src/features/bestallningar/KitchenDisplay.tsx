@@ -1,7 +1,8 @@
 import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { clock } from './ordersApi'
-import { tableTitle } from '../table-qr/tableQrApi'
+import { OrderTableLink } from '../../shared/TableLinks'
+import { orderTable, tableTitle } from '../../shared/tables'
 import { byCourse, getRouting, listTickets, printErrorText, reprintTicket, setTicketStatus, TICKET_TEXT } from './printApi'
 import type { Station, StationTicket } from './printApi'
 import { SkelBlock, SkelBox } from '../../shared/Skeleton'
@@ -20,8 +21,9 @@ import { booqyFaultText } from '../../shared/errors'
 export const KDS_POLL_MS = 5_000
 const READY_KEEP_MS = 15 * 60_000
 
-function where(t: StationTicket): string {
-  if (t.mode === 'table') return tableTitle(t.tableLabel ?? '?')
+/** Bongens bord; utan ritningen (labels null) det namn som står på bongen. */
+function where(t: StationTicket, labels: Map<string, string> | null = null, tableId?: string): string {
+  if (t.mode === 'table') return tableTitle(orderTable(tableId, t.tableLabel, labels).label)
   return 'Avhämtning'
 }
 
@@ -29,10 +31,16 @@ function key(t: StationTicket): string {
   return `${t.sourceId}/${t.stationId}`
 }
 
-export function KitchenDisplay({ locationId, station, onStation }: {
+export function KitchenDisplay({ locationId, station, onStation, labels = null, tableIds, date }: {
   locationId: string
   station: string | null
   onStation: (stationId: string) => void
+  /** Bordens nummer i den gällande ritningen (Layout). */
+  labels?: Map<string, string> | null
+  /** Beställningens bord per orderId (bongarna saknar bordets id). */
+  tableIds?: Map<string, string>
+  /** Dagen bordskartan ska visa. */
+  date?: string
 }) {
   const [stations, setStations] = useState<Station[] | null>(null)
   const [tickets, setTickets] = useState<StationTicket[] | null>(null)
@@ -115,12 +123,18 @@ export function KitchenDisplay({ locationId, station, onStation }: {
 
   function card(t: StationTicket) {
     const isBusy = busy === key(t)
+    const tableId = t.tableId ?? (t.orderId ? tableIds?.get(t.orderId) : undefined)
     return (
       <article key={key(t)} className={`kds-ticket kds-ticket--${t.status}${t.allergy ? ' kds-ticket--allergy' : ''}`}
-        aria-label={`Bong #${t.number ?? ''}, ${where(t)}, ${TICKET_TEXT[t.status]}`}>
+        aria-label={`Bong #${t.number ?? ''}, ${where(t, labels, tableId)}, ${TICKET_TEXT[t.status]}`}>
         <header className="kds-ticket-head">
           <span className="order-number">#{t.number ?? '-'}</span>
-          <span className={t.mode === 'table' ? 'order-place order-place--table' : 'order-place'}>{where(t)}</span>
+          {t.mode === 'table' ? (
+            <OrderTableLink tableId={tableId} tableLabel={t.tableLabel} labels={labels} date={date}
+              className="order-place order-place--table kds-place" iconSize={20} />
+          ) : (
+            <span className="order-place">Avhämtning</span>
+          )}
           <span className="order-time">{clock(t.placedAt ?? t.createdAt)}</span>
         </header>
         {t.allergy && <p className="kds-allergy" role="note">Allergi: kontrollera innan maten går ut</p>}

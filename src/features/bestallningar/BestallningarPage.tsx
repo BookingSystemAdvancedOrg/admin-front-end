@@ -1,6 +1,6 @@
 import { useLiveRefresh } from '../../shared/live'
 import { errorText } from '../../shared/errors'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StatTile } from '../../shared/motion/StatTile'
 import { Num } from '../../shared/motion/Num'
 import { clockIn, revenueToday, revenueUntil } from '../oversikt/overview'
@@ -21,7 +21,8 @@ import {
   refundOrder,
 } from './ordersApi'
 import type { Order, OrderingState, StaffMove } from './ordersApi'
-import { tableTitle } from '../table-qr/tableQrApi'
+import { orderTable, tableTitle, useTables } from '../../shared/tables'
+import { OrderTableLink } from '../../shared/TableLinks'
 import { getPrintStatus, printBannerText, printErrorText, reprintOrder, TICKET_TEXT } from './printApi'
 import type { JobState, PrintStatus } from './printApi'
 import { KitchenDisplay } from './KitchenDisplay'
@@ -50,8 +51,9 @@ const JOB_TEXT: Record<JobState, string> = {
   FAILED: 'Skrevs inte ut',
 }
 
-function where(order: Order): string {
-  return order.mode === 'table' ? tableTitle(order.tableLabel ?? '?') : 'Avhämtning'
+/** "Bord 3" (numret i den gällande ritningen) eller "Avhämtning". */
+function where(order: Order, labels: Map<string, string> | null): string {
+  return order.mode === 'table' ? tableTitle(orderTable(order.tableId, order.tableLabel, labels).label) : 'Avhämtning'
 }
 
 /** Filtrets värde för en beställning: bordets id (eller namn), "pickup" för avhämtning. */
@@ -97,6 +99,12 @@ export default function BestallningarPage() {
   const [announce, setAnnounce] = useState('')
   /** ?vy=kok: köksskärmen (en stations bongar) i stället för tavlan; ?station= vilken. */
   const [params, setParams] = useState(() => new URLSearchParams(window.location.search))
+  /** Bordens nummer i den gällande ritningen, samma som i Layout. */
+  const { labels } = useTables(locationId)
+  const labelsRef = useRef(labels)
+  useEffect(() => {
+    labelsRef.current = labels
+  }, [labels])
   const kds = params.get('vy') === 'kok'
   function view(next: { vy?: string | null; station?: string | null }) {
     const p = new URLSearchParams(params)
@@ -118,7 +126,7 @@ export default function BestallningarPage() {
         const added = list.orders.filter((o) => !seen.current!.has(o.orderId))
         if (added.length) {
           setFresh((prev) => new Set([...prev, ...added.map((o) => o.orderId)]))
-          setAnnounce(added.map((o) => `Ny beställning #${o.number ?? ''}, ${where(o)}`).join('. '))
+          setAnnounce(added.map((o) => `Ny beställning #${o.number ?? ''}, ${where(o, labelsRef.current)}`).join('. '))
         }
       }
       seen.current = ids
@@ -228,7 +236,7 @@ export default function BestallningarPage() {
 
   // Filtret: borden (och avhämtning) som finns bland dagens beställningar.
   const places = new Map<string, string>()
-  for (const o of orders ?? []) places.set(placeKey(o), where(o))
+  for (const o of orders ?? []) places.set(placeKey(o), where(o, labels))
   const placeOptions = [...places].sort((a, b) =>
     a[0] === 'pickup' ? -1 : b[0] === 'pickup' ? 1 : a[1].localeCompare(b[1], 'sv', { numeric: true }),
   )
@@ -241,6 +249,20 @@ export default function BestallningarPage() {
   const lastWeekOrders = lastWeek?.key === `${locationId}|${listDate}` ? lastWeek.orders : null
   // Restaurangerna ligger i Europe/Stockholm (clockIn faller tillbaka dit).
   const revenueBefore = revenueUntil(lastWeekOrders, clockIn(null), null)
+  /** Bongarna har beställningens id; borden och dagen hämtas härifrån. */
+  const ticketTables = useMemo(
+    () => new Map((orders ?? []).filter((o) => o.tableId).map((o) => [o.orderId, o.tableId!])),
+    [orders],
+  )
+  const dateOf = (order: Order) => order.date ?? listDate ?? undefined
+  /** Bordet som knapp till Layout (bordet markerat), avhämtning som text. */
+  function tableChip(order: Order, className: string, iconSize?: number) {
+    if (order.mode !== 'table') return <span className={className}>Avhämtning</span>
+    return (
+      <OrderTableLink tableId={order.tableId} tableLabel={order.tableLabel} labels={labels}
+        date={dateOf(order)} className={className} iconSize={iconSize} />
+    )
+  }
   const count = (status: string) => active.filter((o) => o.status === status).length
   const tiles = [
     { label: 'Nya', value: String(count('confirmed')), tone: count('confirmed') ? ('attention' as const) : undefined },
@@ -288,19 +310,17 @@ export default function BestallningarPage() {
       <article
         key={order.orderId}
         className={`order-card${fresh.has(order.orderId) ? ' fresh' : ''}`}
-        aria-label={`Beställning ${order.number ?? ''}, ${where(order)}`}
+        aria-label={`Beställning ${order.number ?? ''}, ${where(order, labels)}`}
       >
         <header className="order-card-head">
           <span className="order-number">#{order.number ?? '-'}</span>
-          <span className={order.mode === 'table' ? 'order-place order-place--table' : 'order-place'}>
-            {where(order)}
-          </span>
+          {tableChip(order, order.mode === 'table' ? 'order-place order-place--table' : 'order-place', 18)}
           <span className="order-time" title="Betald">
             {clock(order.confirmedAt)}
           </span>
         </header>
         {order.mode === 'table' && order.status === 'ready' && (
-          <p className="order-serve-to">Bär till {where(order)}</p>
+          <p className="order-serve-to">Bär till {tableChip(order, 'order-serve-chip')}</p>
         )}
         {print?.orders[order.orderId] && (
           <span className={`status-badge order-print ${print.orders[order.orderId] === 'FAILED' ? 'cancelled' : 'waiting'}`}>
@@ -354,7 +374,7 @@ export default function BestallningarPage() {
           {order.status === 'ready' && (
             <button type="button" className="btn primary square" disabled={isBusy}
               onClick={() => void move(order, 'completed')}>
-              {order.mode === 'pickup' ? 'Hämtad' : `Serverad vid ${where(order)}`}
+              {order.mode === 'pickup' ? 'Hämtad' : `Serverad vid ${where(order, labels)}`}
             </button>
           )}
           {(print?.printerConfigured || stations.length > 0) && !confirming && order.status !== 'cancelled' && (
@@ -444,7 +464,7 @@ export default function BestallningarPage() {
               <div className="orders-serve" role="status">
                 <span>
                   #{serveTo.number ?? ''} är klar. Bär maten till
-                  <strong className="orders-serve-table">{where(serveTo)}</strong>
+                  {tableChip(serveTo, 'orders-serve-table', 26)}
                 </span>
                 <button type="button" className="btn outline square" onClick={() => setServeTo(null)}>
                   OK
@@ -464,7 +484,8 @@ export default function BestallningarPage() {
             </div>
             {kds ? (
               <KitchenDisplay locationId={locationId} station={params.get('station')}
-                onStation={(station) => view({ station })} />
+                onStation={(station) => view({ station })} labels={labels} tableIds={ticketTables}
+                date={listDate ?? undefined} />
             ) : <>
             {placeOptions.length > 1 && (
               <div className="orders-filter">
@@ -512,7 +533,7 @@ export default function BestallningarPage() {
                   {done.map((o) => (
                     <li key={o.orderId}>
                       <span>
-                        #{o.number} · {where(o)} · {o.customerName} · <Num>{kronor(o.totalAmount)}</Num> ·{' '}
+                        #{o.number} · {tableChip(o, 'orders-done-place')} · {o.customerName} · <Num>{kronor(o.totalAmount)}</Num> ·{' '}
                         {o.status === 'cancelled' ? 'Avbruten, återbetald' : `Klar ${clock(o.completedAt)}`}
                         {refundLabel(o) ? <span className="order-refunded"> · {refundLabel(o)}</span> : null}
                       </span>
@@ -533,7 +554,7 @@ export default function BestallningarPage() {
       </div>
       {refunding && (
         <RefundDialog
-          title={`Återbetala #${refunding.number ?? ''}, ${where(refunding)}`}
+          title={`Återbetala #${refunding.number ?? ''}, ${where(refunding, labels)}`}
           remaining={refunding.refundable ?? 0}
           canNotify={Boolean(refunding.customerEmail || refunding.customerPhone)}
           note={refunding.giftCard?.debitedOre

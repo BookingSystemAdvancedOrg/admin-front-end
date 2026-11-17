@@ -31,7 +31,7 @@ export interface DishFormValues {
   category: DishCategory
   price: number
   active: boolean
-  /** Innehåller alkohol - 25 % moms, kan bara beställas vid bordet. */
+  /** Innehåller alkohol - 25 % moms, kan inte beställas online. */
   alcohol: boolean
   /**
    * Nyvald bildfil att ladda upp till S3, eller null när bilden inte bytts.
@@ -451,7 +451,7 @@ export function DishModal({
         <div className="toggle-row">
           <span className="toggle-row-label">
             Innehåller alkohol
-            <InfoTooltip label="Alkohol">25 % moms. Kan bara beställas vid bordet.</InfoTooltip>
+            <InfoTooltip label="Alkohol">25 % moms. Kan inte beställas online.</InfoTooltip>
           </span>
           <button
             type="button"

@@ -197,15 +197,12 @@ export function sampleSummary(from: string, to: string, today: string, f: Pick<F
           d.revenue += price * qty
           dishes.set(id, d)
         }
-        const table = rnd() < 0.35
+        rnd() // förr bord eller avhämtning; dragningen står kvar så att resten av exemplet blir detsamma
         const minutes = 12 + Math.round(rnd() * 20)
         if (!inService(h)) continue
         s.orders++
         s.orderRevenue = (s.orderRevenue ?? 0) + total
-        if (table) {
-          s.tableOrders++
-          s.tableRevenue = (s.tableRevenue ?? 0) + total
-        } else s.pickupRevenue = (s.pickupRevenue ?? 0) + total
+        s.pickupRevenue = (s.pickupRevenue ?? 0) + total
         prep += minutes
         prepN++
         if (minutes > 28) late++

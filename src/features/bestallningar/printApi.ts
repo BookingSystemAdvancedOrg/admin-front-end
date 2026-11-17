@@ -145,7 +145,7 @@ let mockRouting: TicketRouting = {
 let mockTickets: StationTicket[] = [
   {
     sourceId: MOCK_ORDER, orderId: MOCK_ORDER, stationId: 'kok', stationName: 'Kök', status: 'sent', allergy: true,
-    number: 12, mode: 'table', tableLabel: '7', placedAt: new Date(Date.now() - 3 * 60_000).toISOString(),
+    number: 12, mode: 'pickup', placedAt: new Date(Date.now() - 3 * 60_000).toISOString(),
     entries: [
       { name: 'Toast Skagen', quantity: 2, course: 'starters' },
       { name: 'Burgare', quantity: 1, course: 'mains', partOf: 'Burgarmeny', note: 'ingen lök', allergy: 'jordnötsallergi' },
@@ -154,10 +154,10 @@ let mockTickets: StationTicket[] = [
   },
   {
     sourceId: MOCK_ORDER, orderId: MOCK_ORDER, stationId: 'bar', stationName: 'Bar', status: 'sent', allergy: true,
-    number: 12, mode: 'table', tableLabel: '7', placedAt: new Date(Date.now() - 3 * 60_000).toISOString(),
+    number: 12, mode: 'pickup', placedAt: new Date(Date.now() - 3 * 60_000).toISOString(),
     entries: [
       { name: 'Läsk', quantity: 1, course: 'mains', partOf: 'Burgarmeny', note: 'ingen lök', allergy: 'jordnötsallergi' },
-      { name: 'Mojito', quantity: 1, course: 'drinks' },
+      { name: 'Lemonad', quantity: 1, course: 'drinks' },
     ],
   },
   {

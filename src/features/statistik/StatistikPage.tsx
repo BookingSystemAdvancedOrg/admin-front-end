@@ -272,7 +272,7 @@ export default function StatistikPage() {
         key="avgOrder"
         label="Snittorder"
         value={fmtKr(s.avgOrder)}
-        info="Betalt belopp per onlinebeställning (avhämtning och vid bordet) i perioden."
+        info="Betalt belopp per onlinebeställning i perioden."
         detail={`I perioden: ${fmtInt(s.orders)} betalda beställningar`}
         {...versus(s.avgOrder, p?.avgOrder, 'avgOrder')}
       />
@@ -303,7 +303,7 @@ export default function StatistikPage() {
       />
     ),
     orders: (
-      <Tile key="orders" label="Beställningar" info="Betalda onlinebeställningar i perioden, avhämtning och vid bordet." value={fmtInt(s.orders)} detail={`I perioden: ${fmtInt(s.tableOrders)} vid bordet`} {...versus(s.orders, p?.orders, 'orders')} />
+      <Tile key="orders" label="Beställningar" info="Betalda onlinebeställningar i perioden." value={fmtInt(s.orders)} detail={s.tableOrders > 0 ? `I perioden: ${fmtInt(s.tableOrders)} vid bordet` : undefined} {...versus(s.orders, p?.orders, 'orders')} />
     ),
     prepTime: (
       <Tile
@@ -797,7 +797,8 @@ export default function StatistikPage() {
                           valueLabel="Belopp"
                           segments={[
                             { key: 'pickup', label: 'Avhämtning', value: s.pickupRevenue ?? 0, tone: 'ink' },
-                            { key: 'table', label: 'Vid bordet', value: s.tableRevenue ?? 0, tone: 'red' },
+                            // Bara äldre bordsbeställningar (QR-beställning är borttagen): syns när perioden har några.
+                            ...(s.tableRevenue ? [{ key: 'table', label: 'Vid bordet', value: s.tableRevenue, tone: 'red' as const }] : []),
                             { key: 'catering', label: 'Catering', value: s.cateringRevenue ?? 0, tone: 'steel' },
                           ]}
                         />
@@ -805,8 +806,12 @@ export default function StatistikPage() {
                       <dl className="sk-facts">
                         <dt>Betalda beställningar</dt>
                         <dd>{fmtInt(s.orders)}</dd>
-                        <dt>Vid bordet</dt>
-                        <dd>{fmtInt(s.tableOrders)}</dd>
+                        {s.tableOrders > 0 && (
+                          <>
+                            <dt>Vid bordet</dt>
+                            <dd>{fmtInt(s.tableOrders)}</dd>
+                          </>
+                        )}
                         <dt>Tillagningstid</dt>
                         <dd>{s.prepMinutes !== null ? `${fmtDecimal(s.prepMinutes)} min` : '-'}</dd>
                         <dt>Klara sent</dt>

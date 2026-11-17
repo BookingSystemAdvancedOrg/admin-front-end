@@ -3,52 +3,43 @@ import { dedupe, useLiveForm } from '../../shared/live'
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { useTables } from '../../shared/tables'
-import { TableQrModal } from '../table-qr/TableQr'
 import { getLocation, updateLocation } from './locationApi'
 import type { OrderingPolicy } from './locationApi'
 import '../bestallningar/bestallningar.css'
 import { ErrorNote } from '../../shared/ErrorNote'
-import { booqyFaultText } from '../../shared/errors'
 import { TitleInfo } from '../../shared/TitleInfo'
 
 /**
- * Matbeställning för den valda platsen.
+ * Matbeställning för den valda platsen: bara avhämtning. Gästen beställer och
+ * betalar på restaurangens webbplats och får ett sms när maten är klar att hämta.
  *
- *  - Avhämtning: gästen beställer och betalar på restaurangens webbplats och
- *    får ett sms när maten är klar att hämta.
- *  - Vid bordet: gästen skannar QR-koden på bordet; maten serveras där.
+ * Beställning och betalning vid bordet (QR-kod) togs bort 2026-11-17: betalning
+ * på plats ska gå via restaurangens eget kassasystem. `table` skickas inte
+ * längre (servern bortser från ett sparat värde) och `pickup` alltid som true,
+ * så att "Ta emot beställningar" ensam styr avhämtningen.
  *
  * Betalning sker alltid online via restaurangens Stripe-konto. Beställning
  * tas bara emot under öppettiderna (avvikande dagar räknas), fram till
  * "sista beställning" före stängning.
- *
- * QR-koderna: en slumpad kod per bord i den publicerade planritningen
- * (Layout). Samma dekal gäller när bordet byter namn eller flyttas; se
- * features/table-qr.
  */
 
 const DEFAULTS: OrderingPolicy = {
   enabled: false,
   pickup: true,
-  table: true,
   prepMinutes: 20,
   lastOrderMinutes: 15,
 }
 
 interface FormState {
   enabled: boolean
-  pickup: boolean
-  table: boolean
   prep: string
   last: string
 }
 
 function toForm(policy: OrderingPolicy): FormState {
   return {
-    enabled: policy.enabled,
-    pickup: policy.pickup,
-    table: policy.table,
+    // Påslaget utan avhämtning (förr: bara vid bordet) tar inte emot något längre.
+    enabled: policy.enabled && policy.pickup !== false,
     prep: String(policy.prepMinutes),
     last: String(policy.lastOrderMinutes),
   }
@@ -75,8 +66,6 @@ export function OrderingCard({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const { tables, error: tablesError } = useTables(locationId)
-  const [showQr, setShowQr] = useState(false)
 
   useEffect(() => {
     if (!locationId) return
@@ -122,13 +111,9 @@ export function OrderingCard({
     const last = whole(form.last, 0, 120)
     if (prep === null) return setError('Tillagningstiden ska vara 5 till 180 minuter. Skriv till exempel 20.')
     if (last === null) return setError('Sista beställning ska vara 0 till 120 minuter före stängning. Skriv till exempel 30.')
-    if (form.enabled && !form.pickup && !form.table) {
-      return setError('Välj avhämtning, beställning vid bordet eller båda.')
-    }
     const policy: OrderingPolicy = {
       enabled: form.enabled,
-      pickup: form.pickup,
-      table: form.table,
+      pickup: true,
       prepMinutes: prep,
       lastOrderMinutes: last,
     }
@@ -151,7 +136,7 @@ export function OrderingCard({
     <section id="bestallning" className="admin-card table-card">
       <TitleInfo
         title="Beställning"
-        info="Gästerna beställer och betalar online, bara under öppettiderna. Avhämtning: sms när maten är klar. Vid bordet: QR-koden på bordet, maten serveras där. Alkohol kan bara beställas vid bordet (märk drycker med alkohol under Meny). Moms: 6 % på avhämtning (t.o.m. 2027), 12 % vid bordet, 25 % på alkohol."
+        info="Gästerna beställer och betalar online och hämtar maten på restaurangen, bara under öppettiderna. Sms när maten är klar. Alkohol kan inte beställas online (märk drycker med alkohol under Meny). Moms: 6 % (t.o.m. 2027). Gäster på plats betalar i restaurangens egen kassa."
       />
       {live.there !== null && <ChangedNote onUse={live.takeThere} />}
       <div style={{ height: 8 }} />
@@ -168,28 +153,12 @@ export function OrderingCard({
           <div className="toggle-row">
             <div>
               <p className="toggle-row-label" id="ordering-enabled-label">
-                Ta emot beställningar
+                Ta emot beställningar (avhämtning)
               </p>
             </div>
             <button type="button" role="switch" aria-checked={form.enabled}
               aria-labelledby="ordering-enabled-label" className="switch" disabled={disabled}
               onClick={() => set('enabled', !form.enabled)} />
-          </div>
-          <div className="toggle-row">
-            <p className="toggle-row-label" id="ordering-pickup-label">
-              Avhämtning
-            </p>
-            <button type="button" role="switch" aria-checked={form.pickup}
-              aria-labelledby="ordering-pickup-label" className="switch" disabled={disabled}
-              onClick={() => set('pickup', !form.pickup)} />
-          </div>
-          <div className="toggle-row">
-            <p className="toggle-row-label" id="ordering-table-label">
-              Beställning vid bordet (QR-kod)
-            </p>
-            <button type="button" role="switch" aria-checked={form.table}
-              aria-labelledby="ordering-table-label" className="switch" disabled={disabled}
-              onClick={() => set('table', !form.table)} />
           </div>
           <div className="form-grid">
             <div className="form-field">
@@ -227,32 +196,6 @@ export function OrderingCard({
         </form>
       )}
 
-      {locationId && saved?.enabled && saved.table && (
-        <div className="qr-section">
-          <div style={{ height: 20 }} />
-          <h3 className="card-title">QR-koder för borden</h3>
-          {tablesError && <ErrorNote text={booqyFaultText('Borden kunde inte visas.')} />}
-          {tables && tables.length === 0 && (
-            <p className="cell-muted">Publicera en layout först.</p>
-          )}
-          {tables && tables.length > 0 && (
-            <>
-              <span className="row-actions">
-                <button type="button" className="btn primary square" onClick={() => setShowQr(true)}>
-                  Visa och skriv ut QR-koder ({tables.length} bord)
-                </button>
-              </span>
-            </>
-          )}
-          {showQr && (
-            <TableQrModal
-              locationId={locationId}
-              mockTables={tables ?? []}
-              onClose={() => setShowQr(false)}
-            />
-          )}
-        </div>
-      )}
     </section>
   )
 }

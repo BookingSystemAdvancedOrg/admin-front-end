@@ -4,7 +4,7 @@ import { ready } from '../lib/ui'
 import { optEnv } from '../lib/env'
 import { fictionPhone, mail, RUN, TENANT_NAME, TENANT_SLUG, uniq } from '../lib/data'
 
-/** Guest side of the E2E restaurant: its own site, booking online, ordering state, QR sticker. */
+/** Guest side of the E2E restaurant: its own site, booking online, ordering state, old table QR links. */
 const GUEST = optEnv('E2E_GUEST_LOCAL_URL') ?? 'http://localhost:7181'
 
 test.describe('Guest site for the E2E restaurant', () => {
@@ -63,28 +63,11 @@ test.describe('Guest site for the E2E restaurant', () => {
     expect(text).not.toMatch(/Något gick fel|error|undefined/i)
   })
 
-  test('QR sticker link from Layout shows the table chip on the guest page', async ({ page, browser }, info) => {
-    const reqP = page.waitForRequest((r) => /\/orders\/table-codes/.test(r.url()) && !!r.headers()['authorization'])
-    await page.goto('/layout')
-    await ready(page, 'Layout')
-    await page.getByRole('button', { name: 'QR-koder' }).click()
-    const req = await reqP
-    const res = await page.request.get(req.url(), { headers: { authorization: req.headers()['authorization'] } })
-    const body = await res.json()
-    info.annotations.push({ type: 'codes', description: JSON.stringify(body).slice(0, 400) })
-    const item = (body.items ?? body.codes ?? body.tables ?? [])[0]
-    expect(item, 'published tables have QR codes').toBeTruthy()
-    const url = String(item.url ?? item.orderUrl ?? '')
-    const code = item.code ?? item.key ?? (url ? new URL(url).searchParams.get('bord') : '')
-    info.annotations.push({ type: 'sticker url', description: url })
+  test('an old table QR link lands on the counter page, no order form', async ({ browser }, info) => {
     const guest = await (await browser.newContext()).newPage()
-    await guest.goto(`${GUEST}/bestall?restaurang=${TENANT_SLUG}&bord=${encodeURIComponent(code)}`)
-    await guest.waitForTimeout(4000)
-    await guest.screenshot({ path: info.outputPath('qr-guest.png') })
-    const tampered = await (await browser.newContext()).newPage()
-    await tampered.goto(`${GUEST}/bestall?restaurang=${TENANT_SLUG}&bord=${encodeURIComponent(String(code).slice(0, -2) + 'xx')}`)
-    await tampered.waitForTimeout(4000)
-    await tampered.screenshot({ path: info.outputPath('qr-tampered.png') })
-    info.annotations.push({ type: 'tampered text', description: (await tampered.locator('main').innerText()).slice(0, 200) })
+    await guest.goto(`${GUEST}/bestall?restaurang=${TENANT_SLUG}&bord=${'a'.repeat(22)}`)
+    await expect(guest.getByRole('heading', { name: /Beställ och betala i kassan/ })).toBeVisible({ timeout: 30000 })
+    await expect(guest.getByRole('button', { name: /Betala|Till kassan|Lägg till/ })).toHaveCount(0)
+    await guest.screenshot({ path: info.outputPath('qr-counter.png') })
   })
 })

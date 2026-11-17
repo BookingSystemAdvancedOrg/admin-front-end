@@ -153,7 +153,7 @@ describe('Guide', () => {
     expect(screen.getByRole('dialog', { name: 'Personal' })).toBeInTheDocument()
     expect(screen.getByTestId('where')).toHaveTextContent('/personal')
 
-    for (const title of ['Betalningar', 'Notiser', 'Avbokning och kortgaranti', 'Beställning och QR-koder', 'Bokning']) {
+    for (const title of ['Betalningar', 'Notiser', 'Avbokning och kortgaranti', 'Beställning online', 'Bokning']) {
       await next(user)
       expect(screen.getByRole('dialog', { name: title })).toBeInTheDocument()
     }

@@ -7,7 +7,7 @@ import { optEnv } from '../lib/env'
 import { mail, RUN } from '../lib/data'
 
 /**
- * Online pickup order and QR table order, paid with Stripe's published test
+ * Online pickup order, paid with Stripe's published test
  * card on the guest site served from localhost (customer-front-end, real dev
  * API), then seen on the orders board and the kitchen screen (KDS).
  *
@@ -74,10 +74,8 @@ test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', 
 
   await page.goto('/installningar#bestallning')
   await ready(page)
-  for (const id of ['ordering-enabled-label', 'ordering-pickup-label', 'ordering-table-label']) {
-    const sw = page.locator(`[role=switch][aria-labelledby=${id}]`)
-    if ((await sw.getAttribute('aria-checked')) !== 'true') await sw.click()
-  }
+  const on = page.locator('[role=switch][aria-labelledby=ordering-enabled-label]')
+  if ((await on.getAttribute('aria-checked')) !== 'true') await on.click()
   const r0 = JSON.parse(readFileSync(RESTORE, 'utf8'))
   if (r0.last === undefined) writeFileSync(RESTORE, JSON.stringify({ ...r0, last: await page.getByLabel('Sista beställning (min före stängning)').inputValue() }))
   await page.getByLabel('Sista beställning (min före stängning)').fill('0')
@@ -136,7 +134,7 @@ test('guest pickup order with allergy, paid with test card, appears on the board
   await guest.goto(`${GUEST}/bestall?restaurang=${SLUG}`)
   await expect(guest.getByRole('heading', { name: /Beställ för avhämtning/ })).toBeVisible({ timeout: 30000 })
   await guest.screenshot({ path: info.outputPath('guest-menu.png') })
-  await expect.soft(guest.locator('li', { hasText: 'E2E Fatöl' }).getByText('Bara vid bordet'), 'alcohol only at the table').toBeVisible()
+  await expect.soft(guest.getByRole('button', { name: 'Lägg till E2E Fatöl' }), 'alcohol cannot be ordered online').toHaveCount(0)
   await guest.getByRole('button', { name: 'Lägg till E2E Margherita' }).click()
   await guest.getByRole('button', { name: 'Lägg till E2E Pizzameny' }).click()
   await guest.getByRole('button', { name: 'Lägg till E2E Cola' }).click()
@@ -172,37 +170,6 @@ test('kitchen screen: food to Kök, combo split, drink part to Bar, cola no tick
   await page.screenshot({ path: info.outputPath('kds-bar.png'), fullPage: true })
   expect.soft(text, 'Cola has no ticket').not.toMatch(/E2E Cola/)
   expect.soft(text, 'allergy shown').toMatch(/[Jj]ordnöt/)
-})
-
-test('QR table order: table shown first on the board', async ({ page, browser }, info) => {
-  // the table's QR link, from the admin
-  const tokenReq = page.waitForRequest((r) => /\/orders\/table-codes/.test(r.url()) && !!r.headers()['authorization'])
-  await page.goto('/layout')
-  await ready(page, 'Layout')
-  await page.getByRole('button', { name: 'QR-koder' }).click()
-  const req = await tokenReq.catch(() => null)
-  test.skip(!req, 'no published layout with tables on the order-test restaurant')
-  const res = await page.request.get(req!.url(), { headers: { authorization: req!.headers()['authorization'] } })
-  const codes = (await res.json()).items ?? (await res.json()).codes ?? []
-  info.annotations.push({ type: 'table codes', description: JSON.stringify(codes).slice(0, 300) })
-  const first = codes[0]
-  test.skip(!first, 'no tables')
-  const url: string = first.url ?? first.orderUrl ?? ''
-  const code = first.code ?? first.key ?? new URL(url).searchParams.get('bord')
-  const guest = await guestPage(browser)
-  await guest.goto(`${GUEST}/bestall?restaurang=${SLUG}&bord=${encodeURIComponent(code)}`)
-  await expect(guest.getByRole('heading', { name: /Beställ till bordet/ })).toBeVisible({ timeout: 30000 })
-  await guest.getByRole('button', { name: 'Lägg till E2E Fatöl' }).click()
-  await guest.getByRole('button', { name: 'Lägg till E2E Margherita' }).click()
-  await checkout(guest, `E2E Bord ${RUN}`)
-  await page.goto('/bestallningar')
-  await ready(page, 'Beställningar')
-  const card = page.locator('article, li, .order-card').filter({ hasText: `E2E Bord ${RUN}` }).first()
-  await expect(card).toBeVisible({ timeout: 60000 })
-  await page.screenshot({ path: info.outputPath('board-table.png') })
-  const t = (await card.innerText()).trim()
-  info.annotations.push({ type: 'card text', description: t.slice(0, 200) })
-  expect.soft(t.split('\n')[0], 'table is the first thing on the card').toMatch(/Bord|T\d/)
 })
 
 test.afterAll('restore: hours back, ordering off, E2E dishes off', async ({ browser }) => {

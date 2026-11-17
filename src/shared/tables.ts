@@ -122,8 +122,8 @@ export function tableTitle(label: string): string {
 }
 
 /**
- * Beställningens bord i den gällande ritningen. QR-kodens id i första hand
- * (det står kvar om bordet byter nummer); saknas id:t letas bordet upp på
+ * En äldre bordsbeställnings bord i den gällande ritningen (QR-beställning vid
+ * bordet är borttagen). Bordets id i första hand (det står kvar om bordet byter nummer); saknas id:t letas bordet upp på
  * namnet. Finns bordet inte längre i ritningen blir id null och det sparade
  * namnet visas.
  */

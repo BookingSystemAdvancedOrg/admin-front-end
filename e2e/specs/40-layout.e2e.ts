@@ -3,9 +3,9 @@ import { watch } from '../lib/watch'
 import { ready } from '../lib/ui'
 
 /** Draws 4 square tables with the tool (each lands on a free spot; the first is set to
- * 2 seats) and publishes the layout. Bookings and QR orders use it. */
+ * 2 seats) and publishes the layout. Bookings use it. */
 test.describe('Admin: Layout', () => {
-  test('draw tables, publish, QR codes', async ({ page }, info) => {
+  test('draw tables, publish, no QR codes', async ({ page }, info) => {
     const w = watch(page)
     await page.goto('/layout')
     await ready(page, 'Layout')
@@ -48,11 +48,8 @@ test.describe('Admin: Layout', () => {
     // While a switch is already booked a new version is published but not activated, and the
     // page says so (it used to claim "Publicerad" while the version stayed inactive).
     expect(await done.textContent()).toMatch(/aktiverad som version|bytet sker|versionsbyte är redan inbokat/)
-    await page.getByRole('button', { name: 'QR-koder' }).click()
-    const qr = page.getByRole('dialog')
-    await expect(qr).toBeVisible()
-    await expect(qr.locator('svg, img, canvas').first()).toBeVisible({ timeout: 20000 })
-    await page.screenshot({ path: info.outputPath('qr.png') })
+    // QR-beställning vid bordet är borttagen (2026-11-17): ingen QR-knapp i layouten.
+    await expect(page.getByRole('button', { name: 'QR-koder' })).toHaveCount(0)
     await w.attach(info)
   })
 

@@ -138,8 +138,8 @@ export const GUIDE_STEPS: GuideStep[] = [
     target: 'settings-tab-bestallning',
     ownerOnly: true,
     feature: 'ordering',
-    title: 'Beställning och QR-koder',
-    text: 'Slå på avhämtning och beställning vid bordet, och skapa QR-koder att ställa på borden.',
+    title: 'Beställning online',
+    text: 'Slå på beställning online: gästerna beställer och betalar på er hemsida och hämtar maten hos er.',
   },
   {
     id: 'set-bord',

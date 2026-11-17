@@ -12,6 +12,7 @@ const path = require('node:path')
 
 const config = require('./desktop.config.json')
 const { setUpUpdates } = require('./updates.cjs')
+const { refreshMenuEntry, readIconSet } = require('./linux-menu.cjs')
 const target = readTarget()
 const START_URL = new URL(target.url)
 const ORIGIN = START_URL.origin
@@ -42,7 +43,7 @@ function readTarget() {
   // bara i opackade körningar så att en installerad app aldrig kan pekas om.
   if (!app.isPackaged && process.env.BOOQY_URL) url = process.env.BOOQY_URL
   if (!url) throw new Error(`Ingen adress för miljön "${env}" i desktop.config.json`)
-  return { env, url }
+  return { env, url, appId: built?.appId ?? null }
 }
 
 function isAppUrl(raw) {
@@ -254,6 +255,32 @@ let updates = null
 // ---- Huvudfönstret --------------------------------------------------------
 let mainWindow = null
 
+/**
+ * Linux visar fönstrets egen ikon i aktivitetsfält och Alt+Tab (programfilen
+ * har ingen). build.mjs lägger in rätt bild: dev med DEV-brickan, prod utan.
+ * macOS och Windows tar ikonen ur appen (.icns, .exe), som redan är rätt.
+ */
+function windowIcon() {
+  if (process.platform !== 'linux') return {}
+  const file = path.join(__dirname, 'window-icon.png')
+  return fs.existsSync(file) ? { icon: file } : {}
+}
+
+/** Linux-AppImage från install.sh: menyns ikon följer appens. Se linux-menu.cjs. */
+function refreshLinuxMenu() {
+  if (process.platform !== 'linux' || !process.env.APPIMAGE) return
+  try {
+    const icon = fs.readFileSync(path.join(__dirname, 'window-icon.png'))
+    // Filnamnet är också fönstrets WM_CLASS och app_id (desktopName, build.mjs).
+    const slug = require('./package.json').name
+    // Storlekarna i AppImagen (APPDIR sätts av AppImagens körning).
+    const iconSet = readIconSet(process.env.APPDIR, slug)
+    refreshMenuEntry({ home: os.homedir(), slug, wmClass: slug, icon, iconSet })
+  } catch {
+    /* menyn är bara kosmetik: får aldrig stoppa appen */
+  }
+}
+
 function createWindow() {
   const saved = loadBounds()
   const win = new BrowserWindow({
@@ -265,6 +292,7 @@ function createWindow() {
     minHeight: 560,
     show: false,
     title: APP_NAME,
+    ...windowIcon(),
     ...glassWindowOptions(),
     autoHideMenuBar: process.platform !== 'darwin',
     webPreferences: secureWebPreferences,
@@ -431,6 +459,10 @@ function buildMenu() {
 // ---- Start ----------------------------------------------------------------
 app.enableSandbox()
 app.setAboutPanelOptions({ applicationName: APP_NAME, copyright: 'Booqy' })
+// Windows: samma id som Start-menyns genväg (electron-builder sätter appId på
+// den), annars visar aktivitetsfält och notiser inte genvägens ikon och appen
+// grupperas skilt från en fäst genväg. Dev har eget id, alltså DEV-ikonen.
+if (process.platform === 'win32' && target.appId) app.setAppUserModelId(target.appId)
 
 if (!app.requestSingleInstanceLock()) {
   app.quit()
@@ -446,6 +478,7 @@ if (!app.requestSingleInstanceLock()) {
     keepSessionOnDisk()
     buildMenu()
     mainWindow = createWindow()
+    refreshLinuxMenu()
     // Nya versioner av skalet (latest.json bredvid installationsfilerna).
     updates = setUpUpdates({ baseUrl: config.downloads?.[target.env], getWindow: () => mainWindow, flush: flushCookies })
     mainWindow.on('closed', () => (mainWindow = null))

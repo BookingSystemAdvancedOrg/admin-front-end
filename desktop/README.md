@@ -224,12 +224,45 @@ Linux set, and `publish.mjs` does the same for the icon `install.sh` uses.
 There are no extra image files to keep in step: change `icon.png` and the dev
 icon follows. The pill uses the icon's own two colours inverted (the mark's
 colour as background, the tile's colour for the letters), so it stays within
-the two allowed logos. Below 64 px the letters are left out and the pill is
-plain (Linux set, the `install.sh` icon and the Windows `.ico`, which
-`dev-icon.cjs` writes itself; the macOS `.icns` is scaled by electron-builder
-from the 1024 px icon). `npm test` fails if a redrawn logo would end up under
-the pill. Linux installs made with `install.sh` get a changed icon when the
-install command is run again.
+the two allowed logos. From 64 px up the pill and its rounded letters are
+drawn as above. Below 64 px those letters turn to grit, so the small sizes get
+a hand-drawn pixel badge instead (`PIXEL_FONTS` in `dev-icon.cjs`), placed on
+whole pixels in the top right corner with no anti-aliasing, so it stays crisp:
+"DEV" in 7-pixel letters at 48 px (Windows desktop, Linux), in 5-pixel letters
+at 24 and 32 px (Windows taskbar, Linux panels, macOS Finder at 16 pt on
+Retina), and at 16 px, where "DEV" does not fit on the 12-pixel tile, a single
+"D" in the same badge (title bars, list views). That applies to the Linux set,
+the Windows `.ico` and, in dev, a macOS `.icns` that `dev-icon.cjs` writes
+itself (prod still lets electron-builder make the `.icns` from `icon.png`, so
+prod icons are unchanged). `npm test` fails if a redrawn logo would end up
+under the pill or if a small badge stops being crisp. Linux installs made
+with `install.sh` keep a downloaded copy of the icon; the AppImage rewrites
+that copy at start with its own window icon (`linux-menu.cjs`, admin from
+1.4.4, console from 1.4.5), so an older install picks up a changed icon with
+the next self-update. A single picture scaled down by the desktop loses the
+small badge, so from 1.4.6 the AppImage also copies its own hicolor set
+(`$APPDIR/usr/share/icons/hicolor`) into `~/.local/share/icons/hicolor` and
+switches the entry to `Icon=<slug>` (marked `X-Booqy-Icons=hicolor`): menu,
+dock and taskbar then take the drawn 24, 32 or 48 px icon, as with the deb.
+
+Where each platform takes the icon from (all badged in dev, plain in prod):
+macOS Dock, Finder, About and the DMG volume use the `.icns`; Windows uses the
+`.exe` icon (window, taskbar, shortcuts, installer and uninstaller), and the
+app sets the shortcut's AppUserModelID (`appId` in `env.json`) so taskbar
+grouping and notifications pick the same icon; Linux menus use the hicolor
+set and `.desktop` file, while the window and taskbar use the window's own
+icon, which `build.mjs` copies in as `window-icon.png` (git-ignored).
+
+Linux window association (Electron 45, checked in its source): Electron sets
+the window's X11 `WM_CLASS` (both parts) and its Wayland `app_id` to
+`desktopName` without `.desktop`; without `desktopName` it would use a slug of
+the app name. `build.mjs` sets `desktopName` to `<fileBase>.desktop`
+(`booqy-admin-dev` / `booqy-admin`) and `linux.syncDesktopName`, so the deb and AppImage
+`.desktop` file has that name and `StartupWMClass=booqy-admin-dev` (prod
+`booqy-admin`); `install.sh` writes the same, and from 1.4.5 the AppImage rewrites
+an install.sh entry whose `StartupWMClass` or icon differ (`linux-menu.cjs`).
+The window then groups with its menu entry and shows its icon on X11 and
+Wayland alike.
 
 macOS "Dark" icon style (checked on macOS 27.2, 2026-11-16): macOS redraws a
 light icon with a dark tile, and the black b of the off-white Booqy Console

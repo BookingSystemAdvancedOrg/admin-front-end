@@ -94,7 +94,7 @@ export function LayoutVersionsModal({
       .catch((err) => {
         if (!cancelled) {
           setError(
-            errorText(err, 'Kunde inte hämta versionerna.'),
+            errorText(err, 'Versionerna kunde inte visas.'),
           )
           setVersions([])
         }
@@ -117,7 +117,7 @@ export function LayoutVersionsModal({
       setVersions(await listLayoutVersions(locationId))
       onActivated()
     } catch (err) {
-      setError(errorText(err, 'Kunde inte aktivera versionen.'))
+      setError(errorText(err, 'Versionen aktiverades inte.'))
       if (err instanceof BookingsOnRemovedTablesError) setRemoved(err.bookings)
     } finally {
       setBusyVersion(null)
@@ -140,7 +140,7 @@ export function LayoutVersionsModal({
       await archiveLayoutVersion(locationId, version)
       setVersions((prev) => prev?.filter((v) => v.version !== version) ?? prev)
     } catch (err) {
-      setError(errorText(err, 'Kunde inte arkivera versionen.'))
+      setError(errorText(err, 'Versionen arkiverades inte.'))
     } finally {
       setArchivingVersion(null)
     }
@@ -163,7 +163,7 @@ export function LayoutVersionsModal({
       await cancelPendingLayoutActivation(locationId)
       setVersions(await listLayoutVersions(locationId))
     } catch (err) {
-      setError(errorText(err, 'Kunde inte avbryta bytet.'))
+      setError(errorText(err, 'Bytet avbröts inte.'))
     } finally {
       setCancelling(false)
     }

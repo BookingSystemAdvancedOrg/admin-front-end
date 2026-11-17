@@ -229,7 +229,7 @@ export default function InstallningarPage() {
       .catch((err) => {
         if (!cancelled) {
           setLocationError(
-            errorText(err, 'Kunde inte hämta platsen.'),
+            errorText(err, 'Platsen kunde inte visas.'),
           )
         }
       })
@@ -365,7 +365,7 @@ export default function InstallningarPage() {
       clearLocationSummaryCache()
       setSaved(true)
     } catch (err) {
-      setLocationError(errorText(err, 'Kunde inte spara platsen.'))
+      setLocationError(errorText(err, 'Platsen sparades inte.'))
     } finally {
       setSavingLocation(false)
     }

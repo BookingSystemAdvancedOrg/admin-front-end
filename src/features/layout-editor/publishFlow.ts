@@ -71,7 +71,7 @@ export async function activatePublished(
   const published = versions?.find((v) => v.version === version)
 
   if (!activation) {
-    const detail = errorText(failure, 'Okänt fel.')
+    const detail = errorText(failure, '')
     const guidance = /aktivera/i.test(detail) ? '' : ' Aktivera den under Versioner.'
     return {
       ok: false,

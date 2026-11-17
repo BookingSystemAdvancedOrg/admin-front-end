@@ -96,7 +96,7 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
       setCursor(page.cursor)
     } catch (err) {
       if (my !== seq.current) return
-      setError(errorText(err, 'Kunde inte hämta gästerna.'))
+      setError(errorText(err, 'Gästerna kunde inte visas.'))
     } finally {
       if (append) {
         moreRef.current = false
@@ -150,7 +150,7 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
       await rebuildGuests(newId())
       toast('Gästregistret byggs nu från era bokningar och beställningar. Det kan ta några minuter.', { tone: 'success' })
     } catch (err) {
-      toast(errorText(err, 'Det gick inte att bygga gästregistret.', {
+      toast(errorText(err, 'Gästregistret byggdes inte.', {
         rebuild_running: 'Gästregistret byggs redan. Vänta tills det är klart.',
       }), { tone: 'danger' })
     } finally {
@@ -319,7 +319,7 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
       setGuest(g)
       setForm(f)
       setBase(f)
-    }).catch((err) => { if (!cancelled) setError(errorText(err, 'Kunde inte hämta gästen.')) })
+    }).catch((err) => { if (!cancelled) setError(errorText(err, 'Gästen kunde inte visas.')) })
     return () => { cancelled = true }
   }, [guestId, attempt])
   useLiveRefresh(() => getGuest(guestId).then(take), { enabled: guest !== null && !saving })
@@ -367,9 +367,9 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
       setForm(guestForm(next))
       toast('Sparat.', { tone: 'success' })
     } catch (err) {
-      setSaveError(errorText(err, 'Kunde inte spara.', {
-        invalid_birthday: 'Skriv födelsedagen som MM-DD, till exempel 03-14.',
-        note_too_long: 'Anteckningen får vara högst 300 tecken.',
+      setSaveError(errorText(err, 'Gästen sparades inte.', {
+        invalid_birthday: 'Födelsedagen ser fel ut. Skriv månad och dag, till exempel 03-14.',
+        note_too_long: 'Anteckningen är för lång. Den får vara högst 300 tecken.',
       }, { tags: 'taggarna' }))
     } finally {
       setSaving(false)

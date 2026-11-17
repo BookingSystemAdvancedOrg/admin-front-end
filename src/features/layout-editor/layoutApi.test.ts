@@ -457,7 +457,7 @@ describe('saveLayout', () => {
     mockedApiFetch
       .mockResolvedValueOnce({ items: [] })
       .mockRejectedValueOnce(new ApiError(403, 'forbidden'))
-    await expect(saveLayout('loc-1', [fresh])).rejects.toThrow(/behörighet/)
+    await expect(saveLayout('loc-1', [fresh])).rejects.toThrow(/får inte ändra layouten/)
   })
 
   it('uses the location-scoped layout path', async () => {
@@ -529,17 +529,18 @@ describe('publishing', () => {
   it('explains a 409 as a pending cutover, not a concurrent edit', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(409, 'cutover pending'))
     await expect(activateLayoutVersion('loc-1', 3)).rejects.toThrow(
-      /versionsbyte är redan inbokat/,
+      /annan version väntar redan/,
     )
   })
 
-  it('explains a 409 bookings_on_removed_tables with the server text and the bookings', async () => {
-    const message = 'Det finns bokningar efter bytet på bord som inte finns i den nya planlösningen. Flytta bokningarna.'
-    mockedApiFetch.mockRejectedValue(new ApiError(409, message, {
+  it('explains a 409 bookings_on_removed_tables in our own words (never the server text) with the bookings', async () => {
+    const serverText = 'There are bookings on removed tables.'
+    const message = 'Det finns bokningar på bord som inte finns i den nya layouten. Flytta bokningarna till andra bord, eller lägg tillbaka borden. Aktivera sedan igen.'
+    mockedApiFetch.mockRejectedValue(new ApiError(409, serverText, {
       code: 'bookings_on_removed_tables',
       fromServer: true,
       details: {
-        error: message,
+        error: serverText,
         code: 'bookings_on_removed_tables',
         reservations: [
           { reservationId: 'r1', date: '2026-11-20', startTime: '18:00', tableIds: ['t9'] },
@@ -563,19 +564,19 @@ describe('publishing', () => {
     mockedApiFetch.mockRejectedValue(new ApiError(409, 'cutover pending', { code: 'conflict', fromServer: true, details: { error: 'cutover pending' } }))
     const err = await activateLayoutVersion('loc-1', 3).catch((e: unknown) => e)
     expect(err).not.toBeInstanceOf(BookingsOnRemovedTablesError)
-    expect((err as Error).message).toMatch(/versionsbyte är redan inbokat/)
+    expect((err as Error).message).toMatch(/annan version väntar redan/)
   })
 
   it('maps 403 on activate to the permission message (staff may not activate)', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
     await expect(activateLayoutVersion('loc-1', 1)).rejects.toThrow(
-      /inte behörighet/,
+      /får inte ändra layouten/,
     )
   })
 
   it('maps 403 on publish to the permission message (staff may not publish)', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
-    await expect(publishLayout('loc-1')).rejects.toThrow(/inte behörighet/)
+    await expect(publishLayout('loc-1')).rejects.toThrow(/får inte ändra layouten/)
   })
 
   it('URL-encodes the location id', async () => {
@@ -606,7 +607,7 @@ describe('archiveLayoutVersion', () => {
 
   it('maps 403 to the permission message (staff may not archive)', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
-    await expect(archiveLayoutVersion('loc-1', 3)).rejects.toThrow(/inte behörighet/)
+    await expect(archiveLayoutVersion('loc-1', 3)).rejects.toThrow(/får inte ändra layouten/)
   })
 })
 
@@ -629,18 +630,18 @@ describe('cancelPendingLayoutActivation', () => {
 
   it('maps 403 to the permission message (staff may not cancel)', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
-    await expect(cancelPendingLayoutActivation('loc-1')).rejects.toThrow(/inte behörighet/)
+    await expect(cancelPendingLayoutActivation('loc-1')).rejects.toThrow(/får inte ändra layouten/)
   })
 })
 
 describe('error mapping', () => {
   it('maps 403 to a Swedish permission message', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
-    await expect(listLayoutElements('loc-1')).rejects.toThrow(/inte behörighet/)
+    await expect(listLayoutElements('loc-1')).rejects.toThrow(/får inte ändra layouten/)
   })
 
   it('maps 503 to a try-again message', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(503, 'layout service unavailable'))
-    await expect(listLayoutElements('loc-1')).rejects.toThrow(/otillgänglig/)
+    await expect(listLayoutElements('loc-1')).rejects.toThrow(/går inte att nå just nu/)
   })
 })

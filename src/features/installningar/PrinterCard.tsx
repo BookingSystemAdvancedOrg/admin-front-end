@@ -213,7 +213,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
         {!locationId ? (
           <p className="cell-muted">Välj en plats först.</p>
         ) : loadError && !data ? (
-          <ErrorNote text={booqyFaultText('Kunde inte hämta skrivarna.')} onRetry={() => { setLoadError(false); void reload() }} />
+          <ErrorNote text={booqyFaultText('Skrivarna kunde inte visas.')} onRetry={() => { setLoadError(false); void reload() }} />
         ) : !data ? (
           <SkelLines n={3} />
         ) : (

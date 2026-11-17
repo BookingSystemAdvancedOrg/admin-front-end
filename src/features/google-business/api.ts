@@ -76,15 +76,15 @@ export const GUIDE_STEPS = [
 ]
 
 export const ERRORS: Record<string, string> = {
-  not_connected: 'Koppla Google först.',
-  not_linked: 'Välj vilken Google-plats restaurangen är först.',
-  already_linked: 'Den Google-platsen är redan kopplad till en annan restaurang.',
-  no_google_account: 'Det här Google-kontot har ingen Google-profil. Välj ett annat konto, eller tryck på Vi har ingen Google-profil.',
-  google_rejected: 'Google sa nej. Försök igen om en stund, eller tryck på Vi har ingen Google-profil.',
-  google_unavailable: 'Google svarar inte just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
-  invalid_state: 'Kopplingen gick ut. Försök koppla igen.',
-  invalid_delay: 'Fördröjningen ska vara mellan 30 minuter och 3 dygn.',
-  invalid_days: 'Tiden mellan två förfrågningar ska vara 30-365 dagar.',
+  not_connected: 'Google är inte kopplat än. Tryck Koppla Google först.',
+  not_linked: 'Ni har inte valt er Google-plats än. Välj den först.',
+  already_linked: 'Den Google-platsen hör redan till en annan restaurang. Välj en annan plats.',
+  no_google_account: 'Det här Google-kontot har ingen Google-profil. Välj ett annat konto, eller tryck Vi har ingen Google-profil.',
+  google_rejected: 'Google sa nej. Försök igen om en stund, eller tryck Vi har ingen Google-profil.',
+  google_unavailable: 'Google svarar inte just nu. Det är inte ert fel. Försök igen om en stund.',
+  invalid_state: 'Kopplingen tog för lång tid och avbröts. Koppla Google igen.',
+  invalid_delay: 'Väntetiden ska vara mellan 30 minuter och 3 dygn. Välj till exempel 2 timmar.',
+  invalid_days: 'Tiden mellan två förfrågningar ska vara 30 till 365 dagar. Skriv till exempel 90.',
   invalid_channel: 'Välj e-post, SMS eller båda.',
   invalid_sources: 'Välj efter bokning, beställning eller båda.',
 }
@@ -123,7 +123,7 @@ export function specialLines(preview: Preview): { date: string; text: string }[]
 }
 
 export function syncedText(link: Link): string {
-  if (link.syncStatus === 'error') return 'Kunde inte synka senast. Försök igen med Synka nu.'
+  if (link.syncStatus === 'error') return 'Senaste uppdateringen till Google gick inte. Tryck Synka nu.'
   if (!link.lastSyncAt) return 'Synkas inom en timme.'
   const at = new Date(link.lastSyncAt)
   return `Synkat ${at.toLocaleString('sv-SE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`

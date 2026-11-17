@@ -256,17 +256,17 @@ describe('error mapping', () => {
 
   it('maps 403 to a forbidden message', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
-    await expect(deleteUser('sub-1')).rejects.toThrow(/inte behörighet/)
+    await expect(deleteUser('sub-1')).rejects.toThrow(/får inte göra det här/)
   })
 
   it('maps 404 to a not-found message', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(404, 'user not found'))
-    await expect(deleteUser('sub-1')).rejects.toThrow(/hittades inte/)
+    await expect(deleteUser('sub-1')).rejects.toThrow(/finns inte längre/)
   })
 
   it('maps 501 to a not-yet-implemented message', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(501, 'not implemented'))
-    await expect(deleteUser('sub-1')).rejects.toThrow(/inte klar på serversidan/)
+    await expect(deleteUser('sub-1')).rejects.toThrow(/inte klar hos Booqy/)
   })
 
   it('maps locationId validation errors from the server to Swedish', async () => {

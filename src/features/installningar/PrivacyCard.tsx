@@ -184,7 +184,7 @@ function NoticeEditor() {
         setText(r.notice.body)
       })
       .catch((err) => {
-        if (live) fail(errorText(err, 'Kunde inte hämta integritetspolicyn.'), () => {
+        if (live) fail(errorText(err, 'Integritetspolicyn kunde inte visas.'), () => {
           setError(null)
           setAttempt((n) => n + 1)
         })
@@ -199,7 +199,7 @@ function NoticeEditor() {
     setError(null)
     setNotice(null)
     if (!text.trim()) {
-      setError('Texten kan inte vara tom. Återställ mallen om du vill börja om.')
+      setError('Texten är tom. Skriv en text, eller återställ mallen.')
       return
     }
     setBusy(true)
@@ -209,7 +209,7 @@ function NoticeEditor() {
       setText(n.body)
       setNotice('Sparat. Gästerna ser den nya texten direkt.')
     } catch (err) {
-      fail(errorText(err, 'Kunde inte spara.'), () => formRef.current?.requestSubmit())
+      fail(errorText(err, 'Integritetspolicyn sparades inte.'), () => formRef.current?.requestSubmit())
     } finally {
       setBusy(false)
     }
@@ -230,7 +230,7 @@ function NoticeEditor() {
       setText(n.body)
       setNotice('Standardmallen används igen.')
     } catch (err) {
-      fail(errorText(err, 'Kunde inte återställa just nu.'), () => void doReset())
+      fail(errorText(err, 'Mallen kunde inte återställas.'), () => void doReset())
     } finally {
       setBusy(false)
     }
@@ -343,7 +343,7 @@ function ConsentTool() {
       setAsked(q)
     } catch (err) {
       setResult(null)
-      fail(errorText(err, 'Kunde inte söka.'), () => formRef.current?.requestSubmit())
+      fail(errorText(err, 'Sökningen gick inte.'), () => formRef.current?.requestSubmit())
     } finally {
       setBusy(false)
     }
@@ -367,7 +367,7 @@ function ConsentTool() {
       setResult(r)
       setNotice(r.withdrawn.length ? `Samtycket via ${label} är återkallat.` : 'Det fanns inget samtycke att återkalla.')
     } catch (err) {
-      fail(errorText(err, 'Kunde inte återkalla.'), () => void doWithdraw(channel))
+      fail(errorText(err, 'Samtycket återkallades inte.'), () => void doWithdraw(channel))
     } finally {
       setBusy(false)
     }
@@ -382,7 +382,7 @@ function ConsentTool() {
       downloadJson(await exportGuest(asked.email, asked.phone), `gastdata-${new Date().toISOString().slice(0, 10)}.json`)
       setNotice('Filen är nedladdad. Skicka den till gästen på ett säkert sätt.')
     } catch (err) {
-      fail(errorText(err, 'Kunde inte exportera.'), () => void doExport())
+      fail(errorText(err, 'Filen med gästens uppgifter skapades inte.'), () => void doExport())
     } finally {
       setBusy(false)
     }
@@ -400,7 +400,7 @@ function ConsentTool() {
       setResult(await lookupConsent(asked.email, asked.phone))
     } catch (err) {
       setConfirmErase(false)
-      fail(errorText(err, 'Kunde inte radera.'), () => setConfirmErase(true))
+      fail(errorText(err, 'Gästens uppgifter raderades inte.'), () => setConfirmErase(true))
     } finally {
       setBusy(false)
     }

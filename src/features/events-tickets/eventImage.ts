@@ -24,9 +24,9 @@ export function initialImage(existing?: { imageKey?: string; imageAlt?: string }
 /** Ett fel att visa innan något skickas, eller null. */
 export function imageFileError(file: File): string | null {
   if (!MENU_IMAGE_CONTENT_TYPES.includes(file.type as MenuImageContentType)) {
-    return 'Bilden måste vara AVIF, JPEG, PNG eller WebP.'
+    return 'Den bildtypen går inte. Välj en JPG-, PNG-, WebP- eller AVIF-bild.'
   }
-  if (file.size > EVENT_IMAGE_MAX_BYTES) return 'Bilden får vara högst 5 MB.'
+  if (file.size > EVENT_IMAGE_MAX_BYTES) return 'Bilden är för stor. Välj en bild på högst 5 MB.'
   return null
 }
 

@@ -26,7 +26,7 @@ describe('templateErrors', () => {
       ],
     })
     expect(errors).toHaveLength(4)
-    expect(errors[0]).toMatch(/Ämnesraden/)
+    expect(errors[0]).toMatch(/ämnesrad/)
   })
 
   it('requires at least one block', () => {

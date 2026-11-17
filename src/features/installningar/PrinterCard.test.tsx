@@ -40,7 +40,7 @@ describe('PrinterCard', () => {
     const user = userEvent.setup()
     api.getPrinting.mockRejectedValueOnce(new ApiError(500, 'internal_error')).mockResolvedValue(ONE)
     render(<PrinterCard locationId="loc-1" isOwner />)
-    expect(await screen.findByText(/Kunde inte hämta skrivarna\./)).toBeInTheDocument()
+    expect(await screen.findByText(/Skrivarna kunde inte visas\./)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Försök igen' }))
     expect(await screen.findByRole('list', { name: 'Skrivare' })).toHaveTextContent('Köket')
   })

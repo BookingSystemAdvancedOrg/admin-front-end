@@ -52,7 +52,7 @@ export default function SegmentAudienceOptions({ value, onChange }: Props) {
       setCount(exp.count)
       onChange({ type: 'segment', exportId: exp.exportId })
     } catch (err) {
-      setError(errorText(err, 'Kunde inte hämta målgruppen.'))
+      setError(errorText(err, 'Målgruppen kunde inte visas.'))
       onChange(null)
     } finally {
       setBusy(false)

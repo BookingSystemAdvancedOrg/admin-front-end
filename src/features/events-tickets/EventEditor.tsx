@@ -148,7 +148,7 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
             setImage(formImage(merged.image))
             setBase(latest)
             setClashes(conflicts)
-            setError('Samma fält ändrades nyss på en annan plats. Välj vilket värde som ska gälla och spara igen.')
+            setError('Någon annan ändrade samma fält nyss. Välj vilket värde som ska gälla och spara igen.')
             return
           }
           onSaved(await send(merged, latest))
@@ -174,7 +174,7 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
       }
       toast('Evenemanget är sparat.', { tone: 'success' })
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara evenemanget.', ERRORS))
+      setError(errorText(err, 'Evenemanget sparades inte.', ERRORS))
     } finally {
       setBusy(false)
     }

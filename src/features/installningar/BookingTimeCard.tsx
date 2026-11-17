@@ -118,7 +118,7 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
         setLegacy(!loc.bookingTimeRules)
         setGraceMinutes(Math.round((loc.gracePeriodHours ?? 0) * 60))
       })
-      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Kunde inte hämta platsens bokningstid.')))
+      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Bokningstiden kunde inte visas.')))
     return () => {
       cancelled = true
     }
@@ -169,7 +169,7 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
       setOpen(null)
       setNotice('Sparat. Gäller nya bokningar; befintliga behåller sin tid.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara.', { owner_only: 'Bara restaurangens ägare kan ändra bokningstiden.', forbidden: 'Bara restaurangens ägare kan ändra bokningstiden.' }))
+      setError(errorText(err, 'Bokningstiden sparades inte.', { owner_only: 'Bara restaurangens ägare kan ändra bokningstiden. Be ägaren göra det.', forbidden: 'Bara restaurangens ägare kan ändra bokningstiden. Be ägaren göra det.' }))
     } finally {
       setBusy(false)
     }

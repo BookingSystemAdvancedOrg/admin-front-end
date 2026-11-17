@@ -41,8 +41,8 @@ beforeEach(() => {
 describe('eventImage helpers', () => {
   it('accepts only the menu image types up to 5 MB', () => {
     expect(imageFileError(file())).toBeNull()
-    expect(imageFileError(file('image/gif'))).toBe('Bilden måste vara AVIF, JPEG, PNG eller WebP.')
-    expect(imageFileError(file('image/png', EVENT_IMAGE_MAX_BYTES + 1))).toBe('Bilden får vara högst 5 MB.')
+    expect(imageFileError(file('image/gif'))).toBe('Den bildtypen går inte. Välj en JPG-, PNG-, WebP- eller AVIF-bild.')
+    expect(imageFileError(file('image/png', EVENT_IMAGE_MAX_BYTES + 1))).toBe('Bilden är för stor. Välj en bild på högst 5 MB.')
   })
 
   it('needs alt text only with an image', () => {
@@ -75,7 +75,7 @@ describe('EventEditor image', () => {
   it('refuses a too large file before any upload', () => {
     render(<EventEditor locationId="loc-a-1" existing={{ ...detail, imageKey: undefined, imageAlt: undefined }} onSaved={vi.fn()} onCancel={vi.fn()} />)
     fireEvent.change(screen.getByTestId('event-image-input'), { target: { files: [file('image/jpeg', EVENT_IMAGE_MAX_BYTES + 1)] } })
-    expect(screen.getByText('Bilden får vara högst 5 MB.')).toBeInTheDocument()
+    expect(screen.getByText('Bilden är för stor. Välj en bild på högst 5 MB.')).toBeInTheDocument()
     expect(screen.queryByLabelText(/Bildtext för skärmläsare/)).toBeNull()
   })
 
@@ -152,7 +152,7 @@ describe('EventEditor image', () => {
     render(<EventEditor locationId="loc-a-1" existing={detail} fetchLatest={fetchLatest} onSaved={vi.fn()} onCancel={vi.fn()} />)
     fireEvent.change(screen.getByLabelText(/Bildtext för skärmläsare/), { target: { value: 'Långbord i kvällsljus' } })
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    expect(await screen.findByText('Samma fält ändrades nyss på en annan plats. Välj vilket värde som ska gälla och spara igen.')).toBeInTheDocument()
+    expect(await screen.findByText('Någon annan ändrade samma fält nyss. Välj vilket värde som ska gälla och spara igen.')).toBeInTheDocument()
     expect(api.updateEvent).toHaveBeenCalledTimes(1)
     const group = screen.getByRole('group', { name: 'Bild' })
     expect(group).toHaveTextContent('Ändrades nyss på en annan plats: en annan bild (Scenen)')

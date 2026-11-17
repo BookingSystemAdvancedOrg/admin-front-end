@@ -64,7 +64,7 @@ function EventList({ locationId, isOwner }: { locationId: string; isOwner: boole
     let live = true
     setLoadError(null)
     listEvents(locationId).then((r) => { if (live) setEvents(r.events) })
-      .catch((err) => { if (live) setLoadError(errorText(err, 'Kunde inte hämta evenemangen.', ERRORS)) })
+      .catch((err) => { if (live) setLoadError(errorText(err, 'Evenemangen kunde inte visas.', ERRORS)) })
     return () => { live = false }
   }, [locationId, attempt])
   // Levande: försäljning och ändringar från en annan plats syns av sig själva.
@@ -130,7 +130,7 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
       setLoadError(null)
     } catch (err) {
       if ((err instanceof ApiError && err.status === 404) || errorCode(err) === 'not_found') setMissing(true)
-      else setLoadError(errorText(err, 'Kunde inte hämta evenemanget.', ERRORS))
+      else setLoadError(errorText(err, 'Evenemanget kunde inte visas.', ERRORS))
     }
   }, [eventId, locationId])
 
@@ -171,7 +171,7 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
       setEvent(await publishEvent(locationId, event.eventId, event.version))
       toast('Evenemanget är publicerat och syns på er webbplats.', { tone: 'success' })
     } catch (err) {
-      toast(errorText(err, 'Kunde inte publicera.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Evenemanget publicerades inte.', ERRORS), { tone: 'danger' })
     } finally {
       setBusy(false)
     }
@@ -183,7 +183,7 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
       toast('Restaurangen har ingen egen webbadress än, så affischen kan inte skapas.', { tone: 'warning' })
       return
     }
-    if (!await printPoster(event.title, url)) toast('Tillåt popup-fönster för att skriva ut affischen.', { tone: 'warning' })
+    if (!await printPoster(event.title, url)) toast('Webbläsaren stoppade affischen. Tillåt popup-fönster för Booqy och tryck igen.', { tone: 'warning' })
   }
 
   const actions = isOwner ? (
@@ -323,7 +323,7 @@ function CancelModal({ locationId, event, occurrence, onClose }: { locationId: s
         setProgress({ done: job.done, refunded: job.counts.refunded, toRefund, failed: job.counts.failed })
       }
     } catch (err) {
-      toast(errorText(err, 'Kunde inte ställa in tillfället.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Tillfället ställdes inte in.', ERRORS), { tone: 'danger' })
     } finally {
       setBusy(false)
     }
@@ -374,7 +374,7 @@ function Orders({ locationId, eventId, onChanged }: { locationId: string; eventI
       setOrders((await listOrders(locationId, eventId)).orders)
       setLoadError(null)
     } catch (err) {
-      const text = errorText(err, 'Kunde inte hämta köpen.', ERRORS)
+      const text = errorText(err, 'Köpen kunde inte visas.', ERRORS)
       // Redan visade köp står kvar; bara en första hämtning som misslyckas visas i kortet.
       if (shown.current) toast(text, { tone: 'danger' })
       else setLoadError(text)
@@ -395,7 +395,7 @@ function Orders({ locationId, eventId, onChanged }: { locationId: string; eventI
       await load()
       onChanged()
     } catch (err) {
-      toast(errorText(err, 'Kunde inte återbetala.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Pengarna betalades inte tillbaka.', ERRORS), { tone: 'danger' })
     } finally {
       setBusy(false)
     }

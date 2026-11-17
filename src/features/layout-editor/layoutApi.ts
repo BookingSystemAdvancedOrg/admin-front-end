@@ -1,4 +1,4 @@
-import { errorText as commonError } from '../../shared/errors'
+import { BOOQY_FAULT, errorText as commonError } from '../../shared/errors'
 import { apiFetch, ApiError } from '../../shared/api'
 import { WORKSPACE, tableSize } from './data'
 import type {
@@ -410,7 +410,7 @@ function basePath(locationId: string): string {
  */
 function toFriendlyLayoutError(err: unknown): Error {
   if (!(err instanceof ApiError)) {
-    return err instanceof Error ? err : new Error('Ett okänt fel inträffade.')
+    return err instanceof Error ? err : new Error('Något gick fel hos Booqy. Försök igen om en stund.')
   }
   console.error(`[Layout] ${err.status}: ${err.message}`)
   // offline, utloggad, pausat konto, för många försök: samma text överallt
@@ -420,26 +420,26 @@ function toFriendlyLayoutError(err: unknown): Error {
 
   switch (err.status) {
     case 400:
-      return new ApiError(400, 'Layouten godtogs inte: något bord eller element har ett ogiltigt värde. Kontrollera storlek, platser och namn och försök igen.', { code: err.code, field: err.field })
+      return new ApiError(400, 'Layouten sparades inte. Något bord har ett värde som inte går. Kolla storlek, platser och namn.', { code: err.code, field: err.field })
     case 401:
-      return new ApiError(401, 'Du är inte inloggad längre. Logga in igen.')
+      return new ApiError(401, 'Du har loggats ut. Logga in igen och gör om det du höll på med.')
     case 403:
-      return new ApiError(403, 'Du har inte behörighet att ändra layouten.')
+      return new ApiError(403, 'Ditt konto får inte ändra layouten. Be restaurangens ägare om hjälp.')
     case 404:
-      return new ApiError(404, 'Elementet har tagits bort på en annan plats. Spara igen, så läggs dina ändringar ovanpå det som finns nu.')
+      return new ApiError(404, 'Någon annan tog bort en del av layouten. Spara igen, så läggs dina ändringar ovanpå.')
     case 409:
       return new ApiError(
         409,
-        'Layouten ändrades samtidigt av någon annan. Spara igen, så läggs dina ändringar ovanpå det senaste.',
+        'Någon annan ändrade layouten samtidigt. Spara igen, så läggs dina ändringar ovanpå.',
         { code: err.code },
       )
     case 503:
       return new ApiError(
         503,
-        'Layouttjänsten är tillfälligt otillgänglig. Försök igen.',
+        `Layouten går inte att nå just nu. ${BOOQY_FAULT}`,
       )
     default:
-      return new ApiError(err.status, commonError(err, 'Kunde inte spara layouten.'), { code: err.code })
+      return new ApiError(err.status, commonError(err, 'Något gick fel med layouten.'), { code: err.code })
   }
 }
 
@@ -555,8 +555,8 @@ export interface RemovedTableBooking {
 }
 
 const REMOVED_TABLES_TEXT =
-  'Det finns bokningar efter bytet på bord som inte finns i den nya planlösningen. ' +
-  'Flytta bokningarna till andra bord (eller lägg tillbaka borden) och aktivera sedan igen.'
+  'Det finns bokningar på bord som inte finns i den nya layouten. ' +
+  'Flytta bokningarna till andra bord, eller lägg tillbaka borden. Aktivera sedan igen.'
 
 /** 409 bookings_on_removed_tables: texten plus bokningarna som måste flyttas först. */
 export class BookingsOnRemovedTablesError extends ApiError {
@@ -611,15 +611,15 @@ export async function activateLayoutVersion(
     // inbokat. Den generiska "ändrades samtidigt" hade pekat användaren fel.
     if (err instanceof ApiError && err.status === 409 && err.code === 'bookings_on_removed_tables') {
       throw new BookingsOnRemovedTablesError(
-        err.fromServer && /\s/.test(err.message) ? err.message : REMOVED_TABLES_TEXT,
+        REMOVED_TABLES_TEXT,
         removedTableBookings(err.details?.reservations),
       )
     }
     if (err instanceof ApiError && err.status === 409) {
       throw new ApiError(
         409,
-        'Ett versionsbyte är redan inbokat. Vänta tills det genomförts, ' +
-          'eller aktivera om den version som redan väntar.',
+        'Ett byte till en annan version väntar redan. Vänta tills det är klart, ' +
+          'eller aktivera den väntande versionen igen.',
         { code: err.code },
       )
     }

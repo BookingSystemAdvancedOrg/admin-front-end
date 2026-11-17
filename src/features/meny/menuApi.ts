@@ -1,4 +1,4 @@
-import { errorText as commonError } from '../../shared/errors'
+import { BOOQY_FAULT, errorText as commonError } from '../../shared/errors'
 import { apiFetch, ApiError } from '../../shared/api'
 import { withBusy } from '../../shared/motion/busy'
 import { ALLERGENS } from './data'
@@ -96,7 +96,7 @@ export type MenuItemUpdate = Partial<MenuItemCreate>
 
 /** 409 när någon annan sparat rätten efter att den laddades. */
 export const STALE_DISH_MESSAGE =
-  'Någon annan har ändrat rätten medan du redigerade. Det senaste visas nu; spara igen om din ändring fortfarande behövs.'
+  'Någon annan ändrade rätten samtidigt. Nu visas det senaste. Spara igen om det behövs.'
 
 export function isStaleDish(err: unknown): boolean {
   return err instanceof ApiError && err.status === 409 && err.code === 'stale_item'
@@ -211,7 +211,7 @@ export function dishChanges(original: Dish, next: MenuItemCreate): MenuItemUpdat
 /* --- Validering (spegel av kontraktet) ------------------------------------ */
 
 export function validateDishName(name: string): string | null {
-  return name.trim() ? null : 'Namn krävs.'
+  return name.trim() ? null : 'Skriv ett namn på rätten.'
 }
 
 /** Högsta pris på en produkt (rätt eller cateringrad) - samma skrivfelsspärr
@@ -225,12 +225,12 @@ export const MAX_ITEM_PRICE_KR = 10_000
  */
 export function parsePrice(text: string): { value: number; error: null } | { value: null; error: string } {
   const raw = text.trim().replace(/[\s\u00a0]/g, '').replace(/kr$/i, '')
-  if (!raw) return { value: null, error: 'Pris krävs.' }
-  if (/^[-\u2212]/.test(raw)) return { value: null, error: 'Priset kan inte vara negativt.' }
+  if (!raw) return { value: null, error: 'Skriv ett pris, till exempel 89.' }
+  if (/^[-\u2212]/.test(raw)) return { value: null, error: 'Priset kan inte vara under 0 kr. Skriv till exempel 89.' }
   if (!/^\d+([.,]\d+)?$/.test(raw)) {
     return { value: null, error: 'Skriv priset med siffror, till exempel 89 eller 89,50.' }
   }
-  if (/[.,]\d{3,}$/.test(raw)) return { value: null, error: 'Pris får ha högst två decimaler.' }
+  if (/[.,]\d{3,}$/.test(raw)) return { value: null, error: 'Priset får ha högst två siffror efter kommat, till exempel 89,50.' }
   const value = Number(raw.replace(',', '.'))
   const error = validateDishPrice(value)
   return error ? { value: null, error } : { value, error: null }
@@ -238,14 +238,14 @@ export function parsePrice(text: string): { value: number; error: null } | { val
 
 export function validateDishPrice(price: number): string | null {
   if (!Number.isFinite(price) || price < 0) {
-    return 'Pris måste vara noll eller mer.'
+    return 'Priset kan inte vara under 0 kr. Skriv till exempel 89.'
   }
   if (price > MAX_ITEM_PRICE_KR) {
-    return `Pris får vara högst ${MAX_ITEM_PRICE_KR.toLocaleString('sv-SE')} kr.`
+    return `Priset får vara högst ${MAX_ITEM_PRICE_KR.toLocaleString('sv-SE')} kr.`
   }
   // multipleOf 0.01 - flyttalsbrus tolereras på tiondels öre.
   if (Math.abs(price * 100 - Math.round(price * 100)) > 1e-6) {
-    return 'Pris får ha högst två decimaler.'
+    return 'Priset får ha högst två siffror efter kommat, till exempel 89,50.'
   }
   return null
 }
@@ -258,7 +258,7 @@ export function validateDishPrice(price: number): string | null {
  * found". De behöver helt olika texter.
  */
 export const MENU_ROUTES_MISSING_MESSAGE =
-  'Menyns adminrutter är inte deployade på API:t än - publika menyn visas i stället, och ändringar kan inte sparas.'
+  'Menyn går inte att ändra här än, så gästernas meny visas i stället. Felet ligger hos Booqy. Rapportera det till Booqy.'
 
 export function isMenuRoutesMissing(err: unknown): boolean {
   return (
@@ -271,7 +271,7 @@ export function isMenuRoutesMissing(err: unknown): boolean {
 /** Mappar API:ts fel till svenska; statuskoden bevaras som i locationApi. */
 function toFriendlyMenuError(err: unknown): Error {
   if (!(err instanceof ApiError)) {
-    return err instanceof Error ? err : new Error('Ett okänt fel inträffade.')
+    return err instanceof Error ? err : new Error('Något gick fel hos Booqy. Försök igen om en stund.')
   }
 
   console.error(`[Menu] ${err.status}: ${err.message}`)
@@ -283,37 +283,37 @@ function toFriendlyMenuError(err: unknown): Error {
   switch (err.status) {
     case 400:
       if (/^price may be at most/.test(err.message)) {
-        return new ApiError(400, `Pris får vara högst ${MAX_ITEM_PRICE_KR.toLocaleString('sv-SE')} kr.`)
+        return new ApiError(400, `Priset får vara högst ${MAX_ITEM_PRICE_KR.toLocaleString('sv-SE')} kr.`)
       }
       if (err.message === 'availableUntil must be after availableFrom') {
-        return new ApiError(400, 'Slutet på schemat måste vara efter starten.')
+        return new ApiError(400, 'Schemat slutar före det börjar. Välj en sluttid efter starttiden.')
       }
-      return new ApiError(400, commonError(err, 'Rätten kunde inte sparas.', {}, MENU_FIELDS), { code: err.code, field: err.field })
+      return new ApiError(400, commonError(err, 'Rätten sparades inte.', {}, MENU_FIELDS), { code: err.code, field: err.field })
     case 401:
-      return new ApiError(401, 'Du är inte inloggad längre. Logga in igen.')
+      return new ApiError(401, 'Du har loggats ut. Logga in igen och gör om det du höll på med.')
     case 403:
-      return new ApiError(403, 'Du har inte behörighet att ändra menyn.')
+      return new ApiError(403, 'Ditt konto får inte ändra menyn. Be restaurangens ägare om hjälp.')
     case 404:
       return err.message === 'Not Found'
         ? new ApiError(404, MENU_ROUTES_MISSING_MESSAGE)
-        : new ApiError(404, 'Rätten finns inte längre; den har tagits bort på en annan plats.')
+        : new ApiError(404, 'Rätten finns inte längre. Någon annan har tagit bort den.')
     case 409:
       if (err.code === 'stale_item') return new ApiError(409, STALE_DISH_MESSAGE, { code: 'stale_item' })
       if (err.code === 'category_in_use') {
         return new ApiError(409, 'Kategorin har rätter. Flytta rätterna till en annan kategori först.', { code: err.code })
       }
       if (err.code === 'stale_categories') {
-        return new ApiError(409, 'Någon annan har ändrat kategorierna medan du redigerade. Det senaste visas nu; spara igen om din ändring fortfarande behövs.', { code: err.code })
+        return new ApiError(409, 'Någon annan ändrade kategorierna samtidigt. Nu visas det senaste. Spara igen om det behövs.', { code: err.code })
       }
       return new ApiError(
         409,
-        'Menyn ändrades samtidigt av någon annan. Det senaste visas nu; försök igen.',
+        'Någon annan ändrade menyn samtidigt. Nu visas det senaste. Gör din ändring igen.',
         { code: 'stale_item' },
       )
     case 503:
-      return new ApiError(503, 'Menytjänsten är tillfälligt otillgänglig. Försök igen.')
+      return new ApiError(503, `Menyn går inte att nå just nu. ${BOOQY_FAULT}`)
     default:
-      return new ApiError(err.status, commonError(err, 'Kunde inte spara menyn.'), { code: err.code })
+      return new ApiError(err.status, commonError(err, 'Något gick fel med menyn.'), { code: err.code })
   }
 }
 
@@ -470,11 +470,11 @@ export async function uploadMenuImage(
 ): Promise<string> {
   const contentType = file.type as MenuImageContentType
   if (!MENU_IMAGE_CONTENT_TYPES.includes(contentType)) {
-    throw new Error('Bilden måste vara AVIF, JPEG, PNG eller WebP.')
+    throw new Error('Den bildtypen går inte. Välj en JPG-, PNG-, WebP- eller AVIF-bild.')
   }
   // API:t signerar storleken och tar 1 byte till 10 MB: säg det här i stället för ett 400.
   if (file.size < 1) throw new Error('Bildfilen är tom. Välj en annan bild.')
-  if (file.size > MENU_IMAGE_MAX_BYTES) throw new Error('Bilden får vara högst 10 MB.')
+  if (file.size > MENU_IMAGE_MAX_BYTES) throw new Error('Bilden är för stor. Välj en bild på högst 10 MB.')
   const grant = await createMenuImageUploadUrl(locationId, contentType, file.size)
   // Själva uppladdningen går till S3, inte via apiFetch: visa den som pågående själv.
   await withBusy(async () => {

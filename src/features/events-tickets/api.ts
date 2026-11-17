@@ -140,16 +140,16 @@ export function eventEditable(e: EventDetail, now = Date.now()): boolean {
 }
 
 export const ERRORS: Record<string, string> = {
-  invalid_capacity: 'Antalet platser kan inte vara lägre än antalet sålda och reserverade biljetter.',
-  invalid_price: 'Priset ska vara 0 kr eller mer.',
-  invalid_vat_rate: 'Välj en av momssatserna i listan.',
-  invalid_window: 'Kontrollera tiderna: slutet ska vara efter starten och försäljningen ska stänga före slutet.',
-  invalid_series: 'Upprepningen kan sträcka sig högst ett år framåt.',
-  invalid_state: 'Det går inte i det här läget.',
-  has_sales: 'Biljettypen har redan sålts och kan inte tas bort.',
-  changed_retry: 'Någon annan ändrade samtidigt. Det senaste visas nu; försök igen.',
-  stripe_unavailable: 'Betalningen kunde inte återbetalas just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
-  owner_only: 'Bara ägaren kan göra det här.',
-  too_many_tickets: 'Max antal biljetter per köp ska vara 1-20.',
-  unknown_image: 'Bilden hittades inte för den här platsen. Välj bilden igen.',
+  invalid_capacity: 'Antalet platser är lägre än de biljetter som redan är sålda. Välj ett större antal.',
+  invalid_price: 'Priset kan inte vara under 0 kr. Skriv till exempel 495.',
+  invalid_vat_rate: 'Momsen saknas. Välj en momssats i listan.',
+  invalid_window: 'Tiderna går inte ihop. Slutet ska vara efter starten, och försäljningen ska stänga före slutet.',
+  invalid_series: 'Upprepningen är för lång. Välj ett slutdatum högst ett år fram.',
+  invalid_state: 'Det går inte längre, för evenemanget är inställt eller redan över.',
+  has_sales: 'Biljettypen har redan sålts, så den kan inte tas bort.',
+  changed_retry: 'Någon annan ändrade samtidigt. Nu visas det senaste. Gör din ändring igen.',
+  stripe_unavailable: 'Pengarna kunde inte betalas tillbaka just nu, för Stripe svarar inte. Det är inte ert fel. Försök igen om en stund.',
+  owner_only: 'Bara restaurangens ägare kan göra det här. Be ägaren göra det.',
+  too_many_tickets: 'Max biljetter per köp ska vara 1 till 20. Skriv till exempel 6.',
+  unknown_image: 'Bilden hittades inte. Välj bilden igen.',
 }

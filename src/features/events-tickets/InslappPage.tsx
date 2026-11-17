@@ -55,7 +55,7 @@ export default function InslappPage({ locationId, eventId, occurrenceId }: { loc
       await update({ ...(stateRef.current ?? saved), list })
       setLoadError(null)
     } catch (err) {
-      if (!stateRef.current?.list) setLoadError(errorText(err, 'Kunde inte hämta gästlistan.', ERRORS))
+      if (!stateRef.current?.list) setLoadError(errorText(err, 'Gästlistan kunde inte visas.', ERRORS))
     }
   }, [eventId, locationId, occurrenceId, update])
 

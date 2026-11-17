@@ -120,7 +120,7 @@ export function CampaignForm({
     try {
       onSaved(campaign ? await updateCampaign(campaign.campaignId, input) : await createCampaign(input))
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara kampanjen.'))
+      setError(errorText(err, 'Kampanjen sparades inte.'))
       setSaving(false)
     }
   }
@@ -190,7 +190,7 @@ export function CampaignForm({
         )}
         <Slot id="marketing.kampanjer.audience" props={{ value: segment, onChange: setSegment }} />
         <p className="mk-audience-count" aria-live="polite" hidden={pickedSegment}>
-          {count === null ? 'Räknar mottagare…' : count < 0 ? 'Kunde inte räkna mottagarna.' : `${count} mottagare just nu`}
+          {count === null ? 'Räknar mottagare…' : count < 0 ? 'Mottagarna kunde inte räknas.' : `${count} mottagare just nu`}
         </p>
         <p className="field-hint">Bara gäster som sagt ja till erbjudanden.</p>
 
@@ -249,7 +249,7 @@ function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone:
           : `Kampanjen skickas nu till ${out.audienceSize} mottagare. Det tar några minuter.`,
       )
     } catch (err) {
-      setError(errorText(err, 'Kunde inte skicka kampanjen.'))
+      setError(errorText(err, 'Kampanjen skickades inte.'))
       setBusy(false)
     }
   }
@@ -262,7 +262,7 @@ function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone:
           {count === null
             ? 'Räknar mottagare…'
             : count < 0
-              ? 'Kunde inte räkna mottagarna.'
+              ? 'Mottagarna kunde inte räknas.'
               : `${count} mottagare (${audienceText(campaign.audience).toLowerCase()}).`}
         </p>
         <div className="mk-radio-row" role="radiogroup" aria-label="När">
@@ -312,7 +312,7 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
       })
       .catch((err: unknown) => {
         retryRef.current = load
-        setError(errorText(err, 'Kunde inte hämta kampanjerna.'))
+        setError(errorText(err, 'Kampanjerna kunde inte visas.'))
       })
   }, [])
 
@@ -360,7 +360,7 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
       load()
     } catch (err) {
       retryRef.current = () => void act(c, what, true)
-      setError(errorText(err, 'Det gick inte just nu.'))
+      setError(errorText(err, 'Ändringen av kampanjen gick inte.'))
     } finally {
       setBusy(null)
     }

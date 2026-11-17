@@ -64,8 +64,8 @@ const ACCOUNT = /^[1-8]\d{3}$/
 
 /** Felet för ett kontonummer, eller null när det är giltigt. */
 export function accountError(value: string): string | null {
-  if (!value) return 'Fyll i ett kontonummer.'
-  return ACCOUNT.test(value) ? null : 'Fyra siffror, 1000-8999.'
+  if (!value) return 'Skriv ett kontonummer, till exempel 3001.'
+  return ACCOUNT.test(value) ? null : 'Kontot ska vara fyra siffror från 1000 till 8999, till exempel 3001.'
 }
 
 // --- mockdata --------------------------------------------------------------------

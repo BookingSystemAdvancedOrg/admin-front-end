@@ -463,7 +463,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
         setStatusText(
           drawn === 0
             ? 'Tom layout'
-            : `Utkast inläst från servern - ${drawn} element på ${loaded.length} ` +
+            : `Utkast hämtat: ${drawn} element på ${loaded.length} ` +
                 (loaded.length === 1 ? 'våning.' : 'våningar.'),
         )
         void versionLabelFor(locationId).then((label) => {
@@ -473,7 +473,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       .catch((err) => {
         if (!cancelled) {
           setLayoutError(
-            errorText(err, 'Kunde inte hämta layouten.'),
+            errorText(err, 'Layouten kunde inte visas.'),
           )
         }
       })
@@ -1974,7 +1974,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       setViewMode('live')
     } catch (err) {
       setLiveError(
-        errorText(err, 'Kunde inte hämta den publicerade versionen.'),
+        errorText(err, 'Den publicerade versionen kunde inte visas.'),
       )
     } finally {
       setLiveLoading(false)
@@ -2036,13 +2036,13 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
         `Utkast sparat - ${result.created} nya, ${result.updated} ändrade, ` +
           `${result.deleted} borttagna.` +
           (result.flat && floors.length > 1
-            ? ` Servern saknar våningsstöd - bara ${floors[0].name} sparades.`
+            ? ` Bara ${floors[0].name} sparades, för fler våningar går inte att spara än.`
             : ''),
       )
       return true
     } catch (err) {
       setLayoutError(
-        errorText(err, 'Kunde inte spara utkastet.'),
+        errorText(err, 'Utkastet sparades inte.'),
       )
       return false
     } finally {
@@ -2096,7 +2096,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       }
     } catch (err) {
       setLayoutError(
-        `Utkastet sparades, men publiceringen misslyckades: ${errorText(err, 'Kunde inte publicera layouten.')}`,
+        `Utkastet sparades men publicerades inte. ${errorText(err, '')}`,
       )
     } finally {
       setPublishing(false)
@@ -2219,7 +2219,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       <div className="admin-main">
         {!locationId && !resolvingLocation && (
           <p className="form-error" role="alert">
-            Sparas inte: ingen plats än. Spara restaurangen under Inställningar först.
+            Layouten kan inte sparas än, för restaurangen har ingen plats. Lägg till platsen under Inställningar först.
           </p>
         )}
         {shownLayoutError && (

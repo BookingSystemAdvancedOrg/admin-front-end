@@ -58,7 +58,7 @@ export function PaymentsCard({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Saknas kontot är det Booqys fel: Försök igen och Rapportera till Booqy.
-  const missing = useMemo(() => (stage === 'missing' ? booqyFaultText('Stripe-kontot saknas.', 'stripe_account_missing') : null), [stage])
+  const missing = useMemo(() => (stage === 'missing' ? booqyFaultText('Ert Stripe-konto hittas inte.', 'stripe_account_missing') : null), [stage])
 
   // Tillbaka från Stripe: Stripe meddelar backend via webhook några sekunder
   // efter att formuläret skickats in. Hämta statusen direkt och sedan var
@@ -96,11 +96,11 @@ export function PaymentsCard({
     } catch (err) {
       setBusy(false)
       if (err instanceof ApiError && err.message === 'no_stripe_account') {
-        setError(errorText(err, 'Kunde inte öppna Stripe.'))
+        setError(errorText(err, 'Stripe gick inte att öppna.'))
       } else if (err instanceof ApiError && err.status === 403) {
-        setError('Bara restaurangens ägare kan hantera Stripe-kontot.')
+        setError('Bara restaurangens ägare kan ändra Stripe-kontot. Be ägaren logga in och göra det.')
       } else {
-        setError(errorText(err, 'Kunde inte öppna Stripe.'))
+        setError(errorText(err, 'Stripe gick inte att öppna.'))
       }
     }
   }

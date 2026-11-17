@@ -168,7 +168,7 @@ export function FloorBooking({
       (err) => {
         if (!live) return
         setPlan(null)
-        setPlanError(errorMessage(err, 'Kunde inte hämta bordskartan.', LOCATION_NOT_BOOKABLE))
+        setPlanError(errorMessage(err, 'Bordskartan kunde inte visas.', LOCATION_NOT_BOOKABLE))
         setPlanFor(locationId)
       },
     )
@@ -209,7 +209,7 @@ export function FloorBooking({
         if (!live) return
         setSlots([])
         setDay(null)
-        setSlotsError(errorMessage(err, 'Kunde inte hämta lediga tider.', LOCATION_NOT_BOOKABLE))
+        setSlotsError(errorMessage(err, 'De lediga tiderna kunde inte visas.', LOCATION_NOT_BOOKABLE))
         setSlotsFor(slotsKey)
       },
     )

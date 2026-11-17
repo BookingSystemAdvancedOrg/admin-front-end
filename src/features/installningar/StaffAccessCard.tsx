@@ -34,7 +34,7 @@ export function StaffAccessCard({ tenant }: { tenant: Tenant }) {
       replaceTenant(await updateTenant({ staffAccess: { version: config.version, defaults: draft } }))
       setNotice('Sparat.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara behörigheterna.'))
+      setError(errorText(err, 'Behörigheterna sparades inte.'))
     } finally {
       setBusy(false)
     }
@@ -48,7 +48,7 @@ export function StaffAccessCard({ tenant }: { tenant: Tenant }) {
       />
       <div style={{ height: 16 }} />
       {!config ? (
-        <ErrorNote text={booqyFaultText('Kunde inte hämta behörigheterna.')} />
+        <ErrorNote text={booqyFaultText('Behörigheterna kunde inte visas.')} />
       ) : (
         <form onSubmit={save} className="notifications-form">
           <AreaChecklist

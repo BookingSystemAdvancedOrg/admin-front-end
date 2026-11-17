@@ -146,7 +146,7 @@ describe('MarknadsforingPage', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Ny tom mall' }))
     await userEvent.clear(screen.getByLabelText('Ämnesrad'))
     await userEvent.click(screen.getByRole('button', { name: 'Spara mallen' }))
-    expect(await screen.findByText('Ämnesraden får inte vara tom.')).toBeInTheDocument()
+    expect(await screen.findByText('Skriv en ämnesrad.')).toBeInTheDocument()
     expect(api.createTemplate).not.toHaveBeenCalled()
   })
 
@@ -190,7 +190,7 @@ describe('MarknadsforingPage', () => {
     const row = (await screen.findByText('Vårutskick')).closest('tr') as HTMLElement
     await userEvent.click(within(row).getByRole('button', { name: 'Skicka' }))
     const dialog = await screen.findByRole('dialog', { name: 'Skicka kampanjen' })
-    expect(await within(dialog).findByText('Kunde inte räkna mottagarna.')).toBeInTheDocument()
+    expect(await within(dialog).findByText('Mottagarna kunde inte räknas.')).toBeInTheDocument()
   })
 
   it('asks before stopping a scheduled campaign and before deleting a draft', async () => {
@@ -312,7 +312,7 @@ describe('Välkomsterbjudande', () => {
     renderAt('/marknadsforing?flik=erbjudande')
     await userEvent.click(await screen.findByRole('switch', { name: 'Visa på webbplatsen' }))
     await userEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    expect(await screen.findByText(/Företagsnamn och adress saknas för restaurangen/)).toBeInTheDocument()
+    expect(await screen.findByText(/Företagsnamn och adress saknas/)).toBeInTheDocument()
   })
 
   it('refuses a headline that names another percent', async () => {
@@ -330,7 +330,7 @@ describe('Välkomsterbjudande', () => {
     renderAt('/marknadsforing?flik=erbjudande')
     await userEvent.clear(await screen.findByLabelText('Rubrik'))
     await userEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    expect(await screen.findByText('Rubriken får inte vara tom.')).toBeInTheDocument()
+    expect(await screen.findByText('Skriv en rubrik.')).toBeInTheDocument()
     expect(api.saveOfferSettings).not.toHaveBeenCalled()
   })
 })

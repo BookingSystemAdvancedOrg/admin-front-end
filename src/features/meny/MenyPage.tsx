@@ -134,13 +134,13 @@ export default function MenyPage() {
           } catch (fallbackErr) {
             if (!cancelled) {
               setLoadError(
-                errorText(fallbackErr, 'Kunde inte hämta menyn.'),
+                errorText(fallbackErr, 'Menyn kunde inte visas.'),
               )
             }
           }
         } else {
           setLoadError(
-            errorText(err, 'Kunde inte hämta menyn.'),
+            errorText(err, 'Menyn kunde inte visas.'),
           )
         }
       })
@@ -211,7 +211,7 @@ export default function MenyPage() {
 
   /** Den senaste sparade kategorilistan (CategoriesModal lägger ihop vid 409). */
   async function latestCategories() {
-    if (!locationId) throw new Error('Ingen plats vald.')
+    if (!locationId) throw new Error('Välj en plats först.')
     const res = await getMenuCategories(locationId)
     const latest = { categories: res.categories?.length ? res.categories : DEFAULT_CATEGORIES, version: res.version ?? 0 }
     setCategories(latest.categories)
@@ -273,7 +273,7 @@ export default function MenyPage() {
       replaceDish(toDish(saved))
     } catch (err) {
       setDishes((prev) => prev.map((d) => (d.id === dish.id && d.active === next ? { ...d, active: dish.active } : d)))
-      setRowError(errorText(err, `Kunde inte ${next ? 'aktivera' : 'pausa'} ${dish.name}.`))
+      setRowError(errorText(err, `${dish.name} ${next ? 'aktiverades' : 'pausades'} inte.`))
     } finally {
       markBusy(dish.id, false)
     }
@@ -289,7 +289,7 @@ export default function MenyPage() {
       edits.current += 1
       setDishes((prev) => prev.filter((d) => d.id !== dish.id))
     } catch (err) {
-      setRowError(errorText(err, 'Kunde inte ta bort rätten.'))
+      setRowError(errorText(err, 'Rätten togs inte bort.'))
     } finally {
       markBusy(dish.id, false)
     }

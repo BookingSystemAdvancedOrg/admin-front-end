@@ -242,7 +242,7 @@ export function DishModal({
         options: optionsResult.groups,
       })
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara.'))
+      setError(errorText(err, 'Rätten sparades inte.'))
       focusErrorField(err, {
         name: 'dish-name', description: 'dish-description', category: 'dish-category', price: 'dish-price',
       })

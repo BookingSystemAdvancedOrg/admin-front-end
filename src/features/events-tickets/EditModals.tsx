@@ -114,7 +114,7 @@ export function TypeEditModal({ locationId, eventId, type: opened, latest = null
           setType(fresh)
           setForm(merged)
           setClashes(Object.fromEntries(conflicts.map((c) => [c.field, String(c.theirs)])))
-          setError('Samma fält ändrades nyss på en annan plats. Välj vilket värde som ska gälla och spara igen.')
+          setError('Någon annan ändrade samma fält nyss. Välj vilket värde som ska gälla och spara igen.')
           return
         }
         saved = await updateTicketType(locationId, eventId, type.typeId, bodyOf(merged, fresh))
@@ -125,7 +125,7 @@ export function TypeEditModal({ locationId, eventId, type: opened, latest = null
       const field = (err as { field?: string }).field
       // invalid_capacity på tier är taket (untilSold) och hör till antalet; andra tier-fel gäller säljfönstret.
       const local = errorCode(err) === 'invalid_capacity' ? 'capacity' : field ? SERVER_FIELD[field.split('.')[0]] : undefined
-      const text = errorText(err, 'Kunde inte spara biljettypen.', {
+      const text = errorText(err, 'Biljettypen sparades inte.', {
         ...ERRORS,
         invalid_capacity: 'Fler biljetter hann säljas medan du ändrade. Välj ett större antal.',
         invalid_state: 'Evenemanget är inställt eller har redan passerat, så biljettypen kan inte ändras.',
@@ -252,7 +252,7 @@ export function CapacityModal({ locationId, eventId, occurrence: opened, latest 
         // Antalet ändrades också på annat håll, till något annat: visa deras och låt dig välja.
         if (fresh.capacity !== base.capacity && fresh.capacity !== Number(capacity)) {
           setClash(fresh.capacity)
-          setError('Antalet platser ändrades nyss på en annan plats. Välj vilket antal som ska gälla och spara igen.')
+          setError('Någon annan ändrade antalet platser nyss. Välj vilket antal som ska gälla och spara igen.')
           return
         }
         saved = await updateOccurrence(locationId, eventId, occurrence.occurrenceId, { capacity: Number(capacity), version: fresh.version })
@@ -260,7 +260,7 @@ export function CapacityModal({ locationId, eventId, occurrence: opened, latest 
       onSaved(saved)
       toast('Antalet platser är ändrat.', { tone: 'success' })
     } catch (err) {
-      const text = errorText(err, 'Kunde inte ändra antalet platser.', {
+      const text = errorText(err, 'Antalet platser ändrades inte.', {
         ...ERRORS,
         invalid_capacity: 'Fler platser hann säljas medan du ändrade. Välj ett större antal.',
         invalid_state: 'Tillfället är inställt eller har redan passerat och kan inte ändras.',

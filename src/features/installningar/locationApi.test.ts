@@ -270,12 +270,12 @@ describe('updateLocation', () => {
 describe('error mapping', () => {
   it('maps 404 to a not-found message', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(404, 'location not found'))
-    await expect(getLocation('missing')).rejects.toThrow('Platsen hittades inte.')
+    await expect(getLocation('missing')).rejects.toThrow('Platsen finns inte längre.')
   })
 
   it('maps 403 to a forbidden message', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
-    await expect(getLocation('loc-1')).rejects.toThrow(/inte behörighet/)
+    await expect(getLocation('loc-1')).rejects.toThrow(/får inte göra det här/)
   })
 
   it('names the refused field in Swedish, never the server text', async () => {
@@ -295,6 +295,6 @@ describe('error mapping', () => {
         bookingDurationHours: 0,
         gracePeriodHours: 0,
       }),
-    ).rejects.toThrow('Platsen kunde inte sparas. Kolla bokningstiden och försök igen.')
+    ).rejects.toThrow('Platsen sparades inte. Kolla bokningstiden och försök igen.')
   })
 })

@@ -51,7 +51,7 @@ export default function GoogleProfileCard({ locationId }: { locationId: string }
       setView(v)
       if (c.status === 'connected' && !v.link && !v.skipped) setPlaces((await listGoogleLocations()).locations)
     } catch (err) {
-      setError(errorText(err, 'Kunde inte hämta Google-profilen.', ERRORS))
+      setError(errorText(err, 'Google-profilen kunde inte visas.', ERRORS))
     }
   }, [locationId])
 
@@ -74,7 +74,7 @@ export default function GoogleProfileCard({ locationId }: { locationId: string }
       .then(() => { toast('Google är kopplat. Välj er restaurang i listan.', { tone: 'success' }); return load() })
       .catch((err) => {
         // Felet visas i kortet, så att Vi har ingen Google-profil och hjälpen syns bredvid.
-        setError(errorText(err, 'Det gick inte att koppla Google. Försök igen.', ERRORS))
+        setError(errorText(err, 'Google kopplades inte.', ERRORS))
         return load()
       })
   }, [params, navigate, load])
@@ -101,42 +101,42 @@ export default function GoogleProfileCard({ locationId }: { locationId: string }
   const connect = () => run('connect', async () => {
     const { authorizeUrl } = await startConnect()
     window.location.assign(authorizeUrl)
-  }, 'Det gick inte att öppna Google. Försök igen.')
+  }, 'Google gick inte att öppna.')
 
   const link = () => run('link', async () => {
     await linkLocation(locationId, picked, view?.link?.version)
     toast('Klart! Öppettiderna skickas till Google inom en timme, eller tryck Synka nu.', { tone: 'success' })
     await load()
-  }, 'Kunde inte koppla platsen. Försök igen.')
+  }, 'Platsen kopplades inte.')
 
   const sync = () => run('sync', async () => {
     const result = await syncNow(locationId)
     toast(result.changed ? 'Öppettiderna är skickade till Google.' : 'Google har redan rätt öppettider.', { tone: 'success' })
     await load()
-  }, 'Kunde inte synka. Försök igen.')
+  }, 'Uppdateringen till Google gick inte.')
 
   const unlink = () => run('unlink', async () => {
     await unlinkLocation(locationId)
     await load()
-  }, 'Kunde inte ta bort kopplingen. Försök igen.')
+  }, 'Kopplingen togs inte bort.')
 
   const remove = () => run('disconnect', async () => {
     await disconnect()
     setPlaces(null)
     await load()
-  }, 'Kunde inte koppla bort Google. Försök igen.')
+  }, 'Google kopplades inte bort.')
 
   const skip = () => run('skip', async () => {
     await skipGoogle(locationId)
     setPlaces(null)
     await load()
-  }, 'Kunde inte spara valet. Försök igen.')
+  }, 'Valet sparades inte.')
 
   // Ångra hoppa över: samma anrop som tar bort en koppling.
   const unskip = () => run('unskip', async () => {
     await unlinkLocation(locationId)
     await load()
-  }, 'Kunde inte ändra valet. Försök igen.')
+  }, 'Valet ändrades inte.')
 
   const wrap = (body: ReactElement) => <div id="google" ref={ref} className="google-card">{body}</div>
   const banner = error

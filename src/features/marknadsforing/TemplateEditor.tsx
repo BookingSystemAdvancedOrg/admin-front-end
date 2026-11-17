@@ -176,7 +176,7 @@ export function TemplateEditor({
           setPreview(p)
           setPreviewError(null)
         })
-        .catch((err: unknown) => !cancelled && setPreviewError(errorText(err, 'Kunde inte visa förhandsvisningen.')))
+        .catch((err: unknown) => !cancelled && setPreviewError(errorText(err, 'Förhandsvisningen kunde inte visas.')))
     }, PREVIEW_DELAY_MS)
     return () => {
       cancelled = true

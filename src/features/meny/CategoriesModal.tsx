@@ -114,13 +114,13 @@ export function CategoriesModal({
         setRows(merged.rows)
         setConflicts(Object.fromEntries(merged.conflicts.map((c) => [c.categoryId, c.theirs])))
         if (merged.conflicts.length) {
-          setError('Samma kategori fick ett annat namn på en annan plats. Välj namn och spara igen.')
+          setError('Någon annan bytte namn på samma kategori nyss. Välj namn och spara igen.')
           return
         }
         await onSave(payload(merged.rows), latest.version)
       }
     } catch (err) {
-      setError(errorText(err, 'Kategorierna kunde inte sparas.'))
+      setError(errorText(err, 'Kategorierna sparades inte.'))
     } finally {
       setBusy(false)
     }

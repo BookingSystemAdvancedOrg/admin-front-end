@@ -77,7 +77,7 @@ function PaymentSection({ billing, cardDone }: { billing: NonNullable<Tenant['bi
       setError(
         err instanceof ApiError && err.status === 409
           ? 'Booqy har inte startat ert avtal än. Kontakta Booqy så lägger vi upp det.'
-          : errorText(err, 'Kunde inte öppna kortsidan.'),
+          : errorText(err, 'Sidan för kortet gick inte att öppna.'),
       )
     }
   }
@@ -127,7 +127,7 @@ function OpenInvoices() {
     let active = true
     getBooqyBilling()
       .then((r) => { if (active) setInvoices(r.invoices) })
-      .catch((err) => { if (active) setError(errorText(err, 'Kunde inte hämta fakturorna.')) })
+      .catch((err) => { if (active) setError(errorText(err, 'Fakturorna kunde inte visas.')) })
     return () => { active = false }
   }, [attempt])
 

@@ -86,9 +86,9 @@ function kr(ore: number): string {
 }
 
 const ERRORS: Record<string, string> = {
-  stripe_refused: 'Stripe svarade inte på frågan om avgifter och utbetalningar. Kontakta Booqy.',
-  stripe_unavailable: 'Stripe går inte att nå just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
-  changed_retry: 'Någon annan sparade samtidigt. Det senaste visas nu; spara igen om ändringen fortfarande behövs.',
+  stripe_refused: 'Stripe ville inte visa avgifter och utbetalningar. Kontakta Booqy så hjälper vi er.',
+  stripe_unavailable: 'Stripe svarar inte just nu. Det är inte ert fel. Försök igen om en stund.',
+  changed_retry: 'Någon annan sparade samtidigt. Nu visas det senaste. Spara igen om det behövs.',
 }
 
 const FIELDS: Record<string, string> = {
@@ -99,7 +99,7 @@ const FIELDS: Record<string, string> = {
 
 function message(err: unknown, fallback: string): string {
   if (err instanceof ApiError && err.status === 400 && /^(from must not be after|the period is at most)/.test(err.message)) {
-    return 'Perioden är ogiltig: välj ett slutdatum efter startdatumet, högst ett år bort.'
+    return 'Perioden går inte ihop. Välj ett slutdatum efter startdatumet, högst ett år senare.'
   }
   return commonError(err, fallback, ERRORS, FIELDS)
 }
@@ -140,7 +140,7 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
         setYearStart(s.fiscalYearStartMonth)
         setCostCenter(s.costCenter)
       })
-      .catch((err: unknown) => !cancelled && setLoadError(commonError(err, 'Kunde inte hämta kontona just nu.')))
+      .catch((err: unknown) => !cancelled && setLoadError(commonError(err, 'Kontona kunde inte visas.')))
     return () => {
       cancelled = true
     }
@@ -149,7 +149,7 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
   const errors = accounts
     ? Object.fromEntries(shown.map((r) => [r, accountError(accounts[r] ?? '')]))
     : {}
-  const costCenterError = /^[A-Z0-9]{1,10}$/.test(costCenter) ? null : 'Högst tio versaler eller siffror, t.ex. SODER.'
+  const costCenterError = /^[A-Z0-9]{1,10}$/.test(costCenter) ? null : 'Använd högst tio stora bokstäver eller siffror, till exempel SODER.'
   const invalid = Object.values(errors).some(Boolean) || Boolean(settings && costCenterError)
   const dirty = Boolean(
     settings && accounts &&
@@ -180,7 +180,7 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
       saveFile(res)
       setResult(res)
     } catch (err) {
-      setExportError(message(err, 'Kunde inte skapa filen.'))
+      setExportError(message(err, 'Filen skapades inte.'))
     } finally {
       setExporting(false)
     }
@@ -202,7 +202,7 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
       setCostCenter(next.costCenter)
       setNotice('Sparat.')
     } catch (err) {
-      setSaveError(message(err, 'Kunde inte spara.'))
+      setSaveError(message(err, 'Bokföringsinställningarna sparades inte.'))
     } finally {
       setSaving(false)
     }

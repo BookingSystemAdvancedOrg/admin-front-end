@@ -131,7 +131,7 @@ export function StaffModal({
         ...(access && accessChanged && group === 'staff_user' ? { access: person } : {}),
       })
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara.'))
+      setError(errorText(err, 'Användaren sparades inte.'))
       focusErrorField(err, {
         name: 'staff-name', email: 'staff-email', phone: 'staff-phone', role: 'staff-role', locationId: 'staff-location',
       })

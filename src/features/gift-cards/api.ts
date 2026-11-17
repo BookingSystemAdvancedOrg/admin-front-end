@@ -48,14 +48,14 @@ export const KIND_LABEL: Record<string, string> = {
 }
 
 export const ERRORS: Record<string, string> = {
-  insufficient_balance: 'Det finns inte så mycket kvar på presentkortet.',
-  card_expired: 'Presentkortet har gått ut.',
-  card_void: 'Presentkortet är makulerat.',
-  refund_window_passed: 'Ångerfristen på 14 dagar har gått ut.',
-  invalid_validity: 'Giltigheten ska vara 12-60 månader.',
-  invalid_amount: 'Beloppen ska vara 100-5 000 kr.',
+  insufficient_balance: 'Det finns inte så mycket kvar på presentkortet. Välj ett lägre belopp.',
+  card_expired: 'Presentkortet har gått ut och kan inte användas.',
+  card_void: 'Presentkortet är makulerat och kan inte användas.',
+  refund_window_passed: 'Det har gått mer än 14 dagar sedan köpet. Då kan kortet inte lämnas tillbaka.',
+  invalid_validity: 'Giltighetstiden ska vara 12 till 60 månader. Skriv till exempel 24.',
+  invalid_amount: 'Beloppen ska vara 100 till 5 000 kr. Skriv till exempel 500.',
   // E10: koden är redan bytt men mejlet gick inte ut; ett nytt försök byter koden igen och skickar den.
-  notification_unavailable: 'Mejlet kunde inte skickas just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
+  notification_unavailable: 'Mejlet kunde inte skickas just nu. Det är inte ert fel. Försök igen om en stund.',
 }
 
 const TZ = 'Europe/Stockholm'

@@ -1,4 +1,4 @@
-import { errorText as commonError } from '../../shared/errors'
+import { BOOQY_FAULT, errorText as commonError } from '../../shared/errors'
 import { apiFetch, ApiError } from '../../shared/api'
 import type { BookingTimeRules } from './bookingTime'
 
@@ -168,19 +168,19 @@ export function validatePhoneNumber(phone: string): string | null {
 export function validateTimezone(timezone: string): string | null {
   // Fullständig IANA-validering (som Pythons zoneinfo) görs på servern - här
   // stoppar vi bara tomma/uppenbart trasiga värden innan ett onödigt anrop.
-  return timezone.trim() ? null : 'Tidszon krävs.'
+  return timezone.trim() ? null : 'Välj en tidszon, till exempel Europe/Stockholm.'
 }
 
 export function validateBookingDuration(hours: number): string | null {
   if (!Number.isFinite(hours) || hours <= 0) {
-    return 'Bokningslängd måste vara större än noll.'
+    return 'Bokningens längd saknas. Skriv till exempel 2 timmar.'
   }
   return null
 }
 
 export function validateGracePeriod(hours: number): string | null {
   if (!Number.isFinite(hours) || hours < 0.25 || hours > 1) {
-    return 'Väntetiden för sena gäster ska vara mellan 15 och 60 minuter.'
+    return 'Väntetiden för sena gäster ska vara 15 till 60 minuter. Välj till exempel 15 minuter.'
   }
   return null
 }
@@ -254,7 +254,7 @@ export function validateBusinessHours(hours: BusinessHours): string | null {
  */
 function toFriendlyLocationError(err: unknown): Error {
   if (!(err instanceof ApiError)) {
-    return err instanceof Error ? err : new Error('Ett okänt fel inträffade.')
+    return err instanceof Error ? err : new Error('Något gick fel hos Booqy. Försök igen om en stund.')
   }
 
   console.error(`[Locations] ${err.status}: ${err.message}`)
@@ -268,27 +268,27 @@ function toFriendlyLocationError(err: unknown): Error {
       return new ApiError(
         400,
         /^gracePeriodHours must be shorter/.test(err.message)
-          ? 'Väntetiden för sena gäster måste vara kortare än den kortaste bokningstiden (se Bokningstid).'
-          : commonError(err, 'Platsen kunde inte sparas.', {}, LOCATION_FIELDS),
+          ? 'Väntetiden för sena gäster är för lång. Den måste vara kortare än den kortaste bokningen, se Bokningstid.'
+          : commonError(err, 'Platsen sparades inte.', {}, LOCATION_FIELDS),
         { code: err.code, field: err.field },
       )
     case 401:
-      return new ApiError(401, 'Du är inte inloggad längre. Logga in igen.')
+      return new ApiError(401, 'Du har loggats ut. Logga in igen och gör om det du höll på med.')
     case 403:
-      return new ApiError(403, 'Du har inte behörighet att göra detta.')
+      return new ApiError(403, 'Ditt konto får inte göra det här. Be restaurangens ägare om hjälp.')
     case 404:
-      return new ApiError(404, 'Platsen hittades inte.')
+      return new ApiError(404, 'Platsen finns inte längre. Någon har nog tagit bort den.')
     case 409:
-      return new ApiError(409, 'En plats med det ID:t finns redan - testa igen.')
+      return new ApiError(409, 'Platsen sparades inte, för den krockade med en annan plats. Spara igen.')
     case 501:
-      return new ApiError(501, 'Den här funktionen är inte klar på serversidan än.')
+      return new ApiError(501, `Den här delen är inte klar hos Booqy än. ${BOOQY_FAULT}`)
     case 503:
       return new ApiError(
         503,
-        'Tjänsten är tillfälligt otillgänglig. Felet ligger hos Booqy, inte hos er. Försök igen; kvarstår det, rapportera det till Booqy.',
+        `Booqy svarar inte just nu. ${BOOQY_FAULT}`,
       )
     default:
-      return new ApiError(err.status, commonError(err, 'Kunde inte spara platsen.'), { code: err.code })
+      return new ApiError(err.status, commonError(err, 'Något gick fel med platsen.'), { code: err.code })
   }
 }
 

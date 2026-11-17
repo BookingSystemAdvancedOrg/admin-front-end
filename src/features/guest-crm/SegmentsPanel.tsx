@@ -49,7 +49,7 @@ export default function SegmentsPanel() {
       setSegments(out.segments)
       setTemplates(out.templates)
     } catch (err) {
-      setError(errorText(err, 'Kunde inte hämta målgrupperna.'))
+      setError(errorText(err, 'Målgrupperna kunde inte visas.'))
     }
   }
 
@@ -66,7 +66,7 @@ export default function SegmentsPanel() {
       const p = await previewSegment(segmentId)
       setCounts((c) => ({ ...c, [segmentId]: { total: p.total, reachable: p.reachable } }))
     } catch (err) {
-      toast(errorText(err, 'Kunde inte räkna gästerna.'), { tone: 'danger' })
+      toast(errorText(err, 'Gästerna kunde inte räknas.'), { tone: 'danger' })
     }
   }
 
@@ -92,7 +92,7 @@ export default function SegmentsPanel() {
         if (conflicts.length) {
           setDraftState(next)
           setDraftBase(theirs)
-          toast('Samma regel ändrades nyss på en annan plats. Dina värden står kvar; spara igen för att använda dem.', { tone: 'danger' })
+          toast('Någon annan ändrade samma regel nyss. Dina värden står kvar. Spara igen för att använda dem.', { tone: 'danger' })
           return
         }
         saved = await send(next)
@@ -102,9 +102,9 @@ export default function SegmentsPanel() {
       void count(saved.segmentId)
       toast('Målgruppen är sparad.', { tone: 'success' })
     } catch (err) {
-      toast(errorText(err, 'Kunde inte spara målgruppen.', {
-        invalid_rules: 'Kontrollera reglerna: till exempel minst 7 dagar sedan senaste besöket.',
-        changed_retry: 'Målgruppen ändrades samtidigt. Det senaste visas nu; spara igen om ändringen fortfarande behövs.',
+      toast(errorText(err, 'Målgruppen sparades inte.', {
+        invalid_rules: 'En regel ser fel ut. Kolla siffrorna, till exempel minst 7 dagar sedan senaste besöket.',
+        changed_retry: 'Någon annan ändrade målgruppen samtidigt. Nu visas det senaste. Spara igen om det behövs.',
       }, { name: 'namnet' }), { tone: 'danger' })
     } finally {
       setSaving(false)
@@ -117,7 +117,7 @@ export default function SegmentsPanel() {
       await deleteSegment(segment.segmentId)
       await load()
     } catch (err) {
-      toast(errorText(err, 'Kunde inte ta bort målgruppen.'), { tone: 'danger' })
+      toast(errorText(err, 'Målgruppen togs inte bort.'), { tone: 'danger' })
     }
   }
 

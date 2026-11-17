@@ -128,7 +128,7 @@ describe('validateDishPrice', () => {
 
   it('caps a price at 10 000 kr (typo guard, same as the server)', () => {
     expect(validateDishPrice(10000)).toBeNull()
-    expect(validateDishPrice(10000.01)).toBe('Pris får vara högst 10\u00a0000 kr.')
+    expect(validateDishPrice(10000.01)).toBe('Priset får vara högst 10\u00a0000 kr.')
     expect(validateDishPrice(3500000)).not.toBeNull()
   })
 
@@ -313,9 +313,9 @@ describe('parsePrice', () => {
 
   it('refuses text, negative numbers, empty and three decimals in Swedish', () => {
     expect(parsePrice('abc').error).toMatch(/siffror/)
-    expect(parsePrice('-10').error).toBe('Priset kan inte vara negativt.')
-    expect(parsePrice('').error).toBe('Pris krävs.')
-    expect(parsePrice('12,345').error).toBe('Pris får ha högst två decimaler.')
+    expect(parsePrice('-10').error).toBe('Priset kan inte vara under 0 kr. Skriv till exempel 89.')
+    expect(parsePrice('').error).toBe('Skriv ett pris, till exempel 89.')
+    expect(parsePrice('12,345').error).toBe('Priset får ha högst två siffror efter kommat, till exempel 89,50.')
     expect(parsePrice('1,2,3').error).toMatch(/siffror/)
     expect(parsePrice('10e3').error).toMatch(/siffror/)
     expect(parsePrice('10001').error).toMatch(/högst/)
@@ -353,6 +353,6 @@ describe('stale saves', () => {
       method: 'PUT', body: JSON.stringify({ price: 99, expectedUpdatedAt: '2026-09-01T10:00:00Z' }),
     })
     expect(isStaleDish(err)).toBe(true)
-    expect((err as Error).message).toMatch(/Någon annan har ändrat rätten/)
+    expect((err as Error).message).toMatch(/Någon annan ändrade rätten/)
   })
 })

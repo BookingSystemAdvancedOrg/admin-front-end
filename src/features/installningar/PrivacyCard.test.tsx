@@ -62,7 +62,7 @@ describe('PrivacyCard', () => {
     await user.clear(text)
     await user.type(text, ' ')
     await user.click(screen.getByRole('button', { name: 'Spara text' }))
-    expect(screen.getByRole('alert')).toHaveTextContent('kan inte vara tom')
+    expect(screen.getByRole('alert')).toHaveTextContent('Texten är tom')
   })
 
   it('looks up a guest and withdraws one channel without touching the other', async () => {

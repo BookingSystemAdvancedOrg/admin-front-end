@@ -74,7 +74,7 @@ export function SubscribersTab() {
           setList(null)
           setReload((n) => n + 1)
         }
-        setError(errorText(err, 'Kunde inte hämta mottagarna.'))
+        setError(errorText(err, 'Mottagarna kunde inte visas.'))
       })
     return () => {
       cancelled = true
@@ -122,7 +122,7 @@ export function SubscribersTab() {
       const page = await listSubscribers(view.filter, cursor)
       setList((l) => ({ view, rows: [...(l?.rows ?? []), ...page.subscribers], cursor: page.cursor, more: true }))
     } catch (err) {
-      fail(err, 'Kunde inte hämta fler.', () => void more())
+      fail(err, 'Fler mottagare kunde inte visas.', () => void more())
     } finally {
       setLoadingMore(false)
     }
@@ -138,7 +138,7 @@ export function SubscribersTab() {
       setNotice(`${s.email} får inga fler utskick.`)
       load()
     } catch (err) {
-      fail(err, 'Kunde inte avregistrera.', () => void doUnsubscribe(s))
+      fail(err, 'Mottagaren avregistrerades inte.', () => void doUnsubscribe(s))
     }
   }
 
@@ -153,7 +153,7 @@ export function SubscribersTab() {
       load()
     } catch (err) {
       setConfirmErase(null)
-      fail(err, 'Kunde inte radera.', () => void doErase(s))
+      fail(err, 'Mottagaren raderades inte.', () => void doErase(s))
     } finally {
       setErasing(false)
     }
@@ -168,7 +168,7 @@ export function SubscribersTab() {
       setHistory((h) => (h?.subscriber === s ? { subscriber: s, consent: r.email ?? { state: 'none', history: [] } } : h))
     } catch (err) {
       setHistory(null)
-      fail(err, 'Kunde inte hämta historiken.', () => void openHistory(s))
+      fail(err, 'Historiken kunde inte visas.', () => void openHistory(s))
     }
   }
 
@@ -178,7 +178,7 @@ export function SubscribersTab() {
     try {
       await exportSubscribers()
     } catch (err) {
-      fail(err, 'Kunde inte ladda ned listan.', () => void doExport())
+      fail(err, 'Listan laddades inte ned.', () => void doExport())
     } finally {
       setExporting(false)
     }

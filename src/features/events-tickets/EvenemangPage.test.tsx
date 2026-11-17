@@ -460,7 +460,7 @@ describe('editing ticket types and occurrences after sales', () => {
     expect(validateType(ok, t)).toEqual({})
     expect(validateType({ ...ok, priceKr: '-5' }, t).priceKr).toBe('Skriv priset i kronor, till exempel 495 eller 495,50.')
     expect(validateType({ ...ok, priceKr: '12,345' }, t).priceKr).toBeDefined()
-    expect(validateType({ ...ok, perOrderMax: '21' }, t).perOrderMax).toBe('Max per köp ska vara ett heltal från 1 till 20.')
+    expect(validateType({ ...ok, perOrderMax: '21' }, t).perOrderMax).toBe('Max per köp ska vara ett heltal från 1 till 20, till exempel 6.')
     expect(validateType({ ...ok, from: '2026-12-01T10:00', until: '2026-12-01T09:00' }, t).until)
       .toBe('Försäljningen måste sluta efter att den har börjat.')
     expect(validateType({ ...ok, capacity: '12' }, t).capacity).toBe('Det finns redan 12 sålda och 1 reserverade i pågående köp, så antalet kan inte vara lägre än 13.')

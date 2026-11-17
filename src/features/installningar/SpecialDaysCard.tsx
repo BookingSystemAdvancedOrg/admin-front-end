@@ -86,7 +86,7 @@ export function SpecialDaysCard({
         setSaved(loc.specialDays ?? [])
         setDays(loc.specialDays ?? [])
       })
-      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Kunde inte hämta platsens avvikande dagar.')))
+      .catch((err: unknown) => !cancelled && setError(errorText(err, 'De avvikande dagarna kunde inte visas.')))
     return () => {
       cancelled = true
     }
@@ -114,10 +114,10 @@ export function SpecialDaysCard({
   function add() {
     setError(null)
     if (!draft.date) return setError('Välj ett datum.')
-    if (draft.date < today) return setError('Datumet har redan passerat.')
-    if (draft.date > addDays(today, DAYS_AHEAD)) return setError('Högst två år fram.')
+    if (draft.date < today) return setError('Datumet har redan varit. Välj ett datum från idag och framåt.')
+    if (draft.date > addDays(today, DAYS_AHEAD)) return setError('Datumet ligger för långt fram. Välj ett datum inom två år.')
     if (days.some((d) => d.date === draft.date)) {
-      return setError('Det datumet finns redan i listan - ta bort det först.')
+      return setError('Det datumet finns redan i listan. Ta bort det först om du vill ändra det.')
     }
     const note = draft.note.trim().replace(/\s+/g, ' ')
     if (note.length > NOTE_MAX) return setError(`Anteckningen får vara högst ${NOTE_MAX} tecken.`)
@@ -157,7 +157,7 @@ export function SpecialDaysCard({
       setDays(updated.specialDays ?? [])
       setNotice('Sparat. Bokningssidan visar det inom några minuter.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara.', { owner_only: 'Bara restaurangens ägare kan ändra öppettiderna.', forbidden: 'Bara restaurangens ägare kan ändra öppettiderna.' }))
+      setError(errorText(err, 'De avvikande dagarna sparades inte.', { owner_only: 'Bara restaurangens ägare kan ändra öppettiderna. Be ägaren göra det.', forbidden: 'Bara restaurangens ägare kan ändra öppettiderna. Be ägaren göra det.' }))
     } finally {
       setBusy(false)
     }

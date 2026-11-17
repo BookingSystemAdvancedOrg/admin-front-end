@@ -119,7 +119,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
     const { from, to } = range(days)
     getOverview(from, to, forLocation)
       .then((d) => !cancelled && setResult({ key, data: d }))
-      .catch((err: unknown) => !cancelled && setResult({ key, error: errorText(err, 'Kunde inte hämta statistiken.') }))
+      .catch((err: unknown) => !cancelled && setResult({ key, error: errorText(err, 'Statistiken kunde inte visas.') }))
     return () => {
       cancelled = true
     }

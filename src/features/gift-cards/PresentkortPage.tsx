@@ -67,7 +67,7 @@ function GiftCards({ owner }: { owner: boolean }) {
       setListing(await listCards())
       setLoadError(null)
     } catch (err) {
-      setLoadError(errorText(err, 'Kunde inte hämta presentkorten.', ERRORS))
+      setLoadError(errorText(err, 'Presentkorten kunde inte visas.', ERRORS))
     }
   }, [])
 
@@ -128,7 +128,7 @@ function CardModal({ cardId, owner, onClose, onChanged }: { cardId: string; owne
       setCard(await getCard(cardId))
       setLoadError(null)
     } catch (err) {
-      setLoadError(errorText(err, 'Kunde inte hämta kortet.', ERRORS))
+      setLoadError(errorText(err, 'Presentkortet kunde inte visas.', ERRORS))
     }
   }, [cardId])
 
@@ -143,7 +143,7 @@ function CardModal({ cardId, owner, onClose, onChanged }: { cardId: string; owne
       await load()
       onChanged()
     } catch (err) {
-      toast(errorText(err, 'Det gick inte.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Ändringen av presentkortet gick inte.', ERRORS), { tone: 'danger' })
     } finally {
       setBusy(null)
     }
@@ -229,7 +229,7 @@ function SettingsCard() {
   const load = useCallback(() => {
     setLoadError(null)
     getSettings().then((s) => { setDraft(s); setAmounts(s.amountsSek.join(', ')) })
-      .catch((err) => setLoadError(errorText(err, 'Kunde inte hämta inställningarna.', ERRORS)))
+      .catch((err) => setLoadError(errorText(err, 'Inställningarna för presentkort kunde inte visas.', ERRORS)))
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -251,7 +251,7 @@ function SettingsCard() {
       setAmounts(saved.amountsSek.join(', '))
       toast('Sparat.', { tone: 'success' })
     } catch (err) {
-      toast(errorText(err, 'Kunde inte spara.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Inställningarna för presentkort sparades inte.', ERRORS), { tone: 'danger' })
     } finally {
       setSaving(false)
     }

@@ -54,10 +54,10 @@ export function rulesToSave(
     const max = whole(row.max)
     const name = `Bord ${t.label}`
     if (min === null || max === null || min < 1 || max < 1 || min > MAX_PARTY || max > MAX_PARTY) {
-      return { rules, error: `${name}: ange antal personer som heltal 1-${MAX_PARTY}.` }
+      return { rules, error: `${name}: skriv antal personer från 1 till ${MAX_PARTY}.` }
     }
-    if (min > max) return { rules, error: `${name}: minst kan inte vara fler än högst.` }
-    if (max > t.seats) return { rules, error: `${name}: högst ${t.seats} personer (bordets platser).` }
+    if (min > max) return { rules, error: `${name}: minst är större än högst. Rätta siffrorna.` }
+    if (max > t.seats) return { rules, error: `${name}: bordet har ${t.seats} platser. Skriv högst ${t.seats} personer.` }
     if (row.online && min === defaultMin(t.seats) && max === t.seats) continue
     rules[t.tableId] = { minParty: min, maxParty: max, online: row.online }
   }
@@ -88,14 +88,14 @@ export function emptyDraft(): Draft {
 }
 
 export function intervalsError(intervals: BusinessHoursInterval[]): string | null {
-  if (intervals.length === 0) return 'Ange minst en öppettid.'
+  if (intervals.length === 0) return 'Lägg till minst en öppettid.'
   for (const { opensAt, closesAt } of intervals) {
-    if (!TIME.test(opensAt) || !TIME.test(closesAt)) return 'Ange tiderna som TT:MM.'
+    if (!TIME.test(opensAt) || !TIME.test(closesAt)) return 'Skriv tiderna som timmar och minuter, till exempel 11:30.'
     if (opensAt >= closesAt) return 'Öppningstiden måste vara före stängningstiden.'
   }
   const sorted = [...intervals].sort((a, b) => a.opensAt.localeCompare(b.opensAt))
   for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i - 1].closesAt > sorted[i].opensAt) return 'Tiderna får inte överlappa varandra.'
+    if (sorted[i - 1].closesAt > sorted[i].opensAt) return 'Två öppettider går in i varandra. Ändra dem så att de inte krockar.'
   }
   return null
 }

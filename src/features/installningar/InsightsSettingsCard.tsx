@@ -60,7 +60,7 @@ export function InsightsSettingsCard({ locationId }: { locationId: string | null
       clearInsightsCache()
       setNotice('Sparat.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara.'))
+      setError(errorText(err, 'Inställningen sparades inte.'))
     } finally {
       setBusy(false)
     }

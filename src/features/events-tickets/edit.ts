@@ -55,7 +55,7 @@ export function validateType(f: TypeForm, t: TicketType): Partial<Record<keyof T
   if (price === null) errors.priceKr = 'Skriv priset i kronor, till exempel 495 eller 495,50.'
   else if (price > MAX_PRICE_KR * 100) errors.priceKr = `Priset får vara högst ${MAX_PRICE_KR.toLocaleString('sv-SE')} kr.`
   const per = Number(f.perOrderMax)
-  if (!Number.isInteger(per) || per < 1 || per > 20) errors.perOrderMax = 'Max per köp ska vara ett heltal från 1 till 20.'
+  if (!Number.isInteger(per) || per < 1 || per > 20) errors.perOrderMax = 'Max per köp ska vara ett heltal från 1 till 20, till exempel 6.'
   if (f.capacity.trim()) {
     const cap = Number(f.capacity)
     const min = Math.max(1, takenOf(t))

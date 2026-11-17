@@ -47,7 +47,7 @@ export default function OmdomenTab() {
       setView(v)
       setDraft(v.reviewSettings)
     } catch (err) {
-      setError(errorText(err, 'Kunde inte hämta omdömesinställningarna.', ERRORS))
+      setError(errorText(err, 'Inställningarna för omdömen kunde inte visas.', ERRORS))
     }
   }, [locationId])
 
@@ -89,7 +89,7 @@ export default function OmdomenTab() {
       setDraft(saved)
       toast('Sparat.', { tone: 'success' })
     } catch (err) {
-      toast(errorText(err, 'Kunde inte spara.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Inställningarna för omdömen sparades inte.', ERRORS), { tone: 'danger' })
     } finally {
       setSaving(false)
     }

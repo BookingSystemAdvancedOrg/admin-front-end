@@ -3,7 +3,12 @@ import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode } from '
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { ApiError, apiFetch, isApiConfigured } from '../../shared/api'
 import { Loading } from '../../shared/Loading'
-import { currentLocation, useTenant } from '../../shared/tenant'
+import { currentLocation, hasFeature, useTenant } from '../../shared/tenant'
+import { canOpen } from '../../shared/access'
+import { useLiveRefresh } from '../../shared/live'
+import { kronor, listTabs, tabKey } from '../bestallningar/ordersApi'
+import type { TabList } from '../bestallningar/ordersApi'
+import { TableTabsBoard, visibleTabs } from '../bestallningar/TableTabs'
 import { tablesFromLayout } from '../../shared/tables'
 import { ChannelPicker } from '../bokningar/ChannelPicker'
 import type { StaffChannel } from '../bokningar/ChannelPicker'
@@ -153,6 +158,42 @@ export function FloorBooking({
   const [linkedIds, setLinkedIds] = useState<string[]>([])
   const [focusDone, setFocusDone] = useState<string | null>(null)
 
+  // Bordens öppna notor (QR-beställningar som betalas innan gästen går).
+  const tenant = tenantState.tenant
+  const isOwner = tenant?.role === 'owner_user'
+  const canCharge = canOpen(tenant, 'bestallningar')
+  const withTabs = Boolean(locationId) && isApiConfigured() && Boolean(tenant?.entitlements) && hasFeature(tenant, 'ordering')
+  const [tabList, setTabList] = useState<TabList | null>(null)
+  /** Bordet vars nota visas i panelen. */
+  const [tabTable, setTabTable] = useState<string | null>(null)
+  const loadTabs = () => {
+    if (!locationId || !withTabs) return
+    return listTabs(locationId).then(
+      (l) => setTabList({ serviceDate: l.serviceDate, tabs: Array.isArray(l.tabs) ? l.tabs : [] }),
+      () => false,
+    )
+  }
+  useEffect(() => {
+    void loadTabs()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationId, withTabs])
+  useLiveRefresh(loadTabs, { enabled: withTabs })
+  const tabs = visibleTabs(tabList?.tabs, isOwner)
+  /** Per bord: öppna notor (en gammal och en ny kan finnas). */
+  const tabsByTable = useMemo(() => {
+    const map = new Map<string, typeof tabs>()
+    for (const t of tabs) map.set(t.tableId, [...(map.get(t.tableId) ?? []), t])
+    return map
+  }, [tabs])
+  function showTab(id: string) {
+    setTabTable(id)
+    requestAnimationFrame(() => {
+      if (window.matchMedia?.('(max-width: 900px)').matches) {
+        panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    })
+  }
+
   const canLoad = Boolean(locationId) && isApiConfigured()
   useEffect(() => {
     if (!locationId || !canLoad) return
@@ -289,6 +330,7 @@ export function FloorBooking({
 
   function pickTable(id: string) {
     setTableId(id)
+    setTabTable(null)
     setLinkedIds([])
     setStartTime('')
     setError(null)
@@ -435,6 +477,17 @@ export function FloorBooking({
                     ))}
                   </div>
                 )}
+                {tabs.some((t) => t.count > 0) && (
+                  <nav className="tabs-chips" aria-label="Öppna notor">
+                    {tabs.filter((t) => t.count > 0).map((t) => (
+                      <button key={tabKey(t)} type="button" className={`tabs-chip${t.stale ? ' is-stale' : ''}`}
+                        aria-pressed={tabTable === t.tableId} onClick={() => showTab(t.tableId)}>
+                        {t.title} · {kronor(t.amount)}
+                        {t.paying && <span className="tabs-chip-note">Betalas</span>}
+                      </button>
+                    ))}
+                  </nav>
+                )}
                 <div className="floor-map-legend" aria-hidden="true">
                   <span className="legend-free">Ledigt</span>
                   <span className="legend-small">För litet</span>
@@ -519,11 +572,43 @@ export function FloorBooking({
                       </g>
                     )
                   })}
+                  {/* Notans belopp ovanför bordet (gult: från igår eller efter stängning). */}
+                  {floor.tables.map((t) => {
+                    const open = (tabsByTable.get(t.id) ?? []).filter((x) => x.count > 0)
+                    if (open.length === 0) return null
+                    const text = kronor(open.reduce((sum, x) => sum + x.amount, 0))
+                    const w = text.length * 8 + 16
+                    const y = t.y - Math.max(t.w, t.h) / 2 - 14
+                    return (
+                      <g key={`tab-${t.id}`} className={`floor-map-tab${open.some((x) => x.stale) ? ' is-stale' : ''}`}
+                        transform={`translate(${t.x} ${y})`} aria-hidden="true" onClick={() => showTab(t.id)}>
+                        <rect x={-w / 2} y={-11} width={w} height={22} rx={11} />
+                        <text>{text}</text>
+                      </g>
+                    )
+                  })}
                 </svg>
               </section>
 
               <section className="admin-card floor-booking-panel" ref={panelRef} aria-live="polite">
-                {!table ? (
+                {tabTable && locationId && (tabsByTable.get(tabTable) ?? []).length > 0 ? (
+                  <div className="floor-tab-panel">
+                    <TableTabsBoard
+                      locationId={locationId}
+                      tabs={tabsByTable.get(tabTable) ?? []}
+                      today={tabList?.serviceDate ?? null}
+                      timezone={location?.timezone}
+                      canAct={canCharge}
+                      isOwner={isOwner}
+                      onChanged={() => void loadTabs()}
+                    />
+                    <div className="modal-actions">
+                      <button type="button" className="btn outline square" onClick={() => setTabTable(null)}>
+                        Stäng
+                      </button>
+                    </div>
+                  </div>
+                ) : !table ? (
                   linked.length > 1 ? (
                     <div className="floor-booking-hint">
                       <h2 className="card-title">Bord {linked.map((t) => label(t)).join(' + ')}</h2>

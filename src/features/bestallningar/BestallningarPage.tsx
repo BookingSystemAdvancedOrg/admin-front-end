@@ -14,13 +14,17 @@ import {
   closedText,
   kronor,
   listOrders,
+  listTabs,
   moveErrorText,
   moveOrder,
   pauseOrdering,
+  paymentLabel,
   refundLabel,
   refundOrder,
+  tabKey,
 } from './ordersApi'
-import type { Order, OrderingState, StaffMove } from './ordersApi'
+import type { Order, OrderingState, StaffMove, TabList } from './ordersApi'
+import { TableTabsBoard, visibleTabs } from './TableTabs'
 import { tableTitle } from '../table-qr/tableQrApi'
 import { getPrintStatus, printBannerText, printErrorText, reprintOrder, TICKET_TEXT } from './printApi'
 import type { JobState, PrintStatus } from './printApi'
@@ -33,6 +37,7 @@ import { Select } from '../../shared/Select'
 import { NoLocation } from '../../shared/NoLocation'
 import { RefundDialog } from '../../shared/RefundDialog'
 import { useTenant } from '../../shared/tenant'
+import { Loading } from '../../shared/Loading'
 
 /** Hur ofta listan hämtas om (köksskärmen står öppen hela kvällen). */
 export const POLL_MS = 10_000
@@ -98,6 +103,11 @@ export default function BestallningarPage() {
   /** ?vy=kok: köksskärmen (en stations bongar) i stället för tavlan; ?station= vilken. */
   const [params, setParams] = useState(() => new URLSearchParams(window.location.search))
   const kds = params.get('vy') === 'kok'
+  const notor = params.get('vy') === 'notor'
+  /** Bordens öppna notor (QR-beställningar som betalas innan gästen går). */
+  const [tabList, setTabList] = useState<TabList | null>(null)
+  /** Notan ett chip pekade på (Notor scrollar dit). */
+  const [focusTab, setFocusTab] = useState<string | null>(null)
   function view(next: { vy?: string | null; station?: string | null }) {
     const p = new URLSearchParams(params)
     for (const [k, v] of Object.entries(next)) {
@@ -130,6 +140,8 @@ export default function BestallningarPage() {
       setLoadError(true)
       return false
     }
+    // Notorna är en bonus till tavlan: ett äldre API utan notor ger inga.
+    listTabs(locationId).then(setTabList).catch(() => setTabList((prev) => prev ?? { serviceDate: '', tabs: [] }))
     // Skrivarens läge är en bonus: om det inte går att hämta visas ingen skrivarrad.
     getPrintStatus(locationId).then(setPrint).catch(() => setPrint(null))
   }, [locationId])
@@ -196,7 +208,8 @@ export default function BestallningarPage() {
     }
   }
 
-  const canRefund = (order: Order) => isOwner && (order.refundable ?? 0) > 0
+  const canRefund = (order: Order) =>
+    isOwner && (order.refundable ?? 0) > 0 && order.paymentStatus !== 'unpaid' && order.paymentStatus !== 'paid_outside'
   const refunding = refundingId ? (orders ?? []).find((o) => o.orderId === refundingId) ?? null : null
 
   async function reprint(order: Order) {
@@ -242,6 +255,14 @@ export default function BestallningarPage() {
   // Restaurangerna ligger i Europe/Stockholm (clockIn faller tillbaka dit).
   const revenueBefore = revenueUntil(lastWeekOrders, clockIn(null), null)
   const count = (status: string) => active.filter((o) => o.status === status).length
+  const tabs = visibleTabs(tabList?.tabs, isOwner)
+  const openTabs = tabs.filter((t) => t.count > 0)
+  const unpaidTotal = openTabs.reduce((sum, t) => sum + t.amount, 0)
+  const unpaidIds = new Set([
+    ...(orders ?? []).filter((o) => o.paymentStatus === 'unpaid').map((o) => o.orderId),
+    ...openTabs.flatMap((t) => t.orders.map((o) => o.orderId)),
+  ])
+  const showTabs = Boolean(ordering?.table) || tabs.length > 0
   const tiles = [
     { label: 'Nya', value: String(count('confirmed')), tone: count('confirmed') ? ('attention' as const) : undefined },
     { label: 'Tillagas', value: String(count('preparing')) },
@@ -251,7 +272,19 @@ export default function BestallningarPage() {
       value: revenue ? kronor(revenue.amount) : '-',
       trend: revenue ? trendOf(revenue.amount, revenueBefore, 'revenue', 'samma tid förra veckan') : undefined,
     },
+    ...(showTabs
+      ? [{
+          label: 'Obetalt',
+          value: kronor(unpaidTotal),
+          tone: openTabs.some((t) => t.stale) ? ('attention' as const) : undefined,
+        }]
+      : []),
   ]
+
+  function openTab(key: string) {
+    setFocusTab(key)
+    view({ vy: 'notor', station: null })
+  }
 
   const pauseControls = (
     <div className="orders-pause" data-tour="orders-pause">
@@ -295,7 +328,8 @@ export default function BestallningarPage() {
           <span className={order.mode === 'table' ? 'order-place order-place--table' : 'order-place'}>
             {where(order)}
           </span>
-          <span className="order-time" title="Betald">
+          {order.paymentStatus === 'unpaid' && <span className="order-unpaid">Obetald</span>}
+          <span className="order-time" title={order.paymentStatus === 'unpaid' ? 'Beställd' : 'Betald'}>
             {clock(order.confirmedAt)}
           </span>
         </header>
@@ -333,6 +367,9 @@ export default function BestallningarPage() {
           {order.customerName}
           {order.customerPhone ? ` · ${order.customerPhone}` : ''} · <Num>{kronor(order.totalAmount)}</Num>
           {refundLabel(order) ? <span className="order-refunded"> · {refundLabel(order)}</span> : null}
+          {order.paymentStatus === 'paid_outside' || order.paymentStatus === 'written_off'
+            ? <span className="order-refunded"> · {paymentLabel(order)}</span>
+            : null}
           {order.discount ? ` (rabatt ${order.discount.percent} %, kod ${order.discount.code})` : ''}
           {order.mode === 'pickup' && order.status !== 'ready' && order.readyEstimate
             ? ` · lovad ca ${clock(order.readyEstimate)}`
@@ -435,7 +472,7 @@ export default function BestallningarPage() {
             {loadError && (
               <ErrorNote text={booqyFaultText('Beställningarna kunde inte visas.')} />
             )}
-            <section className="stats-row" aria-label="Dagens siffror">
+            <section className={`stats-row${tiles.length === 5 ? ' orders-stats--five' : ''}`} aria-label="Dagens siffror">
               {tiles.map((t, i) => (
                 <StatTile key={t.label} {...t} loading={orders === null} index={i} />
               ))}
@@ -453,19 +490,51 @@ export default function BestallningarPage() {
             )}
             <p className="sr-only" aria-live="polite">{announce}</p>
             <div className="orders-views" role="tablist" aria-label="Vy">
-              <button type="button" role="tab" aria-selected={!kds} className={!kds ? 'active' : ''}
+              <button type="button" role="tab" aria-selected={!kds && !notor} className={!kds && !notor ? 'active' : ''}
                 onClick={() => view({ vy: null })}>
                 Alla beställningar
               </button>
+              {showTabs && (
+                <button type="button" role="tab" aria-selected={notor} className={notor ? 'active' : ''}
+                  data-tour="orders-tabs" onClick={() => view({ vy: 'notor', station: null })}>
+                  Notor
+                  {openTabs.length > 0 && <span className="views-count">{openTabs.length}</span>}
+                </button>
+              )}
               <button type="button" role="tab" aria-selected={kds} className={kds ? 'active' : ''}
                 onClick={() => view({ vy: 'kok' })}>
                 Köksskärm
               </button>
             </div>
             {kds ? (
-              <KitchenDisplay locationId={locationId} station={params.get('station')}
+              <KitchenDisplay locationId={locationId} station={params.get('station')} unpaid={unpaidIds}
                 onStation={(station) => view({ station })} />
+            ) : notor ? (
+              tabList === null ? (
+                <Loading label="Hämtar notorna" />
+              ) : (
+                <TableTabsBoard
+                  locationId={locationId}
+                  tabs={tabs}
+                  today={tabList.serviceDate || listDate}
+                  canAct
+                  isOwner={isOwner}
+                  focusKey={focusTab}
+                  onChanged={() => void refresh()}
+                />
+              )
             ) : <>
+            {openTabs.length > 0 && (
+              <nav className="tabs-chips" aria-label="Öppna notor">
+                {openTabs.map((t) => (
+                  <button key={tabKey(t)} type="button" className={`tabs-chip${t.stale ? ' is-stale' : ''}`}
+                    onClick={() => openTab(tabKey(t))}>
+                    {t.title} · {kronor(t.amount)}
+                    {t.paying && <span className="tabs-chip-note">Betalas</span>}
+                  </button>
+                ))}
+              </nav>
+            )}
             {placeOptions.length > 1 && (
               <div className="orders-filter">
                 <label htmlFor="orders-place">Visa</label>
@@ -513,8 +582,16 @@ export default function BestallningarPage() {
                     <li key={o.orderId}>
                       <span>
                         #{o.number} · {where(o)} · {o.customerName} · <Num>{kronor(o.totalAmount)}</Num> ·{' '}
-                        {o.status === 'cancelled' ? 'Avbruten, återbetald' : `Klar ${clock(o.completedAt)}`}
+                        {o.status === 'cancelled'
+                          ? o.paymentStatus === 'void' || o.paymentStatus === 'unpaid' ? 'Avbruten' : 'Avbruten, återbetald'
+                          : `Klar ${clock(o.completedAt)}`}
                         {refundLabel(o) ? <span className="order-refunded"> · {refundLabel(o)}</span> : null}
+                        {o.status !== 'cancelled' && paymentLabel(o) ? (
+                          <>
+                            {' · '}
+                            <span className={o.paymentStatus === 'unpaid' ? 'order-unpaid' : 'order-refunded'}>{paymentLabel(o)}</span>
+                          </>
+                        ) : null}
                       </span>
                       {canRefund(o) && (
                         <button type="button" className="btn outline square orders-done-refund"
@@ -582,6 +659,8 @@ export function cancelRefund(order: Order): { card: number; gift: number } {
 }
 
 function cancelConfirmLabel(order: Order): string {
+  // Obetald (notan vid bordet): inget att betala tillbaka.
+  if (order.paymentStatus === 'unpaid') return 'Bekräfta: avbryt beställningen'
   const { card, gift } = cancelRefund(order)
   if (card + gift <= 0) return 'Bekräfta: avbryt'
   const parts = gift > 0 && card > 0 ? ` (presentkort ${kronor(gift)})` : gift > 0 ? ' till presentkortet' : ''

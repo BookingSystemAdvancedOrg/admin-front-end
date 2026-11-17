@@ -21,10 +21,11 @@ vi.mock('../bokningar/bookingsApi', async (orig) => ({
   todayIn: () => '2026-11-13',
 }))
 
+let tenantExtra: Record<string, unknown> = {}
 vi.mock('../../shared/tenant', async (orig) => ({
   ...(await orig<typeof import('../../shared/tenant')>()),
   useTenant: () => ({
-    tenant: { locations: [{ locationId: 'loc-1', name: 'Sole', timezone: 'Europe/Stockholm' }] },
+    tenant: { locations: [{ locationId: 'loc-1', name: 'Sole', timezone: 'Europe/Stockholm' }], ...tenantExtra },
     locationId: 'loc-1',
     status: 'ready',
   }),
@@ -40,6 +41,7 @@ const LAYOUT = {
 }
 
 beforeEach(() => {
+  tenantExtra = {}
   apiFetch.mockReset()
   getAvailability.mockReset()
   createManualReservation.mockReset()
@@ -172,4 +174,48 @@ describe('FloorBooking', () => {
     expect(await screen.findByText(/tar inte emot bokningar just nu/)).toBeInTheDocument()
     expect(screen.queryByText(/Bokningen hittades inte/)).toBeNull()
   })
+
+  describe('open table bills', () => {
+    const unpaid = {
+      orderId: 'a'.repeat(32), locationId: 'loc-1', number: 12, status: 'completed', mode: 'table', tableId: 't-a',
+      tableLabel: '1', paymentStatus: 'unpaid', payLater: true, totalAmount: 45000, createdAt: '2026-11-13T17:00:00Z',
+      lines: [{ menuItemId: 'p', name: 'Pizza', unitPrice: 45000, quantity: 1, total: 45000, vatRate: 12 }],
+    }
+    const TABS = {
+      serviceDate: '2026-11-13',
+      tabs: [{ tableId: 't-a', tableLabel: '1', title: 'Bord 1', serviceDate: '2026-11-13', amount: 45000, count: 1,
+        oldestAt: '2026-11-13T17:00:00Z', orders: [unpaid], stale: true }],
+    }
+    beforeEach(() => {
+      apiFetch.mockImplementation((path: string) => Promise.resolve(path.endsWith('/orders/tabs') ? TABS : LAYOUT))
+    })
+
+    it('shows what a table owes on the map and opens its bill; staff without Beställningar only read it', async () => {
+      const user = userEvent.setup()
+      tenantExtra = { role: 'staff_user', access: { areas: ['layout'] }, entitlements: { features: { ordering: true } } }
+      renderIt()
+      const chips = await screen.findByRole('navigation', { name: 'Öppna notor' })
+      expect(document.querySelector('.floor-map-tab.is-stale text')?.textContent).toBe('450 kr')
+      await user.click(within(chips).getByRole('button', { name: 'Bord 1 · 450 kr' }))
+      const bill = screen.getByRole('article', { name: 'Nota Bord 1' })
+      expect(within(bill).getByText('Efter stängning')).toBeInTheDocument()
+      expect(within(bill).queryByRole('button', { name: 'Markera som betald' })).toBeNull()
+    })
+
+    it('lets staff with Beställningar charge from the map', async () => {
+      const user = userEvent.setup()
+      tenantExtra = { role: 'staff_user', access: { areas: ['layout', 'bestallningar'] }, entitlements: { features: { ordering: true } } }
+      renderIt()
+      await user.click(await screen.findByRole('button', { name: 'Bord 1 · 450 kr' }))
+      expect(screen.getByRole('button', { name: 'Markera som betald' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Skriv av' })).toBeNull()
+    })
+
+    it('asks for no bills when ordering is off', async () => {
+      renderIt()
+      await screen.findByRole('button', { name: /Bord 1, 4 pl/ })
+      expect(apiFetch.mock.calls.some(([p]) => String(p).includes('/orders/tabs'))).toBe(false)
+    })
+  })
 })
+

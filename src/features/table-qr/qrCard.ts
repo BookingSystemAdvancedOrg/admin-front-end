@@ -30,7 +30,7 @@ const WINE = tokens.palette.wine
 const PAPER = tokens.palette.snow
 const MUTED = tokens.palette.graphite
 const TAN = tokens.palette.bronze
-export const HINT = 'Skanna, beställ och betala i mobilen'
+export const HINT = 'Skanna och beställ i mobilen'
 
 /* Helvetica-breddernas AFM-värden (tusendelar av teckenstorleken) för tecken
    32-126; å/ä/ö räknas som a/o. Används för att centrera och krympa texten. */

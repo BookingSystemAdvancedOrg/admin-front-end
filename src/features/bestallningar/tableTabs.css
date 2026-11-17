@@ -1,0 +1,404 @@
+/* Notorna vid borden (TableTabs.tsx): Beställningar, Notor och Layoutens bordskarta. */
+
+.tabs-board {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tabs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+@media (min-width: 1700px) {
+  .tabs-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .tabs-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .tabs-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.tab-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--glass-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+  scroll-margin: 96px;
+}
+
+.tab-card.is-stale {
+  border-color: color-mix(in srgb, var(--warning) 60%, transparent);
+  border-left-width: 4px;
+}
+
+.tab-card.is-focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+.tab-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab-card-title {
+  margin: 0 auto 0 0;
+  font: 700 20px/1.2 var(--sans);
+  color: var(--ink);
+}
+
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--r-pill, 999px);
+  font: 600 12px/1.3 var(--sans);
+  white-space: nowrap;
+  background: var(--glass-fill);
+  color: var(--ink);
+}
+
+.tab-badge--stale,
+.order-unpaid {
+  background: var(--tint-orange);
+  color: var(--warning-ink);
+}
+
+.tab-badge--paying {
+  background: var(--slip);
+  color: var(--on-slip);
+}
+
+.order-unpaid {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font: 700 12px/1.3 var(--sans);
+  white-space: nowrap;
+}
+
+.tab-card-amount {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+}
+
+.tab-card-amount-label {
+  font: 600 13px/1.2 var(--sans);
+  color: var(--muted);
+}
+
+.tab-card-amount-value {
+  font: 700 26px/1.1 var(--sans);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.tab-card-orders {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+
+.tab-card-orders > li {
+  border-bottom: 1px solid var(--border);
+}
+
+.tab-card-orders summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 6px 0;
+  font: 600 14px/1.3 var(--sans);
+  cursor: pointer;
+  list-style: none;
+}
+
+.tab-card-orders summary::-webkit-details-marker {
+  display: none;
+}
+
+.tab-card-orders summary::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  margin-left: 2px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.15s ease;
+}
+
+.tab-card-orders details[open] summary::after {
+  transform: rotate(-135deg) translateY(-2px);
+}
+
+.tab-card-order-sum {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.tab-card-lines {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.tab-card-lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 0;
+}
+
+.tab-mismatch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab-mismatch .btn {
+  margin-left: auto;
+}
+
+.tab-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tab-card-actions .btn.square {
+  padding: 10px 14px;
+}
+
+@media (max-width: 640px) {
+  .tab-card-actions {
+    flex-direction: column;
+  }
+
+  .tab-card-actions .btn {
+    width: 100%;
+  }
+}
+
+/* Chips per öppen nota ovanför tavlan. */
+.tabs-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 6px;
+  scrollbar-width: thin;
+}
+
+.tabs-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--glass-surface);
+  color: var(--ink);
+  font: 600 14px/1 var(--sans);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tabs-chip.is-stale {
+  background: var(--tint-orange);
+  border-color: color-mix(in srgb, var(--warning) 50%, transparent);
+  color: var(--warning-ink);
+}
+
+.tabs-chip-note {
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.orders-views .views-count {
+  margin-left: 6px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+/* Dialogerna. */
+.tab-dialog {
+  width: 440px;
+  gap: 16px;
+}
+
+.tab-dialog--pay {
+  align-items: stretch;
+}
+
+.tab-dialog-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tab-dialog-amount {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--glass-well, var(--glass-fill));
+  font: 500 14px/1.4 var(--sans);
+  color: var(--ink);
+}
+
+.tab-dialog-amount strong {
+  font: 700 22px/1.1 var(--sans);
+  font-variant-numeric: tabular-nums;
+}
+
+.tab-dialog-status {
+  margin: 0;
+}
+
+.tab-qr-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.tab-qr {
+  display: block;
+  width: 260px;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--r-md);
+  box-shadow: var(--elev-1, var(--shadow));
+}
+
+.tab-paid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  text-align: center;
+}
+
+.tab-paid p {
+  margin: 0;
+  font: 600 16px/1.4 var(--sans);
+}
+
+.tab-paid-stamp {
+  display: inline-block;
+  padding: 8px 22px;
+  border: 3px solid var(--success);
+  border-radius: 10px;
+  color: var(--success-ink, var(--success));
+  font: 800 28px/1 var(--sans);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transform: rotate(-8deg);
+}
+
+/* Telefon: dialogen som ett ark nerifrån, QR-koden 240 px. */
+@media (max-width: 640px) {
+  .tab-dialog-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .tab-dialog-overlay .modal.tab-dialog {
+    width: 100%;
+    max-height: calc(100svh - 24px);
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+
+  .tab-qr {
+    width: 240px;
+  }
+
+  .tab-dialog .modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .tab-dialog .modal-actions .btn {
+    width: 100%;
+  }
+}
+
+/* Layoutens bordskarta: notans belopp vid bordet. */
+.floor-map-tab rect {
+  fill: var(--slip);
+  stroke: var(--glass-surface);
+  stroke-width: 2;
+}
+
+.floor-map-tab text {
+  fill: var(--on-slip);
+  font: 700 13px/1 var(--sans);
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.floor-map-tab.is-stale rect {
+  fill: var(--warning);
+}
+
+.floor-map-tab.is-stale text {
+  fill: #1a1208;
+}
+
+.floor-map-tab {
+  cursor: pointer;
+}
+
+.floor-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.floor-tab-panel .tabs-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Beställningar med Obetalt: fem nyckeltal i rad, i två kolumner tar den sista hela bredden. */
+.stats-row.orders-stats--five {
+  --stat-cols: 5;
+}
+
+@media (max-width: 1280px) {
+  .stats-row.orders-stats--five > :last-child {
+    grid-column: 1 / -1;
+  }
+}

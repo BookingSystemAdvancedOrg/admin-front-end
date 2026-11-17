@@ -7,6 +7,7 @@ import type { Station, StationTicket } from './printApi'
 import { SkelBlock, SkelBox } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { booqyFaultText } from '../../shared/errors'
+import './tableTabs.css'
 
 /**
  * Köksskärmen (KDS): varje stations bongar på skärmen, samma som skrivaren
@@ -29,10 +30,12 @@ function key(t: StationTicket): string {
   return `${t.sourceId}/${t.stationId}`
 }
 
-export function KitchenDisplay({ locationId, station, onStation }: {
+export function KitchenDisplay({ locationId, station, onStation, unpaid }: {
   locationId: string
   station: string | null
   onStation: (stationId: string) => void
+  /** Obetalda beställningar (notan vid bordet): bongen får en liten "Obetald". */
+  unpaid?: Set<string>
 }) {
   const [stations, setStations] = useState<Station[] | null>(null)
   const [tickets, setTickets] = useState<StationTicket[] | null>(null)
@@ -121,6 +124,7 @@ export function KitchenDisplay({ locationId, station, onStation }: {
         <header className="kds-ticket-head">
           <span className="order-number">#{t.number ?? '-'}</span>
           <span className={t.mode === 'table' ? 'order-place order-place--table' : 'order-place'}>{where(t)}</span>
+          {unpaid?.has(t.orderId ?? t.sourceId) && <span className="order-unpaid">Obetald</span>}
           <span className="order-time">{clock(t.placedAt ?? t.createdAt)}</span>
         </header>
         {t.allergy && <p className="kds-allergy" role="note">Allergi: kontrollera innan maten går ut</p>}

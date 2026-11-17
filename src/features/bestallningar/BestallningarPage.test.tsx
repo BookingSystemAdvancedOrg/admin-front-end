@@ -3,13 +3,14 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BestallningarPage, { POLL_MS } from './BestallningarPage'
 import { ApiError } from '../../shared/api'
-import type { Order, OrderList } from './ordersApi'
+import type { Order, OrderList, TableTab } from './ordersApi'
 import { chooseOption, optionTexts } from '../../test/select'
 
 const listOrders = vi.fn()
 const moveOrder = vi.fn()
 const pauseOrdering = vi.fn()
 const refundOrder = vi.fn()
+const listTabs = vi.fn()
 let role = 'owner_user'
 vi.mock('../../shared/tenant', () => ({ useTenant: () => ({ tenant: { role } }) }))
 vi.mock('./ordersApi', async (orig) => ({
@@ -18,6 +19,7 @@ vi.mock('./ordersApi', async (orig) => ({
   listOrders: (...a: unknown[]) => listOrders(...a),
   moveOrder: (...a: unknown[]) => moveOrder(...a),
   pauseOrdering: (...a: unknown[]) => pauseOrdering(...a),
+  listTabs: (...a: unknown[]) => listTabs(...a),
 }))
 vi.mock('../../shared/AdminTopbar', () => ({
   AdminTopbar: ({ title, actions }: { title: string; actions?: React.ReactNode }) => (
@@ -51,6 +53,7 @@ beforeEach(() => {
   listOrders.mockReset()
   moveOrder.mockReset()
   pauseOrdering.mockReset()
+  listTabs.mockReset().mockResolvedValue({ serviceDate: '2026-10-12', tabs: [] })
 })
 afterEach(() => {
   vi.useRealTimers()
@@ -262,4 +265,67 @@ describe('BestallningarPage', () => {
     await user.click(screen.getByRole('button', { name: 'Visa alla' }))
     expect(screen.getAllByRole('article')).toHaveLength(3)
   })
+
+  describe('table bills (pay later)', () => {
+    const unpaid = (extra: Partial<Order> = {}) => order({
+      orderId: 'd'.repeat(32), number: 14, mode: 'table', tableId: 't4', tableLabel: '4', paymentStatus: 'unpaid',
+      payLater: true, serviceDate: '2026-10-12', refundable: 0, totalAmount: 45000, ...extra,
+    })
+    const tab = (extra: Partial<TableTab> = {}): TableTab => ({
+      tableId: 't4', tableLabel: '4', title: 'Bord 4', serviceDate: '2026-10-12', amount: 45000, count: 1,
+      oldestAt: '2026-10-12T16:00:00Z', orders: [unpaid()], stale: false, ...extra,
+    })
+    const tableOrdering = { open: true, table: true, pickup: true }
+
+    it('marks an unpaid order, cancels it without a refund and offers no refund', async () => {
+      const user = userEvent.setup()
+      listOrders.mockResolvedValue(list([unpaid()], tableOrdering))
+      listTabs.mockResolvedValue({ serviceDate: '2026-10-12', tabs: [tab()] })
+      moveOrder.mockResolvedValue(unpaid({ status: 'cancelled', paymentStatus: 'void' }))
+      render(<BestallningarPage />)
+      const card = await screen.findByRole('article', { name: 'Beställning 14, Bord 4' })
+      expect(within(card).getByText('Obetald')).toBeInTheDocument()
+      expect(within(card).queryByRole('button', { name: 'Återbetala' })).toBeNull()
+      await user.click(within(card).getByRole('button', { name: 'Avbryt' }))
+      await user.click(screen.getByRole('button', { name: 'Bekräfta: avbryt beställningen' }))
+      expect(moveOrder).toHaveBeenCalledWith('loc-1', expect.objectContaining({ orderId: 'd'.repeat(32) }), 'cancelled')
+    })
+
+    it('shows the unpaid tile, a chip per open bill and opens Notor on it', async () => {
+      const user = userEvent.setup()
+      listOrders.mockResolvedValue(list([unpaid()], tableOrdering))
+      listTabs.mockResolvedValue({
+        serviceDate: '2026-10-12',
+        tabs: [tab({ tableId: 't2', title: 'Bord 2', serviceDate: '2026-10-11', amount: 19400, stale: true }), tab()],
+      })
+      render(<BestallningarPage />)
+      expect(await screen.findByText('Obetalt')).toBeInTheDocument()
+      const chips = await screen.findByRole('navigation', { name: 'Öppna notor' })
+      expect(within(chips).getByRole('button', { name: 'Bord 2 · 194 kr' })).toHaveClass('is-stale')
+      await user.click(within(chips).getByRole('button', { name: 'Bord 4 · 450 kr' }))
+      expect(screen.getByRole('tab', { name: /Notor/ })).toHaveAttribute('aria-selected', 'true')
+      expect(window.location.search).toContain('vy=notor')
+      const bill = screen.getByRole('article', { name: 'Nota Bord 4' })
+      expect(within(bill).getByRole('button', { name: 'Betala med mobilen' })).toBeInTheDocument()
+      expect(screen.getByRole('article', { name: 'Nota Bord 2' })).toHaveTextContent('Från 11 okt')
+      window.history.replaceState(null, '', '/')
+    })
+
+    it('hides Notor while table ordering is off and no bill is open', async () => {
+      listOrders.mockResolvedValue(list([order()], { open: true, pickup: true, table: false }))
+      render(<BestallningarPage />)
+      await screen.findByRole('region', { name: 'Nya' })
+      expect(screen.queryByRole('tab', { name: /Notor/ })).toBeNull()
+      expect(screen.queryByText('Obetalt')).toBeNull()
+    })
+
+    it('keeps the board when the API has no bills yet (older backend)', async () => {
+      listOrders.mockResolvedValue(list([order()], tableOrdering))
+      listTabs.mockRejectedValue(new ApiError(404, 'not found'))
+      render(<BestallningarPage />)
+      expect(await screen.findByRole('region', { name: 'Nya' })).toBeInTheDocument()
+      expect(screen.queryByText(/kunde inte visas/)).toBeNull()
+    })
+  })
 })
+

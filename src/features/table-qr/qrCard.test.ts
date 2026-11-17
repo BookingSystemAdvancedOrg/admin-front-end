@@ -14,7 +14,7 @@ describe('qrCard', () => {
     expect(svg).toContain('width="105mm"')
     expect(svg).toContain('>Bord 7<')
     expect(svg).toContain('>Roma Södermalm<')
-    expect(svg).toContain('Skanna, beställ och betala i mobilen')
+    expect(svg).toContain('Skanna och beställ i mobilen')
     expect(svg).toMatch(/<path d="M[\d.]+ [\d.]+h/)
     expect(svg).not.toMatch(/#fff\b|#ffffff/i)
   })

@@ -136,6 +136,21 @@ describe('StatistikPage', () => {
     expect(screen.queryByLabelText('Plats')).not.toBeInTheDocument()
   })
 
+  it('shows the owner table bills paid outside Booqy apart from the order revenue, never to staff', async () => {
+    fetchInsights.mockImplementation(async (f: Filters) => {
+      const r = sampleInsights(f, '2026-10-22', tenant.role === 'owner_user')
+      return { ...r, current: { ...r.current, paidOutsideRevenue: tenant.role === 'owner_user' ? 123400 : undefined, paidOutsideOrders: 3 } }
+    })
+    const { unmount } = renderAt()
+    const label = await screen.findByText(/Betalt utanför Booqy/, { selector: 'dt' })
+    expect(label.nextElementSibling?.textContent).toMatch(/^1\s234 kr, 3 beställningar$/)
+    unmount()
+    tenant = { ...tenant, role: 'staff_user', locations: [locations[0]], insights: { staffAccess: 'operations' } }
+    renderAt()
+    await screen.findByText(/Belopp visas bara för ägaren/)
+    expect(screen.queryByText(/Betalt utanför Booqy/)).toBeNull()
+  })
+
   it('tells staff when the owner has closed it', async () => {
     tenant = { ...tenant, role: 'staff_user', insights: { staffAccess: 'none' } }
     renderAt()

@@ -65,4 +65,12 @@ describe('KitchenDisplay', () => {
     await user.click(await screen.findByRole('tab', { name: /Bar/ }))
     expect(onStation).toHaveBeenCalledWith('bar')
   })
+
+  it('marks the ticket of an unpaid order (the table bill)', async () => {
+    const { rerender } = render(<KitchenDisplay locationId="loc-1" station="kok" onStation={() => {}} />)
+    const ticket = await screen.findByRole('article', { name: /Bong #12/ })
+    expect(within(ticket).queryByText('Obetald')).toBeNull()
+    rerender(<KitchenDisplay locationId="loc-1" station="kok" onStation={() => {}} unpaid={new Set(['o1'])} />)
+    expect(within(ticket).getByText('Obetald')).toBeInTheDocument()
+  })
 })

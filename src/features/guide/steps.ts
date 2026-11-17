@@ -222,7 +222,7 @@ export const GUIDE_STEPS: GuideStep[] = [
     feature: 'ordering',
     section: 'Beställningar',
     title: 'Beställningar',
-    text: 'Matbeställningar från gästerna, betalda i förväg.',
+    text: 'Matbeställningar från gästerna. Avhämtning betalas i förväg, vid bordet innan gästen går.',
   },
   {
     id: 'orders-board',
@@ -232,6 +232,14 @@ export const GUIDE_STEPS: GuideStep[] = [
     title: 'Från ny till klar',
     text:
       'Nya → Tillagas → Klara. Tryck "Påbörja" när köket börjar laga (gästen får ett sms) och "Klar" när maten kan hämtas eller serveras.',
+  },
+  {
+    id: 'orders-tabs',
+    route: '/bestallningar',
+    target: 'orders-tabs',
+    feature: 'ordering',
+    title: 'Notor',
+    text: 'Gäster som beställer med QR-koden betalar innan de går. Här ser du vad varje bord ska betala och tar betalt.',
   },
   {
     id: 'orders-pause',

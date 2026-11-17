@@ -68,7 +68,7 @@ export const AREAS: { area: Area; label: string; feature?: FeatureKey | FeatureK
   { area: 'meny', label: 'Meny' },
   { area: 'layout', label: 'Layout' },
   { area: 'personal', label: 'Personal' },
-  { area: 'gaster', label: 'Gäster', feature: 'guestCrm' },
+  { area: 'gaster', label: 'Kunder', feature: 'guestCrm' },
   { area: 'presentkort', label: 'Presentkort', feature: 'giftCards' },
   { area: 'evenemang', label: 'Evenemang', feature: 'events' },
   { area: 'marknadsforing', label: 'Marknadsföring', feature: ['marketing', 'metaAds', 'googleBusiness', 'socialPosting'] },

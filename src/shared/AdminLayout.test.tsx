@@ -30,7 +30,7 @@ function renderLayout() {
   )
 }
 
-const NEW = ['Personalliggare', 'Gäster', 'Presentkort']
+const NEW = ['Personalliggare', 'Kunder', 'Presentkort']
 
 describe('AdminLayout sidebar', () => {
   beforeEach(() => owner({}))
@@ -47,7 +47,7 @@ describe('AdminLayout sidebar', () => {
     renderLayout()
     expect(navLabels()).toEqual([
       'Översikt', 'Statistik', 'Bokningar', 'Catering', 'Personalliggare',
-      'Meny', 'Layout', 'Personal', 'Gäster', 'Presentkort', 'Marknadsföring',
+      'Meny', 'Layout', 'Personal', 'Kunder', 'Presentkort', 'Marknadsföring',
     ])
   })
 
@@ -68,7 +68,7 @@ describe('AdminLayout sidebar', () => {
     renderLayout()
     const labels = navLabels()
     expect(labels).toContain('Personalliggare')
-    expect(labels).toContain('Gäster')
+    expect(labels).toContain('Kunder')
     for (const l of ['Personal', 'Presentkort', 'Marknadsföring']) expect(labels).not.toContain(l)
   })
 

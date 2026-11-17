@@ -317,15 +317,15 @@ export const GUIDE_STEPS: GuideStep[] = [
     text: 'Ändringar sparas som utkast. När du publicerar ser gästerna den nya planritningen.',
   },
 
-  // --- Gäster och presentkort ----------------------------------------------------
+  // --- Kunder och presentkort ----------------------------------------------------
   {
     id: 'gaster',
-    route: '/gaster',
-    target: 'nav-gaster',
+    route: '/kunder',
+    target: 'nav-kunder',
     feature: 'guestCrm',
-    section: 'Gäster',
-    title: 'Gäster',
-    text: 'Se vilka gäster som kommer tillbaka och vad de har bokat och beställt.',
+    section: 'Kunder',
+    title: 'Kunder',
+    text: 'Se vilka kunder som kommer tillbaka och vad de har bokat och beställt.',
   },
   {
     id: 'presentkort',

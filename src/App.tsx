@@ -57,7 +57,9 @@ function App() {
         <Route path="telefon" element={<TelefonPage />} />
         <Route path="telefon/samtal/:callId" element={<TelefonPage />} />
         <Route path="layout" element={<LayoutEditorPage />} />
-        <Route path="gaster" element={<GasterPage />} />
+        <Route path="kunder" element={<GasterPage />} />
+        {/* Gäster heter nu Kunder: gamla länkar och bokmärken. */}
+        <Route path="gaster/*" element={<Navigate to="/kunder" replace />} />
         <Route path="presentkort" element={<PresentkortPage />} />
         <Route path="evenemang" element={<EvenemangPage />} />
         <Route path="evenemang/:eventId" element={<EvenemangPage />} />

@@ -15,7 +15,7 @@ describe('guide steps for the new nav items', () => {
     const steps = stepsFor({ isOwner: true, features }).filter((s) => NEW.includes(s.id))
     expect(steps.map((s) => [s.target, s.title])).toEqual([
       ['nav-personalliggare', 'Personalliggare'],
-      ['nav-gaster', 'Gäster'],
+      ['nav-kunder', 'Kunder'],
       ['nav-presentkort', 'Presentkort'],
     ])
   })

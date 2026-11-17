@@ -16,7 +16,7 @@ const SRC = resolve(__dirname, '../..')
 const APP = readFileSync(join(SRC, 'App.tsx'), 'utf8')
 
 // Routes som bara skickar vidare och därför inte behöver egen hjälptext.
-const REDIRECTS = ['/settings/payments', '/ladda-ner']
+const REDIRECTS = ['/settings/payments', '/ladda-ner', '/gaster/*']
 
 function appRoutes(): string[] {
   const paths = [...APP.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]).filter((p) => p !== '*')

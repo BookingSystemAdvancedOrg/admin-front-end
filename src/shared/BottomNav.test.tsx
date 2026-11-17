@@ -142,7 +142,7 @@ describe('BottomNav on phones', () => {
     renderAt()
     const labels = sheetPageLabels()
     for (const l of ['Personal', 'Presentkort', 'Marknadsföring']) expect(labels).not.toContain(l)
-    expect(labels).toContain('Gäster')
+    expect(labels).toContain('Kunder')
   })
 
   // (f) Fjärde platsen

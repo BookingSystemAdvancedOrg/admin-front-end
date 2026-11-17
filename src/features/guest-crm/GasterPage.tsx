@@ -29,7 +29,7 @@ const KIND_LABEL = { booking: 'Bokning', order: 'Beställning', catering: 'Cater
 const CONSENT_LABEL = { granted: 'Ja', withdrawn: 'Nej, återkallat', none: 'Inget svar' } as const
 type SearchKind = 'name' | 'email' | 'phone'
 
-/** Gäster (planfunktionen "guestCrm"): vem kommer tillbaka och vad har de bokat och beställt. */
+/** Kunder (planfunktionen "guestCrm"): vem kommer tillbaka och vad har de bokat och beställt. */
 export default function GasterPage() {
   const { tenant } = useTenant()
   const enabled = Boolean(tenant?.entitlements?.features?.guestCrm)
@@ -37,7 +37,7 @@ export default function GasterPage() {
 
   return (
     <>
-      <AdminTopbar title="Gäster" />
+      <AdminTopbar title="Kunder" />
       <main className="admin-main">
         {enabled ? (
           <GuestList owner={owner} locations={tenant?.locations ?? []} />
@@ -96,7 +96,7 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
       setCursor(page.cursor)
     } catch (err) {
       if (my !== seq.current) return
-      setError(errorText(err, 'Gästerna kunde inte visas.'))
+      setError(errorText(err, 'Kunderna kunde inte visas.'))
     } finally {
       if (append) {
         moreRef.current = false
@@ -148,10 +148,10 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
     setRebuilding(true)
     try {
       await rebuildGuests(newId())
-      toast('Gästregistret byggs nu från era bokningar och beställningar. Det kan ta några minuter.', { tone: 'success' })
+      toast('Kundregistret byggs nu från era bokningar och beställningar. Det kan ta några minuter.', { tone: 'success' })
     } catch (err) {
-      toast(errorText(err, 'Gästregistret byggdes inte.', {
-        rebuild_running: 'Gästregistret byggs redan. Vänta tills det är klart.',
+      toast(errorText(err, 'Kundregistret byggdes inte.', {
+        rebuild_running: 'Kundregistret byggs redan. Vänta tills det är klart.',
       }), { tone: 'danger' })
     } finally {
       setRebuilding(false)
@@ -161,14 +161,14 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
   return (
     <>
       <Card
-        title="Gäster"
+        title="Kunder"
         actions={owner ? (
           <Button variant="secondary" size="sm" busy={rebuilding} busyLabel="Startar…" onClick={rebuild}>
-            Bygg gästregistret
+            Bygg kundregistret
           </Button>
         ) : undefined}
       >
-        <form className="form-grid" onSubmit={search} role="search" aria-label="Sök gäst">
+        <form className="form-grid" onSubmit={search} role="search" aria-label="Sök kund">
           <Field label="Sök på">
             <Select value={kind} onChange={(e) => setKind(e.target.value as SearchKind)}>
               <option value="name">Namn</option>
@@ -205,19 +205,19 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
           <Bar variant="banner" tone="danger" action={<ErrorActions text={error} onRetry={() => retryRef.current()} />}>{error}</Bar>
         ) : null}
         {guests === null && !error ? (
-          <div role="status" aria-label="Hämtar gäster" aria-busy="true"><SkelRows n={5} cols={4} /></div>
+          <div role="status" aria-label="Hämtar kunder" aria-busy="true"><SkelRows n={5} cols={4} /></div>
         ) : null}
         {guests && guests.length === 0 ? (
           <p className="admin-empty">
-            Inga gäster än.
+            Inga kunder än.
           </p>
         ) : null}
         {guests && guests.length > 0 ? (
           <div className="table-scroll" tabIndex={0}>
             <table className="data-table">
-              <caption className="bq-sr-only">Gäster, senast här först</caption>
+              <caption className="bq-sr-only">Kunder, senast här först</caption>
               <thead>
-                <tr><th scope="col">Namn</th><th scope="col">Senast här</th><th scope="col">Besök</th><th scope="col">Gäst</th></tr>
+                <tr><th scope="col">Namn</th><th scope="col">Senast här</th><th scope="col">Besök</th><th scope="col">Kund</th></tr>
               </thead>
               <tbody>
                 {guests.map((g) => (
@@ -279,7 +279,7 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
   })
   const set = (patch: Partial<GuestForm>) => setForm((f) => ({ ...f, ...patch }))
 
-  // Ändrat något sedan gästen hämtades eller sparades? Då frågar klick utanför,
+  // Ändrat något sedan kunden hämtades eller sparades? Då frågar klick utanför,
   // Escape och Stäng först, så inget slängs i tysthet.
   const [confirmEl, ask] = useConfirm()
   const requestClose = () => {
@@ -319,7 +319,7 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
       setGuest(g)
       setForm(f)
       setBase(f)
-    }).catch((err) => { if (!cancelled) setError(errorText(err, 'Gästen kunde inte visas.')) })
+    }).catch((err) => { if (!cancelled) setError(errorText(err, 'Kunden kunde inte visas.')) })
     return () => { cancelled = true }
   }, [guestId, attempt])
   useLiveRefresh(() => getGuest(guestId).then(take), { enabled: guest !== null && !saving })
@@ -351,7 +351,7 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
         saved = await send(form, guest.version)
       } catch (err) {
         if (!isConflict(err)) throw err
-        // Någon annan sparade gästen emellan: dina fält ovanpå det senaste, en gång till.
+        // Någon annan sparade kunden emellan: dina fält ovanpå det senaste, en gång till.
         const latest = await getGuest(guestId)
         const { merged, conflicts } = mergeEdits(base, form, guestForm(latest))
         if (conflicts.length) {
@@ -367,7 +367,7 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
       setForm(guestForm(next))
       toast('Sparat.', { tone: 'success' })
     } catch (err) {
-      setSaveError(errorText(err, 'Gästen sparades inte.', {
+      setSaveError(errorText(err, 'Kunden sparades inte.', {
         invalid_birthday: 'Födelsedagen ser fel ut. Skriv månad och dag, till exempel 03-14.',
         note_too_long: 'Anteckningen är för lång. Den får vara högst 300 tecken.',
       }, { tags: 'taggarna' }))
@@ -381,7 +381,7 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
     <Modal
       open
       size="wide"
-      title={guest ? guest.name || 'Gäst' : 'Gäst'}
+      title={guest ? guest.name || 'Kund' : 'Kund'}
       onClose={requestClose}
       closeLabel="Stäng"
       footer={owner && guest ? (
@@ -391,7 +391,7 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
       {error ? (
         <Bar variant="banner" tone="danger" action={<ErrorActions text={error} onRetry={() => { setError(null); setAttempt((n) => n + 1) }} />}>{error}</Bar>
       ) : null}
-      {!guest && !error ? <Loading variant="inline" label="Hämtar gästen" /> : null}
+      {!guest && !error ? <Loading variant="inline" label="Hämtar kunden" /> : null}
       {guest ? (
         <>
           <dl className="gaster-facts">
@@ -441,7 +441,7 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
               </Field>
               <label className="toggle-row">
                 <input type="checkbox" className="switch" checked={form.excluded} onChange={(e) => set({ excluded: e.target.checked })} />
-                <span className="toggle-row-label">Gästen vill inte ingå i utskick</span>
+                <span className="toggle-row-label">Kunden vill inte ingå i utskick</span>
               </label>
               {clash('excluded') !== undefined && (
                 <ChangedNote value={clash('excluded') ? 'ingår inte i utskick' : 'ingår i utskick'} onUse={() => set({ excluded: Boolean(clash('excluded')) })} />

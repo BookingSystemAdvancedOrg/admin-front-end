@@ -69,7 +69,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'tillvaxt',
     label: 'Tillväxt',
     items: [
-      { to: '/gaster', label: 'Gäster', icon: 'users', tour: 'nav-gaster', feature: 'guestCrm', area: 'gaster' },
+      { to: '/kunder', label: 'Kunder', icon: 'users', tour: 'nav-kunder', feature: 'guestCrm', area: 'gaster' },
       { to: '/presentkort', label: 'Presentkort', icon: 'gift', tour: 'nav-presentkort', feature: 'giftCards', area: 'presentkort' },
       // Biljetter till kvällar och middagar; personalen scannar vid dörren, ägaren redigerar.
       { to: '/evenemang', label: 'Evenemang', icon: 'ticket', tour: 'nav-evenemang', feature: 'events', area: 'evenemang' },

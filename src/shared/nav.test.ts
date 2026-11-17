@@ -41,7 +41,7 @@ describe('staff permissions per area', () => {
   it('opens only the granted areas, also on direct URLs and sub-pages', () => {
     expect(roleAllows('/bokningar', staff)).toBe(true)
     expect(roleAllows('/evenemang', staff)).toBe(true)
-    for (const p of ['/meny', '/statistik', '/personal', '/catering/loc/req', '/cateringkalkyl', '/gaster'])
+    for (const p of ['/meny', '/statistik', '/personal', '/catering/loc/req', '/cateringkalkyl', '/kunder'])
       expect(roleAllows(p, staff)).toBe(false)
     // Always open: Översikt, Inställningar, Hjälp.
     for (const p of ['/', '/installningar', '/hjalp']) expect(roleAllows(p, staff)).toBe(true)

@@ -38,7 +38,7 @@ describe('GasterPage', () => {
   it('says the feature is not in the plan while it is off', () => {
     tenant = { role: 'owner_user', entitlements: { maxLocations: null, features: {} }, locations: [] }
     render(<MemoryRouter><GasterPage /></MemoryRouter>)
-    expect(screen.getByRole('heading', { level: 1, name: 'Gäster' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Kunder' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Ingår inte i er plan' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Se abonnemanget/ })).toHaveAttribute('href', '/installningar#abonnemang')
     expect(api.listGuests).not.toHaveBeenCalled()
@@ -59,7 +59,7 @@ describe('GasterPage', () => {
     // the history table scrolls on its own at phone width (the shared table-scroll pattern)
     expect(screen.getByRole('columnheader', { name: 'Vad' }).closest('table')!.parentElement).toHaveClass('table-scroll')
     expect(screen.getByRole('button', { name: 'Spara' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Bygg gästregistret' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Bygg kundregistret' })).toBeInTheDocument()
   })
 
   it('is open to staff without edit or rebuild', async () => {
@@ -69,7 +69,7 @@ describe('GasterPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Anna Andersson' }))
     await screen.findByText('Historik')
     expect(screen.queryByRole('button', { name: 'Spara' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Bygg gästregistret' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Bygg kundregistret' })).not.toBeInTheDocument()
     expect(screen.queryByText('Handlat för')).not.toBeInTheDocument()
   })
 

@@ -1083,58 +1083,64 @@
     },
     {
       "id": "gaster-sok",
-      "route": "/gaster",
-      "title": "Hitta en gäst",
+      "route": "/kunder",
+      "title": "Hitta en kund",
       "audience": "all",
       "feature": "guestCrm",
       "keywords": [
+        "kunder",
+        "kundregister",
+        "kundregistret",
         "gästregister",
         "gästregistret",
         "stamgäst",
         "stamgäster",
+        "sök kund",
+        "hitta kund",
         "sök gäst",
         "hitta gäst",
         "gästhistorik",
         "historik"
       ],
-      "answer": "Under Gäster ser du vilka som kommer tillbaka och vad de har bokat och beställt.",
+      "answer": "Under Kunder ser du vilka som kommer tillbaka och vad de har bokat och beställt.",
       "steps": [
-        "Öppna Gäster.",
+        "Öppna Kunder.",
         "Välj vad du söker på (namn, e-post eller telefon) och tryck Sök.",
-        "Tryck på gästen för att se historiken."
+        "Tryck på kunden för att se historiken."
       ],
       "actions": [
         {
           "id": "gaster-open",
-          "label": "Öppna Gäster",
-          "to": "/gaster"
+          "label": "Öppna Kunder",
+          "to": "/kunder"
         }
       ]
     },
     {
       "id": "gaster-anteckning",
-      "route": "/gaster",
-      "title": "Anteckningar och taggar på gäster",
+      "route": "/kunder",
+      "title": "Anteckningar och taggar på kunder",
       "audience": "owner",
       "feature": "guestCrm",
       "keywords": [
+        "anteckning kund",
         "anteckning gäst",
         "taggar",
         "tagg",
         "födelsedag",
         "allergi gäst"
       ],
-      "answer": "Ägaren kan skriva anteckningar, taggar och födelsedag på en gäst.",
+      "answer": "Ägaren kan skriva anteckningar, taggar och födelsedag på en kund.",
       "steps": [
-        "Öppna Gäster och tryck på gästen.",
+        "Öppna Kunder och tryck på kunden.",
         "Fyll i Anteckning, Taggar eller Födelsedag.",
         "Tryck Spara."
       ],
       "actions": [
         {
           "id": "gaster-open",
-          "label": "Öppna Gäster",
-          "to": "/gaster"
+          "label": "Öppna Kunder",
+          "to": "/kunder"
         }
       ]
     },

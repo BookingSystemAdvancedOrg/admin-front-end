@@ -66,7 +66,7 @@ export default function SegmentsPanel() {
       const p = await previewSegment(segmentId)
       setCounts((c) => ({ ...c, [segmentId]: { total: p.total, reachable: p.reachable } }))
     } catch (err) {
-      toast(errorText(err, 'Gästerna kunde inte räknas.'), { tone: 'danger' })
+      toast(errorText(err, 'Kunderna kunde inte räknas.'), { tone: 'danger' })
     }
   }
 
@@ -152,7 +152,7 @@ export default function SegmentsPanel() {
                 <p className="cell-muted">{describeRules(s.rules, locationName)}</p>
                 {counts[s.segmentId] ? (
                   <p className="cell-muted">
-                    {counts[s.segmentId].total} gäster, {counts[s.segmentId].reachable} kan få utskick
+                    {counts[s.segmentId].total} kunder, {counts[s.segmentId].reachable} kan få utskick
                   </p>
                 ) : null}
               </div>

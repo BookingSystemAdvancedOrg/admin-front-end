@@ -2,7 +2,7 @@ import { test, expect, type Page, type Browser } from '@playwright/test'
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs'
 import { watch } from '../lib/watch'
 import { ready } from '../lib/ui'
-import { pick, valueOf } from '../lib/select'
+import { pick } from '../lib/select'
 import { optEnv } from '../lib/env'
 import { mail, RUN } from '../lib/data'
 
@@ -57,6 +57,18 @@ async function checkout(page: Page, name: string) {
   await expect(page).toHaveURL(/\/bestallning\//, { timeout: 60000 })
 }
 
+/** The printer a category is sent to (Inställningar, Kvittoskrivare, Vad skickas vart?): one tap saves. */
+async function send(page: Page, category: string, to: string) {
+  const radio = page.getByRole('radiogroup', { name: `${category} skickas till` }).getByRole('radio', { name: to, exact: true })
+  if ((await radio.getAttribute('aria-checked')) !== 'true') await radio.click()
+  await page.waitForTimeout(800)
+}
+
+async function chosen(page: Page, category: string): Promise<string | null> {
+  const on = page.getByRole('radiogroup', { name: `${category} skickas till` }).locator('[role=radio][aria-checked=true]')
+  return (await on.count()) ? (await on.first().innerText()).trim() : null
+}
+
 test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', async ({ page }) => {
   await page.goto('/installningar#dagar')
   await ready(page, 'Inställningar')
@@ -85,15 +97,15 @@ test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', 
   await page.goto('/installningar#skrivare')
   await ready(page)
   const r1 = JSON.parse(readFileSync(RESTORE, 'utf8'))
+  await page.getByText('Mer inställningar').click()
+  const allergy = page.locator('[role=switch][aria-labelledby=print-allergy-label]')
   if (r1.drinks === undefined) {
-    writeFileSync(RESTORE, JSON.stringify({ ...r1, drinks: await valueOf(page.getByLabel('Drycker')), mains: await valueOf(page.getByLabel('Varmrätter')),
-      allergy: await page.locator('[role=switch][aria-labelledby=allergy-ticket-label]').getAttribute('aria-checked') }))
+    writeFileSync(RESTORE, JSON.stringify({ ...r1, drinks: await chosen(page, 'Drycker'), mains: await chosen(page, 'Varmrätter'),
+      allergy: await allergy.getAttribute('aria-checked') }))
   }
-  await pick(page.getByLabel('Drycker'), { label: 'Bar' })
-  await pick(page.getByLabel('Varmrätter'), { label: 'Kök' })
-  const allergy = page.locator('[role=switch][aria-labelledby=allergy-ticket-label]')
+  await send(page, 'Drycker', 'Dryck')
+  await send(page, 'Varmrätter', 'Kök')
   if ((await allergy.getAttribute('aria-checked')) !== 'true') await allergy.click()
-  await page.getByRole('button', { name: 'Spara stationer' }).click()
   await page.waitForTimeout(2000)
 
   await page.goto('/meny')
@@ -102,7 +114,7 @@ test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', 
     { name: 'E2E Margherita', cat: 'Varmrätter', price: '120' },
     { name: 'E2E Cola', cat: 'Drycker', price: '30', station: 'Ingen bong' },
     { name: 'E2E Fatöl', cat: 'Drycker', price: '75', alcohol: true },
-    { name: 'E2E Pizzameny', cat: 'Varmrätter', price: '149', parts: [['Pizza', 'Kök'], ['Läsk', 'Bar']] },
+    { name: 'E2E Pizzameny', cat: 'Varmrätter', price: '149', parts: [['Pizza', 'Kök'], ['Läsk', 'Dryck']] },
   ]
   for (const d of dishes) {
     if (await page.getByRole('row', { name: new RegExp(d.name) }).count()) {
@@ -117,7 +129,7 @@ test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', 
     await pick(dlg.getByLabel('Kategori'), { label: d.cat })
     await dlg.getByLabel('Pris (kr)').fill(d.price)
     if (d.alcohol) await dlg.getByRole('switch', { name: 'Innehåller alkohol' }).click()
-    if (d.station) await pick(dlg.locator('#dish-station'), { label: d.station })
+    if (d.station) await dlg.getByRole('radiogroup', { name: 'Skickas till' }).getByRole('radio', { name: d.station }).click()
     for (const [i, [part, st]] of (d.parts ?? []).entries()) {
       await dlg.getByRole('button', { name: i === 0 ? 'Dela upp som meny/combo' : 'Lägg till del' }).click()
       await dlg.locator(`#dish-part-${i}`).fill(part)
@@ -151,7 +163,7 @@ test('guest pickup order with allergy, paid with test card, appears on the board
   await page.screenshot({ path: info.outputPath('board.png') })
 })
 
-test('kitchen screen: food to Kök, combo split, drink part to Bar, cola no ticket, allergy ticket', async ({ page }, info) => {
+test('kitchen screen: food to Kök, combo split, drink part to Dryck, cola no ticket, allergy ticket', async ({ page }, info) => {
   await page.goto('/bestallningar')
   await ready(page, 'Beställningar')
   await page.getByRole('tab', { name: 'Köksskärm' }).click()
@@ -162,11 +174,11 @@ test('kitchen screen: food to Kök, combo split, drink part to Bar, cola no tick
   expect.soft(text, 'Margherita on a kitchen ticket').toMatch(/E2E Margherita/)
   expect.soft(text, 'combo part Pizza').toMatch(/Pizza/)
   expect.soft(text, 'kitchen view does not show the drink part').not.toMatch(/Läsk/)
-  await page.getByRole('button', { name: /^Bar/ }).or(page.getByRole('tab', { name: /^Bar/ })).first().click()
+  await page.getByRole('button', { name: /^(Bar|Dryck)/ }).or(page.getByRole('tab', { name: /^(Bar|Dryck)/ })).first().click()
   await page.waitForTimeout(1500)
   const bar = await page.locator('body').innerText()
   info.annotations.push({ type: 'bar text', description: bar.slice(bar.indexOf('Köksskärm')).replace(/\s+/g, ' ').slice(0, 600) })
-  expect.soft(bar, 'combo part Läsk on the Bar station').toMatch(/Läsk/)
+  expect.soft(bar, 'combo part Läsk on the Dryck station').toMatch(/Läsk/)
   await page.screenshot({ path: info.outputPath('kds-bar.png'), fullPage: true })
   expect.soft(text, 'Cola has no ticket').not.toMatch(/E2E Cola/)
   expect.soft(text, 'allergy shown').toMatch(/[Jj]ordnöt/)
@@ -191,11 +203,11 @@ test.afterAll('restore: hours back, ordering off, E2E dishes off', async ({ brow
   if (r.drinks !== undefined) {
     await page.goto('/installningar#skrivare')
     await ready(page)
-    await pick(page.getByLabel('Drycker'), r.drinks)
-    await pick(page.getByLabel('Varmrätter'), r.mains)
-    const al = page.locator('[role=switch][aria-labelledby=allergy-ticket-label]')
+    if (r.drinks) await send(page, 'Drycker', r.drinks)
+    if (r.mains) await send(page, 'Varmrätter', r.mains)
+    await page.getByText('Mer inställningar').click()
+    const al = page.locator('[role=switch][aria-labelledby=print-allergy-label]')
     if ((await al.getAttribute('aria-checked')) !== r.allergy) await al.click()
-    await page.getByRole('button', { name: 'Spara stationer' }).click()
     await page.waitForTimeout(1500)
   }
   await page.goto('/installningar#bestallning')

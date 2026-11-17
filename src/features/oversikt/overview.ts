@@ -48,10 +48,12 @@ export function hasAnyOpeningHours(hours: BusinessHours | undefined): boolean {
 }
 
 export interface SetupStep {
-  id: 'dpa' | 'hours' | 'menu' | 'layout' | 'stripe' | 'staff' | 'google' | 'phone'
+  id: 'dpa' | 'hours' | 'menu' | 'printers' | 'layout' | 'stripe' | 'staff' | 'google' | 'phone'
   label: string
   /** null = okänt (data kunde inte hämtas) - visas varken som klart eller ej. */
   done: boolean | null
+  /** Ägaren valde "senare" (Inga skrivare än): öppet men gult, stoppar inget. */
+  later?: string
   to: string
   /** Delstegen (telefonassistentens fem steg), visas under raden. */
   sub?: { label: string; done: boolean }[]
@@ -88,6 +90,26 @@ export interface SetupInput {
   google?: boolean | null
   /** Telefonassistentens steg: undefined = ingår inte i planen (inget steg), null = kunde inte hämtas. */
   phone?: Progress | null
+  /**
+   * Kvittoskrivarna (när platsen har beställningar): undefined = ingen
+   * beställning i planen (inget steg), null = kunde inte hämtas.
+   */
+  printers?: Pick<PrintStatus, 'printerCount' | 'printerConfigured' | 'setupSkipped'> | null
+}
+
+/**
+ * Kvittoskrivare i Kom igång: klart när platsen har minst en skrivare.
+ * "Inga skrivare än" låter ägaren gå vidare; steget står då kvar som gult.
+ */
+export function printerSetupStep(print: SetupInput['printers']): SetupStep {
+  const count = print ? print.printerCount ?? (print.printerConfigured ? 1 : 0) : null
+  return {
+    id: 'printers',
+    label: 'Kvittoskrivare',
+    done: count === null ? null : count > 0,
+    to: '/installningar#skrivare',
+    ...(print?.setupSkipped && count === 0 ? { later: 'Inga skrivare än' } : {}),
+  }
 }
 
 /**
@@ -113,6 +135,7 @@ export function setupSteps(input: SetupInput): SetupStep[] {
       done: input.activeMenuItems === null ? null : input.activeMenuItems > 0,
       to: '/meny',
     },
+    ...(input.printers === undefined ? [] : [printerSetupStep(input.printers)]),
   ]
   return [
     ...steps,

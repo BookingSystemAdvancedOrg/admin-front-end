@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { emptyBusinessHours } from '../installningar/locationApi'
-import { hasAnyOpeningHours, phoneSetupStep, setupSteps, todaysHours, weekdayIn } from './overview'
+import { hasAnyOpeningHours, phoneSetupStep, printerSetupStep, setupSteps, todaysHours, weekdayIn } from './overview'
 
 // Fredag 9 okt 2026 23:30 UTC = lördag 01:30 i Stockholm.
 const FRIDAY_NIGHT_UTC = new Date('2026-10-09T23:30:00Z')
@@ -86,6 +86,26 @@ describe('setupSteps', () => {
     const steps = setupSteps({ ...owner, activeMenuItems: null, staffCount: null })
     expect(steps.find((s) => s.id === 'menu')?.done).toBeNull()
     expect(steps.find((s) => s.id === 'staff')?.done).toBeNull()
+  })
+
+  it('adds Kvittoskrivare after the menu when the place takes orders', () => {
+    const none = { printerCount: 0, printerConfigured: false, setupSkipped: false }
+    const steps = setupSteps({ ...owner, printers: none })
+    expect(steps.map((s) => s.id)).toEqual(['hours', 'menu', 'printers', 'layout', 'stripe', 'staff'])
+    expect(steps[2]).toEqual({ id: 'printers', label: 'Kvittoskrivare', done: false, to: '/installningar#skrivare' })
+    expect(setupSteps(owner).some((s) => s.id === 'printers')).toBe(false) // no ordering: no step
+    expect(setupSteps({ ...owner, isOwner: false, printers: none })).toEqual([])
+  })
+
+  it('keeps Kvittoskrivare open but amber after Inga skrivare än, and done with one printer', () => {
+    expect(printerSetupStep({ printerCount: 0, printerConfigured: false, setupSkipped: true })).toMatchObject({
+      done: false, later: 'Inga skrivare än',
+    })
+    expect(printerSetupStep({ printerCount: 2, printerConfigured: true, setupSkipped: true })).toEqual({
+      id: 'printers', label: 'Kvittoskrivare', done: true, to: '/installningar#skrivare',
+    })
+    expect(printerSetupStep({ printerConfigured: true })).toMatchObject({ done: true }) // older API: no count
+    expect(printerSetupStep(null).done).toBeNull()
   })
 
   it('gives staff no Kom igång steps at all (owner only)', () => {

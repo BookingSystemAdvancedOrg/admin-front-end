@@ -142,6 +142,15 @@ export const GUIDE_STEPS: GuideStep[] = [
     text: 'Slå på beställning online: gästerna beställer och betalar på er hemsida och hämtar maten hos er.',
   },
   {
+    id: 'set-skrivare',
+    route: '/installningar#skrivare',
+    target: 'settings-tab-skrivare',
+    ownerOnly: true,
+    feature: 'ordering',
+    title: 'Kvittoskrivare',
+    text: 'Lägg till en skrivare per plats och välj Kök eller Dryck. Maten skrivs ut i köket, drycken i baren.',
+  },
+  {
     id: 'set-bord',
     route: '/installningar#bord',
     target: 'settings-tab-bord',

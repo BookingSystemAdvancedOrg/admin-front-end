@@ -480,31 +480,71 @@
     {
       "id": "skrivare",
       "route": "/installningar",
-      "title": "Koppla en kökskrivare",
+      "title": "Lägga till kvittoskrivare (Kök, Dryck)",
       "audience": "owner",
       "feature": "ordering",
       "keywords": [
         "skrivare",
         "kvittoskrivare",
         "kökskrivare",
+        "bongskrivare",
+        "bong",
         "utskrift",
         "cloudprnt",
         "testutskrift",
-        "pappersbredd"
+        "pappersbredd",
+        "kök",
+        "dryck",
+        "bar",
+        "simulerad skrivare",
+        "kom igång"
       ],
-      "answer": "En kökskrivare som skriver ut beställningarna lägger du till under Inställningar, Beställning, Skrivare och stationer.",
+      "answer": "Kvittoskrivarna lägger du till under Inställningar, Beställning, Kvittoskrivare. Det är också ett steg i Kom igång. Varje skrivare är Kök, Dryck eller Annat. Maten skrivs ut på Kök, drycken på Dryck.",
       "steps": [
-        "Öppna Inställningar, välj Beställning och sedan Skrivare och stationer.",
-        "Tryck Lägg till skrivare och följ stegen. Uppgifterna som visas skriver du in i skrivaren direkt, de visas bara en gång.",
+        "Öppna Inställningar, välj Beställning och sedan Kvittoskrivare.",
+        "Tryck Lägg till skrivare och välj Kök, Dryck eller Annat. Ge den ett namn och tryck Lägg till.",
+        "Skriv in uppgifterna som visas i skrivaren direkt, de visas bara en gång.",
         "Tryck Testutskrift för att se att den fungerar.",
-        "Slå på Skriv ut beställningar automatiskt, välj skrivare och pappersbredd och tryck Spara skrivare."
+        "Under Vad skickas vart? väljer du med ett tryck vilken skrivare varje kategori går till.",
+        "Har ni ingen skrivare än, tryck Inga skrivare än. Steget står kvar i Kom igång tills en skrivare finns."
       ],
       "actions": [
         {
           "id": "inst-skrivare-open",
-          "label": "Öppna Skrivare och stationer",
+          "label": "Öppna Kvittoskrivare",
           "to": "/installningar",
           "hash": "skrivare"
+        }
+      ]
+    },
+    {
+      "id": "skickas-till",
+      "route": "/meny",
+      "title": "Välja vilken skrivare en rätt skickas till",
+      "audience": "all",
+      "feature": "ordering",
+      "keywords": [
+        "skickas till",
+        "bong",
+        "station",
+        "kök",
+        "dryck",
+        "bar",
+        "drycker till köket",
+        "kategori",
+        "skrivare"
+      ],
+      "answer": "Varje rätt och kategori har Skickas till: Kök, Dryck, en Annat-skrivare eller Ingen bong. Mat går till Kök och dryck till Dryck om inget annat är valt.",
+      "steps": [
+        "Öppna Meny och tryck på rätten (eller Lägg till rätt).",
+        "Under Bong, Skickas till: tryck på skrivaren. Bongen nedanför visar var rätten hamnar.",
+        "För en hel kategori: öppna Kategorier och tryck på skrivaren under kategorin. Det sparas direkt."
+      ],
+      "actions": [
+        {
+          "id": "meny-skickas-till-open",
+          "label": "Öppna Meny",
+          "to": "/meny"
         }
       ]
     },

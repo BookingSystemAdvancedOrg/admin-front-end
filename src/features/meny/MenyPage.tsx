@@ -16,6 +16,9 @@ import type { Dish, DishCategory, MenuCategoryEntry } from './data'
 import { DishModal } from './DishModal'
 import type { DishFormValues } from './DishModal'
 import { CategoriesModal } from './CategoriesModal'
+import { getRouting, saveCategoryRouting } from '../bestallningar/printApi'
+import type { TicketRouting } from '../bestallningar/printApi'
+import { soundsLikeDrinks } from '../printers/kinds'
 import {
   createMenuItem,
   deleteMenuItem,
@@ -66,7 +69,19 @@ export default function MenyPage() {
   const { sub } = useAuth()
   const { locationId, resolving: resolvingLocation } = useLocationId(sub)
   const [confirmEl, ask] = useConfirm()
-  const timeZone = currentLocation(useTenant())?.timezone || DEFAULT_TIMEZONE
+  const tenantState = useTenant()
+  const timeZone = currentLocation(tenantState)?.timezone || DEFAULT_TIMEZONE
+  // Vart kategorierna skickas (bongar): bara när platsen har beställningar.
+  const ordering = Boolean(tenantState.tenant?.entitlements.features.ordering)
+  const [routing, setRouting] = useState<TicketRouting | null>(null)
+  useEffect(() => {
+    if (!ordering || !locationId) return
+    let cancelled = false
+    getRouting(locationId).then((r) => !cancelled && setRouting(r)).catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [ordering, locationId])
   // Schemats status räknas om varje minut, så badgen byter utan omladdning.
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
@@ -204,6 +219,14 @@ export default function MenyPage() {
     if (!locationId) return
     const saved = await putMenuCategories(locationId, rows, version)
     edits.current += 1
+    // En ny kategori som låter som dryck ("Öl", "Vin") skickas till Dryck, aldrig till köket.
+    const known = new Set(categories.map((c) => c.categoryId))
+    const drinks = saved.categories.filter((c) => !known.has(c.categoryId) && soundsLikeDrinks(c.name))
+    if (ordering && drinks.length) {
+      void saveCategoryRouting(locationId, Object.fromEntries(drinks.map((c) => [c.categoryId, 'bar'])))
+        .then(setRouting)
+        .catch(() => undefined)
+    }
     setCategories(saved.categories)
     setCategoriesVersion(saved.version)
     setCategoriesOpen(false)
@@ -535,6 +558,8 @@ export default function MenyPage() {
       )}
       {categoriesOpen && (
         <CategoriesModal
+          routing={ordering && routing ? routing : undefined}
+          onRoute={canEdit && locationId ? async (categoryId, next) => setRouting(await saveCategoryRouting(locationId, { [categoryId]: next })) : undefined}
           categories={categories}
           version={categoriesVersion}
           dishCounts={dishCounts}

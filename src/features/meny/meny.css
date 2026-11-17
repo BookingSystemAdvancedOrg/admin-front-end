@@ -556,3 +556,19 @@
   padding: 0;
   justify-content: center;
 }
+
+/* Kategorier: "Skickas till" under raden (printers/SendTo). */
+.meny-category-sendto {
+  grid-column: 1 / -1;
+  padding: 2px 0 10px;
+  min-width: 0;
+}
+
+.meny-categories .title-info h2 {
+  margin: 0;
+}
+
+.dish-sendto {
+  display: grid;
+  gap: 10px;
+}

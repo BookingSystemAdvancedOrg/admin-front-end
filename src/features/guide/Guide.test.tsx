@@ -49,7 +49,7 @@ function Pages({ emptyMenu = false }: { emptyMenu?: boolean }) {
         path="/installningar"
         element={
           <div>
-            {['profil', 'betalningar', 'notiser', 'avbokning', 'bestallning', 'dagar', 'bord'].map((t) => (
+            {['profil', 'betalningar', 'notiser', 'avbokning', 'bestallning', 'skrivare', 'dagar', 'bord'].map((t) => (
               <button key={t} type="button" data-tour={`settings-tab-${t}`}>{t}</button>
             ))}
             <button type="button" data-tour="settings-save">Spara ändringar</button>
@@ -153,7 +153,7 @@ describe('Guide', () => {
     expect(screen.getByRole('dialog', { name: 'Personal' })).toBeInTheDocument()
     expect(screen.getByTestId('where')).toHaveTextContent('/personal')
 
-    for (const title of ['Betalningar', 'Notiser', 'Avbokning och kortgaranti', 'Beställning online', 'Bokning']) {
+    for (const title of ['Betalningar', 'Notiser', 'Avbokning och kortgaranti', 'Beställning online', 'Kvittoskrivare', 'Bokning']) {
       await next(user)
       expect(screen.getByRole('dialog', { name: title })).toBeInTheDocument()
     }

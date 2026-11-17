@@ -27,3 +27,13 @@
 .setup-sub__item.done svg {
   color: var(--green);
 }
+
+/* Ett steg ägaren lagt åt sidan ("Inga skrivare än"): öppet men gult. */
+.setup-later {
+  color: var(--warning-ink);
+  font-weight: 600;
+}
+.setup-check.later {
+  border-color: var(--warning);
+  background: var(--tint-orange);
+}

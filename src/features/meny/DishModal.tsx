@@ -481,10 +481,10 @@ export function DishModal({
                   text: `Som ${categoryName(categories, category).toLowerCase()}`,
                   resolves: alcohol && !routing.categories[category] && stations.some((s) => s.stationId === 'bar')
                     ? 'bar'
-                    : categoryStation(routing, category),
+                    : categoryStation(routing, category, categoryName(categories, category)),
                 }} />
               {(() => {
-                const sid = dishStation(routing, station || null, category, alcohol)
+                const sid = dishStation(routing, station || null, category, alcohol, categoryName(categories, category))
                 const target = stations.find((s) => s.stationId === sid) ?? null
                 return <TicketPreview station={target} printers={target ? stationPrinters(target) : []} />
               })()}

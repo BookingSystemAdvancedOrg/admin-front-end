@@ -41,8 +41,16 @@ import { drinkDefaults } from '../printers/kinds'
  *
  * "Inga skrivare än" låter ägaren gå vidare: steget står kvar som öppet
  * (gult) i Kom igång tills en skrivare finns.
+ *
+ * Personal med Beställningar lägger också till skrivare, byter namn och
+ * sort och testar; ta bort, ny nyckel och inställningarna är ägarens.
  */
-export function PrinterCard({ locationId, isOwner }: { locationId: string | null; isOwner: boolean }) {
+export function PrinterCard({ locationId, isOwner, canSetUp = isOwner }: {
+  locationId: string | null
+  isOwner: boolean
+  /** Ägaren eller personal med Beställningar: lägga till skrivare, byta namn och sort, testa. */
+  canSetUp?: boolean
+}) {
   const [data, setData] = useState<PrintOverview | null>(null)
   const [categories, setCategories] = useState<MenuCategoryEntry[]>(DEFAULT_CATEGORIES)
   const [loadError, setLoadError] = useState(false)
@@ -181,6 +189,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
           <PrinterTiles
             locationId={locationId}
             isOwner={isOwner}
+            canSetUp={canSetUp}
             data={data}
             categories={categories}
             onChange={apply}

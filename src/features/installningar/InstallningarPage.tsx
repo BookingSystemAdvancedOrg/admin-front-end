@@ -1,3 +1,4 @@
+import { canOpen } from '../../shared/access'
 import { errorText } from '../../shared/errors'
 import { useEffect, useRef, useState } from 'react'
 import { dedupe, sameData, useLiveRefresh } from '../../shared/live'
@@ -651,7 +652,8 @@ export default function InstallningarPage() {
           {visible('skrivare') && mounted('skrivare') && (
             <div {...pane('skrivare')}>
               <div className="settings-row" data-help="settings:skrivare:PrinterCard">
-                <PrinterCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+                <PrinterCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner}
+                  canSetUp={canOpen(tenant, 'bestallningar')} />
               </div>
             </div>
           )}

@@ -202,7 +202,7 @@ export function CategoriesModal({
                   <div className="meny-category-sendto">
                     <SendTo label={`${r.name || 'Kategorin'} skickas till`} stations={routing.stations} compact
                       disabled={!onRoute}
-                      value={routePending[r.categoryId] ?? categoryStation(routing, r.categoryId) ?? NO_TICKET}
+                      value={routePending[r.categoryId] ?? categoryStation(routing, r.categoryId, r.name) ?? NO_TICKET}
                       onChange={(next) => void route(r.categoryId!, next)} />
                   </div>
                 ) : null}

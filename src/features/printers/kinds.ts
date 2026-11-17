@@ -42,7 +42,13 @@ export function stationKind(station: Pick<Station, 'stationId' | 'kind'>): Print
   return station.stationId === 'kok' ? 'kok' : station.stationId === 'bar' ? 'dryck' : 'annat'
 }
 
-/** Kategorier som låter som dryck (för förslaget på en ny kategori). */
+/**
+ * Kategorier som låter som dryck. Samma regel som servern
+ * (application shared/routing.py sounds_like_drinks), som skickar en
+ * sådan kategori utan eget val till Dryck även om ingen öppnat Meny.
+ * Ordlistan i drinkNames.json är samma fil som serverns test använder
+ * (application tests/fixtures/drink_names.json).
+ */
 // Hela ord eller ordets början/slut (Fatöl, Rödvin), aldrig mitt i ett matord
 // (Pölsa, Mjölk, Salladsbar). \b räknar inte å, ä, ö som bokstäver, därav klassen.
 const L = 'a-zåäöéü'
@@ -52,14 +58,14 @@ const DRINKISH = new RegExp(
   [
     'dryck', 'drink', 'cocktail', 'läsk', 'kaffe', 'coffee', 'juice', 'alkohol', 'sprit', 'cider', 'dricka',
     'mocktail', 'lemonad', 'beer', 'wine', 'viner',
-    `${START}(?:bar|baren|te|shots?)${END}`,
+    `${START}(?:bar|baren|te|tea|soda|shots?)${END}`,
     `${START}öl`, `öl${END}`, `vin${END}`, `${START}vin(?:er|erna|lista|kort|meny)${END}`,
   ].join('|'),
   'i',
 )
 
-export function soundsLikeDrinks(name: string): boolean {
-  return DRINKISH.test(name)
+export function soundsLikeDrinks(name: string | null | undefined): boolean {
+  return typeof name === 'string' && DRINKISH.test(name)
 }
 
 /**
@@ -82,19 +88,21 @@ type MenuCategoryLike = { categoryId: string; name: string }
 
 /**
  * Stationen en kategori går till: ägarens val, annars Dryck för drycker
- * och Kök för resten (som servern). null = ingen bong. En ny kategori som
- * låter som dryck ("Öl", "Vin") får Dryck sparat när den läggs till
- * (MenyPage) och när en skrivare läggs till (PrinterTiles).
+ * och kategorier vars namn låter som dryck ("Öl", "Vin"), Kök för resten
+ * (som servern). null = ingen bong. En ny kategori som låter som dryck får
+ * dessutom Dryck sparat när den läggs till (MenyPage) och när en skrivare
+ * läggs till (PrinterTiles).
  */
 export function categoryStation(
   routing: Pick<TicketRouting, 'stations' | 'categories'>,
   categoryId: string,
+  name?: string,
 ): string | null {
   const ids = routing.stations.map((s) => s.stationId ?? '')
   const chosen = routing.categories[categoryId]
   if (chosen === NO_TICKET) return null
   if (chosen && ids.includes(chosen)) return chosen
-  const fallback = categoryId === 'drinks' ? 'bar' : 'kok'
+  const fallback = categoryId === 'drinks' || soundsLikeDrinks(name) ? 'bar' : 'kok'
   if (ids.includes(fallback)) return fallback
   return ids[0] ?? null
 }
@@ -105,12 +113,13 @@ export function dishStation(
   own: string | null | undefined,
   categoryId: string,
   alcohol = false,
+  name?: string,
 ): string | null {
   if (own === NO_TICKET) return null
   const ids = routing.stations.map((s) => s.stationId ?? '')
   if (own && ids.includes(own)) return own
   if (alcohol && !routing.categories[categoryId] && ids.includes('bar')) return 'bar'
-  return categoryStation(routing, categoryId)
+  return categoryStation(routing, categoryId, name)
 }
 
 /** Det som visas på en vald station: sorten och skrivarnas namn ("Kök · Kök 1, Kök 2"). */

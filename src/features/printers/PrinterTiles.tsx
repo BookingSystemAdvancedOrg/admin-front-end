@@ -30,6 +30,10 @@ import './printers.css'
  * välj Kök, Dryck eller Annat, ge ett namn, klart. En riktig skrivare får
  * sina uppgifter att skriva in; en simulerad (bara i dev) skriver ut på
  * skärmen direkt.
+ *
+ * Vem gör vad: ägaren och personal med Beställningar lägger till, byter
+ * namn, byter sort och testar (`canSetUp`); att ta bort en skrivare, ny
+ * nyckel och "Inga skrivare än" är ägarens (`isOwner`), som på servern.
  */
 
 function status(printer: Printer): { text: string; tone: 'ok' | 'wait' | 'bad' | 'sim' } {
@@ -69,6 +73,7 @@ type AddStep = { kind: PrinterKind | null; name: string; protocol: PrinterProtoc
 export function PrinterTiles({
   locationId,
   isOwner,
+  canSetUp = isOwner,
   data,
   categories,
   onChange,
@@ -77,6 +82,8 @@ export function PrinterTiles({
 }: {
   locationId: string
   isOwner: boolean
+  /** Ägaren eller personal med Beställningar: lägga till, byta namn och sort. */
+  canSetUp?: boolean
   data: PrintOverview
   categories: MenuCategoryEntry[]
   onChange: (next: PrintOverview) => void
@@ -218,7 +225,7 @@ export function PrinterTiles({
     const ids = stations.map((s) => s.stationId ?? '')
     const names = routing
       ? categories.filter((c) => {
-        const sid = categoryStation(routing, c.categoryId)
+        const sid = categoryStation(routing, c.categoryId, c.name)
         return sid !== null && ids.includes(sid)
       }).map((c) => c.name)
       : []
@@ -278,7 +285,7 @@ export function PrinterTiles({
                 <span className={`pset-status pset-status--${st.tone}`}>{st.text}</span>
               </div>
 
-              {isOwner && (
+              {canSetUp && (
                 <div className="pset-kinds" role="radiogroup" aria-label={`Sort för ${printer.name}`}>
                   {KINDS.map((k) => (
                     <button key={k} type="button" role="radio" aria-checked={kind === k} disabled={busy}
@@ -318,12 +325,14 @@ export function PrinterTiles({
                       <Icon name="receipt" size={16} /> Papper
                     </button>
                   )}
+                  {canSetUp && (
+                    <button type="button" className="btn outline square" disabled={busy}
+                      onClick={() => setRenaming({ id: printer.deviceId, name: printer.name })}>
+                      Byt namn
+                    </button>
+                  )}
                   {isOwner && (
                     <>
-                      <button type="button" className="btn outline square" disabled={busy}
-                        onClick={() => setRenaming({ id: printer.deviceId, name: printer.name })}>
-                        Byt namn
-                      </button>
                       {!printer.simulated && (
                         <button type="button" className="btn outline square" disabled={busy} onClick={() => rotate(printer)}>
                           Ny nyckel
@@ -341,7 +350,7 @@ export function PrinterTiles({
           )
         })}
 
-        {isOwner && devices.length < MAX_PRINTERS && !adding && (
+        {canSetUp && devices.length < MAX_PRINTERS && !adding && (
           <li className="pset-add-slot">
             <button type="button" className="pset-add" onClick={startAdd} disabled={busy}>
               <span className="pset-add-plus" aria-hidden="true"><Icon name="plus" size={28} /></span>

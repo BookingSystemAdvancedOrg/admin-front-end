@@ -182,7 +182,24 @@ describe('PrinterCard', () => {
     expect(await screen.findByText(/Någon annan ändrade samma inställning/)).toBeInTheDocument()
   })
 
-  it('lets staff test print but not change anything', async () => {
+  it('lets staff with Beställningar add, rename, change the kind and test, never remove or rotate', async () => {
+    const user = userEvent.setup()
+    api.getPrinting.mockResolvedValue(ONE)
+    api.testPrint.mockResolvedValue(undefined)
+    api.updatePrinter.mockResolvedValue(ONE)
+    render(<PrinterCard locationId="loc-1" isOwner={false} canSetUp />)
+    await user.click(await screen.findByRole('button', { name: 'Testutskrift' }))
+    expect(api.testPrint).toHaveBeenCalledWith('loc-1', PRINTER.deviceId)
+    expect(screen.getByRole('button', { name: 'Lägg till skrivare' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Byt namn' })).toBeInTheDocument()
+    await user.click(within(screen.getByRole('radiogroup', { name: 'Sort för Köket' })).getByRole('radio', { name: 'Dryck' }))
+    expect(api.updatePrinter).toHaveBeenCalledWith('loc-1', PRINTER.deviceId, { kind: 'dryck' })
+    expect(screen.queryByRole('button', { name: 'Ta bort Köket' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Ny nyckel' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Spara skrivare' })).toBeNull()
+  })
+
+  it('lets staff without Beställningar test print but not change anything', async () => {
     const user = userEvent.setup()
     api.getPrinting.mockResolvedValue(ONE)
     api.testPrint.mockResolvedValue(undefined)

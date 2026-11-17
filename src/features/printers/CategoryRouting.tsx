@@ -49,7 +49,7 @@ export function CategoryRouting({
     <div className="cat-routing">
       <ul className="cat-routing-list" aria-label="Kategorier">
         {categories.map((c) => {
-          const value = pending[c.categoryId] ?? categoryStation(routing, c.categoryId) ?? NO_TICKET
+          const value = pending[c.categoryId] ?? categoryStation(routing, c.categoryId, c.name) ?? NO_TICKET
           return (
             <li key={c.categoryId} className="cat-routing-row">
               <span className="cat-routing-name">{c.name}</span>

@@ -84,6 +84,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
   { n: 74, text: 'Gäster heter nu Kunder' },
   { n: 75, text: 'QR-beställning vid bordet borttagen' },
   { n: 76, text: 'Skrivare i kom igång' },
+  { n: 77, text: 'Kvittoskrivare för personalen' },
 ]
 
 declare const __WHATS_NEW_N__: number | undefined

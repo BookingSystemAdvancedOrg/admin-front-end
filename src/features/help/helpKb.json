@@ -483,6 +483,7 @@
       "title": "Lägga till kvittoskrivare (Kök, Dryck)",
       "audience": "owner",
       "feature": "ordering",
+      "area": "bestallningar",
       "keywords": [
         "skrivare",
         "kvittoskrivare",
@@ -499,7 +500,7 @@
         "simulerad skrivare",
         "kom igång"
       ],
-      "answer": "Kvittoskrivarna lägger du till under Inställningar, Beställning, Kvittoskrivare. Det är också ett steg i Kom igång. Varje skrivare är Kök, Dryck eller Annat. Maten skrivs ut på Kök, drycken på Dryck.",
+      "answer": "Kvittoskrivarna lägger du till under Inställningar, Beställning, Kvittoskrivare. Det är också ett steg i Kom igång. Varje skrivare är Kök, Dryck eller Annat. Maten skrivs ut på Kök, drycken på Dryck. Personal med Beställningar kan också lägga till skrivare, byta namn och sort och testa; att ta bort en skrivare och ny nyckel gör ägaren.",
       "steps": [
         "Öppna Inställningar, välj Beställning och sedan Kvittoskrivare.",
         "Tryck Lägg till skrivare och välj Kök, Dryck eller Annat. Ge den ett namn och tryck Lägg till.",
@@ -534,7 +535,7 @@
         "kategori",
         "skrivare"
       ],
-      "answer": "Varje rätt och kategori har Skickas till: Kök, Dryck, en Annat-skrivare eller Ingen bong. Mat går till Kök och dryck till Dryck om inget annat är valt.",
+      "answer": "Varje rätt och kategori har Skickas till: Kök, Dryck, en Annat-skrivare eller Ingen bong. Mat går till Kök och dryck till Dryck om inget annat är valt, även en egen kategori som heter till exempel Öl, Vin eller Te och kaffe.",
       "steps": [
         "Öppna Meny och tryck på rätten (eller Lägg till rätt).",
         "Under Bong, Skickas till: tryck på skrivaren. Bongen nedanför visar var rätten hamnar.",

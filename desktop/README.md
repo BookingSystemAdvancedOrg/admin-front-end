@@ -228,8 +228,10 @@ the two allowed logos. Below 64 px the letters are left out and the pill is
 plain (Linux set, the `install.sh` icon and the Windows `.ico`, which
 `dev-icon.cjs` writes itself; the macOS `.icns` is scaled by electron-builder
 from the 1024 px icon). `npm test` fails if a redrawn logo would end up under
-the pill. Linux installs made with `install.sh` get a changed icon when the
-install command is run again.
+the pill. Linux installs made with `install.sh` keep a downloaded copy of the
+icon; from 1.4.4 the AppImage rewrites that copy (and adds `StartupWMClass` to
+its `.desktop` file) at start with its own window icon (`linux-menu.cjs`), so
+an older install picks up a changed icon with the next self-update.
 
 Where each platform takes the icon from (all badged in dev, plain in prod):
 macOS Dock, Finder, About and the DMG volume use the `.icns`; Windows uses the

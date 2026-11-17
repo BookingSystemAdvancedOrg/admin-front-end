@@ -12,6 +12,7 @@ const path = require('node:path')
 
 const config = require('./desktop.config.json')
 const { setUpUpdates } = require('./updates.cjs')
+const { refreshMenuEntry } = require('./linux-menu.cjs')
 const target = readTarget()
 const START_URL = new URL(target.url)
 const ORIGIN = START_URL.origin
@@ -265,6 +266,17 @@ function windowIcon() {
   return fs.existsSync(file) ? { icon: file } : {}
 }
 
+/** Linux-AppImage från install.sh: menyns ikon följer appens. Se linux-menu.cjs. */
+function refreshLinuxMenu() {
+  if (process.platform !== 'linux' || !process.env.APPIMAGE) return
+  try {
+    const icon = fs.readFileSync(path.join(__dirname, 'window-icon.png'))
+    refreshMenuEntry({ home: os.homedir(), slug: require('./package.json').name, wmClass: APP_NAME, icon })
+  } catch {
+    /* menyn är bara kosmetik: får aldrig stoppa appen */
+  }
+}
+
 function createWindow() {
   const saved = loadBounds()
   const win = new BrowserWindow({
@@ -462,6 +474,7 @@ if (!app.requestSingleInstanceLock()) {
     keepSessionOnDisk()
     buildMenu()
     mainWindow = createWindow()
+    refreshLinuxMenu()
     // Nya versioner av skalet (latest.json bredvid installationsfilerna).
     updates = setUpUpdates({ baseUrl: config.downloads?.[target.env], getWindow: () => mainWindow, flush: flushCookies })
     mainWindow.on('closed', () => (mainWindow = null))

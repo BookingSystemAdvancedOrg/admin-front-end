@@ -111,7 +111,7 @@ function byShape(status: number, code: string): Mapped | null {
   if (code === 'invalid_value') return user('Ett av fälten ser inte rätt ut. Kolla fälten och försök igen.')
   if (code === 'route_not_found') return booqy(BOOQY_FAULT)
   if (status === 404 || code === 'not_found' || code.endsWith('_not_found')) return user('Det finns inte längre, någon har tagit bort det. Nu syns det som finns kvar.')
-  if (status === 409) return user('Något ändrades samtidigt på en annan enhet. Nu syns det senaste. Gör din ändring igen om den behövs.')
+  if (status === 409) return user(CHANGED)
   if (status === 402) return user('Betalningen gick inte igenom. Försök igen eller använd ett annat kort.')
   if (status === 401) return COMMON.unauthorized
   if (status === 429) return COMMON.too_many_requests
@@ -124,6 +124,8 @@ export function isBooqyFault(status: number, code: string): boolean {
   return status >= 500 || code === 'timeout' || code.endsWith('_unavailable') || /access_?denied/i.test(code)
     || code === 'internal_error' || code === 'invalid_json' || code === 'route_not_found'
 }
+
+const ASKS_REPORT = /rapportera det till Booqy|Rapportera till Booqy/
 
 const RAW = /^[a-z][a-z0-9_]*$|^(Failed to fetch|Load failed|NetworkError|Network request failed|Internal Server Error|Service Unavailable|Not Found|Forbidden|Unauthorized)/i
 
@@ -169,7 +171,8 @@ export function describeError(
   const requestId = err instanceof ApiError ? err.requestId : undefined
   const info = (m: Mapped): ErrorInfo => ({ ...m, code, status, ...(requestId ? { requestId } : {}) })
 
-  if (known[code]) return info({ text: known[code], actor: isBooqyFault(status, code) ? 'booqy' : 'user' })
+  // En text som ber om en rapport får också knappen Rapportera till Booqy.
+  if (known[code]) return info({ text: known[code], actor: isBooqyFault(status, code) || ASKS_REPORT.test(known[code]) ? 'booqy' : 'user' })
   const label = err instanceof ApiError && err.fromServer && err.field
     ? labels[err.field] ?? labels[err.field.split(/[.[]/)[0]]
     : undefined

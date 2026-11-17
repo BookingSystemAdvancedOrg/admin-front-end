@@ -85,6 +85,8 @@ describe('bookingsApi', () => {
   it('says a 404 is the booking only where it is about a booking', () => {
     const notFound = new ApiError(404, 'location not found', { fromServer: true })
     expect(errorMessage(notFound)).toBe(RESERVATION_NOT_FOUND)
+    // API Gatewayns egen 404 (appen och API:t i otakt) är Booqys fel, inte en borttagen bokning.
+    expect(errorMessage(new ApiError(404, 'Not Found', { code: 'route_not_found', fromServer: true }))).toMatch(/Felet ligger hos Booqy/)
     expect(errorMessage(notFound, 'Kunde inte hämta lediga tider.', LOCATION_NOT_BOOKABLE)).toBe(LOCATION_NOT_BOOKABLE)
     expect(LOCATION_NOT_BOOKABLE).not.toMatch(/Bokningen hittades inte/)
   })

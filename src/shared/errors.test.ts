@@ -39,6 +39,12 @@ describe('errorText', () => {
     expect(errorText(server(401, 'Unauthorized', { code: 'unauthorized' }))).toMatch(/Logga in igen/)
   })
 
+  it('en sidas text som ber om en rapport får knappen Rapportera till Booqy', () => {
+    const text = 'BankID tog inte emot det. Försök igen om en stund, eller rapportera det till Booqy.'
+    expect(describeError(server(409, 'signing_x'), 'X.', { signing_x: text }).actor).toBe('booqy')
+    expect(describeError(server(409, 'table_taken'), 'X.', { table_taken: 'Bordet är upptaget.' }).actor).toBe('user')
+  })
+
   it('sidans egna texter och fältnamn går före', () => {
     expect(errorText(server(409, 'table_taken'), 'X.', { table_taken: 'Bordet är upptaget.' })).toBe('Bordet är upptaget.')
     expect(errorText(server(400, 'lines[2].price must be positive', { code: 'invalid_value', field: 'lines[2].price' }),

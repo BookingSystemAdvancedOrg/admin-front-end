@@ -213,7 +213,7 @@ export function moveErrorText(err: unknown): string {
     // Via errorText så felrutan vet vem som gör något (Stripe nere: Försök igen).
     if (MOVE_ERRORS[err.message]) return commonError(err, 'Beställningen ändrades inte.', { [err.code]: MOVE_ERRORS[err.message] })
     if (err.message.startsWith('cannot_move_')) return 'Beställningen kan inte flyttas dit längre. Nu syns det senaste.'
-    if (err.status === 404) return 'Beställningen finns inte längre. Nu syns det som finns kvar.'
+    if (err.status === 404 && err.code !== 'route_not_found') return 'Beställningen finns inte längre. Nu syns det som finns kvar.'
   }
   return commonError(err, 'Beställningen ändrades inte.')
 }

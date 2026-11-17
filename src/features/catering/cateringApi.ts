@@ -637,9 +637,12 @@ export function errorText(err: unknown, action = 'Ändringen sparades inte.'): s
     if (/^price may be at most/.test(err.message)) return 'Priset på en rad är för högt. Skriv högst 10 000 kr per rad.'
     if (/^offer total may be at most/.test(err.message)) return 'Offerten är för stor. Den får vara högst 500 000 kr totalt.'
     if (err.status === 403 && err.code === 'forbidden') return 'Bara restaurangens ägare kan göra det här. Be ägaren göra det.'
-    if (err.status === 404) return 'Förfrågan finns inte längre. Gå tillbaka till listan för att se det som finns kvar.'
+    if (err.status === 404 && err.code !== 'route_not_found') return 'Förfrågan finns inte längre. Gå tillbaka till listan för att se det som finns kvar.'
     if (err.status === 409 && err.message.startsWith('signing_')) {
-      return 'Signeringen med BankID tog inte emot offerten. Det är inte ert fel. Försök igen om en stund, eller rapportera det till Booqy.'
+      // Via commonError så rutan får Försök igen och Rapportera till Booqy.
+      return commonError(err, action, {
+        [err.code]: 'Signeringen med BankID tog inte emot offerten. Det är inte ert fel. Försök igen om en stund, eller rapportera det till Booqy.',
+      })
     }
   }
   return commonError(err, action, {}, CATERING_FIELDS)

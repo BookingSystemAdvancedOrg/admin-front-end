@@ -356,7 +356,7 @@ export function printErrorText(err: unknown): string {
   if (err instanceof ApiError) {
     if (PRINT_ERRORS[err.message]) return PRINT_ERRORS[err.message]
     if (err.status === 403) return 'Bara restaurangens ägare kan ändra skrivarna. Be ägaren göra det.'
-    if (err.status === 404) return 'Skrivaren finns inte längre, någon har tagit bort den. Nu syns det som finns kvar.'
+    if (err.status === 404 && err.code !== 'route_not_found') return 'Skrivaren finns inte längre, någon har tagit bort den. Nu syns det som finns kvar.'
   }
   return commonError(err, 'Utskriften gick inte.')
 }

@@ -356,7 +356,7 @@ export function errorMessage(
       const match = VALIDATION_TEXT.find(([pattern]) => pattern.test(err.message))
       if (match) return match[1]
     }
-    if (err.status === 404) return notFound
+    if (err.status === 404 && err.code !== 'route_not_found') return notFound
   }
   return errorText(err, action)
 }

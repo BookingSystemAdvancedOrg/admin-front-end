@@ -64,7 +64,7 @@ const TENANT_ERROR: Record<TenantErrorCode, { title: string; text: string }> = {
   },
   unavailable: {
     title: 'Restaurangen kunde inte visas',
-    text: 'Booqy svarar inte just nu.',
+    text: 'Restaurangens uppgifter kom inte fram.',
   },
 }
 

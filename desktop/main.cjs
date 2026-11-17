@@ -271,7 +271,9 @@ function refreshLinuxMenu() {
   if (process.platform !== 'linux' || !process.env.APPIMAGE) return
   try {
     const icon = fs.readFileSync(path.join(__dirname, 'window-icon.png'))
-    refreshMenuEntry({ home: os.homedir(), slug: require('./package.json').name, wmClass: APP_NAME, icon })
+    // Filnamnet är också fönstrets WM_CLASS och app_id (desktopName, build.mjs).
+    const slug = require('./package.json').name
+    refreshMenuEntry({ home: os.homedir(), slug, wmClass: slug, icon })
   } catch {
     /* menyn är bara kosmetik: får aldrig stoppa appen */
   }

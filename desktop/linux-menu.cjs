@@ -4,7 +4,11 @@
 // installation från före DEV-brickan visade därför fortfarande den rena
 // logotypen i menyn och dockan. Appen rättar dem själv vid start: samma ikon
 // som fönstret (dev med DEV-brickan, prod utan) och StartupWMClass, så att
-// skrivbordet kopplar fönstret till menyposten. Ren Node, testas med
+// skrivbordet kopplar fönstret till menyposten. StartupWMClass ska vara det
+// namn Electron ger fönstret: desktopName utan ".desktop" (build.mjs sätter
+// den till filnamnet, t.ex. booqy-admin-dev), som WM_CLASS under X11 och
+// app_id under Wayland. 1.4.3 och 1.4.4 skrev appens namn ("Booqy Admin
+// Dev"), som inget fönster har: en sådan rad skrivs om. Ren Node, testas med
 // `node --test` (linux-menu.test.cjs).
 'use strict'
 
@@ -36,8 +40,11 @@ function refreshMenuEntry({ home, slug, wmClass, icon }) {
     fs.writeFileSync(iconFile, icon)
     changed.push('icon')
   }
-  if (wmClass && !/^StartupWMClass=/m.test(text)) {
-    fs.writeFileSync(desktopFile, text.replace(/^Name=.*$/m, (line) => `${line}\nStartupWMClass=${wmClass}`))
+  if (wmClass && !text.split('\n').some((line) => line.trim() === `StartupWMClass=${wmClass}`)) {
+    const next = /^StartupWMClass=.*$/m.test(text)
+      ? text.replace(/^StartupWMClass=.*$/m, `StartupWMClass=${wmClass}`)
+      : text.replace(/^Name=.*$/m, (line) => `${line}\nStartupWMClass=${wmClass}`)
+    fs.writeFileSync(desktopFile, next)
     changed.push('desktop')
   }
   return changed

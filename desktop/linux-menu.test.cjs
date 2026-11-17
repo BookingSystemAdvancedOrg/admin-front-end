@@ -21,14 +21,14 @@ function home({ desktop, icon }) {
 
 const oldEntry = (iconFile) =>
   `[Desktop Entry]\nType=Application\nName=Booqy Admin Dev\nExec="/x/booqy-admin-dev.AppImage" %U\nIcon=${iconFile}\nTerminal=false\nCategories=Office;\n`
-const args = (dir) => ({ home: dir, slug: 'booqy-admin-dev', wmClass: 'Booqy Admin Dev', icon: Buffer.from('badged') })
+const args = (dir) => ({ home: dir, slug: 'booqy-admin-dev', wmClass: 'booqy-admin-dev', icon: Buffer.from('badged') })
 
 test('an old install.sh entry gets the new icon and StartupWMClass', () => {
   const h = home({ desktop: oldEntry, icon: Buffer.from('plain') })
   assert.deepEqual(refreshMenuEntry(args(h.dir)), ['icon', 'desktop'])
   assert.equal(fs.readFileSync(h.iconFile, 'utf8'), 'badged')
   const text = fs.readFileSync(h.desktopFile, 'utf8')
-  assert.match(text, /^Name=Booqy Admin Dev\nStartupWMClass=Booqy Admin Dev\n/m)
+  assert.match(text, /^Name=Booqy Admin Dev\nStartupWMClass=booqy-admin-dev\n/m)
   assert.equal(text.match(/StartupWMClass=/g).length, 1)
   assert.deepEqual(refreshMenuEntry(args(h.dir)), [], 'nothing to do the second time')
 })
@@ -46,4 +46,23 @@ test('no install.sh entry, or one pointing elsewhere: nothing is touched', () =>
   const other = home({ desktop: () => '[Desktop Entry]\nName=Booqy Admin Dev\nIcon=booqy-admin-dev\n', icon: Buffer.from('plain') })
   assert.deepEqual(refreshMenuEntry(args(other.dir)), [])
   assert.equal(fs.readFileSync(other.iconFile, 'utf8'), 'plain')
+})
+
+test('a StartupWMClass no window has (the app name from 1.4.3 and 1.4.4) is rewritten', () => {
+  const withName = (iconFile) => oldEntry(iconFile).replace('Terminal=false', 'StartupWMClass=Booqy Admin Dev\nTerminal=false')
+  const h = home({ desktop: withName, icon: Buffer.from('badged') })
+  assert.deepEqual(refreshMenuEntry(args(h.dir)), ['desktop'])
+  const text = fs.readFileSync(h.desktopFile, 'utf8')
+  assert.equal(text.match(/^StartupWMClass=.*$/gm).join(), 'StartupWMClass=booqy-admin-dev')
+  assert.match(text, /^Exec="\/x\/booqy-admin-dev.AppImage" %U$/m, 'the rest of the entry is kept')
+  assert.deepEqual(refreshMenuEntry(args(h.dir)), [])
+})
+
+test('install.sh writes the same StartupWMClass as the app (its file name)', () => {
+  const sh = fs.readFileSync(path.join(__dirname, 'install', 'install.sh'), 'utf8')
+  assert.match(sh, /^StartupWMClass=\$SLUG$/m)
+  assert.match(sh, /^SLUG='__FILEBASE__'$/m)
+  const build = fs.readFileSync(path.join(__dirname, 'build.mjs'), 'utf8')
+  assert.match(build, /desktopName: `\$\{fileBase\}\.desktop`/)
+  assert.match(build, /syncDesktopName: true/)
 })

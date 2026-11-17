@@ -54,7 +54,7 @@ writeFileSync(new URL('./env.json', import.meta.url), JSON.stringify({ env, url,
 const icons = devIcon.iconsFor(env)
 // Fönstrets egen ikon på Linux (aktivitetsfält, Alt+Tab): Linux tar den från
 // fönstret, inte från programfilen. Kopieras in i appen (build/ packas inte).
-copyFileSync(new URL(`./${icons.set}/512x512.png`, import.meta.url), new URL('./window-icon.png', import.meta.url))
+copyFileSync(new URL(`./${icons.window}`, import.meta.url), new URL('./window-icon.png', import.meta.url))
 
 const env_ = process.env
 const macIdentity = env_.BOOQY_MAC_IDENTITY || null
@@ -84,7 +84,11 @@ const builderConfig = {
   artifactName: `${fileBase}-\${version}-\${os}-\${arch}.\${ext}`,
   directories: { output: `release/${env}`, buildResources: 'build' },
   files: ['main.cjs', 'updates.cjs', 'update-core.cjs', 'linux-menu.cjs', 'desktop.config.json', 'env.json', 'window-icon.png', 'package.json'],
-  extraMetadata: { name: fileBase, productName, ...(process.env.BOOQY_TEST_VERSION ? { version: process.env.BOOQY_TEST_VERSION } : {}) },
+  // desktopName: Electron gör app_id (Wayland) och WM_CLASS (X11) av den, utan
+  // ".desktop". Då heter fönstret som .desktop-filen (fileBase, både från
+  // deb/AppImage och install.sh) och StartupWMClass blir samma namn, så att
+  // skrivbordet visar menypostens ikon på fönstret. Se linux.syncDesktopName.
+  extraMetadata: { name: fileBase, productName, desktopName: `${fileBase}.desktop`, ...(process.env.BOOQY_TEST_VERSION ? { version: process.env.BOOQY_TEST_VERSION } : {}) },
   asar: true,
   // Härdning av själva Electron-binären.
   electronFuses: {
@@ -105,7 +109,8 @@ const builderConfig = {
       { target: 'dmg', arch: ['arm64', 'x64'] },
       { target: 'zip', arch: ['arm64', 'x64'] },
     ],
-    icon: icons.app,
+    // Dev: en färdig .icns med pixelbrickan i 16 och 32 (dev-icon.cjs).
+    icon: icons.mac,
     // Utan certifikat: ad hoc-signerad ("-"), kör lokalt men Gatekeeper
     // varnar på andra datorer. Se README.md, "Signering".
     identity: macIdentity ?? '-',
@@ -145,6 +150,7 @@ const builderConfig = {
     maintainer: 'Booqy <ops@booqy.se>',
     synopsis: config.description,
     executableName: fileBase,
+    syncDesktopName: true,
   },
   // Uppdateringskanalen (latest.yml, latest-linux.yml) för electron-updater på
   // Windows och AppImage. Inget laddas upp härifrån: publish.mjs gör det i CI.

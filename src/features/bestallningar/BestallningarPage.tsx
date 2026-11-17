@@ -418,13 +418,10 @@ export default function BestallningarPage() {
                   Återbetala
                 </button>
               )}
-              {/* Betald utanför Booqy eller avskriven: servern avbryter den inte (settled_outside_booqy). */}
-              {order.paymentStatus !== 'paid_outside' && order.paymentStatus !== 'written_off' && (
-                <button type="button" className="btn outline square order-cancel" disabled={isBusy}
-                  onClick={() => setConfirmCancel(order.orderId)}>
-                  Avbryt
-                </button>
-              )}
+              <button type="button" className="btn outline square order-cancel" disabled={isBusy}
+                onClick={() => setConfirmCancel(order.orderId)}>
+                Avbryt
+              </button>
             </>
           )}
         </div>

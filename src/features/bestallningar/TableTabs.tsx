@@ -155,9 +155,9 @@ export function TableTabsBoard({
       {dialog?.kind === 'paid' && open && (
         <PaidOutsideDialog
           tab={open}
-          onSave={async (shown, input) => {
-            await markPaidOutside(locationId, shown, { ...input, expectedAmount: shown.amount })
-            setNotice(`${shown.title}: ${kronor(shown.amount)} betald utanför Booqy (${OUTSIDE_METHOD_TEXT[input.method].toLowerCase()}).`)
+          onSave={async (input) => {
+            await markPaidOutside(locationId, open, { ...input, expectedAmount: open.amount })
+            setNotice(`${open.title}: ${kronor(open.amount)} betald utanför Booqy (${OUTSIDE_METHOD_TEXT[input.method].toLowerCase()}).`)
             onChanged()
           }}
           onRefresh={onChanged}
@@ -167,9 +167,9 @@ export function TableTabsBoard({
       {dialog?.kind === 'writeoff' && open && (
         <WriteOffDialog
           tab={open}
-          onSave={async (shown, reason) => {
-            await writeOff(locationId, shown, { reason, expectedAmount: shown.amount })
-            setNotice(`${shown.title}: ${kronor(shown.amount)} avskriven.`)
+          onSave={async (reason) => {
+            await writeOff(locationId, open, { reason, expectedAmount: open.amount })
+            setNotice(`${open.title}: ${kronor(open.amount)} avskriven.`)
             onChanged()
           }}
           onRefresh={onChanged}
@@ -524,23 +524,6 @@ function PayDialog({
 
 const METHODS = Object.keys(OUTSIDE_METHOD_TEXT) as OutsideMethod[]
 
-/**
- * Notan som dialogen visar: den låses när dialogen öppnas, så att en ny
- * beställning som kommer med listans uppdatering inte tyst ändrar beloppet
- * personalen redan har tagit betalt för. Servern svarar bill_changed om
- * notan har ändrats; då visas den nya notan (`resync`) och personalen sparar igen.
- */
-function useShownTab(tab: TableTab): [TableTab, () => void] {
-  const [shown, setShown] = useState(tab)
-  const [resync, setResync] = useState(false)
-  // Under render (Reacts mönster för att följa en ny prop), inte i en effekt.
-  if (resync && tab !== shown) {
-    setShown(tab)
-    setResync(false)
-  }
-  return [shown, () => setResync(true)]
-}
-
 /** "Markera som betald": hur gästen betalade, valfri anteckning. */
 function PaidOutsideDialog({
   tab,
@@ -549,12 +532,11 @@ function PaidOutsideDialog({
   onClose,
 }: {
   tab: TableTab
-  onSave: (shown: TableTab, input: { method: OutsideMethod; note?: string }) => Promise<void>
+  onSave: (input: { method: OutsideMethod; note?: string }) => Promise<void>
   onRefresh: () => void
   onClose: () => void
 }) {
   const id = useId()
-  const [shown, resync] = useShownTab(tab)
   const [method, setMethod] = useState<OutsideMethod | ''>('')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
@@ -571,22 +553,19 @@ function PaidOutsideDialog({
     setBusy(true)
     setError(null)
     try {
-      await onSave(shown, { method, ...(note.trim() ? { note: note.trim() } : {}) })
+      await onSave({ method, ...(note.trim() ? { note: note.trim() } : {}) })
       onClose()
     } catch (err) {
       setError(tabErrorText(err, 'Notan markerades inte som betald.'))
-      if (TAB_REFRESH.has(errorCode(err) ?? '')) {
-        resync()
-        onRefresh()
-      }
+      if (TAB_REFRESH.has(errorCode(err) ?? '')) onRefresh()
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <TabDialog title={`Markera som betald, ${shown.title}`} busy={busy} onClose={onClose} onSubmit={() => void submit()}>
-      <Amount tab={shown} />
+    <TabDialog title={`Markera som betald, ${tab.title}`} busy={busy} onClose={onClose} onSubmit={() => void submit()}>
+      <Amount tab={tab} />
       <div className="form-field">
         <span className="tab-dialog-label">
           <label htmlFor={`${id}-method`}>Hur betalade gästen?</label>
@@ -637,12 +616,11 @@ function WriteOffDialog({
   onClose,
 }: {
   tab: TableTab
-  onSave: (shown: TableTab, reason: string) => Promise<void>
+  onSave: (reason: string) => Promise<void>
   onRefresh: () => void
   onClose: () => void
 }) {
   const id = useId()
-  const [shown, resync] = useShownTab(tab)
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -658,22 +636,19 @@ function WriteOffDialog({
     setBusy(true)
     setError(null)
     try {
-      await onSave(shown, reason.trim())
+      await onSave(reason.trim())
       onClose()
     } catch (err) {
       setError(tabErrorText(err, 'Notan skrevs inte av.'))
-      if (TAB_REFRESH.has(errorCode(err) ?? '')) {
-        resync()
-        onRefresh()
-      }
+      if (TAB_REFRESH.has(errorCode(err) ?? '')) onRefresh()
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <TabDialog title={`Skriv av, ${shown.title}`} busy={busy} onClose={onClose} onSubmit={() => void submit()}>
-      <Amount tab={shown} />
+    <TabDialog title={`Skriv av, ${tab.title}`} busy={busy} onClose={onClose} onSubmit={() => void submit()}>
+      <Amount tab={tab} />
       <div className="form-field">
         <span className="tab-dialog-label">
           <label htmlFor={`${id}-reason`}>Varför?</label>
@@ -696,7 +671,7 @@ function WriteOffDialog({
           Avbryt
         </button>
         <button type="submit" className="btn primary square" data-danger="true" disabled={busy} aria-busy={busy || undefined}>
-          {busy ? 'Skriver av…' : `Skriv av ${kronor(shown.amount)}`}
+          {busy ? 'Skriver av…' : `Skriv av ${kronor(tab.amount)}`}
         </button>
       </div>
     </TabDialog>

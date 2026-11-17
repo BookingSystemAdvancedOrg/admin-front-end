@@ -291,19 +291,6 @@ describe('BestallningarPage', () => {
       expect(moveOrder).toHaveBeenCalledWith('loc-1', expect.objectContaining({ orderId: 'd'.repeat(32) }), 'cancelled')
     })
 
-    it('offers no cancel on an order paid outside Booqy or written off (the server refuses it)', async () => {
-      listOrders.mockResolvedValue(list([
-        unpaid({ status: 'ready', paymentStatus: 'paid_outside', paidOutside: { method: 'cash' } }),
-        unpaid({ orderId: 'e'.repeat(32), number: 15, status: 'ready', paymentStatus: 'written_off', writtenOff: { reason: 'Gick' } }),
-      ], tableOrdering))
-      render(<BestallningarPage />)
-      const outside = await screen.findByRole('article', { name: 'Beställning 14, Bord 4' })
-      expect(within(outside).getByText(/Betald utanför Booqy/)).toBeInTheDocument()
-      expect(within(outside).queryByRole('button', { name: 'Avbryt' })).toBeNull()
-      const written = screen.getByRole('article', { name: 'Beställning 15, Bord 4' })
-      expect(within(written).queryByRole('button', { name: 'Avbryt' })).toBeNull()
-    })
-
     it('shows the unpaid tile, a chip per open bill and opens Notor on it', async () => {
       const user = userEvent.setup()
       listOrders.mockResolvedValue(list([unpaid()], tableOrdering))

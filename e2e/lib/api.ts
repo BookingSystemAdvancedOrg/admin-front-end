@@ -42,6 +42,9 @@ export class Api {
   post(p: string, data: unknown): Promise<APIResponse> {
     return this.page.request.post(this.loc(p), { headers: this.h(), data })
   }
+  put(p: string, data: unknown): Promise<APIResponse> {
+    return this.page.request.put(this.loc(p), { headers: this.h(), data })
+  }
   patch(p: string, data: unknown): Promise<APIResponse> {
     return this.page.request.patch(this.loc(p), { headers: this.h(), data })
   }

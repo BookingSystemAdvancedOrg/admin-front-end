@@ -4,6 +4,7 @@ import { watch } from '../lib/watch'
 import { ready } from '../lib/ui'
 import { pick } from '../lib/select'
 import { optEnv } from '../lib/env'
+import { Api } from '../lib/api'
 import { mail, RUN } from '../lib/data'
 
 /**
@@ -140,6 +141,33 @@ test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', 
   }
 })
 
+test('setup printers in the UI: simulated Kök, Dryck and Annat, any kind, no old ones left', async ({ page }, info) => {
+  const api = await Api.attach(page)
+  for (const d of (await (await api.get('/print')).json()).devices as { deviceId: string; name: string }[]) {
+    if (/^E2E UI/.test(d.name)) await api.del(`/print/devices/${d.deviceId}`)
+  }
+  await page.goto('/installningar#skrivare')
+  await ready(page)
+  for (const [kind, name] of [['Kök', 'E2E UI Kök'], ['Dryck', 'E2E UI Dryck'], ['Annat', 'E2E UI Ugn']] as const) {
+    const add = page.getByRole('button', { name: 'Lägg till skrivare' })
+    if (await add.count()) await add.click() // after the first printer the form is already open
+    const form = page.getByRole('form', { name: 'Ny skrivare' })
+    await form.getByRole('radiogroup', { name: 'Sort' }).getByRole('radio', { name: kind }).click()
+    await form.locator('#printer-name').fill(name)
+    await form.getByText('Simulerad', { exact: true }).click()
+    await form.getByRole('button', { name: 'Lägg till', exact: true }).click()
+    await expect(page.getByText(name).first(), `${name} card`).toBeVisible({ timeout: 20000 })
+  }
+  await page.screenshot({ path: info.outputPath('printers.png'), fullPage: true })
+  const devices = (await (await api.get('/print')).json()).devices as { name: string; kind: string; simulated?: boolean }[]
+  for (const [name, kind] of [['E2E UI Kök', 'kok'], ['E2E UI Dryck', 'dryck'], ['E2E UI Ugn', 'annat']]) {
+    const d = devices.find((x) => x.name === name)
+    expect(d, name).toBeTruthy()
+    expect(d!.kind).toBe(kind)
+    expect(d!.simulated, 'simulated printer').toBe(true)
+  }
+})
+
 test('guest pickup order with allergy, paid with test card, appears on the board', async ({ page, browser }, info) => {
   const guest = await guestPage(browser)
   const w = watch(guest)
@@ -184,8 +212,36 @@ test('kitchen screen: food to Kök, combo split, drink part to Dryck, cola no ti
   expect.soft(text, 'allergy shown').toMatch(/[Jj]ordnöt/)
 })
 
+test('the simulated printers printed the order by themselves: food on Kök, drink on Dryck, none crossed', async ({ page }, info) => {
+  const api = await Api.attach(page)
+  const devices = (await (await api.get('/print')).json()).devices as { deviceId: string; name: string }[]
+  const paper = async (name: string) => {
+    const d = devices.find((x) => x.name === name)!
+    const j = await (await api.get(`/print/devices/${d.deviceId}/simulated`)).json()
+    return (j.tickets as { lines: { text: string }[] }[]).map((t) => t.lines.map((l) => l.text).join('\n')).join('\n----\n')
+  }
+  await page.waitForTimeout(3000)
+  const kok = await paper('E2E UI Kök')
+  const dryck = await paper('E2E UI Dryck')
+  info.annotations.push({ type: 'Kök paper', description: kok.replace(/\n+/g, ' | ').slice(0, 500) })
+  info.annotations.push({ type: 'Dryck paper', description: dryck.replace(/\n+/g, ' | ').slice(0, 500) })
+  expect(kok, 'food printed on Kök').toMatch(/E2E Margherita/)
+  expect(kok, 'no drink on the Kök ticket').not.toMatch(/Läsk|E2E Cola|Fatöl/)
+  expect(dryck, 'the drink part printed on Dryck').toMatch(/Läsk/)
+  expect(dryck, 'no food on the Dryck ticket').not.toMatch(/E2E Margherita/)
+  expect(dryck + kok, 'Cola is set to Ingen bong: on no ticket').not.toMatch(/E2E Cola/)
+})
+
 test.afterAll('restore: hours back, ordering off, E2E dishes off', async ({ browser }) => {
   const page = await (await browser.newContext({ storageState: '.auth/pizza.json', baseURL: test.info().project.use.baseURL })).newPage()
+  {
+    const api = await Api.attach(page)
+    for (const d of (await (await api.get('/print')).json()).devices as { deviceId: string; name: string }[]) {
+      if (/^E2E UI/.test(d.name)) await api.del(`/print/devices/${d.deviceId}`)
+    }
+    const st = (await (await api.get('/print')).json()).settings
+    if (st?.autoPrint) await api.put('/print/settings', { ...st, autoPrint: false, printerId: null })
+  }
   if (existsSync(RESTORE)) {
     const r = JSON.parse(readFileSync(RESTORE, 'utf8'))
     await page.goto('/installningar#dagar')
@@ -228,5 +284,5 @@ test.afterAll('restore: hours back, ordering off, E2E dishes off', async ({ brow
       await page.waitForTimeout(1500)
     }
   }
-  unlinkSync(RESTORE)
+  if (existsSync(RESTORE)) unlinkSync(RESTORE)
 })

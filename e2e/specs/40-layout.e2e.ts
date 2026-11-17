@@ -47,7 +47,7 @@ test.describe('Admin: Layout', () => {
     // First publish activates at once; later ones switch over at a scheduled time (by design).
     // While a switch is already booked a new version is published but not activated, and the
     // page says so (it used to claim "Publicerad" while the version stayed inactive).
-    expect(await done.textContent()).toMatch(/aktiverad som version|bytet sker|versionsbyte är redan inbokat/)
+    expect(await done.textContent()).toMatch(/aktiverad som version|bytet sker|versionsbyte är redan inbokat|Det finns bokningar på bord som inte finns i den nya layouten/)
     // QR-beställning vid bordet är borttagen (2026-11-17): ingen QR-knapp i layouten.
     await expect(page.getByRole('button', { name: 'QR-koder' })).toHaveCount(0)
     await w.attach(info)

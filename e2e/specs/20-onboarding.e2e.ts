@@ -44,7 +44,7 @@ test.describe('Admin: first login and onboarding', () => {
     for (const day of ['Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag', 'Söndag']) {
       const opens = page.getByLabel(`${day} öppnar`)
       if ((await opens.count()) === 0) {
-        await page.locator('.hours-editor-row', { hasText: day }).getByRole('button', { name: '+ Lägg till tid' }).click()
+        await page.locator('.hours-editor-row', { hasText: day }).getByRole('button', { name: 'Lägg till tid' }).click()
       }
       await page.getByLabel(`${day} öppnar`).first().fill('10:00')
       await page.getByLabel(`${day} stänger`).first().fill('23:30')

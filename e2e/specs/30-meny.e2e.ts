@@ -21,7 +21,7 @@ async function menuItems(page: Page): Promise<{ api: Api; items: Item[] }> {
 }
 
 async function addDish(page: Page, d: { name: string; category: string; price: string; desc?: string; alcohol?: boolean; parts?: [string, string][]; image?: string }) {
-  await page.getByRole('button', { name: '+ Lägg till rätt' }).click()
+  await page.getByRole('button', { name: 'Lägg till rätt' }).click()
   const dlg = page.getByRole('dialog', { name: 'Lägg till rätt' })
   await expect(dlg).toBeVisible()
   await dlg.locator('input[type=file]').setInputFiles(d.image ?? IMG)
@@ -47,7 +47,7 @@ test.describe('Admin: Meny', () => {
   })
 
   test('photo is optional: a drink can be added without one', async ({ page }) => {
-    await page.getByRole('button', { name: '+ Lägg till rätt' }).click()
+    await page.getByRole('button', { name: 'Lägg till rätt' }).click()
     const dlg = page.getByRole('dialog', { name: 'Lägg till rätt' })
     await dlg.getByLabel('Namn').fill('E2E Cola')
     await dlg.getByLabel('Pris (kr)').fill('35')
@@ -56,7 +56,7 @@ test.describe('Admin: Meny', () => {
   })
 
   test('menu editor offers allergens, add-ons (modifiers) and own categories', async ({ page }) => {
-    await page.getByRole('button', { name: '+ Lägg till rätt' }).click()
+    await page.getByRole('button', { name: 'Lägg till rätt' }).click()
     const dlg = page.getByRole('dialog', { name: 'Lägg till rätt' })
     await expect.soft(dlg.getByRole('group', { name: 'Allergener' }), 'allergen field').toBeVisible()
     await expect.soft(dlg.getByRole('group', { name: 'Tillval' }), 'add-ons / modifiers field').toBeVisible()
@@ -75,7 +75,7 @@ test.describe('Admin: Meny', () => {
     await cats.getByRole('button', { name: 'Lägg till', exact: true }).click()
     await cats.getByRole('button', { name: 'Spara kategorier' }).click()
     await expect(cats).toBeHidden({ timeout: 20000 })
-    await page.getByRole('button', { name: '+ Lägg till rätt' }).click()
+    await page.getByRole('button', { name: 'Lägg till rätt' }).click()
     const catNames = await options(dlg.getByLabel('Kategori'))
     test.info().annotations.push({ type: 'categories', description: catNames.join(', ') })
     expect.soft(catNames, 'restaurant can add its own categories').toContain(cat)
@@ -102,7 +102,7 @@ test.describe('Admin: Meny', () => {
   })
 
   test('price validation: negative, text, huge', async ({ page }) => {
-    await page.getByRole('button', { name: '+ Lägg till rätt' }).click()
+    await page.getByRole('button', { name: 'Lägg till rätt' }).click()
     const dlg = page.getByRole('dialog', { name: 'Lägg till rätt' })
     for (const bad of ['-10', 'abc', '99999999']) {
       await dlg.getByLabel('Pris (kr)').fill(bad)
@@ -170,7 +170,7 @@ test.describe('Admin: Meny', () => {
   })
 
   test('double click on save creates one dish, not two', async ({ page }) => {
-    await page.getByRole('button', { name: '+ Lägg till rätt' }).click()
+    await page.getByRole('button', { name: 'Lägg till rätt' }).click()
     const dlg = page.getByRole('dialog', { name: 'Lägg till rätt' })
     await dlg.locator('input[type=file]').setInputFiles(IMG)
     await dlg.getByLabel('Namn').fill(`E2E Dubbelklick ${RUN}`)

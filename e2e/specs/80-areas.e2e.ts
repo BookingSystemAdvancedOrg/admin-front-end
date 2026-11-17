@@ -150,11 +150,11 @@ test.describe('Admin: help assistant, marketing, catering, phone', () => {
     await page.goto('/')
     await ready(page, 'Översikt')
     const ask = async (q: string) => {
-      if (!(await page.locator('.help-panel').isVisible())) await page.getByRole('button', { name: 'Fråga Booqy' }).click()
+      if (!(await page.locator('.help-panel').isVisible())) await page.getByRole('button', { name: 'Fråga Booqy' }).dispatchEvent('click') // the button steps aside while a control sits under it (dodge.ts)
       await page.locator('.help-input').fill(q)
       await page.locator('.help-input').press('Enter')
       await page.waitForTimeout(10000) // the answer may move to the right page and highlight it
-      if (!(await page.locator('.help-panel').isVisible())) await page.getByRole('button', { name: 'Fråga Booqy' }).click()
+      if (!(await page.locator('.help-panel').isVisible())) await page.getByRole('button', { name: 'Fråga Booqy' }).dispatchEvent('click') // the button steps aside while a control sits under it (dodge.ts)
       const log = (await page.locator('.help-log').innerText()).replace(/\s+/g, ' ')
       const a = log.slice(log.lastIndexOf(q) + q.length, log.lastIndexOf(q) + q.length + 260)
       info.annotations.push({ type: q, description: `${a} [page: ${new URL(page.url()).pathname}]` })

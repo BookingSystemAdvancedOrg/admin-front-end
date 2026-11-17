@@ -65,7 +65,7 @@ test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', 
   if (!existsSync(RESTORE)) {
     writeFileSync(RESTORE, JSON.stringify({ day: today, opens: await opens.inputValue().catch(() => ''), closes: await closes.inputValue().catch(() => '') }))
   }
-  if (!(await opens.count())) await page.locator('.hours-editor-row', { hasText: today }).getByRole('button', { name: '+ Lägg till tid' }).click()
+  if (!(await opens.count())) await page.locator('.hours-editor-row', { hasText: today }).getByRole('button', { name: 'Lägg till tid' }).click()
   await page.getByLabel(`${today} öppnar`).first().fill('00:00')
   await page.getByLabel(`${today} stänger`).first().fill('23:59')
   await page.getByRole('button', { name: 'Spara ändringar' }).click()
@@ -110,7 +110,7 @@ test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', 
       if ((await sw.getAttribute('aria-checked')) !== 'true') await sw.click()
       continue
     }
-    await page.getByRole('button', { name: '+ Lägg till rätt' }).click()
+    await page.getByRole('button', { name: 'Lägg till rätt' }).click()
     const dlg = page.getByRole('dialog', { name: 'Lägg till rätt' })
     await dlg.locator('input[type=file]').setInputFiles('fixtures/dish.jpg')
     await dlg.getByLabel('Namn').fill(d.name)
@@ -212,6 +212,7 @@ test.afterAll('restore: hours back, ordering off, E2E dishes off', async ({ brow
     const row = page.getByRole('row', { name: new RegExp(n) }).first()
     if (await row.count()) {
       await row.getByRole('button', { name: 'Radera' }).click()
+      await page.getByRole('button', { name: 'Ta bort', exact: true }).click()
       await page.waitForTimeout(1500)
     }
   }

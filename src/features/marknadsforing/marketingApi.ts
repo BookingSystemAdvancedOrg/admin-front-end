@@ -1,4 +1,4 @@
-import { errorText as commonError } from '../../shared/errors'
+import { errorText as commonError, errorCode, rememberError } from '../../shared/errors'
 import { API_BASE_URL, ApiError, apiFetch } from '../../shared/api'
 import { getAccessToken } from '../auth/cognito'
 
@@ -188,9 +188,9 @@ export function templateErrors(t: TemplateInput): string[] {
   if (t.blocks.length > MAX_BLOCKS) errors.push(`Mallen får ha högst ${MAX_BLOCKS} block. Ta bort ett block.`)
   t.blocks.forEach((b, i) => {
     const n = `Block ${i + 1} (${BLOCK_LABEL[b.type].toLowerCase()})`
-    if ((b.type === 'heading' || b.type === 'text') && !b.text.trim()) errors.push(`${n}: texten är tom.`)
-    if (b.type === 'heading' && b.text.trim().length > 120) errors.push(`${n}: högst 120 tecken.`)
-    if (b.type === 'text' && b.text.trim().length > 2000) errors.push(`${n}: högst 2000 tecken.`)
+    if ((b.type === 'heading' || b.type === 'text') && !b.text.trim()) errors.push(`${n}: texten är tom. Skriv en text.`)
+    if (b.type === 'heading' && b.text.trim().length > 120) errors.push(`${n}: rubriken får vara högst 120 tecken. Korta den.`)
+    if (b.type === 'text' && b.text.trim().length > 2000) errors.push(`${n}: texten får vara högst 2000 tecken. Korta den.`)
     if (b.type === 'image' && !HTTPS.test(b.url.trim())) errors.push(`${n}: skriv bildens adress så här: https://exempel.se/bild.jpg.`)
     if (b.type === 'button') {
       if (!b.label.trim()) errors.push(`${n}: knappen behöver en text.`)
@@ -561,22 +561,35 @@ export function formatDateTime(iso: string | null | undefined): string {
 
 export const ERROR_TEXT: Record<string, string> = {
   campaign_not_draft: 'Kampanjen är redan skickad eller planerad, så den kan inte ändras.',
-  campaign_not_cancellable: 'Kampanjen kan inte avbrytas längre.',
-  campaign_not_paused: 'Kampanjen är inte pausad.',
+  campaign_not_cancellable: 'Kampanjen har redan börjat skickas, så den kan inte avbrytas.',
+  campaign_not_paused: 'Kampanjen är inte pausad, så den behöver inte startas igen.',
   'monthly limit reached': 'Månadens gräns för utskick är nådd. Fortsätt nästa månad.',
   'no subscribers in this audience': 'Ingen i målgruppen vill ha utskick än. Välj en annan målgrupp.',
   'the restaurant has no legal name and address for the footer':
     'Företagsnamn och adress saknas. Enligt lag ska de stå i varje utskick. Be Booqy fylla i dem.',
   'the restaurant has no website address yet for the buttons':
-    'Restaurangen har ingen webbadress än, så knapparna kan inte leda någonstans.',
+    'Restaurangen har ingen webbadress än, så knapparna kan inte leda någonstans. Be Booqy koppla er webbadress.',
   "your account has no email address to send a test to": 'Ditt konto saknar e-postadress, så testmejlet kan inte skickas.',
   "the campaign's template no longer exists": 'Mallen som kampanjen använder finns inte längre. Välj en annan mall.',
 }
 
 export function errorText(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
-    if (ERROR_TEXT[err.message]) return ERROR_TEXT[err.message]
-    if (err.status === 403) return 'Marknadsföring ingår inte i abonnemanget, eller så är du inte ägare. Be ägaren kolla abonnemanget.'
+    const own = ERROR_TEXT[err.message]
+      ?? (err.status === 403 ? 'Marknadsföring ingår inte i abonnemanget, eller så är du inte ägare. Be ägaren kolla abonnemanget.' : undefined)
+    if (own) {
+      // Felrutan ska veta vem som gör något: Booqy fyller i det som bara Booqy kan.
+      const booqy = /Be Booqy/.test(own)
+      rememberError({
+        text: own,
+        actor: booqy ? 'booqy' : 'user',
+        ...(err.status === 403 ? { link: { to: '/installningar#abonnemang', label: 'Se abonnemanget' } } : {}),
+        code: errorCode(err) ?? 'unknown',
+        status: err.status,
+        ...(err.requestId ? { requestId: err.requestId } : {}),
+      })
+      return own
+    }
   }
   return commonError(err, fallback, {}, MARKETING_FIELDS)
 }
@@ -648,7 +661,7 @@ export function offerErrors(s: OfferSettings): string[] {
   if (!Number.isInteger(s.minOrderOre) || s.minOrderOre < 0 || s.minOrderOre > 500000) {
     out.push('Minsta belopp ska vara 0 till 5 000 kr. Skriv till exempel 200.')
   }
-  if (s.activeFrom && s.activeTo && s.activeFrom > s.activeTo) out.push('Startdatum måste vara före slutdatum.')
+  if (s.activeFrom && s.activeTo && s.activeFrom > s.activeTo) out.push('Slutdatumet är före startdatumet. Välj ett slutdatum efter starten.')
   // Felaktig procentsiffra i texten vore vilseledande reklam.
   for (const text of [s.headline, s.text, s.buttonLabel]) {
     for (const m of text.matchAll(/(\d{1,3})\s?%/g)) {

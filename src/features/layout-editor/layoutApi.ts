@@ -420,7 +420,7 @@ function toFriendlyLayoutError(err: unknown): Error {
 
   switch (err.status) {
     case 400:
-      return new ApiError(400, 'Layouten sparades inte. Något bord har ett värde som inte går. Kolla storlek, platser och namn.', { code: err.code, field: err.field })
+      return new ApiError(400, 'Layouten sparades inte. Kolla storlek, platser och namn på borden och spara igen.', { code: err.code, field: err.field })
     case 401:
       return new ApiError(401, 'Du har loggats ut. Logga in igen och gör om det du höll på med.')
     case 403:

@@ -148,21 +148,21 @@ export function emptyBusinessHours(): BusinessHours {
 }
 
 export function validateName(name: string): string | null {
-  return name.trim() ? null : 'Namn krävs.'
+  return name.trim() ? null : 'Skriv platsens namn, till exempel Bistro Nord Söder.'
 }
 
 export function validateAddress(address: string): string | null {
-  return address.trim() ? null : 'Adress krävs.'
+  return address.trim() ? null : 'Skriv platsens adress, till exempel Storgatan 1, 111 22 Stockholm.'
 }
 
 export function validateEmail(email: string): string | null {
-  return EMAIL_PATTERN.test(email.trim()) ? null : 'Ange en giltig e-postadress.'
+  return EMAIL_PATTERN.test(email.trim()) ? null : 'E-postadressen ser fel ut. Skriv den så här: namn@exempel.se.'
 }
 
 export function validatePhoneNumber(phone: string): string | null {
   return PHONE_PATTERN.test(phone.trim())
     ? null
-    : 'Ange telefonnummer i internationellt format, t.ex. +46701234567.'
+    : 'Telefonnumret ser fel ut. Skriv det med +46 och utan mellanslag, till exempel +46701234567.'
 }
 
 export function validateTimezone(timezone: string): string | null {
@@ -212,10 +212,10 @@ export function validateDayIntervals(
   const name = DAY_LABEL[day]
   for (const { opensAt, closesAt } of intervals) {
     if (!TIME_PATTERN.test(opensAt) || !TIME_PATTERN.test(closesAt)) {
-      return `${name}: tiderna måste anges som TT:MM.`
+      return `${name}: skriv tiderna som timmar och minuter, till exempel 11:30.`
     }
     if (opensAt === closesAt) {
-      return `${name}: öppnings- och stängningstiden kan inte vara samma.`
+      return `${name}: öppnar och stänger på samma tid. Ändra en av tiderna.`
     }
   }
   const sorted = [...intervals].sort((a, b) => a.opensAt.localeCompare(b.opensAt))

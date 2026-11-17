@@ -1,5 +1,5 @@
 import type { LayoutElement } from './layoutApi'
-import { errorText } from '../../shared/errors'
+import { describeError, errorText, rememberError } from '../../shared/errors'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { sameData, useLiveRefresh } from '../../shared/live'
 import { LayoutPrep } from './LayoutPrep'
@@ -2095,9 +2095,11 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
         setRemovedBookings(outcome.removed?.length ? { text: outcome.text, locationId: loc, bookings: outcome.removed } : null)
       }
     } catch (err) {
-      setLayoutError(
-        `Utkastet sparades men publicerades inte. ${errorText(err, '')}`,
-      )
+      // Hela texten registreras, så felrutan får Rapportera till Booqy när felet är vårt.
+      const info = describeError(err, '')
+      const text = `Utkastet sparades men publicerades inte. ${info.text}`
+      rememberError({ ...info, text })
+      setLayoutError(text)
     } finally {
       setPublishing(false)
     }

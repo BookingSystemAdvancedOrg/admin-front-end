@@ -201,7 +201,7 @@ export function DishModal({
   const availableUntil = scheduleValue(untilInput, initialUntil, initial?.availableUntil ?? null, timeZone)
   const orderError =
     availableFrom && availableUntil && Date.parse(availableUntil) <= Date.parse(availableFrom)
-      ? 'Slutet måste vara efter starten.'
+      ? 'Sluttiden är före starttiden. Välj en sluttid efter starten.'
       : null
   const scheduleWarning =
     !orderError && availableUntil && Date.parse(availableUntil) <= openedAt

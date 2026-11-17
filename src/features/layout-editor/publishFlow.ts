@@ -1,5 +1,5 @@
 import { ApiError } from '../../shared/api'
-import { errorText } from '../../shared/errors'
+import { describeError, rememberError } from '../../shared/errors'
 import { activateLayoutVersion, BookingsOnRemovedTablesError, listLayoutVersions } from './layoutApi'
 import type { LayoutActivation, PublishedLayoutSnapshot, RemovedTableBooking } from './layoutApi'
 
@@ -71,11 +71,15 @@ export async function activatePublished(
   const published = versions?.find((v) => v.version === version)
 
   if (!activation) {
-    const detail = errorText(failure, '')
+    const info = describeError(failure, '')
+    const detail = info.text
     const guidance = /aktivera/i.test(detail) ? '' : ' Aktivera den under Versioner.'
+    const text = `Version ${version} är publicerad men inte aktiverad: ${detail}${guidance}`
+    // Hela texten registreras, så felrutan får Rapportera till Booqy när felet är vårt.
+    rememberError({ ...info, text })
     return {
       ok: false,
-      text: `Version ${version} är publicerad men inte aktiverad: ${detail}${guidance}`,
+      text,
       label,
       ...(failure instanceof BookingsOnRemovedTablesError ? { removed: failure.bookings } : {}),
     }

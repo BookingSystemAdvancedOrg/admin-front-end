@@ -91,7 +91,7 @@ export function intervalsError(intervals: BusinessHoursInterval[]): string | nul
   if (intervals.length === 0) return 'Lägg till minst en öppettid.'
   for (const { opensAt, closesAt } of intervals) {
     if (!TIME.test(opensAt) || !TIME.test(closesAt)) return 'Skriv tiderna som timmar och minuter, till exempel 11:30.'
-    if (opensAt >= closesAt) return 'Öppningstiden måste vara före stängningstiden.'
+    if (opensAt >= closesAt) return 'Stängningstiden är före öppningstiden. Ändra tiderna, till exempel 11:00 till 22:00.'
   }
   const sorted = [...intervals].sort((a, b) => a.opensAt.localeCompare(b.opensAt))
   for (let i = 1; i < sorted.length; i++) {

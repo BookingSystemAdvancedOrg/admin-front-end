@@ -258,7 +258,7 @@ export function validateDishPrice(price: number): string | null {
  * found". De behöver helt olika texter.
  */
 export const MENU_ROUTES_MISSING_MESSAGE =
-  'Menyn går inte att ändra här än, så gästernas meny visas i stället. Felet ligger hos Booqy. Rapportera det till Booqy.'
+  `Menyn går inte att ändra här än, så gästernas meny visas i stället. ${BOOQY_FAULT}`
 
 export function isMenuRoutesMissing(err: unknown): boolean {
   return (

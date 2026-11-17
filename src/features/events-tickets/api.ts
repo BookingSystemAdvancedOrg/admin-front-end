@@ -1,3 +1,4 @@
+import { NOT_YOUR_FAULT } from '../../shared/errors'
 import { apiFetch } from '../../shared/api'
 
 /** Evenemang och biljetter (CONTRACTS.md 6.K). Redigering är ägarens; personalen ser listan och sköter insläppet. */
@@ -148,7 +149,7 @@ export const ERRORS: Record<string, string> = {
   invalid_state: 'Det går inte längre, för evenemanget är inställt eller redan över.',
   has_sales: 'Biljettypen har redan sålts, så den kan inte tas bort.',
   changed_retry: 'Någon annan ändrade samtidigt. Nu visas det senaste. Gör din ändring igen.',
-  stripe_unavailable: 'Pengarna kunde inte betalas tillbaka just nu, för Stripe svarar inte. Det är inte ert fel. Försök igen om en stund.',
+  stripe_unavailable: `Pengarna kunde inte betalas tillbaka just nu, för Stripe svarar inte. ${NOT_YOUR_FAULT}`,
   owner_only: 'Bara restaurangens ägare kan göra det här. Be ägaren göra det.',
   too_many_tickets: 'Max biljetter per köp ska vara 1 till 20. Skriv till exempel 6.',
   unknown_image: 'Bilden hittades inte. Välj bilden igen.',

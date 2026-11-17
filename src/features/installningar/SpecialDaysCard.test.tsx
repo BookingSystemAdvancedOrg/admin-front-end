@@ -77,7 +77,7 @@ describe('SpecialDaysCard', () => {
     await user.clear(screen.getByLabelText('Stänger (tid 1)'))
     await user.type(screen.getByLabelText('Stänger (tid 1)'), '16:00')
     await user.click(screen.getByRole('button', { name: 'Lägg till' }))
-    expect(screen.getByRole('alert')).toHaveTextContent('Öppningstiden måste vara före stängningstiden.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Stängningstiden är före öppningstiden. Ändra tiderna, till exempel 11:00 till 22:00.')
   })
 
   it('refuses a date twice and a passed date', async () => {

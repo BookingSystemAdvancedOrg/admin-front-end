@@ -165,8 +165,8 @@ export function validateRules(rules: BookingTimeRules, graceMinutes: number): st
     if (w.weekdays.length === 0) return `${label}: välj minst en veckodag.`
     if (!/^\d\d:\d\d$/.test(w.startTime) || !/^\d\d:\d\d$/.test(w.endTime)) return `${label}: skriv tiderna som timmar och minuter, till exempel 11:30.`
     if (minute(w.startTime) % STEP || minute(w.endTime) % STEP) return `${label}: tiderna ska gå jämnt i kvartar, till exempel 11:15.`
-    if (w.startTime >= w.endTime) return `${label}: starttiden måste vara före sluttiden (inte över midnatt).`
-    if (w.dateFrom && w.dateTo && w.dateFrom > w.dateTo) return `${label}: från-datumet måste vara före till-datumet.`
+    if (w.startTime >= w.endTime) return `${label}: sluttiden är före starttiden. En specialtid kan inte gå över midnatt. Välj till exempel 11:00 till 14:00.`
+    if (w.dateFrom && w.dateTo && w.dateFrom > w.dateTo) return `${label}: till-datumet är före från-datumet. Byt plats på datumen.`
     if (!durationOk(w.durationMinutes)) return `${label}: längden ska vara 15 minuter till 8 timmar, i steg om 15 minuter.`
     const wExt = extensionError(w.extension, label)
     if (wExt) return wExt
@@ -178,13 +178,13 @@ export function validateRules(rules: BookingTimeRules, graceMinutes: number): st
     for (const b of rules.windows.slice(i + 1)) {
       const a = rules.windows[i]
       if (windowsOverlap(a, b) && !winner(a, b)) {
-        return `${a.name} och ${b.name} överlappar med samma prioritet - ge den som ska gälla högre prioritet.`
+        return `${a.name} och ${b.name} gäller samma tid och har samma prioritet. Ge den som ska gälla en högre prioritet.`
       }
     }
   }
   const shortest = Math.min(rules.defaultMinutes, ...rules.windows.map((w) => w.durationMinutes))
   if (graceMinutes >= shortest) {
-    return `Väntetiden för sena gäster (${graceMinutes} min) måste vara kortare än den kortaste bokningen (${minutesLabel(shortest)}).`
+    return `Väntetiden för sena gäster (${graceMinutes} min) är för lång. Gör den kortare än den kortaste bokningen (${minutesLabel(shortest)}).`
   }
   return null
 }

@@ -1,3 +1,4 @@
+import { NOT_YOUR_FAULT } from '../../shared/errors'
 import { apiFetch } from '../../shared/api'
 
 /** Google-profil: öppettider till Google och omdömesförfrågningar (CONTRACTS.md 6.D). Bara för ägaren. */
@@ -81,7 +82,7 @@ export const ERRORS: Record<string, string> = {
   already_linked: 'Den Google-platsen hör redan till en annan restaurang. Välj en annan plats.',
   no_google_account: 'Det här Google-kontot har ingen Google-profil. Välj ett annat konto, eller tryck Vi har ingen Google-profil.',
   google_rejected: 'Google sa nej. Försök igen om en stund, eller tryck Vi har ingen Google-profil.',
-  google_unavailable: 'Google svarar inte just nu. Det är inte ert fel. Försök igen om en stund.',
+  google_unavailable: `Google svarar inte just nu. ${NOT_YOUR_FAULT}`,
   invalid_state: 'Kopplingen tog för lång tid och avbröts. Koppla Google igen.',
   invalid_delay: 'Väntetiden ska vara mellan 30 minuter och 3 dygn. Välj till exempel 2 timmar.',
   invalid_days: 'Tiden mellan två förfrågningar ska vara 30 till 365 dagar. Skriv till exempel 90.',

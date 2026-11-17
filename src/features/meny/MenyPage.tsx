@@ -390,7 +390,7 @@ export default function MenyPage() {
         ) : (
         <>
         {readOnly && (
-          <ErrorNote text={MENU_ROUTES_MISSING_MESSAGE} />
+          <ErrorNote text={MENU_ROUTES_MISSING_MESSAGE} info={{ text: MENU_ROUTES_MISSING_MESSAGE, actor: 'booqy', code: 'route_not_found', status: 404 }} />
         )}
         <section className="stats-row" aria-label="Menyns siffror">
           {tiles.map((t, i) => (

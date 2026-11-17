@@ -99,7 +99,7 @@ describe('validateDayIntervals / validateBusinessHours', () => {
     expect(validateDayIntervals('friday', [{ opensAt: '17:00', closesAt: '00:00' }])).toBeNull()
     expect(
       validateDayIntervals('monday', [{ opensAt: '11:00', closesAt: '11:00' }]),
-    ).toBe('Måndag: öppnings- och stängningstiden kan inte vara samma.')
+    ).toBe('Måndag: öppnar och stänger på samma tid. Ändra en av tiderna.')
   })
 
   it('lets only the last interval of a day run past midnight', () => {
@@ -167,7 +167,7 @@ describe('validateDayIntervals / validateBusinessHours', () => {
   it('validateBusinessHours checks every day and names it in Swedish', () => {
     const hours = emptyBusinessHours()
     hours.wednesday = [{ opensAt: '18:00', closesAt: '18:00' }]
-    expect(validateBusinessHours(hours)).toBe('Onsdag: öppnings- och stängningstiden kan inte vara samma.')
+    expect(validateBusinessHours(hours)).toBe('Onsdag: öppnar och stänger på samma tid. Ändra en av tiderna.')
     hours.wednesday = [{ opensAt: '18:00', closesAt: '02:00' }]
     expect(validateBusinessHours(hours)).toBeNull()
   })

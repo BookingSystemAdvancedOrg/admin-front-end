@@ -1,3 +1,4 @@
+import { NOT_YOUR_FAULT } from '../../shared/errors'
 import { apiFetch } from '../../shared/api'
 
 /** Presentkort (CONTRACTS.md 6.E). Översikten och inställningarna är ägarens; gästen löser in kortet när hen beställer online. */
@@ -55,7 +56,7 @@ export const ERRORS: Record<string, string> = {
   invalid_validity: 'Giltighetstiden ska vara 12 till 60 månader. Skriv till exempel 24.',
   invalid_amount: 'Beloppen ska vara 100 till 5 000 kr. Skriv till exempel 500.',
   // E10: koden är redan bytt men mejlet gick inte ut; ett nytt försök byter koden igen och skickar den.
-  notification_unavailable: 'Mejlet kunde inte skickas just nu. Det är inte ert fel. Försök igen om en stund.',
+  notification_unavailable: `Mejlet kunde inte skickas just nu. ${NOT_YOUR_FAULT}`,
 }
 
 const TZ = 'Europe/Stockholm'

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../shared/api'
+import { errorInfo } from '../../shared/errors'
 import { BookingsOnRemovedTablesError } from './layoutApi'
 import type { LayoutActivation, PublishedLayoutSnapshot } from './layoutApi'
 
@@ -62,6 +63,8 @@ describe('activatePublished (first publish)', () => {
     expect(activate).toHaveBeenCalledTimes(3)
     expect(out.ok).toBe(false)
     expect(out.text).toMatch(/^Version 1 är publicerad men inte aktiverad: /)
+    // Hela texten är registrerad, så felrutan visar Rapportera till Booqy.
+    expect(errorInfo(out.text)?.actor).toBe('booqy')
   })
 
   it('does not retry a 403, says it is not active and refreshes the label', async () => {

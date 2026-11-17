@@ -77,8 +77,6 @@ export const WHATS_NEW: WhatsNewEntry[] = [
   { n: 65, text: 'Återbetalningar till gäster' },
   { n: 66, text: 'Inställningar, tydligare status' },
   { n: 67, text: 'Tydligare felmeddelanden' },
-  { n: 68, text: 'Notan vid bordet' },
-  { n: 69, text: 'Statistik betalt utanför' },
   { n: 70, text: 'Webbplats borttagen' },
 ]
 

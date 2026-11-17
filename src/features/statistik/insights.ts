@@ -70,9 +70,6 @@ export interface InsightsSummary {
   tableOrders: number
   orderRevenue?: number
   tableRevenue?: number
-  /** Bordsnotor betalda utanför Booqy (egen terminal, kontant, Swish), öre. Ingår inte i orderRevenue. */
-  paidOutsideRevenue?: number
-  paidOutsideOrders?: number
   pickupRevenue?: number
   avgOrder?: number | null
   prepMinutes: number | null

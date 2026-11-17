@@ -266,9 +266,6 @@ export function sampleSummary(from: string, to: string, today: string, f: Pick<F
   s.party = [...party.entries()].sort((a, b) => a[0] - b[0]).map(([size, bookings]) => ({ size, bookings }))
   s.bySize = Object.keys(sizeOpen).filter((k) => sizeOpen[k] > 0).map((size) => ({ size, occupancy: fill(sizeBooked[size], sizeOpen[size]) }))
   s.avgOrder = s.orders ? Math.round((s.orderRevenue ?? 0) / s.orders) : null
-  // Exemplet: ungefär var sjätte bordsnota betald i egen terminal eller kontant.
-  s.paidOutsideOrders = Math.round((s.tableOrders ?? 0) / 6)
-  s.paidOutsideRevenue = s.tableOrders ? Math.round(((s.tableRevenue ?? 0) / s.tableOrders) * s.paidOutsideOrders) : 0
   s.prepMinutes = prepN ? Math.round((prep / prepN) * 10) / 10 : null
   s.latePct = pct(late, prepN)
   s.cateringRevenue = s.catering.cateringRevenue ?? 0
@@ -308,7 +305,7 @@ export function sampleSummary(from: string, to: string, today: string, f: Pick<F
   return s
 }
 
-const MONEY = ['revenue', 'orderRevenue', 'cateringRevenue', 'tableRevenue', 'pickupRevenue', 'paidOutsideRevenue', 'avgOrder', 'feesCharged', 'feesRefunded'] as const
+const MONEY = ['revenue', 'orderRevenue', 'cateringRevenue', 'tableRevenue', 'pickupRevenue', 'avgOrder', 'feesCharged', 'feesRefunded'] as const
 
 /** Personalens vy av exemplet: samma siffror utan belopp, som servern gör. */
 function withoutMoney(s: InsightsSummary): InsightsSummary {

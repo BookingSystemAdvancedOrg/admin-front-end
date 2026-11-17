@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useTables } from '../../shared/tables'
 import { TableQrModal } from '../table-qr/TableQr'
-import { InfoTooltip } from '../../shared/InfoTooltip'
 import { getLocation, updateLocation } from './locationApi'
 import type { OrderingPolicy } from './locationApi'
 import '../bestallningar/bestallningar.css'
@@ -185,14 +184,9 @@ export function OrderingCard({
               onClick={() => set('pickup', !form.pickup)} />
           </div>
           <div className="toggle-row">
-            <span className="form-field-label-row">
-              <p className="toggle-row-label" id="ordering-table-label">
-                Beställning vid bordet (QR-kod)
-              </p>
-              <InfoTooltip label="Beställning vid bordet">
-                Gästen beställer med QR-koden på bordet och betalar innan hen går.
-              </InfoTooltip>
-            </span>
+            <p className="toggle-row-label" id="ordering-table-label">
+              Beställning vid bordet (QR-kod)
+            </p>
             <button type="button" role="switch" aria-checked={form.table}
               aria-labelledby="ordering-table-label" className="switch" disabled={disabled}
               onClick={() => set('table', !form.table)} />

@@ -813,16 +813,6 @@ export default function StatistikPage() {
                         <dd>{fmtPct(s.latePct)}</dd>
                         {money && (
                           <>
-                            <dt>
-                              Betalt utanför Booqy{' '}
-                              <InfoTooltip label="Betalt utanför Booqy">
-                                Bordsnotor som gästen betalat på annat sätt än i Booqy. Ingår inte i Beställningar intäkt.
-                              </InfoTooltip>
-                            </dt>
-                            <dd>
-                              {fmtKr(s.paidOutsideRevenue ?? 0)}
-                              {s.paidOutsideOrders ? `, ${fmtInt(s.paidOutsideOrders)} beställningar` : ''}
-                            </dd>
                             <dt>Avgifter, uteblivna och sena</dt>
                             <dd>
                               {fmtKr(s.feesCharged)}

@@ -12,7 +12,7 @@ const path = require('node:path')
 
 const config = require('./desktop.config.json')
 const { setUpUpdates } = require('./updates.cjs')
-const { refreshMenuEntry } = require('./linux-menu.cjs')
+const { refreshMenuEntry, readIconSet } = require('./linux-menu.cjs')
 const target = readTarget()
 const START_URL = new URL(target.url)
 const ORIGIN = START_URL.origin
@@ -273,7 +273,9 @@ function refreshLinuxMenu() {
     const icon = fs.readFileSync(path.join(__dirname, 'window-icon.png'))
     // Filnamnet är också fönstrets WM_CLASS och app_id (desktopName, build.mjs).
     const slug = require('./package.json').name
-    refreshMenuEntry({ home: os.homedir(), slug, wmClass: slug, icon })
+    // Storlekarna i AppImagen (APPDIR sätts av AppImagens körning).
+    const iconSet = readIconSet(process.env.APPDIR, slug)
+    refreshMenuEntry({ home: os.homedir(), slug, wmClass: slug, icon, iconSet })
   } catch {
     /* menyn är bara kosmetik: får aldrig stoppa appen */
   }

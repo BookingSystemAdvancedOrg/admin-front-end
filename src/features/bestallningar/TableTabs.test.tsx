@@ -138,6 +138,42 @@ describe('TableTabsBoard', () => {
     expect(onChanged).toHaveBeenCalled()
   })
 
+  it('keeps the amount the staff saw when a new order arrives while the dialog is open', async () => {
+    const user = userEvent.setup()
+    markPaidOutside.mockRejectedValueOnce(new ApiError(409, 'bill_changed', { code: 'bill_changed', fromServer: true }))
+    const onChanged = vi.fn()
+    const props = { locationId: 'loc-1', today: '2026-11-17', canAct: true, isOwner: false, onChanged }
+    const { rerender } = render(<TableTabsBoard {...props} tabs={[tab()]} />)
+    await user.click(screen.getByRole('button', { name: 'Markera som betald' }))
+    const dialog = screen.getByRole('dialog')
+    chooseOption(within(dialog).getByRole('combobox'), 'cash')
+    // Listan uppdateras (var tionde sekund): en efterrätt har kommit till bordet.
+    const grown = tab({ amount: 53500, count: 3, orders: [order('a', 12, 25000), order('b', 13, 20000), order('c', 14, 8500)] })
+    rerender(<TableTabsBoard {...props} tabs={[grown]} />)
+    expect(within(dialog).getByText('450 kr')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Spara' }))
+    expect(markPaidOutside).toHaveBeenLastCalledWith('loc-1', expect.objectContaining({ amount: 45000 }),
+      { method: 'cash', expectedAmount: 45000 })
+    // Servern: notan har ändrats. Nu visas den nya notan och personalen sparar igen.
+    expect(await within(dialog).findByText('535 kr')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Spara' }))
+    expect(markPaidOutside).toHaveBeenLastCalledWith('loc-1', expect.objectContaining({ amount: 53500 }),
+      { method: 'cash', expectedAmount: 53500 })
+  })
+
+  it('a write-off keeps the amount the owner saw when the list refreshes', async () => {
+    const user = userEvent.setup()
+    const props = { locationId: 'loc-1', today: '2026-11-17', canAct: true, isOwner: true, onChanged: vi.fn() }
+    const { rerender } = render(<TableTabsBoard {...props} tabs={[tab()]} />)
+    await user.click(screen.getByRole('button', { name: 'Skriv av' }))
+    rerender(<TableTabsBoard {...props} tabs={[tab({ amount: 53500, count: 3 })]} />)
+    const dialog = screen.getByRole('dialog')
+    await user.type(within(dialog).getByLabelText('Varför?'), 'Gästen gick')
+    await user.click(within(dialog).getByRole('button', { name: 'Skriv av 450 kr' }))
+    expect(writeOff).toHaveBeenCalledWith('loc-1', expect.objectContaining({ amount: 45000 }),
+      { reason: 'Gästen gick', expectedAmount: 45000 })
+  })
+
   it('the owner writes a bill off with a reason', async () => {
     const user = userEvent.setup()
     renderBoard({ isOwner: true })

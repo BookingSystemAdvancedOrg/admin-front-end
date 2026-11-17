@@ -3,8 +3,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { Bar, Button, Card, Field, Input, Modal, toast } from '@booqy/brand'
 import { BrandSelect as Select } from '../../shared/Select'
 import { AdminTopbar } from '../../shared/AdminTopbar'
-import { errorText } from '../../shared/errors'
+import { booqyFaultText, errorText } from '../../shared/errors'
 import { currentLocation, useTenant } from '../../shared/tenant'
+import { NoLocation } from '../../shared/NoLocation'
+import { PlanLocked } from '../../shared/PlanLocked'
+import { Loading } from '../../shared/Loading'
+import { useConfirm } from '../../shared/ConfirmDialog'
+import { SkelLines, SkelRows } from '../../shared/Skeleton'
 import { listUsers, type User } from '../installningar/usersApi'
 import {
   ERRORS,
@@ -28,7 +33,7 @@ import {
   type Row,
 } from './api'
 import './personalliggare.css'
-import { ErrorActions } from '../../shared/ErrorNote'
+import { ErrorActions, ErrorNote } from '../../shared/ErrorNote'
 import { DateInput, TimeInput } from '../../shared/DateInput'
 
 type Tab = 'idag' | 'personer' | 'rattelser' | 'exportera'
@@ -45,14 +50,10 @@ export default function PersonalliggarePage() {
 
   return (
     <>
-      <AdminTopbar title="Personalliggare (under granskning)" />
+      {/* Granskningen står i bannern på sidan, inte i rubriken (som annars bryts på flera rader). */}
+      <AdminTopbar title="Personalliggare" />
       <main className="admin-main">
-        {enabled ? <Ledger /> : (
-          <section className="admin-card table-card">
-            <h2 className="card-title">Ingår inte i er plan</h2>
-            <p className="cell-muted">Kontakta oss för att uppgradera.</p>
-          </section>
-        )}
+        {enabled ? <Ledger /> : <PlanLocked />}
       </main>
     </>
   )
@@ -70,7 +71,7 @@ function Ledger() {
     try {
       setPersons(await listPersons())
     } catch (err) {
-      toast(errorText(err, 'Kunde inte hämta personerna.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Personerna kunde inte visas.', ERRORS), { tone: 'danger' })
     }
   }, [owner])
 
@@ -79,7 +80,8 @@ function Ledger() {
     if (owner) setPersons(await listPersons())
   }, { enabled: owner })
 
-  if (!location) return <p className="cell-muted">Hämtar…</p>
+  // Restaurangen är hämtad men har ingen (eller en borttagen) plats: inget att vänta på.
+  if (!location) return state.tenant ? <NoLocation /> : <Loading label="Hämtar" />
   const items = [
     { key: 'idag', label: 'Idag' },
     ...(owner ? [{ key: 'personer', label: 'Personer' }, { key: 'rattelser', label: 'Rättelser' }, { key: 'exportera', label: 'Exportera' }] : []),
@@ -113,18 +115,23 @@ function Today({ locationId, owner, persons }: { locationId: string; owner: bool
   const [busy, setBusy] = useState<string | null>(null)
   const [forPerson, setForPerson] = useState('')
   const [inspecting, setInspecting] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
       setData(await getDay(locationId, day))
+      setLoadError(null)
     } catch (err) {
-      toast(errorText(err, 'Kunde inte hämta liggaren.', ERRORS), { tone: 'danger' })
+      setLoadError(errorText(err, 'Liggaren kunde inte visas.', ERRORS))
     }
   }, [locationId, day])
 
   useEffect(() => { void load() }, [load])
   // Levande: in- och utcheckningar från en annan enhet syns av sig själva.
-  useLiveRefresh(async () => setData(await getDay(locationId, day)), { enabled: busy === null })
+  useLiveRefresh(async () => {
+    setData(await getDay(locationId, day))
+    setLoadError(null)
+  }, { enabled: busy === null })
 
   async function register(kind: Kind, personId?: string) {
     setBusy(`${kind}:${personId ?? 'me'}`)
@@ -133,7 +140,7 @@ function Today({ locationId, owner, persons }: { locationId: string; owner: bool
       toast(`${row.name || 'Personen'} är ${kind === 'check_in' ? 'incheckad' : 'utcheckad'} ${clock(row.eventTime)}.`, { tone: 'success' })
       await load()
     } catch (err) {
-      toast(errorText(err, 'Det gick inte att registrera.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Registreringen sparades inte.', ERRORS), { tone: 'danger' })
     } finally {
       setBusy(null)
     }
@@ -146,6 +153,7 @@ function Today({ locationId, owner, persons }: { locationId: string; owner: bool
 
   return (
     <>
+      {loadError ? <ErrorNote text={loadError} onRetry={() => void load()} /> : null}
       <Card title="Checka in eller ut">
         {me ? (
           <div className="pl-me">
@@ -189,7 +197,7 @@ function Today({ locationId, owner, persons }: { locationId: string; owner: bool
       </Card>
 
       <Card title="På plats nu" actions={<Button variant="secondary" onClick={() => setInspecting(true)}>Visa för Skatteverket</Button>}>
-        {!data ? <p className="cell-muted">Hämtar…</p> : data.present.length === 0 ? <p className="admin-empty">Ingen incheckad.</p> : (
+        {!data ? (loadError ? null : <div role="status" aria-label="Hämtar liggaren"><SkelRows n={3} cols={2} /></div>) : data.present.length === 0 ? <p className="admin-empty">Ingen incheckad.</p> : (
           <ul className="pl-present">
             {data.present.map((p) => <li key={p.personId}><span>{p.name}</span><span className="cell-muted">sedan {clock(p.since)}</span></li>)}
           </ul>
@@ -241,14 +249,17 @@ function Rows({ rows, identity = false }: { rows: Row[]; identity?: boolean }) {
 function InspectionView({ locationId, day, onClose }: { locationId: string; day: string; onClose: () => void }) {
   const [view, setView] = useState<Inspection | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
-    getInspection(locationId, day).then(setView).catch((err) => setError(errorText(err, 'Kunde inte visa liggaren.', ERRORS)))
-  }, [locationId, day])
+    getInspection(locationId, day).then(setView).catch((err) => setError(errorText(err, 'Liggaren kunde inte visas.', ERRORS)))
+  }, [locationId, day, attempt])
 
   return (
     <Modal open size="wide" title="Personalliggare" onClose={onClose} closeLabel="Stäng">
-      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : !view ? <p className="cell-muted">Hämtar…</p> : (
+      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} onRetry={() => { setError(null); setAttempt((n) => n + 1) }} />}>{error}</Bar> : !view ? (
+        <div role="status" aria-label="Hämtar liggaren"><SkelLines n={6} /></div>
+      ) : (
         <div className="pl-inspection">
           <dl className="pl-facts">
             <dt>Arbetsgivare</dt><dd>{view.employer.legalName} ({view.employer.orgNumber || 'organisationsnummer saknas'})</dd>
@@ -311,6 +322,20 @@ function PersonForm({ person, onClose, onSaved }: { person: Person; onClose: () 
 
   useEffect(() => { listUsers().then(setUsers).catch(() => setUsers([])) }, [])
 
+  // Ändrat något? Då frågar klick utanför, Escape och Stäng först. Avbryt stänger direkt.
+  const [initialSnapshot] = useState(() => JSON.stringify(person))
+  const [confirmEl, ask] = useConfirm()
+  const requestClose = () => {
+    if (saving) return
+    if (JSON.stringify(draft) === initialSnapshot) {
+      onClose()
+      return
+    }
+    void ask({ title: 'Släng ändringarna?', confirmLabel: 'Släng', cancelLabel: 'Fortsätt redigera', danger: true }).then(
+      (ok) => ok && onClose(),
+    )
+  }
+
   async function save(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -323,7 +348,7 @@ function PersonForm({ person, onClose, onSaved }: { person: Person; onClose: () 
       toast('Sparat.', { tone: 'success' })
       await onSaved()
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara.', ERRORS))
+      setError(errorText(err, 'Personen sparades inte.', ERRORS))
     } finally {
       setSaving(false)
     }
@@ -335,7 +360,8 @@ function PersonForm({ person, onClose, onSaved }: { person: Person; onClose: () 
   }
 
   return (
-    <Modal open title={person.personId ? person.name : 'Ny person'} onClose={onClose} closeLabel="Stäng">
+    <>
+    <Modal open title={person.personId ? person.name : 'Ny person'} onClose={requestClose} closeLabel="Stäng">
       <form className="form-grid" onSubmit={save} aria-label="Person">
         {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
         <Field label="Namn" required>
@@ -372,6 +398,8 @@ function PersonForm({ person, onClose, onSaved }: { person: Person; onClose: () 
         </Bar>
       </form>
     </Modal>
+    {confirmEl}
+    </>
   )
 }
 
@@ -386,12 +414,14 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
   const [time, setTime] = useState('')
   const [reason, setReason] = useState('')
   const [saving, setSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
       setData(await getDay(locationId, day))
+      setLoadError(null)
     } catch (err) {
-      toast(errorText(err, 'Kunde inte hämta liggaren.', ERRORS), { tone: 'danger' })
+      setLoadError(errorText(err, 'Liggaren kunde inte visas.', ERRORS))
     }
   }, [locationId, day])
 
@@ -416,7 +446,7 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
       setReason('')
       await load()
     } catch (err) {
-      toast(errorText(err, 'Kunde inte spara rättelsen.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Rättelsen sparades inte.', ERRORS), { tone: 'danger' })
     } finally {
       setSaving(false)
     }
@@ -456,7 +486,8 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
         </form>
       </Card>
       <Card title="Registreringar den dagen">
-        {!data ? <p className="cell-muted">Hämtar…</p> : data.records.length === 0 ? <p className="admin-empty">Inga registreringar.</p> : (
+        <ErrorNote text={loadError} onRetry={() => void load()} />
+        {!data ? (loadError ? null : <div role="status" aria-label="Hämtar registreringarna"><SkelRows n={3} cols={2} /></div>) : data.records.length === 0 ? <p className="admin-empty">Inga registreringar.</p> : (
           <ul className="pl-present">
             {data.records.map((r) => (
               <li key={`${r.seq}-${r.correctedBySeq ?? 0}`}>
@@ -478,9 +509,11 @@ function Export({ locationId }: { locationId: string }) {
   const [to, setTo] = useState(today)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ count: number; chainOk: boolean; firstBadSeq?: number } | null>(null)
+  // Kedjan bröts: Booqys fel, med Försök igen och Rapportera till Booqy.
+  const [broken, setBroken] = useState<string | null>(null)
 
-  async function run(e: React.FormEvent) {
-    e.preventDefault()
+  async function run(e?: React.FormEvent) {
+    e?.preventDefault()
     setBusy(true)
     try {
       const file = await exportLedger(locationId, from, to)
@@ -491,8 +524,9 @@ function Export({ locationId }: { locationId: string }) {
       a.click()
       URL.revokeObjectURL(url)
       setResult(file)
+      setBroken(file.chainOk ? null : booqyFaultText(`Liggaren ser ändrad ut från rad ${file.firstBadSeq ?? '?'}. Lämna inte ut filen.`, 'ledger_chain_broken'))
     } catch (err) {
-      toast(errorText(err, 'Kunde inte exportera.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Exporten blev inte klar.', ERRORS), { tone: 'danger' })
     } finally {
       setBusy(false)
     }
@@ -511,7 +545,7 @@ function Export({ locationId }: { locationId: string }) {
       {result ? (
         result.chainOk
           ? <Bar variant="banner" tone="success">{result.count} rader. Kontrollen visar att inget i liggaren har ändrats.</Bar>
-          : <Bar variant="banner" tone="danger">{result.count} rader. Kontrollen hittade ett fel vid rad {result.firstBadSeq}. Kontakta Booqy innan du lämnar ut filen.</Bar>
+          : <Bar variant="banner" tone="danger" action={<ErrorActions text={broken} onRetry={() => void run()} />}>{result.count} rader. {broken}</Bar>
       ) : null}
     </Card>
   )

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from '../../shared/api'
+import { errorInfo } from '../../shared/errors'
 import { campaignSlug, cleanTemplate, errorText, percent, templateErrors, trackedLink } from './marketingApi'
 import type { TemplateInput } from './marketingApi'
 
@@ -26,7 +27,7 @@ describe('templateErrors', () => {
       ],
     })
     expect(errors).toHaveLength(4)
-    expect(errors[0]).toMatch(/Ämnesraden/)
+    expect(errors[0]).toMatch(/ämnesrad/)
   })
 
   it('requires at least one block', () => {
@@ -81,5 +82,18 @@ describe('errorText', () => {
   it('explains a send refused for a missing legal sender in Swedish', () => {
     const err = new ApiError(400, 'the restaurant has no legal name and address for the footer')
     expect(errorText(err, 'Kunde inte skicka.')).toMatch(/^Företagsnamn och adress saknas/)
+  })
+})
+
+describe('errorText who acts', () => {
+  it('a 403 links to the plan, and a Booqy-only fix gets the report button', () => {
+    const plan = errorText(new ApiError(403, 'forbidden', { fromServer: true }), 'Kampanjen sparades inte.')
+    expect(errorInfo(plan)?.link?.to).toBe('/installningar#abonnemang')
+    const legal = errorText(
+      new ApiError(400, 'the restaurant has no legal name and address for the footer', { fromServer: true }),
+      'Kampanjen skickades inte.',
+    )
+    expect(legal).toMatch(/Be Booqy/)
+    expect(errorInfo(legal)?.actor).toBe('booqy')
   })
 })

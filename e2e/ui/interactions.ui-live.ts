@@ -60,7 +60,7 @@ for (const vp of VIEWPORTS.filter((v) => ['390', '1440'].includes(v.name))) {
     })
 
     test(`info tooltip inside window ${vp.name} ${theme}`, async ({ page }, info) => {
-      await go(page, '/installningar')
+      await go(page, '/installningar#profil')
       const issues: Issue[] = []
       const triggers = page.locator('.info-tooltip-trigger')
       const n = await triggers.count()

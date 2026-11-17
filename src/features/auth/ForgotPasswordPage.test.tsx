@@ -55,7 +55,7 @@ describe('ForgotPasswordPage', () => {
     await user.type(screen.getByLabelText('E-post'), 'anna')
     await user.click(screen.getByRole('button', { name: 'Skicka länk' }))
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Fyll i en giltig e-postadress.')
+    expect(screen.getByRole('alert')).toHaveTextContent('E-postadressen ser fel ut. Skriv den så här: namn@restaurang.se.')
     expect(requestPasswordReset).not.toHaveBeenCalled()
   })
 

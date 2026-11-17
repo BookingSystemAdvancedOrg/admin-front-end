@@ -68,12 +68,16 @@ describe('help knowledge base', () => {
     }
   })
 
-  it('gives every settings row and settings tab a data-help id (CI coverage check)', () => {
+  it('gives every settings row and settings branch a data-help id (CI coverage check)', () => {
     const settings = readFileSync(join(SRC, 'features/installningar/InstallningarPage.tsx'), 'utf8')
     const rows = [...settings.matchAll(/<div className="settings-row"[^>]*>/g)].map((m) => m[0])
     expect(rows.length).toBeGreaterThan(5)
     for (const row of rows) expect(row, 'settings-row utan data-help').toMatch(/data-help="settings:\w+:\w+"/)
-    expect(settings).toMatch(/data-help=\{`settings-tab:\$\{t\}`\}/)
+    // Varje gren har minst en rad med sitt id, så att hjälpen kan lysa upp grenen.
+    const { tabLabel } = settingsSections()
+    for (const branch of Object.keys(tabLabel)) expect(settings, branch).toContain(`data-help="settings:${branch}:`)
+    const tree = readFileSync(join(SRC, 'features/installningar/SettingsTreeView.tsx'), 'utf8')
+    expect(tree).toMatch(/data-help=\{`settings-tab:\$\{t\}`\}/)
     // Menyvalen får sitt id från nav.ts i AdminLayout.
     expect(readFileSync(join(SRC, 'shared/AdminLayout.tsx'), 'utf8')).toMatch(/data-help=\{`nav:\$\{item\.to\}`\}/)
   })
@@ -91,8 +95,8 @@ describe('help knowledge base', () => {
     expect(missing, `data-help som inte finns: ${missing.join(', ')}`).toEqual([])
   })
 
-  it('names settings as the menu does: Inställningar, group, tab', () => {
-    // Menyn visar först grupperna (Verksamheten), sedan flikarna (Restaurang).
+  it('names settings as the page does: Inställningar, tree, branch', () => {
+    // Sidan visar först träden (Gäster), sedan grenarna (Notiser).
     const { tabLabel, groupOf } = settingsSections()
     const paths = new Set(Object.entries(tabLabel).map(([tab, label]) => `${groupOf[tab]}, ${label}`))
     const groups = new Set(Object.values(groupOf))
@@ -102,14 +106,14 @@ describe('help knowledge base', () => {
       for (const m of text.matchAll(/Inställningar, (?!välj |så )([^.:]+?)(?=[.:]|$| om | så )/g)) {
         const rest = m[1].replace(/,$/, '')
         const ok = [...paths].some((p) => rest === p || rest.startsWith(`${p}, `)) || groups.has(rest)
-        expect(ok, `"${text}" pekar inte på en grupp och flik i Inställningar`).toBe(true)
+        expect(ok, `"${text}" pekar inte på ett träd och en gren i Inställningar`).toBe(true)
       }
       for (const m of text.matchAll(/Inställningar,? (?:och )?välj ([^.]+)\./g)) {
         const pick = /^(.+) och sedan (.+)$/.exec(m[1])
-        expect(pick && paths.has(`${pick[1]}, ${pick[2]}`), `"${text}": skriv "Öppna Inställningar, välj <grupp> och sedan <flik>."`).toBe(true)
+        expect(pick && paths.has(`${pick[1]}, ${pick[2]}`), `"${text}": skriv "Öppna Inställningar, välj <träd> och sedan <gren>."`).toBe(true)
       }
       for (const name of tabNames) {
-        expect(text.includes(`Inställningar, ${name}`) && !groups.has(name), `"${text}" saknar gruppen före ${name}`).toBe(false)
+        expect(text.includes(`Inställningar, ${name}`) && !groups.has(name), `"${text}" saknar trädet före ${name}`).toBe(false)
       }
     }
   })

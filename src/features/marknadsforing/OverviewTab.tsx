@@ -1,3 +1,4 @@
+import { Icon } from '../../shared/Icon'
 import { useLiveRefresh } from '../../shared/live'
 import { useEffect, useState } from 'react'
 import { ChartTip } from '../../shared/ChartTip'
@@ -109,6 +110,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
   const key = `${days}|${forLocation ?? ''}`
   // Svaret hör till ett visst urval; ett annat urval visar laddning direkt.
   const [result, setResult] = useState<{ key: string; data?: Overview; error?: string } | null>(null)
+  const [attempt, setAttempt] = useState(0)
   const data = result?.key === key ? (result.data ?? null) : null
   const error = result?.key === key ? (result.error ?? null) : null
 
@@ -117,11 +119,11 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
     const { from, to } = range(days)
     getOverview(from, to, forLocation)
       .then((d) => !cancelled && setResult({ key, data: d }))
-      .catch((err: unknown) => !cancelled && setResult({ key, error: errorText(err, 'Kunde inte hämta statistiken.') }))
+      .catch((err: unknown) => !cancelled && setResult({ key, error: errorText(err, 'Statistiken kunde inte visas.') }))
     return () => {
       cancelled = true
     }
-  }, [days, forLocation, key])
+  }, [days, forLocation, key, attempt])
   // Levande: nya prenumeranter och utskick räknas in av sig själva.
   useLiveRefresh(async () => {
     const { from, to } = range(days)
@@ -170,7 +172,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
         )}
       </div>
 
-      <ErrorNote text={error} />
+      <ErrorNote text={error} onRetry={() => { setResult(null); setAttempt((n) => n + 1) }} />
       {!data && !error && <OverviewSkeleton />}
 
       {data && (
@@ -240,7 +242,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
               <div className="card-head">
                 <h2 className="card-title">Kampanjer och länkar</h2>
                 <button type="button" className="link-btn" onClick={() => onOpen('lankar')}>
-                  Skapa spårbar länk →
+                  Skapa spårbar länk <Icon name="arrow-right" size={16} />
                 </button>
               </div>
               {data.campaigns.length === 0 ? (

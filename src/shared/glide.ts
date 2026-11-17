@@ -16,7 +16,6 @@
  * 'always' = blir en glidare direkt, även innan något är valt (snabbval).
  */
 const GROUPS: [string, 'track' | 'bare', 'always'?][] = [
-  ['.settings-nav .settings-tabs', 'bare'],
   ['.mk-tabs', 'track'],
   ['.mk-segment', 'track'],
   ['.sk-chips', 'track'],

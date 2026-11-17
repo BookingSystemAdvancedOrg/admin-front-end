@@ -20,17 +20,17 @@ describe('settingsProblem', () => {
     minGuests: 15, requestExpiryHours: 72, ownerReminderHours: 24, offerValidDays: 7, signReminderDaysBefore: 2 }
   it('accepts valid settings', () => expect(settingsProblem(base)).toBeNull())
   it('rejects bands out of order', () =>
-    expect(settingsProblem({ ...base, deliveryBands: [{ upToKm: 20, price: 1 }, { upToKm: 20, price: 2 }] })).toMatch(/stigande/))
+    expect(settingsProblem({ ...base, deliveryBands: [{ upToKm: 20, price: 1 }, { upToKm: 20, price: 2 }] })).toMatch(/fel ordning/))
   it('rejects gaps and overlaps in lead time', () => {
     const gap = [{ fromGuests: 15, toGuests: 40, days: 3 }, { fromGuests: 50, toGuests: null, days: 7 }]
     const open = [{ fromGuests: 15, toGuests: null, days: 3 }, { fromGuests: 50, toGuests: null, days: 7 }]
-    expect(settingsProblem({ ...base, leadTimeRules: gap })).toMatch(/luckor/)
-    expect(settingsProblem({ ...base, leadTimeRules: open })).toMatch(/luckor/)
+    expect(settingsProblem({ ...base, leadTimeRules: gap })).toMatch(/glappar/)
+    expect(settingsProblem({ ...base, leadTimeRules: open })).toMatch(/glappar/)
     const ok = [{ fromGuests: 41, toGuests: null, days: 7 }, { fromGuests: 15, toGuests: 40, days: 3 }]
     expect(settingsProblem({ ...base, leadTimeRules: ok })).toBeNull()
   })
   it('rejects reminders after the expiry', () =>
-    expect(settingsProblem({ ...base, ownerReminderHours: 72 })).toMatch(/innan/))
+    expect(settingsProblem({ ...base, ownerReminderHours: 72 })).toMatch(/för sent/))
 })
 
 describe('parseKronor', () => {

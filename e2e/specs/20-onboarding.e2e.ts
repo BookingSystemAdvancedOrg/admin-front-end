@@ -39,7 +39,7 @@ test.describe('Admin: first login and onboarding', () => {
 
   test('opening hours: every day 10:00-23:30, saved and reloaded', async ({ page }, info) => {
     const w = watch(page)
-    await page.goto('/installningar')
+    await page.goto('/installningar#dagar')
     await ready(page, 'Inställningar')
     for (const day of ['Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag', 'Söndag']) {
       const opens = page.getByLabel(`${day} öppnar`)
@@ -60,7 +60,7 @@ test.describe('Admin: first login and onboarding', () => {
   })
 
   test('opening hours past midnight (bar open Saturday 18:00-02:00) can be saved', async ({ page }, info) => {
-    await page.goto('/installningar')
+    await page.goto('/installningar#dagar')
     await ready(page, 'Inställningar')
     await page.getByLabel('Lördag öppnar').first().fill('18:00')
     await page.getByLabel('Lördag stänger').first().fill('02:00')

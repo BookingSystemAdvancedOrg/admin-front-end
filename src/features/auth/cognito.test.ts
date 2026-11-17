@@ -100,7 +100,7 @@ describe('cognito.ts (backend /auth/* client)', () => {
     )
 
     await expect(signIn('anna@kallarestaurang.se', 'wrong')).rejects.toThrow(
-      'Fel e-post eller lösenord.',
+      'E-postadressen eller lösenordet stämmer inte.',
     )
   })
 
@@ -109,7 +109,7 @@ describe('cognito.ts (backend /auth/* client)', () => {
     vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'))
 
     await expect(signIn('anna@kallarestaurang.se', 'pw')).rejects.toThrow(
-      'Kunde inte nå inloggningstjänsten',
+      'Vi når inte inloggningen just nu',
     )
   })
 
@@ -280,6 +280,84 @@ describe('cognito.ts (backend /auth/* client)', () => {
     await expect(fresh.getCurrentSession()).resolves.toBeNull()
     expect(vi.mocked(fetch).mock.calls.map((c) => String(c[0]))).toEqual(['https://api.test/auth/logout'])
     expect(localStorage.getItem('booqy-logout-pending')).toBeNull()
+  })
+
+  it('a fresh login drops a logout that never reached the server, so the next start keeps the new session', async () => {
+    const { signIn, signOut } = await import('./cognito')
+    vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'))
+    await expect(signOut()).resolves.toBe(false)
+    expect(localStorage.getItem('booqy-logout-pending')).toBe('1')
+
+    vi.mocked(fetch).mockReset()
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(200, {
+        status: 'authenticated',
+        authenticationResult: { AccessToken: 'access', IdToken: idToken, ExpiresIn: 3600, TokenType: 'Bearer' },
+      }),
+    )
+    await signIn('anna@kallarestaurang.se', 'pw')
+    expect(localStorage.getItem('booqy-logout-pending')).toBeNull()
+
+    vi.resetModules()
+    vi.mocked(fetch).mockReset()
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(200, {
+        status: 'authenticated',
+        authenticationResult: { AccessToken: 'again', IdToken: idToken, ExpiresIn: 3600, TokenType: 'Bearer' },
+      }),
+    )
+    const fresh = await import('./cognito')
+    await expect(fresh.getAccessToken()).resolves.toBe('again')
+    expect(vi.mocked(fetch).mock.calls.map((c) => String(c[0]))).toEqual(['https://api.test/auth/refresh'])
+  })
+
+  it('a login that finishes while a failing logout is still running keeps its session', async () => {
+    const { signIn, signOut, getAccessToken } = await import('./cognito')
+    let failLogout!: () => void
+    vi.mocked(fetch).mockImplementation((url) =>
+      String(url).endsWith('/auth/logout')
+        ? new Promise<Response>((_, reject) => (failLogout = () => reject(new TypeError('Failed to fetch'))))
+        : Promise.resolve(
+            jsonResponse(200, {
+              status: 'authenticated',
+              authenticationResult: { AccessToken: 'new', IdToken: idToken, ExpiresIn: 3600, TokenType: 'Bearer' },
+            }),
+          ),
+    )
+    const out = signOut()
+    await signIn('anna@kallarestaurang.se', 'pw')
+    failLogout()
+    await expect(out).resolves.toBe(false)
+    // Inget andra utloggningsförsök efter inloggningen: den nya cookien får vara kvar.
+    expect(vi.mocked(fetch).mock.calls.filter((c) => String(c[0]).endsWith('/auth/logout'))).toHaveLength(1)
+    expect(localStorage.getItem('booqy-logout-pending')).toBeNull()
+    await expect(getAccessToken()).resolves.toBe('new')
+  })
+
+  it('a login that finishes while logout waits on a refresh sends no logout', async () => {
+    const { signIn, signOut, getCurrentSession, getAccessToken } = await import('./cognito')
+    const auth = (access: string, expiresIn: number) =>
+      jsonResponse(200, {
+        status: 'authenticated',
+        authenticationResult: { AccessToken: access, IdToken: idToken, ExpiresIn: expiresIn, TokenType: 'Bearer' },
+      })
+    vi.mocked(fetch).mockResolvedValue(auth('old', -10))
+    await signIn('anna@kallarestaurang.se', 'pw')
+    let finishRefresh!: () => void
+    vi.mocked(fetch).mockImplementation((url) =>
+      String(url).endsWith('/auth/refresh')
+        ? new Promise<Response>((resolve) => (finishRefresh = () => resolve(jsonResponse(401, { error: 'x' }))))
+        : Promise.resolve(auth('new', 3600)),
+    )
+    const refresh = getCurrentSession()
+    await new Promise((r) => setTimeout(r, 0))
+    const out = signOut()
+    await signIn('anna@kallarestaurang.se', 'pw')
+    finishRefresh()
+    await refresh
+    await expect(out).resolves.toBe(false)
+    expect(vi.mocked(fetch).mock.calls.filter((c) => String(c[0]).endsWith('/auth/logout'))).toHaveLength(0)
+    await expect(getAccessToken()).resolves.toBe('new')
   })
 
   it('getCurrentSession clears the session when refresh fails', async () => {
@@ -506,12 +584,12 @@ describe('forgot password (backend /auth/forgot-password and /auth/reset-passwor
   it.each([
     [400, 'invalid code', /fungerar inte längre/, true],
     [400, 'code expired', /gått ut/, true],
-    [400, 'invalid reset request', /stämmer inte/, true],
-    [400, 'password does not meet requirements', /uppfyller inte kraven/, false],
-    [400, 'username must be an email address', /giltig e-postadress/, false],
+    [400, 'invalid reset request', /passar inte ihop med kontot/, true],
+    [400, 'password does not meet requirements', /följer inte reglerna/, false],
+    [400, 'username must be an email address', /namn@restaurang\.se/, false],
     [403, 'account_disabled', /avstängt/, false],
-    [429, 'too many attempts', /För många försök/, false],
-    [502, 'authentication service unavailable', /Ingen kontakt/, false],
+    [429, 'too many attempts', /för många försök/, false],
+    [502, 'authentication service unavailable', /svarar inte just nu/, false],
   ])('turns %i %s into a Swedish message', async (status, code, text, needsNewLink) => {
     const { PasswordResetError, confirmPasswordReset } = await import('./cognito')
     vi.mocked(fetch).mockResolvedValue(jsonResponse(status, { error: code }))
@@ -527,7 +605,7 @@ describe('forgot password (backend /auth/forgot-password and /auth/reset-passwor
     const { requestPasswordReset } = await import('./cognito')
     vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'))
 
-    await expect(requestPasswordReset('a@b.se')).rejects.toThrow('Kunde inte nå inloggningstjänsten')
+    await expect(requestPasswordReset('a@b.se')).rejects.toThrow('Vi når inte inloggningen just nu')
   })
 
   it('points a sign-in that needs a reset to "Glömt lösenordet?"', async () => {
@@ -541,6 +619,6 @@ describe('forgot password (backend /auth/forgot-password and /auth/reset-passwor
     const { signIn } = await import('./cognito')
     vi.mocked(fetch).mockResolvedValue(jsonResponse(403, { error: 'account_disabled' }))
 
-    await expect(signIn('a@b.se', 'pw')).rejects.toThrow('Kontot är avstängt')
+    await expect(signIn('a@b.se', 'pw')).rejects.toThrow('Ditt konto är avstängt')
   })
 })

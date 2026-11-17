@@ -9,7 +9,7 @@ import './guide.css'
 /**
  * Introduktionsguide ("tutorial") för nya användare av admin-appen.
  *
- * Guiden går sida för sida (Översikt, Inställningar flik för flik, Meny,
+ * Guiden går sida för sida (Översikt, Inställningar del för del, Meny,
  * Bokningar, Beställningar, Catering, Layout) och visar en bubbla i taget
  * vid knappen eller delen den förklarar (element med `data-tour="..."`);
  * resten av sidan tonas ner. "Nästa" visar nästa bubbla, "Hoppa över"

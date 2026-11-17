@@ -44,7 +44,7 @@ export function TemplatesTab() {
         setTemplates(t)
         setStarters(s)
       })
-      .catch((err: unknown) => setError(errorText(err, 'Kunde inte hämta mallarna.')))
+      .catch((err: unknown) => setError(errorText(err, 'Mallarna kunde inte visas.')))
   }, [])
 
   useEffect(load, [load])
@@ -62,7 +62,7 @@ export function TemplatesTab() {
       setNotice('Mallen är sparad.')
       load()
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara mallen.'))
+      setError(errorText(err, 'Mallen sparades inte.'))
     } finally {
       setSaving(false)
     }
@@ -76,7 +76,7 @@ export function TemplatesTab() {
       setNotice('Mallen är borttagen.')
       load()
     } catch (err) {
-      setError(errorText(err, 'Kunde inte ta bort mallen.'))
+      setError(errorText(err, 'Mallen togs inte bort.'))
     }
   }
 

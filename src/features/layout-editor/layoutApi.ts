@@ -1,4 +1,4 @@
-import { errorText as commonError } from '../../shared/errors'
+import { BOOQY_FAULT, errorText as commonError } from '../../shared/errors'
 import { apiFetch, ApiError } from '../../shared/api'
 import { WORKSPACE, tableSize } from './data'
 import type {
@@ -410,7 +410,7 @@ function basePath(locationId: string): string {
  */
 function toFriendlyLayoutError(err: unknown): Error {
   if (!(err instanceof ApiError)) {
-    return err instanceof Error ? err : new Error('Ett okänt fel inträffade.')
+    return err instanceof Error ? err : new Error('Något gick fel hos Booqy. Försök igen om en stund.')
   }
   console.error(`[Layout] ${err.status}: ${err.message}`)
   // offline, utloggad, pausat konto, för många försök: samma text överallt
@@ -420,26 +420,26 @@ function toFriendlyLayoutError(err: unknown): Error {
 
   switch (err.status) {
     case 400:
-      return new ApiError(400, 'Layouten godtogs inte: något bord eller element har ett ogiltigt värde. Kontrollera storlek, platser och namn och försök igen.', { code: err.code, field: err.field })
+      return new ApiError(400, 'Layouten sparades inte. Kolla storlek, platser och namn på borden och spara igen.', { code: err.code, field: err.field })
     case 401:
-      return new ApiError(401, 'Du är inte inloggad längre. Logga in igen.')
+      return new ApiError(401, 'Du har loggats ut. Logga in igen och gör om det du höll på med.')
     case 403:
-      return new ApiError(403, 'Du har inte behörighet att ändra layouten.')
+      return new ApiError(403, 'Ditt konto får inte ändra layouten. Be restaurangens ägare om hjälp.')
     case 404:
-      return new ApiError(404, 'Elementet har tagits bort på en annan plats. Spara igen, så läggs dina ändringar ovanpå det som finns nu.')
+      return new ApiError(404, 'Någon annan tog bort en del av layouten. Spara igen, så läggs dina ändringar ovanpå.')
     case 409:
       return new ApiError(
         409,
-        'Layouten ändrades samtidigt av någon annan. Spara igen, så läggs dina ändringar ovanpå det senaste.',
+        'Någon annan ändrade layouten samtidigt. Spara igen, så läggs dina ändringar ovanpå.',
         { code: err.code },
       )
     case 503:
       return new ApiError(
         503,
-        'Layouttjänsten är tillfälligt otillgänglig. Försök igen.',
+        `Layouten går inte att nå just nu. ${BOOQY_FAULT}`,
       )
     default:
-      return new ApiError(err.status, commonError(err, 'Kunde inte spara layouten.'), { code: err.code })
+      return new ApiError(err.status, commonError(err, 'Något gick fel med layouten.'), { code: err.code })
   }
 }
 
@@ -543,6 +543,47 @@ export type LayoutActivation =
       cutoverAt: string
     }
 
+/** En bokning efter bytet på bord som den nya versionen tar bort. */
+export interface RemovedTableBooking {
+  reservationId: string
+  /** Lokalt datum, YYYY-MM-DD. */
+  date: string
+  /** Lokal tid, HH:MM. */
+  startTime: string
+  /** Borden (i den gällande ritningen) som försvinner. */
+  tableIds: string[]
+}
+
+const REMOVED_TABLES_TEXT =
+  'Det finns bokningar på bord som inte finns i den nya layouten. ' +
+  'Flytta bokningarna till andra bord, eller lägg tillbaka borden. Aktivera sedan igen.'
+
+/** 409 bookings_on_removed_tables: texten plus bokningarna som måste flyttas först. */
+export class BookingsOnRemovedTablesError extends ApiError {
+  bookings: RemovedTableBooking[]
+
+  constructor(message: string, bookings: RemovedTableBooking[]) {
+    super(409, message, { code: 'bookings_on_removed_tables' })
+    this.name = 'BookingsOnRemovedTablesError'
+    this.bookings = bookings
+  }
+}
+
+function removedTableBookings(raw: unknown): RemovedTableBooking[] {
+  if (!Array.isArray(raw)) return []
+  return raw.flatMap((item): RemovedTableBooking[] => {
+    if (!item || typeof item !== 'object') return []
+    const r = item as Record<string, unknown>
+    if (typeof r.date !== 'string' || typeof r.startTime !== 'string') return []
+    return [{
+      reservationId: typeof r.reservationId === 'string' ? r.reservationId : '',
+      date: r.date,
+      startTime: r.startTime,
+      tableIds: Array.isArray(r.tableIds) ? r.tableIds.map(String) : [],
+    }]
+  })
+}
+
 /**
  * POST .../layout/versions/{n}/activate - utan body.
  *
@@ -564,14 +605,21 @@ export async function activateLayoutVersion(
       { method: 'POST' },
     )
   } catch (err) {
-    // 409 betyder här något annat än i resten av layout-API:t: ett byte till
-    // en annan version är redan inbokat. Den generiska "ändrades samtidigt"
-    // hade pekat användaren helt fel.
+    // 409 betyder här något annat än i resten av layout-API:t. Antingen
+    // ligger bokningar efter bytet på bord som den nya versionen tar bort
+    // (egen kod och lista), eller så är ett byte till en annan version redan
+    // inbokat. Den generiska "ändrades samtidigt" hade pekat användaren fel.
+    if (err instanceof ApiError && err.status === 409 && err.code === 'bookings_on_removed_tables') {
+      throw new BookingsOnRemovedTablesError(
+        REMOVED_TABLES_TEXT,
+        removedTableBookings(err.details?.reservations),
+      )
+    }
     if (err instanceof ApiError && err.status === 409) {
       throw new ApiError(
         409,
-        'Ett versionsbyte är redan inbokat. Vänta tills det genomförts, ' +
-          'eller aktivera om den version som redan väntar.',
+        'Ett byte till en annan version väntar redan. Vänta tills det är klart, ' +
+          'eller aktivera den väntande versionen igen.',
         { code: err.code },
       )
     }

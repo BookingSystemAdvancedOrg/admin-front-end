@@ -48,7 +48,7 @@ describe('NotificationsCard', () => {
     render(<NotificationsCard tenant={tenant()} isOwner />)
     await user.click(screen.getByRole('switch', { name: 'SMS till gästen' }))
     await user.click(screen.getByRole('button', { name: 'Spara notiser' }))
-    expect(screen.getByRole('alert')).toHaveTextContent('Ange ett avsändarnamn')
+    expect(screen.getByRole('alert')).toHaveTextContent('Skriv ett avsändarnamn')
     expect(updateTenant).not.toHaveBeenCalled()
   })
 

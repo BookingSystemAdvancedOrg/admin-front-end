@@ -221,7 +221,7 @@ function setUpUpdates({ baseUrl, getWindow, flush = () => Promise.resolve() }) {
       fallbackToast(latest) // .deb
     } catch (err) {
       log(err?.message ?? err)
-      if (manual) await info('Kunde inte söka efter uppdateringar', 'Kontrollera internetanslutningen och försök igen.')
+      if (manual) await info('Det gick inte att leta efter uppdateringar', 'Kolla att wifi eller mobildata är på och försök igen.')
     } finally {
       busy = false
     }

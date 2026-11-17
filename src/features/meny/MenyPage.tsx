@@ -42,6 +42,8 @@ import { isCentre } from './imageFocus'
 import { SkelBlock, SkelTableRows } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { Select } from '../../shared/Select'
+import { NoLocation } from '../../shared/NoLocation'
+import { useConfirm } from '../../shared/ConfirmDialog'
 
 /**
  * `base` är rätten som dialogen öppnades med (dina ändringar räknas mot den,
@@ -63,6 +65,7 @@ type ModalState = { mode: 'add' } | { mode: 'edit'; id: string; base: Dish; upda
 export default function MenyPage() {
   const { sub } = useAuth()
   const { locationId, resolving: resolvingLocation } = useLocationId(sub)
+  const [confirmEl, ask] = useConfirm()
   const timeZone = currentLocation(useTenant())?.timezone || DEFAULT_TIMEZONE
   // Schemats status räknas om varje minut, så badgen byter utan omladdning.
   const [now, setNow] = useState(() => new Date())
@@ -131,13 +134,13 @@ export default function MenyPage() {
           } catch (fallbackErr) {
             if (!cancelled) {
               setLoadError(
-                errorText(fallbackErr, 'Kunde inte hämta menyn.'),
+                errorText(fallbackErr, 'Menyn kunde inte visas.'),
               )
             }
           }
         } else {
           setLoadError(
-            errorText(err, 'Kunde inte hämta menyn.'),
+            errorText(err, 'Menyn kunde inte visas.'),
           )
         }
       })
@@ -208,7 +211,7 @@ export default function MenyPage() {
 
   /** Den senaste sparade kategorilistan (CategoriesModal lägger ihop vid 409). */
   async function latestCategories() {
-    if (!locationId) throw new Error('Ingen plats vald.')
+    if (!locationId) throw new Error('Välj en plats först.')
     const res = await getMenuCategories(locationId)
     const latest = { categories: res.categories?.length ? res.categories : DEFAULT_CATEGORIES, version: res.version ?? 0 }
     setCategories(latest.categories)
@@ -270,7 +273,7 @@ export default function MenyPage() {
       replaceDish(toDish(saved))
     } catch (err) {
       setDishes((prev) => prev.map((d) => (d.id === dish.id && d.active === next ? { ...d, active: dish.active } : d)))
-      setRowError(errorText(err, `Kunde inte ${next ? 'aktivera' : 'pausa'} ${dish.name}.`))
+      setRowError(errorText(err, `${dish.name} ${next ? 'aktiverades' : 'pausades'} inte.`))
     } finally {
       markBusy(dish.id, false)
     }
@@ -278,7 +281,7 @@ export default function MenyPage() {
 
   async function removeDish(dish: Dish) {
     if (!locationId) return
-    if (!window.confirm(`Ta bort ${dish.name} permanent?`)) return
+    if (!(await ask({ title: `Ta bort ${dish.name}?`, text: 'Går inte att ångra.', confirmLabel: 'Ta bort', danger: true }))) return
     setRowError(null)
     markBusy(dish.id, true)
     try {
@@ -286,7 +289,7 @@ export default function MenyPage() {
       edits.current += 1
       setDishes((prev) => prev.filter((d) => d.id !== dish.id))
     } catch (err) {
-      setRowError(errorText(err, 'Kunde inte ta bort rätten.'))
+      setRowError(errorText(err, 'Rätten togs inte bort.'))
     } finally {
       markBusy(dish.id, false)
     }
@@ -372,7 +375,7 @@ export default function MenyPage() {
             Kategorier
           </button>
           <CtaButton
-            label="+ Lägg till rätt"
+            label="Lägg till rätt"
             win="Kör!"
             data-tour="menu-add"
             disabled={!canEdit}
@@ -382,13 +385,12 @@ export default function MenyPage() {
         }
       />
       <div className="admin-main">
-        {!locationId && !resolvingLocation && (
-          <p className="form-error" role="alert">
-            Ingen plats än. Spara restaurangen under Inställningar först.
-          </p>
-        )}
+        {!locationId && !resolvingLocation ? (
+          <NoLocation />
+        ) : (
+        <>
         {readOnly && (
-          <ErrorNote text={MENU_ROUTES_MISSING_MESSAGE} />
+          <ErrorNote text={MENU_ROUTES_MISSING_MESSAGE} info={{ text: MENU_ROUTES_MISSING_MESSAGE, actor: 'booqy', code: 'route_not_found', status: 404 }} />
         )}
         <section className="stats-row" aria-label="Menyns siffror">
           {tiles.map((t, i) => (
@@ -513,8 +515,11 @@ export default function MenyPage() {
             </table>
           </div>
         </section>
+        </>
+        )}
       </div>
 
+      {confirmEl}
       {modal && (
         <DishModal
           key={modal.mode === 'edit' ? modal.id : 'new'}

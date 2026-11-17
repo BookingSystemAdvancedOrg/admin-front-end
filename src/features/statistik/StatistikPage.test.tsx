@@ -158,6 +158,6 @@ describe('StatistikPage', () => {
     fetchInsights.mockRejectedValue(new Error('nope'))
     renderAt()
     const alerts = await screen.findAllByRole('alert')
-    expect(alerts.map((a) => a.textContent).join(' ')).toMatch(/Kunde inte hämta dagens siffror.*Kunde inte hämta siffrorna/)
+    expect(alerts.map((a) => a.textContent).join(' ')).toMatch(/Dagens siffror kunde inte visas.*Siffrorna kunde inte visas/)
   })
 })

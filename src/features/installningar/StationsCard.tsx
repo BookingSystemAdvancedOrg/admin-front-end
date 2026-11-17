@@ -7,7 +7,7 @@ import { InfoTooltip } from '../../shared/InfoTooltip'
 import { Select } from '../../shared/Select'
 
 /**
- * Inställningar > Skrivare > Stationer: vart bongarna går.
+ * Inställningar, Beställning, Skrivare och stationer: vart bongarna går.
  *
  * En station (Kök, Bar, Kall kök, Kassa/disk ...) får noll eller flera
  * skrivare; utan skrivare syns bongarna bara på köksskärmen. Varje

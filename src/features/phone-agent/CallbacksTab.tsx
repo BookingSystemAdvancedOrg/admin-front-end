@@ -1,6 +1,8 @@
 import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { Button, Card, toast } from '@booqy/brand'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { SkelRows } from '../../shared/Skeleton'
 import { errorText } from '../../shared/errors'
 import { ERRORS, closeCallback, listCallbacks, when, type Callback } from './api'
 
@@ -12,18 +14,23 @@ export default function CallbacksTab({ locationId }: { locationId: string }) {
 export function CallbackList({ locationId, title, compact = false }: { locationId: string; title: string; compact?: boolean }) {
   const [items, setItems] = useState<Callback[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
       setItems(await listCallbacks(locationId))
+      setError(null)
     } catch (err) {
-      if (!compact) toast(errorText(err, 'Kunde inte hämta återuppringningarna.', ERRORS), { tone: 'danger' })
-      setItems([])
+      // Ett fel är inte en tom lista: listan står kvar (eller hämtas inte), felet visas i kortet.
+      setError(errorText(err, 'Återuppringningarna kunde inte visas.', ERRORS))
     }
-  }, [locationId, compact])
+  }, [locationId])
 
   useEffect(() => { void load() }, [load])
-  useLiveRefresh(async () => setItems(await listCallbacks(locationId)))
+  useLiveRefresh(async () => {
+    setItems(await listCallbacks(locationId))
+    setError(null)
+  })
 
   async function close(cb: Callback) {
     setBusy(cb.callbackId)
@@ -31,17 +38,18 @@ export function CallbackList({ locationId, title, compact = false }: { locationI
       await closeCallback(locationId, cb)
       await load()
     } catch (err) {
-      toast(errorText(err, 'Det gick inte.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Återuppringningen markerades inte som klar.', ERRORS), { tone: 'danger' })
       await load()
     } finally {
       setBusy(null)
     }
   }
 
-  if (compact && (!items || items.length === 0)) return null
+  if (compact && !error && (!items || items.length === 0)) return null
   return (
-    <Card title={<>{title} <span className="status-badge" aria-label={`${items?.length ?? 0} väntar`}>{items?.length ?? 0}</span></>}>
-      {!items ? <p className="cell-muted">Hämtar…</p> : items.length === 0 ? <p className="admin-empty">Inga återuppringningar.</p> : (
+    <Card title={<>{title} {items ? <span className="status-badge" aria-label={`${items.length} väntar`}>{items.length}</span> : null}</>}>
+      <ErrorNote text={error} onRetry={() => void load()} />
+      {!items ? (error ? null : <div role="status" aria-label="Hämtar återuppringningarna"><SkelRows n={3} cols={2} /></div>) : items.length === 0 ? <p className="admin-empty">Inga återuppringningar.</p> : (
         <ul className="telefon-callbacks">
           {items.map((cb) => (
             <li key={cb.callbackId}>

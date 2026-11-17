@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import WebbplatsPage, { POLL_LIMIT, waitForPublish } from './WebbplatsPage'
 import * as api from './api'
 import { ApiError } from '../../shared/api'
+import { MemoryRouter } from 'react-router-dom'
 
 let tenant: Record<string, unknown>
 vi.mock('../../shared/tenant', () => ({
@@ -33,16 +34,59 @@ beforeEach(() => {
 describe('WebbplatsPage', () => {
   it('says the feature is not in the plan while it is off', () => {
     tenant = { role: 'owner_user', entitlements: { maxLocations: null, features: {} } }
-    render(<WebbplatsPage />)
+    render(<MemoryRouter><WebbplatsPage /></MemoryRouter>)
     expect(screen.getByRole('heading', { level: 1, name: 'Webbplats' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Ingår inte i er plan' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Se abonnemanget/ })).toHaveAttribute('href', '/installningar#abonnemang')
     expect(api.getSite).not.toHaveBeenCalled()
+  })
+
+  it('Försök igen after a failed first load fetches the site again', async () => {
+    tenant = on
+    vi.mocked(api.getSite).mockRejectedValueOnce(new ApiError(500, 'internal_error', { code: 'internal_error', fromServer: true }))
+    render(<WebbplatsPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    expect(await screen.findByText('Utkast · inte publicerad än')).toBeInTheDocument()
+    expect(api.getSite).toHaveBeenCalledTimes(2)
+  })
+
+  it('an offline first load reloads by itself when the connection is back', async () => {
+    tenant = on
+    vi.mocked(api.getSite).mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    render(<WebbplatsPage />)
+    expect(await screen.findByText(/Kolla att wifi eller mobildata är på/)).toBeInTheDocument()
+    window.dispatchEvent(new Event('online'))
+    expect(await screen.findByText('Utkast · inte publicerad än')).toBeInTheDocument()
+    expect(screen.queryByText(/Kolla att wifi eller mobildata är på/)).not.toBeInTheDocument()
+  })
+
+  it('Försök igen after a failed publish publishes again', async () => {
+    tenant = on
+    vi.mocked(api.publish).mockRejectedValueOnce(new ApiError(500, 'internal_error', { code: 'internal_error', fromServer: true }))
+      .mockResolvedValue({ publishId: 'p', status: 'running' })
+    vi.mocked(api.publishStatus).mockResolvedValue({ status: 'done', versionNo: 1 })
+    render(<WebbplatsPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Publicera' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    await waitFor(() => expect(api.publish).toHaveBeenCalledTimes(2))
+  })
+
+  it('a failed versions load says so instead of nothing published', async () => {
+    tenant = on
+    vi.mocked(api.listVersions).mockRejectedValueOnce(new ApiError(503, 'service_unavailable', { code: 'service_unavailable', fromServer: true }))
+    render(<WebbplatsPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Versioner' }))
+    expect(await screen.findByText(/Booqy svarar inte just nu/)).toBeInTheDocument()
+    expect(screen.queryByText('Inget är publicerat än.')).not.toBeInTheDocument()
+    vi.mocked(api.listVersions).mockResolvedValueOnce({ versions: [] })
+    fireEvent.click(screen.getByRole('button', { name: 'Försök igen' }))
+    expect(await screen.findByText('Inget är publicerat än.')).toBeInTheDocument()
   })
 
   it('tells staff it is for the owner', () => {
     tenant = { role: 'staff_user', entitlements: { maxLocations: null, features: { siteBuilder: true } } }
     render(<WebbplatsPage />)
-    expect(screen.getByRole('heading', { name: 'Bara för ägare' })).toBeInTheDocument()
+    expect(screen.getByText(/Be ägaren om behörighet/)).toBeInTheDocument()
     expect(api.getSite).not.toHaveBeenCalled()
   })
 
@@ -57,6 +101,19 @@ describe('WebbplatsPage', () => {
     const [saved, version] = vi.mocked(api.saveDraft).mock.calls[0]
     expect(version).toBe(3)
     expect(saved.pages[0].blocks.map((b) => b.type)).toEqual(['menu', 'hero'])
+  })
+
+  it('has no colour pickers and saves the stored theme untouched', async () => {
+    tenant = on
+    vi.mocked(api.saveDraft).mockResolvedValue({ doc, version: 4, basedOn: null })
+    render(<WebbplatsPage />)
+    expect(await screen.findByText('Utkast · inte publicerad än')).toBeInTheDocument()
+    expect(screen.queryByText('Huvudfärg')).not.toBeInTheDocument()
+    expect(screen.queryByText('Accentfärg')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Flytta ner Stor rubrik' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Spara utkast' }))
+    await waitFor(() => expect(api.saveDraft).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(api.saveDraft).mock.calls[0][0].theme).toEqual(doc.theme)
   })
 
   it('publishes and waits until the version is live', async () => {
@@ -76,7 +133,7 @@ describe('WebbplatsPage', () => {
     render(<WebbplatsPage />)
     fireEvent.change(await screen.findByLabelText('Sidans namn'), { target: { value: 'Hem' } })
     fireEvent.click(screen.getByRole('button', { name: 'Spara utkast' }))
-    expect(await screen.findByText('En länk pekar på en sida som inte finns.')).toBeInTheDocument()
+    expect(await screen.findByText('En länk går till en sida som inte finns. Välj en annan sida.')).toBeInTheDocument()
     expect(screen.getByText('Meny (kontrollera)')).toBeInTheDocument()
     const item = screen.getByText('Meny (kontrollera)').closest('li')!
     expect(item).toHaveClass('webbplats-block--invalid')
@@ -110,6 +167,19 @@ describe('WebbplatsPage', () => {
     expect(api.freeSlug('Meny', [])).toBe('meny-2')
     expect(api.freeSlug('Sida 2', ['sida-2'])).toBe('sida-2-2')
     expect(api.locate('/pages/1/slug')).toEqual({ page: 1, slug: true })
+  })
+
+  it('offers the booking, order and catering buttons only with that feature', () => {
+    const plan = (features: Record<string, boolean>) => ({ entitlements: { maxLocations: null, features } }) as never
+    const none = api.addableBlocks(plan({ siteBuilder: true }))
+    expect(none).not.toContain('bookingCta')
+    expect(none).not.toContain('orderCta')
+    expect(none).not.toContain('cateringCta')
+    expect(none).toContain('hero')
+    const all = api.addableBlocks(plan({ siteBuilder: true, reservations: true, ordering: true, catering: true }))
+    expect(all).toEqual(expect.arrayContaining(['bookingCta', 'orderCta', 'cateringCta', 'contact']))
+    expect(api.addableBlocks(plan({ ordering: true }))).toEqual(expect.arrayContaining(['orderCta']))
+    expect(api.addableBlocks(plan({ ordering: true }))).not.toContain('cateringCta')
   })
 
   it('moves blocks without losing any', () => {

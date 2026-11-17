@@ -4,11 +4,14 @@ import PersonalliggarePage from './PersonalliggarePage'
 import * as api from './api'
 import { ApiError } from '../../shared/api'
 import { chooseOption } from '../../test/select'
+import { MemoryRouter } from 'react-router-dom'
 
 let tenant: Record<string, unknown>
+const BISTRO = { locationId: 'loc-1', name: 'Bistro', address: null, timezone: null }
+let place: typeof BISTRO | null = BISTRO
 vi.mock('../../shared/tenant', () => ({
   useTenant: () => ({ tenant, locationId: 'loc-1' }),
-  currentLocation: () => ({ locationId: 'loc-1', name: 'Bistro', address: null, timezone: null }),
+  currentLocation: () => place,
 }))
 vi.mock('../../shared/AdminTopbar', () => ({ AdminTopbar: ({ title }: { title: string }) => <h1>{title}</h1> }))
 vi.mock('../installningar/usersApi', () => ({ listUsers: vi.fn().mockResolvedValue([]) }))
@@ -27,6 +30,7 @@ const day = (over: Partial<api.Day> = {}): api.Day => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  place = BISTRO
   vi.mocked(api.getDay).mockResolvedValue(day())
   vi.mocked(api.listPersons).mockResolvedValue([
     { personId: 'p1', name: 'Sara', personalIdentity: '19900101-0017', userSub: 's1', locationIds: [], active: true, version: 1 },
@@ -37,10 +41,27 @@ beforeEach(() => {
 describe('PersonalliggarePage', () => {
   it('says the feature is not in the plan while it is off, and never calls the API', () => {
     tenant = { role: 'owner_user', entitlements: { maxLocations: null, features: {} } }
-    render(<PersonalliggarePage />)
-    expect(screen.getByRole('heading', { level: 1, name: 'Personalliggare (under granskning)' })).toBeInTheDocument()
+    render(<MemoryRouter><PersonalliggarePage /></MemoryRouter>)
+    expect(screen.getByRole('heading', { level: 1, name: 'Personalliggare' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Ingår inte i er plan' })).toBeInTheDocument()
     expect(api.getDay).not.toHaveBeenCalled()
+  })
+
+  it('shows the no-location card instead of waiting forever', () => {
+    tenant = STAFF
+    place = null
+    render(<MemoryRouter><PersonalliggarePage /></MemoryRouter>)
+    expect(screen.getByRole('heading', { name: 'Ingen plats än' })).toBeInTheDocument()
+    expect(api.getDay).not.toHaveBeenCalled()
+  })
+
+  it('a failed day load shows the error with Försök igen, which loads again', async () => {
+    tenant = STAFF
+    vi.mocked(api.getDay).mockRejectedValueOnce(new ApiError(500, 'internal_error', { code: 'internal_error', fromServer: true }))
+    render(<PersonalliggarePage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    expect(await screen.findByRole('button', { name: 'Checka in' })).toBeInTheDocument()
+    expect(screen.queryByText(/Kunde inte hämta liggaren/)).not.toBeInTheDocument()
   })
 
   it('lets staff check in themselves and shows the paper fallback', async () => {
@@ -133,7 +154,8 @@ describe('PersonalliggarePage', () => {
     render(<PersonalliggarePage />)
     fireEvent.click(await screen.findByRole('tab', { name: 'Exportera' }))
     fireEvent.click(screen.getByRole('button', { name: 'Ladda ner CSV' }))
-    expect(await screen.findByText(/hittade ett fel vid rad 3/)).toBeInTheDocument()
+    expect(await screen.findByText(/Liggaren ser ändrad ut från rad 3\. Lämna inte ut filen\./)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Rapportera till Booqy' })).toBeInTheDocument()
   })
 })
 
@@ -141,5 +163,28 @@ describe('stockholmIso', () => {
   it('turns Stockholm local time into UTC across daylight saving', () => {
     expect(api.stockholmIso('2026-11-05', '08:15')).toBe('2026-11-05T07:15:00Z')
     expect(api.stockholmIso('2026-07-01', '08:15')).toBe('2026-07-01T06:15:00Z')
+  })
+
+  it('asks before a tap outside throws away a changed person; untouched closes at once', async () => {
+    tenant = OWNER
+    render(<PersonalliggarePage />)
+    fireEvent.click(await screen.findByRole('tab', { name: 'Personer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Lägg till person' }))
+    let dialog = await screen.findByRole('dialog')
+    fireEvent.mouseDown(dialog)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.queryByText('Släng ändringarna?')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lägg till person' }))
+    dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText(/Namn/), { target: { value: 'Ny' } })
+    fireEvent.mouseDown(dialog)
+    expect(await screen.findByText('Släng ändringarna?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Fortsätt redigera' }))
+    await waitFor(() => expect(screen.queryByText('Släng ändringarna?')).not.toBeInTheDocument())
+    expect(within(dialog).getByLabelText(/Namn/)).toHaveValue('Ny')
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Släng' }))
+    await waitFor(() => expect(screen.queryByLabelText(/Personnummer/)).not.toBeInTheDocument())
   })
 })

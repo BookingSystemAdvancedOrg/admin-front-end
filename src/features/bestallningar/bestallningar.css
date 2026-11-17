@@ -135,6 +135,13 @@
   margin-left: auto;
 }
 
+/* Beloppet (ibland med presentkortets del) får radbryta i en smal kolumn. */
+.order-actions .order-cancel-confirm {
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+}
+
 .orders-done {
   padding: 16px 20px;
 }
@@ -149,6 +156,23 @@
   padding-left: 18px;
   color: var(--muted);
   font-size: 14px;
+}
+
+.orders-done li + li {
+  margin-top: 6px;
+}
+
+/* Återbetalt på en beställning: syns i bläck, inte grått. */
+.order-refunded {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.orders-done-refund.btn.square {
+  margin-left: 10px;
+  padding: 4px 10px;
+  font-size: 13px;
+  vertical-align: baseline;
 }
 
 @media (max-width: 1100px) {

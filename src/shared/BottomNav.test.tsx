@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AdminLayout } from './AdminLayout'
+import { PHONE_NAV_QUERY } from './dock'
 import { roleAllows } from './nav'
 import type { Tenant } from './tenant'
 import { chooseOption } from '../test/select'
@@ -36,7 +37,7 @@ const realMatchMedia = window.matchMedia
 function phoneWidth(on: boolean) {
   window.matchMedia = (query: string) =>
     ({
-      matches: query.includes('prefers-reduced-motion') || (on && query.includes('max-width: 900px')),
+      matches: query.includes('prefers-reduced-motion') || (on && query === PHONE_NAV_QUERY),
       media: query,
       onchange: null,
       addListener: () => {},
@@ -301,7 +302,7 @@ describe('BottomNav on phones', () => {
 })
 
 describe('BottomNav on wider screens', () => {
-  it('is not rendered above 900 px: the sidebar is the menu', () => {
+  it('is not rendered on tablets and computers: the sidebar is the menu', () => {
     phoneWidth(false)
     renderAt()
     expect(screen.queryByRole('navigation', { name: 'Snabbmeny' })).toBeNull()

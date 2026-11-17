@@ -99,7 +99,7 @@ describe('validateDayIntervals / validateBusinessHours', () => {
     expect(validateDayIntervals('friday', [{ opensAt: '17:00', closesAt: '00:00' }])).toBeNull()
     expect(
       validateDayIntervals('monday', [{ opensAt: '11:00', closesAt: '11:00' }]),
-    ).toBe('Måndag: öppnings- och stängningstiden kan inte vara samma.')
+    ).toBe('Måndag: öppnar och stänger på samma tid. Ändra en av tiderna.')
   })
 
   it('lets only the last interval of a day run past midnight', () => {
@@ -167,7 +167,7 @@ describe('validateDayIntervals / validateBusinessHours', () => {
   it('validateBusinessHours checks every day and names it in Swedish', () => {
     const hours = emptyBusinessHours()
     hours.wednesday = [{ opensAt: '18:00', closesAt: '18:00' }]
-    expect(validateBusinessHours(hours)).toBe('Onsdag: öppnings- och stängningstiden kan inte vara samma.')
+    expect(validateBusinessHours(hours)).toBe('Onsdag: öppnar och stänger på samma tid. Ändra en av tiderna.')
     hours.wednesday = [{ opensAt: '18:00', closesAt: '02:00' }]
     expect(validateBusinessHours(hours)).toBeNull()
   })
@@ -270,12 +270,12 @@ describe('updateLocation', () => {
 describe('error mapping', () => {
   it('maps 404 to a not-found message', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(404, 'location not found'))
-    await expect(getLocation('missing')).rejects.toThrow('Platsen hittades inte.')
+    await expect(getLocation('missing')).rejects.toThrow('Platsen finns inte längre.')
   })
 
   it('maps 403 to a forbidden message', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
-    await expect(getLocation('loc-1')).rejects.toThrow(/inte behörighet/)
+    await expect(getLocation('loc-1')).rejects.toThrow(/får inte göra det här/)
   })
 
   it('names the refused field in Swedish, never the server text', async () => {
@@ -295,6 +295,6 @@ describe('error mapping', () => {
         bookingDurationHours: 0,
         gracePeriodHours: 0,
       }),
-    ).rejects.toThrow('Platsen kunde inte sparas. Kontrollera bokningstiden och försök igen.')
+    ).rejects.toThrow('Platsen sparades inte. Kolla bokningstiden och försök igen.')
   })
 })

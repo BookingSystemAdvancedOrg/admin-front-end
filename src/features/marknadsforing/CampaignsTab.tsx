@@ -1,6 +1,7 @@
+import { Icon } from '../../shared/Icon'
 import { useLiveRefresh } from '../../shared/live'
 import { RowActions } from '../../shared/RowActions'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Num } from '../../shared/motion/Num'
 import type { FormEvent } from 'react'
 import { useTenant } from '../../shared/tenant'
@@ -24,7 +25,7 @@ import {
   sendTest,
   updateCampaign,
 } from './marketingApi'
-import type { Audience, AudienceType, Campaign, CampaignInput, Template } from './marketingApi'
+import type { Audience, AudienceType, Campaign, CampaignAudience, CampaignInput, SegmentAudience, Template } from './marketingApi'
 import { Slot } from '../../shared/slots'
 import type { TabId } from './MarknadsforingPage'
 import { useEscape } from './useEscape'
@@ -34,10 +35,13 @@ import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { Select } from '../../shared/Select'
+import { useConfirm } from '../../shared/ConfirmDialog'
 
 const DAY_CHOICES = [30, 60, 90, 180, 365]
+/** Väljarens värde när kampanjen har en sparad målgrupp (segment). */
+const SEGMENT = '__segment'
 
-function CampaignForm({
+export function CampaignForm({
   campaign,
   templates,
   onSaved,
@@ -53,12 +57,16 @@ function CampaignForm({
   const [name, setName] = useState(campaign?.name ?? '')
   const [templateId, setTemplateId] = useState(campaign?.templateId ?? templates[0]?.templateId ?? '')
   const [subject, setSubject] = useState(campaign?.subject ?? '')
-  const [type, setType] = useState<AudienceType>(campaign?.audience.type ?? 'all')
-  const [days, setDays] = useState<number>(campaign?.audience.days ?? 90)
-  const [loc, setLoc] = useState<string>(campaign?.audience.locationId ?? '')
+  // En sparad målgrupp (segment) är ett eget fall: väljarna nedan står kvar på Alla.
+  const saved = campaign?.audience
+  const savedSegment = saved?.type === 'segment' ? saved : null
+  const plain = saved && saved.type !== 'segment' ? saved : null
+  const [type, setType] = useState<AudienceType>(plain?.type ?? 'all')
+  const [days, setDays] = useState<number>(plain?.days ?? 90)
+  const [loc, setLoc] = useState<string>(plain?.locationId ?? '')
   const [counted, setCounted] = useState<{ key: string; n: number } | null>(null)
   // Ett gästsegment från Gäster (guestCrm) ersätter målgruppen ovan när det är valt.
-  const [segment, setSegment] = useState<{ type: 'segment'; exportId: string } | null>(null)
+  const [segment, setSegment] = useState<SegmentAudience | null>(savedSegment)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -67,12 +75,14 @@ function CampaignForm({
     ...(type !== 'all' ? { days } : {}),
     ...(loc ? { locationId: loc } : {}),
   }
-  const audienceKey = JSON.stringify(audience)
+  const audienceKey = JSON.stringify(segment ?? audience)
   const count = counted?.key === audienceKey ? counted.n : null
+  // En målgrupp som valts här visar sitt eget antal i väljaren; en sparad räknas här.
+  const pickedSegment = segment !== null && segment.exportId !== savedSegment?.exportId
 
   useEffect(() => {
     let cancelled = false
-    audienceSize(JSON.parse(audienceKey) as Audience)
+    audienceSize(JSON.parse(audienceKey) as CampaignAudience)
       .then((n) => !cancelled && setCounted({ key: audienceKey, n }))
       .catch(() => !cancelled && setCounted({ key: audienceKey, n: -1 }))
     return () => {
@@ -81,7 +91,24 @@ function CampaignForm({
   }, [audienceKey])
 
   const template = templates.find((t) => t.templateId === templateId)
-  useEscape(onClose, !saving)
+
+  // Ändrat något i formuläret? Då frågar ett klick utanför eller Escape först.
+  const snapshot = JSON.stringify([name, templateId, subject, type, days, loc, segment])
+  const [initialSnapshot] = useState(snapshot)
+  const [confirmEl, ask] = useConfirm()
+  const closeRef = useRef<() => void>(() => {})
+  closeRef.current = () => {
+    if (saving) return
+    if (snapshot === initialSnapshot) {
+      onClose()
+      return
+    }
+    void ask({ title: 'Släng ändringarna?', confirmLabel: 'Släng', cancelLabel: 'Fortsätt redigera', danger: true }).then(
+      (ok) => ok && onClose(),
+    )
+  }
+  const requestClose = useCallback(() => closeRef.current(), [])
+  useEscape(requestClose, !saving)
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -93,13 +120,14 @@ function CampaignForm({
     try {
       onSaved(campaign ? await updateCampaign(campaign.campaignId, input) : await createCampaign(input))
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara kampanjen.'))
+      setError(errorText(err, 'Kampanjen sparades inte.'))
       setSaving(false)
     }
   }
 
   return (
-    <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+    <>
+    <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && requestClose()}>
       <form className="modal mk-modal" role="dialog" aria-modal="true" aria-label="Kampanj" onSubmit={(e) => void submit(e)}>
         <h2>{campaign ? 'Redigera kampanj' : 'Ny kampanj'}</h2>
         <div className="form-field">
@@ -122,26 +150,37 @@ function CampaignForm({
         <p className="form-section-label">Målgrupp</p>
         <div className="form-field">
           <label htmlFor="mk-c-aud">Vilka får utskicket</label>
-          <Select id="mk-c-aud" value={type} onChange={(e) => setType(e.target.value as AudienceType)}>
+          <Select id="mk-c-aud" value={segment ? SEGMENT : type} onChange={(e) => {
+              if (e.target.value === SEGMENT) return
+              setType(e.target.value as AudienceType)
+              setSegment(null)
+            }}>
+            {segment && <option value={SEGMENT}>Sparad målgrupp</option>}
             {(Object.keys(AUDIENCE_LABEL) as AudienceType[]).map((a) => (
               <option key={a} value={a}>{AUDIENCE_LABEL[a]}</option>
             ))}
           </Select>
         </div>
-        {type !== 'all' && (
+        {type !== 'all' && !segment && (
           <div className="form-field">
             <label htmlFor="mk-c-days">{type === 'recent' ? 'Senaste besöket inom' : 'Inget besök på minst'}</label>
-            <Select id="mk-c-days" value={days} onChange={(e) => setDays(Number(e.target.value))}>
+            <Select id="mk-c-days" value={days} onChange={(e) => {
+              setDays(Number(e.target.value))
+              setSegment(null)
+            }}>
               {DAY_CHOICES.map((d) => (
                 <option key={d} value={d}>{d} dagar</option>
               ))}
             </Select>
           </div>
         )}
-        {locations.length > 1 && (
+        {locations.length > 1 && !segment && (
           <div className="form-field">
             <label htmlFor="mk-c-loc">Plats</label>
-            <Select id="mk-c-loc" value={loc} onChange={(e) => setLoc(e.target.value)}>
+            <Select id="mk-c-loc" value={loc} onChange={(e) => {
+              setLoc(e.target.value)
+              setSegment(null)
+            }}>
               <option value="">Alla platser</option>
               {locations.map((l) => (
                 <option key={l.locationId} value={l.locationId}>{l.name || 'Namnlös plats'}</option>
@@ -150,8 +189,8 @@ function CampaignForm({
           </div>
         )}
         <Slot id="marketing.kampanjer.audience" props={{ value: segment, onChange: setSegment }} />
-        <p className="mk-audience-count" aria-live="polite" hidden={segment !== null}>
-          {count === null ? 'Räknar mottagare…' : count < 0 ? 'Kunde inte räkna mottagarna.' : `${count} mottagare just nu`}
+        <p className="mk-audience-count" aria-live="polite" hidden={pickedSegment}>
+          {count === null ? 'Räknar mottagare…' : count < 0 ? 'Mottagarna kunde inte räknas.' : `${count} mottagare just nu`}
         </p>
         <p className="field-hint">Bara gäster som sagt ja till erbjudanden.</p>
 
@@ -162,6 +201,8 @@ function CampaignForm({
         </div>
       </form>
     </ModalOverlay>
+    {confirmEl}
+    </>
   )
 }
 
@@ -183,7 +224,7 @@ function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone:
 
   useEffect(() => {
     let cancelled = false
-    audienceSize(campaign.audience).then((n) => !cancelled && setCount(n)).catch(() => undefined)
+    audienceSize(campaign.audience).then((n) => !cancelled && setCount(n)).catch(() => !cancelled && setCount(-1))
     return () => {
       cancelled = true
     }
@@ -208,7 +249,7 @@ function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone:
           : `Kampanjen skickas nu till ${out.audienceSize} mottagare. Det tar några minuter.`,
       )
     } catch (err) {
-      setError(errorText(err, 'Kunde inte skicka kampanjen.'))
+      setError(errorText(err, 'Kampanjen skickades inte.'))
       setBusy(false)
     }
   }
@@ -218,7 +259,11 @@ function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone:
       <div className="modal mk-modal" role="dialog" aria-modal="true" aria-label="Skicka kampanjen">
         <h2>Skicka {campaign.name}?</h2>
         <p className="modal-text">
-          {count === null ? 'Räknar mottagare…' : `${count} mottagare (${audienceText(campaign.audience).toLowerCase()}).`}
+          {count === null
+            ? 'Räknar mottagare…'
+            : count < 0
+              ? 'Mottagarna kunde inte räknas.'
+              : `${count} mottagare (${audienceText(campaign.audience).toLowerCase()}).`}
         </p>
         <div className="mk-radio-row" role="radiogroup" aria-label="När">
           <label className="check-row">
@@ -254,14 +299,21 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
   const [form, setForm] = useState<{ campaign: Campaign | null } | null>(null)
   const [sending, setSending] = useState<Campaign | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [confirmEl, ask] = useConfirm()
+  // Det som misslyckades sist: Försök igen hämtar listan, eller gör om åtgärden (utan ny fråga).
+  const retryRef = useRef<() => void>(() => {})
 
   const load = useCallback(() => {
+    setError(null)
     Promise.all([listCampaigns(), listTemplates()])
       .then(([c, t]) => {
         setCampaigns(c)
         setTemplates(t)
       })
-      .catch((err: unknown) => setError(errorText(err, 'Kunde inte hämta kampanjerna.')))
+      .catch((err: unknown) => {
+        retryRef.current = load
+        setError(errorText(err, 'Kampanjerna kunde inte visas.'))
+      })
   }, [])
 
   useEffect(load, [load])
@@ -274,7 +326,20 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
     setTemplates(t)
   }, { enabled: campaigns !== null && busy === null })
 
-  const act = async (c: Campaign, what: 'test' | 'cancel' | 'resume' | 'delete') => {
+  const act = async (c: Campaign, what: 'test' | 'cancel' | 'resume' | 'delete', confirmed = false) => {
+    if (what === 'cancel' && !confirmed && !(await ask({
+      title: `Stoppa ${c.name}?`,
+      text: 'Det som redan skickats kan inte tas tillbaka, och utskicket går inte att starta igen.',
+      confirmLabel: 'Stoppa utskicket',
+      cancelLabel: 'Behåll',
+      danger: true,
+    }))) return
+    if (what === 'delete' && !confirmed && !(await ask({
+      title: `Ta bort ${c.name}?`,
+      confirmLabel: 'Ta bort',
+      cancelLabel: 'Behåll',
+      danger: true,
+    }))) return
     setBusy(`${c.campaignId}:${what}`)
     setError(null)
     setNotice(null)
@@ -284,7 +349,7 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
         setNotice(`Ett testmejl är skickat till ${out.sentTo}.`)
       } else if (what === 'cancel') {
         await cancelCampaign(c.campaignId)
-        setNotice('Kampanjen är avbruten. Det som redan skickats kan inte tas tillbaka.')
+        setNotice('Utskicket är stoppat. Det som redan skickats kan inte tas tillbaka.')
       } else if (what === 'resume') {
         await resumeCampaign(c.campaignId)
         setNotice('Kampanjen fortsätter. Ingen får den två gånger.')
@@ -294,7 +359,8 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
       }
       load()
     } catch (err) {
-      setError(errorText(err, 'Det gick inte just nu.'))
+      retryRef.current = () => void act(c, what, true)
+      setError(errorText(err, 'Ändringen av kampanjen gick inte.'))
     } finally {
       setBusy(null)
     }
@@ -305,7 +371,8 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
   return (
     <div className="mk-stack">
       {notice && <p className="save-notice" role="status">{notice}</p>}
-      <ErrorNote text={error} />
+      {confirmEl}
+      <ErrorNote text={error} onRetry={() => retryRef.current()} />
 
       <section className="admin-card table-card">
         <div className="card-head">
@@ -317,7 +384,7 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
         {noTemplates && (
           <p className="cell-muted">
             Skapa en mall först.{' '}
-            <button type="button" className="link-btn" onClick={() => onOpen('mallar')}>Till mallarna →</button>
+            <button type="button" className="link-btn" onClick={() => onOpen('mallar')}>Till mallarna <Icon name="arrow-right" size={16} /></button>
           </p>
         )}
         {campaigns === null && !error && <SkelRows n={4} cols={4} />}
@@ -387,7 +454,7 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
                           <button type="button" className="link-action" disabled={isBusy('resume')} onClick={() => void act(c, 'resume')}>Fortsätt</button>
                         )}
                         {(c.status === 'scheduled' || c.status === 'sending' || c.status === 'paused_limit') && (
-                          <button type="button" className="link-action danger" disabled={isBusy('cancel')} onClick={() => void act(c, 'cancel')}>Avbryt</button>
+                          <button type="button" className="link-action danger" disabled={isBusy('cancel')} onClick={() => void act(c, 'cancel')}>Stoppa utskicket</button>
                         )}
                       </RowActions></td>
                     </tr>

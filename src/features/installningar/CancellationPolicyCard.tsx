@@ -76,7 +76,7 @@ export function CancellationPolicyCard({
         setSaved(loc.guarantee ?? null)
         setForm(toForm(loc.guarantee ?? DEFAULTS))
       })
-      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Kunde inte hämta platsens policy.')))
+      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Avbokningspolicyn kunde inte visas.')))
       .finally(() => !cancelled && setLoading(false))
     return () => {
       cancelled = true
@@ -111,13 +111,13 @@ export function CancellationPolicyCard({
     const noShow = whole(form.noShow, 0, 5000)
     const lateCancel = whole(form.lateCancel, 0, 5000)
     const cutoff = whole(form.cutoff, 0, 168)
-    if (minPartySize === null) return setError('Sällskapsstorlek: ett heltal 1-50.')
+    if (minPartySize === null) return setError('Sällskapets storlek ska vara 1 till 50 personer. Skriv till exempel 8.')
     if (noShow === null || lateCancel === null) {
-      return setError('Avgifterna: heltal 0-5000 kr per person.')
+      return setError('Avgiften ska vara 0 till 5 000 kr per person. Skriv till exempel 200.')
     }
-    if (cutoff === null) return setError('Avbokningsgränsen: ett heltal 0-168 timmar.')
+    if (cutoff === null) return setError('Avbokningsgränsen ska vara 0 till 168 timmar. Skriv till exempel 24.')
     if (form.enabled && noShow === 0 && lateCancel === 0) {
-      return setError('Ange en no-show-avgift eller en avgift för sen avbokning.')
+      return setError('Fyll i minst en avgift: no-show eller sen avbokning.')
     }
     const policy: GuaranteePolicy = {
       enabled: form.enabled,
@@ -132,7 +132,7 @@ export function CancellationPolicyCard({
       setSaved(updated.guarantee ?? policy)
       setNotice(policy.enabled ? 'Sparat. Gäller nya bokningar.' : 'Sparat - kortgarantin är avstängd.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara.', { owner_only: 'Bara restaurangens ägare kan ändra policyn.', forbidden: 'Bara restaurangens ägare kan ändra policyn.' }))
+      setError(errorText(err, 'Avbokningspolicyn sparades inte.', { owner_only: 'Bara restaurangens ägare kan ändra policyn. Be ägaren göra det.', forbidden: 'Bara restaurangens ägare kan ändra policyn. Be ägaren göra det.' }))
     } finally {
       setBusy(false)
     }

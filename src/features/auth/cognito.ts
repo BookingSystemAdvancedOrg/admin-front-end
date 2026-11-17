@@ -95,6 +95,8 @@ let refreshing: Promise<StoredSession | null> | null = null
 // Räknas upp vid varje utloggning: en förnyelse som startade före den
 // kastas, så att den inte lägger tillbaka sessionen efteråt.
 let signOutGeneration = 0
+/** Ökas vid varje lyckad inloggning; en utloggning som pågår ser då att den är passé. */
+let signInGeneration = 0
 
 // Utloggning i en flik loggar ut alla flikar.
 const channel: BroadcastChannel | null =
@@ -168,7 +170,7 @@ async function authRequest(path: string, body: unknown): Promise<AuthResponse> {
     })
   } catch (err) {
     console.error('[Auth] Nätverksfel mot', path, err)
-    throw new Error('Kunde inte nå inloggningstjänsten. Kontrollera anslutningen och försök igen.')
+    throw new Error('Vi når inte inloggningen just nu. Kolla att wifi eller mobildata är på och försök igen.')
   }
   if (!res.ok) {
     throw await toFriendlyError(res)
@@ -189,45 +191,48 @@ async function toFriendlyError(res: Response): Promise<Error> {
 
   switch (res.status) {
     case 401:
-      return new Error('Fel e-post eller lösenord.')
+      return new Error('E-postadressen eller lösenordet stämmer inte. Skriv dem igen, eller tryck Glömt lösenordet?')
     case 403:
       if (message.includes('not confirmed')) {
-        return new Error(
-          'Kontot är inte bekräftat ännu. Kontakta en administratör.',
-        )
+        return new Error('Kontot är inte klart att använda än. Be restaurangens ägare skicka en ny inbjudan.')
       }
       if (message.includes('reset')) {
-        return new Error('Lösenordet måste återställas. Klicka på "Glömt lösenordet?".')
+        return new Error('Du behöver välja ett nytt lösenord. Tryck Glömt lösenordet? och följ mejlet.')
       }
       if (message === 'account_disabled') {
-        return new Error('Kontot är avstängt. Kontakta restaurangens ägare.')
+        return new Error('Ditt konto är avstängt. Be restaurangens ägare slå på det igen.')
       }
       if (message === 'account_not_provisioned') {
-        return new Error(
-          'Kontot är inte kopplat till någon restaurang. Kontakta restaurangens ägare.',
-        )
+        return new Error('Kontot är inte kopplat till någon restaurang. Be ägaren bjuda in dig under Personal.')
       }
-      return new Error(message)
+      return new Error('Du kan inte logga in med det här kontot just nu. Be restaurangens ägare om hjälp.')
     case 429:
-      return new Error('För många försök. Vänta en stund och försök igen.')
+      return new Error('Det blev för många försök på kort tid. Vänta en minut och försök igen.')
     case 502:
-      return new Error(
-        'Ingen kontakt med inloggningstjänsten just nu. Felet ligger hos Booqy, inte hos dig: försök igen om en liten stund.',
-      )
+      return new Error('Inloggningen svarar inte just nu. Felet ligger hos Booqy, inte hos dig. Försök igen om en liten stund.')
     case 400:
       return new Error(
         message === 'invalid challenge response'
-          ? 'Lösenordet uppfyller inte kraven, eller sessionen har gått ut. Logga in igen.'
-          : message,
+          ? 'Lösenordet följer inte reglerna, eller så tog det för lång tid. Logga in igen och försök på nytt.'
+          : 'Något av det du skrev ser inte rätt ut. Kolla e-post och lösenord och försök igen.',
       )
     default:
-      return new Error(message)
+      // Serverns egen text (engelska, Cognito) visas aldrig.
+      return new Error(
+        res.status >= 500
+          ? 'Inloggningen svarar inte just nu. Felet ligger hos Booqy, inte hos dig. Försök igen om en liten stund.'
+          : 'Inloggningen gick inte. Kolla e-post och lösenord och försök igen.',
+      )
   }
 }
 
 function toSignInResult(response: AuthResponse, fallbackUsername: string): SignInResult {
   if (response.status === 'authenticated') {
     const session = toStoredSession(response.authenticationResult)
+    // En ny inloggning ersätter cookien: en utloggning som inte nådde
+    // servern ska inte längre göras klart (den skulle logga ut den nya).
+    signInGeneration += 1
+    setLogoutPending(false)
     current = session
     setUnreachable(false)
     scheduleProactiveRefresh()
@@ -263,7 +268,7 @@ export async function completeNewPassword(
   })
   const result = toSignInResult(response, pending.username)
   if (result.kind === 'new-password-required') {
-    throw new Error('Ytterligare en utmaning krävs, men stöds inte av gränssnittet ännu.')
+    throw new Error('Kontot kräver ett extra inloggningssteg som appen inte kan än. Kontakta Booqy.')
   }
   return result.session
 }
@@ -292,26 +297,26 @@ function resetErrorText(status: number, code: string): string {
   if (status === 400) {
     switch (code) {
       case 'invalid code':
-        return 'Länken eller koden fungerar inte längre - den kan redan ha använts eller ersatts av en nyare. Begär en ny länk.'
+        return 'Länken fungerar inte längre. Den kan redan ha använts. Be om en ny länk.'
       case 'code expired':
-        return 'Länken har gått ut (den gäller en timme). Begär en ny länk.'
+        return 'Länken har gått ut, den gäller bara en timme. Be om en ny länk.'
       case 'invalid reset request':
-        return 'Uppgifterna stämmer inte. Begär en ny länk.'
+        return 'Länken passar inte ihop med kontot. Be om en ny länk.'
       case 'password does not meet requirements':
-        return 'Lösenordet uppfyller inte kraven.'
+        return 'Lösenordet följer inte reglerna. Se listan under fältet och försök igen.'
       case 'username must be an email address':
-        return 'Fyll i en giltig e-postadress.'
+        return 'E-postadressen ser fel ut. Skriv den så här: namn@restaurang.se.'
       case 'code must be the 6-digit code from the email':
-        return 'Koden är de sex siffrorna i mejlet.'
+        return 'Koden ska vara de sex siffrorna i mejlet, till exempel 123456.'
       default:
-        return 'Kontrollera uppgifterna och försök igen.'
+        return 'Något av det du skrev ser inte rätt ut. Kolla fälten och försök igen.'
     }
   }
   if (status === 403 && code === 'account_disabled') {
-    return 'Kontot är avstängt. Kontakta restaurangens ägare.'
+    return 'Ditt konto är avstängt. Be restaurangens ägare slå på det igen.'
   }
-  if (status === 429) return 'För många försök. Vänta en stund och försök igen.'
-  return 'Ingen kontakt med inloggningstjänsten just nu. Felet ligger hos Booqy, inte hos dig: försök igen om en liten stund.'
+  if (status === 429) return 'Det blev för många försök på kort tid. Vänta en minut och försök igen.'
+  return 'Inloggningen svarar inte just nu. Felet ligger hos Booqy, inte hos dig. Försök igen om en liten stund.'
 }
 
 async function resetRequest(path: string, body: unknown): Promise<void> {
@@ -327,7 +332,7 @@ async function resetRequest(path: string, body: unknown): Promise<void> {
     })
   } catch (err) {
     console.error('[Auth] Nätverksfel mot', path, err)
-    throw new Error('Kunde inte nå inloggningstjänsten. Kontrollera anslutningen och försök igen.')
+    throw new Error('Vi når inte inloggningen just nu. Kolla att wifi eller mobildata är på och försök igen.')
   }
   if (res.ok) return
   let code = ''
@@ -368,7 +373,7 @@ export async function confirmPasswordReset(
  */
 export class AuthUnavailableError extends Error {
   constructor() {
-    super('Ingen kontakt med servern. Kontrollera internetanslutningen och försök igen.')
+    super('Vi når inte Booqy just nu. Kolla att wifi eller mobildata är på och försök igen.')
     this.name = 'AuthUnavailableError'
   }
 }
@@ -647,9 +652,14 @@ export function clearSession(): void {
   clearTimeout(proactiveTimer)
 }
 
-/** Ber servern återkalla refresh-tokenen och radera cookien. true = klart. */
-async function revokeOnServer(): Promise<boolean> {
+/**
+ * Ber servern återkalla refresh-tokenen och radera cookien. true = klart.
+ * generation = inloggningen som ska loggas ut: loggar någon in under tiden
+ * skickas inget mer, så att den nya cookien inte återkallas.
+ */
+async function revokeOnServer(generation = signInGeneration): Promise<boolean> {
   for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (generation !== signInGeneration) return false
     try {
       const res = await fetch(`${API_BASE_URL}/auth/logout`, {
         method: 'POST',
@@ -666,7 +676,8 @@ async function revokeOnServer(): Promise<boolean> {
     }
   }
   // Kvar till nästa start: då görs utloggningen klart innan någon förnyelse.
-  setLogoutPending(true)
+  // Inte om någon hann logga in under tiden: den nya cookien ska vara kvar.
+  if (generation === signInGeneration) setLogoutPending(true)
   console.error('[Auth] Utloggningen nådde inte servern; försöker igen vid nästa start.')
   return false
 }
@@ -690,11 +701,16 @@ export async function signOut(): Promise<boolean> {
   // Markeringen först: stängs appen innan servern nåtts loggar nästa start
   // ut i stället för att förnya med cookien. revokeOnServer tar bort den.
   setLogoutPending(true)
+  const generation = signInGeneration
   wakeRetryWait?.()
   if (refreshing) {
     await refreshing.catch(() => null)
   }
-  const ok = await revokeOnServer()
+  // En inloggning under väntan har redan ersatt cookien: rör den inte.
+  if (generation !== signInGeneration) return false
+  const ok = await revokeOnServer(generation)
+  // En inloggning som blev klar under tiden behåller sin session.
+  if (generation !== signInGeneration) return ok
   current = null
   channel?.postMessage('signed-out')
   return ok

@@ -6,8 +6,12 @@ import { BrandSelect as Select } from '../../shared/Select'
 import { ApiError } from '../../shared/api'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useUnsavedGuard } from '../../shared/unsaved'
-import { errorText } from '../../shared/errors'
+import { booqyFaultText, errorText } from '../../shared/errors'
+import { PlanLocked } from '../../shared/PlanLocked'
+import { Loading } from '../../shared/Loading'
+import { SkelCard, SkelPage } from '../../shared/Skeleton'
 import { currentLocation, useTenant } from '../../shared/tenant'
+import { canOpen } from '../../shared/access'
 import './webbplats.css'
 import { listMenuItems, type MenuItem } from '../meny/menuApi'
 import {
@@ -36,13 +40,20 @@ import {
   type SiteDoc,
   type SiteState,
   type Version,
+  addableBlocks,
 } from './api'
-import { ErrorActions } from '../../shared/ErrorNote'
+import { ErrorActions, ErrorNote } from '../../shared/ErrorNote'
 
 const POLL_MS = 2000
 /** Längsta väntan på en publicering eller återställning (cirka 5 minuter). */
 export const POLL_LIMIT = 150
-export const POLL_SLOW = 'Publiceringen tar längre tid än vanligt. Den fortsätter i bakgrunden; öppna Versioner om en stund för att se om den är klar.'
+/** En publicering som stannade: sidans egen text för koden, annars Booqys fel (med Rapportera). */
+function publishErrorText(code: string | undefined, action: string): string {
+  if (code === 'render_missing') return booqyFaultText('Sidan gick inte att bygga.', code)
+  return (code && ERRORS[code]) || booqyFaultText(action)
+}
+
+export const POLL_SLOW = 'Publiceringen tar längre tid än vanligt men fortsätter. Öppna Versioner om en stund för att se om den är klar.'
 
 /** Frågar efter publiceringens status tills den är klar eller misslyckad, högst POLL_LIMIT gånger. */
 export async function waitForPublish(publishId: string, wait = (ms: number) => new Promise((r) => setTimeout(r, ms))) {
@@ -54,22 +65,19 @@ export async function waitForPublish(publishId: string, wait = (ms: number) => n
   return null
 }
 
-/** Webbplats (planfunktionen "siteBuilder", bara ägare): Utkast och Publicerad. */
+/** Webbplats (planfunktionen "siteBuilder"; ägaren och personal med behörighet): Utkast och Publicerad. */
 export default function WebbplatsPage() {
   const { tenant } = useTenant()
   const enabled = Boolean(tenant?.entitlements?.features?.siteBuilder)
-  const owner = tenant?.role === 'owner_user'
+  const allowed = canOpen(tenant, 'webbplats')
 
   return (
     <>
       <AdminTopbar title="Webbplats" />
       <main className="admin-main">
-        {enabled && owner ? <Editor /> : (
+        {!enabled ? <PlanLocked /> : allowed ? <Editor /> : (
           <section className="admin-card table-card">
-            <h2 className="card-title">{enabled ? 'Bara för ägare' : 'Ingår inte i er plan'}</h2>
-            <p className="cell-muted">
-              {enabled ? 'Bara ägaren ändrar webbplatsen.' : 'Kontakta oss för att uppgradera.'}
-            </p>
+            <p className="cell-muted">Du har inte behörighet till Webbplats. Be ägaren om behörighet.</p>
           </section>
         )}
       </main>
@@ -79,6 +87,7 @@ export default function WebbplatsPage() {
 
 function Editor() {
   const state = useTenant()
+  const tenant = state.tenant
   const location = currentLocation(state)
   const [site, setSite] = useState<SiteState | null>(null)
   const [doc, setDoc] = useState<SiteDoc | null>(null)
@@ -89,7 +98,7 @@ function Editor() {
   // Osparat utkast: uppdateringsrutan frågar innan den laddar om.
   useUnsavedGuard(dirty)
   const [pageIndex, setPageIndex] = useState(0)
-  const [error, setError] = useState<{ text: string; page?: number; block?: number; slug?: boolean } | null>(null)
+  const [error, setError] = useState<{ text: string; page?: number; block?: number; slug?: boolean; retry?: () => void } | null>(null)
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [width, setWidth] = useState<'mobile' | 'desktop'>('mobile')
@@ -97,7 +106,7 @@ function Editor() {
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [versionsOpen, setVersionsOpen] = useState(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<boolean> => {
     try {
       const s = await getSite()
       setSite(s)
@@ -105,8 +114,11 @@ function Editor() {
       setBaseDoc(s.draft.doc)
       setVersion(s.draft.version)
       setDirty(false)
+      setError(null)
+      return true
     } catch (err) {
-      setError({ text: errorText(err, 'Kunde inte hämta webbplatsen.', ERRORS) })
+      setError({ text: errorText(err, 'Webbplatsen kunde inte visas.', ERRORS) })
+      return false
     }
   }, [])
 
@@ -121,6 +133,9 @@ function Editor() {
     versionRef.current = version
   }, [dirty, version])
   useLiveRefresh(async () => {
+    // Första hämtningen misslyckades (t.ex. offline): försök igen av sig
+    // själv, även när nätet kommer tillbaka.
+    if (site === null) return load()
     const s = await getSite()
     // Ett svar som hämtades före din sparning har ett äldre utkast: det får
     // inte ta tillbaka det du nyss sparade (nästa puls har det nya).
@@ -131,7 +146,7 @@ function Editor() {
       setBaseDoc(s.draft.doc)
       setVersion(s.draft.version)
     }
-  }, { enabled: site !== null && !saving && !publishing })
+  }, { enabled: (site !== null || error !== null) && !saving && !publishing })
   useEffect(() => {
     if (location) listMenuItems(location.locationId).then((items) => setImages(items.filter((i): i is MenuItem & { imageKey: string } => Boolean(i.imageKey)))).catch(() => setImages([]))
   }, [location])
@@ -141,10 +156,10 @@ function Editor() {
     setDirty(true)
   }
 
-  function fail(err: unknown, action: string) {
+  function fail(err: unknown, action: string, retry: () => void) {
     const field = err instanceof ApiError ? err.field : undefined
     const at = locate(field)
-    setError({ text: at.slug ? SLUG_ERROR : errorText(err, action, ERRORS), ...at })
+    setError({ text: at.slug ? SLUG_ERROR : errorText(err, action, ERRORS), ...at, retry })
     if (at.page !== undefined) setPageIndex(at.page)
   }
 
@@ -168,7 +183,7 @@ function Editor() {
         setDoc(merged)
         if (conflicts.length) {
           const where = conflictPlace(merged, conflicts[0])
-          setError({ text: `${where.name} ändrades nyss på en annan plats. Din version står kvar; spara igen för att använda den, eller ändra först.`, page: where.page, block: where.block })
+          setError({ text: `${where.name} ändrades nyss av någon annan. Din version står kvar. Spara igen för att använda den.`, page: where.page, block: where.block })
           if (where.page !== undefined) setPageIndex(where.page)
           return null
         }
@@ -180,7 +195,7 @@ function Editor() {
       setDirty(false)
       return saved.version
     } catch (err) {
-      fail(err, 'Kunde inte spara.')
+      fail(err, 'Webbplatsen sparades inte.', () => void save())
       return null
     } finally {
       setSaving(false)
@@ -198,7 +213,7 @@ function Editor() {
         window.open(link.url, '_blank', 'noopener')
       }
     } catch (err) {
-      fail(err, 'Kunde inte skapa förhandsvisningen.')
+      fail(err, 'Förhandsvisningen skapades inte.', () => void preview(share))
     }
   }
 
@@ -218,18 +233,28 @@ function Editor() {
         await load()
       } else {
         const at = locate(s.error?.field)
-        setError({ text: at.slug ? SLUG_ERROR : ERRORS[s.error?.code ?? ''] ?? 'Publiceringen misslyckades. Försök igen.', ...at })
+        setError({ text: at.slug ? SLUG_ERROR : publishErrorText(s.error?.code, 'Webbplatsen publicerades inte.'), ...at, retry: () => void doPublish() })
         if (at.page !== undefined) setPageIndex(at.page)
       }
     } catch (err) {
-      fail(err, 'Kunde inte publicera.')
+      fail(err, 'Webbplatsen publicerades inte.', () => void doPublish())
     } finally {
       setPublishing(false)
     }
   }
 
   if (!doc || !site) {
-    return error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error.text} />}>{error.text}</Bar> : <p className="cell-muted">Hämtar webbplatsen…</p>
+    if (error) {
+      // Live-uppdateringen är av tills första hämtningen lyckats: Försök igen hämtar själv.
+      const retry = () => { setError(null); void load() }
+      return <Bar variant="banner" tone="danger" action={<ErrorActions text={error.text} onRetry={retry} />}>{error.text}</Bar>
+    }
+    return (
+      <SkelPage label="Hämtar webbplatsen">
+        <SkelCard rows={2} />
+        <SkelCard lines={4} />
+      </SkelPage>
+    )
   }
   if (site.mode === 'custom') {
     return <Card title="Webbplats"><p>Byggs av Booqy. Kontakta oss för ändringar.</p></Card>
@@ -289,7 +314,7 @@ function Editor() {
             Länken är kopierad och fungerar i 7 dagar: {shareUrl}
           </Bar>
         ) : null}
-        {error ? <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng" action={<ErrorActions text={error.text} />}>{error.text}</Bar> : null}
+        {error ? <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng" action={<ErrorActions text={error.text} onRetry={error.retry} />}>{error.text}</Bar> : null}
         <Bar variant="tab" label="Sidor" value={page.id} onChange={(key) => setPageIndex(doc.pages.findIndex((p) => p.id === key))}
           items={doc.pages.map((p) => ({ key: p.id, label: p.title || 'Startsida' }))} />
         <div className="row-actions">
@@ -343,19 +368,13 @@ function Editor() {
         <Field label="Lägg till block">
           <Select value="" disabled={page.blocks.length >= 40} onChange={(e) => e.target.value && addBlock(e.target.value as BlockType)}>
             <option value="">Välj…</option>
-            {(Object.keys(BLOCK_LABEL) as BlockType[]).map((t) => <option key={t} value={t}>{BLOCK_LABEL[t]}</option>)}
+            {addableBlocks(tenant).map((t) => <option key={t} value={t}>{BLOCK_LABEL[t]}</option>)}
           </Select>
         </Field>
       </Card>
 
       <Card title="Utseende" level={3}>
         <div className="webbplats-fields">
-          <Field label="Huvudfärg">
-            <Input type="color" value={doc.theme.primaryColor} onChange={(e) => change({ ...doc, theme: { ...doc.theme, primaryColor: e.target.value } })} />
-          </Field>
-          <Field label="Accentfärg" hint="Knappar och länkar">
-            <Input type="color" value={doc.theme.accentColor} onChange={(e) => change({ ...doc, theme: { ...doc.theme, accentColor: e.target.value } })} />
-          </Field>
           <Field label="Typsnitt">
             <Select value={doc.theme.font} onChange={(e) => change({ ...doc, theme: { ...doc.theme, font: e.target.value as 'serif' | 'sans' } })}>
               <option value="serif">Klassiskt (serif)</option>
@@ -401,7 +420,7 @@ function BlockEditor({ block, images, pages, invalid, onChange, actions }: {
       </div>
       <div className="webbplats-fields">
         {fields.map((f) => (
-          <Field key={f} label={FIELD_LABEL[f]} error={invalid ? 'Kontrollera det här blocket.' : undefined}>
+          <Field key={f} label={FIELD_LABEL[f]} error={invalid ? 'Något i blocket är fel ifyllt. Rätta det och spara igen.' : undefined}>
             {f === 'body' ? (
               <textarea className="bq-input" rows={4} maxLength={FIELD_MAX[f]} value={block[f] ?? ''} onChange={(e) => onChange({ ...block, [f]: e.target.value })} />
             ) : (
@@ -472,13 +491,21 @@ function Outline({ doc, pageIndex, width }: { doc: SiteDoc; pageIndex: number; w
 function Versions({ onClose, onRestored }: { onClose: () => void; onRestored: () => void }) {
   const [versions, setVersions] = useState<Version[] | null>(null)
   const [busy, setBusy] = useState<number | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
+  // Försök igen i felrutan återställer samma version igen.
+  const [failedV, setFailedV] = useState<Version | null>(null)
 
-  useEffect(() => {
-    listVersions().then((v) => setVersions(v.versions)).catch(() => setVersions([]))
+  const loadVersions = useCallback(() => {
+    setLoadError(null)
+    listVersions().then((v) => setVersions(v.versions)).catch((err) => setLoadError(errorText(err, 'Versionerna kunde inte visas.', ERRORS)))
   }, [])
+  useEffect(() => { loadVersions() }, [loadVersions])
 
   async function restore(v: Version) {
     setBusy(v.versionNo)
+    setRestoreError(null)
+    setFailedV(null)
     try {
       const publishId = newId()
       const started = await rollback(publishId, v.versionNo)
@@ -488,12 +515,17 @@ function Versions({ onClose, onRestored }: { onClose: () => void; onRestored: ()
           toast(POLL_SLOW, { tone: 'info' })
           return
         }
-        if (s.status === 'failed') throw new Error('Återställningen misslyckades. Försök igen.')
+        if (s.status === 'failed') {
+          setRestoreError(publishErrorText(s.error?.code, 'Versionen återställdes inte.'))
+          setFailedV(v)
+          return
+        }
       }
       toast(`Version ${v.versionNo} är publicerad igen.`, { tone: 'success' })
       onRestored()
     } catch (err) {
-      toast(errorText(err, 'Kunde inte återställa.', ERRORS), { tone: 'danger' })
+      setRestoreError(errorText(err, 'Versionen återställdes inte.', ERRORS))
+      setFailedV(v)
     } finally {
       setBusy(null)
     }
@@ -501,7 +533,9 @@ function Versions({ onClose, onRestored }: { onClose: () => void; onRestored: ()
 
   return (
     <Modal open title="Versioner" onClose={onClose} closeLabel="Stäng">
-      {versions === null ? <p className="cell-muted">Hämtar…</p> : null}
+      {loadError ? <ErrorNote text={loadError} onRetry={loadVersions} /> : null}
+      {versions === null && !loadError ? <Loading label="Hämtar versionerna" variant="inline" /> : null}
+      <ErrorNote text={restoreError} onRetry={failedV ? () => void restore(failedV) : undefined} />
       {versions && versions.length === 0 ? <p className="admin-empty">Inget är publicerat än.</p> : null}
       {versions && versions.length > 0 ? (
         <ul className="webbplats-versions">

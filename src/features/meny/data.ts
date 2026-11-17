@@ -74,7 +74,7 @@ export interface Dish {
   /** Schema i UTC ("...Z"), null = ingen gräns (schedule.ts). */
   availableFrom: string | null
   availableUntil: string | null
-  /** Bongens station (Inställningar > Skrivare), "none" = ingen bong, null/saknas = kategorins. */
+  /** Bongens station (Inställningar, Beställning, Skrivare och stationer), "none" = ingen bong, null/saknas = kategorins. */
   station?: string | null
   /** En meny/combo: delarna får var sin bong; en del utan station följer rätten. */
   components?: DishComponent[]

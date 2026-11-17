@@ -47,7 +47,7 @@ describe('CancellationPolicyCard', () => {
     await user.clear(screen.getByLabelText('No-show-avgift (kr per person)'))
     await user.type(screen.getByLabelText('No-show-avgift (kr per person)'), '0')
     await user.click(screen.getByRole('button', { name: 'Spara policy' }))
-    expect(screen.getByRole('alert')).toHaveTextContent('Ange en no-show-avgift')
+    expect(screen.getByRole('alert')).toHaveTextContent('Fyll i minst en avgift')
     expect(updateLocation).not.toHaveBeenCalled()
   })
 

@@ -11,7 +11,7 @@
 const WAIT_MS = 4000
 export const SPOT_MS = 2600
 const TEXT_TAGS = 'h1,h2,h3,h4,label,button,a,legend,th,.appearance-title,.form-section-label,.settings-tab-title,.sk-kpi-label,.stat-tile-label,.card-title'
-const ROW = '[data-help],.appearance-row,.form-field,.settings-tabs > button,.admin-card,button,a,tr,li'
+const ROW = '[data-help],.appearance-row,.form-field,.stree-branch,.admin-card,button,a,tr,li'
 
 /** Syns elementet (inte i en dold flik eller med display: none)? */
 const visible = (el: Element) =>
@@ -37,6 +37,12 @@ export function findTargets(targets: string[], root: ParentNode = document): HTM
 }
 
 let active: { stop: () => void } | null = null
+
+/** Slutar lysa upp och slutar vänta på mål (t.ex. när en vy eller ett test stängs). */
+export function stopSpotlight() {
+  active?.stop()
+  active = null
+}
 
 /** Lyser upp målen; returnerar elementen som lyses upp. */
 export function spotlight(targets: string[], opts: { waitMs?: number; reducedMotion?: boolean } = {}): Promise<HTMLElement[]> {

@@ -1,32 +1,23 @@
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { replaceTenant, updateTenant } from '../../shared/tenant'
-import type { Tenant, TenantInsightsSettings } from '../../shared/tenant'
 import { clearInsightsCache } from '../statistik/insightsApi'
 import { getLocation, updateLocation } from './locationApi'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
-import { InfoTooltip } from '../../shared/InfoTooltip'
 import { Select } from '../../shared/Select'
 
 /**
- * Statistik: vad personalen får se och var lunchen slutar.
- *
- *  - Personalen ser antingen driftsiffrorna för sin egen plats (gäster,
- *    beläggning, uteblivna, beställningar, rätter) utan några belopp, eller
- *    ingenting. Ägaren ser alltid allt. Servern tar bort beloppen, inte bara
- *    sidan.
- *  - Lunch är bokningar och beställningar före den valda timmen, resten är
- *    middag. Gäller den valda platsen och alla tidigare dagar direkt.
+ * Statistik: var lunchen slutar. Lunch är bokningar och beställningar före
+ * den valda timmen, resten är middag. Gäller den valda platsen och alla
+ * tidigare dagar direkt. Om personalen ser Statistik väljs under
+ * Behörigheter (StaffAccessCard); de ser aldrig belopp.
  */
 
 const LUNCH_HOURS = ['14:00', '15:00', '16:00', '17:00']
 const DEFAULT_LUNCH = '15:00'
 
-export function InsightsSettingsCard({ tenant, locationId }: { tenant: Tenant; locationId: string | null }) {
-  const savedAccess: TenantInsightsSettings['staffAccess'] = tenant.insights?.staffAccess ?? 'operations'
-  const [access, setAccess] = useState(savedAccess)
+export function InsightsSettingsCard({ locationId }: { locationId: string | null }) {
   const [lunch, setLunch] = useState<string | null>(null)
   const [savedLunch, setSavedLunch] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -54,7 +45,7 @@ export function InsightsSettingsCard({ tenant, locationId }: { tenant: Tenant; l
     }
   }, [locationId])
 
-  const dirty = access !== savedAccess || (lunch !== null && lunch !== savedLunch)
+  const dirty = lunch !== null && lunch !== savedLunch
 
   async function save(e: FormEvent) {
     e.preventDefault()
@@ -62,9 +53,6 @@ export function InsightsSettingsCard({ tenant, locationId }: { tenant: Tenant; l
     setNotice(null)
     setBusy(true)
     try {
-      if (access !== savedAccess) {
-        replaceTenant(await updateTenant({ insights: { staffAccess: access } }))
-      }
       if (locationId && lunch !== null && lunch !== savedLunch) {
         const loc = await updateLocation(locationId, { lunchUntil: lunch === DEFAULT_LUNCH ? null : lunch })
         setSavedLunch(loc.lunchUntil ?? DEFAULT_LUNCH)
@@ -72,7 +60,7 @@ export function InsightsSettingsCard({ tenant, locationId }: { tenant: Tenant; l
       clearInsightsCache()
       setNotice('Sparat.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara.'))
+      setError(errorText(err, 'Inställningen sparades inte.'))
     } finally {
       setBusy(false)
     }
@@ -80,35 +68,9 @@ export function InsightsSettingsCard({ tenant, locationId }: { tenant: Tenant; l
 
   return (
     <section id="statistik" className="admin-card table-card">
-      <TitleInfo title="Statistik" info="Du ser alltid alla siffror. Här väljer du vad personalen ser och hur dagen delas i lunch och middag." />
+      <TitleInfo title="Statistik" info="Hur dagen delas i lunch och middag. Personalen ser aldrig belopp." />
       <div style={{ height: 16 }} />
       <form onSubmit={save} className="notifications-form">
-        <div className="toggle-row">
-          <div>
-            <div className="title-info">
-              <p className="toggle-row-label" id="insights-staff-label">
-                Personalen ser statistik
-              </p>
-              <InfoTooltip label="Personalen ser statistik">
-                Gäster, beläggning, uteblivna, beställningar och rätter för sin egen plats. Aldrig omsättning, avgifter eller
-                andra belopp.
-              </InfoTooltip>
-            </div>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={access === 'operations'}
-            aria-labelledby="insights-staff-label"
-            className="switch"
-            disabled={busy}
-            onClick={() => {
-              setAccess((a) => (a === 'operations' ? 'none' : 'operations'))
-              setNotice(null)
-            }}
-          />
-        </div>
-
         {locationId && (
           <div className="form-field">
             <label htmlFor="insights-lunch">Lunchen slutar</label>

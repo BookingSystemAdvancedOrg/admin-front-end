@@ -1,15 +1,18 @@
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import {
+  BookingsOnRemovedTablesError,
   activateLayoutVersion,
   archiveLayoutVersion,
   cancelPendingLayoutActivation,
   listLayoutVersions,
 } from './layoutApi'
-import type { LayoutActivation, PublishedLayoutSnapshot } from './layoutApi'
+import type { LayoutActivation, PublishedLayoutSnapshot, RemovedTableBooking } from './layoutApi'
 import { SkelRows } from '../../shared/Skeleton'
 import ModalOverlay from '../../shared/ModalOverlay'
+import { useConfirm } from '../../shared/ConfirmDialog'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { RemovedTablesBookings } from './RemovedTablesBookings'
 
 /** "2026-10-05T01:00:00Z" -> "5 oktober 2026, 03:00" i lokal tid. */
 function formatMoment(iso: string): string {
@@ -71,8 +74,11 @@ export function LayoutVersionsModal({
   onClose: () => void
   onActivated: () => void
 }) {
+  const [confirmEl, ask] = useConfirm()
   const [versions, setVersions] = useState<PublishedLayoutSnapshot[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Bokningar på bord som versionen tar bort (409 bookings_on_removed_tables).
+  const [removed, setRemoved] = useState<RemovedTableBooking[]>([])
   const [busyVersion, setBusyVersion] = useState<number | null>(null)
   const [archivingVersion, setArchivingVersion] = useState<number | null>(null)
   const [cancelling, setCancelling] = useState(false)
@@ -88,7 +94,7 @@ export function LayoutVersionsModal({
       .catch((err) => {
         if (!cancelled) {
           setError(
-            errorText(err, 'Kunde inte hämta versionerna.'),
+            errorText(err, 'Versionerna kunde inte visas.'),
           )
           setVersions([])
         }
@@ -100,6 +106,7 @@ export function LayoutVersionsModal({
 
   async function activate(version: number) {
     setError(null)
+    setRemoved([])
     setResult(null)
     setBusyVersion(version)
     try {
@@ -110,7 +117,8 @@ export function LayoutVersionsModal({
       setVersions(await listLayoutVersions(locationId))
       onActivated()
     } catch (err) {
-      setError(errorText(err, 'Kunde inte aktivera versionen.'))
+      setError(errorText(err, 'Versionen aktiverades inte.'))
+      if (err instanceof BookingsOnRemovedTablesError) setRemoved(err.bookings)
     } finally {
       setBusyVersion(null)
     }
@@ -124,14 +132,15 @@ export function LayoutVersionsModal({
    * användare/rätter).
    */
   async function archive(version: number, label: string) {
-    if (!window.confirm(`Arkivera ${label}? Går inte att ångra.`)) return
+    if (!(await ask({ title: `Arkivera ${label}?`, text: 'Går inte att ångra.', confirmLabel: 'Arkivera', danger: true })))
+      return
     setError(null)
     setArchivingVersion(version)
     try {
       await archiveLayoutVersion(locationId, version)
       setVersions((prev) => prev?.filter((v) => v.version !== version) ?? prev)
     } catch (err) {
-      setError(errorText(err, 'Kunde inte arkivera versionen.'))
+      setError(errorText(err, 'Versionen arkiverades inte.'))
     } finally {
       setArchivingVersion(null)
     }
@@ -146,7 +155,7 @@ export function LayoutVersionsModal({
    * lifecycle-fält ändras.
    */
   async function cancelPending() {
-    if (!window.confirm('Avbryta det schemalagda bytet?')) return
+    if (!(await ask({ title: 'Avbryta det schemalagda bytet?', confirmLabel: 'Avbryt bytet', cancelLabel: 'Behåll' }))) return
     setError(null)
     setResult(null)
     setCancelling(true)
@@ -154,7 +163,7 @@ export function LayoutVersionsModal({
       await cancelPendingLayoutActivation(locationId)
       setVersions(await listLayoutVersions(locationId))
     } catch (err) {
-      setError(errorText(err, 'Kunde inte avbryta bytet.'))
+      setError(errorText(err, 'Bytet avbröts inte.'))
     } finally {
       setCancelling(false)
     }
@@ -167,12 +176,16 @@ export function LayoutVersionsModal({
   const currentVersion = versions?.find((v) => v.isCurrent)
 
   return (
+    <>
     <ModalOverlay role="dialog" aria-modal="true">
       <div className="modal">
         <h2>Publicerade versioner</h2>
 
         {error && (
           <ErrorNote text={error} />
+        )}
+        {error && removed.length > 0 && (
+          <RemovedTablesBookings locationId={locationId} bookings={removed} />
         )}
 
         {result && (
@@ -272,5 +285,7 @@ export function LayoutVersionsModal({
         </div>
       </div>
     </ModalOverlay>
+    {confirmEl}
+    </>
   )
 }

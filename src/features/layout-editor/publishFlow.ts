@@ -1,7 +1,7 @@
 import { ApiError } from '../../shared/api'
-import { errorText } from '../../shared/errors'
-import { activateLayoutVersion, listLayoutVersions } from './layoutApi'
-import type { LayoutActivation, PublishedLayoutSnapshot } from './layoutApi'
+import { describeError, rememberError } from '../../shared/errors'
+import { activateLayoutVersion, BookingsOnRemovedTablesError, listLayoutVersions } from './layoutApi'
+import type { LayoutActivation, PublishedLayoutSnapshot, RemovedTableBooking } from './layoutApi'
 
 /** Etiketten bredvid Versioner-knappen, ur versionslistan. */
 export function labelFor(versions: PublishedLayoutSnapshot[]): string {
@@ -16,6 +16,8 @@ export type ActivationOutcome = {
   text: string
   /** Ny etikett ur en färsk versionslista ('' om listan inte gick att läsa). */
   label: string
+  /** Bokningar som ligger på bord den nya versionen tar bort (flytta dem först). */
+  removed?: RemovedTableBooking[]
 }
 
 type Deps = {
@@ -34,6 +36,7 @@ const defaultDeps: Deps = {
 
 /** Nätverk, samtidig ändring (409) och serverfel (5xx) kan gå över av sig själva. */
 function isTransient(err: unknown): boolean {
+  if (err instanceof BookingsOnRemovedTablesError) return false
   return err instanceof ApiError && (err.status === 0 || err.status === 409 || err.status >= 500)
 }
 
@@ -68,12 +71,17 @@ export async function activatePublished(
   const published = versions?.find((v) => v.version === version)
 
   if (!activation) {
-    const detail = errorText(failure, 'Okänt fel.')
+    const info = describeError(failure, '')
+    const detail = info.text
     const guidance = /aktivera/i.test(detail) ? '' : ' Aktivera den under Versioner.'
+    const text = `Version ${version} är publicerad men inte aktiverad: ${detail}${guidance}`
+    // Hela texten registreras, så felrutan får Rapportera till Booqy när felet är vårt.
+    rememberError({ ...info, text })
     return {
       ok: false,
-      text: `Version ${version} är publicerad men inte aktiverad: ${detail}${guidance}`,
+      text,
       label,
+      ...(failure instanceof BookingsOnRemovedTablesError ? { removed: failure.bookings } : {}),
     }
   }
   if (activation.status === 'active' && published && !published.isCurrent) {

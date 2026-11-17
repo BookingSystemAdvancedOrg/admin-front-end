@@ -79,7 +79,7 @@ describe('TableRulesCard', () => {
     await user.clear(screen.getByLabelText('Bord 2 till antal personer'))
     await user.type(screen.getByLabelText('Bord 2 till antal personer'), '6')
     await user.click(screen.getByRole('button', { name: 'Spara bordsregler' }))
-    expect(screen.getByRole('alert')).toHaveTextContent('Bord 2: högst 4 personer')
+    expect(screen.getByRole('alert')).toHaveTextContent('Bord 2: bordet har 4 platser. Skriv högst 4 personer.')
     expect(updateLocation).not.toHaveBeenCalled()
   })
 

@@ -58,7 +58,7 @@ async function checkout(page: Page, name: string) {
 }
 
 test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', async ({ page }) => {
-  await page.goto('/installningar#profil')
+  await page.goto('/installningar#dagar')
   await ready(page, 'Inställningar')
   const opens = page.getByLabel(`${today} öppnar`).first()
   const closes = page.getByLabel(`${today} stänger`).first()
@@ -209,7 +209,7 @@ test.afterAll('restore: hours back, ordering off, E2E dishes off', async ({ brow
   const page = await (await browser.newContext({ storageState: '.auth/pizza.json', baseURL: test.info().project.use.baseURL })).newPage()
   if (existsSync(RESTORE)) {
     const r = JSON.parse(readFileSync(RESTORE, 'utf8'))
-    await page.goto('/installningar#profil')
+    await page.goto('/installningar#dagar')
     await ready(page, 'Inställningar')
     if (r.opens) {
       await page.getByLabel(`${r.day} öppnar`).first().fill(r.opens)

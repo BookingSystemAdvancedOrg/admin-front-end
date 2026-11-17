@@ -35,7 +35,7 @@ describe('bookingTime', () => {
     [rules({ name: ' ' }), 'namn'],
     [rules({ weekdays: [] }), 'veckodag'],
     [rules({ startTime: '22:00', endTime: '01:00' }), 'midnatt'],
-    [rules({ startTime: '11:10' }), 'kvartssteg'],
+    [rules({ startTime: '11:10' }), 'kvartar'],
     [rules({ dateFrom: '2026-12-01', dateTo: '2026-11-01' }), 'från-datumet'],
     [rules({ extension: { allowed: true, maxMinutes: 20 } }), 'förlängning'],
     [rules({ name: 'A' }, { name: 'B', startTime: '13:00', endTime: '15:00' }), 'samma prioritet'],

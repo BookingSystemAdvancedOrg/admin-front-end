@@ -136,7 +136,7 @@ test.describe('Admin: Inställningar, appearance and Bakgrund', () => {
   })
 
   test('downloads card (desktop app) is visible in the browser', async ({ page }, info) => {
-    await page.goto('/installningar#utseende')
+    await page.goto('/installningar#skrivbordsappen')
     await ready(page, 'Inställningar')
     const card = page.locator('#skrivbordsappen, section', { hasText: /Skrivbordsapp|Ladda ner/ }).first()
     await expect(card).toBeVisible()

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../shared/api'
+import { describeError } from '../../shared/errors'
 import * as api from '../../shared/api'
 import type { Dish } from './data'
 import {
@@ -127,7 +128,7 @@ describe('validateDishPrice', () => {
 
   it('caps a price at 10 000 kr (typo guard, same as the server)', () => {
     expect(validateDishPrice(10000)).toBeNull()
-    expect(validateDishPrice(10000.01)).toBe('Pris får vara högst 10\u00a0000 kr.')
+    expect(validateDishPrice(10000.01)).toBe('Priset får vara högst 10\u00a0000 kr.')
     expect(validateDishPrice(3500000)).not.toBeNull()
   })
 
@@ -244,6 +245,15 @@ describe('uploadMenuImage', () => {
     expect(mockedApiFetch).not.toHaveBeenCalled()
   })
 
+  it('stops an empty or too large file before any API call', async () => {
+    const empty = new File([], 'tom.webp', { type: 'image/webp' })
+    await expect(uploadMenuImage('loc-1', empty)).rejects.toThrow(/tom/)
+    const big = new File(['x'], 'stor.webp', { type: 'image/webp' })
+    Object.defineProperty(big, 'size', { value: 10 * 1024 * 1024 + 1 })
+    await expect(uploadMenuImage('loc-1', big)).rejects.toThrow(/högst 10 MB/)
+    expect(mockedApiFetch).not.toHaveBeenCalled()
+  })
+
   it('PUTs the file to the presigned URL and returns the imageKey', async () => {
     mockedApiFetch.mockResolvedValue({
       uploadUrl: 'https://s3.example/upload',
@@ -259,6 +269,9 @@ describe('uploadMenuImage', () => {
     await expect(uploadMenuImage('loc-1', file)).resolves.toBe(
       'locations/loc-1/menu/new.webp',
     )
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/menu-images/presigned-url?locationId=loc-1&contentType=image%2Fwebp&size=1',
+    )
     expect(fetchSpy).toHaveBeenCalledWith(
       'https://s3.example/upload',
       expect.objectContaining({
@@ -267,6 +280,25 @@ describe('uploadMenuImage', () => {
       }),
     )
     fetchSpy.mockRestore()
+  })
+
+  it('treats a failed S3 upload as Booqys fault, with Rapportera', async () => {
+    mockedApiFetch.mockResolvedValue({
+      uploadUrl: 'https://s3.example/upload',
+      imageKey: 'k',
+      expiresIn: 300,
+      requiredHeaders: { 'Content-Type': 'image/webp' },
+    })
+    for (const status of [403, 503]) {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status }))
+      const err = await uploadMenuImage('loc-1', new File(['x'], 'bild.webp', { type: 'image/webp' })).catch((e: unknown) => e)
+      expect(err).toBeInstanceOf(ApiError)
+      expect((err as ApiError).status).toBeGreaterThanOrEqual(500)
+      const info = describeError(err, 'Kunde inte spara.')
+      expect(info.actor).toBe('booqy')
+      expect(info.text).toMatch(/^Kunde inte spara\. Felet ligger hos Booqy/)
+      fetchSpy.mockRestore()
+    }
   })
 })
 
@@ -281,9 +313,9 @@ describe('parsePrice', () => {
 
   it('refuses text, negative numbers, empty and three decimals in Swedish', () => {
     expect(parsePrice('abc').error).toMatch(/siffror/)
-    expect(parsePrice('-10').error).toBe('Priset kan inte vara negativt.')
-    expect(parsePrice('').error).toBe('Pris krävs.')
-    expect(parsePrice('12,345').error).toBe('Pris får ha högst två decimaler.')
+    expect(parsePrice('-10').error).toBe('Priset kan inte vara under 0 kr. Skriv till exempel 89.')
+    expect(parsePrice('').error).toBe('Skriv ett pris, till exempel 89.')
+    expect(parsePrice('12,345').error).toBe('Priset får ha högst två siffror efter kommat, till exempel 89,50.')
     expect(parsePrice('1,2,3').error).toMatch(/siffror/)
     expect(parsePrice('10e3').error).toMatch(/siffror/)
     expect(parsePrice('10001').error).toMatch(/högst/)
@@ -321,6 +353,6 @@ describe('stale saves', () => {
       method: 'PUT', body: JSON.stringify({ price: 99, expectedUpdatedAt: '2026-09-01T10:00:00Z' }),
     })
     expect(isStaleDish(err)).toBe(true)
-    expect((err as Error).message).toMatch(/Någon annan har ändrat rätten/)
+    expect((err as Error).message).toMatch(/Någon annan ändrade rätten/)
   })
 })

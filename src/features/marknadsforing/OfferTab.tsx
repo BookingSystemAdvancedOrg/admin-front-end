@@ -91,7 +91,7 @@ export function OfferTab() {
         setView(v)
         setDraft(toSettings(v))
       })
-      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Kunde inte hämta erbjudandet.')))
+      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Erbjudandet kunde inte visas.')))
     return () => {
       cancelled = true
     }
@@ -140,7 +140,7 @@ export function OfferTab() {
       setShowErrors(false)
       setNotice(saved.enabled ? 'Sparat. Erbjudandet visas nu på er webbplats.' : 'Sparat. Erbjudandet är avstängt.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara erbjudandet.'))
+      setError(errorText(err, 'Erbjudandet sparades inte.'))
     } finally {
       setSaving(false)
     }

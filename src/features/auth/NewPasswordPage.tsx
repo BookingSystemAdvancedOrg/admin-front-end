@@ -39,7 +39,7 @@ export default function NewPasswordPage() {
       navigate('/', { replace: true })
     } catch (err) {
       setError(
-        errorText(err, 'Det gick inte att byta lösenord.'),
+        errorText(err, 'Lösenordet byttes inte.'),
       )
     } finally {
       setBusy(false)

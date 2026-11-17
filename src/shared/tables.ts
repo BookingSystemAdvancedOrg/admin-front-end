@@ -112,6 +112,6 @@ export function useTables(locationId: string | null | undefined): TablesState {
  */
 export function tableNames(ids: string[], labels: Map<string, string> | null): string {
   if (ids.length === 0) return '-'
-  if (!labels) return `Bord ${ids.join(', ')}`
+  if (!labels) return ids.length === 1 ? 'Ett bord' : `${ids.length} bord`
   return `Bord ${ids.map((id) => labels.get(id) ?? '?').join(', ')}`
 }

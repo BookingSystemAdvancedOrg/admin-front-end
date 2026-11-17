@@ -55,16 +55,16 @@ export function validateType(f: TypeForm, t: TicketType): Partial<Record<keyof T
   if (price === null) errors.priceKr = 'Skriv priset i kronor, till exempel 495 eller 495,50.'
   else if (price > MAX_PRICE_KR * 100) errors.priceKr = `Priset får vara högst ${MAX_PRICE_KR.toLocaleString('sv-SE')} kr.`
   const per = Number(f.perOrderMax)
-  if (!Number.isInteger(per) || per < 1 || per > 20) errors.perOrderMax = 'Max per köp ska vara ett heltal från 1 till 20.'
+  if (!Number.isInteger(per) || per < 1 || per > 20) errors.perOrderMax = 'Max per köp ska vara ett heltal från 1 till 20, till exempel 6.'
   if (f.capacity.trim()) {
     const cap = Number(f.capacity)
     const min = Math.max(1, takenOf(t))
     if (!Number.isInteger(cap) || cap < 1) errors.capacity = 'Antalet ska vara ett heltal, minst 1. Lämna tomt för ingen gräns.'
     else if (cap > MAX_PLACES) errors.capacity = `Antalet får vara högst ${MAX_PLACES.toLocaleString('sv-SE')}.`
     else if (cap < min) errors.capacity = `Det finns redan ${takenText(t.sold, t.held)}, så antalet kan inte vara lägre än ${min}.`
-    else if (t.tier?.untilSold && Math.min(cap, t.tier.untilSold) < takenOf(t)) errors.capacity = 'Antalet räcker inte till de biljetter som redan är sålda.'
+    else if (t.tier?.untilSold && Math.min(cap, t.tier.untilSold) < takenOf(t)) errors.capacity = 'Antalet räcker inte till de biljetter som redan är sålda. Välj ett större antal.'
   }
-  if (f.from && f.until && new Date(f.from) >= new Date(f.until)) errors.until = 'Försäljningen måste sluta efter att den har börjat.'
+  if (f.from && f.until && new Date(f.from) >= new Date(f.until)) errors.until = 'Försäljningen slutar före den börjar. Välj ett slut efter starten.'
   return errors
 }
 

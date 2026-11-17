@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { errorText } from '../../shared/errors'
 import { Icon } from '../../shared/Icon'
 import ModalOverlay from '../../shared/ModalOverlay'
+import { useConfirm } from '../../shared/ConfirmDialog'
 import type { MenuCategoryEntry } from './data'
 import type { MenuCategories } from './menuApi'
 import { isConflict } from '../../shared/merge'
@@ -57,11 +58,25 @@ export function CategoriesModal({
     return now !== undefined && was !== undefined && now.trim() !== was.trim() && now.trim() !== mine.trim() ? now : null
   }
 
+  // Ändrade kategorier: ett klick utanför eller Escape frågar först.
+  const dirty = newName.trim() !== '' || JSON.stringify(payload(rows)) !== JSON.stringify(payload(base.categories))
+  const [confirmEl, ask] = useConfirm()
+  const closeRef = useRef<() => void>(() => {})
+  closeRef.current = () => {
+    if (!dirty) {
+      onCancel()
+      return
+    }
+    void ask({ title: 'Släng ändringarna?', confirmLabel: 'Släng', cancelLabel: 'Fortsätt redigera', danger: true }).then(
+      (ok) => ok && onCancel(),
+    )
+  }
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel()
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeRef.current()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onCancel])
+  }, [])
 
   function move(i: number, by: number) {
     setRows((prev) => {
@@ -79,7 +94,9 @@ export function CategoriesModal({
     setNewName('')
   }
 
-  const payload = (list: Row[]) => list.map((r) => ({ ...(r.categoryId ? { categoryId: r.categoryId } : {}), name: r.name.trim() }))
+  function payload(list: Row[]) {
+    return list.map((r) => ({ ...(r.categoryId ? { categoryId: r.categoryId } : {}), name: r.name.trim() }))
+  }
 
   async function save() {
     if (busy || listError) return
@@ -97,20 +114,21 @@ export function CategoriesModal({
         setRows(merged.rows)
         setConflicts(Object.fromEntries(merged.conflicts.map((c) => [c.categoryId, c.theirs])))
         if (merged.conflicts.length) {
-          setError('Samma kategori fick ett annat namn på en annan plats. Välj namn och spara igen.')
+          setError('Någon annan bytte namn på samma kategori nyss. Välj namn och spara igen.')
           return
         }
         await onSave(payload(merged.rows), latest.version)
       }
     } catch (err) {
-      setError(errorText(err, 'Kategorierna kunde inte sparas.'))
+      setError(errorText(err, 'Kategorierna sparades inte.'))
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && onCancel()}>
+    <>
+    <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && closeRef.current()}>
       <div className="modal meny-categories" role="dialog" aria-modal="true" aria-label="Kategorier">
         <h2>Kategorier</h2>
         <ol className="meny-category-list">
@@ -176,5 +194,7 @@ export function CategoriesModal({
         </div>
       </div>
     </ModalOverlay>
+    {confirmEl}
+    </>
   )
 }

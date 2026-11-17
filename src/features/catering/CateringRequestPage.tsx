@@ -19,6 +19,7 @@ import {
   markInvoicePaid,
   offerFromRequest,
   offerTotals,
+  refundRequest,
   saveDraft,
   vatRateFor,
   sendOffer,
@@ -36,6 +37,8 @@ import { Num } from '../../shared/motion/Num'
 import { SkelCard, SkelPage } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { Select } from '../../shared/Select'
+import { KronorInput } from './KronorInput'
+import { RefundDialog } from '../../shared/RefundDialog'
 
 /** API:ts fältnamn i offerten -> fältets id, så ett fel flyttar fokus dit. */
 const OFFER_FIELD_IDS: Record<string, string> = {
@@ -69,6 +72,17 @@ const ACTION_LABEL: Record<string, string> = {
   delivered: 'Levererad',
   cancelled: 'Avbokad',
   expired: 'Gick ut',
+  refunded: 'Återbetalning',
+}
+
+/** Betald via bankgiro: en återbetalning görs för hand, inte via Stripe. */
+function paidByBankgiro(r: CateringRequest): boolean {
+  return r.customerType === 'company' && r.history.some((h) => h.action === 'invoice_marked_paid')
+}
+
+/** Återbetalningar som restaurangen själv ska betala tillbaka (bankgiro). */
+function manualOwed(r: CateringRequest): number {
+  return (r.refunds ?? []).filter((x) => x.manual).reduce((sum, x) => sum + x.amount, 0)
 }
 
 /**
@@ -89,6 +103,7 @@ export default function CateringRequestPage() {
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState<'decline' | 'cancel' | null>(null)
+  const [refunding, setRefunding] = useState(false)
   const [reason, setReason] = useState('')
   const returnedFromSigning = new URLSearchParams(useLocation().search).get('signering') === 'klar'
   const [menu, setMenu] = useState<{ dishes: CateringDish[]; packages: CateringPackage[] }>({ dishes: [], packages: [] })
@@ -101,7 +116,7 @@ export default function CateringRequestPage() {
       setOfferBase(r)
       setLoadError(null)
     } catch (err) {
-      setLoadError(errorText(err))
+      setLoadError(errorText(err, 'Förfrågan kunde inte visas.'))
     }
   }, [locationId, requestId])
 
@@ -116,7 +131,7 @@ export default function CateringRequestPage() {
         setLoadError(null)
       },
       (err: unknown) => {
-        if (active) setLoadError(errorText(err))
+        if (active) setLoadError(errorText(err, 'Förfrågan kunde inte visas.'))
       },
     )
     return () => {
@@ -172,7 +187,7 @@ export default function CateringRequestPage() {
       // Same tab: a window opened after an await is blocked by iOS Safari. The link lives 5 minutes.
       window.location.assign((await documentLink(locationId, requestId, docId)).url)
     } catch (err) {
-      setError(errorText(err))
+      setError(errorText(err, 'Dokumentet kunde inte öppnas.'))
     }
   }
 
@@ -201,7 +216,7 @@ export default function CateringRequestPage() {
       <>
         <AdminTopbar title="Catering" />
         <main className="admin-main">
-          <ErrorNote text={loadError} />
+          <ErrorNote text={loadError} onRetry={() => { setLoadError(null); void load() }} />
           <Link to="/catering">Till alla förfrågningar</Link>
         </main>
       </>
@@ -382,8 +397,8 @@ export default function CateringRequestPage() {
                   {offer.lines.map((l, i) => (
                     <tr key={i}>
                       <td><input aria-label={`Rad ${i + 1} namn`} value={l.name} onChange={(e) => setLine(i, { name: e.target.value })} /></td>
-                      <td><input aria-label={`Rad ${i + 1} pris`} inputMode="decimal" value={String(l.unitPrice)}
-                        onChange={(e) => setLine(i, { unitPrice: Number(e.target.value.replace(',', '.')) || 0 })} /></td>
+                      <td><KronorInput aria-label={`Rad ${i + 1} pris`} value={l.unitPrice}
+                        onValue={(unitPrice) => setLine(i, { unitPrice })} /></td>
                       <td><input aria-label={`Rad ${i + 1} antal`} inputMode="numeric" value={String(l.quantity)}
                         onChange={(e) => setLine(i, { quantity: Number(e.target.value.replace(/\D/g, '')) || 0 })} /></td>
                       <td><Num>{kronor(Math.round(l.unitPrice * 100) * l.quantity)}</Num></td>
@@ -431,8 +446,8 @@ export default function CateringRequestPage() {
               </div>
               <div className="form-field">
                 <label htmlFor="offer-delivery">Leverans (kr)</label>
-                <input id="offer-delivery" inputMode="decimal" value={String(offer.deliveryFee)}
-                  onChange={(e) => setOffer({ ...offer, deliveryFee: Number(e.target.value.replace(',', '.')) || 0 })} />
+                <KronorInput id="offer-delivery" value={offer.deliveryFee}
+                  onValue={(deliveryFee) => setOffer({ ...offer, deliveryFee })} />
               </div>
               <div className="form-field">
                 <label htmlFor="offer-return">Retur av utrustning</label>
@@ -445,8 +460,8 @@ export default function CateringRequestPage() {
               {offer.equipmentReturn === 'not_cleaned' && (
                 <div className="form-field">
                   <label htmlFor="offer-cleaning">Rengöringsavgift (kr)</label>
-                  <input id="offer-cleaning" inputMode="decimal" value={String(offer.cleaningFee)}
-                    onChange={(e) => setOffer({ ...offer, cleaningFee: Number(e.target.value.replace(',', '.')) || 0 })} />
+                  <KronorInput id="offer-cleaning" value={offer.cleaningFee}
+                    onValue={(cleaningFee) => setOffer({ ...offer, cleaningFee })} />
                 </div>
               )}
               <div className="form-field">
@@ -478,7 +493,7 @@ export default function CateringRequestPage() {
             </ul>
             {overPriced && (
               <p className="form-error" role="alert">
-                Pris per rad får vara högst {MAX_ITEM_PRICE_KR.toLocaleString('sv-SE')} kr.
+                Priset på en rad är för högt. Skriv högst {MAX_ITEM_PRICE_KR.toLocaleString('sv-SE')} kr per rad.
               </p>
             )}
             <ErrorNote text={error} />
@@ -574,6 +589,15 @@ export default function CateringRequestPage() {
                     : request.paid ? 'Betald online' : 'Väntar på kundens betalning'}
                 </dd>
               </div>
+              {(request.refundedAmount ?? 0) > 0 && (
+                <div>
+                  <dt>Återbetalt</dt>
+                  <dd>
+                    <Num>{kronor(request.refundedAmount)}</Num>
+                    {manualOwed(request) > 0 ? ` (${kronor(manualOwed(request))} betalas tillbaka för hand)` : ''}
+                  </dd>
+                </div>
+              )}
             </dl>
             <span className="row-actions">
               {request.signedPdfKey && (
@@ -595,6 +619,11 @@ export default function CateringRequestPage() {
                 <button type="button" className="btn primary square" disabled={busy}
                   onClick={() => void run(() => markDelivered(locationId, requestId), 'Markerad som levererad.')}>
                   Markera levererad
+                </button>
+              )}
+              {isOwner && (request.refundable ?? 0) > 0 && confirm !== 'cancel' && (
+                <button type="button" className="btn outline square" disabled={busy} onClick={() => setRefunding(true)}>
+                  Återbetala
                 </button>
               )}
               {isOwner && ['signed', 'confirmed', 'delivered'].includes(request.status) && confirm !== 'cancel' && (
@@ -620,8 +649,37 @@ export default function CateringRequestPage() {
                 </span>
               </div>
             )}
+            {refunding && (
+              <RefundDialog
+                title="Återbetala cateringen"
+                remaining={request.refundable ?? 0}
+                manual={paidByBankgiro(request)}
+                canNotify={Boolean(request.customerEmail || request.customerPhone)}
+                onRefund={async (input) => {
+                  let updated: CateringRequest
+                  try {
+                    updated = await refundRequest(locationId, requestId, input)
+                  } catch (err) {
+                    // Det senaste beloppet i dialogen (t.ex. efter 409), utan att röra offertformuläret.
+                    await getRequest(locationId, requestId).then(setRequest, () => {})
+                    throw err
+                  }
+                  setRequest(updated)
+                  const last = updated.refunds?.[updated.refunds.length - 1]
+                  const byHand = last ? Boolean(last.manual) : paidByBankgiro(request)
+                  setNotice(byHand
+                    ? `${kronor(input.amount)} att betala tillbaka för hand.`
+                    : `${kronor(input.amount)} återbetalt.`)
+                }}
+                onDone={() => setRefunding(false)}
+                onClose={() => {
+                  setRefunding(false)
+                  void load()
+                }}
+              />
+            )}
             {request.refundNote === 'refund_manually' && (
-              <p className="form-error">Fakturan var betald via Bankgiro - betala tillbaka till kunden manuellt.</p>
+              <p className="form-error">Fakturan betalades via Bankgiro. Betala tillbaka till kunden för hand.</p>
             )}
             {!editable && error && <ErrorNote text={error} />}
             {!editable && notice && <p className="save-notice" role="status">{notice}</p>}
@@ -636,6 +694,8 @@ export default function CateringRequestPage() {
                 <span className="cell-muted">{h.at.replace('T', ' ').slice(0, 16)}</span>{' '}
                 {ACTION_LABEL[h.action] ?? h.action}
                 {typeof h.version === 'number' ? ` (v${h.version})` : ''}
+                {h.action === 'refunded' && typeof h.amount === 'number' ? ` ${kronor(h.amount)}` : ''}
+                {h.action === 'refunded' && h.manual ? ' (för hand)' : ''}
               </li>
             ))}
           </ul>

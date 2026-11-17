@@ -1,5 +1,5 @@
 import { errorText } from '../../shared/errors'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { dedupe, sameData, useLiveRefresh } from '../../shared/live'
 import { ChangedNote } from '../../shared/ChangedNote'
 import { CtaButton } from '../../shared/CtaButton'
@@ -17,6 +17,7 @@ import {
 import type { RestaurantProfile } from './data'
 import { CancellationPolicyCard } from './CancellationPolicyCard'
 import { InsightsSettingsCard } from './InsightsSettingsCard'
+import { StaffAccessCard } from './StaffAccessCard'
 import { NotificationsCard } from './NotificationsCard'
 import { OrderingCard } from './OrderingCard'
 import { PrivacyCard } from './PrivacyCard'
@@ -44,7 +45,7 @@ import {
   validatePhoneNumber,
   validateTimezone,
 } from './locationApi'
-import type { BusinessHours, LocationCreateRequest } from './locationApi'
+import type { BusinessHours, Location, LocationCreateRequest } from './locationApi'
 import {
   clearLocationSummaryCache,
   resolveLocationId,
@@ -55,6 +56,15 @@ import { Slot } from '../../shared/slots'
 import { PhoneInput } from '../../shared/PhoneInput'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { Select } from '../../shared/Select'
+import { useTheme } from '../../shared/theme'
+import { useSound } from '../../shared/press'
+import { NAV_GROUPS, navVisible } from '../../shared/nav'
+import type { NavItem } from '../../shared/nav'
+import { BranchHead, BranchPager, SettingsField, SettingsTreeNav, SettingsTreePage, useQuietCardTitle, useViewFocus } from './SettingsTreeView'
+import type { VisibleTree } from './SettingsTreeView'
+import { buildApples } from './settingsApples'
+import { LEAVES, TREES, branchVisible, fold, isBranch, isTree, treeOf } from './settingsTree'
+import type { BranchId, Leaf, TreeId } from './settingsTree'
 
 
 /**
@@ -75,68 +85,32 @@ import { Select } from '../../shared/Select'
  * Personal (staff_user) ser sin plats men kan inte ändra den eller hantera
  * andra användare - de rutterna är bara för ägare.
  */
-/** Flikarna - en sektion i taget i stället för en lång sida. */
-type SettingsTab = 'profil' | 'betalningar' | 'notiser' | 'avbokning' | 'bestallning' | 'skrivare' | 'dagar' | 'bord' | 'statistik' | 'bokforing' | 'integritet' | 'utseende'
+/** Det sidan visar: fältet (alla träd), ett träd eller en gren. */
+type View = { kind: 'field' } | { kind: 'tree'; tree: TreeId } | { kind: 'branch'; branch: BranchId }
 
-const TAB_LABEL: Record<SettingsTab, string> = {
-  profil: 'Restaurang',
-  betalningar: 'Betalningar',
-  notiser: 'Notiser',
-  avbokning: 'Avbokning',
-  bestallning: 'Beställning',
-  skrivare: 'Skrivare',
-  dagar: 'Avvikande dagar',
-  bord: 'Bord',
-  statistik: 'Statistik',
-  bokforing: 'Bokföring',
-  integritet: 'Integritet',
-  utseende: 'Utseende och ljud',
-}
-
-/**
- * Inställningarna i fem grupper. Menyn visar först grupperna under varandra;
- * ett klick öppnar gruppen och dess delar, och "Alla inställningar" leder
- * tillbaka. Bara namnen syns, så att menyn går att läsa med en blick.
- */
-const GROUPS: { id: string; label: string; tabs: SettingsTab[] }[] = [
-  { id: 'verksamhet', label: 'Verksamheten', tabs: ['profil', 'dagar', 'bord'] },
-  { id: 'gaster', label: 'Gäster', tabs: ['notiser', 'avbokning', 'bestallning', 'skrivare'] },
-  { id: 'ekonomi', label: 'Ekonomi', tabs: ['betalningar', 'bokforing'] },
-  { id: 'data', label: 'Data och integritet', tabs: ['statistik', 'integritet'] },
-  { id: 'enhet', label: 'Den här enheten', tabs: ['utseende'] },
-]
-
-
-/** En rad om vad varje del ställer in. Syns inte i menyn; hjälpassistenten läser den (scripts/help-corpus.mjs). */
-export const TAB_HINT: Record<SettingsTab, string> = {
-  profil: 'Namn, adress, telefon, e-post och öppettider',
-  dagar: 'Helgdagar, stängt eller andra tider en viss dag',
-  bord: 'Hur många gäster varje bord tar och vilka bord som kan ställas ihop',
-  notiser: 'Sms och mejl till gästerna, och mejl till er',
-  avbokning: 'Kortgaranti och avgift om gästen inte kommer',
-  bestallning: 'Avhämtning, beställning vid bordet och QR-koder',
-  skrivare: 'Skrivaren i köket som skriver ut beställningarna',
-  betalningar: 'Koppla Stripe så att gästerna kan betala online',
-  bokforing: 'Exportera försäljningen till bokföringsprogrammet',
-  statistik: 'Vad personalen får se och när lunchen slutar',
-  integritet: 'Integritetspolicyn och gästernas uppgifter',
-  utseende: 'Ljust eller mörkt läge och klickljud, bara på den här skärmen',
-}
-
-/** Delar som har egen länk (#del) och fliken de ligger i. */
-const SECTION_TAB: Record<string, SettingsTab> = { skrivbordsappen: 'utseende', google: 'profil' }
-
-/** #flik eller #del ur adressen, som flik; null om den inte finns. */
-function tabFromHash(hash: string): SettingsTab | null {
+/** #gren eller #träd ur adressen; fältet utan (eller med okänd) hash. */
+function viewFromHash(hash: string): View {
   const id = hash.replace(/^#/, '')
-  if (id in SECTION_TAB) return SECTION_TAB[id]
-  return id in TAB_LABEL ? (id as SettingsTab) : null
+  if (isBranch(id)) return { kind: 'branch', branch: id }
+  if (isTree(id)) return { kind: 'tree', tree: id }
+  return { kind: 'field' }
 }
 
-function initialTab(stripeReturn: string | null): SettingsTab {
-  if (stripeReturn) return 'betalningar'
-  return tabFromHash(window.location.hash) ?? 'profil'
+/** Återkomster utifrån utan hash (Stripe, kortet, Google, ?flik=gren) öppnar sin gren. */
+function branchFromQuery(params: URLSearchParams): BranchId | null {
+  const flik = params.get('flik')
+  if (flik && isBranch(flik)) return flik
+  if (params.get('stripe')) return 'betalningar'
+  if (params.get('kort')) return 'abonnemang'
+  if (params.get('google') === '1') return 'google'
+  return null
 }
+
+/** Grenar som ritas bara medan de är öppna; de andra ligger kvar (dolda) när de väl öppnats. */
+const ONLY_WHILE_OPEN: BranchId[] = ['utseende', 'skrivbordsappen']
+
+/** Fält i Spara ändringar och grenen där de står (för att leda dit vid fel). */
+const HOURS_BRANCH: BranchId = 'dagar'
 
 /** Grace period i 5-minuterssteg. Bokningslängden ställs in i kortet Bokningstid. */
 const GRACE_MINUTES = [15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
@@ -152,30 +126,44 @@ export default function InstallningarPage() {
   const navigate = useNavigate()
   const { tenant, refresh: refreshTenant } = useTenant()
   const [searchParams] = useSearchParams()
-  const stripeReturn = searchParams.get('stripe')
-  const [tab, setTab] = useState<SettingsTab>(() => initialTab(stripeReturn))
-  // Länkar (och guiden) kan öppna en flik via #flik i adressen.
-  const { hash } = useLocation()
+  // Stripe-återkomsten läses en gång: adressen byts när man går vidare på sidan.
+  const [stripeReturn] = useState(() => searchParams.get('stripe'))
+  // Länkar (och guiden) öppnar en gren via #gren i adressen; fältet utan.
+  const { hash, search, state: navState } = useLocation()
+  const view = viewFromHash(hash)
+  const branch = view.kind === 'branch' ? view.branch : null
   useEffect(() => {
     // Personalen har flyttat till en egen sida; gamla länkar leds dit.
     if (hash === '#personal') navigate('/personal', { replace: true })
-    else {
-      const next = tabFromHash(hash)
-      if (next) setTab(next)
+    else if (!hash) {
+      const fromQuery = branchFromQuery(new URLSearchParams(search))
+      if (fromQuery) navigate({ search, hash: `#${fromQuery}` }, { replace: true })
     }
-  }, [hash, navigate])
-  // Menyn: grupplistan eller den öppna gruppens delar. Grupplistan hör till
-  // fliken den öppnades vid, så byts fliken (ett klick, en länk eller guiden
-  // via #flik) visas gruppen igen. Sidan börjar på grupplistan, utom när en
-  // länk pekar på en viss del.
-  const [menuAt, setMenuAt] = useState<SettingsTab | null>(() =>
-    stripeReturn || window.location.hash ? null : initialTab(stripeReturn),
-  )
-  const menuOpen = menuAt === tab
-  function openTab(next: SettingsTab) {
-    setTab(next)
-    window.history.replaceState(null, '', `#${next}`)
+  }, [hash, search, navigate])
+  /** Till en gren, ett träd eller fältet (null). Bakåt i webbläsaren går tillbaka. */
+  function go(to: BranchId | TreeId | null) {
+    navigate(to ? { hash: `#${to}` } : { hash: '' })
+    // Ny vy: börja överst, utan att rycka om den redan syns.
+    const top = document.querySelector('.settings-main')?.getBoundingClientRect().top ?? 0
+    if (top < 0) window.scrollTo({ top: window.scrollY + top - 16, behavior: reducedMotion() ? 'auto' : 'smooth' })
   }
+  // Grenar hämtar först när de öppnas och ligger sedan kvar (dolda), så
+  // osparade ändringar inte försvinner när man går till en annan gren.
+  const opened = useRef(new Set<BranchId>())
+  if (branch) opened.current.add(branch)
+  const mounted = (b: BranchId) => opened.current.has(b) && (!ONLY_WHILE_OPEN.includes(b) || branch === b)
+  // Ett blad från sökningen: lyses upp när grenen har ritats.
+  const [pendingLeaf, setPendingLeaf] = useState<Leaf | null>(null)
+  // ⌘K kan peka på ett blad (state.leaf): samma upplysning som sökningen.
+  useEffect(() => {
+    const want = (navState as { leaf?: unknown } | null)?.leaf
+    const leaf = typeof want === 'string' ? LEAVES.find((l) => l.label === want && l.branch === branch) : undefined
+    if (leaf) setPendingLeaf(leaf)
+  }, [navState, branch])
+  useEffect(() => {
+    if (!pendingLeaf || branch !== pendingLeaf.branch) return
+    return highlightLeaf(pendingLeaf, () => setPendingLeaf(null))
+  }, [pendingLeaf, branch])
   const [profile, setProfile] = useState<RestaurantProfile>(EMPTY_PROFILE)
   const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE)
   const [businessHours, setBusinessHours] =
@@ -200,6 +188,8 @@ export default function InstallningarPage() {
   )
 
   const [saved, setSaved] = useState(false)
+  // Kortgarantin och beställningen ur samma hämtning: äpplena på fältet.
+  const [locExtra, setLocExtra] = useState<Pick<Location, 'guarantee' | 'ordering'> | null>(null)
 
   // Rollen kommer från servern (GET /tenant), inte från klientens tolkning
   // av tokenens grupper.
@@ -213,6 +203,7 @@ export default function InstallningarPage() {
     getLocation(locationId)
       .then((loc) => {
         if (cancelled) return
+        setLocExtra({ guarantee: loc.guarantee, ordering: loc.ordering })
         setProfile((prev) => ({
           ...prev,
           name: loc.name,
@@ -238,7 +229,7 @@ export default function InstallningarPage() {
       .catch((err) => {
         if (!cancelled) {
           setLocationError(
-            errorText(err, 'Kunde inte hämta platsen.'),
+            errorText(err, 'Platsen kunde inte visas.'),
           )
         }
       })
@@ -254,6 +245,7 @@ export default function InstallningarPage() {
   useLiveRefresh(async () => {
     if (!locationId || !savedLocation) return
     const loc = await dedupe(`location:${locationId}`, () => getLocation(locationId))
+    setLocExtra((prev) => (sameData(prev, { guarantee: loc.guarantee, ordering: loc.ordering }) ? prev : { guarantee: loc.guarantee, ordering: loc.ordering }))
     const next: LocationCreateRequest = {
       name: loc.name, address: loc.address, email: loc.email ?? '', phoneNumber: loc.phoneNumber ?? '', timezone: loc.timezone,
       businessHours: loc.businessHours, bookingDurationHours: loc.bookingDurationHours, gracePeriodHours: loc.gracePeriodHours,
@@ -302,17 +294,20 @@ export default function InstallningarPage() {
     // en sparning utan känt plats-id hade skapat en dubblettplats.
     if (resolvingLocation) return
 
-    const firstError =
+    const profileError =
       validateLocationName(profile.name) ??
       validateAddress(profile.address) ??
       validateEmail(profile.email) ??
       validatePhoneNumber(profile.phone) ??
       validateTimezone(timezone) ??
       validateBookingDuration(bookingDurationHours) ??
-      validateGracePeriod(gracePeriodHours) ??
-      validateBusinessHours(businessHours)
-    if (firstError) {
-      setLocationError(firstError)
+      validateGracePeriod(gracePeriodHours)
+    const hoursError = profileError ? null : validateBusinessHours(businessHours)
+    if (profileError || hoursError) {
+      setLocationError(profileError ?? hoursError)
+      // Felet står i grenen där fältet finns: dit, om du sparar från den andra.
+      const at: BranchId = profileError ? 'profil' : HOURS_BRANCH
+      if (branch !== at) go(at)
       return
     }
 
@@ -370,35 +365,54 @@ export default function InstallningarPage() {
       clearLocationSummaryCache()
       setSaved(true)
     } catch (err) {
-      setLocationError(errorText(err, 'Kunde inte spara platsen.'))
+      setLocationError(errorText(err, 'Platsen sparades inte.'))
     } finally {
       setSavingLocation(false)
     }
   }
 
 
-  const showTab = (t: SettingsTab) =>
-    t === 'statistik' || t === 'bokforing' || t === 'integritet'
-      ? isOwner
-      : t === 'bestallning' || t === 'skrivare'
-        ? Boolean(tenant?.entitlements.features.ordering)
-        : true
-  // Personalen som följer en länk till en ägarflik (#bokforing m.fl.) hamnar på Profil.
+  const visible = (b: BranchId) => branchVisible(b, tenant)
+  // Personalen som följer en länk till en ägargren (#bokforing m.fl.) hamnar på fältet.
   useEffect(() => {
-    if (tenant && !showTab(tab)) setTab('profil')
-    // showTab beror bara på tenant
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, tenant])
-  const tabGroups = GROUPS.map((g) => ({ ...g, tabs: g.tabs.filter(showTab) })).filter((g) => g.tabs.length > 0)
-  const activeGroup = tabGroups.find((g) => g.tabs.includes(tab))?.id ?? tabGroups[0]?.id
-  const openGroup = tabGroups.find((g) => g.id === activeGroup)
+    if (tenant && branch && !branchVisible(branch, tenant)) navigate({ hash: '' }, { replace: true })
+  }, [branch, tenant, navigate])
+  const showPersonal = navVisible(NAV_GROUPS.flatMap((g) => g.items).find((n) => n.to === '/personal') as NavItem, tenant)
+  const trees: VisibleTree[] = TREES.map((t) => ({
+    ...t,
+    branches: t.branches.filter(visible),
+    personalLink: t.id === 'personalen' && showPersonal,
+  })).filter((t) => t.branches.length > 0 || t.personalLink)
+  const order = trees.flatMap((t) => t.branches)
+  const currentTree = branch ? treeOf(branch).id : view.kind === 'tree' ? view.tree : null
+  const shownTree = view.kind === 'tree' ? trees.find((t) => t.id === view.tree) : undefined
+
+  // Äpplena: det viktigaste per träd, ur det sidan redan har hämtat.
+  const { theme } = useTheme()
+  const [sound] = useSound()
+  const stripeReady = Boolean(tenant?.stripe.chargesEnabled)
+  const apples = buildApples({
+    tenant,
+    isOwner,
+    noLocation: !locationId && !resolvingLocation,
+    hours: savedLocation ? businessHours : null,
+    locExtra,
+    theme,
+    sound,
+  })
+  // Fokus följer vyn (rubriken, eller kortet/raden man kom från).
+  const body = useRef<HTMLDivElement>(null)
+  useViewFocus(hash.replace(/^#/, ''), body)
+  useQuietCardTitle(branch, body)
+
+  const pane = (b: BranchId) => ({ className: 'settings-branch', 'data-branch': b, hidden: branch !== b })
 
   return (
     <>
       <AdminTopbar
         title="Inställningar"
         actions={
-          tab === 'profil' && <span className="row-actions">
+          (branch === 'profil' || branch === HOURS_BRANCH) && <span className="row-actions">
             {saved && <span className="save-notice">Sparat</span>}
             <CtaButton
               label={savingLocation ? 'Sparar…' : 'Spara ändringar'}
@@ -411,268 +425,355 @@ export default function InstallningarPage() {
           </span>
         }
       />
-      <div className="admin-main settings-main">
-        <nav className="settings-nav" aria-label="Inställningar">
-          {menuOpen || !openGroup ? (
-            <ul className="settings-menu">
-              {tabGroups.map((g) => (
-                <li key={g.id}>
-                  <button
-                    type="button"
-                    className={g.id === activeGroup ? 'settings-menu-item current' : 'settings-menu-item'}
-                    onClick={() => {
-                      setMenuAt(null)
-                      if (g.id !== activeGroup) openTab(g.tabs[0])
+      <div className="admin-main settings-main" data-view={view.kind}>
+        <SettingsTreeNav
+          trees={trees}
+          current={branch}
+          currentTree={currentTree}
+          onBranch={go}
+          onPersonal={() => navigate('/personal')}
+        />
+        <div className="settings-body" ref={body}>
+          {view.kind === 'field' && (
+            <SettingsField
+              trees={trees}
+              apples={apples}
+              visible={visible}
+              onTree={go}
+              onBranch={go}
+              onLeaf={(leaf) => {
+                setPendingLeaf(leaf)
+                go(leaf.branch)
+              }}
+              onPersonal={() => navigate('/personal')}
+            />
+          )}
+          {shownTree && (
+            <SettingsTreePage
+              tree={shownTree}
+              apples={apples[shownTree.id] ?? []}
+              onField={() => go(null)}
+              onBranch={go}
+              onPersonal={() => navigate('/personal')}
+            />
+          )}
+          {branch && <BranchHead key={branch} branch={branch} onField={() => go(null)} onTree={go} />}
+
+          {/* Grenar döljs (hidden) i stället för att tas bort - osparade ändringar ligger kvar. */}
+          <div {...pane('profil')}>
+            <section className="admin-card table-card" data-help="settings:profil:InstallningarPage">
+              <div className="card-head">
+                <div>
+                  <h2 className="card-title">Restaurangprofil</h2>
+                  <p className="cell-muted">
+                    {resolvingLocation
+                      ? 'Letar efter restaurangens plats…'
+                      : locationId
+                        ? isOwner
+                          ? null
+                          : 'Bara ägaren kan ändra.'
+                        : isOwner
+                          ? 'Ingen plats än. Fyll i och spara.'
+                          : 'Ingen plats än. Fråga ägaren.'}
+                  </p>
+                </div>
+              </div>
+              {locationError && (
+                <ErrorNote text={locationError} />
+              )}
+              <div className="form-grid">
+                <div className="form-field">
+                  <label htmlFor="rp-name">Namn</label>
+                  <input
+                    id="rp-name"
+                    value={profile.name}
+                    onChange={(e) => updateProfile('name', e.target.value)}
+                  />
+                  {driftNote('name', profile.name, (v) => updateProfile('name', v))}
+                </div>
+                <div className="form-field">
+                  <label htmlFor="rp-phone">Telefon</label>
+                  <PhoneInput id="rp-phone" value={profile.phone} onChange={(v) => updateProfile('phone', v)} />
+                  {driftNote('phoneNumber', profile.phone, (v) => updateProfile('phone', v))}
+                </div>
+                <div className="form-field">
+                  <label htmlFor="rp-address">Adress</label>
+                  <input
+                    id="rp-address"
+                    value={profile.address}
+                    onChange={(e) => updateProfile('address', e.target.value)}
+                  />
+                  {driftNote('address', profile.address, (v) => updateProfile('address', v))}
+                </div>
+                <div className="form-field">
+                  <label htmlFor="rp-email">E-post</label>
+                  <input
+                    id="rp-email"
+                    type="email"
+                    value={profile.email}
+                    onChange={(e) => updateProfile('email', e.target.value)}
+                  />
+                  {driftNote('email', profile.email, (v) => updateProfile('email', v))}
+                </div>
+                <div className="form-field">
+                  <span className="form-field-label-row">
+                    <label htmlFor="rp-grace">Väntetid för sena gäster (minuter)</label>
+                    <InfoTooltip label="Väntetid för sena gäster (minuter)">
+                      Hur länge bordet hålls om gästen är sen. Därefter blir bordet
+                      ledigt igen.
+                    </InfoTooltip>
+                  </span>
+                  <Select
+                    id="rp-grace"
+                    value={graceMinutes}
+                    onChange={(e) => {
+                      setSaved(false)
+                      setGracePeriodHours(Number(e.target.value) / 60)
                     }}
                   >
-                    <span className="settings-menu-text">
-                      <span className="settings-menu-title">{g.label}</span>
-                    </span>
-                    <span className="settings-menu-arrow" aria-hidden="true">›</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="settings-group-view">
-              <button type="button" className="settings-back" onClick={() => setMenuAt(tab)}>
-                <span aria-hidden="true">‹</span> Alla inställningar
-              </button>
-              <p className="settings-group-name">{openGroup.label}</p>
-              <div className="settings-tabs">
-                {openGroup.tabs.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    className={tab === t ? 'active' : ''}
-                    data-tour={`settings-tab-${t}`}
-                    data-help={`settings-tab:${t}`}
-                    aria-current={tab === t ? 'page' : undefined}
-                    onClick={() => openTab(t)}
-                  >
-                    <span className="settings-tab-title">{TAB_LABEL[t]}</span>
-                  </button>
-                ))}
+                    {GRACE_MINUTES.map((m) => (
+                      <option key={m} value={m}>
+                        {m} min
+                      </option>
+                    ))}
+                  </Select>
+                </div>
               </div>
-            </div>
-          )}
-        </nav>
-        <div className="settings-body">
-          {/* Flikar döljs (hidden) i stället för att tas bort - osparade ändringar ligger kvar. */}
-          <section className="admin-card table-card" data-help="settings:profil:InstallningarPage" hidden={tab !== 'profil'}>
-            <div className="card-head">
-              <div>
-                <h2 className="card-title">Restaurangprofil</h2>
-                <p className="cell-muted">
-                  {resolvingLocation
-                    ? 'Letar efter restaurangens plats…'
-                    : locationId
-                      ? isOwner
-                        ? null
-                        : 'Bara ägaren kan ändra.'
-                      : isOwner
-                        ? 'Ingen plats än. Fyll i och spara.'
-                        : 'Ingen plats än. Fråga ägaren.'}
-                </p>
-              </div>
-            </div>
-            {locationError && (
-              <ErrorNote text={locationError} />
-            )}
-            <div className="form-grid">
-              <div className="form-field">
-                <label htmlFor="rp-name">Namn</label>
-                <input
-                  id="rp-name"
-                  value={profile.name}
-                  onChange={(e) => updateProfile('name', e.target.value)}
-                />
-                {driftNote('name', profile.name, (v) => updateProfile('name', v))}
-              </div>
-              <div className="form-field">
-                <label htmlFor="rp-phone">Telefon</label>
-                <PhoneInput id="rp-phone" value={profile.phone} onChange={(v) => updateProfile('phone', v)} />
-                {driftNote('phoneNumber', profile.phone, (v) => updateProfile('phone', v))}
-              </div>
-              <div className="form-field">
-                <label htmlFor="rp-address">Adress</label>
-                <input
-                  id="rp-address"
-                  value={profile.address}
-                  onChange={(e) => updateProfile('address', e.target.value)}
-                />
-                {driftNote('address', profile.address, (v) => updateProfile('address', v))}
-              </div>
-              <div className="form-field">
-                <label htmlFor="rp-email">E-post</label>
-                <input
-                  id="rp-email"
-                  type="email"
-                  value={profile.email}
-                  onChange={(e) => updateProfile('email', e.target.value)}
-                />
-                {driftNote('email', profile.email, (v) => updateProfile('email', v))}
-              </div>
-              <div className="form-field">
-                <span className="form-field-label-row">
-                  <label htmlFor="rp-grace">Väntetid för sena gäster (minuter)</label>
-                  <InfoTooltip label="Väntetid för sena gäster (minuter)">
-                    Hur länge bordet hålls om gästen är sen. Därefter blir bordet
-                    ledigt igen.
+            </section>
+          </div>
+
+          <div {...pane('dagar')}>
+            <section className="admin-card table-card" data-help="settings:dagar:BusinessHoursEditor">
+              <div className="card-head">
+                <div className="title-info">
+                  <h2 className="card-title">Öppettider</h2>
+                  <InfoTooltip label="Öppettider">
+                  Har ni öppet efter midnatt? Ange stängningstiden som vanligt, t.ex. lördag 18:00-02:00. Passet räknas då in på natten till söndag.
                   </InfoTooltip>
-                </span>
-                <Select
-                  id="rp-grace"
-                  value={graceMinutes}
-                  onChange={(e) => {
-                    setSaved(false)
-                    setGracePeriodHours(Number(e.target.value) / 60)
-                  }}
-                >
-                  {GRACE_MINUTES.map((m) => (
-                    <option key={m} value={m}>
-                      {m} min
-                    </option>
-                  ))}
-                </Select>
+                </div>
+              </div>
+              {locationError && <ErrorNote text={locationError} />}
+              {drift.businessHours && !sameData(drift.businessHours, businessHours) ? (
+                <ChangedNote onUse={() => {
+                  setBusinessHours(drift.businessHours as BusinessHours)
+                  setDrift((d) => ({ ...d, businessHours: undefined }))
+                }} />
+              ) : null}
+              <div style={{ height: 8 }} />
+              <BusinessHoursEditor
+                value={businessHours}
+                onChange={(next) => {
+                  setSaved(false)
+                  setBusinessHours(next)
+                }}
+              />
+            </section>
+            <div className="settings-row" data-help="settings:dagar:SpecialDaysCard">
+              <SpecialDaysCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+            </div>
+          </div>
+
+          {mounted('bord') && (
+            <div {...pane('bord')}>
+              <div data-help="settings:bord:BookingTimeCard">
+                <BookingTimeCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+              </div>
+              <div className="settings-row" data-help="settings:bord:TableRulesCard">
+                <TableRulesCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+              </div>
+              {locationId && <Slot id="installningar.verksamhet.waitlist" props={{ locationId }} />}
+            </div>
+          )}
+
+          {mounted('google') && visible('google') && (
+            <div {...pane('google')}>
+              {locationId ? (
+                <div className="settings-row" data-help="settings:google:GoogleProfileCard">
+                  <Slot id="installningar.verksamhet.google" props={{ locationId }} />
+                </div>
+              ) : (
+                <section className="admin-card table-card">
+                  <h2 className="card-title">Google-profil</h2>
+                  <p className="cell-muted">Spara restaurangens profil först.</p>
+                </section>
+              )}
+            </div>
+          )}
+
+          {mounted('notiser') && (
+            <div {...pane('notiser')}>
+              <div className="settings-row" data-help="settings:notiser:NotificationsCard">
+                {tenant && (
+                  <NotificationsCard
+                    key={`${tenant.tenantId}:${JSON.stringify(tenant.notifications)}:${tenant.senderName ?? ''}`}
+                    tenant={tenant}
+                    isOwner={isOwner}
+                  />
+                )}
               </div>
             </div>
-            <div style={{ height: 20 }} />
-            <div className="title-info">
-              <p className="form-section-label">Öppettider</p>
-              <InfoTooltip label="Öppettider">
-                Har ni öppet efter midnatt? Ange stängningstiden som vanligt, t.ex. lördag 18:00-02:00. Passet räknas då in på natten till söndag.
-              </InfoTooltip>
-            </div>
-            {drift.businessHours && !sameData(drift.businessHours, businessHours) ? (
-              <ChangedNote onUse={() => {
-                setBusinessHours(drift.businessHours as BusinessHours)
-                setDrift((d) => ({ ...d, businessHours: undefined }))
-              }} />
-            ) : null}
-            <div style={{ height: 8 }} />
-            <BusinessHoursEditor
-              value={businessHours}
-              onChange={(next) => {
-                setSaved(false)
-                setBusinessHours(next)
-              }}
-            />
-          </section>
-
-          {locationId && tab === 'profil' && (
-            <Slot id="installningar.verksamhet.google" props={{ locationId }} />
           )}
 
-          {tenant && isOwner && (
-            <div className="settings-row" data-help="settings:profil:PlanCard" hidden={tab !== 'profil'}>
-              <PlanCard tenant={tenant} />
+          {mounted('avbokning') && (
+            <div {...pane('avbokning')}>
+              <div className="settings-row" data-help="settings:avbokning:CancellationPolicyCard">
+                <CancellationPolicyCard
+                  key={locationId ?? 'none'}
+                  locationId={locationId}
+                  isOwner={isOwner}
+                  stripeReady={stripeReady}
+                />
+              </div>
             </div>
           )}
 
-          <div data-help="settings:profil:BookingTimeCard" hidden={tab !== 'profil'}>
-            <BookingTimeCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
-          </div>
-
-          <div className="settings-row" data-help="settings:betalningar:PaymentsCard" hidden={tab !== 'betalningar'}>
-            {tenant && (
-              <PaymentsCard
-                tenant={tenant}
-                isOwner={isOwner}
-                stripeReturn={stripeReturn}
-                onRefresh={refreshTenant}
-              />
-            )}
-          </div>
-
-          <div className="settings-row" data-help="settings:notiser:NotificationsCard" hidden={tab !== 'notiser'}>
-            {tenant && (
-              <NotificationsCard
-                key={`${tenant.tenantId}:${JSON.stringify(tenant.notifications)}:${tenant.senderName ?? ''}`}
-                tenant={tenant}
-                isOwner={isOwner}
-              />
-            )}
-          </div>
-
-          <div className="settings-row" data-help="settings:avbokning:CancellationPolicyCard" hidden={tab !== 'avbokning'}>
-            <CancellationPolicyCard
-              key={locationId ?? 'none'}
-              locationId={locationId}
-              isOwner={isOwner}
-              stripeReady={Boolean(tenant?.stripe.chargesEnabled)}
-            />
-          </div>
-
-          {tenant?.entitlements.features.ordering && (
-            <div className="settings-row" data-help="settings:bestallning:OrderingCard" hidden={tab !== 'bestallning'}>
-              <OrderingCard
-                key={locationId ?? 'none'}
-                locationId={locationId}
-                isOwner={isOwner}
-                stripeReady={Boolean(tenant?.stripe.chargesEnabled)}
-              />
+          {isOwner && mounted('integritet') && (
+            <div {...pane('integritet')}>
+              <div className="settings-row" data-help="settings:integritet:PrivacyCard">
+                <PrivacyCard />
+              </div>
             </div>
           )}
 
-          {tenant?.entitlements.features.ordering && tab === 'skrivare' && (
-            <div className="settings-row" data-help="settings:skrivare:PrinterCard">
-              <PrinterCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+          {visible('bestallning') && mounted('bestallning') && (
+            <div {...pane('bestallning')}>
+              <div className="settings-row" data-help="settings:bestallning:OrderingCard">
+                <OrderingCard
+                  key={locationId ?? 'none'}
+                  locationId={locationId}
+                  isOwner={isOwner}
+                  stripeReady={stripeReady}
+                />
+              </div>
             </div>
           )}
 
-          <div className="settings-row" data-help="settings:dagar:SpecialDaysCard" hidden={tab !== 'dagar'}>
-            <SpecialDaysCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
-          </div>
-
-          <div className="settings-row" data-help="settings:bord:TableRulesCard" hidden={tab !== 'bord'}>
-            <TableRulesCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
-          </div>
-
-          {locationId && tab === 'bord' && (
-            <Slot id="installningar.verksamhet.waitlist" props={{ locationId }} />
-          )}
-
-          {isOwner && tenant && (
-            <div className="settings-row" data-help="settings:statistik:InsightsSettingsCard" hidden={tab !== 'statistik'}>
-              <InsightsSettingsCard
-                key={`${locationId ?? 'none'}:${tenant.insights?.staffAccess ?? 'operations'}`}
-                tenant={tenant}
-                locationId={locationId}
-              />
+          {visible('skrivare') && mounted('skrivare') && (
+            <div {...pane('skrivare')}>
+              <div className="settings-row" data-help="settings:skrivare:PrinterCard">
+                <PrinterCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />
+              </div>
             </div>
           )}
 
-          {isOwner && tab === 'bokforing' && (
-            <div className="settings-row" data-help="settings:bokforing:BokforingCard">
-              <Slot id="installningar.bokforing.sync" props={{}} />
-              <BokforingCard
-                key={locationId ?? 'none'}
-                locationId={locationId}
-                giftCards={hasFeature(tenant, 'giftCards')}
-              />
+          {tenant && isOwner && mounted('abonnemang') && (
+            <div {...pane('abonnemang')}>
+              <div className="settings-row" data-help="settings:abonnemang:PlanCard">
+                <PlanCard tenant={tenant} />
+              </div>
             </div>
           )}
 
-          {isOwner && tab === 'integritet' && (
-            <div className="settings-row" data-help="settings:integritet:PrivacyCard">
-              <PrivacyCard />
+          {mounted('betalningar') && (
+            <div {...pane('betalningar')}>
+              <div className="settings-row" data-help="settings:betalningar:PaymentsCard">
+                {tenant && (
+                  <PaymentsCard
+                    tenant={tenant}
+                    isOwner={isOwner}
+                    stripeReturn={stripeReturn}
+                    onRefresh={refreshTenant}
+                  />
+                )}
+              </div>
             </div>
           )}
 
-          {tab === 'utseende' && (
-            <>
+          {isOwner && mounted('bokforing') && (
+            <div {...pane('bokforing')}>
+              <div className="settings-row" data-help="settings:bokforing:BokforingCard">
+                <Slot id="installningar.bokforing.sync" props={{}} />
+                <BokforingCard
+                  key={locationId ?? 'none'}
+                  locationId={locationId}
+                  giftCards={hasFeature(tenant, 'giftCards')}
+                />
+              </div>
+            </div>
+          )}
+
+          {isOwner && tenant && mounted('statistik') && (
+            <div {...pane('statistik')}>
+              <div className="settings-row" data-help="settings:statistik:InsightsSettingsCard">
+                <InsightsSettingsCard key={locationId ?? 'none'} locationId={locationId} />
+              </div>
+            </div>
+          )}
+
+          {isOwner && tenant && mounted('behorighet') && (
+            <div {...pane('behorighet')}>
+              <div className="settings-row" data-help="settings:behorighet:StaffAccessCard">
+                <StaffAccessCard tenant={tenant} />
+              </div>
+            </div>
+          )}
+
+          {mounted('utseende') && (
+            <div {...pane('utseende')}>
               <div className="settings-row" data-help="settings:utseende:AppearanceCard">
                 <AppearanceCard />
               </div>
-              <div className="settings-row" data-help="settings:utseende:DesktopAppCard">
+            </div>
+          )}
+
+          {mounted('skrivbordsappen') && (
+            <div {...pane('skrivbordsappen')}>
+              <div className="settings-row" data-help="settings:skrivbordsappen:DesktopAppCard">
                 <DesktopAppCard />
               </div>
-            </>
+            </div>
           )}
+
+          {branch && <BranchPager order={order} branch={branch} onBranch={go} />}
         </div>
       </div>
-
     </>
   )
+}
+
+function reducedMotion(): boolean {
+  return Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+}
+
+/**
+ * Lyser upp ett blad från sökningen: väntar tills grenen har ritat det
+ * (kort som hämtar data), rullar dit och ger raden en ring en stund.
+ */
+function highlightLeaf(leaf: Leaf, done: () => void): () => void {
+  const wants = (leaf.find ?? leaf.label).split('|').map(fold)
+  const started = Date.now()
+  let timer = 0
+  let frame = 0
+  const tick = () => {
+    const root = document.querySelector(`.settings-branch[data-branch="${leaf.branch}"]`)
+    const hit = root
+      ? Array.from(root.querySelectorAll<HTMLElement>('h2, h3, h4, label, legend, .form-section-label, .appearance-title, .card-title, .switch-label, p, span, button'))
+        .find((el) => {
+          if (el.children.length >= 3) return false
+          const text = fold((el.textContent ?? '').replace(/\s+/g, ' ').trim())
+          return wants.some((w) => text.startsWith(w))
+        })
+      : undefined
+    if (!hit) {
+      if (Date.now() - started < 4000) frame = window.requestAnimationFrame(tick)
+      else done()
+      return
+    }
+    // Raden bladet står på; en kortrubrik lyser upp hela kortet.
+    const card = hit.closest<HTMLElement>('.admin-card')
+    const row = hit.closest<HTMLElement>('.form-field, .appearance-row, .toggle-row, .switch-row')
+      ?? (hit.matches('h2, h3, .card-title') || hit.parentElement === card ? card : hit.parentElement)
+      ?? hit
+    row.scrollIntoView?.({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' })
+    row.classList.add('stree-leaf-flash')
+    timer = window.setTimeout(() => {
+      row.classList.remove('stree-leaf-flash')
+      done()
+    }, 2400)
+  }
+  frame = window.requestAnimationFrame(tick)
+  return () => {
+    window.cancelAnimationFrame(frame)
+    window.clearTimeout(timer)
+  }
 }

@@ -1,6 +1,8 @@
 import { useSearchParams } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
+import { PlanLocked } from '../../shared/PlanLocked'
 import { useTenant } from '../../shared/tenant'
+import { canOpen } from '../../shared/access'
 import { Slot, slotVisible } from '../../shared/slots'
 import { OverviewTab } from './OverviewTab'
 import { TemplatesTab } from './TemplatesTab'
@@ -59,7 +61,7 @@ export default function MarknadsforingPage() {
   const enabled = (['marketing', 'metaAds', 'googleBusiness', 'socialPosting'] as const).some((k) =>
     Boolean(tenant?.entitlements?.features?.[k]),
   )
-  const isOwner = tenant?.role === 'owner_user'
+  const allowed = canOpen(tenant, 'marknadsforing')
 
   const select = (id: TabId) => {
     const next = new URLSearchParams(params)
@@ -68,19 +70,18 @@ export default function MarknadsforingPage() {
     setParams(next, { replace: true })
   }
 
-  if (!enabled || !isOwner) {
+  if (!enabled || !allowed) {
     return (
       <>
         <AdminTopbar title="Marknadsföring" />
         <main className="admin-main">
-          <section className="admin-card table-card">
-            <h2 className="card-title">{enabled ? 'Bara för ägare' : 'Ingår inte i er plan'}</h2>
-            <p className="cell-muted">
-              {enabled
-                ? 'Marknadsföringen hanteras av restaurangens ägare.'
-                : 'Kontakta oss för att uppgradera.'}
-            </p>
-          </section>
+          {enabled ? (
+            <section className="admin-card table-card">
+              <p className="cell-muted">Du har inte behörighet till Marknadsföring. Be ägaren om behörighet.</p>
+            </section>
+          ) : (
+            <PlanLocked />
+          )}
         </main>
       </>
     )

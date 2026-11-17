@@ -5,6 +5,7 @@ import { BrandSelect as Select } from '../../shared/Select'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { ApiError } from '../../shared/api'
 import { errorText } from '../../shared/errors'
+import { RetryBanner } from './RetryBanner'
 import { withBusy } from '../../shared/motion/busy'
 import { useTenant } from '../../shared/tenant'
 import type { BusinessHours } from '../installningar/locationApi'
@@ -39,13 +40,13 @@ export default function SettingsWizard({ locationId, onSaved, startAt = null }: 
   startAt?: Step | null
 }) {
   const [data, setData] = useState<Data | null>(null)
-  const [loadError, setLoadError] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [wizardAt, setWizardAt] = useState<Step | null>(startAt)
   // Fler inställningar förblir utfällt efter Spara och efter guiden.
   const [moreOpen, setMoreOpen] = useState(false)
 
   const load = useCallback(async () => {
-    setLoadError(false)
+    setLoadError(null)
     try {
       const [overview, loc, place] = await Promise.all([getOverview(), getLocation(locationId), getPlaceBasics(locationId)])
       setData({
@@ -53,19 +54,15 @@ export default function SettingsWizard({ locationId, onSaved, startAt = null }: 
         others: overview.locations.filter((l) => l.locationId !== locationId && l.enabled && l.number),
         businessHours: place.businessHours, restaurantPhone: place.phoneNumber,
       })
-    } catch {
-      setLoadError(true)
+    } catch (err) {
+      setLoadError(errorText(err, 'Telefoninställningarna kunde inte visas.', ERRORS))
     }
   }, [locationId])
 
   useEffect(() => { void load() }, [load])
 
   if (loadError) {
-    return (
-      <Bar variant="banner" tone="danger" action={<Button size="sm" variant="secondary" onClick={() => void load()}>{SETUP.buttons.retry}</Button>}>
-        Vi kunde inte hämta inställningarna. Det är vårt fel.
-      </Bar>
-    )
+    return <RetryBanner text={loadError} onRetry={() => void load()} />
   }
   if (!data) return <Printing label="Hämtar inställningarna" />
 
@@ -174,7 +171,7 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
       await withBusy(save)
       set({ saving: false })
     } catch (err) {
-      const text = errorText(err, 'Kunde inte spara.', ERRORS)
+      const text = errorText(err, 'Steget sparades inte.', ERRORS)
       const field = err instanceof ApiError && err.fromServer ? err.field : undefined
       if (field && FIELD_ID[field]) invalid(field, text)
       else set({ saving: false, bannerError: text })
@@ -350,11 +347,7 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
             onTest={(test) => setD((prev) => ({ ...prev, test }))} onTested={onLoc} onGoStep={go} onDone={onExit} />
         ) : null}
 
-        {d.bannerError ? (
-          <Bar variant="banner" tone="danger" action={
-            <Button size="sm" variant="secondary" type="button" onClick={() => void retry.current?.()}>{SETUP.buttons.retry}</Button>
-          }>{d.bannerError}</Bar>
-        ) : null}
+        {d.bannerError ? <RetryBanner text={d.bannerError} onRetry={() => void retry.current?.()} /> : null}
 
         <div className="telefon-foot">
           {n > 1 ? <Button type="button" variant="secondary" onClick={back}>{SETUP.buttons.back}</Button> : <span />}

@@ -23,11 +23,11 @@ say() { printf '%s\n' "$*"; }
 fail() { printf 'Fel: %s\n' "$*" >&2; exit 1; }
 
 fetch() { # url fil sha
-  [ -n "$1" ] || fail "ingen fil för den här datorn i version $VERSION"
+  [ -n "$1" ] || fail "version $VERSION finns inte för den här datorn. Kontakta Booqy."
   say "Laddar ner $NAME $VERSION..."
   curl -fSL --progress-bar "$1" -o "$2"
   if command -v shasum >/dev/null 2>&1; then sum=$(shasum -a 256 "$2"); else sum=$(sha256sum "$2"); fi
-  [ "${sum%% *}" = "$3" ] || fail "kontrollsumman stämmer inte. Inget installerades."
+  [ "${sum%% *}" = "$3" ] || fail "filen laddades inte ner helt. Inget installerades. Kör kommandot igen."
 }
 
 case "$(uname -s)" in
@@ -38,7 +38,7 @@ Darwin)
     fetch "$MAC_X64_URL" "$tmp/app.zip" "$MAC_X64_SHA"
   fi
   ditto -x -k "$tmp/app.zip" "$tmp/x"
-  [ -d "$tmp/x/$NAME.app" ] || fail "oväntat innehåll i paketet"
+  [ -d "$tmp/x/$NAME.app" ] || fail "filen innehöll inte appen. Inget installerades. Kontakta Booqy."
   dest="${BOOQY_INSTALL_DIR:-/Applications}"
   if [ ! -w "$dest" ]; then
     dest="$HOME/Applications"
@@ -55,7 +55,7 @@ Darwin)
   [ "${BOOQY_NO_OPEN:-0}" = 1 ] || open "$app"
   ;;
 Linux)
-  [ "$(uname -m)" = x86_64 ] || fail "bara 64-bitars Intel/AMD (x86_64) stöds"
+  [ "$(uname -m)" = x86_64 ] || fail "appen fungerar bara på datorer med 64-bitars Intel- eller AMD-processor."
   fetch "$APPIMAGE_URL" "$tmp/app.AppImage" "$APPIMAGE_SHA"
   bin="$HOME/.local/bin"
   apps="$HOME/.local/share/applications"
@@ -76,6 +76,6 @@ DESKTOP
   [ "${BOOQY_NO_OPEN:-0}" = 1 ] || (nohup "$bin/$SLUG.AppImage" >/dev/null 2>&1 &)
   ;;
 *)
-  fail "kör install.ps1 på Windows: irm __BASE__/install.ps1 | iex"
+  fail "på Windows: kör irm __BASE__/install.ps1 | iex i PowerShell."
   ;;
 esac

@@ -26,13 +26,13 @@ describe('password rules (same as the user pool policy)', () => {
   })
 
   it('explains what is wrong', () => {
-    expect(passwordProblem('kort', 'kort')).toBe('Lösenordet uppfyller inte alla krav ännu.')
+    expect(passwordProblem('kort', 'kort')).toBe('Lösenordet följer inte alla regler än. Se listan under fältet.')
     expect(passwordProblem(' Aa1!aaaa', ' Aa1!aaaa')).toBe(
-      'Lösenordet får inte börja eller sluta med mellanslag.',
+      'Lösenordet börjar eller slutar med ett mellanslag. Ta bort mellanslaget.',
     )
-    expect(passwordProblem('Aa1!aaaa', 'Aa1!aaab')).toBe('Lösenorden matchar inte.')
+    expect(passwordProblem('Aa1!aaaa', 'Aa1!aaab')).toBe('De två lösenorden är inte likadana. Skriv samma lösenord i båda fälten.')
     const long = 'Aa1!' + 'a'.repeat(253)
-    expect(passwordProblem(long, long)).toBe('Lösenordet får vara högst 256 tecken.')
+    expect(passwordProblem(long, long)).toBe('Lösenordet är för långt. Använd högst 256 tecken.')
     expect(passwordProblem('Aa1!aaaa', 'Aa1!aaaa')).toBeNull()
   })
 })

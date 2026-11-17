@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ApiError } from '../../shared/api'
+import { errorText as sharedErrorText } from '../../shared/errors'
+import { useConfirm } from '../../shared/ConfirmDialog'
 import { PhoneInput } from '../../shared/PhoneInput'
 import {
   NOTICE_MAX,
@@ -27,6 +28,7 @@ import './privacy.css'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
+import { SkelLines, SkelPage } from '../../shared/Skeleton'
 
 /**
  * Integritet: restaurangen är personuppgiftsansvarig för sina gäster.
@@ -83,11 +85,8 @@ function when(iso: string | null): string {
   return new Date(iso).toLocaleString('sv-SE', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-function errorText(err: unknown, fallback: string): string {
-  if (err instanceof ApiError && err.status === 403) return 'Bara restaurangens ägare kan göra det här.'
-  if (err instanceof ApiError && err.status === 400) return 'Kontrollera uppgifterna och försök igen.'
-  return fallback
-}
+const FIELD_LABELS = { email: 'e-posten', phone: 'telefonnumret', body: 'texten' }
+const errorText = (err: unknown, action: string) => sharedErrorText(err, action, {}, FIELD_LABELS)
 
 function recordLabel(r: ConsentRecord): string {
   const source = SOURCE_LABEL[r.source] ?? r.source
@@ -164,6 +163,16 @@ function NoticeEditor() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [confirmEl, ask] = useConfirm()
+  const [attempt, setAttempt] = useState(0)
+  // Det som misslyckades, så att Försök igen gör om just det (utan ny fråga).
+  const [retry, setRetry] = useState<(() => void) | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
+
+  function fail(text: string, again: () => void) {
+    setError(text)
+    setRetry(() => again)
+  }
 
   useEffect(() => {
     let live = true
@@ -174,18 +183,23 @@ function NoticeEditor() {
         setTemplate(r.template)
         setText(r.notice.body)
       })
-      .catch((err) => live && setError(errorText(err, 'Kunde inte hämta integritetspolicyn.')))
+      .catch((err) => {
+        if (live) fail(errorText(err, 'Integritetspolicyn kunde inte visas.'), () => {
+          setError(null)
+          setAttempt((n) => n + 1)
+        })
+      })
     return () => {
       live = false
     }
-  }, [])
+  }, [attempt])
 
   async function save(e: FormEvent) {
     e.preventDefault()
     setError(null)
     setNotice(null)
     if (!text.trim()) {
-      setError('Texten kan inte vara tom. Återställ mallen om du vill börja om.')
+      setError('Texten är tom. Skriv en text, eller återställ mallen.')
       return
     }
     setBusy(true)
@@ -195,14 +209,18 @@ function NoticeEditor() {
       setText(n.body)
       setNotice('Sparat. Gästerna ser den nya texten direkt.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara.'))
+      fail(errorText(err, 'Integritetspolicyn sparades inte.'), () => formRef.current?.requestSubmit())
     } finally {
       setBusy(false)
     }
   }
 
   async function reset() {
-    if (!window.confirm('Ersätta texten med standardmallen? Din egen text sparas inte.')) return
+    if (!(await ask({ title: 'Ersätta texten med standardmallen?', text: 'Din egen text sparas inte.', confirmLabel: 'Återställ', danger: true }))) return
+    await doReset()
+  }
+
+  async function doReset() {
     setError(null)
     setNotice(null)
     setBusy(true)
@@ -212,7 +230,7 @@ function NoticeEditor() {
       setText(n.body)
       setNotice('Standardmallen används igen.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte återställa just nu.'))
+      fail(errorText(err, 'Mallen kunde inte återställas.'), () => void doReset())
     } finally {
       setBusy(false)
     }
@@ -234,49 +252,58 @@ function NoticeEditor() {
           {saved.custom ? `Egen text, version ${saved.version}, sparad ${when(saved.updatedAt)}` : 'Standardmallen (ingen egen text sparad)'}
         </p>
       )}
-      <form onSubmit={save} className="privacy-form">
-        <div className="form-field">
-          <label htmlFor="privacy-body">Text</label>
-          <textarea
-            id="privacy-body"
-            className="privacy-textarea"
-            rows={18}
-            maxLength={NOTICE_MAX}
-            value={text}
-            disabled={!saved || busy}
-            spellCheck
-            onChange={(e) => {
-              setText(e.target.value)
-              setNotice(null)
-            }}
-          />
-          <p className="cell-muted privacy-hint">
-            Rader som börjar med <code>## </code> blir rubriker, <code>- </code> blir punkter. {text.length.toLocaleString('sv-SE')} av{' '}
-            {NOTICE_MAX.toLocaleString('sv-SE')} tecken.
-          </p>
-        </div>
-        {error && (
-          <ErrorNote text={error} />
-        )}
-        <span className="row-actions">
-          <button type="submit" className="btn primary square" disabled={busy || !dirty}>
-            {busy ? 'Sparar…' : 'Spara text'}
-          </button>
-          <button
-            type="button"
-            className="btn outline square"
-            disabled={busy || !saved || (!saved.custom && text === template)}
-            onClick={reset}
-          >
-            Återställ mallen
-          </button>
-          {notice && (
-            <span className="save-notice" role="status">
-              {notice}
-            </span>
-          )}
-        </span>
-      </form>
+      {!saved ? (
+        error ? (
+          <ErrorNote text={error} onRetry={retry ?? undefined} />
+        ) : (
+          <SkelPage label="Hämtar texten">
+            <SkelLines n={6} />
+          </SkelPage>
+        )
+      ) : (
+        <form ref={formRef} onSubmit={save} className="privacy-form">
+          <div className="form-field">
+            <label htmlFor="privacy-body">Text</label>
+            <textarea
+              id="privacy-body"
+              className="privacy-textarea"
+              rows={18}
+              maxLength={NOTICE_MAX}
+              value={text}
+              disabled={busy}
+              spellCheck
+              onChange={(e) => {
+                setText(e.target.value)
+                setNotice(null)
+              }}
+            />
+            <p className="cell-muted privacy-hint">
+              Rader som börjar med <code>## </code> blir rubriker, <code>- </code> blir punkter. {text.length.toLocaleString('sv-SE')} av{' '}
+              {NOTICE_MAX.toLocaleString('sv-SE')} tecken.
+            </p>
+          </div>
+          {error && <ErrorNote text={error} onRetry={retry ?? undefined} />}
+          {confirmEl}
+          <span className="row-actions">
+            <button type="submit" className="btn primary square" disabled={busy || !dirty}>
+              {busy ? 'Sparar…' : 'Spara text'}
+            </button>
+            <button
+              type="button"
+              className="btn outline square"
+              disabled={busy || (!saved.custom && text === template)}
+              onClick={reset}
+            >
+              Återställ mallen
+            </button>
+            {notice && (
+              <span className="save-notice" role="status">
+                {notice}
+              </span>
+            )}
+          </span>
+        </form>
+      )}
     </section>
   )
 }
@@ -291,6 +318,14 @@ function ConsentTool() {
   const [notice, setNotice] = useState<string | null>(null)
   const [confirmErase, setConfirmErase] = useState(false)
   const [erased, setErased] = useState<EraseResult | null>(null)
+  const [confirmEl, ask] = useConfirm()
+  const [retry, setRetry] = useState<(() => void) | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
+
+  function fail(text: string, again: () => void) {
+    setError(text)
+    setRetry(() => again)
+  }
 
   async function search(e: FormEvent) {
     e.preventDefault()
@@ -308,7 +343,7 @@ function ConsentTool() {
       setAsked(q)
     } catch (err) {
       setResult(null)
-      setError(errorText(err, 'Kunde inte söka.'))
+      fail(errorText(err, 'Sökningen gick inte.'), () => formRef.current?.requestSubmit())
     } finally {
       setBusy(false)
     }
@@ -317,7 +352,13 @@ function ConsentTool() {
   async function withdraw(channel: ConsentChannel) {
     if (!asked) return
     const label = CHANNEL_LABEL[channel].toLowerCase()
-    if (!window.confirm(`Återkalla gästens samtycke till erbjudanden via ${label}? Bekräftelser och kvitton påverkas inte.`)) return
+    if (!(await ask({ title: `Återkalla samtycket via ${label}?`, text: 'Gäller bara erbjudanden. Bekräftelser och kvitton påverkas inte.', confirmLabel: 'Återkalla' }))) return
+    await doWithdraw(channel)
+  }
+
+  async function doWithdraw(channel: ConsentChannel) {
+    if (!asked) return
+    const label = CHANNEL_LABEL[channel].toLowerCase()
     setError(null)
     setNotice(null)
     setBusy(true)
@@ -326,7 +367,7 @@ function ConsentTool() {
       setResult(r)
       setNotice(r.withdrawn.length ? `Samtycket via ${label} är återkallat.` : 'Det fanns inget samtycke att återkalla.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte återkalla.'))
+      fail(errorText(err, 'Samtycket återkallades inte.'), () => void doWithdraw(channel))
     } finally {
       setBusy(false)
     }
@@ -341,7 +382,7 @@ function ConsentTool() {
       downloadJson(await exportGuest(asked.email, asked.phone), `gastdata-${new Date().toISOString().slice(0, 10)}.json`)
       setNotice('Filen är nedladdad. Skicka den till gästen på ett säkert sätt.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte exportera.'))
+      fail(errorText(err, 'Filen med gästens uppgifter skapades inte.'), () => void doExport())
     } finally {
       setBusy(false)
     }
@@ -359,7 +400,7 @@ function ConsentTool() {
       setResult(await lookupConsent(asked.email, asked.phone))
     } catch (err) {
       setConfirmErase(false)
-      setError(errorText(err, 'Kunde inte radera.'))
+      fail(errorText(err, 'Gästens uppgifter raderades inte.'), () => setConfirmErase(true))
     } finally {
       setBusy(false)
     }
@@ -376,7 +417,7 @@ function ConsentTool() {
           Vill gästen veta vad ni har sparat, eller bli raderad, exporterar eller raderar ni det också här.
         </InfoTooltip>
       </div>
-      <form onSubmit={search} className="privacy-search">
+      <form ref={formRef} onSubmit={search} className="privacy-search">
         <div className="form-field">
           <label htmlFor="consent-email">E-post</label>
           <input
@@ -396,7 +437,7 @@ function ConsentTool() {
         </button>
       </form>
       {error && (
-        <ErrorNote text={error} />
+        <ErrorNote text={error} onRetry={retry ?? undefined} />
       )}
       {notice && (
         <p className="save-notice" role="status">
@@ -419,6 +460,7 @@ function ConsentTool() {
           </button>
         </div>
       )}
+      {confirmEl}
       {confirmErase && asked && (
         <EraseGuestDialog
           who={[asked.email, asked.phone].filter(Boolean).join(' / ')}

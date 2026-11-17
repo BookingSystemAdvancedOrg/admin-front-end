@@ -27,7 +27,7 @@ describe('BookingTimeCard', () => {
 
     await chooseOption(screen.getByLabelText('Standardlängd'), '90')
     await user.click(screen.getByLabelText('Personalen får förlänga bokningar om bordet är ledigt'))
-    await user.click(screen.getByRole('button', { name: '+ Lägg till specialtid' }))
+    await user.click(screen.getByRole('button', { name: 'Lägg till specialtid' }))
     await user.click(screen.getByRole('button', { name: 'Spara bokningstid' }))
 
     expect(updateLocation).toHaveBeenCalledTimes(1)
@@ -47,8 +47,8 @@ describe('BookingTimeCard', () => {
     getLocation.mockResolvedValue({ locationId: 'loc-1', bookingDurationHours: 2, gracePeriodHours: 0.25 })
     render(<BookingTimeCard locationId="loc-1" isOwner />)
     await screen.findByText(/Nu: 2 tim/)
-    await user.click(screen.getByRole('button', { name: '+ Lägg till specialtid' }))
-    await user.click(screen.getByRole('button', { name: '+ Lägg till specialtid' }))
+    await user.click(screen.getByRole('button', { name: 'Lägg till specialtid' }))
+    await user.click(screen.getByRole('button', { name: 'Lägg till specialtid' }))
     await user.click(screen.getByRole('button', { name: 'Spara bokningstid' }))
     expect(screen.getByRole('alert')).toHaveTextContent('samma prioritet')
     expect(updateLocation).not.toHaveBeenCalled()

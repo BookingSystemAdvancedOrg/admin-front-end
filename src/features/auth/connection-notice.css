@@ -35,8 +35,8 @@
   }
 }
 
-/* Phone layout (900 px and narrower, as the bottom menu): the bottom edge holds the menu bar. */
-@media (max-width: 900px) {
+/* Phone layout (same query as the bottom menu): the bottom edge holds the menu bar. */
+@media (max-width: 600px), (pointer: coarse) and (max-height: 500px) {
   .connection-notice {
     top: max(12px, env(safe-area-inset-top));
     right: auto;

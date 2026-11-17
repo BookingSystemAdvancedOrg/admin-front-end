@@ -79,8 +79,13 @@ export function listGuests(params: { cursor?: string | null; locationId?: string
   return apiFetch<{ guests: GuestSummary[]; cursor: string | null }>(`/tenant/guests${qs ? `?${qs}` : ''}`)
 }
 
-export function searchGuests(body: { email: string } | { phone: string } | { name: string }) {
-  return apiFetch<{ guests: GuestSummary[] }>('/tenant/guests/search', { method: 'POST', body: JSON.stringify(body) })
+export function searchGuests(
+  body: { email: string } | { phone: string } | { name: string },
+  locationId?: string,
+) {
+  // Utan locationId söker servern i alla restauranger användaren ser.
+  const payload = locationId ? { ...body, locationId } : body
+  return apiFetch<{ guests: GuestSummary[] }>('/tenant/guests/search', { method: 'POST', body: JSON.stringify(payload) })
 }
 
 export function getGuest(guestId: string) {

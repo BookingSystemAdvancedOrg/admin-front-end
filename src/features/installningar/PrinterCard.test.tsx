@@ -36,6 +36,15 @@ const ONE: PrintOverview = { ...EMPTY, settings: { ...EMPTY.settings, printerId:
 beforeEach(() => Object.values(api).forEach((f) => f.mockReset()))
 
 describe('PrinterCard', () => {
+  it('loads again after a failed first load when Försök igen is tapped', async () => {
+    const user = userEvent.setup()
+    api.getPrinting.mockRejectedValueOnce(new ApiError(500, 'internal_error')).mockResolvedValue(ONE)
+    render(<PrinterCard locationId="loc-1" isOwner />)
+    expect(await screen.findByText(/Skrivarna kunde inte visas\./)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Försök igen' }))
+    expect(await screen.findByRole('list', { name: 'Skrivare' })).toHaveTextContent('Köket')
+  })
+
   it('adds a printer and shows its credentials once', async () => {
     const user = userEvent.setup()
     api.getPrinting.mockResolvedValueOnce(EMPTY).mockResolvedValue(ONE)
@@ -73,7 +82,7 @@ describe('PrinterCard', () => {
     await user.click(await screen.findByRole('button', { name: 'Ta bort' }))
     await user.click(screen.getByRole('button', { name: 'Bekräfta: ta bort Köket' }))
     expect(api.removePrinter).toHaveBeenCalledWith('loc-1', PRINTER.deviceId)
-    expect(await screen.findByText(/har just ändrats av någon annan/)).toBeInTheDocument()
+    expect(await screen.findByText(/Någon annan ändrade samma inställning/)).toBeInTheDocument()
   })
 
   it('lets staff test print but not change anything', async () => {

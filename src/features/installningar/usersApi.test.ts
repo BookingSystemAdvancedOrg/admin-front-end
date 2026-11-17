@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../shared/api'
 import * as api from '../../shared/api'
+import { describeError } from '../../shared/errors'
 import {
   canInvite,
   canManageTarget,
@@ -213,9 +214,14 @@ describe('request shaping', () => {
     expect(await listUsers()).toEqual([])
   })
 
-  it('listUsers maps 404 to a route-missing message, not "user not found"', async () => {
+  it('listUsers treats 404 as a missing route (Booqys fault), not "user not found"', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(404, 'Not Found'))
-    await expect(listUsers()).rejects.toThrow(/inte deployad/)
+    const err = await listUsers().catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as ApiError).code).toBe('route_not_found')
+    const info = describeError(err, 'Kunde inte hämta personalen.')
+    expect(info.actor).toBe('booqy')
+    expect(info.text).toContain('Felet ligger hos Booqy')
   })
 
   it('getUser GETs /users/{cognitoSub}', async () => {
@@ -250,17 +256,17 @@ describe('error mapping', () => {
 
   it('maps 403 to a forbidden message', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
-    await expect(deleteUser('sub-1')).rejects.toThrow(/inte behörighet/)
+    await expect(deleteUser('sub-1')).rejects.toThrow(/får inte göra det här/)
   })
 
   it('maps 404 to a not-found message', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(404, 'user not found'))
-    await expect(deleteUser('sub-1')).rejects.toThrow(/hittades inte/)
+    await expect(deleteUser('sub-1')).rejects.toThrow(/finns inte längre/)
   })
 
   it('maps 501 to a not-yet-implemented message', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(501, 'not implemented'))
-    await expect(deleteUser('sub-1')).rejects.toThrow(/inte klar på serversidan/)
+    await expect(deleteUser('sub-1')).rejects.toThrow(/inte klar hos Booqy/)
   })
 
   it('maps locationId validation errors from the server to Swedish', async () => {

@@ -23,6 +23,8 @@ export function useCardName(): string {
 export function useTableCodes(locationId: string | null, mockTables: MockTable[], version = 0) {
   const [codes, setCodes] = useState<TableCode[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Försök igen i felrutan: hämtar om (live-uppdateringen är av tills första hämtningen lyckats).
+  const [attempt, setAttempt] = useState(0)
   const mockKey = JSON.stringify(mockTables)
 
   useEffect(() => {
@@ -34,19 +36,26 @@ export function useTableCodes(locationId: string | null, mockTables: MockTable[]
         setCodes(list)
         setError(null)
       })
-      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Kunde inte hämta QR-koderna just nu.')))
+      .catch((err: unknown) => !cancelled && setError(errorText(err, 'QR-koderna kunde inte visas.')))
     return () => {
       cancelled = true
     }
-  }, [locationId, mockKey, version])
+  }, [locationId, mockKey, version, attempt])
   // Levande: bord som läggs till eller koder som byts på en annan enhet syns av sig själva.
+  // Har första hämtningen misslyckats (t.ex. offline) försöker den igen av sig själv.
   useLiveRefresh(async () => {
-    if (locationId) setCodes(await listTableCodes(locationId, JSON.parse(mockKey) as MockTable[]))
-  }, { enabled: Boolean(locationId) && codes !== null })
+    if (!locationId) return
+    setCodes(await listTableCodes(locationId, JSON.parse(mockKey) as MockTable[]))
+    setError(null)
+  }, { enabled: Boolean(locationId) && (codes !== null || error !== null) })
 
   const replace = useCallback((next: TableCode) => {
     setCodes((prev) => (prev ?? []).map((c) => (c.tableId === next.tableId ? next : c)))
   }, [])
-  return { codes, error, replace }
+  const retry = useCallback(() => {
+    setError(null)
+    setAttempt((n) => n + 1)
+  }, [])
+  return { codes, error, replace, retry }
 }
 

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PresentkortPage from './PresentkortPage'
 import * as api from './api'
@@ -26,16 +27,17 @@ beforeEach(() => {
 describe('PresentkortPage', () => {
   it('says the feature is not in the plan while it is off', () => {
     tenant = { role: 'owner_user', entitlements: { maxLocations: null, features: {} } }
-    render(<PresentkortPage />)
+    render(<MemoryRouter><PresentkortPage /></MemoryRouter>)
     expect(screen.getByRole('heading', { level: 1, name: 'Presentkort' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Ingår inte i er plan' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Se abonnemanget/ })).toHaveAttribute('href', '/installningar#abonnemang')
     expect(api.listCards).not.toHaveBeenCalled()
   })
 
   it('tells staff it is for the owner', () => {
     tenant = { role: 'staff_user', entitlements: { maxLocations: null, features: { giftCards: true } } }
     render(<PresentkortPage />)
-    expect(screen.getByRole('heading', { name: 'Bara för ägare' })).toBeInTheDocument()
+    expect(screen.getByText(/Be ägaren om behörighet/)).toBeInTheDocument()
     expect(api.listCards).not.toHaveBeenCalled()
   })
 
@@ -69,11 +71,54 @@ describe('PresentkortPage', () => {
   })
 })
 
+describe('PresentkortPage actions', () => {
+  beforeEach(() => {
+    tenant = { role: 'owner_user', entitlements: { maxLocations: null, features: { giftCards: true } } }
+  })
+
+  it('asks before Återbetala and refunds only after the second step', async () => {
+    vi.mocked(api.getCard).mockResolvedValue({ ...card, transactions: [] })
+    vi.mocked(api.refundCard).mockResolvedValue(undefined as never)
+    render(<PresentkortPage />)
+    fireEvent.click(await screen.findByRole('button', { name: '****QRST' }))
+    fireEvent.change(await screen.findByLabelText(/Anledning/), { target: { value: 'Stängt' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Återbetala' }))
+    expect(await screen.findByText('Återbetala 380 kr?')).toBeInTheDocument()
+    expect(api.refundCard).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Behåll kortet' }))
+    await waitFor(() => expect(screen.queryByText('Återbetala 380 kr?')).not.toBeInTheDocument())
+    expect(api.refundCard).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Återbetala' }))
+    const dialogs = await screen.findAllByRole('button', { name: 'Återbetala' })
+    fireEvent.click(dialogs.at(-1)!)
+    await waitFor(() => expect(api.refundCard).toHaveBeenCalledWith('gc1', 'Stängt'))
+  })
+
+  it('shows the list error with Försök igen instead of waiting forever', async () => {
+    vi.mocked(api.listCards).mockRejectedValueOnce(new ApiError(500, 'internal_error', { code: 'internal_error', fromServer: true }))
+    render(<PresentkortPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    expect(await screen.findByRole('button', { name: '****QRST' })).toBeInTheDocument()
+  })
+})
+
+describe('Stockholm dates', () => {
+  it('ends an extension at midnight Stockholm time in winter and summer', () => {
+    expect(api.endOfStockholmDay('2027-01-15')).toBe('2027-01-15T22:59:59Z')
+    expect(api.endOfStockholmDay('2027-07-15')).toBe('2027-07-15T21:59:59Z')
+  })
+
+  it('shows the Stockholm date, not the UTC date', () => {
+    expect(api.stockholmDate('2027-01-14T23:30:00Z')).toBe('2027-01-15')
+    expect(api.stockholmDate('2027-07-14T22:30:00Z')).toBe('2027-07-15')
+  })
+})
+
 describe('ERRORS', () => {
   it('explains a 502 notification_unavailable on resend like stripe_unavailable: what failed and that a retry is fine', () => {
     const err = new ApiError(502, 'notification_unavailable', { code: 'notification_unavailable', fromServer: true })
-    expect(errorText(err, 'Det gick inte.', api.ERRORS)).toBe('Mejlet kunde inte skickas just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.')
+    expect(errorText(err, 'Det gick inte.', api.ERRORS)).toBe('Mejlet kunde inte skickas just nu. Det är inte ert fel. Försök igen om en stund, eller rapportera det till Booqy.')
     expect(errorText(new ApiError(502, 'stripe_unavailable', { code: 'stripe_unavailable', fromServer: true }), 'Det gick inte.', api.ERRORS))
-      .toMatch(/rapportera det till Booqy om det kvarstår\.$/)
+      .toMatch(/rapportera det till Booqy\.$/)
   })
 })

@@ -17,14 +17,14 @@ const HINT: Record<string, string> = {
   noClient: 'Starta BankID-appen och skanna QR-koden.',
   started: 'Söker efter BankID, det kan ta en liten stund…',
   userSign: 'Skriv in din säkerhetskod i BankID-appen och välj Signera.',
-  userCancel: 'Signeringen avbröts.',
-  expiredTransaction: 'BankID-appen svarade inte. Försök igen.',
-  certificateErr: 'BankID:t är för gammalt eller spärrat. Använd ett annat.',
-  startFailed: 'BankID-appen hittades inte. Installera den och försök igen.',
+  userCancel: 'Signeringen avbröts i BankID-appen. Tryck Signera med BankID för att försöka igen.',
+  expiredTransaction: 'BankID-appen svarade inte i tid. Försök igen.',
+  certificateErr: 'Ditt BankID är för gammalt eller spärrat. Använd ett annat BankID.',
+  startFailed: 'BankID-appen hittades inte. Installera BankID-appen och försök igen.',
   checking: 'Kontrollerar signeringen',
-  rejected: 'Signeringen avbröts hos signeringstjänsten. Skicka offerten igen för att börja om.',
-  canceled: 'Den här offertversionen går inte längre att signera. Skicka offerten igen.',
-  timedout: 'Tiden för att signera har gått ut. Skicka offerten igen.',
+  rejected: 'Signeringen avbröts. Skicka offerten igen för att börja om.',
+  canceled: 'Den här versionen av offerten kan inte signeras längre. Skicka offerten igen.',
+  timedout: 'Tiden för att signera tog slut. Skicka offerten igen.',
 }
 
 const isMobile = () => /android|iphone|ipad|ipod/i.test(navigator.userAgent)
@@ -65,12 +65,12 @@ export function RestaurantSigning({ request, onSigned, returned }: {
         }
         setBankid(null)
         if (r.state === 'signed') onSigned(r.request)
-        else if (r.state === 'failed') setError(HINT[r.hint ?? ''] ?? 'Signeringen avbröts. Försök igen.')
-        else setError('Signeringen är inte klar än. Sidan visar den av sig själv så fort den är registrerad.')
+        else if (r.state === 'failed') setError(HINT[r.hint ?? ''] ?? 'Signeringen blev inte klar. Tryck Signera med BankID för att försöka igen.')
+        else setError('Signeringen är inte klar än. Sidan visar den så fort den är klar.')
       } catch (err) {
         setBankid(null)
         // no_signing_started: ingen signering väntar (t.ex. sidan laddades om), knappen räcker
-        if (!(err instanceof Error && err.message === 'no_signing_started')) setError(errorText(err))
+        if (!(err instanceof Error && err.message === 'no_signing_started')) setError(errorText(err, 'Signeringen blev inte klar.'))
       }
     }
     void check()
@@ -89,10 +89,10 @@ export function RestaurantSigning({ request, onSigned, returned }: {
       }
       setBankid(null)
       if (r.state === 'signed') onSigned(r.request)
-      else setError(HINT[r.hint ?? ''] ?? 'Signeringen avbröts. Försök igen.')
+      else setError(HINT[r.hint ?? ''] ?? 'Signeringen blev inte klar. Tryck Signera med BankID för att försöka igen.')
     } catch (err) {
       setBankid(null)
-      setError(errorText(err))
+      setError(errorText(err, 'Signeringen blev inte klar.'))
     }
   }
 
@@ -111,7 +111,7 @@ export function RestaurantSigning({ request, onSigned, returned }: {
       }
       timer.current = window.setTimeout(() => void poll(), SIGN_POLL_MS)
     } catch (err) {
-      setError(errorText(err))
+      setError(errorText(err, 'Signeringen blev inte klar.'))
     } finally {
       setBusy(false)
     }

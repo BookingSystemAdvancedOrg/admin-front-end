@@ -38,42 +38,45 @@
     linear-gradient(#000 0 0) top / 100% calc(100% - 5px) no-repeat;
 }
 
-/* Lappen är papper i ljust läge och sotat papper i mörkt (som i admin). */
-.auth-screen .auth-card {
+/* Lappen är vitt kvittopapper i både ljust och mörkt läge (som kvittona på
+   booqy.se och inloggningen i Booqy Console): ogenomskinlig, svart tryck. */
+.auth-screen .auth-card,
+:root[data-theme='dark'] .auth-screen .auth-card {
+  --paper: #fbfaf6;
+  --paper-2: #f1eee6;
+  --paper-line: #d9d4c8;
+  --ink: #1a120e;
+  --muted: #4a4a46;
   --auth-ink: #1a120e;
   --auth-muted: #4a4a46;
   --auth-error: #9e1d26;
   --auth-error-bg: #f6e6e4;
   --accent: #1a120e;
   --accent-hover: #3a2418;
-  --on-accent: var(--bq-snow);
+  --on-accent: #fbfaf6;
   --accent-ink: #6b4a2e;
   --focus: rgba(168, 132, 98, 0.45);
   --success-ink: #2c6a3f;
+  --surface: var(--paper);
+  --glass-fill: var(--paper-2);
+  --field-bg: #ffffff;
+  --field-bg-focus: #ffffff;
+  --field-border: var(--paper-line);
+  --field-border-hover: #b9b1a2;
+  --field-inset: inset 0 1px 2px rgba(26, 18, 14, 0.06);
+  --field-ring: rgba(168, 132, 98, 0.35);
+  --field-placeholder: #8a8378;
+  background: var(--paper);
+  color: var(--auth-ink);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   color-scheme: light;
 }
 
-:root[data-theme='dark'] .auth-card {
-  background: var(--glass-text-bg) var(--liquid-sheen);
-  color: var(--ink);
-}
-
-:root[data-theme='dark'] .auth-screen .auth-card {
-  --auth-ink: #f6ece9;
-  --auth-muted: #b8aca6;
-  --auth-error: #ee8a90;
-  --auth-error-bg: #432326;
-  --accent: #f6ece9;
-  --accent-hover: var(--bq-snow);
-  --on-accent: #1a120e;
-  --accent-ink: #ee8a90;
-  --focus: rgba(238, 138, 144, 0.4);
-  --success-ink: #7cc695;
-  color-scheme: dark;
-}
-
-:root[data-theme='dark'] .auth-link--quiet {
-  color: #b8aca6;
+/* Tryckt rad längst ned, i mono som på kvittona. */
+.auth-screen .auth-hint {
+  font: 500 12px/1.5 var(--mono);
+  letter-spacing: 0.02em;
 }
 
 .auth-heading h1 {

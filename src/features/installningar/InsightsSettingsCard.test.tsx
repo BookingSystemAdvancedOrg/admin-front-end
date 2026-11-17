@@ -27,22 +27,22 @@ describe('InsightsSettingsCard', () => {
     updateLocation.mockReset().mockResolvedValue({ locationId: 'loc-1', lunchUntil: '16:00' })
   })
 
-  it('turns staff access off and moves the lunch split', async () => {
+  it('moves the lunch split (staff access is under Behörigheter now)', async () => {
     const user = userEvent.setup()
-    render(<InsightsSettingsCard tenant={tenant} locationId="loc-1" />)
+    render(<InsightsSettingsCard locationId="loc-1" />)
     const select = await screen.findByLabelText('Lunchen slutar')
     expect(select).toHaveValue('15:00')
-    await user.click(screen.getByRole('switch', { name: 'Personalen ser statistik' }))
+    expect(screen.queryByRole('switch')).toBeNull()
     await chooseOption(select, '16:00')
     await user.click(screen.getByRole('button', { name: 'Spara' }))
-    expect(updateTenant).toHaveBeenCalledWith({ insights: { staffAccess: 'none' } })
+    expect(updateTenant).not.toHaveBeenCalled()
     expect(updateLocation).toHaveBeenCalledWith('loc-1', { lunchUntil: '16:00' })
     expect(await screen.findByText('Sparat.')).toBeInTheDocument()
   })
 
   it('has nothing to save when the split is back where it was', async () => {
     updateLocation.mockResolvedValue({ locationId: 'loc-1' })
-    render(<InsightsSettingsCard tenant={tenant} locationId="loc-1" />)
+    render(<InsightsSettingsCard locationId="loc-1" />)
     const select = await screen.findByLabelText('Lunchen slutar')
     await chooseOption(select, '14:00')
     await chooseOption(select, '15:00')

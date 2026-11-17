@@ -3,7 +3,8 @@ import { Bar, Button, LinkButton, Printing } from '@booqy/brand'
 import { Icon } from '../../shared/Icon'
 import { HowTo } from './ForwardingStep'
 import { formatPhoneNational } from '../../shared/phone'
-import { errorText } from '../../shared/errors'
+import { booqyFaultText, errorText } from '../../shared/errors'
+import { RetryBanner } from './RetryBanner'
 import { ERRORS, MODE_LABEL, REFUSED_LABEL, SETUP, listCalls, postSetupPatch, today, type LocationConfig } from './api'
 import { currentPlatform, type Platform, type Step } from './setup'
 
@@ -50,7 +51,7 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, h
     try {
       onTested(await postSetupPatch(locationId, current, { tested: true }))
     } catch (err) {
-      setSaveError(errorText(err, 'Vi kunde inte spara att det fungerar.', ERRORS))
+      setSaveError(errorText(err, 'Provsamtalet sparades inte.', ERRORS))
     }
   }
 
@@ -137,11 +138,7 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, h
         <p className="telefon-line">
           {test.reason === 'hours' ? `Assistenten svarar ${MODE_LABEL[loc.mode].toLowerCase()}.` : 'Samtalet syns under Samtal.'}
         </p>
-        {saveError ? (
-          <Bar variant="banner" tone="danger" action={<Button size="sm" variant="secondary" onClick={() => void markTested(loc)}>{SETUP.buttons.retry}</Button>}>
-            {saveError}
-          </Bar>
-        ) : null}
+        {saveError ? <RetryBanner text={saveError} onRetry={() => void markTested(loc)} /> : null}
         <Button variant="primary" type="button" wide onClick={onDone}>{SETUP.buttons.done}</Button>
       </div>
     )
@@ -227,9 +224,8 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, h
       ) : null}
 
       {status === 'failed' ? (
-        <Bar variant="banner" tone="danger" action={<Button size="sm" variant="secondary" onClick={start}>{SETUP.buttons.retry}</Button>}>
-          Vi kan inte se samtalen just nu. Det är vårt fel.
-        </Bar>
+        // Provsamtalet syns inte efter flera försök: Booqys fel (eller ingen uppkoppling).
+        <RetryBanner text={booqyFaultText('Vi ser inte provsamtalet just nu.')} onRetry={start} />
       ) : null}
     </div>
   )

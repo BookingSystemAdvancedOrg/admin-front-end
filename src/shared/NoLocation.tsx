@@ -1,0 +1,15 @@
+import { Link } from 'react-router-dom'
+import { Icon } from './Icon'
+
+/** Samma tomläge på alla sidor när restaurangen inte har någon plats än. */
+export function NoLocation() {
+  return (
+    <section className="admin-card table-card tenant-notice">
+      <h2 className="card-title">Ingen plats än</h2>
+      <Link className="card-link" to="/installningar">
+        Till inställningar
+        <Icon name="arrow-right" size={16} />
+      </Link>
+    </section>
+  )
+}

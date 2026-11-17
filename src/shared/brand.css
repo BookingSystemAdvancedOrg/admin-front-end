@@ -396,30 +396,13 @@ button.stat-tile {
 }
 
 
-/* Inställningsflikar: tryckta lappar, vald flik i omvänt tryck. */
-.settings-tabs button {
-  border-radius: var(--r-md);
-  background: var(--glass-surface);
-  box-shadow: inset 0 0 0 1px var(--border);
-  font-weight: 600;
-}
-
-.settings-tabs button:hover {
-  background: var(--glass-surface);
-  box-shadow: inset 0 0 0 1px var(--ink);
-}
-
-.settings-tabs button.active {
-  box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.35);
-}
-
 .switch[aria-checked='true'] {
   background: var(--ink);
 }
 
 /* --- Mobil: sidomenyn blir ett vinrött band ------------------------------ */
 
-@media (max-width: 900px) {
+@media (max-width: 600px), (pointer: coarse) and (max-height: 500px) {
   /* Bandet följer inte med vid rullning på mobil (regeln ovan satte sticky
      igen efter admin.css, så bandet låg kvar över innehållet). Relative, inte
      static: vätskans canvas ska stanna inom bandet, annars täcker den sidan. */
@@ -567,7 +550,7 @@ html.is-saving .btn:disabled {
   color: var(--on-ox-3);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 600px), (pointer: coarse) and (max-height: 500px) {
   .admin-nav-group {
     display: contents;
   }
@@ -895,7 +878,7 @@ html.is-busy * {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 600px), (pointer: coarse) and (max-height: 500px) {
   .admin-shell {
     padding: 10px;
     gap: 10px;
@@ -1026,27 +1009,10 @@ html.is-busy * {
   box-shadow: 0 10px 24px -14px rgba(26, 18, 14, 0.7);
 }
 
-/* Inställningsflikarna: piller, vald flik mörk espresso (även under musen) */
-.settings-tabs button {
-  border-radius: var(--r-pill);
-  transition: background-color 200ms var(--ease), color 300ms var(--ease), box-shadow 200ms var(--ease);
-}
-.settings-tabs button:hover {
-  background: var(--glass-fill);
-  box-shadow: inset 0 0 0 1px var(--accent-ink);
-}
-.settings-tabs button.active,
-.settings-tabs button.active:hover {
-  background: var(--slip);
-  color: var(--on-slip);
-  box-shadow: 0 10px 24px -14px rgba(26, 18, 14, 0.7);
-}
-
-/* Inställningsmenyn (InstallningarPage): grupperna under varandra, var och
-   en med en rad om vad som finns där. Ett klick öppnar gruppen: "Alla
-   inställningar" överst leder tillbaka, sedan gruppens delar med var sin
-   förklarande rad. Den valda delen bär den glidande pillen (shared/glide).
-   Datorn: menyn till vänster om innehållet; mobil och surfplatta: överst. */
+/* Inställningarna (InstallningarPage): sidans rutnät och raderna i ett träd
+   (settings-menu-item) och tillbaka-knappen. Fältet, trädet och grenarna har
+   sin stil i features/installningar/settingsTree.css. Datorn: trädet till
+   vänster om innehållet. */
 .settings-main {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1057,9 +1023,6 @@ html.is-busy * {
   display: flex;
   flex-direction: column;
   gap: 28px;
-  min-width: 0;
-}
-.settings-nav {
   min-width: 0;
 }
 
@@ -1106,6 +1069,7 @@ html.is-busy * {
   color: var(--muted);
 }
 .settings-menu-arrow {
+  display: inline-flex;
   flex: none;
   font: 400 22px/1 var(--font);
   color: var(--muted);
@@ -1127,50 +1091,6 @@ html.is-busy * {
   color: var(--accent-ink);
   cursor: default;
   transition: background-color 200ms var(--ease);
-}
-.settings-back span {
-  font-size: 20px;
-  line-height: 1;
-}
-.settings-group-name {
-  margin: 0 0 8px 14px;
-  font: 400 17px/1.2 var(--serif-face);
-  color: var(--muted);
-}
-.settings-nav .settings-tabs {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-.settings-nav .settings-tabs button,
-.settings-nav .settings-tabs button:hover {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  min-height: 0;
-  padding: 11px 14px;
-  border: 0;
-  border-radius: var(--r-md);
-  background: transparent;
-  box-shadow: none;
-  text-align: left;
-  white-space: normal;
-  color: var(--ink);
-}
-.settings-tab-title {
-  font: 600 15px/1.25 var(--font);
-}
-/* på den mörka pillen: ljus text, även förklaringen */
-.settings-nav .settings-tabs button.active .settings-tab-hint {
-  color: rgb(var(--bq-snow-rgb) / 0.72);
-}
-:root[data-theme='dark'] .settings-nav .settings-tabs button.active .settings-tab-hint {
-  color: rgba(26, 18, 14, 0.7);
 }
 :root[data-theme='dark'] .settings-menu-item {
   background: rgb(var(--bq-snow-rgb) / 0.05);
@@ -1199,12 +1119,6 @@ html.is-busy * {
   .settings-main {
     grid-template-columns: 300px minmax(0, 1fr);
     gap: 32px;
-  }
-  .settings-nav {
-    position: sticky;
-    top: 24px;
-    padding-right: 24px;
-    border-right: 1px dashed var(--border);
   }
 }
 
@@ -1450,21 +1364,6 @@ html.is-busy * {
   }
 }
 
-/* En ensam del i en grupp (t.ex. Utseende och ljud) får ingen glidande pill,
-   så den valda raden får sin egen mörka bakgrund och läsbar text. */
-.settings-nav .settings-tabs:not([data-glide]) button.active,
-.settings-nav .settings-tabs:not([data-glide]) button.active:hover {
-  background: linear-gradient(180deg, #3a2418, #1a120e);
-  box-shadow: inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.2), 0 4px 10px -6px rgba(26, 18, 14, 0.6);
-  color: var(--bq-snow);
-}
-
-:root[data-theme='dark'] .settings-nav .settings-tabs:not([data-glide]) button.active,
-:root[data-theme='dark'] .settings-nav .settings-tabs:not([data-glide]) button.active:hover {
-  background: linear-gradient(180deg, var(--bq-snow), #efe7dc);
-  box-shadow: inset 0 1px 0 var(--bq-snow), 0 4px 10px -6px rgba(0, 0, 0, 0.6);
-  color: #1a120e;
-}
 
 /* Volymraden i Utseende och ljud: texten överst, reglaget på en egen rad
    under, så att förklaringen inte trycks ihop i det smala kortet. */
@@ -1557,7 +1456,7 @@ html.is-busy * {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 600px), (pointer: coarse) and (max-height: 500px) {
   .admin-nav-toggle {
     display: none;
   }

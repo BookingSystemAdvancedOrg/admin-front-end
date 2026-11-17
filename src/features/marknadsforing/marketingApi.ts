@@ -1,4 +1,4 @@
-import { errorText as commonError } from '../../shared/errors'
+import { errorText as commonError, errorCode, rememberError } from '../../shared/errors'
 import { API_BASE_URL, ApiError, apiFetch } from '../../shared/api'
 import { getAccessToken } from '../auth/cognito'
 
@@ -179,24 +179,24 @@ const HTTPS = /^https:\/\/[^\s<>"']{3,500}$/
 export function templateErrors(t: TemplateInput): string[] {
   const errors: string[] = []
   if (!t.name.trim()) errors.push('Mallen behöver ett namn.')
-  if (!t.subject.trim()) errors.push('Ämnesraden får inte vara tom.')
+  if (!t.subject.trim()) errors.push('Skriv en ämnesrad.')
   if (t.subject.trim().length > 120) errors.push('Ämnesraden får vara högst 120 tecken.')
   if (t.preheader.trim().length > 140) errors.push('Förhandstexten får vara högst 140 tecken.')
-  if (t.theme?.color && !HEX.test(t.theme.color)) errors.push('Välj en giltig huvudfärg.')
-  if (t.theme?.background && !HEX.test(t.theme.background)) errors.push('Välj en giltig bakgrundsfärg.')
+  if (t.theme?.color && !HEX.test(t.theme.color)) errors.push('Huvudfärgen ser fel ut. Välj en färg i färgväljaren.')
+  if (t.theme?.background && !HEX.test(t.theme.background)) errors.push('Bakgrundsfärgen ser fel ut. Välj en färg i färgväljaren.')
   if (t.blocks.length === 0) errors.push('Lägg till minst ett block.')
-  if (t.blocks.length > MAX_BLOCKS) errors.push(`Högst ${MAX_BLOCKS} block.`)
+  if (t.blocks.length > MAX_BLOCKS) errors.push(`Mallen får ha högst ${MAX_BLOCKS} block. Ta bort ett block.`)
   t.blocks.forEach((b, i) => {
     const n = `Block ${i + 1} (${BLOCK_LABEL[b.type].toLowerCase()})`
-    if ((b.type === 'heading' || b.type === 'text') && !b.text.trim()) errors.push(`${n}: texten är tom.`)
-    if (b.type === 'heading' && b.text.trim().length > 120) errors.push(`${n}: högst 120 tecken.`)
-    if (b.type === 'text' && b.text.trim().length > 2000) errors.push(`${n}: högst 2000 tecken.`)
-    if (b.type === 'image' && !HTTPS.test(b.url.trim())) errors.push(`${n}: ange en bildadress som börjar med https://.`)
+    if ((b.type === 'heading' || b.type === 'text') && !b.text.trim()) errors.push(`${n}: texten är tom. Skriv en text.`)
+    if (b.type === 'heading' && b.text.trim().length > 120) errors.push(`${n}: rubriken får vara högst 120 tecken. Korta den.`)
+    if (b.type === 'text' && b.text.trim().length > 2000) errors.push(`${n}: texten får vara högst 2000 tecken. Korta den.`)
+    if (b.type === 'image' && !HTTPS.test(b.url.trim())) errors.push(`${n}: skriv bildens adress så här: https://exempel.se/bild.jpg.`)
     if (b.type === 'button') {
       if (!b.label.trim()) errors.push(`${n}: knappen behöver en text.`)
       if (b.label.trim().length > 40) errors.push(`${n}: knapptexten får vara högst 40 tecken.`)
       if (b.destination === 'custom' && !HTTPS.test((b.url ?? '').trim())) {
-        errors.push(`${n}: ange en länk som börjar med https://.`)
+        errors.push(`${n}: skriv länken så här: https://exempel.se.`)
       }
     }
     if (b.type === 'dish' && (!b.menuItemId || !b.locationId)) errors.push(`${n}: välj en rätt.`)
@@ -258,21 +258,34 @@ export interface Audience {
   locationId?: string
 }
 
+/** En låst lista från en målgrupp i Gäster (guestCrm). */
+export interface SegmentAudience {
+  type: 'segment'
+  exportId: string
+}
+
+export type CampaignAudience = Audience | SegmentAudience
+
 export const AUDIENCE_LABEL: Record<AudienceType, string> = {
   all: 'Alla som prenumererar',
   recent: 'Har besökt oss nyligen',
   lapsed: 'Har inte besökt oss på länge',
 }
 
-export function audienceText(a: Audience | null | undefined): string {
+export function audienceText(a: CampaignAudience | null | undefined): string {
   if (!a) return AUDIENCE_LABEL.all
+  if (a.type === 'segment') return 'Målgrupp'
   if (a.type === 'recent') return `Besökt oss senaste ${a.days} dagarna`
   if (a.type === 'lapsed') return `Inte besökt oss på ${a.days} dagar`
   return AUDIENCE_LABEL.all
 }
 
-export async function audienceSize(a: Audience): Promise<number> {
+export async function audienceSize(a: CampaignAudience): Promise<number> {
   const q = new URLSearchParams({ type: a.type })
+  if (a.type === 'segment') {
+    q.set('exportId', a.exportId)
+    return (await apiFetch<{ count: number }>(`/marketing/audience?${q}`)).count
+  }
   if (a.days) q.set('days', String(a.days))
   if (a.locationId) q.set('locationId', a.locationId)
   return (await apiFetch<{ count: number }>(`/marketing/audience?${q}`)).count
@@ -324,7 +337,7 @@ export interface CampaignInput {
   templateId: string
   subject?: string | null
   /** Ett exporterat gästsegment (guestCrm) går också att välja som målgrupp. */
-  audience: Audience | { type: 'segment'; exportId: string }
+  audience: CampaignAudience
 }
 
 export interface Campaign {
@@ -332,7 +345,7 @@ export interface Campaign {
   name: string
   templateId: string
   subject: string | null
-  audience: Audience
+  audience: CampaignAudience
   status: CampaignStatus
   scheduledAt: string | null
   startedAt: string | null
@@ -441,7 +454,7 @@ export function findSubscriber(email: string): Promise<{ subscribers: Subscriber
 
 /** Hämtar mottagarlistan som CSV (med inloggningen) och sparar den som fil. */
 export async function exportSubscribers(): Promise<void> {
-  if (!API_BASE_URL) throw new Error('API:t är inte konfigurerat.')
+  if (!API_BASE_URL) throw new Error('Den här versionen av appen är inte kopplad till Booqy. Rapportera det till Booqy.')
   const token = await getAccessToken()
   const res = await fetch(`${API_BASE_URL}/marketing/subscribers/export`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -547,23 +560,36 @@ export function formatDateTime(iso: string | null | undefined): string {
 }
 
 export const ERROR_TEXT: Record<string, string> = {
-  campaign_not_draft: 'Kampanjen är redan skickad eller schemalagd.',
-  campaign_not_cancellable: 'Kampanjen kan inte avbrytas längre.',
-  campaign_not_paused: 'Kampanjen är inte pausad.',
+  campaign_not_draft: 'Kampanjen är redan skickad eller planerad, så den kan inte ändras.',
+  campaign_not_cancellable: 'Kampanjen har redan börjat skickas, så den kan inte avbrytas.',
+  campaign_not_paused: 'Kampanjen är inte pausad, så den behöver inte startas igen.',
   'monthly limit reached': 'Månadens gräns för utskick är nådd. Fortsätt nästa månad.',
-  'no subscribers in this audience': 'Ingen i målgruppen prenumererar ännu.',
+  'no subscribers in this audience': 'Ingen i målgruppen vill ha utskick än. Välj en annan målgrupp.',
   'the restaurant has no legal name and address for the footer':
-    'Företagsnamn och adress saknas för restaurangen, och lagen kräver att de står i varje utskick. Be Booqy fylla i dem.',
+    'Företagsnamn och adress saknas. Enligt lag ska de stå i varje utskick. Be Booqy fylla i dem.',
   'the restaurant has no website address yet for the buttons':
-    'Restaurangen har ingen webbadress än, så knapparna har ingenstans att leda.',
-  "your account has no email address to send a test to": 'Ditt konto saknar e-postadress för testutskick.',
-  "the campaign's template no longer exists": 'Mallen kampanjen använder finns inte längre.',
+    'Restaurangen har ingen webbadress än, så knapparna kan inte leda någonstans. Be Booqy koppla er webbadress.',
+  "your account has no email address to send a test to": 'Ditt konto saknar e-postadress, så testmejlet kan inte skickas.',
+  "the campaign's template no longer exists": 'Mallen som kampanjen använder finns inte längre. Välj en annan mall.',
 }
 
 export function errorText(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
-    if (ERROR_TEXT[err.message]) return ERROR_TEXT[err.message]
-    if (err.status === 403) return 'Marknadsföring ingår inte i er plan, eller så är du inte ägare.'
+    const own = ERROR_TEXT[err.message]
+      ?? (err.status === 403 ? 'Marknadsföring ingår inte i abonnemanget, eller så är du inte ägare. Be ägaren kolla abonnemanget.' : undefined)
+    if (own) {
+      // Felrutan ska veta vem som gör något: Booqy fyller i det som bara Booqy kan.
+      const booqy = /Be Booqy/.test(own)
+      rememberError({
+        text: own,
+        actor: booqy ? 'booqy' : 'user',
+        ...(err.status === 403 ? { link: { to: '/installningar#abonnemang', label: 'Se abonnemanget' } } : {}),
+        code: errorCode(err) ?? 'unknown',
+        status: err.status,
+        ...(err.requestId ? { requestId: err.requestId } : {}),
+      })
+      return own
+    }
   }
   return commonError(err, fallback, {}, MARKETING_FIELDS)
 }
@@ -626,16 +652,16 @@ export function saveOfferSettings(s: OfferSettings): Promise<OfferView> {
 
 export function offerErrors(s: OfferSettings): string[] {
   const out: string[] = []
-  if (!s.headline.trim()) out.push('Rubriken får inte vara tom.')
+  if (!s.headline.trim()) out.push('Skriv en rubrik.')
   if (s.headline.trim().length > 60) out.push('Rubriken får vara högst 60 tecken.')
-  if (!s.text.trim()) out.push('Texten får inte vara tom.')
+  if (!s.text.trim()) out.push('Skriv en text.')
   if (s.text.trim().length > 180) out.push('Texten får vara högst 180 tecken.')
-  if (!s.buttonLabel.trim()) out.push('Knappen behöver en text.')
+  if (!s.buttonLabel.trim()) out.push('Skriv en text på knappen.')
   if (s.buttonLabel.trim().length > 30) out.push('Knapptexten får vara högst 30 tecken.')
   if (!Number.isInteger(s.minOrderOre) || s.minOrderOre < 0 || s.minOrderOre > 500000) {
-    out.push('Minsta belopp ska vara mellan 0 och 5 000 kr.')
+    out.push('Minsta belopp ska vara 0 till 5 000 kr. Skriv till exempel 200.')
   }
-  if (s.activeFrom && s.activeTo && s.activeFrom > s.activeTo) out.push('Startdatum måste vara före slutdatum.')
+  if (s.activeFrom && s.activeTo && s.activeFrom > s.activeTo) out.push('Slutdatumet är före startdatumet. Välj ett slutdatum efter starten.')
   // Felaktig procentsiffra i texten vore vilseledande reklam.
   for (const text of [s.headline, s.text, s.buttonLabel]) {
     for (const m of text.matchAll(/(\d{1,3})\s?%/g)) {

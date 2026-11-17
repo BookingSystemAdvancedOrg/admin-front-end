@@ -87,7 +87,7 @@ export function OrderingCard({
         setSaved(loc.ordering ?? null)
         setForm(toForm(loc.ordering ?? DEFAULTS))
       })
-      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Kunde inte hämta platsens inställningar.')))
+      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Inställningarna för beställning kunde inte visas.')))
       .finally(() => !cancelled && setLoading(false))
     return () => {
       cancelled = true
@@ -120,8 +120,8 @@ export function OrderingCard({
     setNotice(null)
     const prep = whole(form.prep, 5, 180)
     const last = whole(form.last, 0, 120)
-    if (prep === null) return setError('Tillagningstid: ett heltal 5-180 minuter.')
-    if (last === null) return setError('Sista beställning: ett heltal 0-120 minuter före stängning.')
+    if (prep === null) return setError('Tillagningstiden ska vara 5 till 180 minuter. Skriv till exempel 20.')
+    if (last === null) return setError('Sista beställning ska vara 0 till 120 minuter före stängning. Skriv till exempel 30.')
     if (form.enabled && !form.pickup && !form.table) {
       return setError('Välj avhämtning, beställning vid bordet eller båda.')
     }
@@ -138,7 +138,7 @@ export function OrderingCard({
       setSaved(updated.ordering ?? policy)
       setNotice(policy.enabled ? 'Sparat. Gästerna kan beställa.' : 'Sparat - beställning är avstängd.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara.', { owner_only: 'Bara restaurangens ägare kan ändra inställningen.', forbidden: 'Bara restaurangens ägare kan ändra inställningen.' }))
+      setError(errorText(err, 'Inställningarna för beställning sparades inte.', { owner_only: 'Bara restaurangens ägare kan ändra inställningen. Be ägaren göra det.', forbidden: 'Bara restaurangens ägare kan ändra inställningen. Be ägaren göra det.' }))
     } finally {
       setBusy(false)
     }
@@ -231,7 +231,7 @@ export function OrderingCard({
         <div className="qr-section">
           <div style={{ height: 20 }} />
           <h3 className="card-title">QR-koder för borden</h3>
-          {tablesError && <ErrorNote text={booqyFaultText('Kunde inte hämta borden.')} />}
+          {tablesError && <ErrorNote text={booqyFaultText('Borden kunde inte visas.')} />}
           {tables && tables.length === 0 && (
             <p className="cell-muted">Publicera en layout först.</p>
           )}

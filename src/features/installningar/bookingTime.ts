@@ -145,7 +145,7 @@ export function overlapWarnings(rules: BookingTimeRules): string[] {
 function extensionError(ext: BookingExtension, label: string): string | null {
   if (!ext.allowed) return null
   if (!Number.isInteger(ext.maxMinutes) || ext.maxMinutes < STEP || ext.maxMinutes > 240 || ext.maxMinutes % STEP) {
-    return `${label}: förlängning måste vara 15-240 minuter i kvartssteg.`
+    return `${label}: förlängningen ska vara 15 till 240 minuter, i steg om 15 minuter.`
   }
   return null
 }
@@ -154,37 +154,37 @@ const durationOk = (m: number) => Number.isInteger(m) && m >= STEP && m <= 480 &
 
 /** Första felet (svenska), eller null. graceMinutes = platsens väntetid för sena gäster (grace period). */
 export function validateRules(rules: BookingTimeRules, graceMinutes: number): string | null {
-  if (!durationOk(rules.defaultMinutes)) return 'Standardlängden måste vara 15 min - 8 tim i kvartssteg.'
+  if (!durationOk(rules.defaultMinutes)) return 'Standardlängden ska vara 15 minuter till 8 timmar, i steg om 15 minuter.'
   const ext = extensionError(rules.extension, 'Standard')
   if (ext) return ext
-  if (rules.windows.length > MAX_WINDOWS) return `Högst ${MAX_WINDOWS} specialtider.`
+  if (rules.windows.length > MAX_WINDOWS) return `Ni kan ha högst ${MAX_WINDOWS} specialtider. Ta bort en först.`
   for (const w of rules.windows) {
     const label = w.name.trim() || 'Specialtid'
-    if (!w.name.trim()) return 'Varje specialtid behöver ett namn.'
+    if (!w.name.trim()) return 'En specialtid saknar namn. Skriv till exempel Lunch.'
     if (w.name.trim().length > NAME_MAX) return `${label}: namnet får vara högst ${NAME_MAX} tecken.`
     if (w.weekdays.length === 0) return `${label}: välj minst en veckodag.`
-    if (!/^\d\d:\d\d$/.test(w.startTime) || !/^\d\d:\d\d$/.test(w.endTime)) return `${label}: ange tider som TT:MM.`
-    if (minute(w.startTime) % STEP || minute(w.endTime) % STEP) return `${label}: tiderna måste vara i kvartssteg.`
-    if (w.startTime >= w.endTime) return `${label}: starttiden måste vara före sluttiden (inte över midnatt).`
-    if (w.dateFrom && w.dateTo && w.dateFrom > w.dateTo) return `${label}: från-datumet måste vara före till-datumet.`
-    if (!durationOk(w.durationMinutes)) return `${label}: längden måste vara 15 min - 8 tim i kvartssteg.`
+    if (!/^\d\d:\d\d$/.test(w.startTime) || !/^\d\d:\d\d$/.test(w.endTime)) return `${label}: skriv tiderna som timmar och minuter, till exempel 11:30.`
+    if (minute(w.startTime) % STEP || minute(w.endTime) % STEP) return `${label}: tiderna ska gå jämnt i kvartar, till exempel 11:15.`
+    if (w.startTime >= w.endTime) return `${label}: sluttiden är före starttiden. En specialtid kan inte gå över midnatt. Välj till exempel 11:00 till 14:00.`
+    if (w.dateFrom && w.dateTo && w.dateFrom > w.dateTo) return `${label}: till-datumet är före från-datumet. Byt plats på datumen.`
+    if (!durationOk(w.durationMinutes)) return `${label}: längden ska vara 15 minuter till 8 timmar, i steg om 15 minuter.`
     const wExt = extensionError(w.extension, label)
     if (wExt) return wExt
     if (!Number.isInteger(w.priority) || w.priority < 0 || w.priority > 100) {
-      return `${label}: prioriteten måste vara ett heltal 0-100.`
+      return `${label}: prioriteten ska vara ett heltal från 0 till 100.`
     }
   }
   for (let i = 0; i < rules.windows.length; i++) {
     for (const b of rules.windows.slice(i + 1)) {
       const a = rules.windows[i]
       if (windowsOverlap(a, b) && !winner(a, b)) {
-        return `${a.name} och ${b.name} överlappar med samma prioritet - ge den som ska gälla högre prioritet.`
+        return `${a.name} och ${b.name} gäller samma tid och har samma prioritet. Ge den som ska gälla en högre prioritet.`
       }
     }
   }
   const shortest = Math.min(rules.defaultMinutes, ...rules.windows.map((w) => w.durationMinutes))
   if (graceMinutes >= shortest) {
-    return `Väntetiden för sena gäster (${graceMinutes} min) måste vara kortare än den kortaste bokningen (${minutesLabel(shortest)}).`
+    return `Väntetiden för sena gäster (${graceMinutes} min) är för lång. Gör den kortare än den kortaste bokningen (${minutesLabel(shortest)}).`
   }
   return null
 }

@@ -1,7 +1,7 @@
 import { GLASS_BACKDROP_KEY } from './storageRegistry'
 
 /**
- * Bakgrunden bakom glaset ("Bakgrund" under Inställningar, Utseende och ljud).
+ * Bakgrunden bakom glaset ("Bakgrund" under Inställningar, Den här enheten, Utseende och ljud).
  *
  * - Genomskinligt (standard, inget sparat): i skrivbordsappen syns det som
  *   ligger bakom fönstret; i webbläsaren Booqys bakgrund.

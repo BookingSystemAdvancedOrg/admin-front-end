@@ -5,6 +5,9 @@ import { Bar, Button, toast } from '@booqy/brand'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { errorText } from '../../shared/errors'
 import { currentLocation, useTenant } from '../../shared/tenant'
+import { NoLocation } from '../../shared/NoLocation'
+import { PlanLocked } from '../../shared/PlanLocked'
+import { Loading } from '../../shared/Loading'
 import CallDetail from './CallDetail'
 import CallbacksTab from './CallbacksTab'
 import CallsTab from './CallsTab'
@@ -28,12 +31,7 @@ export default function TelefonPage() {
     <>
       <AdminTopbar title="Telefon" />
       <main className="admin-main">
-        {enabled ? <Telefon /> : (
-          <section className="admin-card table-card">
-            <h2 className="card-title">Ingår inte i er plan</h2>
-            <p className="cell-muted">Kontakta oss för att uppgradera.</p>
-          </section>
-        )}
+        {enabled ? <Telefon /> : <PlanLocked />}
       </main>
     </>
   )
@@ -75,7 +73,7 @@ function Telefon() {
     try {
       setConfig(await getLocation(locationId))
     } catch (err) {
-      toast(errorText(err, 'Kunde inte hämta telefoninställningarna.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Telefoninställningarna kunde inte visas.', ERRORS), { tone: 'danger' })
     }
   }, [locationId])
 
@@ -84,7 +82,8 @@ function Telefon() {
     if (locationId) setConfig(await getLocation(locationId))
   }, { enabled: Boolean(locationId) })
 
-  if (!locationId) return <p className="cell-muted">Hämtar…</p>
+  // Restaurangen är hämtad men har ingen (eller en borttagen) plats: inget att vänta på.
+  if (!locationId) return state.tenant ? <NoLocation /> : <Loading label="Hämtar" />
 
   async function toggleKill() {
     if (!config || !locationId) return
@@ -94,7 +93,7 @@ function Telefon() {
       setConfig({ ...config, ...next })
       toast(next.killSwitch ? 'Assistenten är avstängd. Samtal går inte längre till den.' : 'Assistenten svarar igen.', { tone: 'success' })
     } catch (err) {
-      toast(errorText(err, 'Det gick inte.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, config.killSwitch ? 'Assistenten slogs inte på.' : 'Assistenten stängdes inte av.', ERRORS), { tone: 'danger' })
       await load()
     } finally {
       setBusy(false)

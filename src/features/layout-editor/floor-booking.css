@@ -271,3 +271,45 @@
     font-size: 13px;
   }
 }
+
+/* Bordet en länk "Bord 3" pekade på: en ring pulserar runt det en kort stund. */
+.floor-map-table.is-focus .floor-map-top {
+  animation: floor-map-focus 0.8s ease-in-out 3;
+}
+
+@keyframes floor-map-focus {
+  0%, 100% { stroke-width: 3; }
+  50% { stroke-width: 9; stroke: var(--accent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floor-map-table.is-focus .floor-map-top {
+    animation: none;
+    stroke-width: 6;
+  }
+}
+
+/* Bokningens bord (länken "Bord 3 + 4"): en tydlig ring ligger kvar runt dem
+   tills ett bord väljs. Bokade bord är oftast fullbokade (dämpade); de här
+   lyser ändå upp. */
+.floor-map-table.is-linked {
+  opacity: 1;
+}
+.floor-map-table.is-linked .floor-map-top {
+  stroke: var(--ink);
+  stroke-width: 4;
+  stroke-dasharray: none;
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--accent-ink) 75%, transparent));
+}
+
+/* En våning med något av bokningens bord får en prick i fliken. */
+.floor-tabs button.has-linked::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--accent-ink);
+  vertical-align: middle;
+}

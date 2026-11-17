@@ -1,6 +1,8 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { dockPaths, dockSlots, fullLayerOpen, isKeyboardField, sheetGroups, useDockHiding } from './dock'
-import { NAV_GROUPS, visibleNav } from './nav'
+import { describe, expect, it, vi } from 'vitest'
+import { dockPaths, dockSlots, fullLayerOpen, isKeyboardField, PHONE_NAV_QUERY, sheetGroups, useDockHiding } from './dock'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { visibleNav } from './nav'
 import type { Tenant } from './tenant'
 
 function tenant(features: Record<string, boolean>, role: Tenant['role'] = 'owner_user'): Tenant {
@@ -39,18 +41,16 @@ describe('dockSlots and sheetGroups', () => {
 })
 
 describe('dockSlots without Bokningar', () => {
-  const bookings = NAV_GROUPS.flatMap((g) => g.items).find((i) => i.to === '/bokningar')!
-  afterEach(() => {
-    delete bookings.ownerOnly
-  })
+  // Personal utan behörighet till Bokningar (bara Statistik, Meny och Beställningar).
+  const withoutBookings = (features: Record<string, boolean>) =>
+    ({ ...tenant(features, 'staff_user'), access: { areas: ['statistik', 'meny', 'bestallningar'] } }) as Tenant
 
   // (c) Utan Bokningar: ingen Ny bokning, platserna delar raden.
   it('has no raised button and fewer slots', () => {
-    bookings.ownerOnly = true
-    const slots = dockSlots(tenant({}, 'staff_user'))
+    const slots = dockSlots(withoutBookings({}))
     expect(slots.some((s) => s.kind === 'new-booking')).toBe(false)
     expect(slots).toHaveLength(3)
-    const withOrders = dockSlots(tenant({ ordering: true }, 'staff_user'))
+    const withOrders = dockSlots(withoutBookings({ ordering: true }))
     expect(withOrders.map((s) => s.kind)).toEqual(['page', 'page', 'more'])
   })
 })
@@ -105,3 +105,43 @@ describe('when the bar hides', () => {
 })
 
 vi.mock('./desktopDownloads', async (orig) => ({ ...(await orig<typeof import('./desktopDownloads')>()), showDownloadNav: () => false }))
+
+describe('PHONE_NAV_QUERY', () => {
+  // Tablets and computers keep the sidebar; a phone stays a phone in landscape.
+  function matches(w: number, h: number, coarse: boolean): boolean {
+    return PHONE_NAV_QUERY.split(',').some((part) =>
+      part.trim().split(' and ').every((cond) => {
+        const m = /\((max-width|max-height|pointer): ?([a-z0-9]+)\)/.exec(cond.trim())
+        if (!m) throw new Error(`unknown condition ${cond}`)
+        if (m[1] === 'pointer') return coarse === (m[2] === 'coarse')
+        const limit = parseInt(m[2], 10)
+        return (m[1] === 'max-width' ? w : h) <= limit
+      }),
+    )
+  }
+
+  it('is a phone in both orientations, never a tablet or a computer', () => {
+    expect(matches(390, 844, true)).toBe(true) // iPhone, portrait
+    expect(matches(932, 430, true)).toBe(true) // iPhone Pro Max, landscape
+    expect(matches(926, 428, true)).toBe(true) // iPhone Plus, landscape
+    expect(matches(768, 1024, true)).toBe(false) // iPad, portrait
+    expect(matches(820, 1180, true)).toBe(false) // iPad Air, portrait
+    expect(matches(1180, 820, true)).toBe(false) // iPad Air, landscape
+    expect(matches(880, 900, false)).toBe(false) // narrow desktop window
+    expect(matches(1280, 480, false)).toBe(false) // short desktop window
+  })
+
+  it('is the same query in the stylesheets', () => {
+    const bottomNavCss = readFileSync(join('src', 'shared', 'bottomNav.css'), 'utf8')
+    const adminCss = readFileSync(join('src', 'shared', 'admin.css'), 'utf8')
+    expect(bottomNavCss).toContain(`@media ${PHONE_NAV_QUERY} {`)
+    expect(adminCss).toContain(`@media ${PHONE_NAV_QUERY} {`)
+    expect(bottomNavCss).not.toContain('max-width: 900px')
+    // ds.css och brand.css döljer sidomenyn och visar raden: samma fråga, annars står en surfplatta utan meny.
+    for (const file of ['ds.css', 'brand.css']) {
+      const css = readFileSync(join('src', 'shared', file), 'utf8')
+      expect(css, file).toContain(`@media ${PHONE_NAV_QUERY} {`)
+      expect(css, file).not.toContain('@media (max-width: 900px) {')
+    }
+  })
+})

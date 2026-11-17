@@ -255,6 +255,81 @@ describe('EvenemangPage', () => {
   })
 })
 
+describe('load errors and the door', () => {
+  const boom = () => new ApiError(500, 'internal_error', { code: 'internal_error', fromServer: true })
+
+  it('says where to see the plan when events are not included', () => {
+    tenant = { role: 'owner_user', entitlements: { maxLocations: null, features: {} } }
+    at('/evenemang')
+    expect(screen.getByRole('link', { name: /Se abonnemanget/ })).toHaveAttribute('href', '/installningar#abonnemang')
+  })
+
+  it('shows the list error with Försök igen instead of printing forever', async () => {
+    tenant = OWNER
+    vi.mocked(api.listEvents).mockRejectedValueOnce(boom())
+    at('/evenemang')
+    fireEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    expect(await screen.findByText('Vinmiddag')).toBeInTheDocument()
+  })
+
+  it('treats a 5xx on one event as an error to retry, and only a 404 as missing', async () => {
+    tenant = OWNER
+    vi.mocked(api.getEvent).mockRejectedValueOnce(boom())
+    at('/evenemang/EVENT1AAAAAAAA')
+    fireEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    expect(await screen.findByRole('heading', { name: 'Vinmiddag' })).toBeInTheDocument()
+  })
+
+  it('says the event does not exist on a 404', async () => {
+    tenant = OWNER
+    vi.mocked(api.getEvent).mockRejectedValueOnce(new ApiError(404, 'not_found', { code: 'not_found', fromServer: true }))
+    at('/evenemang/EVENT1AAAAAAAA')
+    expect(await screen.findByRole('heading', { name: 'Evenemanget finns inte' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Tillbaka till evenemangen' })).toHaveAttribute('href', '/evenemang')
+  })
+
+  it('shows the guest list error with Försök igen at the door', async () => {
+    tenant = STAFF
+    const occ = 'EVENT1AAAAAAAA-20261205T1800Z'
+    vi.mocked(api.getGuestList).mockRejectedValueOnce(boom()).mockResolvedValue({ scanKey: SCAN_KEY,
+      counters: { sold: 1, checkedIn: 0, capacity: 40 },
+      tickets: [{ ticketId: 'TA', typeId: 'T1', typeName: 'Middag', holderName: 'Ada', status: 'valid' }] })
+    at(`/evenemang/EVENT1AAAAAAAA/inslapp/${occ}`)
+    expect(screen.getByRole('status')).toHaveTextContent(/Hämtar gästlistan/)
+    fireEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    expect(await screen.findByText('Ada')).toBeInTheDocument()
+  })
+
+  it('keeps a check-in made while the guest list refresh is in flight', async () => {
+    tenant = STAFF
+    const occ = 'EVENT1AAAAAAAA-20261206T1800Z'
+    const list = { scanKey: SCAN_KEY, counters: { sold: 2, checkedIn: 0, capacity: 40 },
+      tickets: [
+        { ticketId: 'TA', typeId: 'T1', typeName: 'Middag', holderName: 'Ada', status: 'valid' as const },
+        { ticketId: 'TB', typeId: 'T1', typeName: 'Middag', holderName: 'Bo', status: 'valid' as const },
+      ] }
+    let release: (v: typeof list) => void = () => undefined
+    vi.mocked(api.getGuestList).mockResolvedValueOnce(list)
+      .mockReturnValueOnce(new Promise((res) => { release = res }))
+      .mockResolvedValue(list)
+    vi.mocked(api.sendCheckIns).mockImplementation(async (_l, _e, _o, batch) => ({ results: batch.map((c) => ({ clientId: c.clientId, status: 'ok' as const })) }))
+    at(`/evenemang/EVENT1AAAAAAAA/inslapp/${occ}`)
+    expect(await screen.findByText('Ada')).toBeInTheDocument()
+    const row = (name: string) => screen.getByText(name).closest('tr')!
+    fireEvent.click(row('Ada').querySelector('button')!)
+    // Ada skickas, sedan hämtas listan igen (väntar). Bo släpps in under tiden.
+    await waitFor(() => expect(api.getGuestList).toHaveBeenCalledTimes(2))
+    fireEvent.click(row('Bo').querySelector('button')!)
+    await waitFor(() => expect(row('Bo')).toHaveTextContent(/Insläppt/))
+    release(list)
+    // Bo köades medan Ada skickades: Bo skickas direkt efteråt, inte vid nästa intervall.
+    await waitFor(() => expect(api.sendCheckIns).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(api.sendCheckIns).mock.calls[1][3].map((c) => c.ticketId)).toEqual(['TB'])
+    expect(row('Bo')).toHaveTextContent(/Insläppt/)
+    expect(row('Bo').querySelector('button')).toBeNull()
+  })
+})
+
 describe('editing ticket types and occurrences after sales', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
@@ -385,9 +460,9 @@ describe('editing ticket types and occurrences after sales', () => {
     expect(validateType(ok, t)).toEqual({})
     expect(validateType({ ...ok, priceKr: '-5' }, t).priceKr).toBe('Skriv priset i kronor, till exempel 495 eller 495,50.')
     expect(validateType({ ...ok, priceKr: '12,345' }, t).priceKr).toBeDefined()
-    expect(validateType({ ...ok, perOrderMax: '21' }, t).perOrderMax).toBe('Max per köp ska vara ett heltal från 1 till 20.')
+    expect(validateType({ ...ok, perOrderMax: '21' }, t).perOrderMax).toBe('Max per köp ska vara ett heltal från 1 till 20, till exempel 6.')
     expect(validateType({ ...ok, from: '2026-12-01T10:00', until: '2026-12-01T09:00' }, t).until)
-      .toBe('Försäljningen måste sluta efter att den har börjat.')
+      .toBe('Försäljningen slutar före den börjar. Välj ett slut efter starten.')
     expect(validateType({ ...ok, capacity: '12' }, t).capacity).toBe('Det finns redan 12 sålda och 1 reserverade i pågående köp, så antalet kan inte vara lägre än 13.')
     const o = detail.occurrences[0]
     expect(validateCapacity('', o)).toBe('Skriv antalet platser.')

@@ -4,6 +4,10 @@ import { useAuth } from '../features/auth/useAuth'
 import { ApiError, apiFetch, isApiConfigured } from './api'
 import type { FeatureKey, LimitKey } from './contracts'
 import { LEGACY_LOCATION_KEY, LOCATION_KEY_PREFIX } from './storageRegistry'
+import { canOpen } from './access'
+import type { Area, StaffAccessConfig } from './access'
+
+export { canOpen }
 
 /**
  * Den inloggade restaurangen (tenant) - GET /tenant.
@@ -120,6 +124,10 @@ export interface Tenant {
   billing?: TenantBilling | null
   role: TenantRole
   locations: TenantLocation[]
+  /** Områdena den inloggade får öppna (access.ts). Saknas från äldre API-versioner. */
+  access?: { areas: Area[] }
+  /** Vem i personalen som får öppna vad: bara för ägaren, null för personal. */
+  staffAccess?: StaffAccessConfig | null
 }
 
 /** Har restaurangens plan funktionen? En lista betyder minst en av dem. */
@@ -133,10 +141,18 @@ export function hasFeature(
 
 /** Det ägaren själv får ändra (PATCH /tenant). Tom sträng tar bort värdet. */
 export interface TenantEdit {
+  staffAccess?: StaffAccessEdit
   senderName?: string | null
   replyToEmail?: string | null
   notifications?: Partial<TenantNotifications>
   insights?: TenantInsightsSettings
+}
+
+/** Ägarens ändring av behörigheterna (version = den som lästes). */
+export interface StaffAccessEdit {
+  version: number
+  defaults?: Area[]
+  users?: Record<string, { add: Area[]; remove: Area[] } | null>
 }
 
 /** Var restaurangen är i Stripe-flödet. */
@@ -394,8 +410,7 @@ export function currentLocation(s: TenantState): TenantLocation | null {
   return s.tenant?.locations.find((l) => l.locationId === s.locationId) ?? null
 }
 
-/** Får den inloggade se Statistik? Ägaren alltid, personal om ägaren tillåter det. */
-export function canSeeInsights(tenant: Pick<Tenant, 'role' | 'insights'> | null | undefined): boolean {
-  if (!tenant) return false
-  return tenant.role === 'owner_user' || (tenant.insights?.staffAccess ?? 'operations') !== 'none'
+/** Får den inloggade se Statistik? Ägaren alltid, personal om ägaren har gett den behörigheten. */
+export function canSeeInsights(tenant: Pick<Tenant, 'role' | 'insights' | 'access'> | null | undefined): boolean {
+  return canOpen(tenant, 'statistik')
 }

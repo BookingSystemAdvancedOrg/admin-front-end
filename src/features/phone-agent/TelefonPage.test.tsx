@@ -5,12 +5,15 @@ import CallBadge from './CallBadge'
 import CallbacksPanel from './CallbacksPanel'
 import TelefonPage from './TelefonPage'
 import * as api from './api'
+import { ApiError } from '../../shared/api'
 import { resetCallBadgeCacheForTests } from './callBadgeCache'
 
 let tenant: Record<string, unknown>
+const BISTRO = { locationId: 'loc-1', name: 'Bistro', address: null, timezone: null }
+let place: typeof BISTRO | null = BISTRO
 vi.mock('../../shared/tenant', () => ({
   useTenant: () => ({ tenant, locationId: 'loc-1' }),
-  currentLocation: () => ({ locationId: 'loc-1', name: 'Bistro', address: null, timezone: null }),
+  currentLocation: () => place,
 }))
 vi.mock('../../shared/AdminTopbar', () => ({ AdminTopbar: ({ title }: { title: string }) => <h1>{title}</h1> }))
 vi.mock('./api', async (orig) => ({
@@ -52,6 +55,7 @@ function renderAt(path = '/telefon') {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  place = BISTRO
   resetCallBadgeCacheForTests()
   vi.mocked(api.getLocation).mockResolvedValue(LOC)
   vi.mocked(api.listCalls).mockResolvedValue({ calls: [CALL], cursor: null })
@@ -65,6 +69,25 @@ describe('TelefonPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Telefon' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Ingår inte i er plan' })).toBeInTheDocument()
     expect(api.getLocation).not.toHaveBeenCalled()
+  })
+
+  it('shows the no-location card instead of waiting forever', () => {
+    tenant = OWNER
+    place = null
+    renderAt()
+    expect(screen.getByRole('heading', { name: 'Ingen plats än' })).toBeInTheDocument()
+    expect(screen.queryByText('Hämtar…')).not.toBeInTheDocument()
+    expect(api.getLocation).not.toHaveBeenCalled()
+  })
+
+  it('a failed calls load shows the error with Försök igen, not an empty week', async () => {
+    tenant = STAFF
+    vi.mocked(api.listCalls).mockRejectedValueOnce(new ApiError(500, 'internal_error', { code: 'internal_error', fromServer: true }))
+    renderAt()
+    fireEvent.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    expect(await screen.findByText('Bokade bord')).toBeInTheDocument()
+    expect(screen.queryByText('Inga samtal senaste veckan.')).not.toBeInTheDocument()
+    expect(api.listCalls).toHaveBeenCalledTimes(2)
   })
 
   it('opens Inställningar at the linked step from Kom igång on Översikt', async () => {
@@ -170,6 +193,14 @@ describe('Bokningar slots', () => {
     expect(link).toHaveAttribute('href', 'tel:+46701112233')
     fireEvent.click(screen.getByRole('button', { name: 'Klar' }))
     await waitFor(() => expect(api.closeCallback).toHaveBeenCalledWith('loc-1', cb))
+  })
+
+  it('a failed callbacks load is not shown as nobody waiting', async () => {
+    vi.mocked(api.listCallbacks).mockRejectedValueOnce(new ApiError(503, 'service_unavailable', { code: 'service_unavailable', fromServer: true }))
+    render(<CallbacksPanel locationId="loc-1" date="2026-11-05" />)
+    expect(await screen.findByRole('button', { name: 'Försök igen' })).toBeInTheDocument()
+    expect(screen.queryByText('Inga återuppringningar.')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('0 väntar')).not.toBeInTheDocument()
   })
 
   it('renders nothing when nobody waits', async () => {

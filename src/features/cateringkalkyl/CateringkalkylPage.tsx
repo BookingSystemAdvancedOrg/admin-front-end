@@ -11,7 +11,7 @@ import type { DiscountTierFormValues } from './DiscountTierModal'
 import { DISCOUNT_SCOPE_LABEL, settingsProblem } from './data'
 import type { DiscountTier, OrderRules } from './data'
 import { CateringMenuCard } from './CateringMenuCard'
-import { isApiConfigured } from '../../shared/api'
+import { ApiError, isApiConfigured } from '../../shared/api'
 import { getLocation } from '../installningar/locationApi'
 import { useTenant } from '../../shared/tenant'
 import { PhoneInput } from '../../shared/PhoneInput'
@@ -30,6 +30,10 @@ import './cateringkalkyl.css'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
 import { Select } from '../../shared/Select'
+import { useConfirm } from '../../shared/ConfirmDialog'
+import { NoLocation } from '../../shared/NoLocation'
+import { SkelCard, SkelPage } from '../../shared/Skeleton'
+import { focusErrorField } from '../../shared/errors'
 
 function rulesOf(s: CateringSettings): OrderRules {
   return {
@@ -51,8 +55,19 @@ function tierInput(t: DiscountTier | DiscountTierFormValues) {
     discountPercent: t.discountPercent, active: t.active }
 }
 
-function numberIn(value: string): number {
-  return Number(value.replace(/[^\d]/g, '')) || 0
+/**
+ * Ett heltal ur ett sifferfält. Annat än siffror ("49,50", "1.5") godtas
+ * inte: fältet står kvar på `prev`, så ett kommatecken aldrig blir en
+ * tiopotens (servern tar bara hela kronor, dagar och gäster).
+ */
+function numberIn(value: string, prev: number): number {
+  const t = value.replace(/\s/g, '')
+  return /^\d*$/.test(t) ? Number(t) || 0 : prev
+}
+
+/** API:ts fältnamn i en rabattnivå -> fältets id, så ett fel flyttar fokus dit. */
+const TIER_FIELD_IDS: Record<string, string> = {
+  name: 'tier-name', fromPortions: 'tier-from', toPortions: 'tier-to', discountPercent: 'tier-discount',
 }
 
 type TierModalState = { mode: 'add' } | { mode: 'edit'; id: string } | null
@@ -66,9 +81,8 @@ type TierModalState = { mode: 'add' } | { mode: 'edit'; id: string } | null
  */
 export default function CateringkalkylPage() {
   const { sub } = useAuth()
-  const { locationId } = useLocationId(sub)
-
-
+  const { locationId, resolving } = useLocationId(sub)
+  const [confirmEl, ask] = useConfirm()
   const { tenant } = useTenant()
   const isOwner = tenant?.role === 'owner_user'
   const [settings, setSettings] = useState<CateringSettings>(DEFAULT_SETTINGS)
@@ -79,13 +93,41 @@ export default function CateringkalkylPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveNotice, setSaveNotice] = useState<string | null>(null)
   const [tierError, setTierError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadTry, setLoadTry] = useState(0)
 
   const [tierModal, setTierModal] = useState<TierModalState>(null)
+  /** Fältet där ett kommatecken eller annat än siffror senast nekades. */
+  const [wholeOnly, setWholeOnly] = useState<string | null>(null)
+
+  /** numberIn som också visar "Hela tal." under fältet när något nekas. */
+  function whole(key: string, value: string, prev: number): number {
+    const refused = !/^\d*$/.test(value.replace(/\s/g, ''))
+    setWholeOnly((w) => (refused ? key : w === key ? null : w))
+    return numberIn(value, prev)
+  }
+
+  /** Som whole, men ett tomt fält är null (ingen gräns, och uppåt). */
+  function wholeOrNull(key: string, value: string, prev: number): number | null {
+    if (value.trim()) return whole(key, value, prev)
+    setWholeOnly((w) => (w === key ? null : w))
+    return null
+  }
+
+  function wholeHint(key: string, text = 'Skriv ett helt tal, till exempel 10.') {
+    return wholeOnly === key ? <p className="field-hint error" role="alert">{text}</p> : null
+  }
 
   // Sparade inställningar (platsens cateringSettings) och rabattnivåer.
   useEffect(() => {
     if (!locationId) return
     let cancelled = false
+    // Ny plats (eller nytt försök): skelettet tills just den platsen är läst,
+    // så en annan plats inställningar aldrig kan sparas hit.
+    setLoaded(false)
+    setLoadError(null)
+    setChangedThere(null)
+    savedSettings.current = null
     // Utan API (mockläge) finns ingen plats att läsa: standardinställningarna.
     Promise.all([isApiConfigured() ? getLocation(locationId) : Promise.resolve({}), listTiers(locationId)])
       .then(([loc, loadedTiers]) => {
@@ -96,13 +138,14 @@ export default function CateringkalkylPage() {
         setOrderRules(rulesOf(saved))
         savedSettings.current = saved
         setTiers(loadedTiers.map(tierOf))
+        setLoadError(null)
         setLoaded(true)
       })
-      .catch((err: unknown) => !cancelled && setSaveError(errorText(err, 'Kunde inte hämta cateringinställningarna.')))
+      .catch((err: unknown) => !cancelled && setLoadError(errorText(err, 'Cateringinställningarna kunde inte visas.')))
     return () => {
       cancelled = true
     }
-  }, [locationId])
+  }, [locationId, loadTry])
 
   // Levande: rabatter och inställningar som en kollega sparar syns av sig själva.
   // Inställningar du har börjat ändra skrivs inte över (bara orörda följer med).
@@ -188,10 +231,10 @@ export default function CateringkalkylPage() {
       setChangedThere(null)
       setSaveNotice(saved.enabled ? 'Sparat. Kalkylen visas på webbplatsen.' : 'Sparat. Kalkylen är dold för gäster.')
       if (originFound === false) {
-        setSaveError('Leveransernas startadress hittades inte på kartan. Leveranspriset får då sättas för hand i varje offert. Kontrollera adressen.')
+        setSaveError('Startadressen för leveranser hittades inte på kartan. Kolla adressen. Tills dess sätter du leveranspriset för hand i varje offert.')
       }
     } catch (err) {
-      setSaveError(errorText(err))
+      setSaveError(errorText(err, 'Inställningarna sparades inte.'))
     } finally {
       setSaving(false)
     }
@@ -204,7 +247,7 @@ export default function CateringkalkylPage() {
       await action()
       setTiers((await listTiers(locationId)).map(tierOf))
     } catch (err) {
-      setTierError(errorText(err))
+      setTierError(errorText(err, 'Rabattnivåerna ändrades inte.'))
     }
   }
 
@@ -214,18 +257,32 @@ export default function CateringkalkylPage() {
     void tierCall(() => updateTier(locationId, id, tierInput({ ...tier, active: !tier.active })))
   }
 
-  function removeTier(tier: DiscountTier) {
-    if (!locationId || !window.confirm(`Ta bort ${tier.name}?`)) return
+  async function removeTier(tier: DiscountTier): Promise<boolean> {
+    if (!locationId) return false
+    if (!(await ask({ title: `Radera ${tier.name}?`, confirmLabel: 'Radera', danger: true }))) return false
     void tierCall(() => deleteTier(locationId, tier.id))
+    return true
   }
 
-  function handleSaveTier(values: DiscountTierFormValues) {
-    if (!locationId) return
+  /** Sparar nivån; rutan stängs bara när det gick, annars står den kvar med felet. */
+  async function handleSaveTier(values: DiscountTierFormValues): Promise<string | null> {
+    if (!locationId) return null
     const id = tierModal?.mode === 'edit' ? tierModal.id : null
-    void tierCall(() =>
-      id ? updateTier(locationId, id, tierInput(values)) : createTier(locationId, tierInput(values)),
-    )
+    try {
+      await (id ? updateTier(locationId, id, tierInput(values)) : createTier(locationId, tierInput(values)))
+    } catch (err) {
+      if (id && err instanceof ApiError && err.status === 404) {
+        // En kollega har raderat nivån: listan visar det som finns kvar.
+        void tierCall(() => Promise.resolve())
+        return 'Nivån finns inte längre, någon har tagit bort den. Stäng rutan för att se det som finns kvar.'
+      }
+      const text = errorText(err, 'Nivån sparades inte.')
+      focusErrorField(err, TIER_FIELD_IDS)
+      return text
+    }
     setTierModal(null)
+    void tierCall(() => Promise.resolve())
+    return null
   }
 
   const editingTier =
@@ -246,6 +303,27 @@ export default function CateringkalkylPage() {
         }
       />
 
+      {!locationId && !resolving ? (
+        <main className="admin-main">
+          <NoLocation />
+        </main>
+      ) : loadError ? (
+        <main className="admin-main">
+          <ErrorNote text={loadError} onRetry={() => { setLoadError(null); setLoadTry((n) => n + 1) }} />
+        </main>
+      ) : !loaded ? (
+        <main className="admin-main">
+          <SkelPage label="Hämtar cateringinställningarna">
+            <SkelCard head={false} rows={1} cols={2} />
+            <SkelCard rows={3} cols={2} />
+            <div className="settings-row" aria-hidden="true">
+              <SkelCard aside={false} lines={4} />
+              <SkelCard aside={false} rows={3} cols={3} />
+            </div>
+            <SkelCard rows={3} cols={4} />
+          </SkelPage>
+        </main>
+      ) : (
       <main className="admin-main">
         <ErrorNote text={saveError} />
         {saveNotice && <p className="save-notice" role="status">{saveNotice}</p>}
@@ -279,31 +357,30 @@ export default function CateringkalkylPage() {
                 <input
                   id="max-portions"
                   inputMode="numeric"
-                  value={`${orderRules.maxPortions} st`}
+                  value={orderRules.maxPortions}
                   onChange={(e) =>
-                    updateOrderRules({
-                      maxPortions: Number(e.target.value.replace(/[^\d]/g, '')) || 0,
-                    })
+                    updateOrderRules({ maxPortions: whole('maxPortions', e.target.value, orderRules.maxPortions) })
                   }
                 />
+                {wholeHint('maxPortions')}
               </div>
               <div className="form-field">
                 <label htmlFor="min-guests">Minsta antal gäster</label>
-                <input id="min-guests" inputMode="numeric" value={`${settings.minGuests} gäster`}
-                  onChange={(e) => updateSettings({ minGuests: numberIn(e.target.value) })} />
+                <input id="min-guests" inputMode="numeric" value={settings.minGuests}
+                  onChange={(e) => updateSettings({ minGuests: whole('minGuests', e.target.value, settings.minGuests) })} />
+                {wholeHint('minGuests')}
               </div>
               <div className="form-field">
-                <label htmlFor="advance-days">Framförhållning</label>
+                <label htmlFor="advance-days">Framförhållning (dagar)</label>
                 <input
                   id="advance-days"
                   inputMode="numeric"
-                  value={`${orderRules.advanceDays} dagar`}
+                  value={orderRules.advanceDays}
                   onChange={(e) =>
-                    updateOrderRules({
-                      advanceDays: Number(e.target.value.replace(/[^\d]/g, '')) || 0,
-                    })
+                    updateOrderRules({ advanceDays: whole('advanceDays', e.target.value, orderRules.advanceDays) })
                   }
                 />
+                {wholeHint('advanceDays')}
               </div>
               <div className="form-field">
                 <label htmlFor="discount-scope">Rabatten gäller</label>
@@ -349,19 +426,26 @@ export default function CateringkalkylPage() {
                   <span className="band-from">{i === 0 ? '0' : bands[i - 1].upToKm} till</span>
                   <label className="band-field">
                     <span className="sr-only">Intervall {i + 1}, upp till km</span>
-                    <input inputMode="numeric" value={`${b.upToKm} km`}
-                      onChange={(e) => setBand(i, { upToKm: numberIn(e.target.value) })} />
+                    <input inputMode="numeric" value={b.upToKm}
+                      onChange={(e) => setBand(i, { upToKm: whole(`band-km-${i}`, e.target.value, b.upToKm) })} />
+                    <span className="band-unit" aria-hidden="true">km</span>
                   </label>
                   <label className="band-field">
                     <span className="sr-only">Intervall {i + 1}, pris</span>
-                    <input inputMode="numeric" value={`${b.price} kr`}
-                      onChange={(e) => setBand(i, { price: numberIn(e.target.value) })} />
+                    <input inputMode="numeric" value={b.price}
+                      onChange={(e) => setBand(i, { price: whole(`band-kr-${i}`, e.target.value, b.price) })} />
+                    <span className="band-unit" aria-hidden="true">kr</span>
                   </label>
                   <button type="button" className="link-action danger" disabled={bands.length === 1}
                     aria-label={`Ta bort intervall ${i + 1}`}
                     onClick={() => updateSettings({ deliveryBands: bands.filter((_, j) => j !== i) })}>
                     Ta bort
                   </button>
+                  {(wholeOnly === `band-km-${i}` || wholeOnly === `band-kr-${i}`) && (
+                    <p className="field-hint error band-hint" role="alert">
+                      {wholeOnly === `band-kr-${i}` ? 'Skriv hela kronor, till exempel 250.' : 'Skriv hela km, till exempel 15.'}
+                    </p>
+                  )}
                 </li>
               ))}
             </ul>
@@ -412,16 +496,19 @@ export default function CateringkalkylPage() {
                     <tr key={i}>
                       <td>
                         <input aria-label={`Intervall ${i + 1}, från antal gäster`} inputMode="numeric"
-                          value={r.fromGuests} onChange={(e) => setRule(i, { fromGuests: numberIn(e.target.value) })} />
+                          value={r.fromGuests} onChange={(e) => setRule(i, { fromGuests: whole(`rule-from-${i}`, e.target.value, r.fromGuests) })} />
+                        {wholeHint(`rule-from-${i}`)}
                       </td>
                       <td>
                         <input aria-label={`Intervall ${i + 1}, till antal gäster`} inputMode="numeric"
                           placeholder="och uppåt" value={r.toGuests ?? ''}
-                          onChange={(e) => setRule(i, { toGuests: e.target.value.trim() ? numberIn(e.target.value) : null })} />
+                          onChange={(e) => setRule(i, { toGuests: wholeOrNull(`rule-to-${i}`, e.target.value, r.toGuests ?? 0) })} />
+                        {wholeHint(`rule-to-${i}`)}
                       </td>
                       <td>
                         <input aria-label={`Intervall ${i + 1}, dagar i förväg`} inputMode="numeric"
-                          value={r.days} onChange={(e) => setRule(i, { days: numberIn(e.target.value) })} />
+                          value={r.days} onChange={(e) => setRule(i, { days: whole(`rule-days-${i}`, e.target.value, r.days) })} />
+                        {wholeHint(`rule-days-${i}`)}
                       </td>
                       <td>
                         <button type="button" className="link-action danger" aria-label={`Ta bort intervall ${i + 1}`}
@@ -461,12 +548,14 @@ export default function CateringkalkylPage() {
               <div className="form-field">
                 <label htmlFor="cat-owner-reminder">Obesvarad förfrågan, påminn mig efter (timmar)</label>
                 <input id="cat-owner-reminder" inputMode="numeric" value={settings.ownerReminderHours}
-                  onChange={(e) => updateSettings({ ownerReminderHours: numberIn(e.target.value) })} />
+                  onChange={(e) => updateSettings({ ownerReminderHours: whole('ownerReminderHours', e.target.value, settings.ownerReminderHours) })} />
+                {wholeHint('ownerReminderHours')}
               </div>
               <div className="form-field">
                 <label htmlFor="cat-sign-reminder">Osignerad offert, påminn kunden (dagar innan den går ut)</label>
                 <input id="cat-sign-reminder" inputMode="numeric" value={settings.signReminderDaysBefore}
-                  onChange={(e) => updateSettings({ signReminderDaysBefore: numberIn(e.target.value) })} />
+                  onChange={(e) => updateSettings({ signReminderDaysBefore: whole('signReminderDaysBefore', e.target.value, settings.signReminderDaysBefore) })} />
+                {wholeHint('signReminderDaysBefore')}
               </div>
             </div>
             <div style={{ height: 8 }} />
@@ -487,9 +576,10 @@ export default function CateringkalkylPage() {
           <div style={{ height: 16 }} />
           <div className="form-grid">
             <div className="form-field">
-              <label htmlFor="cat-cleaning-fee">Rengöringsavgift, ej rengjord utrustning (inkl. moms)</label>
-              <input id="cat-cleaning-fee" inputMode="numeric" value={`${settings.cleaningFee} kr`}
-                onChange={(e) => updateSettings({ cleaningFee: numberIn(e.target.value) })} />
+              <label htmlFor="cat-cleaning-fee">Rengöringsavgift, ej rengjord utrustning (kr inkl. moms)</label>
+              <input id="cat-cleaning-fee" inputMode="numeric" value={settings.cleaningFee}
+                onChange={(e) => updateSettings({ cleaningFee: whole('cleaningFee', e.target.value, settings.cleaningFee) })} />
+              {wholeHint('cleaningFee', 'Skriv hela kronor, till exempel 250.')}
             </div>
           </div>
         </section>
@@ -501,22 +591,26 @@ export default function CateringkalkylPage() {
             <div className="form-field">
               <label htmlFor="cat-capacity">Max portioner per dag (tomt = ingen gräns)</label>
               <input id="cat-capacity" inputMode="numeric" value={settings.maxPortionsPerDay ?? ''}
-                onChange={(e) => updateSettings({ maxPortionsPerDay: e.target.value.trim() ? numberIn(e.target.value) : null })} />
+                onChange={(e) => updateSettings({ maxPortionsPerDay: wholeOrNull('maxPortionsPerDay', e.target.value, settings.maxPortionsPerDay ?? 0) })} />
+              {wholeHint('maxPortionsPerDay')}
             </div>
             <div className="form-field">
               <label htmlFor="cat-valid">Offert gäller (dagar)</label>
               <input id="cat-valid" inputMode="numeric" value={settings.offerValidDays}
-                onChange={(e) => updateSettings({ offerValidDays: numberIn(e.target.value) })} />
+                onChange={(e) => updateSettings({ offerValidDays: whole('offerValidDays', e.target.value, settings.offerValidDays) })} />
+              {wholeHint('offerValidDays')}
             </div>
             <div className="form-field">
               <label htmlFor="cat-terms-days">Betalningsvillkor företag (dagar)</label>
               <input id="cat-terms-days" inputMode="numeric" value={settings.paymentTermsDays}
-                onChange={(e) => updateSettings({ paymentTermsDays: numberIn(e.target.value) })} />
+                onChange={(e) => updateSettings({ paymentTermsDays: whole('paymentTermsDays', e.target.value, settings.paymentTermsDays) })} />
+              {wholeHint('paymentTermsDays')}
             </div>
             <div className="form-field">
               <label htmlFor="cat-expiry">Obesvarad förfrågan går ut efter (timmar)</label>
               <input id="cat-expiry" inputMode="numeric" value={settings.requestExpiryHours}
-                onChange={(e) => updateSettings({ requestExpiryHours: numberIn(e.target.value) })} />
+                onChange={(e) => updateSettings({ requestExpiryHours: whole('requestExpiryHours', e.target.value, settings.requestExpiryHours) })} />
+              {wholeHint('requestExpiryHours')}
             </div>
             <div className="form-field">
               <label htmlFor="cat-notify-email">Nya förfrågningar till e-post</label>
@@ -623,7 +717,7 @@ export default function CateringkalkylPage() {
                         <button
                           type="button"
                           className="link-action danger"
-                          onClick={() => removeTier(t)}
+                          onClick={() => void removeTier(t)}
                         >
                           Radera
                         </button>
@@ -637,6 +731,7 @@ export default function CateringkalkylPage() {
         </section>
 
       </main>
+      )}
 
       {tierModal && (
         <DiscountTierModal
@@ -648,13 +743,13 @@ export default function CateringkalkylPage() {
           onDelete={
             editingTier
               ? () => {
-                  removeTier(editingTier)
-                  setTierModal(null)
+                  void removeTier(editingTier).then((removed) => removed && setTierModal(null))
                 }
               : undefined
           }
         />
       )}
+      {confirmEl}
     </>
   )
 }

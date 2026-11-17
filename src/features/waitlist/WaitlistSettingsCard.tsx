@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Bar, Button, Card, Field, Input, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { SkelCard } from '../../shared/Skeleton'
+import { useTenant } from '../../shared/tenant'
 import { ERRORS, getQueue, saveSettings, type Settings } from './api'
 import './waitlist.css'
 
@@ -8,16 +11,34 @@ function today(): string {
   return new Date().toLocaleDateString('sv-SE')
 }
 
-/** Inställningar > Bord: kön på/av, hålltid, max antal och kö från hemsidan (ägaren). */
+/** Inställningar, Restaurangen, Bokning: kön på/av, hålltid, max antal och kö från hemsidan (ägaren). */
 export default function WaitlistSettingsCard({ locationId }: { locationId: string }) {
+  // Bara ägaren kan spara köinställningarna (servern svarar owner_only).
+  const { tenant } = useTenant()
+  if (tenant?.role !== 'owner_user') return null
+  return <SettingsForm locationId={locationId} />
+}
+
+function SettingsForm({ locationId }: { locationId: string }) {
   const [draft, setDraft] = useState<Settings | null>(null)
   const [saving, setSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
-  useEffect(() => {
-    getQueue(locationId, today()).then((q) => setDraft(q.settings)).catch(() => setDraft(null))
+  const load = useCallback(() => {
+    let live = true
+    setLoadError(null)
+    getQueue(locationId, today()).then((q) => { if (live) setDraft(q.settings) })
+      .catch((err) => { if (live) setLoadError(errorText(err, 'Köinställningarna kunde inte visas.', ERRORS)) })
+    return () => { live = false }
   }, [locationId])
 
-  if (!draft) return null
+  useEffect(() => load(), [load])
+
+  if (!draft) {
+    return loadError
+      ? <Card title="Kö"><ErrorNote text={loadError} onRetry={() => { load() }} /></Card>
+      : <SkelCard rows={3} cols={2} aside={false} />
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
@@ -27,7 +48,7 @@ export default function WaitlistSettingsCard({ locationId }: { locationId: strin
       setDraft(await saveSettings(locationId, draft))
       toast('Sparat.', { tone: 'success' })
     } catch (err) {
-      toast(errorText(err, 'Kunde inte spara.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Köinställningarna sparades inte.', ERRORS), { tone: 'danger' })
     } finally {
       setSaving(false)
     }

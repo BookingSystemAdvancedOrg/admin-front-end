@@ -1,5 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../shared/api'
 import { ReservationModal } from './ReservationModal'
@@ -11,6 +12,7 @@ import { chooseOption } from '../../test/select'
 
 const changeStatus = vi.fn()
 const paymentAction = vi.fn()
+const getReservation = vi.fn()
 const updateReservation = vi.fn()
 const getAvailability = vi.fn()
 const createManualReservation = vi.fn()
@@ -18,6 +20,7 @@ vi.mock('./bookingsApi', async (orig) => ({
   ...(await orig<typeof import('./bookingsApi')>()),
   changeStatus: (...a: unknown[]) => changeStatus(...a),
   paymentAction: (...a: unknown[]) => paymentAction(...a),
+  getReservation: (...a: unknown[]) => getReservation(...a),
   updateReservation: (...a: unknown[]) => updateReservation(...a),
   getAvailability: (...a: unknown[]) => getAvailability(...a),
   createManualReservation: (...a: unknown[]) => createManualReservation(...a),
@@ -49,7 +52,7 @@ function booking(over: Partial<Reservation> = {}): Reservation {
 }
 
 beforeEach(() => {
-  for (const fn of [changeStatus, paymentAction, updateReservation, getAvailability, createManualReservation]) {
+  for (const fn of [changeStatus, paymentAction, getReservation, updateReservation, getAvailability, createManualReservation]) {
     fn.mockReset()
   }
   getAvailability.mockResolvedValue(avail([]))
@@ -91,7 +94,7 @@ describe('ReservationModal', () => {
     render(<ReservationModal today={TODAY} reservation={booking()} isOwner onChanged={() => {}} onClose={() => {}} />)
     await user.click(screen.getByRole('button', { name: 'Uteblev' }))
     await user.click(screen.getAllByRole('button', { name: 'Uteblev' }).at(-1)!)
-    expect(await screen.findByRole('alert')).toHaveTextContent('väntetid för sena gäster')
+    expect(await screen.findByRole('alert')).toHaveTextContent('tiden för sena gäster')
   })
 
   it('cancels and tells the guest unless unticked', async () => {
@@ -136,8 +139,34 @@ describe('ReservationModal', () => {
     await user.click(screen.getByRole('button', { name: 'Återbetala' }))
     await user.clear(screen.getByLabelText(/Belopp/))
     await user.type(screen.getByLabelText(/Belopp/), '200')
-    await user.click(screen.getAllByRole('button', { name: 'Återbetala' }).at(-1)!)
-    expect(paymentAction).toHaveBeenLastCalledWith('loc-1', 'r1', 'refund', 20000)
+    expect(screen.getByText('Kvar att återbetala', { exact: false })).toHaveTextContent('500 kr')
+    await user.type(screen.getByLabelText('Anledning (valfri)'), 'Sjukdom')
+    await user.click(screen.getByRole('button', { name: 'Återbetala 200 kr' }))
+    expect(paymentAction).toHaveBeenLastCalledWith('loc-1', 'r1', 'refund', {
+      amount: 20000, reason: 'Sjukdom', notifyGuest: true,
+    })
+    expect(screen.queryByRole('dialog', { name: 'Återbetala avgiften' })).toBeNull()
+  })
+
+  it('a refund that hits a 409 reloads the booking so the dialog shows what is left now', async () => {
+    const user = userEvent.setup()
+    const charged = (refundedAmount: number) => booking({
+      status: 'no_show_charged',
+      payment: { kind: 'no_show', status: 'succeeded', amount: 50000, refundedAmount },
+    })
+    paymentAction.mockRejectedValue(new ApiError(409, 'changed_retry', { code: 'changed_retry', fromServer: true }))
+    getReservation.mockResolvedValue(charged(30000))
+    function Host() {
+      const [r, setR] = useState(charged(0))
+      return <ReservationModal today={TODAY} reservation={r} isOwner onChanged={setR} onClose={() => {}} />
+    }
+    render(<Host />)
+    await user.click(screen.getByRole('button', { name: 'Återbetala' }))
+    await user.click(screen.getByRole('button', { name: 'Återbetala 500 kr' }))
+    expect(await screen.findByText(/betalade nyss tillbaka/)).toBeInTheDocument()
+    expect(getReservation).toHaveBeenCalledWith('loc-1', 'r1')
+    expect(screen.getByText('Kvar att återbetala', { exact: false })).toHaveTextContent('200 kr')
+    expect(screen.getByLabelText(/Belopp/)).toHaveValue('200')
   })
 
   it('moves a booking to another time and table', async () => {
@@ -212,7 +241,7 @@ describe('time rules in the forms', () => {
     render(<ReservationModal today={TODAY} reservation={booking()} isOwner onChanged={() => {}} onClose={() => {}} />)
     await user.click(screen.getByRole('button', { name: 'Ändra' }))
     await user.clear(screen.getByLabelText('Telefon'))
-    expect(screen.getByText('En onlinebokning måste ha telefon.')).toBeInTheDocument()
+    expect(screen.getByText('En onlinebokning behöver ett telefonnummer. Skriv till exempel 070 123 45 67.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Spara' })).toBeDisabled()
   })
 
@@ -263,7 +292,7 @@ describe('time rules in the forms', () => {
     await user.click(screen.getByRole('button', { name: 'Ändra' }))
     await user.clear(screen.getByLabelText('Antal personer'))
     await user.type(screen.getByLabelText('Antal personer'), '5')
-    expect(screen.getByText(/Borden rymmer 4/)).toBeInTheDocument()
+    expect(screen.getByText(/Borden har bara 4 platser/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Spara' })).toBeDisabled()
   })
 
@@ -428,7 +457,7 @@ describe('ReservationModal extend', () => {
     await user.click(screen.getByRole('button', { name: 'Förläng' }))
     await chooseOption(screen.getByLabelText('Ny sluttid'), String(20 * 60 + 30))
     await user.click(screen.getByRole('button', { name: 'Förläng' }))
-    expect(screen.getByRole('alert')).toHaveTextContent('Bekräfta')
+    expect(screen.getByRole('alert')).toHaveTextContent('Kryssa i rutan')
     expect(updateReservation).not.toHaveBeenCalled()
     await user.click(screen.getByLabelText(/Förläng ändå/))
     await user.click(screen.getByRole('button', { name: 'Förläng' }))
@@ -468,5 +497,66 @@ describe('ReservationModal history', () => {
       />,
     )
     expect(screen.getByText(/Sluttid ändrad · 21:00 till 20:30/)).toBeInTheDocument()
+  })
+
+  it('names edited fields in Swedish and hides internal keys', () => {
+    const fields = ['bookedFor', 'date', 'endTime', 'endsAt', 'layoutVersion', 'seats', 'startTime', 'tableIds', 'ttl']
+    render(
+      <ReservationModal
+        today={TODAY}
+        reservation={booking({ history: [{ action: 'edited', by: 'x', at: '2026-10-12T17:00:00Z', fields }] })}
+        isOwner
+        onChanged={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    expect(screen.getByText(/Ändrad · tid, bord/)).toBeInTheDocument()
+    expect(screen.queryByText(/bookedFor|layoutVersion|ttl/)).toBeNull()
+  })
+
+  it('shows a failed fee in Swedish, never the raw Stripe code', () => {
+    const { unmount } = render(
+      <ReservationModal
+        today={TODAY}
+        reservation={booking({
+          status: 'no_show_charge_failed',
+          payment: { kind: 'no_show', status: 'failed', amount: 25000, error: 'insufficient_funds' },
+        })}
+        isOwner
+        onChanged={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    expect(screen.getByText(/drogs inte \(för lite pengar på kortet\)/)).toBeInTheDocument()
+    expect(screen.queryByText(/insufficient_funds/)).toBeNull()
+    unmount()
+    const declined = render(
+      <ReservationModal
+        today={TODAY}
+        reservation={booking({
+          status: 'no_show_charge_failed',
+          payment: { kind: 'no_show', status: 'failed', amount: 25000, error: 'do_not_honor' },
+        })}
+        isOwner
+        onChanged={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    expect(screen.getByText(/drogs inte \(kortet nekades\)/)).toBeInTheDocument()
+    expect(screen.queryByText(/do_not_honor/)).toBeNull()
+    declined.unmount()
+    render(
+      <ReservationModal
+        today={TODAY}
+        reservation={booking({
+          status: 'no_show_charge_failed',
+          payment: { kind: 'no_show', status: 'failed', amount: 25000, error: 'processing_error' },
+        })}
+        isOwner
+        onChanged={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    expect(screen.queryByText(/processing_error/)).toBeNull()
   })
 })

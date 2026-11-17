@@ -26,6 +26,7 @@ import {
 } from './api'
 import { ErrorActions } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
+import { SkelCard } from '../../shared/Skeleton'
 
 /** Marknadsföring > Annonser: koppla Meta, skapa annonser på två minuter, starta och pausa. */
 export default function AnnonserTab() {
@@ -40,7 +41,7 @@ export default function AnnonserTab() {
     try {
       setConnection(await getConnection())
     } catch (err) {
-      setError(errorText(err, 'Kunde inte hämta annonserna.', ERRORS))
+      setError(errorText(err, 'Annonserna kunde inte visas.', ERRORS))
     }
   }, [])
   useLiveRefresh(async () => setConnection(await getConnection()))
@@ -62,7 +63,7 @@ export default function AnnonserTab() {
     setParams(next, { replace: true })
     finishConnect(code, oauthState)
       .then((c) => { setConnection(c); toast('Meta är kopplat. Välj konto och sida nedan.', { tone: 'success' }) })
-      .catch((err) => setError(errorText(err, 'Det gick inte att koppla Meta.', ERRORS)))
+      .catch((err) => setError(errorText(err, 'Meta kopplades inte.', ERRORS)))
   }, [params, setParams, load])
 
   async function connect() {
@@ -71,18 +72,18 @@ export default function AnnonserTab() {
       const { authorizeUrl } = await startConnect()
       window.location.assign(authorizeUrl)
     } catch (err) {
-      setError(errorText(err, 'Det gick inte att starta kopplingen.', ERRORS))
+      setError(errorText(err, 'Kopplingen till Meta startade inte.', ERRORS))
       setConnecting(false)
     }
   }
 
   return (
     <>
-      {error ? <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng" action={<ErrorActions text={error} />}>{error}</Bar> : null}
+      {error ? <Bar variant="banner" tone="danger" onDismiss={() => setError(null)} dismissLabel="Stäng" action={<ErrorActions text={error} onRetry={connection === null ? () => { setError(null); void load() } : undefined} />}>{error}</Bar> : null}
       {connection?.killSwitch ? (
         <Bar variant="banner" tone="warning">Annonser är pausade av Booqy just nu. Inga nya annonser kan startas.</Bar>
       ) : null}
-      {connection === null && !error ? <p className="cell-muted">Hämtar…</p> : null}
+      {connection === null && !error ? <div role="status" aria-label="Hämtar annonser" aria-busy="true"><SkelCard rows={3} cols={3} /></div> : null}
       {connection && connection.status !== 'connected' ? (
         <Card title="Koppla Meta" actions={
           <InfoTooltip label="Koppla Meta">
@@ -137,7 +138,7 @@ function ConnectionCard({ connection, onSaved, onDisconnected }: {
       setEditing(false)
       toast('Sparat.', { tone: 'success' })
     } catch (err) {
-      toast(errorText(err, 'Kunde inte spara.', ERRORS, { dsa: 'annonsör och betalare', monthlyCapSek: 'månadstaket' }), { tone: 'danger' })
+      toast(errorText(err, 'Annonsinställningarna sparades inte.', ERRORS, { dsa: 'annonsör och betalare', monthlyCapSek: 'månadstaket' }), { tone: 'danger' })
     } finally {
       setSaving(false)
     }
@@ -148,7 +149,7 @@ function ConnectionCard({ connection, onSaved, onDisconnected }: {
       await disconnect()
       onDisconnected()
     } catch (err) {
-      toast(errorText(err, 'Kunde inte koppla bort Meta.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Meta kopplades inte bort.', ERRORS), { tone: 'danger' })
     }
   }
 
@@ -239,7 +240,7 @@ function Campaigns({ locationId, blocked }: { locationId: string; blocked: boole
       const next = c.status === 'active' ? await pause(locationId, c) : await activate(locationId, c)
       setCampaigns((list) => list?.map((x) => (x.campaignId === next.campaignId ? next : x)) ?? null)
     } catch (err) {
-      toast(errorText(err, 'Det gick inte.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, c.status === 'active' ? 'Annonsen pausades inte.' : 'Annonsen startade inte.', ERRORS), { tone: 'danger' })
     } finally {
       setBusy(null)
     }
@@ -276,7 +277,7 @@ function Campaigns({ locationId, blocked }: { locationId: string; blocked: boole
                   <td>{c.budgetSek.toLocaleString('sv-SE')} kr</td>
                   <td>
                     <span className="status-badge">{STATUS_LABEL[c.status]}</span>
-                    {c.status === 'failed' && c.error ? <span className="cell-muted"> {FAILED_LABEL[c.error.code] ?? ''}</span> : null}
+                    {c.status === 'failed' && c.error ? <span className="cell-muted"> {FAILED_LABEL[c.error.code] ?? FAILED_LABEL.start_failed}</span> : null}
                   </td>
                 </tr>
               ))}

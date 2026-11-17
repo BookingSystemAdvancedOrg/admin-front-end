@@ -1,4 +1,4 @@
-import { errorText as commonError } from '../../shared/errors'
+import { BOOQY_FAULT, errorText as commonError } from '../../shared/errors'
 import { apiFetch, ApiError } from '../../shared/api'
 
 /**
@@ -93,21 +93,21 @@ const PHONE_PATTERN = /^\+[1-9]\d{7,14}$/
 
 /** Klientspegling av Lambdans fältvalidering - samma regler, samma felmeddelanden. */
 export function validateName(name: string): string | null {
-  return name.trim() ? null : 'Namn krävs.'
+  return name.trim() ? null : 'Skriv ett namn.'
 }
 
 export function validateEmail(email: string): string | null {
-  if (!email.trim()) return 'E-post krävs.'
+  if (!email.trim()) return 'Skriv en e-postadress, till exempel namn@exempel.se.'
   if (email.length > 320 || !EMAIL_PATTERN.test(email)) {
-    return 'E-postadressen ser inte korrekt ut.'
+    return 'E-postadressen ser fel ut. Skriv den så här: namn@exempel.se.'
   }
   return null
 }
 
 export function validatePhone(phone: string): string | null {
-  if (!phone.trim()) return 'Telefonnummer krävs.'
+  if (!phone.trim()) return 'Skriv ett telefonnummer, till exempel +46701234567.'
   if (!PHONE_PATTERN.test(phone)) {
-    return 'Telefonnummer måste vara i E.164-format, t.ex. +46701234567.'
+    return 'Telefonnumret ser fel ut. Skriv det med +46 och utan mellanslag, till exempel +46701234567.'
   }
   return null
 }
@@ -120,7 +120,7 @@ export function validateLocationId(
     return 'Välj vilken plats personalen ska jobba på.'
   }
   if (group !== 'staff_user' && locationId.trim()) {
-    return 'Ägare kopplas inte till en enskild plats.'
+    return 'En ägare hör till alla platser. Låt platsen vara tom.'
   }
   return null
 }
@@ -139,24 +139,28 @@ export type UserAction = 'profile' | 'deactivate' | 'reactivate' | 'delete' | 'g
 /**
  * Kan caller utföra åtgärden mot den här användaren? Speglar _authorize_target:
  * ingen får agera på sig själv (utom att redigera sin egen profil), ägare
- * hanterar personal (role "staff"), och personal hanterar inga andra
- * användare alls.
+ * hanterar personal (role "staff"), och personal hanterar andra bara om
+ * ägaren har gett dem området Personal.
  */
 export function canManageTarget(
-  caller: { sub: string | null; groups: string[] },
+  caller: { sub: string | null; groups: string[]; personal?: boolean },
   target: User,
   action: UserAction,
 ): boolean {
   const isSelf = Boolean(caller.sub) && target.cognitoSub === caller.sub
   if (action !== 'profile' && isSelf) return false
   if (action === 'profile' && isSelf) return true
-  return caller.groups.includes('owner_user') && target.role === 'staff'
+  if (target.role !== 'staff') return false
+  if (caller.groups.includes('owner_user')) return true
+  // Personal som ägaren gett Personal: redigera, inaktivera och aktivera
+  // personalen på sin plats (servern listar bara dem). Roller och borttagning är ägarens.
+  return Boolean(caller.personal) && (action === 'profile' || action === 'deactivate' || action === 'reactivate')
 }
 
 /** Mappar API:ts { error: string } + statuskod till svenska meddelanden. */
 function toFriendlyUserError(err: unknown): Error {
   if (!(err instanceof ApiError)) {
-    return err instanceof Error ? err : new Error('Ett okänt fel inträffade.')
+    return err instanceof Error ? err : new Error('Något gick fel hos Booqy. Försök igen om en stund.')
   }
 
   console.error(`[Users] ${err.status}: ${err.message}`)
@@ -169,40 +173,40 @@ function toFriendlyUserError(err: unknown): Error {
         return withField(new Error('Välj vilken plats personalen ska jobba på.'))
       }
       if (err.message.includes('locationId must be empty')) {
-        return withField(new Error('Ägare kopplas inte till en enskild plats.'))
+        return withField(new Error('En ägare hör till alla platser. Låt platsen vara tom.'))
       }
       if (err.message.includes('email must be valid')) {
-        return withField(new Error('E-postadressen ser inte korrekt ut.'))
+        return withField(new Error('E-postadressen ser fel ut. Skriv den så här: namn@exempel.se.'))
       }
       if (err.message.includes('phone must use E.164')) {
-        return withField(new Error('Telefonnumret ser inte korrekt ut. Skriv det med landsnummer, t.ex. +46 70 123 45 67.'))
+        return withField(new Error('Telefonnumret ser fel ut. Skriv det med +46 och utan mellanslag, till exempel +46701234567.'))
       }
       if (err.message.includes('at least one editable field')) {
-        return withField(new Error('Inget ändrades.'))
+        return withField(new Error('Du har inte ändrat något än. Ändra ett fält och spara.'))
       }
-      return withField(new Error(commonError(err, 'Användaren kunde inte sparas.', {}, { name: 'namnet', email: 'e-postadressen', phone: 'telefonnumret', role: 'rollen', locationId: 'platsen' })))
+      return withField(new Error(commonError(err, 'Användaren sparades inte.', {}, { name: 'namnet', email: 'e-postadressen', phone: 'telefonnumret', role: 'rollen', locationId: 'platsen' })))
     case 401:
-      return new Error('Du är inte inloggad längre. Logga in igen.')
+      return new Error('Du har loggats ut. Logga in igen och gör om det du höll på med.')
     case 403:
-      return new Error('Du har inte behörighet att göra detta.')
+      return new Error('Ditt konto får inte göra det här. Be restaurangens ägare om hjälp.')
     case 404:
-      return new Error('Användaren hittades inte - kan redan vara borttagen.')
+      return new Error('Användaren finns inte längre. Någon har nog redan tagit bort den.')
     case 409:
       if (err.message.includes('already exists')) {
-        return new Error('Det finns redan en användare med den e-postadressen.')
+        return new Error('Det finns redan en användare med den e-postadressen. Använd en annan e-postadress.')
       }
       return Object.assign(
-        new Error('Användaren ändrades samtidigt av någon annan. Det senaste visas nu; spara igen om ändringen fortfarande behövs.'),
+        new Error('Någon annan ändrade användaren samtidigt. Nu visas det senaste. Spara igen om det behövs.'),
         { conflict: true },
       )
     case 429:
-      return new Error('För många förfrågningar. Vänta en stund och försök igen.')
+      return new Error('För många försök på kort tid. Vänta en minut och försök igen.')
     case 501:
-      return new ApiError(501, 'Den här funktionen är inte klar på serversidan än. Felet ligger hos Booqy, inte hos er. Försök igen; kvarstår det, rapportera det till Booqy.')
+      return new ApiError(501, `Den här delen är inte klar hos Booqy än. ${BOOQY_FAULT}`)
     case 503:
-      return new ApiError(503, 'Tjänsten är tillfälligt otillgänglig. Felet ligger hos Booqy, inte hos er. Försök igen; kvarstår det, rapportera det till Booqy.')
+      return new ApiError(503, `Booqy svarar inte just nu. ${BOOQY_FAULT}`)
     default:
-      return new Error(commonError(err, 'Kunde inte spara användaren.'))
+      return new Error(commonError(err, 'Något gick fel med användaren.'))
   }
 }
 
@@ -233,10 +237,9 @@ export async function listUsers(): Promise<User[]> {
     return (res.items ?? []).map(normalizeUser)
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
-      // 404 här betyder att rutten saknas (inte att en användare saknas).
-      throw new Error(
-        'Listan kan inte hämtas - GET /list-users är inte deployad på API:t än.',
-      )
+      // 404 här betyder att rutten saknas (inte att en användare saknas):
+      // Booqys fel, med Rapportera till Booqy (shared/errors).
+      throw new ApiError(404, 'route_not_found', { code: 'route_not_found' })
     }
     throw toFriendlyUserError(err)
   }

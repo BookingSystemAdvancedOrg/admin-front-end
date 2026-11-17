@@ -1,3 +1,4 @@
+import { NOT_YOUR_FAULT } from '../../shared/errors'
 import { apiFetch } from '../../shared/api'
 
 /** Evenemang och biljetter (CONTRACTS.md 6.K). Redigering är ägarens; personalen ser listan och sköter insläppet. */
@@ -33,6 +34,7 @@ export interface TicketTypeEdit {
 }
 export interface EventDetail {
   eventId: string; locationId: string; title: string; description: string; status: EventStatus; settings: Settings
+  imageKey?: string; imageAlt?: string
   series?: Series; version: number; occurrences: Occurrence[]; ticketTypes: TicketType[]
 }
 export interface EventSummary { eventId: string; title: string; status: EventStatus; nextOccurrence: string | null; sold: number; capacity: number }
@@ -50,7 +52,7 @@ export interface GuestList { scanKey: string; tickets: Ticket[]; counters: { sol
 export interface CheckIn { ticketId: string; sig: string; at: string; clientId: string }
 export interface CheckInResult { clientId: string; status: 'ok' | 'already' | 'invalid' | 'void'; at?: string; by?: string }
 export interface NewEvent {
-  eventId: string; title: string; description: string
+  eventId: string; title: string; description: string; imageKey?: string; imageAlt?: string
   occurrences: { startAt: string; endAt: string; capacity: number; salesCloseAt?: string }[]
   series?: Series
   ticketTypes: { typeId: string; name: string; priceOre: number; vatRate: VatRate; perOrderMax: number; sortOrder: number; capacity?: number; includes?: string }[]
@@ -65,7 +67,7 @@ export const listEvents = (loc: string) => apiFetch<{ events: EventSummary[]; cu
 export const createEvent = (loc: string, body: NewEvent) =>
   apiFetch<EventDetail>(base(loc), { method: 'POST', body: JSON.stringify(body) })
 export const getEvent = (loc: string, id: string) => apiFetch<EventDetail>(ev(loc, id))
-export const updateEvent = (loc: string, id: string, body: { title: string; description: string; settings: Settings; series?: Series; version: number }) =>
+export const updateEvent = (loc: string, id: string, body: { title: string; description: string; settings: Settings; series?: Series; version: number; imageKey?: string; imageAlt?: string }) =>
   apiFetch<EventDetail>(ev(loc, id), { method: 'PUT', body: JSON.stringify(body) })
 export const publishEvent = (loc: string, id: string, version: number) =>
   apiFetch<EventDetail>(`${ev(loc, id)}/publish`, { method: 'POST', body: JSON.stringify({ version }) })
@@ -139,15 +141,16 @@ export function eventEditable(e: EventDetail, now = Date.now()): boolean {
 }
 
 export const ERRORS: Record<string, string> = {
-  invalid_capacity: 'Antalet platser kan inte vara lägre än antalet sålda och reserverade biljetter.',
-  invalid_price: 'Priset ska vara 0 kr eller mer.',
-  invalid_vat_rate: 'Välj en av momssatserna i listan.',
-  invalid_window: 'Kontrollera tiderna: slutet ska vara efter starten och försäljningen ska stänga före slutet.',
-  invalid_series: 'Upprepningen kan sträcka sig högst ett år framåt.',
-  invalid_state: 'Det går inte i det här läget.',
-  has_sales: 'Biljettypen har redan sålts och kan inte tas bort.',
-  changed_retry: 'Någon annan ändrade samtidigt. Det senaste visas nu; försök igen.',
-  stripe_unavailable: 'Betalningen kunde inte återbetalas just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
-  owner_only: 'Bara ägaren kan göra det här.',
-  too_many_tickets: 'Max antal biljetter per köp ska vara 1-20.',
+  invalid_capacity: 'Antalet platser är lägre än de biljetter som redan är sålda. Välj ett större antal.',
+  invalid_price: 'Priset kan inte vara under 0 kr. Skriv till exempel 495.',
+  invalid_vat_rate: 'Momsen saknas. Välj en momssats i listan.',
+  invalid_window: 'Tiderna går inte ihop. Slutet ska vara efter starten, och försäljningen ska stänga före slutet.',
+  invalid_series: 'Upprepningen är för lång. Välj ett slutdatum högst ett år fram.',
+  invalid_state: 'Det går inte längre, för evenemanget är inställt eller redan över.',
+  has_sales: 'Biljettypen har redan sålts, så den kan inte tas bort.',
+  changed_retry: 'Någon annan ändrade samtidigt. Nu visas det senaste. Gör din ändring igen.',
+  stripe_unavailable: `Pengarna kunde inte betalas tillbaka just nu, för Stripe svarar inte. ${NOT_YOUR_FAULT}`,
+  owner_only: 'Bara restaurangens ägare kan göra det här. Be ägaren göra det.',
+  too_many_tickets: 'Max biljetter per köp ska vara 1 till 20. Skriv till exempel 6.',
+  unknown_image: 'Bilden hittades inte. Välj bilden igen.',
 }

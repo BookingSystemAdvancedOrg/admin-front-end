@@ -19,21 +19,25 @@ import {
   formatKr,
   isStaleSlotError,
   normalizePhone,
+  getReservation,
   paymentAction,
   timestampLabel,
   updateReservation,
   validEmail,
+  paymentFailureLabel,
 } from './bookingsApi'
 import type { HistoryEntry, Reservation, ReservationEdit } from './bookingsApi'
-import { tableNames, useTables } from '../../shared/tables'
+import { useTables } from '../../shared/tables'
+import { TableLinks } from '../../shared/TableLinks'
 import { PhoneInput } from '../../shared/PhoneInput'
 import { ApiError } from '../../shared/api'
 import { minutesLabel } from '../installningar/bookingTime'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { Select } from '../../shared/Select'
+import { RefundDialog } from '../../shared/RefundDialog'
 
-type Panel = null | 'no_show' | 'cancel' | 'refund' | 'edit' | 'extend'
+type Panel = null | 'no_show' | 'cancel' | 'edit' | 'extend'
 
 const HISTORY_ACTION: Record<string, string> = {
   created: 'Bokad',
@@ -56,6 +60,25 @@ function who(by: string | undefined): string {
   return 'personal'
 }
 
+/** Ändrade fält i historiken, på svenska. Interna fält (tider i UTC, ttl,
+ * planversion m.m.) följer med en ändring men visas inte. */
+const FIELD_LABEL: Record<string, string> = {
+  date: 'tid',
+  startTime: 'tid',
+  endTime: 'tid',
+  tableIds: 'bord',
+  partySize: 'antal',
+  customerName: 'namn',
+  customerEmail: 'e-post',
+  customerPhone: 'telefon',
+  notes: 'meddelande',
+}
+
+function editedFieldsText(fields: unknown[]): string {
+  const labels = fields.map((f) => (typeof f === 'string' ? FIELD_LABEL[f] : undefined)).filter(Boolean)
+  return [...new Set(labels)].join(', ')
+}
+
 function historyText(h: HistoryEntry): string {
   const base = HISTORY_ACTION[h.action ?? ''] ?? h.action ?? ''
   const status = typeof h.status === 'string' ? STATUS_LABEL[h.status as keyof typeof STATUS_LABEL] : ''
@@ -68,7 +91,7 @@ function historyText(h: HistoryEntry): string {
     parts.push(`${String(h.previous ?? '')} till ${String(h.endTime ?? '')}`)
     if (h.override) parts.push('utanför regeln')
   }
-  if (h.action === 'edited' && Array.isArray(h.fields)) parts.push((h.fields as string[]).join(', '))
+  if (h.action === 'edited' && Array.isArray(h.fields)) parts.push(editedFieldsText(h.fields))
   if (typeof h.reason === 'string' && h.reason) parts.push(`"${h.reason}"`)
   return parts.filter(Boolean).join(' · ')
 }
@@ -97,7 +120,7 @@ export function ReservationModal({
   const [chargeFee, setChargeFee] = useState(true)
   const [notifyGuest, setNotifyGuest] = useState(true)
   const [reason, setReason] = useState('')
-  const [refundKr, setRefundKr] = useState(String(actions.refundable / 100))
+  const [refunding, setRefunding] = useState(false)
 
   const noShowFee = r.cardOnFile ? (r.guarantee?.noShowFee ?? 0) : 0
   const canNotify = Boolean(r.customerEmail || r.customerPhone)
@@ -125,16 +148,6 @@ export function ReservationModal({
   const status = (s: 'arrived' | 'reserved' | 'no_show' | 'cancelled', opts = {}) =>
     run(() => changeStatus(r.locationId, r.reservationId, s, opts))
 
-  function submitRefund(e: FormEvent) {
-    e.preventDefault()
-    const ore = Math.round(Number(refundKr.replace(',', '.')) * 100)
-    if (!Number.isFinite(ore) || ore < 1 || ore > actions.refundable) {
-      setError(`Ange ett belopp mellan 0,01 och ${formatKr(actions.refundable)}.`)
-      return
-    }
-    void run(() => paymentAction(r.locationId, r.reservationId, 'refund', ore))
-  }
-
   const p = r.payment
 
   return (
@@ -144,7 +157,7 @@ export function ReservationModal({
           <div>
             <h2>{r.customerName || 'Gäst'}</h2>
             <p className="cell-muted">
-              {dayLabel(r.date)} · {r.startTime}-{r.endTime} · {r.partySize} pers · {tableNames(r.tableIds, labels)}
+              {dayLabel(r.date)} · {r.startTime}-{r.endTime} · {r.partySize} pers · <TableLinks ids={r.tableIds} labels={labels} date={r.date} />
             </p>
           </div>
           <span className={`status-badge ${STATUS_CLASS[r.status]}`}>{STATUS_LABEL[r.status]}</span>
@@ -207,7 +220,7 @@ export function ReservationModal({
                     {p.status === 'succeeded'
                       ? 'dragen'
                       : p.status === 'failed'
-                        ? `misslyckades${p.error ? ` (${p.error})` : ''}`
+                        ? `drogs inte${paymentFailureLabel(p.error) ? ` (${paymentFailureLabel(p.error)})` : ''}`
                         : p.status === 'refunded'
                           ? 'återbetald'
                           : 'pågår'}
@@ -255,7 +268,7 @@ export function ReservationModal({
                   </button>
                 )}
                 {actions.refund && (
-                  <button type="button" className="btn outline square" disabled={busy} onClick={() => open('refund')}>
+                  <button type="button" className="btn outline square" disabled={busy} onClick={() => setRefunding(true)}>
                     Återbetala
                   </button>
                 )}
@@ -329,27 +342,23 @@ export function ReservationModal({
               </div>
             )}
 
-            {panel === 'refund' && (
-              <form className="booking-panel" onSubmit={submitRefund}>
-                <p className="form-section-label">Återbetala avgiften</p>
-                <div className="form-field">
-                  <label htmlFor="refund-amount">Belopp (kr), högst {formatKr(actions.refundable)}</label>
-                  <input
-                    id="refund-amount"
-                    inputMode="decimal"
-                    value={refundKr}
-                    onChange={(e) => setRefundKr(e.target.value)}
-                  />
-                </div>
-                <div className="modal-actions">
-                  <button type="button" className="btn outline square" onClick={() => setPanel(null)}>
-                    Tillbaka
-                  </button>
-                  <button type="submit" className="btn primary square" disabled={busy}>
-                    {busy ? 'Återbetalar…' : 'Återbetala'}
-                  </button>
-                </div>
-              </form>
+            {refunding && (
+              <RefundDialog
+                title="Återbetala avgiften"
+                remaining={actions.refundable}
+                canNotify={canNotify}
+                onRefund={async (input) => {
+                  try {
+                    onChanged(await paymentAction(r.locationId, r.reservationId, 'refund', input))
+                  } catch (err) {
+                    // Det senaste beloppet i dialogen (t.ex. efter 409).
+                    await getReservation(r.locationId, r.reservationId).then(onChanged, () => {})
+                    throw err
+                  }
+                }}
+                onDone={() => setRefunding(false)}
+                onClose={() => setRefunding(false)}
+              />
             )}
 
             {error && (
@@ -431,7 +440,7 @@ function ExtendPanel({
     e.preventDefault()
     if (busy || end === current) return
     if (needsOverride && !override) {
-      setError('Bekräfta att du förlänger utöver regeln.')
+      setError('Kryssa i rutan för att förlänga mer än regeln tillåter.')
       return
     }
     setBusy(true)
@@ -646,7 +655,7 @@ function EditForm({
           />
           {!phoneOk && (
             <p id="ed-phone-error" className="field-hint error">
-              {phone.trim() ? 'Skriv ett giltigt nummer, t.ex. 070-123 45 67.' : 'En onlinebokning måste ha telefon.'}
+              {phone.trim() ? 'Numret ser fel ut. Skriv det så här: 070 123 45 67.' : 'En onlinebokning behöver ett telefonnummer. Skriv till exempel 070 123 45 67.'}
             </p>
           )}
           {drift.customerPhone !== undefined && (drift.customerPhone ?? '') !== (normalizedPhone ?? '') && (
@@ -666,7 +675,7 @@ function EditForm({
           />
           {!emailOk && (
             <p id="ed-email-error" className="field-hint error">
-              {email.trim() ? 'Ange en giltig e-postadress.' : 'En onlinebokning måste ha e-post.'}
+              {email.trim() ? 'E-postadressen ser fel ut. Skriv den så här: namn@exempel.se.' : 'En onlinebokning behöver en e-postadress. Skriv till exempel namn@exempel.se.'}
             </p>
           )}
           {drift.customerEmail !== undefined && (drift.customerEmail ?? '') !== email.trim().toLowerCase() && (
@@ -686,7 +695,7 @@ function EditForm({
         />
         {overSeats && (
           <p id="ed-size-error" className="field-hint error">
-            Borden rymmer {r.seats} - ångra Anlänt först för att byta till större bord.
+            Borden har bara {r.seats} platser. Ångra Anlänt först, sedan kan du byta till större bord.
           </p>
         )}
         {drift.partySize !== undefined && drift.partySize !== size && (

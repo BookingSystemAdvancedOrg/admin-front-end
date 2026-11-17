@@ -67,7 +67,7 @@ describe('BestallningarPage printing', () => {
     reprintOrder.mockRejectedValue(new ApiError(409, 'no_printer'))
     render(<BestallningarPage />)
     await user.click(await screen.findByRole('button', { name: 'Skriv ut igen' }))
-    expect(await screen.findByText(/Ingen skrivare är vald/)).toBeInTheDocument()
+    expect(await screen.findByText(/Det finns ingen skrivare/)).toBeInTheDocument()
   })
 
   it('hides printing when no printer is set up', async () => {
@@ -90,7 +90,7 @@ describe('BestallningarPage printing', () => {
     reprintOrder.mockRejectedValue(new ApiError(409, 'order_cancelled'))
     render(<BestallningarPage />)
     await user.click(await screen.findByRole('button', { name: 'Skriv ut igen' }))
-    expect(await screen.findByText('Beställningen är avbruten och skrivs inte ut igen.')).toBeInTheDocument()
+    expect(await screen.findByText('Beställningen är avbruten, så den skrivs inte ut igen.')).toBeInTheDocument()
   })
 
   it('shows each station\'s ticket state and the line\'s allergy on the order', async () => {

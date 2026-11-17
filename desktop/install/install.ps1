@@ -14,7 +14,7 @@ try {
   Write-Host "Laddar ner $Name __VERSION__..."
   Invoke-WebRequest -Uri $Url -OutFile $Setup -UseBasicParsing
   if ((Get-FileHash -Algorithm SHA256 -Path $Setup).Hash.ToLower() -ne $Sha) {
-    throw 'Kontrollsumman stämmer inte. Inget installerades.'
+    throw 'Filen laddades inte ner helt. Inget installerades. Kör kommandot igen.'
   }
   # En öppen äldre version stängs, annars kan installationen inte byta filerna.
   Get-Process -Name $Name -ErrorAction SilentlyContinue | Stop-Process -Force

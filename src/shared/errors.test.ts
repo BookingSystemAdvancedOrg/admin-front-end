@@ -26,25 +26,48 @@ describe('errorText', () => {
     expect(errorText(server(503, 'catering service unavailable', { code: 'catering_service_unavailable' }), 'Kunde inte spara.'))
       .toBe(`Kunde inte spara. ${BOOQY_FAULT}`)
     expect(errorText(server(400, 'name is required', { code: 'required', field: 'name' }), 'Kunde inte spara.'))
-      .toMatch(/obligatoriskt fält/)
-    expect(errorText(server(404, 'not found', { code: 'not_found' }), 'Kunde inte spara.')).toMatch(/tagits bort på annat håll/)
+      .toMatch(/måste fyllas i/)
+    expect(errorText(server(404, 'not found', { code: 'not_found' }), 'Kunde inte spara.')).toMatch(/någon har tagit bort det/)
     expect(describeError(server(404, 'Not Found', { code: 'route_not_found' }), 'Kunde inte spara.').actor).toBe('booqy')
   })
 
   it('gemensamma koder har samma text överallt', () => {
-    expect(errorText(new NetworkError())).toMatch(/^Ingen kontakt med servern/)
+    expect(errorText(new NetworkError())).toMatch(/^Vi når inte Booqy just nu\. Kolla att wifi eller mobildata är på/)
     expect(errorText(server(403, 'tenant_inactive'))).toMatch(/pausat/)
     expect(errorText(server(429, 'too_many_requests'))).toMatch(/Vänta en minut/)
-    expect(errorText(server(409, 'changed_retry'))).toMatch(/Det senaste visas nu/)
+    expect(errorText(server(409, 'changed_retry'))).toMatch(/Nu syns det senaste/)
     expect(errorText(server(401, 'Unauthorized', { code: 'unauthorized' }))).toMatch(/Logga in igen/)
+  })
+
+  it('en sidas text som ber om en rapport får knappen Rapportera till Booqy', () => {
+    const text = 'BankID tog inte emot det. Försök igen om en stund, eller rapportera det till Booqy.'
+    expect(describeError(server(409, 'signing_x'), 'X.', { signing_x: text }).actor).toBe('booqy')
+    expect(describeError(server(409, 'table_taken'), 'X.', { table_taken: 'Bordet är upptaget.' }).actor).toBe('user')
   })
 
   it('sidans egna texter och fältnamn går före', () => {
     expect(errorText(server(409, 'table_taken'), 'X.', { table_taken: 'Bordet är upptaget.' })).toBe('Bordet är upptaget.')
     expect(errorText(server(400, 'lines[2].price must be positive', { code: 'invalid_value', field: 'lines[2].price' }),
-      'Kunde inte spara.', {}, { lines: 'raderna' })).toBe('Kunde inte spara. Kontrollera raderna och försök igen.')
+      'Kunde inte spara.', {}, { lines: 'raderna' })).toBe('Kunde inte spara. Kolla raderna och försök igen.')
     expect(errorText(server(400, 'accounts.sales must be 4 digits', { code: 'invalid_value', field: 'accounts.sales' }),
-      'Kunde inte spara.', {}, { accounts: 'kontonumren' })).toBe('Kunde inte spara. Kontrollera kontonumren och försök igen.')
+      'Kunde inte spara.', {}, { accounts: 'kontonumren' })).toBe('Kunde inte spara. Kolla kontonumren och försök igen.')
+  })
+
+  it('engelska fel från webbläsaren eller ett bibliotek visas aldrig', () => {
+    expect(errorText(new Error('The operation was aborted.'), 'Kunde inte spara.')).toBe(`Kunde inte spara. ${BOOQY_FAULT}`)
+    expect(errorText(new ApiError(400, 'Unexpected end of input.'), 'Kunde inte spara.')).not.toMatch(/Unexpected/)
+  })
+
+  it('felen är korta och fria från teknikord', () => {
+    const codes = ['network', 'unauthorized', 'forbidden', 'owner_only', 'tenant_inactive', 'feature_not_in_plan', 'plan_limit_reached',
+      'dpa_version_outdated', 'dpa_required', 'changed_retry', 'too_many_requests', 'too_large', 'unsupported_fields', 'stripe_refused',
+      'no_stripe_account', 'no_tenant', 'timeout', 'route_not_found', 'invalid_json', 'stripe_unavailable', 'internal_error',
+      'service_unavailable', 'required', 'invalid_request', 'invalid_value', 'not_found']
+    for (const code of codes) {
+      const text = errorText(server(code === 'network' ? 0 : 400, code, { code }), 'Kunde inte spara.')
+      expect(text, code).not.toMatch(/servern|server\b|API|token|session|request|status|endpoint|validering|ogiltig|invalid|parameter|konflikt|timeout|\b\d{3}\b|[\u2013\u2014!]/i)
+      expect(text.split(/(?<=[.?])\s+/).length, code).toBeLessThanOrEqual(4)
+    }
   })
 
   it('redan översatta fel visas som de är', () => {
@@ -126,7 +149,7 @@ describe('vem gör något', () => {
   it('användarens fel säger vad man gör, och leder till rätt ställe när det finns ett', () => {
     expect(who(server(403, 'dpa_version_outdated')).link).toEqual({ to: '/avtal', label: 'Öppna Avtal' })
     expect(who(server(403, 'dpa_version_outdated')).text).toMatch(/under Avtal/)
-    expect(who(server(403, 'feature_not_in_plan')).link?.to).toBe('/installningar#profil')
+    expect(who(server(403, 'feature_not_in_plan')).link?.to).toBe('/installningar#abonnemang')
     expect(who(server(409, 'no_stripe_account')).link?.to).toBe('/installningar#betalningar')
     expect(who(server(401, 'Unauthorized', { code: 'unauthorized' })).link?.to).toBe('/logga-in')
     for (const err of [
@@ -140,7 +163,8 @@ describe('vem gör något', () => {
     ]) {
       const info = who(err)
       expect(info.actor, info.code).toBe('user')
-      expect(info.text).not.toMatch(/Booqy/)
+      // "Vi når inte Booqy" (nätet) säger var, inte vems felet är.
+      expect(info.text).not.toMatch(info.code === 'network' ? /Booqys?\b.*fel|fel.*Booqy/ : /Booqy/)
     }
   })
 

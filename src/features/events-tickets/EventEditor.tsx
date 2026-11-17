@@ -5,12 +5,28 @@ import { errorText } from '../../shared/errors'
 import { ChangedNote } from '../../shared/ChangedNote'
 import { isConflict, mergeEdits, type FieldConflict } from '../../shared/merge'
 import { ERRORS, VAT_OPTIONS, createEvent, newId, updateEvent, type EventDetail, type NewEvent, type VatRate } from './api'
+import EventImageField from './EventImageField'
+import { imageAltError, imageFields, initialImage, type EventImage } from './eventImage'
 import { ErrorActions } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { DateInput, TimeInput } from '../../shared/DateInput'
 
 interface TypeRow { typeId: string; name: string; priceKr: string; vatRate: VatRate; perOrderMax: string; capacity: string; includes: string }
 
+
+/** Bilden i formuläret (redigeraren) från fusionens bildfält. */
+function formImage(v: { key: string; alt: string }): EventImage {
+  return { key: v.key || null, file: null, alt: v.alt }
+}
+
+function sameImage(cur: EventImage, v: { key: string; alt: string }): boolean {
+  return !cur.file && (cur.key ?? '') === v.key && cur.alt.trim() === v.alt
+}
+
+/** Det andra bildvalet i klartext för raden under bilden. */
+function imageLabel(v: { key: string; alt: string }): string {
+  return v.key ? `en annan bild (${v.alt})` : 'ingen bild'
+}
 
 function newType(): TypeRow {
   return { typeId: newId(), name: '', priceKr: '', vatRate: 12, perOrderMax: '10', capacity: '', includes: '' }
@@ -33,12 +49,21 @@ export function occurrenceWindow(date: string, start: string, end: string): { st
  * Momssatsen per biljettyp väljs ur en lista som revisorn ska godkänna.
  */
 /** Fälten som ändras på ett befintligt evenemang (för att lägga ihop med en ändring på annat håll). */
-interface EventForm { title: string; description: string; perOrderMax: string; transferAllowed: boolean; resaleAllowed: boolean; refundPolicy: string }
+interface EventForm {
+  title: string; description: string; perOrderMax: string; transferAllowed: boolean; resaleAllowed: boolean; refundPolicy: string
+  /** Bilden som ett fält: nyckel och alt-text hör ihop (tom nyckel = ingen bild). */
+  image: { key: string; alt: string }
+}
+
+function imageOf(e: { imageKey?: string; imageAlt?: string }): EventForm['image'] {
+  return e.imageKey ? { key: e.imageKey, alt: (e.imageAlt ?? '').trim() } : { key: '', alt: '' }
+}
 
 function eventForm(e: EventDetail): EventForm {
   return {
     title: e.title, description: e.description ?? '', perOrderMax: String(e.settings.perOrderMax ?? 10),
     transferAllowed: e.settings.transferAllowed ?? true, resaleAllowed: e.settings.resaleAllowed ?? false, refundPolicy: e.settings.refundPolicy ?? '',
+    image: imageOf(e),
   }
 }
 
@@ -55,6 +80,7 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
   const [base, setBase] = useState(existing)
   const [clashes, setClashes] = useState<FieldConflict[]>([])
   const clash = (field: keyof EventForm) => clashes.find((c) => c.field === field)
+  const imageClash = clash('image')
   const [title, setTitle] = useState(existing?.title ?? '')
   const [description, setDescription] = useState(existing?.description ?? '')
   const [date, setDate] = useState('')
@@ -68,6 +94,8 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
   const [transferAllowed, setTransferAllowed] = useState(existing?.settings.transferAllowed ?? true)
   const [resaleAllowed, setResaleAllowed] = useState(existing?.settings.resaleAllowed ?? false)
   const [refundPolicy, setRefundPolicy] = useState(existing?.settings.refundPolicy ?? '')
+  const [image, setImage] = useState(() => initialImage(existing))
+  const [showErrors, setShowErrors] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [eventId] = useState(() => existing?.eventId ?? newId())
@@ -76,17 +104,29 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
     setTypes((rows) => rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
   }
 
+  // Uppladdad bild behålls vid fel i själva sparandet: ett nytt försök laddar inte upp den igen.
+  function keepUploaded(key: string) { setImage((cur) => ({ ...cur, key, file: null })) }
+
   async function save(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     const settings = { perOrderMax: Number(perOrderMax), transferAllowed, resaleAllowed, refundPolicy: refundPolicy.trim() || undefined }
+    const altProblem = imageAltError(image)
+    if (altProblem) {
+      setShowErrors(true)
+      setError(altProblem)
+      return
+    }
     setBusy(true)
     try {
       if (existing && base) {
-        const mine: EventForm = { title, description, perOrderMax, transferAllowed, resaleAllowed, refundPolicy }
+        const pictured = await imageFields(locationId, image, keepUploaded)
+        const mine: EventForm = { title, description, perOrderMax, transferAllowed, resaleAllowed, refundPolicy, image: imageOf(pictured) }
+        // Ingen bild = inga fält (servern tar bort bilden), så bilden följer fusionen som de andra fälten.
         const send = (v: EventForm, on: EventDetail) => updateEvent(locationId, existing.eventId, {
           title: v.title.trim(), description: v.description, version: on.version,
           settings: { perOrderMax: Number(v.perOrderMax), transferAllowed: v.transferAllowed, resaleAllowed: v.resaleAllowed, refundPolicy: v.refundPolicy.trim() || undefined },
+          ...(v.image.key ? { imageKey: v.image.key, imageAlt: v.image.alt } : {}),
           ...(on.status === 'draft' && repeat && until ? { series: { freq: repeat, until } } : {}),
         })
         setClashes([])
@@ -105,9 +145,10 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
             setTransferAllowed(merged.transferAllowed)
             setResaleAllowed(merged.resaleAllowed)
             setRefundPolicy(merged.refundPolicy)
+            setImage(formImage(merged.image))
             setBase(latest)
             setClashes(conflicts)
-            setError('Samma fält ändrades nyss på en annan plats. Välj vilket värde som ska gälla och spara igen.')
+            setError('Någon annan ändrade samma fält nyss. Välj vilket värde som ska gälla och spara igen.')
             return
           }
           onSaved(await send(merged, latest))
@@ -117,8 +158,9 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
           setError('Välj ett datum.')
           return
         }
+        const pictured = await imageFields(locationId, image, keepUploaded)
         const body: NewEvent = {
-          eventId, title: title.trim(), description,
+          eventId, title: title.trim(), description, ...pictured,
           occurrences: [{ ...occurrenceWindow(date, start, end), capacity: Number(capacity) }],
           ticketTypes: types.map((t, i) => ({
             typeId: t.typeId, name: t.name.trim(), priceOre: Math.round(Number(t.priceKr.replace(',', '.')) * 100),
@@ -132,7 +174,7 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
       }
       toast('Evenemanget är sparat.', { tone: 'success' })
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara evenemanget.', ERRORS))
+      setError(errorText(err, 'Evenemanget sparades inte.', ERRORS))
     } finally {
       setBusy(false)
     }
@@ -153,7 +195,10 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
           <textarea className="evenemang-text" value={description} maxLength={4000} rows={4}
             onChange={(e) => setDescription(e.target.value)} />
         </Field>
-
+        <EventImageField value={image} onChange={(next) => { setImage(next); if (error) setError(null) }} showErrors={showErrors}
+          note={imageClash && !sameImage(image, imageClash.theirs as EventForm['image'])
+            ? <ChangedNote value={imageLabel(imageClash.theirs as EventForm['image'])} onUse={() => setImage(formImage(imageClash.theirs as EventForm['image']))} />
+            : undefined} />
         {!existing ? (
           <>
             <div className="evenemang-row">

@@ -161,7 +161,7 @@ const SV: UpdateNoticeLabels = {
   unsaved: 'Du har osparade ändringar',
   reloadAnyway: 'Ladda om ändå',
   cancel: 'Avbryt',
-  failed: 'Kunde inte ladda om. Försök igen.',
+  failed: 'Den nya versionen laddades inte. Tryck Ladda om igen.',
   updated: 'Uppdaterad',
   whatsNew: 'Nytt',
   more: '+{n} till',

@@ -17,6 +17,8 @@ import {
   moveErrorText,
   moveOrder,
   pauseOrdering,
+  refundLabel,
+  refundOrder,
 } from './ordersApi'
 import type { Order, OrderingState, StaffMove } from './ordersApi'
 import { tableTitle } from '../table-qr/tableQrApi'
@@ -28,6 +30,9 @@ import { SkelBlock, SkelBox, SkelPage, SkelTiles } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { booqyFaultText } from '../../shared/errors'
 import { Select } from '../../shared/Select'
+import { NoLocation } from '../../shared/NoLocation'
+import { RefundDialog } from '../../shared/RefundDialog'
+import { useTenant } from '../../shared/tenant'
 
 /** Hur ofta listan hämtas om (köksskärmen står öppen hela kvällen). */
 export const POLL_MS = 10_000
@@ -42,7 +47,7 @@ const COLUMNS: { status: Order['status']; title: string; empty: string }[] = [
 const JOB_TEXT: Record<JobState, string> = {
   PENDING: 'Ej utskriven',
   PRINTING: 'Skrivs ut',
-  FAILED: 'Utskrift misslyckades',
+  FAILED: 'Skrevs inte ut',
 }
 
 function where(order: Order): string {
@@ -73,6 +78,10 @@ export default function BestallningarPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null)
+  /** Beställningen ägaren återbetalar (dialogen är öppen). */
+  // Bara id: dialogen följer listan, så en 409 som laddar om visar det senaste beloppet.
+  const [refundingId, setRefundingId] = useState<string | null>(null)
+  const isOwner = useTenant().tenant?.role === 'owner_user'
   const [fresh, setFresh] = useState<Set<string>>(new Set())
   const seen = useRef<Set<string> | null>(null)
   const [print, setPrint] = useState<PrintStatus | null>(null)
@@ -176,6 +185,20 @@ export default function BestallningarPage() {
     }
   }
 
+  async function refund(order: Order, input: { amount: number; reason?: string; notifyGuest: boolean }) {
+    if (!locationId) return
+    try {
+      const updated = await refundOrder(locationId, order, input)
+      setOrders((prev) => (prev ?? []).map((o) => (o.orderId === updated.orderId ? updated : o)))
+    } catch (err) {
+      void refresh()
+      throw err
+    }
+  }
+
+  const canRefund = (order: Order) => isOwner && (order.refundable ?? 0) > 0
+  const refunding = refundingId ? (orders ?? []).find((o) => o.orderId === refundingId) ?? null : null
+
   async function reprint(order: Order) {
     if (!locationId) return
     setBusy(order.orderId)
@@ -199,7 +222,7 @@ export default function BestallningarPage() {
       const result = await pauseOrdering(locationId, minutes)
       setOrdering(result.ordering)
     } catch (err) {
-      setActionError(errorText(err, 'Kunde inte ändra pausen just nu.'))
+      setActionError(errorText(err, 'Pausen ändrades inte.'))
     }
   }
 
@@ -309,6 +332,7 @@ export default function BestallningarPage() {
         <p className="order-meta cell-muted">
           {order.customerName}
           {order.customerPhone ? ` · ${order.customerPhone}` : ''} · <Num>{kronor(order.totalAmount)}</Num>
+          {refundLabel(order) ? <span className="order-refunded"> · {refundLabel(order)}</span> : null}
           {order.discount ? ` (rabatt ${order.discount.percent} %, kod ${order.discount.code})` : ''}
           {order.mode === 'pickup' && order.status !== 'ready' && order.readyEstimate
             ? ` · lovad ca ${clock(order.readyEstimate)}`
@@ -341,19 +365,27 @@ export default function BestallningarPage() {
           )}
           {confirming ? (
             <>
-              <button type="button" className="btn danger-outline square" disabled={isBusy}
+              <button type="button" className="btn danger-outline square order-cancel-confirm" disabled={isBusy}
                 onClick={() => void move(order, 'cancelled')}>
-                Bekräfta: avbryt och återbetala {kronor(order.totalAmount)}
+                {cancelConfirmLabel(order)}
               </button>
               <button type="button" className="btn outline square" onClick={() => setConfirmCancel(null)}>
                 Behåll
               </button>
             </>
           ) : (
-            <button type="button" className="btn outline square order-cancel" disabled={isBusy}
-              onClick={() => setConfirmCancel(order.orderId)}>
-              Avbryt
-            </button>
+            <>
+              {canRefund(order) && (
+                <button type="button" className="btn outline square" disabled={isBusy}
+                  onClick={() => setRefundingId(order.orderId)}>
+                  Återbetala
+                </button>
+              )}
+              <button type="button" className="btn outline square order-cancel" disabled={isBusy}
+                onClick={() => setConfirmCancel(order.orderId)}>
+                Avbryt
+              </button>
+            </>
           )}
         </div>
       </article>
@@ -370,7 +402,9 @@ export default function BestallningarPage() {
               <SkelTiles />
               <OrdersBoardSkeleton />
             </SkelPage>
-          ) : <p className="cell-muted">Ingen plats vald.</p>
+          ) : (
+            <NoLocation />
+          )
         ) : (
           <>
             {ordering && !ordering.open && (
@@ -399,7 +433,7 @@ export default function BestallningarPage() {
               <ErrorNote text={actionError} />
             )}
             {loadError && (
-              <ErrorNote text={booqyFaultText('Kunde inte hämta beställningarna. Sidan försöker igen av sig själv.')} />
+              <ErrorNote text={booqyFaultText('Beställningarna kunde inte visas.')} />
             )}
             <section className="stats-row" aria-label="Dagens siffror">
               {tiles.map((t, i) => (
@@ -477,8 +511,17 @@ export default function BestallningarPage() {
                 <ul>
                   {done.map((o) => (
                     <li key={o.orderId}>
-                      #{o.number} · {where(o)} · {o.customerName} · <Num>{kronor(o.totalAmount)}</Num> ·{' '}
-                      {o.status === 'cancelled' ? 'Avbruten, återbetald' : `Klar ${clock(o.completedAt)}`}
+                      <span>
+                        #{o.number} · {where(o)} · {o.customerName} · <Num>{kronor(o.totalAmount)}</Num> ·{' '}
+                        {o.status === 'cancelled' ? 'Avbruten, återbetald' : `Klar ${clock(o.completedAt)}`}
+                        {refundLabel(o) ? <span className="order-refunded"> · {refundLabel(o)}</span> : null}
+                      </span>
+                      {canRefund(o) && (
+                        <button type="button" className="btn outline square orders-done-refund"
+                          aria-label={`Återbetala #${o.number ?? ''}`} onClick={() => setRefundingId(o.orderId)}>
+                          Återbetala
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -488,6 +531,19 @@ export default function BestallningarPage() {
           </>
         )}
       </div>
+      {refunding && (
+        <RefundDialog
+          title={`Återbetala #${refunding.number ?? ''}`}
+          remaining={refunding.refundable ?? 0}
+          canNotify={Boolean(refunding.customerEmail || refunding.customerPhone)}
+          note={refunding.giftCard?.debitedOre
+            ? `Presentkortets del (${kronor(refunding.giftCard.debitedOre)}) kommer tillbaka bara om beställningen avbryts.`
+            : undefined}
+          onRefund={(input) => refund(refunding, input)}
+          onDone={() => setRefundingId(null)}
+          onClose={() => setRefundingId(null)}
+        />
+      )}
     </>
   )
 }
@@ -510,4 +566,24 @@ function OrdersBoardSkeleton() {
       ))}
     </div>
   )
+}
+
+/**
+ * Vad en avbokning faktiskt betalar tillbaka: det som är kvar av kortdelen
+ * (efter tidigare återbetalningar) och presentkortets del som inte redan
+ * kommit tillbaka. Servern gör samma sak (manage-order _cancel).
+ */
+export function cancelRefund(order: Order): { card: number; gift: number } {
+  const gift = Math.max((order.giftCard?.debitedOre ?? 0) - (order.giftCard?.refundedOre ?? 0), 0)
+  const card =
+    order.refundable ??
+    Math.max(order.totalAmount - (order.giftCard?.debitedOre ?? 0) - (order.refund?.amount ?? 0), 0)
+  return { card, gift }
+}
+
+function cancelConfirmLabel(order: Order): string {
+  const { card, gift } = cancelRefund(order)
+  if (card + gift <= 0) return 'Bekräfta: avbryt'
+  const parts = gift > 0 && card > 0 ? ` (presentkort ${kronor(gift)})` : gift > 0 ? ' till presentkortet' : ''
+  return `Bekräfta: avbryt och återbetala ${kronor(card + gift)}${parts}`
 }

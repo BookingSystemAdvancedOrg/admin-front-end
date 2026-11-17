@@ -112,6 +112,47 @@ describe('FloorBooking', () => {
     expect(getAvailability.mock.calls.length).toBeGreaterThan(calls)
   })
 
+  it('opens on the linked table: its floor, its day, selected and highlighted', async () => {
+    apiFetch.mockResolvedValue({
+      floors: [{ floorId: 'f1', name: 'Entréplan', level: 0 }, { floorId: 'f2', name: 'Övervåning', level: 1 }],
+      elements: [table('t-a', 1, 4), { ...table('t-up', 2, 2), floorId: 'f2' }],
+    })
+    render(
+      <MemoryRouter>
+        <FloorBooking focus={{ tableIds: ['t-up'], date: '2026-11-15' }} />
+      </MemoryRouter>,
+    )
+    // numbered across floors like the guest site: the upstairs table is Bord 2
+    const up = await screen.findByRole('button', { name: /^Bord 2, 2 pl/ })
+    expect(up).toHaveAttribute('aria-pressed', 'true')
+    expect(up.getAttribute('class')).toContain('is-focus')
+    expect(screen.getByRole('tab', { name: 'Övervåning' })).toHaveAttribute('aria-selected', 'true')
+    expect(getAvailability).toHaveBeenLastCalledWith('loc-1', '2026-11-15', { walkIn: false })
+    expect(screen.getByRole('heading', { name: 'Bord 2' })).toBeInTheDocument()
+  })
+
+  it('a booking at two tables highlights both, selects neither and marks their floor', async () => {
+    apiFetch.mockResolvedValue({
+      floors: [{ floorId: 'f1', name: 'Entréplan', level: 0 }, { floorId: 'f2', name: 'Övervåning', level: 1 }],
+      elements: [table('t-a', 1, 4), { ...table('t-b', 3, 2), floorId: 'f2' }, { ...table('t-c', 5, 2), floorId: 'f2' }],
+    })
+    render(
+      <MemoryRouter>
+        <FloorBooking focus={{ tableIds: ['t-b', 't-c'], date: null }} />
+      </MemoryRouter>,
+    )
+    const b = await screen.findByRole('button', { name: /^Bord 2, 2 pl/ })
+    const c = screen.getByRole('button', { name: /^Bord 3, 2 pl/ })
+    for (const el of [b, c]) {
+      expect(el.getAttribute('class')).toContain('is-linked')
+      expect(el).toHaveAttribute('aria-pressed', 'false')
+    }
+    const up = screen.getByRole('tab', { name: 'Övervåning' })
+    expect(up).toHaveAttribute('aria-selected', 'true')
+    expect(up.className).toContain('has-linked')
+    expect(screen.getByRole('heading', { name: 'Bord 2 + 3' })).toBeInTheDocument()
+  })
+
   it('explains when no layout is published', async () => {
     apiFetch.mockRejectedValue(new ApiError(404, 'not found'))
     renderIt()

@@ -5,14 +5,16 @@ import { isRowOpenKey, shouldOpenRow } from '../meny/rowClick'
 import { getMyAvatar, removeUserAvatar, subscribeMyAvatar } from '../../shared/avatarStore'
 import { RowActions } from '../../shared/RowActions'
 import { useEffect, useState, useSyncExternalStore } from 'react'
-import { errorText } from '../../shared/errors'
+import { booqyFaultText, errorText } from '../../shared/errors'
+import { useConfirm } from '../../shared/ConfirmDialog'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { CtaButton } from '../../shared/CtaButton'
 import { StatTile } from '../../shared/motion/StatTile'
 import { SkelTableRows } from '../../shared/Skeleton'
 import { onPageAction, takePageAction } from '../../shared/nav'
 import { useLocationId } from '../../shared/location'
-import { useTenant } from '../../shared/tenant'
+import { replaceTenant, updateTenant, useTenant } from '../../shared/tenant'
+import { canOpen } from '../../shared/access'
 import { useAuth } from '../auth/useAuth'
 import { StaffModal } from '../installningar/StaffModal'
 import type { StaffFormValues } from '../installningar/StaffModal'
@@ -45,8 +47,10 @@ type ModalState = { mode: 'invite' } | { mode: 'edit'; user: User } | null
  * Allt går mot det befintliga /users/*-API:t (manage-user); tenant tas från
  * token på servern och inbjudan mejlas av Cognito.
  *
- * Bara ägare ser sidan: personalens e-post och telefon är personuppgifter
- * som medarbetare inte behöver, och GET /list-users är ägarens.
+ * Ägaren ser sidan, och personal som ägaren har gett området Personal (de
+ * ser och bjuder in personalen på sin egen plats, men ändrar inga roller,
+ * behörigheter eller tar bort konton). Ägaren bockar här i vad varje person
+ * får öppna utöver gruppen (Inställningar, Personal, Behörigheter).
  * Fler ägare läggs upp av Booqy, inte här.
  */
 export default function PersonalPage() {
@@ -55,13 +59,17 @@ export default function PersonalPage() {
   const { tenant } = useTenant()
   const { locationId } = useLocationId(sub)
   const isOwner = tenant?.role === 'owner_user'
+  const canUse = canOpen(tenant, 'personal')
 
   const [staff, setStaff] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [rowError, setRowError] = useState<string | null>(null)
+  // Det som misslyckades, så att Försök igen gör om just det (utan ny fråga).
+  const [rowRetry, setRowRetry] = useState<(() => void) | null>(null)
   const [busySub, setBusySub] = useState<string | null>(null)
   const [viewing, setViewing] = useState<User | null>(null)
+  const [confirmEl, ask] = useConfirm()
   const avatarFor = (u: User) => (u.cognitoSub === sub ? (myAvatar.url ?? u.avatarUrl) : u.avatarUrl)
   const [place, setPlace] = useState('')
   const [modal, setModal] = useState<ModalState>(() =>
@@ -77,14 +85,14 @@ export default function PersonalPage() {
     locations.find((l) => l.locationId === id)?.name ?? 'Ingen plats'
 
   useEffect(() => {
-    if (!isOwner) return
+    if (!canUse) return
     let cancelled = false
     listUsers()
       .then((users) => {
         if (!cancelled) setStaff(users)
       })
       .catch((err) => {
-        if (!cancelled) setLoadError(errorText(err, 'Kunde inte hämta personalen.'))
+        if (!cancelled) setLoadError(errorText(err, 'Personalen kunde inte visas.'))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -92,27 +100,27 @@ export default function PersonalPage() {
     return () => {
       cancelled = true
     }
-  }, [isOwner])
+  }, [canUse])
   // Levande: inbjudningar som accepteras och ändringar från en annan plats syns av sig själva.
   useLiveRefresh(async () => {
     setStaff(await listUsers())
     setLoadError(null)
-  }, { enabled: isOwner && !loading })
+  }, { enabled: canUse && !loading })
 
-  if (tenant && !isOwner) {
+  if (tenant && !canUse) {
     return (
       <>
         <AdminTopbar title="Personal" />
         <div className="admin-main">
           <section className="admin-card">
-            <p className="cell-muted">Bara ägaren hanterar personalen.</p>
+            <p className="cell-muted">Du har inte behörighet till Personal. Be ägaren om behörighet.</p>
           </section>
         </div>
       </>
     )
   }
 
-  const caller = { sub, groups }
+  const caller = { sub, groups, personal: canUse }
   const shown = place ? staff.filter((s) => s.role !== 'staff' || s.locationId === place) : staff
   const staffOnly = staff.filter((s) => s.role === 'staff')
   const active = staffOnly.filter((s) => s.status === 'active').length
@@ -148,42 +156,65 @@ export default function PersonalPage() {
       updated = await changeUserGroup(original.cognitoSub, { group: values.group, locationId: values.locationId })
     }
     replace(updated)
+    if (values.access && tenant?.staffAccess) {
+      replaceTenant(await updateTenant({
+        staffAccess: { version: tenant.staffAccess.version, users: { [original.cognitoSub]: values.access } },
+      }))
+    }
     setModal(null)
   }
 
-  async function handleToggle(user: User) {
+  function failRow(text: string, retry: () => void) {
+    setRowError(text)
+    setRowRetry(() => retry)
+  }
+
+  function clearRow() {
     setRowError(null)
+    setRowRetry(null)
+  }
+
+  async function handleToggle(user: User) {
+    clearRow()
     setBusySub(user.cognitoSub)
     try {
       replace(user.status === 'active' ? await deactivateUser(user.cognitoSub) : await reactivateUser(user.cognitoSub))
     } catch (err) {
-      setRowError(errorText(err, 'Kunde inte ändra status.'))
+      failRow(errorText(err, user.status === 'active' ? 'Medarbetaren stängdes inte av.' : 'Medarbetaren slogs inte på.'), () => void handleToggle(user))
     } finally {
       setBusySub(null)
     }
   }
 
   async function handleRemoveAvatar(user: User) {
-    if (!window.confirm(`Ta bort profilbilden för ${user.name}? Initialerna visas i stället.`)) return
-    setRowError(null)
+    if (!(await ask({ title: `Ta bort profilbilden för ${user.name}?`, text: 'Initialerna visas i stället.', confirmLabel: 'Ta bort', danger: true }))) return
+    await removeAvatar(user)
+  }
+
+  async function removeAvatar(user: User) {
+    clearRow()
     setBusySub(user.cognitoSub)
     if (await removeUserAvatar(user.cognitoSub)) {
       setStaff((prev) => prev.map((s) => (s.cognitoSub === user.cognitoSub ? { ...s, avatarUrl: null } : s)))
     } else {
-      setRowError('Kunde inte ta bort profilbilden.')
+      failRow(booqyFaultText('Profilbilden togs inte bort.'), () => void removeAvatar(user))
     }
     setBusySub(null)
   }
 
   async function handleDelete(user: User) {
-    if (!window.confirm(`Ta bort ${user.name} permanent? Inloggningen försvinner och kan inte återställas.`)) return
-    setRowError(null)
+    if (!(await ask({ title: `Ta bort ${user.name}?`, text: 'Inloggningen försvinner och kan inte återställas.', confirmLabel: 'Ta bort', danger: true }))) return
+    await removeUser(user)
+  }
+
+  async function removeUser(user: User) {
+    clearRow()
     setBusySub(user.cognitoSub)
     try {
       await deleteUser(user.cognitoSub)
       setStaff((prev) => prev.filter((s) => s.cognitoSub !== user.cognitoSub))
     } catch (err) {
-      setRowError(errorText(err, 'Kunde inte ta bort medarbetaren.'))
+      failRow(errorText(err, 'Medarbetaren togs inte bort.'), () => void removeUser(user))
     } finally {
       setBusySub(null)
     }
@@ -195,7 +226,7 @@ export default function PersonalPage() {
         title="Personal"
         actions={
           <CtaButton
-            label="+ Bjud in personal"
+            label="Bjud in personal"
             win="Välkommen!"
             data-tour="personal-invite"
             disabled={!tenant || locations.length === 0}
@@ -218,7 +249,7 @@ export default function PersonalPage() {
         <section className="admin-card table-card">
           <div className="card-head">
             <div>
-              <TitleInfo title="Medarbetare" info="Inbjudan går till e-posten med ett tillfälligt lösenord. Personen ser bokningar, beställningar och menyn för sin plats." />
+              <TitleInfo title="Medarbetare" info="Inbjudan går till e-posten med ett tillfälligt lösenord. Personen ser sin plats och det som är ibockat under Behörigheter." />
             </div>
             {locations.length > 1 && (
               <div className="form-field">
@@ -235,7 +266,7 @@ export default function PersonalPage() {
             )}
           </div>
           {(loadError ?? rowError) && (
-            <ErrorNote text={loadError ?? rowError} />
+            <ErrorNote text={loadError ?? rowError} onRetry={!loadError && rowRetry ? rowRetry : undefined} />
           )}
           <div className="table-scroll" tabIndex={0}>
             <table className="data-table" style={{ minWidth: 600 }}>
@@ -338,6 +369,7 @@ export default function PersonalPage() {
         </section>
       </div>
 
+      {confirmEl}
       {viewing && (
         <AvatarLightbox url={avatarFor(viewing)} name={viewing.name} email={viewing.email} onClose={() => setViewing(null)} />
       )}
@@ -346,6 +378,12 @@ export default function PersonalPage() {
           title={modal.mode === 'invite' ? 'Bjud in personal' : 'Redigera medarbetare'}
           initial={modal.mode === 'edit' ? modal.user : null}
           callerGroups={groups}
+          tenant={tenant}
+          access={
+            isOwner && modal.mode === 'edit' && modal.user.role === 'staff' && tenant?.staffAccess
+              ? tenant.staffAccess
+              : null
+          }
           lockRole={modal.mode === 'edit' && modal.user.cognitoSub === sub}
           locations={locations}
           defaultLocationId={place || (locationId ?? undefined)}

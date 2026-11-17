@@ -133,7 +133,7 @@ export function HelpChat() {
         return
       }
       const fault = err instanceof HelpUnavailable ? err : new HelpUnavailable(null)
-      const notice = `Det gick inte att få ett svar just nu. ${BOOQY_FAULT}`
+      const notice = `Assistenten kunde inte svara just nu. ${BOOQY_FAULT}`
       const info: ErrorInfo = {
         text: notice,
         actor: 'booqy',

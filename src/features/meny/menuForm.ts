@@ -38,16 +38,16 @@ export function draftToGroups(drafts: DraftGroup[]): { groups: OptionGroup[]; er
     const label = name || `grupp ${i + 1}`
     if (!name) return { groups: null, error: `Ge tillvalsgrupp ${i + 1} ett namn, till exempel Storlek.` }
     if (name.length > NAME_MAX) return { groups: null, error: `Namnet på ${label} får vara högst ${NAME_MAX} tecken.` }
-    if (names.has(name.toLowerCase())) return { groups: null, error: `Två tillvalsgrupper heter ${name}.` }
+    if (names.has(name.toLowerCase())) return { groups: null, error: `Två tillvalsgrupper heter ${name}. Byt namn på en av dem.` }
     names.add(name.toLowerCase())
     if (!d.choices.length) return { groups: null, error: `Lägg till minst ett val i ${label}.` }
     const choiceNames = new Set<string>()
     const choices = []
     for (const [j, c] of d.choices.entries()) {
       const cname = c.name.trim()
-      if (!cname) return { groups: null, error: `Val ${j + 1} i ${label} saknar namn.` }
+      if (!cname) return { groups: null, error: `Val ${j + 1} i ${label} saknar namn. Skriv till exempel Stor.` }
       if (cname.length > NAME_MAX) return { groups: null, error: `${cname} får vara högst ${NAME_MAX} tecken.` }
-      if (choiceNames.has(cname.toLowerCase())) return { groups: null, error: `${label} har två val som heter ${cname}.` }
+      if (choiceNames.has(cname.toLowerCase())) return { groups: null, error: `${label} har två val som heter ${cname}. Byt namn på ett av dem.` }
       choiceNames.add(cname.toLowerCase())
       const price = parseAddonPrice(c.price)
       if (price.error !== null) return { groups: null, error: `${label}, ${cname}: ${price.error}` }
@@ -77,13 +77,13 @@ export const MAX_CATEGORIES = 30
 
 /** Första felet i listan, på svenska, eller null. Samma regler som servern. */
 export function categoryListError(rows: CategoryRow[]): string | null {
-  if (!rows.length) return 'Menyn behöver minst en kategori.'
+  if (!rows.length) return 'Menyn behöver minst en kategori. Lägg till en, till exempel Varmrätter.'
   const seen = new Set<string>()
   for (const [i, r] of rows.entries()) {
     const name = r.name.trim()
-    if (!name) return `Kategori ${i + 1} saknar namn.`
+    if (!name) return `Kategori ${i + 1} saknar namn. Skriv till exempel Förrätter.`
     if (name.length > NAME_MAX) return `${name} får vara högst ${NAME_MAX} tecken.`
-    if (seen.has(name.toLowerCase())) return `Två kategorier heter ${name}.`
+    if (seen.has(name.toLowerCase())) return `Två kategorier heter ${name}. Byt namn på en av dem.`
     seen.add(name.toLowerCase())
   }
   return null

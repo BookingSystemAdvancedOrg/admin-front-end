@@ -20,6 +20,8 @@ import {
 } from './api'
 import './gaster.css'
 import { ErrorActions } from '../../shared/ErrorNote'
+import { useConfirm } from '../../shared/ConfirmDialog'
+import { SkelRows } from '../../shared/Skeleton'
 
 /** Målgrupper på Marknadsföring > Mottagare (ägare): sparade regler, antal och "Använd i kampanj". */
 export default function SegmentsPanel() {
@@ -38,14 +40,16 @@ export default function SegmentsPanel() {
   }
   const [saving, setSaving] = useState(false)
   const [counts, setCounts] = useState<Record<string, { total: number; reachable: number }>>({})
+  const [confirmEl, ask] = useConfirm()
 
   async function load() {
+    setError(null)
     try {
       const out = await listSegments()
       setSegments(out.segments)
       setTemplates(out.templates)
     } catch (err) {
-      setError(errorText(err, 'Kunde inte hämta målgrupperna.'))
+      setError(errorText(err, 'Målgrupperna kunde inte visas.'))
     }
   }
 
@@ -62,7 +66,7 @@ export default function SegmentsPanel() {
       const p = await previewSegment(segmentId)
       setCounts((c) => ({ ...c, [segmentId]: { total: p.total, reachable: p.reachable } }))
     } catch (err) {
-      toast(errorText(err, 'Kunde inte räkna gästerna.'), { tone: 'danger' })
+      toast(errorText(err, 'Gästerna kunde inte räknas.'), { tone: 'danger' })
     }
   }
 
@@ -88,7 +92,7 @@ export default function SegmentsPanel() {
         if (conflicts.length) {
           setDraftState(next)
           setDraftBase(theirs)
-          toast('Samma regel ändrades nyss på en annan plats. Dina värden står kvar; spara igen för att använda dem.', { tone: 'danger' })
+          toast('Någon annan ändrade samma regel nyss. Dina värden står kvar. Spara igen för att använda dem.', { tone: 'danger' })
           return
         }
         saved = await send(next)
@@ -98,9 +102,9 @@ export default function SegmentsPanel() {
       void count(saved.segmentId)
       toast('Målgruppen är sparad.', { tone: 'success' })
     } catch (err) {
-      toast(errorText(err, 'Kunde inte spara målgruppen.', {
-        invalid_rules: 'Kontrollera reglerna: till exempel minst 7 dagar sedan senaste besöket.',
-        changed_retry: 'Målgruppen ändrades samtidigt. Det senaste visas nu; spara igen om ändringen fortfarande behövs.',
+      toast(errorText(err, 'Målgruppen sparades inte.', {
+        invalid_rules: 'En regel ser fel ut. Kolla siffrorna, till exempel minst 7 dagar sedan senaste besöket.',
+        changed_retry: 'Någon annan ändrade målgruppen samtidigt. Nu visas det senaste. Spara igen om det behövs.',
       }, { name: 'namnet' }), { tone: 'danger' })
     } finally {
       setSaving(false)
@@ -108,11 +112,12 @@ export default function SegmentsPanel() {
   }
 
   async function remove(segment: Segment) {
+    if (!(await ask({ title: `Ta bort ${segment.name}?`, confirmLabel: 'Ta bort', cancelLabel: 'Behåll', danger: true }))) return
     try {
       await deleteSegment(segment.segmentId)
       await load()
     } catch (err) {
-      toast(errorText(err, 'Kunde inte ta bort målgruppen.'), { tone: 'danger' })
+      toast(errorText(err, 'Målgruppen togs inte bort.'), { tone: 'danger' })
     }
   }
 
@@ -123,7 +128,11 @@ export default function SegmentsPanel() {
     <Card title="Målgrupper" actions={
       <Button size="sm" variant="secondary" onClick={() => setDraft(draftFrom(newId(), '', {}))}>Ny målgrupp</Button>
     }>
-      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
+      {confirmEl}
+      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} onRetry={() => void load()} />}>{error}</Bar> : null}
+      {segments === null && !error ? (
+        <div role="status" aria-label="Hämtar målgrupper" aria-busy="true"><SkelRows n={3} cols={2} /></div>
+      ) : null}
       {segments && segments.length === 0 && !draft ? (
         <div className="quick-links-row">
           {templates.map((t) => (

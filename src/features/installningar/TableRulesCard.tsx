@@ -63,7 +63,7 @@ export function TableRulesCard({
         setSaved({ rules: loc.tableRules ?? {}, combos: loc.tableCombinations ?? [] })
         setCombos(loc.tableCombinations ?? [])
       })
-      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Kunde inte hämta platsens bordsregler.')))
+      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Bordsreglerna kunde inte visas.')))
     return () => {
       cancelled = true
     }
@@ -110,12 +110,12 @@ export function TableRulesCard({
     const max = whole(draft.max)
     const seats = seatsOf(ids)
     if (ids.length < MIN_COMBINATION || ids.length > MAX_COMBINATION) {
-      return setError(`Välj ${MIN_COMBINATION}-${MAX_COMBINATION} bord för en kombination.`)
+      return setError(`En kombination ska ha ${MIN_COMBINATION} till ${MAX_COMBINATION} bord. Välj fler eller färre bord.`)
     }
     if (min === null || max === null || min < 1 || max > MAX_PARTY || min > max) {
-      return setError('Kombinationen: ange antal personer från och till (heltal, från ≤ till).')
+      return setError('Skriv antal personer för kombinationen, till exempel från 4 till 8.')
     }
-    if (max > seats) return setError(`Kombinationen har ${seats} platser - högst ${seats} personer.`)
+    if (max > seats) return setError(`Kombinationen har bara ${seats} platser. Skriv högst ${seats} personer.`)
     if (combos.some((c) => c.tableIds.join() === ids.join())) {
       return setError('Den kombinationen finns redan.')
     }
@@ -145,7 +145,7 @@ export function TableRulesCard({
       setCombos(updated.tableCombinations ?? [])
       setNotice('Sparat. Gäller bokningssidan direkt.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara.', { owner_only: 'Bara restaurangens ägare kan ändra bordsreglerna.', forbidden: 'Bara restaurangens ägare kan ändra bordsreglerna.' }))
+      setError(errorText(err, 'Bordsreglerna sparades inte.', { owner_only: 'Bara restaurangens ägare kan ändra bordsreglerna. Be ägaren göra det.', forbidden: 'Bara restaurangens ägare kan ändra bordsreglerna. Be ägaren göra det.' }))
     } finally {
       setBusy(false)
     }
@@ -161,7 +161,7 @@ export function TableRulesCard({
       {!locationId ? (
         <p className="cell-muted">Välj en plats först.</p>
       ) : tablesError ? (
-        <ErrorNote text={booqyFaultText('Kunde inte hämta planritningen.')} />
+        <ErrorNote text={booqyFaultText('Planritningen kunde inte visas.')} />
       ) : !tables || !saved ? (
         <SkelRows n={3} cols={3} />
       ) : tables.length === 0 ? (

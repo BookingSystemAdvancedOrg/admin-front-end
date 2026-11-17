@@ -13,7 +13,7 @@ export function CopyButton({ text, label = SETUP.buttons.copy }: { text: string;
       await navigator.clipboard.writeText(text)
       toast(SETUP.buttons.copied, { tone: 'success' })
     } catch {
-      toast('Det gick inte att kopiera. Markera texten och kopiera den själv.', { tone: 'warning' })
+      toast('Texten kopierades inte. Markera den och kopiera den själv.', { tone: 'warning' })
     }
   }
   return <Button type="button" variant="secondary" onClick={() => void copy()}>{label}</Button>

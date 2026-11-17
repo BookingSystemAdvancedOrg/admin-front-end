@@ -1,3 +1,4 @@
+import { Icon } from './Icon'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 /**
@@ -35,7 +36,7 @@ export function RowActions({ label, children, tour }: { label: string; children:
           aria-expanded={open}
           onClick={() => setOpen((o) => !o)}
         >
-          <span aria-hidden="true">…</span>
+          <Icon name="more" size={18} />
         </button>
         {open && (
           <span className="row-menu-list" onClick={() => setOpen(false)}>

@@ -47,7 +47,7 @@
       "answer": "Checklistan Kom igång på Översikten tar dig igenom det som behövs innan gästerna kan boka och beställa.",
       "steps": [
         "Godkänn personuppgiftsbiträdesavtalet under Avtal.",
-        "Lägg in öppettider under Inställningar, Verksamheten, Restaurang.",
+        "Lägg in öppettider under Inställningar, Restaurangen, Öppettider och avvikande dagar.",
         "Lägg upp menyn under Meny.",
         "Rita, publicera och aktivera en bordslayout under Layout.",
         "Slutför Stripe under Inställningar, Ekonomi, Betalningar, så att ni kan ta betalt med kort.",
@@ -112,7 +112,7 @@
       ],
       "answer": "Du bestämmer om personalen ser driftsiffrorna på Statistik. Belopp och omsättning ser personalen aldrig.",
       "steps": [
-        "Öppna Inställningar, välj Data och integritet och sedan Statistik.",
+        "Öppna Inställningar, välj Ekonomi och sedan Statistik.",
         "Välj om personalen ser statistik.",
         "Tryck Spara."
       ],
@@ -344,17 +344,17 @@
         "hålltid",
         "max antal i kö"
       ],
-      "answer": "Om gästerna kan ställa sig i kö från hemsidan, hur länge ett erbjudet bord hålls och hur lång kön får bli ställer du in under Inställningar, Verksamheten, Bord.",
+      "answer": "Om gästerna kan ställa sig i kö från hemsidan, hur länge ett erbjudet bord hålls och hur lång kön får bli ställer du in under Inställningar, Restaurangen, Bokning.",
       "steps": [
-        "Öppna Inställningar, välj Verksamheten och sedan Bord.",
+        "Öppna Inställningar, välj Restaurangen och sedan Bokning.",
         "Under Kö slår du på kön och väljer om gäster kan ställa sig i kö från hemsidan.",
         "Ställ in Hålltid (minuter) och Max antal i kö.",
-        "Tryck Spara bordsregler."
+        "Tryck Spara."
       ],
       "actions": [
         {
           "id": "inst-bord-open",
-          "label": "Öppna Bord",
+          "label": "Öppna Bokning",
           "to": "/installningar",
           "hash": "bord"
         }
@@ -465,9 +465,9 @@
         "gästerna kan beställa",
         "kan beställa vid bordet"
       ],
-      "answer": "Avhämtning, beställning vid bordet och QR-koderna till borden ställer du in under Inställningar, Gäster, Beställning.",
+      "answer": "Avhämtning, beställning vid bordet och QR-koderna till borden ställer du in under Inställningar, Beställning, Beställning och QR-koder.",
       "steps": [
-        "Öppna Inställningar, välj Gäster och sedan Beställning.",
+        "Öppna Inställningar, välj Beställning och sedan Beställning och QR-koder.",
         "Slå på Ta emot beställningar och välj Avhämtning och Beställning vid bordet (QR-kod).",
         "Ställ in tillagningstid som gästen ser och sista beställning före stängning.",
         "Tryck Spara beställning.",
@@ -476,7 +476,7 @@
       "actions": [
         {
           "id": "inst-bestallning-open",
-          "label": "Öppna Beställning",
+          "label": "Öppna Beställning och QR-koder",
           "to": "/installningar",
           "hash": "bestallning"
         }
@@ -497,9 +497,9 @@
         "testutskrift",
         "pappersbredd"
       ],
-      "answer": "En kökskrivare som skriver ut beställningarna lägger du till under Inställningar, Gäster, Skrivare.",
+      "answer": "En kökskrivare som skriver ut beställningarna lägger du till under Inställningar, Beställning, Skrivare och stationer.",
       "steps": [
-        "Öppna Inställningar, välj Gäster och sedan Skrivare.",
+        "Öppna Inställningar, välj Beställning och sedan Skrivare och stationer.",
         "Tryck Lägg till skrivare och följ stegen. Uppgifterna som visas skriver du in i skrivaren direkt, de visas bara en gång.",
         "Tryck Testutskrift för att se att den fungerar.",
         "Slå på Skriv ut beställningar automatiskt, välj skrivare och pappersbredd och tryck Spara skrivare."
@@ -507,7 +507,7 @@
       "actions": [
         {
           "id": "inst-skrivare-open",
-          "label": "Öppna Skrivare",
+          "label": "Öppna Skrivare och stationer",
           "to": "/installningar",
           "hash": "skrivare"
         }
@@ -1568,7 +1568,7 @@
       ],
       "answer": "Ägaren ställer in när gästerna ombeds lämna omdöme under Marknadsföring, Omdömen.",
       "steps": [
-        "Koppla Google under Inställningar, Verksamheten, Restaurang om det inte är gjort.",
+        "Koppla Google under Inställningar, Restaurangen, Google-profil om det inte är gjort.",
         "Öppna Marknadsföring och fliken Omdömen.",
         "Välj fördröjning och hur ofta en gäst får frågan och tryck Spara."
       ],
@@ -1621,11 +1621,11 @@
         "inställning",
         "ändra inställningar"
       ],
-      "answer": "Under Inställningar ställer du in restaurangen i grupper: verksamheten, gäster, ekonomi, data och integritet samt den här enheten. Personalen kan se men bara ägaren kan ändra, utom Utseende och ljud.",
+      "answer": "Inställningar börjar med en översikt över områdena: restaurangen, gäster, beställning, ekonomi, personal och den här enheten, med det viktigaste (som Stripe och sms) direkt på kortet. Sökfältet hittar en enskild inställning. Personalen kan se men bara ägaren kan ändra, utom Utseende och ljud.",
       "steps": [
         "Öppna Inställningar längst ned i vänstermenyn.",
-        "Välj den del du vill ändra.",
-        "Tryck Spara på det kortet. Alla inställningar tar dig tillbaka."
+        "Välj ett område och sedan delen du vill ändra, eller sök efter inställningen.",
+        "Tryck Spara på det kortet. Inställningar överst tar dig tillbaka."
       ],
       "actions": [
         {
@@ -1651,16 +1651,22 @@
         "väntetid",
         "sen gäst"
       ],
-      "answer": "Öppettider, adress och kontaktuppgifter ändrar ägaren under Inställningar, Verksamheten, Restaurang.",
+      "answer": "Adress och kontaktuppgifter ändrar ägaren under Inställningar, Restaurangen, Profil och kontakt, och öppettiderna under Inställningar, Restaurangen, Öppettider och avvikande dagar.",
       "steps": [
-        "Öppna Inställningar, välj Verksamheten och sedan Restaurang.",
-        "Ändra namn, telefon, adress, e-post eller öppettider.",
+        "Öppna Inställningar, välj Restaurangen och sedan Öppettider och avvikande dagar.",
+        "Ändra öppettiderna här, eller namn, telefon, adress och e-post under Profil och kontakt.",
         "Tryck Spara ändringar."
       ],
       "actions": [
         {
+          "id": "inst-dagar-open",
+          "label": "Öppna Öppettider",
+          "to": "/installningar",
+          "hash": "dagar"
+        },
+        {
           "id": "inst-profil-open",
-          "label": "Öppna Restaurang",
+          "label": "Öppna Profil och kontakt",
           "to": "/installningar",
           "hash": "profil"
         }
@@ -1680,23 +1686,23 @@
         "specialtid",
         "hur länge bokning"
       ],
-      "answer": "Hur länge ett bord är bokat och sista sittning före stängning ställer ägaren in under Inställningar, Verksamheten, Restaurang, Bokningstid.",
+      "answer": "Hur länge ett bord är bokat och sista sittning före stängning ställer ägaren in under Inställningar, Restaurangen, Bokning, Bokningstid.",
       "steps": [
-        "Öppna Inställningar, välj Verksamheten och sedan Restaurang.",
+        "Öppna Inställningar, välj Restaurangen och sedan Bokning.",
         "Under Bokningstid väljer du standardlängd och sista sittning före stängning.",
         "Lägg till specialtider vid behov.",
         "Tryck Spara bokningstid."
       ],
       "actions": [
         {
-          "id": "inst-profil-open",
-          "label": "Öppna Restaurang",
+          "id": "inst-bord-open",
+          "label": "Öppna Bokning",
           "to": "/installningar",
-          "hash": "profil"
+          "hash": "bord"
         }
       ],
       "highlight": [
-        "help:settings:profil:BookingTimeCard"
+        "help:settings:bord:BookingTimeCard"
       ]
     },
     {
@@ -1719,9 +1725,9 @@
         "stänga onlinebokningen",
         "stäng onlinebokningen"
       ],
-      "answer": "Helgdagar, stängda dagar och andra öppettider lägger ägaren in under Inställningar, Verksamheten, Avvikande dagar.",
+      "answer": "Helgdagar, stängda dagar och andra öppettider lägger ägaren in under Inställningar, Restaurangen, Öppettider och avvikande dagar.",
       "steps": [
-        "Öppna Inställningar, välj Verksamheten och sedan Avvikande dagar.",
+        "Öppna Inställningar, välj Restaurangen och sedan Öppettider och avvikande dagar.",
         "Tryck Lägg till dag, välj datum och typ (Stängt, Andra öppettider eller Ingen onlinebokning).",
         "Skriv gärna en anteckning till gästerna och tryck Lägg till.",
         "Tryck Spara dagar.",
@@ -1730,7 +1736,7 @@
       "actions": [
         {
           "id": "inst-dagar-open",
-          "label": "Öppna Avvikande dagar",
+          "label": "Öppna Öppettider och avvikande dagar",
           "to": "/installningar",
           "hash": "dagar"
         }
@@ -1749,9 +1755,9 @@
         "onlinebokning bord",
         "kombinera bord"
       ],
-      "answer": "Vilka bord som kan bokas online, för hur många och vilka bord som kan slås ihop ställer ägaren in under Inställningar, Verksamheten, Bord.",
+      "answer": "Vilka bord som kan bokas online, för hur många och vilka bord som kan slås ihop ställer ägaren in under Inställningar, Restaurangen, Bokning.",
       "steps": [
-        "Öppna Inställningar, välj Verksamheten och sedan Bord.",
+        "Öppna Inställningar, välj Restaurangen och sedan Bokning.",
         "Välj för varje bord om det kan bokas online och för hur många personer.",
         "Lägg till kombinationer under Ny kombination.",
         "Tryck Spara bordsregler."
@@ -1759,7 +1765,7 @@
       "actions": [
         {
           "id": "inst-bord-open",
-          "label": "Öppna Bord",
+          "label": "Öppna Bokning",
           "to": "/installningar",
           "hash": "bord"
         }
@@ -1810,9 +1816,9 @@
         "garanti",
         "policy"
       ],
-      "answer": "Kortgaranti och avgifter för sen avbokning och no-show ställer ägaren in under Inställningar, Gäster, Avbokning. Stripe måste vara klart först.",
+      "answer": "Kortgaranti och avgifter för sen avbokning och no-show ställer ägaren in under Inställningar, Gäster, Avbokning och kortgaranti. Stripe måste vara klart först.",
       "steps": [
-        "Öppna Inställningar, välj Gäster och sedan Avbokning.",
+        "Öppna Inställningar, välj Gäster och sedan Avbokning och kortgaranti.",
         "Slå på Kortgaranti vid onlinebokning och välj från hur många personer.",
         "Ange när en avbokning räknas som sen och avgifterna per person.",
         "Tryck Spara policy."
@@ -1820,7 +1826,7 @@
       "actions": [
         {
           "id": "inst-avbokning-open",
-          "label": "Öppna Avbokning",
+          "label": "Öppna Avbokning och kortgaranti",
           "to": "/installningar",
           "hash": "avbokning"
         }
@@ -1902,9 +1908,9 @@
         "integritetstext",
         "dataskydd"
       ],
-      "answer": "Integritetstexten och förfrågningar från gäster om att radera sina uppgifter hanterar ägaren under Inställningar, Data och integritet, Integritet.",
+      "answer": "Integritetstexten och förfrågningar från gäster om att radera sina uppgifter hanterar ägaren under Inställningar, Gäster, Integritet.",
       "steps": [
-        "Öppna Inställningar, välj Data och integritet och sedan Integritet.",
+        "Öppna Inställningar, välj Gäster och sedan Integritet.",
         "Ändra texten och tryck Spara text.",
         "Sök fram gästen med e-post eller telefon.",
         "Tryck Återkalla samtycke eller Radera gästens uppgifter."
@@ -1961,18 +1967,18 @@
         "google maps",
         "koppla google"
       ],
-      "answer": "Restaurangens Google-profil kopplar ägaren under Inställningar, Verksamheten, Restaurang.",
+      "answer": "Restaurangens Google-profil kopplar ägaren under Inställningar, Restaurangen, Google-profil.",
       "steps": [
-        "Öppna Inställningar, välj Verksamheten och sedan Restaurang.",
+        "Öppna Inställningar, välj Restaurangen och sedan Google-profil.",
         "Tryck Koppla Google och logga in hos Google.",
         "Välj rätt plats."
       ],
       "actions": [
         {
-          "id": "inst-profil-open",
-          "label": "Öppna Restaurang",
+          "id": "inst-google-open",
+          "label": "Öppna Google-profil",
           "to": "/installningar",
-          "hash": "profil"
+          "hash": "google"
         }
       ]
     },
@@ -2018,7 +2024,7 @@
         "windows",
         "linux"
       ],
-      "answer": "Booqy Admin finns som app för Mac, Windows och Linux, med samma inloggning som här. Ladda ner appen längst ned i vänstermenyn öppnar kortet Skrivbordsappen under Inställningar, Den här enheten. Där markeras filen för din dator när den går att avgöra säkert.",
+      "answer": "Booqy Admin finns som app för Mac, Windows och Linux, med samma inloggning som här. Ladda ner appen längst ned i vänstermenyn öppnar Inställningar, Den här enheten, Appen. Där markeras filen för din dator när den går att avgöra säkert.",
       "steps": [
         "Öppna Ladda ner appen längst ned i vänstermenyn.",
         "Ladda ner filen som rekommenderas för din dator, eller välj i listan.",

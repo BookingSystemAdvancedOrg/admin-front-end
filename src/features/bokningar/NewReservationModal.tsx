@@ -165,7 +165,7 @@ export function NewReservationModal({
                 aria-invalid={!phoneOk || undefined}
                 aria-describedby={phoneOk ? undefined : 'nb-phone-error'}
               />
-              {!phoneOk && <p id="nb-phone-error" className="field-hint error">Skriv ett giltigt nummer, t.ex. 070-123 45 67.</p>}
+              {!phoneOk && <p id="nb-phone-error" className="field-hint error">Numret ser fel ut. Skriv det så här: 070 123 45 67.</p>}
             </div>
             <div className="form-field">
               <label htmlFor="nb-email">E-post (valfritt)</label>
@@ -178,7 +178,7 @@ export function NewReservationModal({
                 aria-invalid={!emailOk || undefined}
                 aria-describedby={emailOk ? undefined : 'nb-email-error'}
               />
-              {!emailOk && <p id="nb-email-error" className="field-hint error">Ange en giltig e-postadress.</p>}
+              {!emailOk && <p id="nb-email-error" className="field-hint error">E-postadressen ser fel ut. Skriv den så här: namn@exempel.se.</p>}
             </div>
           </div>
           <div className="form-field">

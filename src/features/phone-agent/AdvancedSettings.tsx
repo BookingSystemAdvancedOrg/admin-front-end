@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { Bar, Button, Field, Input, toast } from '@booqy/brand'
+import { Button, Field, Input, toast } from '@booqy/brand'
 import { BrandSelect as Select } from '../../shared/Select'
 import { Disclosure } from '../../shared/Disclosure'
 import { InfoTooltip } from '../../shared/InfoTooltip'
@@ -9,6 +9,7 @@ import { withBusy } from '../../shared/motion/busy'
 import { errorText } from '../../shared/errors'
 import { ApiError } from '../../shared/api'
 import SimulatorPanel from './SimulatorPanel'
+import { RetryBanner } from './RetryBanner'
 import { TimeInput } from '../../shared/DateInput'
 import {
   DAYS, ERRORS, saveConfigPatch, saveLocationPatch,
@@ -43,7 +44,7 @@ function Group({ title, info, onSave, children, setFieldErrors }: {
       setFieldErrors({})
       toast('Sparat.', { tone: 'success' })
     } catch (err) {
-      const text = errorText(err, 'Kunde inte spara.', ERRORS)
+      const text = errorText(err, 'Inställningen sparades inte.', ERRORS)
       const field = err instanceof ApiError ? err.field : undefined
       if (field) setFieldErrors({ [field]: text })
       else setBanner(text)
@@ -58,11 +59,7 @@ function Group({ title, info, onSave, children, setFieldErrors }: {
         {info ? <InfoTooltip label={title}>{info}</InfoTooltip> : null}
       </div>
       {children}
-      {banner ? (
-        <Bar variant="banner" tone="danger" action={<Button size="sm" variant="secondary" type="button" onClick={() => void save()}>Försök igen</Button>}>
-          {banner}
-        </Bar>
-      ) : null}
+      {banner ? <RetryBanner text={banner} onRetry={() => void save()} /> : null}
       <div className="telefon-group__save">
         <Button type="submit" busy={busy} busyLabel="Sparar…">Spara</Button>
       </div>
@@ -127,7 +124,7 @@ export default function AdvancedSettings({ locationId, config, loc, open, onOpen
       setConfirmStop(false)
       toast('Assistenten är avstängd. Numret sparas i 30 dagar.', { tone: 'success' })
     } catch (err) {
-      setStopError(errorText(err, 'Kunde inte stänga av.', ERRORS))
+      setStopError(errorText(err, 'Assistenten stängdes inte av.', ERRORS))
     } finally {
       setStopping(false)
     }
@@ -281,9 +278,7 @@ export default function AdvancedSettings({ locationId, config, loc, open, onOpen
 
         {loc.enabled ? (
           <section className="telefon-group" aria-label="Stäng av">
-            {stopError ? (
-              <Bar variant="banner" tone="danger" action={<Button size="sm" variant="secondary" onClick={() => void stop()}>Försök igen</Button>}>{stopError}</Bar>
-            ) : null}
+            {stopError ? <RetryBanner text={stopError} onRetry={() => void stop()} /> : null}
             {confirmStop ? (
               <div className="telefon-confirm" role="group" aria-label="Stäng av?">
                 <p className="telefon-line"><strong>Stäng av? Numret sparas i 30 dagar.</strong></p>

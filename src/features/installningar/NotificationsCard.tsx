@@ -54,11 +54,11 @@ export function NotificationsCard({ tenant, isOwner }: { tenant: Tenant; isOwner
     setError(null)
     setNotice(null)
     if (senderTrimmed && !SENDER_NAME.test(senderTrimmed)) {
-      setError('Avsändarnamnet får vara högst 11 tecken: bokstäver a-z, siffror och mellanslag.')
+      setError('Avsändarnamnet får ha högst 11 tecken: bokstäver a-z, siffror och mellanslag. Till exempel Bistro Nord.')
       return
     }
     if (values.sms && !/[A-Za-z]/.test(senderTrimmed)) {
-      setError('Ange ett avsändarnamn (minst en bokstav) när SMS är på.')
+      setError('Skriv ett avsändarnamn för SMS, till exempel Bistro Nord.')
       return
     }
     setBusy(true)
@@ -72,7 +72,7 @@ export function NotificationsCard({ tenant, isOwner }: { tenant: Tenant; isOwner
       setSenderName(updated.senderName ?? '')
       setNotice('Sparat.')
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara.', { owner_only: 'Bara restaurangens ägare kan ändra notiser.', forbidden: 'Bara restaurangens ägare kan ändra notiser.' }))
+      setError(errorText(err, 'Notiserna sparades inte.', { owner_only: 'Bara restaurangens ägare kan ändra notiser. Be ägaren göra det.', forbidden: 'Bara restaurangens ägare kan ändra notiser. Be ägaren göra det.' }))
     } finally {
       setBusy(false)
     }

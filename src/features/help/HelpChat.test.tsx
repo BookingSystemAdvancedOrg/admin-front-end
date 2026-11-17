@@ -1,13 +1,17 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildCorpus } from '../../../scripts/help-corpus.mjs'
 import { setCorpus } from './corpus'
 import { takePageAction } from '../../shared/nav'
 import { openHelpChat } from './chatState'
 import { HelpChat } from './HelpChat'
 import { OWNER_TEXT } from './retrieve'
+import { stopSpotlight } from './spotlight'
+
+// En upplysning som väntar på ett mål som testet inte ritar får inte leva kvar efter testet (document finns inte då).
+afterEach(() => stopSpotlight())
 
 let tenant: Record<string, unknown>
 vi.mock('../../shared/tenant', async (orig) => ({
@@ -98,8 +102,8 @@ describe('HelpChat', () => {
     renderChat()
     await openPanel(user)
     await user.type(screen.getByRole('textbox', { name: 'Din fråga' }), 'Hur ändrar jag öppettiderna?{Enter}')
-    await user.click(await screen.findByRole('button', { name: 'Öppna Restaurang' }))
-    expect(screen.getByTestId('where')).toHaveTextContent('/installningar#profil')
+    await user.click(await screen.findByRole('button', { name: 'Öppna Öppettider' }))
+    expect(screen.getByTestId('where')).toHaveTextContent('/installningar#dagar')
   })
 
   it('never gives staff the owner-only steps', async () => {

@@ -30,14 +30,15 @@ import { parseKronor } from './data'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
+import { Loading } from '../../shared/Loading'
 
 const kr = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 2 })
 
 function menuError(err: unknown): string {
   if (err instanceof ApiError && err.message === 'changed_retry') {
-    return 'Någon annan sparade just en ändring. Listan är uppdaterad, försök igen.'
+    return 'Någon annan ändrade menyn nyss. Nu syns det senaste. Gör din ändring igen.'
   }
-  return errorText(err)
+  return errorText(err, 'Cateringmenyn sparades inte.')
 }
 
 function dishInput(d: CateringDish): CateringDishInput {
@@ -78,7 +79,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
   }, [locationId, isOwner])
 
   useEffect(() => {
-    reload().catch((err: unknown) => setError(errorText(err, 'Kunde inte hämta cateringmenyn.')))
+    reload().catch((err: unknown) => setError(errorText(err, 'Cateringmenyn kunde inte visas.')))
   }, [reload])
   // Levande: rätter och paket som en kollega ändrar syns av sig själva (dialogen har sin egen kopia).
   useLiveRefresh(reload, { enabled: Boolean(locationId) })
@@ -519,7 +520,7 @@ function ImportModal({ locationId, dishes, onImport, onCancel }: {
         Kopieras med namn, beskrivning och pris. Allergener lägger du till efteråt.
       </p>
       {menu === null ? (
-        <p className="cell-muted">Hämtar menyn…</p>
+        <Loading variant="inline" label="Hämtar menyn" />
       ) : menu.length === 0 ? (
         <p className="cm-empty">Inga aktiva rätter.</p>
       ) : (

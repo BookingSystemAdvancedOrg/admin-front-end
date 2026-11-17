@@ -5,8 +5,9 @@ import { roleAllows } from './nav'
 import { useTenant } from './tenant'
 
 /**
- * Personalen som skriver adressen till en ägarsida (t.ex. /personal) skickas
- * till Översikt med en kort förklaring, i stället för att se en halv sida.
+ * Personal som öppnar en sida de inte har behörighet till (adressen, ett
+ * gammalt bokmärke, eller ägaren tar bort behörigheten medan sidan är öppen)
+ * skickas till Översikt med en kort förklaring, i stället för att se en halv sida.
  * Förklaringen står kvar på Översikt (även om guiden startar) och försvinner
  * vid nästa sidbyte.
  */
@@ -25,7 +26,7 @@ export function RoleGate({ children }: { children: ReactNode }) {
       {notice && pathname === '/' && (
         <div className="role-notice-wrap">
           <p className="role-notice" role="status">
-            Den sidan är bara för restaurangens ägare. Du är tillbaka på Översikt.
+            Du har inte behörighet till den sidan. Be ägaren om behörighet.
           </p>
         </div>
       )}

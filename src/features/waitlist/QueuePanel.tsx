@@ -2,6 +2,10 @@ import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { Bar, Button, Card, Field, Input, Modal, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { SkelCard } from '../../shared/Skeleton'
+import { useTables } from '../../shared/tables'
+import { TableLinks } from '../../shared/TableLinks'
 import { SlotTablePicker, type SlotValue } from '../bokningar/SlotTablePicker'
 import {
   ERRORS,
@@ -25,12 +29,18 @@ export default function QueuePanel({ locationId, date }: { locationId: string; d
   const [busy, setBusy] = useState<string | null>(null)
   const [picking, setPicking] = useState<{ entry: Entry; mode: 'offer' | 'seat' } | null>(null)
   const [adding, setAdding] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const { labels } = useTables(locationId)
+  // Utan bordsnamn (laddar eller misslyckades): aldrig bordens id.
+  const where = (ids: string[]) => <TableLinks ids={ids} labels={labels} date={date} />
 
   const load = useCallback(async () => {
     try {
       setQueue(await getQueue(locationId, date))
-    } catch {
-      setQueue(null)
+      setLoadError(null)
+    } catch (err) {
+      // En kö som redan visas står kvar; bara en första hämtning som misslyckas visas som fel.
+      setLoadError(errorText(err, 'Kön kunde inte visas.', ERRORS))
     }
   }, [locationId, date])
 
@@ -53,7 +63,11 @@ export default function QueuePanel({ locationId, date }: { locationId: string; d
     }
   }
 
-  if (!queue) return null
+  if (!queue) {
+    return loadError
+      ? <Card title="Kö"><ErrorNote text={loadError} onRetry={() => { setLoadError(null); void load() }} /></Card>
+      : <SkelCard rows={2} cols={2} aside={false} />
+  }
   const open = queue.entries.filter((e) => e.status === 'waiting' || e.status === 'offered')
   const waiting = open.filter((e) => e.status === 'waiting').length
   const byId = new Map(queue.entries.map((e) => [e.entryId, e]))
@@ -69,11 +83,11 @@ export default function QueuePanel({ locationId, date }: { locationId: string; d
       {first && firstEntry ? (
         <Bar variant="banner" tone="info" action={
           <Button size="sm" busy={busy === `offer-${first.entryId}`}
-            onClick={() => void run(`offer-${first.entryId}`, () => offerTable(locationId, firstEntry, first.tableIds, first.startTime), 'Kunde inte erbjuda bordet.')}>
+            onClick={() => void run(`offer-${first.entryId}`, () => offerTable(locationId, firstEntry, first.tableIds, first.startTime), 'Bordet erbjöds inte.')}>
             Erbjud bord
           </Button>
         }>
-          Bord {first.tableIds.join(', ')} är ledigt för {firstEntry.name}, {firstEntry.partySize} pers.
+          {where(first.tableIds)} är ledigt för {firstEntry.name}, {firstEntry.partySize} pers.
         </Bar>
       ) : null}
       {open.length === 0 ? <p className="admin-empty">Ingen i kö.</p> : (
@@ -86,7 +100,7 @@ export default function QueuePanel({ locationId, date }: { locationId: string; d
                 {e.note ? <span className="cell-muted">{e.note}</span> : null}
                 <span className="queue-status">
                   <span className="status-badge">{STATUS_LABEL[e.status]}</span>
-                  {e.offer && e.status === 'offered' ? <span className="cell-muted"> Bord {e.offer.tableIds.join(', ')} kl. {e.offer.startTime}, svar senast {clock(e.offer.expiresAt)}</span> : null}
+                  {e.offer && e.status === 'offered' ? <span className="cell-muted"> {where(e.offer.tableIds)} kl. {e.offer.startTime}, svar senast {clock(e.offer.expiresAt)}</span> : null}
                   {e.notice && !e.notice.sentAt ? <span className="queue-warn"> Sms ej skickat</span> : null}
                   {!e.phone ? <span className="cell-muted"> Inget nummer</span> : null}
                 </span>
@@ -97,12 +111,12 @@ export default function QueuePanel({ locationId, date }: { locationId: string; d
                 ) : null}
                 <Button size="sm" busy={busy === `seat-${e.entryId}`}
                   onClick={() => (e.status === 'offered'
-                    ? void run(`seat-${e.entryId}`, () => seatNow(locationId, e), 'Kunde inte placera gästen.')
+                    ? void run(`seat-${e.entryId}`, () => seatNow(locationId, e), 'Gästen placerades inte.')
                     : setPicking({ entry: e, mode: 'seat' }))}>
                   Placera nu
                 </Button>
                 <Button size="sm" variant="ghost" busy={busy === `remove-${e.entryId}`}
-                  onClick={() => void run(`remove-${e.entryId}`, () => removeEntry(locationId, e), 'Kunde inte ta bort.')}>
+                  onClick={() => void run(`remove-${e.entryId}`, () => removeEntry(locationId, e), 'Gästen togs inte bort ur kön.')}>
                   Ta bort
                 </Button>
               </Bar>
@@ -118,7 +132,7 @@ export default function QueuePanel({ locationId, date }: { locationId: string; d
             setPicking(null)
             void run(`${mode}-${entry.entryId}`, () => (mode === 'offer'
               ? offerTable(locationId, entry, v.tableIds, v.startTime)
-              : seatNow(locationId, entry, v.tableIds)), 'Det gick inte.')
+              : seatNow(locationId, entry, v.tableIds)), mode === 'offer' ? 'Bordet erbjöds inte.' : 'Gästen placerades inte.')
           }} />
       ) : null}
       {adding ? <WalkInModal locationId={locationId} onClose={() => setAdding(false)} onAdded={() => { setAdding(false); void load() }} /> : null}
@@ -162,7 +176,7 @@ function WalkInModal({ locationId, onClose, onAdded }: { locationId: string; onC
       toast(`${name.trim()} står i kö.`, { tone: 'success' })
       onAdded()
     } catch (err) {
-      toast(errorText(err, 'Kunde inte ställa gästen i kö.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Gästen ställdes inte i kö.', ERRORS), { tone: 'danger' })
     } finally {
       setSaving(false)
     }

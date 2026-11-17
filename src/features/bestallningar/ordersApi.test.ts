@@ -9,9 +9,20 @@ describe('ordersApi', () => {
   })
 
   it('turns server errors into Swedish', () => {
-    expect(moveErrorText(new ApiError(409, 'changed_retry'))).toMatch(/ändrats av någon annan/)
+    expect(moveErrorText(new ApiError(409, 'changed_retry'))).toMatch(/Någon annan ändrade beställningen/)
     expect(moveErrorText(new ApiError(409, 'cannot_move_completed_to_ready'))).toMatch(/kan inte flyttas/)
     expect(moveErrorText(new ApiError(404, 'not found'))).toMatch(/finns inte längre/)
-    expect(moveErrorText(new Error('x'))).toMatch(/Kunde inte spara/)
+    expect(moveErrorText(new Error('x'))).toMatch(/^Beställningen ändrades inte\. /)
+  })
+})
+
+describe('clock', () => {
+  it('shows the restaurant time (Europe/Stockholm), not the device zone', async () => {
+    const { clock } = await import('./ordersApi')
+    // 16:40 UTC in November is 17:40 in Stockholm.
+    expect(clock('2026-11-16T16:40:00Z')).toBe('17:40')
+    expect(clock('2026-11-16T16:40:00Z', 'Europe/London')).toBe('16:40')
+    expect(clock('2026-11-16T16:40:00Z', 'Not/AZone')).toBe('17:40')
+    expect(clock(undefined)).toBe('')
   })
 })

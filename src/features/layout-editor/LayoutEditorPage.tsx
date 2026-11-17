@@ -1,10 +1,11 @@
 import type { LayoutElement } from './layoutApi'
-import { errorText } from '../../shared/errors'
-import { useEffect, useRef, useState } from 'react'
+import { describeError, errorText, rememberError } from '../../shared/errors'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { sameData, useLiveRefresh } from '../../shared/live'
 import { LayoutPrep } from './LayoutPrep'
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { FloorBooking } from './FloorBooking'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useUnsavedGuard } from '../../shared/unsaved'
@@ -42,6 +43,8 @@ import {
 } from './layoutApi'
 import type { PublishedLayoutSnapshot } from './layoutApi'
 import { activatePublished, labelFor } from './publishFlow'
+import { RemovedTablesBookings } from './RemovedTablesBookings'
+import type { RemovedTableBooking } from './layoutApi'
 import {
   actionForKey,
   isTypingTarget,
@@ -199,7 +202,21 @@ function useSmallScreen(): boolean {
  */
 export default function LayoutEditorPage() {
   const small = useSmallScreen()
-  const [mode, setMode] = useState<'book' | 'edit'>('edit')
+  // ?bord=<id>[&datum=YYYY-MM-DD]: en länk "Bord 3" från Bokningar, Översikt
+  // eller Kön öppnar bordskartan med det bordet markerat.
+  const [params] = useSearchParams()
+  const focusTableId = params.get('bord')
+  const focusDate = params.get('datum')
+  const [mode, setMode] = useState<'book' | 'edit'>(focusTableId ? 'book' : 'edit')
+  const [lastFocus, setLastFocus] = useState(focusTableId)
+  if (focusTableId !== lastFocus) {
+    setLastFocus(focusTableId)
+    if (focusTableId) setMode('book')
+  }
+  const focus = useMemo(
+    () => (focusTableId ? { tableIds: focusTableId.split(',').filter(Boolean), date: focusDate } : null),
+    [focusTableId, focusDate],
+  )
   // Monteras första gången skärmen är stor nog, och ligger sedan kvar.
   const [editorMounted, setEditorMounted] = useState(!small)
   if (!small && !editorMounted) setEditorMounted(true)
@@ -207,6 +224,7 @@ export default function LayoutEditorPage() {
   if (small) {
     return (
       <FloorBooking
+        focus={focus}
         notice={
           <p className="layout-small-notice" role="note">
             <Icon name="tool-floor" size={20} />
@@ -229,7 +247,7 @@ export default function LayoutEditorPage() {
   )
   return (
     <>
-      {mode === 'book' && <FloorBooking actions={modeSwitch} />}
+      {mode === 'book' && <FloorBooking actions={modeSwitch} focus={focus} />}
       {editorMounted && (
         <div style={{ display: mode === 'edit' ? 'contents' : 'none' }}>
           <LayoutEditor modeSwitch={modeSwitch} active={mode === 'edit'} />
@@ -310,7 +328,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
   const [showFloorBelow, setShowFloorBelow] = useState(true)
   // Handverktyget (H, eller håll inne mellanslag - som i Figma): klick+drag
   // panorerar vyn i stället för att rita/välja. Vyn roteras med Alt+drag
-  // eller ⟲ ⟳. isRotating stänger av vyns 320ms-övergång under själva
+  // eller rotera-knapparna. isRotating stänger av vyns 320ms-övergång under själva
   // draget (rotation eller panorering), så vyn följer musen direkt.
   const [handMode, setHandMode] = useState(false)
   const [spaceDown, setSpaceDown] = useState(false)
@@ -350,6 +368,8 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
   // Ökas efter en publicering så QR-panelen hämtar de publicerade borden igen.
   const [publishCount, setPublishCount] = useState(0)
   const [layoutError, setLayoutError] = useState<string | null>(null)
+  // Publiceringens fel "bokningar på borttagna bord": listan hör till just den texten.
+  const [removedBookings, setRemovedBookings] = useState<{ text: string; locationId: string; bookings: RemovedTableBooking[] } | null>(null)
   // Vilken plats vars sparade layout är inläst; tills dess ligger planen bakom glaset (LayoutPrep).
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
   // "Se live": byter tillfälligt ut `floors`/`currentFloorId` mot den
@@ -419,6 +439,11 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
   const [changedThere, setChangedThere] = useState(false)
 
   // Läs in den sparade layouten: våningar med sitt innehåll.
+  // Ingen plats: inget att hämta, så statusraden väntar inte på något.
+  useEffect(() => {
+    if (!locationId && !resolvingLocation) setStatusText((t) => (t === 'Hämtar layout…' ? 'Ingen plats än' : t))
+  }, [locationId, resolvingLocation])
+
   useEffect(() => {
     if (!locationId) return
     let cancelled = false
@@ -438,7 +463,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
         setStatusText(
           drawn === 0
             ? 'Tom layout'
-            : `Utkast inläst från servern - ${drawn} element på ${loaded.length} ` +
+            : `Utkast hämtat: ${drawn} element på ${loaded.length} ` +
                 (loaded.length === 1 ? 'våning.' : 'våningar.'),
         )
         void versionLabelFor(locationId).then((label) => {
@@ -448,7 +473,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       .catch((err) => {
         if (!cancelled) {
           setLayoutError(
-            errorText(err, 'Kunde inte hämta layouten.'),
+            errorText(err, 'Layouten kunde inte visas.'),
           )
         }
       })
@@ -1949,7 +1974,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       setViewMode('live')
     } catch (err) {
       setLiveError(
-        errorText(err, 'Kunde inte hämta den publicerade versionen.'),
+        errorText(err, 'Den publicerade versionen kunde inte visas.'),
       )
     } finally {
       setLiveLoading(false)
@@ -2011,13 +2036,13 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
         `Utkast sparat - ${result.created} nya, ${result.updated} ändrade, ` +
           `${result.deleted} borttagna.` +
           (result.flat && floors.length > 1
-            ? ` Servern saknar våningsstöd - bara ${floors[0].name} sparades.`
+            ? ` Bara ${floors[0].name} sparades, för fler våningar går inte att spara än.`
             : ''),
       )
       return true
     } catch (err) {
       setLayoutError(
-        errorText(err, 'Kunde inte spara utkastet.'),
+        errorText(err, 'Utkastet sparades inte.'),
       )
       return false
     } finally {
@@ -2065,11 +2090,16 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       setPublishCount((n) => n + 1)
       setVersionLabel(outcome.label)
       if (outcome.ok) setStatusText(outcome.text)
-      else setLayoutError(outcome.text)
+      else {
+        setLayoutError(outcome.text)
+        setRemovedBookings(outcome.removed?.length ? { text: outcome.text, locationId: loc, bookings: outcome.removed } : null)
+      }
     } catch (err) {
-      setLayoutError(
-        `Utkastet sparades, men publiceringen misslyckades: ${errorText(err, 'Kunde inte publicera layouten.')}`,
-      )
+      // Hela texten registreras, så felrutan får Rapportera till Booqy när felet är vårt.
+      const info = describeError(err, '')
+      const text = `Utkastet sparades men publicerades inte. ${info.text}`
+      rememberError({ ...info, text })
+      setLayoutError(text)
     } finally {
       setPublishing(false)
     }
@@ -2191,11 +2221,14 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       <div className="admin-main">
         {!locationId && !resolvingLocation && (
           <p className="form-error" role="alert">
-            Sparas inte: ingen plats än. Spara restaurangen under Inställningar först.
+            Layouten kan inte sparas än, för restaurangen har ingen plats. Lägg till platsen under Inställningar först.
           </p>
         )}
         {shownLayoutError && (
           <ErrorNote text={shownLayoutError} />
+        )}
+        {shownLayoutError && removedBookings?.text === shownLayoutError && (
+          <RemovedTablesBookings locationId={removedBookings.locationId} bookings={removedBookings.bookings} />
         )}
         {liveError && (
           <ErrorNote text={liveError} />
@@ -2278,10 +2311,10 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
               </div>
               <div className="view-toggle">
                 <button type="button" className="view-icon" title="Rotera vyn moturs (eller Alt + dra)" aria-label="Rotera moturs" onClick={() => setSpin((s) => s - 45)}>
-                  ⟲
+                  <Icon name="rotate" size={18} className="icon-mirror" />
                 </button>
                 <button type="button" className="view-icon" title="Rotera vyn medurs (eller Alt + dra)" aria-label="Rotera medurs" onClick={() => setSpin((s) => s + 45)}>
-                  ⟳
+                  <Icon name="rotate" size={18} />
                 </button>
               </div>
               <div className="view-toggle">
@@ -2857,7 +2890,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                   </summary>
                   <p>
                     Väggar som vetter mot kameran sänks så att borden alltid
-                    syns. Rotera vyn med Alt + dra eller ⟲ ⟳. Fönster, entré och
+                    syns. Rotera vyn med Alt + dra eller rotera-knapparna. Fönster, entré och
                     kök sitter på väggarna och följer med när väggen flyttas
                     eller förlängs. Tryck ? för alla kortkommandon.
                   </p>

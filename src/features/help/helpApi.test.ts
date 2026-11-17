@@ -103,3 +103,20 @@ describe('askHelp', { timeout: 15_000 }, () => {
     expect(err).toMatchObject({ code: 'internal_error', status: 500, requestId: 'abc-123' })
   })
 })
+
+describe('getHelpStatus', { timeout: 15_000 }, () => {
+  it('a missing route switches the assistant off', async () => {
+    const h = await load(async () => json(404, { error: 'route_not_found' }))
+    await expect(h.getHelpStatus()).resolves.toEqual({ enabled: false, mode: 'off' })
+  })
+
+  it('a failed status check keeps the assistant on the knowledge base', async () => {
+    const h = await load(async () => json(400, { error: 'something_else' }))
+    await expect(h.getHelpStatus()).resolves.toEqual({ enabled: true, mode: 'kb' })
+  })
+
+  it('no network keeps the assistant on the knowledge base', async () => {
+    const h = await load(async () => { throw new TypeError('Failed to fetch') })
+    await expect(h.getHelpStatus()).resolves.toEqual({ enabled: true, mode: 'kb' })
+  })
+})

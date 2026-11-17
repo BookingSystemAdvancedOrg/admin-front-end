@@ -117,7 +117,7 @@ export function DateInput({ value, onChange, min, max, ...rest }: Common & { min
   const invalid = text !== '' && !(parsed && inRange(parsed, min, max))
   // Som det inbyggda fältet: ett ofullständigt eller otillåtet datum stoppar formuläret (required räcker inte, texten är inte tom).
   useEffect(() => {
-    input.current?.setCustomValidity(invalid ? 'Ange ett giltigt datum, DD/MM/ÅÅÅÅ.' : '')
+    input.current?.setCustomValidity(invalid ? 'Datumet ser fel ut. Skriv det så här: 24/12/2026.' : '')
   }, [invalid])
 
   return (
@@ -191,7 +191,7 @@ export function TimeInput({ value, onChange, ...rest }: Common & { step?: number
 
   const invalid = text !== '' && !parseTime(text)
   useEffect(() => {
-    input.current?.setCustomValidity(invalid ? 'Ange en giltig tid, TT:MM.' : '')
+    input.current?.setCustomValidity(invalid ? 'Tiden ser fel ut. Skriv den så här: 18:30.' : '')
   }, [invalid])
   return (
     <input

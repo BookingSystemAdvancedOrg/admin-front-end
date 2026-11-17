@@ -23,7 +23,7 @@ import { Disclosure } from '../../shared/Disclosure'
 import { Select } from '../../shared/Select'
 
 /**
- * Inställningar > Skrivare: bongskrivarna för matbeställningar.
+ * Inställningar, Beställning, Skrivare och stationer: bongskrivarna för matbeställningar.
  *
  * Skrivaren (Star CloudPRNT, t.ex. mC-Print3, eller Epson Server Direct
  * Print, t.ex. TM-m30III, med nätverkskabel eller wifi) frågar Booqy var
@@ -107,7 +107,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
     if (untouched) apply(next)
     else setData(next)
     setLoadError(false)
-  }, { enabled: Boolean(locationId) && data !== null && !busy })
+  }, { enabled: Boolean(locationId) && !busy })
 
   useEffect(() => {
     if (!locationId) return
@@ -213,7 +213,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
         {!locationId ? (
           <p className="cell-muted">Välj en plats först.</p>
         ) : loadError && !data ? (
-          <ErrorNote text={booqyFaultText('Kunde inte hämta skrivarna. Sidan försöker igen av sig själv.')} />
+          <ErrorNote text={booqyFaultText('Skrivarna kunde inte visas.')} onRetry={() => { setLoadError(false); void reload() }} />
         ) : !data ? (
           <SkelLines n={3} />
         ) : (

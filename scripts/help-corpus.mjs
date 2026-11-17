@@ -37,12 +37,15 @@ const EXTRA_PAGES = {
   '/cateringkalkyl': { label: 'Cateringinställningar', feature: 'catering', ownerOnly: true },
   '/avtal': { label: 'Avtal', ownerOnly: true },
 }
-// Inställningar: personalen kan bara ändra Utseende och ljud (och se skrivbordsappen),
-// resten är ägarens. De som kräver en funktion i planen.
+// Inställningar: personalen kan bara ändra Utseende och ljud (och se appen),
+// resten är ägarens. Grenar som kräver en funktion i planen.
 const SETTINGS_STAFF = ['utseende', 'skrivbordsappen']
-const SETTINGS_FEATURE = { bestallning: 'ordering', skrivare: 'ordering' }
+const SETTINGS_FEATURE = { bestallning: 'ordering', skrivare: 'ordering', google: 'googleBusiness' }
 // Inte delar av den inloggade appen (eller assistenten själv).
 const SKIP_DIRS = ['features/auth', 'features/help', 'test']
+// Områden personalen hade innan behörigheterna (src/shared/access.ts
+// LEGACY_STAFF_AREAS): de andra märks "owner" för läsare som inte känner till `area`.
+const LEGACY_STAFF_AREAS = ['statistik', 'bokningar', 'bestallningar', 'catering', 'personalliggare', 'telefon', 'meny', 'layout', 'gaster', 'evenemang']
 
 function walk(dir) {
   return readdirSync(dir).flatMap((name) => {
@@ -77,8 +80,7 @@ function parseNav() {
     items.push({
       to: m[1],
       label: m[2],
-      ownerOnly: /ownerOnly: true/.test(rest),
-      insights: /insights: true/.test(rest),
+      area: rest.match(/area: '([^']+)'/)?.[1] ?? null,
       feature: feature ? (feature.startsWith('[') ? [...feature.matchAll(/'([^']+)'/g)].map((f) => f[1]) : feature.slice(1, -1)) : null,
     })
   }
@@ -191,26 +193,27 @@ function hints(text) {
 }
 
 /**
- * Inställningarnas flikar ur InstallningarPage.tsx: namn (TAB_LABEL), en rad
- * om vad som finns där (TAB_HINT) och gruppen fliken ligger i (GROUPS), så som
- * menyn visar dem: först gruppen (Verksamheten), sedan fliken (Restaurang).
+ * Inställningarnas grenar ur settingsTree.ts: namn (BRANCH_LABEL), en rad om
+ * vad som finns där (BRANCH_HINT) och trädet grenen sitter i (TREES), så som
+ * sidan visar dem: först trädet (Gäster), sedan grenen (Notiser). Nycklarna
+ * heter fortfarande tabLabel/groupOf: grenarnas id är de gamla flikarnas.
  */
 export function settingsSections() {
-  const text = readFileSync(join(SRC, 'features/installningar/InstallningarPage.tsx'), 'utf8')
+  const text = readFileSync(join(SRC, 'features/installningar/settingsTree.ts'), 'utf8')
   const block = (name) => {
     const start = text.indexOf(`const ${name}`)
-    if (start < 0) throw new Error(`InstallningarPage.tsx: hittar inte ${name}`)
+    if (start < 0) throw new Error(`settingsTree.ts: hittar inte ${name}`)
     return text.slice(start, text.indexOf('\n}', start) + 2)
   }
-  const tabLabel = Object.fromEntries([...block('TAB_LABEL').matchAll(/^\s{2}(\w+): '([^']+)',$/gm)].map((m) => [m[1], m[2]]))
-  const tabHint = hints(block('TAB_HINT'))
-  const groups = text.slice(text.indexOf('const GROUPS'), text.indexOf('\n]', text.indexOf('const GROUPS')))
+  const tabLabel = Object.fromEntries([...block('BRANCH_LABEL').matchAll(/^\s{2}(\w+): '([^']+)',$/gm)].map((m) => [m[1], m[2]]))
+  const tabHint = hints(block('BRANCH_HINT'))
+  const trees = text.slice(text.indexOf('const TREES'), text.indexOf('\n]', text.indexOf('const TREES')))
   const groupOf = {}
-  for (const m of groups.matchAll(/label: '([^']+)'[^\n]*?tabs: \[([^\]]*)\]/g)) {
+  for (const m of trees.matchAll(/label: '([^']+)'[^\n]*?branches: \[([^\]]*)\]/g)) {
     for (const t of m[2].matchAll(/'(\w+)'/g)) groupOf[t[1]] = m[1]
   }
   for (const tab of Object.keys(tabLabel)) {
-    if (!groupOf[tab]) throw new Error(`InstallningarPage.tsx: fliken ${tab} ligger inte i någon grupp (GROUPS)`)
+    if (!groupOf[tab]) throw new Error(`settingsTree.ts: grenen ${tab} sitter inte i något träd (TREES)`)
   }
   return { tabLabel, tabHint, groupOf }
 }
@@ -224,7 +227,7 @@ export function buildCorpus() {
     const item = nav.find((n) => (n.to === '/' ? route === '/' : route === n.to || route.startsWith(`${n.to}/`)))
     if (item) return item
     const extra = EXTRA_PAGES[route]
-    return extra ? { to: route, label: extra.label, feature: extra.feature ?? null, ownerOnly: Boolean(extra.ownerOnly), insights: false } : null
+    return extra ? { to: route, label: extra.label, feature: extra.feature ?? null, ownerOnly: Boolean(extra.ownerOnly), area: null } : null
   }
   const { tabLabel, tabHint, groupOf } = settingsSections()
 
@@ -237,17 +240,21 @@ export function buildCorpus() {
     docs.push(doc)
   }
   const access = (route, hash) => {
-    const info = pageInfo(route) ?? { ownerOnly: false, feature: null, insights: false }
-    const ownerOnly = info.ownerOnly || (route === '/installningar' && !SETTINGS_STAFF.includes(hash ?? ''))
+    const info = pageInfo(route) ?? { ownerOnly: false, feature: null, area: null }
+    const ownerOnly =
+      Boolean(info.ownerOnly) ||
+      (info.area && !LEGACY_STAFF_AREAS.includes(info.area)) ||
+      (route === '/installningar' && !SETTINGS_STAFF.includes(hash ?? ''))
     const feature = (hash && SETTINGS_FEATURE[hash]) || info.feature || null
-    return { audience: ownerOnly ? 'owner' : 'all', ...(feature ? { feature } : {}), ...(info.insights ? { insights: true } : {}) }
+    // `area`: personalen ser texten bara med behörighet till området (ägaren alltid).
+    return { audience: ownerOnly ? 'owner' : 'all', ...(feature ? { feature } : {}), ...(info.area ? { area: info.area } : {}) }
   }
   const where = (route, hash) => {
     const page = pageInfo(route)?.label ?? route
     return hash && tabLabel[hash] ? `${page}, ${groupOf[hash]}, ${tabLabel[hash]}` : page
   }
 
-  // Menyvalen och inställningsflikarna. Två menyval kan leda till samma ställe
+  // Menyvalen och inställningarnas grenar. Två menyval kan leda till samma ställe
   // (Ladda ner appen på datorn, Installera appen på mobilen): id:t får då valets tour.
   const navIds = new Set()
   for (const item of nav) {

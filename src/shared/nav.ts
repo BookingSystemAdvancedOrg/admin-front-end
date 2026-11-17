@@ -1,6 +1,8 @@
 import type { FeatureKey } from './contracts'
 import type { IconName } from './Icon'
-import { canSeeInsights, hasFeature } from './tenant'
+import { hasFeature } from './tenant'
+import { canOpen } from './access'
+import type { Area } from './access'
 import type { Tenant } from './tenant'
 import { showDownloadNav } from './desktopDownloads'
 import { showPhoneInstallNav } from './pwa'
@@ -17,8 +19,8 @@ export type NavItem = {
   tour: string
   end?: boolean
   feature?: FeatureKey | FeatureKey[]
-  ownerOnly?: boolean
-  insights?: boolean
+  /** Området ägaren ger personalen behörighet till (access.ts); ägaren har alltid alla. */
+  area?: Area
   /** Bara i en webbläsare på en dator: inte i skrivbordsappen, inte på mobil. */
   browserOnly?: boolean
   /** Bara på telefon och surfplatta i webbläsaren (inte redan installerad). */
@@ -33,33 +35,33 @@ export const NAV_GROUPS: NavGroup[] = [
     label: null,
     items: [
       { to: '/', label: 'Översikt', icon: 'home', tour: 'nav-oversikt', end: true },
-      // Restaurangens siffror över tid; bara ägare.
-      { to: '/statistik', label: 'Statistik', icon: 'chart', tour: 'nav-statistik', insights: true },
+      // Restaurangens siffror över tid; personalen utan belopp.
+      { to: '/statistik', label: 'Statistik', icon: 'chart', tour: 'nav-statistik', area: 'statistik' },
     ],
   },
   {
     id: 'drift',
     label: 'Drift',
     items: [
-      { to: '/bokningar', label: 'Bokningar', icon: 'calendar', tour: 'nav-bokningar' },
+      { to: '/bokningar', label: 'Bokningar', icon: 'calendar', tour: 'nav-bokningar', area: 'bokningar' },
       // Bara för restauranger vars plan har matbeställning.
-      { to: '/bestallningar', label: 'Beställningar', icon: 'bag', tour: 'nav-bestallningar', feature: 'ordering' },
+      { to: '/bestallningar', label: 'Beställningar', icon: 'bag', tour: 'nav-bestallningar', feature: 'ordering', area: 'bestallningar' },
       // Förfrågningar; inställningar och rabatter nås därifrån (/cateringkalkyl).
-      { to: '/catering', label: 'Catering', icon: 'tray', tour: 'nav-catering', feature: 'catering' },
+      { to: '/catering', label: 'Catering', icon: 'tray', tour: 'nav-catering', feature: 'catering', area: 'catering' },
       // In- och utcheckning för personalen (personalliggaren).
-      { to: '/personalliggare', label: 'Personalliggare', icon: 'badge', tour: 'nav-personalliggare', feature: 'personalliggare' },
+      { to: '/personalliggare', label: 'Personalliggare', icon: 'badge', tour: 'nav-personalliggare', feature: 'personalliggare', area: 'personalliggare' },
       // Telefonassistenten: samtal, återuppringningar och avstängning; inställningarna är ägarens.
-      { to: '/telefon', label: 'Telefon', icon: 'phone', tour: 'nav-telefon', feature: 'phoneAgent' },
+      { to: '/telefon', label: 'Telefon', icon: 'phone', tour: 'nav-telefon', feature: 'phoneAgent', area: 'telefon' },
     ],
   },
   {
     id: 'restaurang',
     label: 'Restaurang',
     items: [
-      { to: '/meny', label: 'Meny', icon: 'book', tour: 'nav-meny' },
-      { to: '/layout', label: 'Layout', icon: 'tool-floor', tour: 'nav-layout' },
-      // Medarbetarnas inloggningar; bara ägaren bjuder in och hanterar.
-      { to: '/personal', label: 'Personal', icon: 'staff', tour: 'nav-personal', ownerOnly: true },
+      { to: '/meny', label: 'Meny', icon: 'book', tour: 'nav-meny', area: 'meny' },
+      { to: '/layout', label: 'Layout', icon: 'tool-floor', tour: 'nav-layout', area: 'layout' },
+      // Medarbetarnas inloggningar och behörigheter.
+      { to: '/personal', label: 'Personal', icon: 'staff', tour: 'nav-personal', area: 'personal' },
     ],
   },
   {
@@ -67,19 +69,19 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'tillvaxt',
     label: 'Tillväxt',
     items: [
-      { to: '/gaster', label: 'Gäster', icon: 'users', tour: 'nav-gaster', feature: 'guestCrm' },
-      { to: '/presentkort', label: 'Presentkort', icon: 'gift', tour: 'nav-presentkort', feature: 'giftCards', ownerOnly: true },
-      { to: '/webbplats', label: 'Webbplats', icon: 'globe', tour: 'nav-webbplats', feature: 'siteBuilder', ownerOnly: true },
+      { to: '/gaster', label: 'Gäster', icon: 'users', tour: 'nav-gaster', feature: 'guestCrm', area: 'gaster' },
+      { to: '/presentkort', label: 'Presentkort', icon: 'gift', tour: 'nav-presentkort', feature: 'giftCards', area: 'presentkort' },
+      { to: '/webbplats', label: 'Webbplats', icon: 'globe', tour: 'nav-webbplats', feature: 'siteBuilder', area: 'webbplats' },
       // Biljetter till kvällar och middagar; personalen scannar vid dörren, ägaren redigerar.
-      { to: '/evenemang', label: 'Evenemang', icon: 'ticket', tour: 'nav-evenemang', feature: 'events' },
-      // Utskick, annonser, omdömen och inlägg; bara ägare, när minst en av dem ingår i planen.
+      { to: '/evenemang', label: 'Evenemang', icon: 'ticket', tour: 'nav-evenemang', feature: 'events', area: 'evenemang' },
+      // Utskick, annonser, omdömen och inlägg, när minst en av dem ingår i planen.
       {
         to: '/marknadsforing',
         label: 'Marknadsföring',
         icon: 'megaphone',
         tour: 'nav-marknadsforing',
         feature: ['marketing', 'metaAds', 'googleBusiness', 'socialPosting'],
-        ownerOnly: true,
+        area: 'marknadsforing',
       },
     ],
   },
@@ -89,35 +91,38 @@ export const NAV_GROUPS: NavGroup[] = [
 export const NAV_FOOTER: NavItem[] = [
   { to: '/installningar', label: 'Inställningar', icon: 'gear', tour: 'nav-installningar' },
   { to: '/hjalp', label: 'Hjälp', icon: 'help', tour: 'nav-hjalp' },
-  // Leder till kortet Skrivbordsappen i Inställningar > Den här enheten.
+  // Leder till grenen Appen i Inställningar, Den här enheten.
   { to: '/installningar#skrivbordsappen', label: 'Ladda ner appen', icon: 'download', tour: 'nav-ladda-ner', browserOnly: true },
   // Samma kort på telefonen: där installeras appen på hemskärmen.
   { to: '/installningar#skrivbordsappen', label: 'Installera appen', icon: 'phone', tour: 'nav-installera-appen', phoneOnly: true },
 ]
 
-/** Får användaren se länken (plan, roll, statistik)? */
+/** Får användaren se länken (plan, behörighet)? */
 export function navVisible(item: NavItem, tenant: Tenant | null): boolean {
   return (
     (!item.feature || hasFeature(tenant, item.feature)) &&
-    (!item.ownerOnly || tenant?.role === 'owner_user') &&
-    (!item.insights || canSeeInsights(tenant)) &&
+    (!item.area || canOpen(tenant, item.area)) &&
     (!item.browserOnly || showDownloadNav()) &&
     (!item.phoneOnly || showPhoneInstallNav())
   )
 }
 
 /**
- * Får rollen öppna sidan? Ägarsidor (ownerOnly) och Statistik när ägaren har
- * stängt av den för personalen. Menyn döljer länkarna; det här stoppar den
- * som skriver adressen själv. Servern svarar ändå 403 på ägarens data.
+ * Får den inloggade öppna sidan? Personalen bara de områden ägaren har gett
+ * den. Menyn döljer länkarna; det här stoppar den som skriver adressen själv.
+ * Servern svarar ändå 403 `no_access`.
  */
 export function roleAllows(pathname: string, tenant: Tenant | null): boolean {
   if (!tenant) return true
-  return NAV_GROUPS.flatMap((g) => g.items).every(
-    (item) =>
-      !onItem(pathname, item) ||
-      ((!item.ownerOnly || tenant.role === 'owner_user') && (!item.insights || canSeeInsights(tenant))),
-  )
+  const area = areaOf(pathname)
+  return !area || canOpen(tenant, area)
+}
+
+/** Området en sökväg hör till (även undersidor som /catering/... och /cateringkalkyl). */
+export function areaOf(pathname: string): Area | null {
+  if (pathname === '/cateringkalkyl' || pathname.startsWith('/cateringkalkyl/')) return 'catering'
+  const item = NAV_GROUPS.flatMap((g) => g.items).find((i) => i.area && onItem(pathname, i))
+  return item?.area ?? null
 }
 
 /** Är sidan länkens? */

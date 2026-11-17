@@ -5,6 +5,7 @@ import { ErrorNote } from '../../shared/ErrorNote'
 import { errorText } from '../../shared/errors'
 import { replaceTenant, useTenant } from '../../shared/tenant'
 import { acceptTerms } from './dpaApi'
+import { NewVersionNote } from './NewVersionNote'
 import { TERMS_INTRO, TERMS_SECTIONS, TERMS_TITLE, TERMS_VERSION } from './termsText'
 
 function formatDate(iso: string): string {
@@ -25,6 +26,7 @@ export function TermsSection() {
   const [checked, setChecked] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [outdated, setOutdated] = useState(false)
   const terms = tenant?.terms
   const isOwner = tenant?.role === 'owner_user'
   const upToDate = Boolean(terms?.upToDate)
@@ -34,19 +36,18 @@ export function TermsSection() {
     if (!tenant || !checked) return
     setBusy(true)
     setError(null)
+    setOutdated(false)
     try {
       replaceTenant(await acceptTerms(tenant))
     } catch (err) {
-      const outdated = err instanceof ApiError && err.status === 409
-      if (outdated) {
+      if (err instanceof ApiError && err.status === 409) {
+        // Nyare villkor på servern än i appen: de kommer med nästa version.
         setChecked(false)
+        setOutdated(true)
         void refresh()
+        return
       }
-      setError(
-        outdated
-          ? 'Villkoren har uppdaterats sedan du öppnade sidan. Läs den nya versionen och godkänn igen.'
-          : errorText(err, 'Kunde inte spara.'),
-      )
+      setError(errorText(err, 'Villkoren godkändes inte.'))
     } finally {
       setBusy(false)
     }
@@ -69,13 +70,14 @@ export function TermsSection() {
         ))}
       </article>
       {terms && !upToDate && (
-        <section className="admin-card table-card">
+        <section className="admin-card table-card dpa-accept-card">
           {isOwner ? (
             <form className="dpa-accept" onSubmit={accept}>
               <label className="dpa-check">
                 <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
                 <span>Jag har läst villkoren och har rätt att godkänna dem för {tenant?.name ?? 'restaurangen'}.</span>
               </label>
+              {outdated && <NewVersionNote what="villkoren" />}
               <ErrorNote text={error} />
               <div className="row-actions">
                 <button type="submit" className="btn primary square" disabled={!checked || busy}>

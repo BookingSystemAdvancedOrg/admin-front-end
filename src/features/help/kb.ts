@@ -1,6 +1,8 @@
 import type { FeatureKey } from '../../shared/contracts'
 import { NAV_FOOTER, NAV_GROUPS, navVisible, onItem } from '../../shared/nav'
 import type { Tenant } from '../../shared/tenant'
+import { AREAS, canOpen } from '../../shared/access'
+import type { Area } from '../../shared/access'
 import { isDesktopShell } from '../../shared/desktopDownloads'
 import data from './helpKb.json'
 
@@ -44,8 +46,10 @@ export type HelpEntry = {
   title: string
   audience: 'all' | 'owner'
   feature?: FeatureKey | FeatureKey[] | null
-  /** Statistik: personalen ser den bara om ägaren tillåter det. */
+  /** Statistik: personalen ser den bara om ägaren tillåter det (äldre korpus). */
   insights?: boolean
+  /** Området sidan hör till: personalen ser texten bara med behörighet (access.ts). */
+  area?: Area
   keywords: string[]
   answer: string
   steps: string[]
@@ -127,13 +131,16 @@ export type HelpView = {
   role: Tenant['role'] | null
   features: Record<string, boolean>
   staffInsights: boolean
+  /** Områdena den inloggade får öppna; saknas = rollen och statistikvalet avgör. */
+  areas?: Area[]
 }
 
 export function viewOf(tenant: Tenant | null): HelpView {
   return {
     role: tenant?.role ?? null,
     features: tenant?.entitlements.features ?? {},
-    staffInsights: (tenant?.insights?.staffAccess ?? 'operations') !== 'none',
+    staffInsights: canOpen(tenant, 'statistik'),
+    areas: AREAS.map((a) => a.area).filter((a) => canOpen(tenant, a)),
   }
 }
 
@@ -141,10 +148,16 @@ export function viewOf(tenant: Tenant | null): HelpView {
 export const DOWNLOAD_ENTRIES = ['ladda-ner-appen']
 
 /** Får den inloggade se hjälptexten (roll, plan, statistik)? Samma regel som servern. */
-export function entryVisible(entry: Pick<HelpEntry, 'id' | 'audience' | 'feature' | 'insights'>, view: HelpView): boolean {
+export function entryVisible(entry: Pick<HelpEntry, 'id' | 'audience' | 'feature' | 'insights' | 'area'>, view: HelpView): boolean {
   // Om att ladda ner appen: inte i skrivbordsappen själv.
   if (DOWNLOAD_ENTRIES.includes(entry.id) && isDesktopShell()) return false
-  if (entry.audience === 'owner' && view.role !== 'owner_user') return false
+  // Med ett område avgör behörigheten, annars rollen.
+  if (entry.area && view.areas) {
+    if (view.role !== 'owner_user' && !view.areas.includes(entry.area)) return false
+  } else {
+    if (entry.audience === 'owner' && view.role !== 'owner_user') return false
+    if (entry.area === 'statistik' && view.role !== 'owner_user' && !view.staffInsights) return false
+  }
   if (entry.feature) {
     const keys = Array.isArray(entry.feature) ? entry.feature : [entry.feature]
     if (!keys.some((k) => view.features[k])) return false

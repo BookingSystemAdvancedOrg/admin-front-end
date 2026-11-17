@@ -23,6 +23,7 @@ import type { ImageFocus } from './imageFocus'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { Select } from '../../shared/Select'
+import { useConfirm } from '../../shared/ConfirmDialog'
 
 export interface DishFormValues {
   name: string
@@ -147,14 +148,34 @@ export function DishModal({
   }, [locationId])
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // Stäng med Escape.
+  // Ändrat något i formuläret? Då frågar ett klick utanför eller Escape först.
+  const snapshot = JSON.stringify([
+    name, description, category, allergens, optionDrafts, removeImage, price, active, alcohol,
+    imageFile ? [imageFile.name, imageFile.size] : null, imageFocus, fromInput, untilInput, scheduleOn, station, parts,
+  ])
+  const [initialSnapshot] = useState(snapshot)
+  const [confirmEl, ask] = useConfirm()
+  const closeRef = useRef<() => void>(() => {})
+  closeRef.current = () => {
+    if (snapshot === initialSnapshot) {
+      onCancel()
+      return
+    }
+    void ask({ title: 'Släng ändringarna?', confirmLabel: 'Släng', cancelLabel: 'Fortsätt redigera', danger: true }).then(
+      (ok) => ok && onCancel(),
+    )
+  }
+  const zoomedRef = useRef(zoomed)
+  zoomedRef.current = zoomed
+
+  // Stäng med Escape (inte när bilden visas stort: Escape stänger då bara den).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel()
+      if (e.key === 'Escape' && !zoomedRef.current) closeRef.current()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onCancel])
+  }, [])
 
   function onPickImage(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -180,7 +201,7 @@ export function DishModal({
   const availableUntil = scheduleValue(untilInput, initialUntil, initial?.availableUntil ?? null, timeZone)
   const orderError =
     availableFrom && availableUntil && Date.parse(availableUntil) <= Date.parse(availableFrom)
-      ? 'Slutet måste vara efter starten.'
+      ? 'Sluttiden är före starttiden. Välj en sluttid efter starten.'
       : null
   const scheduleWarning =
     !orderError && availableUntil && Date.parse(availableUntil) <= openedAt
@@ -221,7 +242,7 @@ export function DishModal({
         options: optionsResult.groups,
       })
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara.'))
+      setError(errorText(err, 'Rätten sparades inte.'))
       focusErrorField(err, {
         name: 'dish-name', description: 'dish-description', category: 'dish-category', price: 'dish-price',
       })
@@ -231,8 +252,9 @@ export function DishModal({
   }
 
   return (
+    <>
     <ModalOverlay
-      onPointerDown={(e) => e.target === e.currentTarget && onCancel()}
+      onPointerDown={(e) => e.target === e.currentTarget && closeRef.current()}
     >
       <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
         <h2>{title}</h2>
@@ -581,5 +603,7 @@ export function DishModal({
         <ImageLightbox src={preview} alt={name.trim() || 'Rättens bild'} onClose={() => setZoomed(false)} />
       )}
     </ModalOverlay>
+    {confirmEl}
+    </>
   )
 }

@@ -122,13 +122,13 @@ describe('ResetPasswordPage', () => {
     await user.type(screen.getByLabelText('E-post'), 'anna@kallarestaurang.se')
     await user.type(screen.getByLabelText('Kod från mejlet'), '123')
     await choosePassword(user)
-    expect(screen.getByRole('alert')).toHaveTextContent('Koden är de sex siffrorna i mejlet.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Koden ska vara de sex siffrorna i mejlet, till exempel 123456.')
 
     await user.type(screen.getByLabelText('Kod från mejlet'), '456')
     await user.clear(screen.getByLabelText('Nytt lösenord'))
     await user.clear(screen.getByLabelText('Bekräfta lösenord'))
     await choosePassword(user, PASSWORD, PASSWORD + 'x')
-    expect(screen.getByRole('alert')).toHaveTextContent('Lösenorden matchar inte.')
+    expect(screen.getByRole('alert')).toHaveTextContent('De två lösenorden är inte likadana. Skriv samma lösenord i båda fälten.')
 
     expect(confirmPasswordReset).not.toHaveBeenCalled()
   })
@@ -168,7 +168,7 @@ describe('ResetPasswordPage', () => {
 
     await choosePassword(user)
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Lösenordet uppfyller inte kraven.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Lösenordet följer inte reglerna. Se listan under fältet och försök igen.')
     expect(screen.queryByRole('link', { name: 'Begär en ny länk' })).toBeNull()
   })
 

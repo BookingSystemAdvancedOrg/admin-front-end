@@ -295,12 +295,17 @@
   color: var(--ink);
 }
 
-/* Vridpilarna (⟲ ⟳) är små tecken i typsnittet: större, samma knapphöjd. */
+/* Vridpilarna: samma linjeikon som ångra/gör om; moturs är den spegelvänd. */
 .view-toggle button.view-icon {
-  padding: 6px 14px;
-  font-size: 22px;
+  display: inline-grid;
+  place-items: center;
+  padding: 6px 12px;
   line-height: 1;
   color: var(--ink);
+}
+
+.view-toggle button.view-icon .icon-mirror {
+  transform: scaleX(-1);
 }
 
 .view-toggle .zoom-value {
@@ -626,7 +631,7 @@
   font: 700 10px/1 var(--sans);
   letter-spacing: 0.08em;
   color: var(--muted);
-  background: rgb(var(--bq-snow-rgb) / 0.9);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
   padding: 3px 7px;
   border-radius: var(--r-md);
   white-space: nowrap;
@@ -634,8 +639,7 @@
 
 .seg.kitchen .seg-tag span,
 .seg.entrance .seg-tag span {
-  color: #0058b0;
-  background: rgba(235, 244, 255, 0.92);
+  color: var(--accent-ink);
 }
 
 /* --- Bord --------------------------------------------------------------- */
@@ -1499,4 +1503,35 @@
 }
 .props-tip p {
   margin: 8px 0 0;
+}
+
+/* Bokningar på bord som en ny version tar bort (409 bookings_on_removed_tables) */
+.removed-bookings {
+  list-style: none;
+  margin: 8px 0 12px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--glass-well);
+  max-height: 240px;
+  overflow-y: auto;
+}
+.removed-bookings li {
+  display: grid;
+  grid-template-columns: 5.5em 3.5em minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: baseline;
+  padding: 8px 12px;
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.removed-bookings li + li { border-top: 1px solid var(--border); }
+.removed-bookings-day,
+.removed-bookings-table { color: var(--muted); }
+.removed-bookings-guest { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 600px) {
+  .removed-bookings li { grid-template-columns: 5.5em 3.5em minmax(0, 1fr); }
+  .removed-bookings-table { grid-column: 3; }
 }

@@ -20,6 +20,10 @@ import {
 } from './api'
 import './gaster.css'
 import { ErrorActions } from '../../shared/ErrorNote'
+import { PlanLocked } from '../../shared/PlanLocked'
+import { SkelRows } from '../../shared/Skeleton'
+import { Loading } from '../../shared/Loading'
+import { useConfirm } from '../../shared/ConfirmDialog'
 
 const KIND_LABEL = { booking: 'Bokning', order: 'Beställning', catering: 'Catering' } as const
 const CONSENT_LABEL = { granted: 'Ja', withdrawn: 'Nej, återkallat', none: 'Inget svar' } as const
@@ -38,10 +42,7 @@ export default function GasterPage() {
         {enabled ? (
           <GuestList owner={owner} locations={tenant?.locations ?? []} />
         ) : (
-          <section className="admin-card table-card">
-            <h2 className="card-title">Ingår inte i er plan</h2>
-            <p className="cell-muted">Kontakta oss för att uppgradera.</p>
-          </section>
+          <PlanLocked />
         )}
       </main>
     </>
@@ -58,44 +59,85 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [rebuilding, setRebuilding] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const moreRef = useRef(false)
+  /** Det senaste anropet, så att Försök igen gör om just det (lista, Visa fler eller sökning). */
+  const retryRef = useRef<() => void>(() => undefined)
+  /** Bara det senaste anropet får skriva listan: en gammal sida landar inte i en ny lista. */
+  const seq = useRef(0)
+  /** Sökningen som visas (null = listan), så att ett byte av Restaurang söker om i stället för att visa listan. */
+  const searchRef = useRef<{ by: SearchKind; value: string } | null>(null)
 
   // Levande bara för första sidan av listan (inte sökträffar eller "Visa fler").
   const [paging, setPaging] = useState<'first' | 'more' | 'search'>('first')
   useLiveRefresh(async () => {
+    const my = seq.current
     const page = await listGuests({ cursor: null, locationId: locationId || null })
+    if (my !== seq.current) return
     setGuests(page.guests)
     setCursor(page.cursor)
   }, { enabled: paging === 'first' && guests !== null })
 
   const load = useCallback(async (next: string | null, append: boolean) => {
+    // "Visa fler" två gånger snabbt: andra trycket väntar inte på samma sida igen.
+    if (append && moreRef.current) return
+    retryRef.current = () => void load(next, append)
+    const my = ++seq.current
     setError(null)
     setPaging(append ? 'more' : 'first')
+    if (append) {
+      moreRef.current = true
+      setLoadingMore(true)
+    }
     try {
       const page = await listGuests({ cursor: next, locationId: locationId || null })
+      if (my !== seq.current) return
       setGuests((prev) => (append && prev ? [...prev, ...page.guests] : page.guests))
       setCursor(page.cursor)
     } catch (err) {
-      setError(errorText(err, 'Kunde inte hämta gästerna.'))
+      if (my !== seq.current) return
+      setError(errorText(err, 'Gästerna kunde inte visas.'))
+    } finally {
+      if (append) {
+        moreRef.current = false
+        setLoadingMore(false)
+      }
     }
   }, [locationId])
 
   useEffect(() => {
-    void load(null, false)
+    const active = searchRef.current
+    if (active) void runSearch(active.by, active.value)
+    else void load(null, false)
+    // runSearch läser locationId från samma rendering som load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load])
 
-  async function search(e: React.FormEvent) {
+  function search(e: React.FormEvent) {
     e.preventDefault()
     const value = query.trim()
-    if (!value) return void load(null, false)
+    if (!value) {
+      searchRef.current = null
+      return void load(null, false)
+    }
+    void runSearch(kind, value)
+  }
+
+  async function runSearch(by: SearchKind, value: string) {
+    retryRef.current = () => void runSearch(by, value)
+    searchRef.current = { by, value }
+    const my = ++seq.current
     setSearching(true)
     setError(null)
     try {
-      const body = kind === 'email' ? { email: value } : kind === 'phone' ? { phone: value } : { name: value }
-      const found = await searchGuests(body)
+      const body = by === 'email' ? { email: value } : by === 'phone' ? { phone: value } : { name: value }
+      const found = await searchGuests(body, locationId || undefined)
+      if (my !== seq.current) return
       setPaging('search')
       setGuests(found.guests)
       setCursor(null)
     } catch (err) {
+      if (my !== seq.current) return
       setError(errorText(err, 'Sökningen gick inte.', {}, { name: 'namnet' }))
     } finally {
       setSearching(false)
@@ -108,7 +150,7 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
       await rebuildGuests(newId())
       toast('Gästregistret byggs nu från era bokningar och beställningar. Det kan ta några minuter.', { tone: 'success' })
     } catch (err) {
-      toast(errorText(err, 'Det gick inte att bygga gästregistret.', {
+      toast(errorText(err, 'Gästregistret byggdes inte.', {
         rebuild_running: 'Gästregistret byggs redan. Vänta tills det är klart.',
       }), { tone: 'danger' })
     } finally {
@@ -153,14 +195,18 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
           <div className="row-actions">
             <Button type="submit" busy={searching} busyLabel="Söker…">Sök</Button>
             {query ? (
-              <Button type="button" variant="ghost" onClick={() => { setQuery(''); void load(null, false) }}>
+              <Button type="button" variant="ghost" onClick={() => { setQuery(''); searchRef.current = null; void load(null, false) }}>
                 Rensa
               </Button>
             ) : null}
           </div>
         </form>
-        {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
-        {guests === null && !error ? <p className="cell-muted">Hämtar gäster…</p> : null}
+        {error ? (
+          <Bar variant="banner" tone="danger" action={<ErrorActions text={error} onRetry={() => retryRef.current()} />}>{error}</Bar>
+        ) : null}
+        {guests === null && !error ? (
+          <div role="status" aria-label="Hämtar gäster" aria-busy="true"><SkelRows n={5} cols={4} /></div>
+        ) : null}
         {guests && guests.length === 0 ? (
           <p className="admin-empty">
             Inga gäster än.
@@ -192,7 +238,9 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
         ) : null}
         {cursor ? (
           <div className="row-actions">
-            <Button variant="secondary" onClick={() => void load(cursor, true)}>Visa fler</Button>
+            <Button variant="secondary" busy={loadingMore} busyLabel="Hämtar…" disabled={loadingMore} onClick={() => void load(cursor, true)}>
+              Visa fler
+            </Button>
           </div>
         ) : null}
       </Card>
@@ -216,6 +264,7 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
 }) {
   const [guest, setGuest] = useState<GuestDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
   // Formuläret och värdena det utgår från (för att se vad du ändrat och vad som
   // ändrats på annat håll medan du skrev).
   const [form, setForm] = useState<GuestForm>(EMPTY_GUEST_FORM)
@@ -229,6 +278,20 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
     baseRef.current = base
   })
   const set = (patch: Partial<GuestForm>) => setForm((f) => ({ ...f, ...patch }))
+
+  // Ändrat något sedan gästen hämtades eller sparades? Då frågar klick utanför,
+  // Escape och Stäng först, så inget slängs i tysthet.
+  const [confirmEl, ask] = useConfirm()
+  const requestClose = () => {
+    if (saving) return
+    if (JSON.stringify(form) === JSON.stringify(base)) {
+      onClose()
+      return
+    }
+    void ask({ title: 'Släng ändringarna?', confirmLabel: 'Släng', cancelLabel: 'Fortsätt redigera', danger: true }).then(
+      (ok) => ok && onClose(),
+    )
+  }
 
   /** Ny version från servern: fält du inte rört följer med, dina står kvar. */
   const take = useCallback((g: GuestDetail) => {
@@ -256,9 +319,9 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
       setGuest(g)
       setForm(f)
       setBase(f)
-    }).catch((err) => { if (!cancelled) setError(errorText(err, 'Kunde inte hämta gästen.')) })
+    }).catch((err) => { if (!cancelled) setError(errorText(err, 'Gästen kunde inte visas.')) })
     return () => { cancelled = true }
-  }, [guestId])
+  }, [guestId, attempt])
   useLiveRefresh(() => getGuest(guestId).then(take), { enabled: guest !== null && !saving })
 
   const there = guest ? guestForm(guest) : null
@@ -304,9 +367,9 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
       setForm(guestForm(next))
       toast('Sparat.', { tone: 'success' })
     } catch (err) {
-      setSaveError(errorText(err, 'Kunde inte spara.', {
-        invalid_birthday: 'Skriv födelsedagen som MM-DD, till exempel 03-14.',
-        note_too_long: 'Anteckningen får vara högst 300 tecken.',
+      setSaveError(errorText(err, 'Gästen sparades inte.', {
+        invalid_birthday: 'Födelsedagen ser fel ut. Skriv månad och dag, till exempel 03-14.',
+        note_too_long: 'Anteckningen är för lång. Den får vara högst 300 tecken.',
       }, { tags: 'taggarna' }))
     } finally {
       setSaving(false)
@@ -314,18 +377,21 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
   }
 
   return (
+    <>
     <Modal
       open
       size="wide"
       title={guest ? guest.name || 'Gäst' : 'Gäst'}
-      onClose={onClose}
+      onClose={requestClose}
       closeLabel="Stäng"
       footer={owner && guest ? (
         <Button busy={saving} busyLabel="Sparar…" onClick={save}>Spara</Button>
       ) : undefined}
     >
-      {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
-      {!guest && !error ? <p className="cell-muted">Hämtar…</p> : null}
+      {error ? (
+        <Bar variant="banner" tone="danger" action={<ErrorActions text={error} onRetry={() => { setError(null); setAttempt((n) => n + 1) }} />}>{error}</Bar>
+      ) : null}
+      {!guest && !error ? <Loading variant="inline" label="Hämtar gästen" /> : null}
       {guest ? (
         <>
           <dl className="gaster-facts">
@@ -388,6 +454,8 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
         </>
       ) : null}
     </Modal>
+    {confirmEl}
+    </>
   )
 }
 

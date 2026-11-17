@@ -242,7 +242,7 @@ export const ERRORS: Record<string, string> = {
   invalid_retention: 'Välj hur länge inspelningarna sparas: 7, 30 eller 90 dagar.',
   invalid_cap: 'Skriv minuttaket som ett helt tal, till exempel 300. Det får inte vara högre än Booqy tillåter.',
   invalid_hours: 'Tiderna går inte ihop. Varje period ska sluta efter att den börjar, till exempel 11:00-22:00.',
-  invalid_phone: 'Numret ser fel ut. Skriv det med +46 först, till exempel +46701234567.',
+  invalid_phone: 'Numret ser fel ut. Skriv det så här: 070 123 45 67.',
   invalid_max_call: 'Ett samtal får vara 2 till 15 minuter. Skriv till exempel 5.',
   text_too_long: 'Texten är för lång. Korta den och spara igen.',
   number_unavailable: 'Det finns inget ledigt nummer just nu. Det är Booqys fel, inte ert. Försök igen om en stund.',

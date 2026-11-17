@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Bar, Button, Card, Field, Input, Modal, toast } from '@booqy/brand'
 import { BrandSelect as Select } from '../../shared/Select'
 import { AdminTopbar } from '../../shared/AdminTopbar'
-import { errorText } from '../../shared/errors'
+import { booqyFaultText, errorText } from '../../shared/errors'
 import { currentLocation, useTenant } from '../../shared/tenant'
 import { NoLocation } from '../../shared/NoLocation'
 import { PlanLocked } from '../../shared/PlanLocked'
@@ -509,9 +509,11 @@ function Export({ locationId }: { locationId: string }) {
   const [to, setTo] = useState(today)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ count: number; chainOk: boolean; firstBadSeq?: number } | null>(null)
+  // Kedjan bröts: Booqys fel, med Försök igen och Rapportera till Booqy.
+  const [broken, setBroken] = useState<string | null>(null)
 
-  async function run(e: React.FormEvent) {
-    e.preventDefault()
+  async function run(e?: React.FormEvent) {
+    e?.preventDefault()
     setBusy(true)
     try {
       const file = await exportLedger(locationId, from, to)
@@ -522,6 +524,7 @@ function Export({ locationId }: { locationId: string }) {
       a.click()
       URL.revokeObjectURL(url)
       setResult(file)
+      setBroken(file.chainOk ? null : booqyFaultText(`Liggaren ser ändrad ut från rad ${file.firstBadSeq ?? '?'}. Lämna inte ut filen.`, 'ledger_chain_broken'))
     } catch (err) {
       toast(errorText(err, 'Exporten blev inte klar.', ERRORS), { tone: 'danger' })
     } finally {
@@ -542,7 +545,7 @@ function Export({ locationId }: { locationId: string }) {
       {result ? (
         result.chainOk
           ? <Bar variant="banner" tone="success">{result.count} rader. Kontrollen visar att inget i liggaren har ändrats.</Bar>
-          : <Bar variant="banner" tone="danger">{result.count} rader. Kontrollen hittade ett fel vid rad {result.firstBadSeq}. Kontakta Booqy innan du lämnar ut filen.</Bar>
+          : <Bar variant="banner" tone="danger" action={<ErrorActions text={broken} onRetry={() => void run()} />}>{result.count} rader. {broken}</Bar>
       ) : null}
     </Card>
   )

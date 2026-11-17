@@ -420,7 +420,7 @@ function BlockEditor({ block, images, pages, invalid, onChange, actions }: {
       </div>
       <div className="webbplats-fields">
         {fields.map((f) => (
-          <Field key={f} label={FIELD_LABEL[f]} error={invalid ? 'Kolla det här fältet och spara igen.' : undefined}>
+          <Field key={f} label={FIELD_LABEL[f]} error={invalid ? 'Något i blocket är fel ifyllt. Rätta det och spara igen.' : undefined}>
             {f === 'body' ? (
               <textarea className="bq-input" rows={4} maxLength={FIELD_MAX[f]} value={block[f] ?? ''} onChange={(e) => onChange({ ...block, [f]: e.target.value })} />
             ) : (

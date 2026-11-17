@@ -4,8 +4,8 @@ import { Bar, Button, Card, Field, Input, Printing } from '@booqy/brand'
 import { BrandSelect as Select } from '../../shared/Select'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { ApiError } from '../../shared/api'
-import { errorInfo, errorText } from '../../shared/errors'
-import { ErrorActions } from '../../shared/ErrorNote'
+import { errorText } from '../../shared/errors'
+import { RetryBanner } from './RetryBanner'
 import { withBusy } from '../../shared/motion/busy'
 import { useTenant } from '../../shared/tenant'
 import type { BusinessHours } from '../installningar/locationApi'
@@ -62,13 +62,7 @@ export default function SettingsWizard({ locationId, onSaved, startAt = null }: 
   useEffect(() => { void load() }, [load])
 
   if (loadError) {
-    return (
-      <Bar variant="banner" tone="danger" action={errorInfo(loadError)?.actor === 'booqy'
-        ? <ErrorActions text={loadError} onRetry={() => void load()} />
-        : <Button size="sm" variant="secondary" onClick={() => void load()}>{SETUP.buttons.retry}</Button>}>
-        {loadError}
-      </Bar>
-    )
+    return <RetryBanner text={loadError} onRetry={() => void load()} />
   }
   if (!data) return <Printing label="Hämtar inställningarna" />
 
@@ -353,11 +347,7 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
             onTest={(test) => setD((prev) => ({ ...prev, test }))} onTested={onLoc} onGoStep={go} onDone={onExit} />
         ) : null}
 
-        {d.bannerError ? (
-          <Bar variant="banner" tone="danger" action={
-            <Button size="sm" variant="secondary" type="button" onClick={() => void retry.current?.()}>{SETUP.buttons.retry}</Button>
-          }>{d.bannerError}</Bar>
-        ) : null}
+        {d.bannerError ? <RetryBanner text={d.bannerError} onRetry={() => void retry.current?.()} /> : null}
 
         <div className="telefon-foot">
           {n > 1 ? <Button type="button" variant="secondary" onClick={back}>{SETUP.buttons.back}</Button> : <span />}

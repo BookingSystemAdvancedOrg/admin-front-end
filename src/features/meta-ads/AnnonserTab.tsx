@@ -277,7 +277,7 @@ function Campaigns({ locationId, blocked }: { locationId: string; blocked: boole
                   <td>{c.budgetSek.toLocaleString('sv-SE')} kr</td>
                   <td>
                     <span className="status-badge">{STATUS_LABEL[c.status]}</span>
-                    {c.status === 'failed' && c.error ? <span className="cell-muted"> {FAILED_LABEL[c.error.code] ?? ''}</span> : null}
+                    {c.status === 'failed' && c.error ? <span className="cell-muted"> {FAILED_LABEL[c.error.code] ?? FAILED_LABEL.start_failed}</span> : null}
                   </td>
                 </tr>
               ))}

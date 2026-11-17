@@ -154,7 +154,8 @@ describe('PersonalliggarePage', () => {
     render(<PersonalliggarePage />)
     fireEvent.click(await screen.findByRole('tab', { name: 'Exportera' }))
     fireEvent.click(screen.getByRole('button', { name: 'Ladda ner CSV' }))
-    expect(await screen.findByText(/hittade ett fel vid rad 3/)).toBeInTheDocument()
+    expect(await screen.findByText(/Liggaren ser ändrad ut från rad 3\. Lämna inte ut filen\./)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Rapportera till Booqy' })).toBeInTheDocument()
   })
 })
 

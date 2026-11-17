@@ -103,7 +103,7 @@ export const GOALS: { id: Goal; label: string; text: string }[] = [
 
 export const STATUS_LABEL: Record<CampaignStatus, string> = {
   publishing: 'Skapas hos Meta…', paused: 'Pausad', active: 'Visas', completed: 'Avslutad',
-  failed: 'Kunde inte skapas', rejected: 'Nekad av Meta',
+  failed: 'Skapades inte', rejected: 'Nekad av Meta',
 }
 
 export const MISSING_LABEL: Record<Assets['missing'][number]['kind'], string> = {

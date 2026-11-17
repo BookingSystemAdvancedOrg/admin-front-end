@@ -3,8 +3,8 @@ import { Bar, Button, LinkButton, Printing } from '@booqy/brand'
 import { Icon } from '../../shared/Icon'
 import { HowTo } from './ForwardingStep'
 import { formatPhoneNational } from '../../shared/phone'
-import { booqyFaultText, errorInfo, errorText } from '../../shared/errors'
-import { ErrorActions } from '../../shared/ErrorNote'
+import { booqyFaultText, errorText } from '../../shared/errors'
+import { RetryBanner } from './RetryBanner'
 import { ERRORS, MODE_LABEL, REFUSED_LABEL, SETUP, listCalls, postSetupPatch, today, type LocationConfig } from './api'
 import { currentPlatform, type Platform, type Step } from './setup'
 
@@ -138,11 +138,7 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, h
         <p className="telefon-line">
           {test.reason === 'hours' ? `Assistenten svarar ${MODE_LABEL[loc.mode].toLowerCase()}.` : 'Samtalet syns under Samtal.'}
         </p>
-        {saveError ? (
-          <Bar variant="banner" tone="danger" action={<Button size="sm" variant="secondary" onClick={() => void markTested(loc)}>{SETUP.buttons.retry}</Button>}>
-            {saveError}
-          </Bar>
-        ) : null}
+        {saveError ? <RetryBanner text={saveError} onRetry={() => void markTested(loc)} /> : null}
         <Button variant="primary" type="button" wide onClick={onDone}>{SETUP.buttons.done}</Button>
       </div>
     )
@@ -228,20 +224,9 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, h
       ) : null}
 
       {status === 'failed' ? (
-        <PollFailed retry={start} />
+        // Provsamtalet syns inte efter flera försök: Booqys fel (eller ingen uppkoppling).
+        <RetryBanner text={booqyFaultText('Vi ser inte provsamtalet just nu.')} onRetry={start} />
       ) : null}
     </div>
-  )
-}
-
-/** Provsamtalet syns inte efter flera försök: Booqys fel (eller ingen uppkoppling), med Försök igen. */
-function PollFailed({ retry }: { retry: () => void }) {
-  const text = booqyFaultText('Vi ser inte provsamtalet just nu.')
-  return (
-    <Bar variant="banner" tone="danger" action={errorInfo(text)?.actor === 'booqy'
-      ? <ErrorActions text={text} onRetry={retry} />
-      : <Button size="sm" variant="secondary" onClick={retry}>{SETUP.buttons.retry}</Button>}>
-      {text}
-    </Bar>
   )
 }

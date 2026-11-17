@@ -14,7 +14,7 @@ export const KINDS: PrinterKind[] = ['kok', 'dryck', 'annat']
 
 export const KIND_LABEL: Record<PrinterKind, string> = { kok: 'Kök', dryck: 'Dryck', annat: 'Annat' }
 
-export const KIND_ICON: Record<PrinterKind, IconName> = { kok: 'tool-kitchen', dryck: 'glass', annat: 'flame' }
+export const KIND_ICON: Record<PrinterKind, IconName> = { kok: 'tool-kitchen', dryck: 'glass', annat: 'station' }
 
 /** Förslag på namn när en ny skrivare läggs till: "Kök 1", "Bar", "Station 1". */
 export function suggestName(kind: PrinterKind, printers: Printer[]): string {

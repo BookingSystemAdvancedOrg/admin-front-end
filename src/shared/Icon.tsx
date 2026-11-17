@@ -66,7 +66,7 @@ export type IconName =
   | 'chevron-right'
   | 'more'
   | 'glass'
-  | 'flame'
+  | 'station'
 
 // Egna ikoner, 24x24 med 1.8 px linje.
 const DRAWN: Record<IconName, string> = {
@@ -100,7 +100,8 @@ const DRAWN: Record<IconName, string> = {
   plus: '<path d="M12 5v14M5 12h14"/>',
   minus: '<path d="M5 12h14"/>',
   glass: '<path d="M7 3.5h10l-.6 5.2a4.4 4.4 0 0 1-8.8 0zM7.4 7h9.2M12 13.2v6.3M8.5 20.5h7"/>',
-  flame: '<path d="M12 21a6 6 0 0 1-6-6c0-3.6 3-5.6 3.6-9.5 2.4 1.6 3.6 3.6 3.9 6 .7-.8 1.1-1.8 1.2-3 1.9 1.6 3.3 4 3.3 6.5a6 6 0 0 1-6 6zM12 21a2.6 2.6 0 0 1-2.6-2.6c0-1.6 1.3-2.4 2.6-4.1 1.3 1.7 2.6 2.5 2.6 4.1A2.6 2.6 0 0 1 12 21z"/>',
+  // Annat-skrivare. Noun-ersättare: icons/noun/station.svg (glass: icons/noun/glass.svg).
+  station: '<path d="M12 21a6 6 0 0 1-6-6c0-3.6 3-5.6 3.6-9.5 2.4 1.6 3.6 3.6 3.9 6 .7-.8 1.1-1.8 1.2-3 1.9 1.6 3.3 4 3.3 6.5a6 6 0 0 1-6 6zM12 21a2.6 2.6 0 0 1-2.6-2.6c0-1.6 1.3-2.4 2.6-4.1 1.3 1.7 2.6 2.5 2.6 4.1A2.6 2.6 0 0 1 12 21z"/>',
   printer: '<path d="M7 9V4h10v5M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9h14a1.5 1.5 0 0 1 1.5 1.5v5A1.5 1.5 0 0 1 19 17h-2M7 14h10v6H7z"/>',
   mail: '<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 6 8-6"/>',
   download: '<path d="M12 4v11M7 10.5l5 5 5-5M5 19.5h14"/>',

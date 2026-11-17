@@ -40,7 +40,7 @@ export default function QueuePanel({ locationId, date }: { locationId: string; d
       setLoadError(null)
     } catch (err) {
       // En kö som redan visas står kvar; bara en första hämtning som misslyckas visas som fel.
-      setLoadError(errorText(err, 'Kunde inte hämta kön.', ERRORS))
+      setLoadError(errorText(err, 'Kön kunde inte visas.', ERRORS))
     }
   }, [locationId, date])
 
@@ -83,7 +83,7 @@ export default function QueuePanel({ locationId, date }: { locationId: string; d
       {first && firstEntry ? (
         <Bar variant="banner" tone="info" action={
           <Button size="sm" busy={busy === `offer-${first.entryId}`}
-            onClick={() => void run(`offer-${first.entryId}`, () => offerTable(locationId, firstEntry, first.tableIds, first.startTime), 'Kunde inte erbjuda bordet.')}>
+            onClick={() => void run(`offer-${first.entryId}`, () => offerTable(locationId, firstEntry, first.tableIds, first.startTime), 'Bordet erbjöds inte.')}>
             Erbjud bord
           </Button>
         }>
@@ -111,12 +111,12 @@ export default function QueuePanel({ locationId, date }: { locationId: string; d
                 ) : null}
                 <Button size="sm" busy={busy === `seat-${e.entryId}`}
                   onClick={() => (e.status === 'offered'
-                    ? void run(`seat-${e.entryId}`, () => seatNow(locationId, e), 'Kunde inte placera gästen.')
+                    ? void run(`seat-${e.entryId}`, () => seatNow(locationId, e), 'Gästen placerades inte.')
                     : setPicking({ entry: e, mode: 'seat' }))}>
                   Placera nu
                 </Button>
                 <Button size="sm" variant="ghost" busy={busy === `remove-${e.entryId}`}
-                  onClick={() => void run(`remove-${e.entryId}`, () => removeEntry(locationId, e), 'Kunde inte ta bort.')}>
+                  onClick={() => void run(`remove-${e.entryId}`, () => removeEntry(locationId, e), 'Gästen togs inte bort ur kön.')}>
                   Ta bort
                 </Button>
               </Bar>
@@ -132,7 +132,7 @@ export default function QueuePanel({ locationId, date }: { locationId: string; d
             setPicking(null)
             void run(`${mode}-${entry.entryId}`, () => (mode === 'offer'
               ? offerTable(locationId, entry, v.tableIds, v.startTime)
-              : seatNow(locationId, entry, v.tableIds)), 'Det gick inte.')
+              : seatNow(locationId, entry, v.tableIds)), mode === 'offer' ? 'Bordet erbjöds inte.' : 'Gästen placerades inte.')
           }} />
       ) : null}
       {adding ? <WalkInModal locationId={locationId} onClose={() => setAdding(false)} onAdded={() => { setAdding(false); void load() }} /> : null}
@@ -176,7 +176,7 @@ function WalkInModal({ locationId, onClose, onAdded }: { locationId: string; onC
       toast(`${name.trim()} står i kö.`, { tone: 'success' })
       onAdded()
     } catch (err) {
-      toast(errorText(err, 'Kunde inte ställa gästen i kö.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Gästen ställdes inte i kö.', ERRORS), { tone: 'danger' })
     } finally {
       setSaving(false)
     }

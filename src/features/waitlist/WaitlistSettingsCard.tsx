@@ -28,7 +28,7 @@ function SettingsForm({ locationId }: { locationId: string }) {
     let live = true
     setLoadError(null)
     getQueue(locationId, today()).then((q) => { if (live) setDraft(q.settings) })
-      .catch((err) => { if (live) setLoadError(errorText(err, 'Kunde inte hämta kön.', ERRORS)) })
+      .catch((err) => { if (live) setLoadError(errorText(err, 'Köinställningarna kunde inte visas.', ERRORS)) })
     return () => { live = false }
   }, [locationId])
 
@@ -48,7 +48,7 @@ function SettingsForm({ locationId }: { locationId: string }) {
       setDraft(await saveSettings(locationId, draft))
       toast('Sparat.', { tone: 'success' })
     } catch (err) {
-      toast(errorText(err, 'Kunde inte spara.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Köinställningarna sparades inte.', ERRORS), { tone: 'danger' })
     } finally {
       setSaving(false)
     }

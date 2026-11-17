@@ -41,7 +41,7 @@ export default function AnnonserTab() {
     try {
       setConnection(await getConnection())
     } catch (err) {
-      setError(errorText(err, 'Kunde inte hämta annonserna.', ERRORS))
+      setError(errorText(err, 'Annonserna kunde inte visas.', ERRORS))
     }
   }, [])
   useLiveRefresh(async () => setConnection(await getConnection()))
@@ -63,7 +63,7 @@ export default function AnnonserTab() {
     setParams(next, { replace: true })
     finishConnect(code, oauthState)
       .then((c) => { setConnection(c); toast('Meta är kopplat. Välj konto och sida nedan.', { tone: 'success' }) })
-      .catch((err) => setError(errorText(err, 'Det gick inte att koppla Meta.', ERRORS)))
+      .catch((err) => setError(errorText(err, 'Meta kopplades inte.', ERRORS)))
   }, [params, setParams, load])
 
   async function connect() {
@@ -72,7 +72,7 @@ export default function AnnonserTab() {
       const { authorizeUrl } = await startConnect()
       window.location.assign(authorizeUrl)
     } catch (err) {
-      setError(errorText(err, 'Det gick inte att starta kopplingen.', ERRORS))
+      setError(errorText(err, 'Kopplingen till Meta startade inte.', ERRORS))
       setConnecting(false)
     }
   }
@@ -138,7 +138,7 @@ function ConnectionCard({ connection, onSaved, onDisconnected }: {
       setEditing(false)
       toast('Sparat.', { tone: 'success' })
     } catch (err) {
-      toast(errorText(err, 'Kunde inte spara.', ERRORS, { dsa: 'annonsör och betalare', monthlyCapSek: 'månadstaket' }), { tone: 'danger' })
+      toast(errorText(err, 'Annonsinställningarna sparades inte.', ERRORS, { dsa: 'annonsör och betalare', monthlyCapSek: 'månadstaket' }), { tone: 'danger' })
     } finally {
       setSaving(false)
     }
@@ -149,7 +149,7 @@ function ConnectionCard({ connection, onSaved, onDisconnected }: {
       await disconnect()
       onDisconnected()
     } catch (err) {
-      toast(errorText(err, 'Kunde inte koppla bort Meta.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Meta kopplades inte bort.', ERRORS), { tone: 'danger' })
     }
   }
 
@@ -240,7 +240,7 @@ function Campaigns({ locationId, blocked }: { locationId: string; blocked: boole
       const next = c.status === 'active' ? await pause(locationId, c) : await activate(locationId, c)
       setCampaigns((list) => list?.map((x) => (x.campaignId === next.campaignId ? next : x)) ?? null)
     } catch (err) {
-      toast(errorText(err, 'Det gick inte.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, c.status === 'active' ? 'Annonsen pausades inte.' : 'Annonsen startade inte.', ERRORS), { tone: 'danger' })
     } finally {
       setBusy(null)
     }

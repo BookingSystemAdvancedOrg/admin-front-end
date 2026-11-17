@@ -14,12 +14,12 @@ export default function ShareDishAction({ locationId, menuItemId }: { locationId
     try {
       const { posts } = await draftsFromMenu(locationId, [menuItemId])
       if (!posts.length) {
-        toast('Rätten behöver en bild, och drycker med alkohol delas inte automatiskt.', { tone: 'warning' })
+        toast('Rätten går inte att dela. Den behöver en bild, och drycker med alkohol delas inte.', { tone: 'warning' })
         return
       }
       navigate(`/marknadsforing?flik=inlagg&inlagg=${encodeURIComponent(posts[0].postId)}`)
     } catch (err) {
-      toast(errorText(err, 'Kunde inte skapa inlägget.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Inlägget skapades inte.', ERRORS), { tone: 'danger' })
     } finally {
       setBusy(false)
     }

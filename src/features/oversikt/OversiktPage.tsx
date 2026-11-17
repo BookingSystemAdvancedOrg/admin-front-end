@@ -423,7 +423,7 @@ export default function OversiktPage() {
             ) : loading || retrying ? (
               <SkelRows n={3} cols={3} />
             ) : todayActive === null ? (
-              <ErrorNote text={booqyFaultText('Kunde inte hämta dagens bokningar.')} onRetry={retryOverview} />
+              <ErrorNote text={booqyFaultText('Dagens bokningar kunde inte visas.')} onRetry={retryOverview} />
             ) : (
               <p className="admin-empty">
                 Inga bokningar idag.

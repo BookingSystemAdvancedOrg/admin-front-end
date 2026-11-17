@@ -133,7 +133,7 @@ describe('WebbplatsPage', () => {
     render(<WebbplatsPage />)
     fireEvent.change(await screen.findByLabelText('Sidans namn'), { target: { value: 'Hem' } })
     fireEvent.click(screen.getByRole('button', { name: 'Spara utkast' }))
-    expect(await screen.findByText('En länk pekar på en sida som inte finns.')).toBeInTheDocument()
+    expect(await screen.findByText('En länk går till en sida som inte finns. Välj en annan sida.')).toBeInTheDocument()
     expect(screen.getByText('Meny (kontrollera)')).toBeInTheDocument()
     const item = screen.getByText('Meny (kontrollera)').closest('li')!
     expect(item).toHaveClass('webbplats-block--invalid')

@@ -43,7 +43,7 @@ function Group({ title, info, onSave, children, setFieldErrors }: {
       setFieldErrors({})
       toast('Sparat.', { tone: 'success' })
     } catch (err) {
-      const text = errorText(err, 'Kunde inte spara.', ERRORS)
+      const text = errorText(err, 'Inställningen sparades inte.', ERRORS)
       const field = err instanceof ApiError ? err.field : undefined
       if (field) setFieldErrors({ [field]: text })
       else setBanner(text)
@@ -127,7 +127,7 @@ export default function AdvancedSettings({ locationId, config, loc, open, onOpen
       setConfirmStop(false)
       toast('Assistenten är avstängd. Numret sparas i 30 dagar.', { tone: 'success' })
     } catch (err) {
-      setStopError(errorText(err, 'Kunde inte stänga av.', ERRORS))
+      setStopError(errorText(err, 'Assistenten stängdes inte av.', ERRORS))
     } finally {
       setStopping(false)
     }

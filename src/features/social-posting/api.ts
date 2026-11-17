@@ -48,21 +48,21 @@ export const STATUS_LABEL: Record<PostStatus, string> = {
 export const CHANNEL_LABEL: Record<Channel, string> = { facebook: 'Facebook', instagram: 'Instagram' }
 
 export const ERRORS: Record<string, string> = {
-  meta_not_connected: 'Koppla Facebook och Instagram först (under Annonser).',
-  meta_permission_missing: 'Kopplingen saknar behörighet att publicera. Koppla Meta igen under Annonser.',
-  alcohol_confirmation_required: 'Bekräfta att inlägget om drycken följer alkohollagen innan det publiceras.',
-  invalid_schedule: 'Välj en tid från nu och högst 90 dagar fram.',
-  caption_too_long: 'Texten får vara högst 2 000 tecken.',
-  invalid_channels: 'Välj Facebook, Instagram eller båda.',
-  invalid_state: 'Inlägget kan inte ändras just nu.',
-  image_not_allowed: 'Bilden kan inte användas.',
+  meta_not_connected: 'Facebook och Instagram är inte kopplade än. Koppla dem först under Annonser.',
+  meta_permission_missing: 'Booqy får inte publicera hos Meta än. Koppla Meta igen under Annonser.',
+  alcohol_confirmation_required: 'Inlägget gäller en dryck med alkohol. Bocka i rutan om alkohollagen och försök igen.',
+  invalid_schedule: 'Tiden går inte att använda. Välj en tid från nu och högst 90 dagar fram.',
+  caption_too_long: 'Texten är för lång. Den får vara högst 2 000 tecken.',
+  invalid_channels: 'Välj var inlägget ska synas: Facebook, Instagram eller båda.',
+  invalid_state: 'Inlägget går inte att ändra just nu. Det kan redan vara publicerat.',
+  image_not_allowed: 'Bilden går inte att använda. Välj en annan rätt med en annan bild.',
 }
 
 export const FAILED_LABEL: Record<string, string> = {
-  meta_not_connected: 'Meta är inte kopplat.',
-  feature_not_in_plan: 'Inlägg ingår inte längre i er plan.',
-  instagram_rate_limited: 'Instagram tar inte emot fler inlägg i dag. Försök i morgon.',
-  meta_unavailable: 'Meta svarade inte. Försök igen.',
+  meta_not_connected: 'Meta är inte kopplat. Koppla Meta under Annonser.',
+  feature_not_in_plan: 'Inlägg ingår inte längre i ert abonnemang.',
+  instagram_rate_limited: 'Instagram tar inte emot fler inlägg i dag. Försök igen i morgon.',
+  meta_unavailable: 'Meta svarade inte. Det är inte ert fel. Försök igen.',
 }
 
 /** datetime-local (lokal tid) -> ISO UTC med Z, sekunder 00. */

@@ -64,7 +64,7 @@ function CodeCard({
       setNotice('Ny kod skapad. Den gamla dekalen fungerar inte längre - skriv ut den nya.')
       setConfirm(false)
     } catch (err) {
-      setError(errorText(err, 'Kunde inte skapa en ny kod just nu. Försök igen.'))
+      setError(errorText(err, 'Den nya koden skapades inte.'))
       setRetry(() => () => void regenerate())
     } finally {
       setBusy(false)
@@ -77,7 +77,7 @@ function CodeCard({
     try {
       await save(card, kind)
     } catch {
-      setError(booqyFaultText('Kunde inte skapa filen.'))
+      setError(booqyFaultText('Filen med QR-koderna skapades inte.'))
       setRetry(() => () => void run(kind))
     }
   }

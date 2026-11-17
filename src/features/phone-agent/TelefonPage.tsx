@@ -73,7 +73,7 @@ function Telefon() {
     try {
       setConfig(await getLocation(locationId))
     } catch (err) {
-      toast(errorText(err, 'Kunde inte hämta telefoninställningarna.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Telefoninställningarna kunde inte visas.', ERRORS), { tone: 'danger' })
     }
   }, [locationId])
 
@@ -93,7 +93,7 @@ function Telefon() {
       setConfig({ ...config, ...next })
       toast(next.killSwitch ? 'Assistenten är avstängd. Samtal går inte längre till den.' : 'Assistenten svarar igen.', { tone: 'success' })
     } catch (err) {
-      toast(errorText(err, 'Det gick inte.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, config.killSwitch ? 'Assistenten slogs inte på.' : 'Assistenten stängdes inte av.', ERRORS), { tone: 'danger' })
       await load()
     } finally {
       setBusy(false)

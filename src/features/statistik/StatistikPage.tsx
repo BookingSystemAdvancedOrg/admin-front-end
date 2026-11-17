@@ -475,7 +475,7 @@ export default function StatistikPage() {
         )}
 
         {error && (
-          <ErrorNote text={booqyFaultText('Kunde inte hämta siffrorna.')} />
+          <ErrorNote text={booqyFaultText('Siffrorna kunde inte visas.')} />
         )}
 
         {!s && !error && (

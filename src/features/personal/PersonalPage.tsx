@@ -92,7 +92,7 @@ export default function PersonalPage() {
         if (!cancelled) setStaff(users)
       })
       .catch((err) => {
-        if (!cancelled) setLoadError(errorText(err, 'Kunde inte hämta personalen.'))
+        if (!cancelled) setLoadError(errorText(err, 'Personalen kunde inte visas.'))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -180,7 +180,7 @@ export default function PersonalPage() {
     try {
       replace(user.status === 'active' ? await deactivateUser(user.cognitoSub) : await reactivateUser(user.cognitoSub))
     } catch (err) {
-      failRow(errorText(err, 'Kunde inte ändra status.'), () => void handleToggle(user))
+      failRow(errorText(err, user.status === 'active' ? 'Medarbetaren stängdes inte av.' : 'Medarbetaren slogs inte på.'), () => void handleToggle(user))
     } finally {
       setBusySub(null)
     }
@@ -197,7 +197,7 @@ export default function PersonalPage() {
     if (await removeUserAvatar(user.cognitoSub)) {
       setStaff((prev) => prev.map((s) => (s.cognitoSub === user.cognitoSub ? { ...s, avatarUrl: null } : s)))
     } else {
-      failRow(booqyFaultText('Kunde inte ta bort profilbilden.'), () => void removeAvatar(user))
+      failRow(booqyFaultText('Profilbilden togs inte bort.'), () => void removeAvatar(user))
     }
     setBusySub(null)
   }
@@ -214,7 +214,7 @@ export default function PersonalPage() {
       await deleteUser(user.cognitoSub)
       setStaff((prev) => prev.filter((s) => s.cognitoSub !== user.cognitoSub))
     } catch (err) {
-      failRow(errorText(err, 'Kunde inte ta bort medarbetaren.'), () => void removeUser(user))
+      failRow(errorText(err, 'Medarbetaren togs inte bort.'), () => void removeUser(user))
     } finally {
       setBusySub(null)
     }

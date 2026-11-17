@@ -71,7 +71,7 @@ function Ledger() {
     try {
       setPersons(await listPersons())
     } catch (err) {
-      toast(errorText(err, 'Kunde inte hämta personerna.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Personerna kunde inte visas.', ERRORS), { tone: 'danger' })
     }
   }, [owner])
 
@@ -122,7 +122,7 @@ function Today({ locationId, owner, persons }: { locationId: string; owner: bool
       setData(await getDay(locationId, day))
       setLoadError(null)
     } catch (err) {
-      setLoadError(errorText(err, 'Kunde inte hämta liggaren.', ERRORS))
+      setLoadError(errorText(err, 'Liggaren kunde inte visas.', ERRORS))
     }
   }, [locationId, day])
 
@@ -140,7 +140,7 @@ function Today({ locationId, owner, persons }: { locationId: string; owner: bool
       toast(`${row.name || 'Personen'} är ${kind === 'check_in' ? 'incheckad' : 'utcheckad'} ${clock(row.eventTime)}.`, { tone: 'success' })
       await load()
     } catch (err) {
-      toast(errorText(err, 'Det gick inte att registrera.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Registreringen sparades inte.', ERRORS), { tone: 'danger' })
     } finally {
       setBusy(null)
     }
@@ -252,7 +252,7 @@ function InspectionView({ locationId, day, onClose }: { locationId: string; day:
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
-    getInspection(locationId, day).then(setView).catch((err) => setError(errorText(err, 'Kunde inte visa liggaren.', ERRORS)))
+    getInspection(locationId, day).then(setView).catch((err) => setError(errorText(err, 'Liggaren kunde inte visas.', ERRORS)))
   }, [locationId, day, attempt])
 
   return (
@@ -348,7 +348,7 @@ function PersonForm({ person, onClose, onSaved }: { person: Person; onClose: () 
       toast('Sparat.', { tone: 'success' })
       await onSaved()
     } catch (err) {
-      setError(errorText(err, 'Kunde inte spara.', ERRORS))
+      setError(errorText(err, 'Personen sparades inte.', ERRORS))
     } finally {
       setSaving(false)
     }
@@ -421,7 +421,7 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
       setData(await getDay(locationId, day))
       setLoadError(null)
     } catch (err) {
-      setLoadError(errorText(err, 'Kunde inte hämta liggaren.', ERRORS))
+      setLoadError(errorText(err, 'Liggaren kunde inte visas.', ERRORS))
     }
   }, [locationId, day])
 
@@ -446,7 +446,7 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
       setReason('')
       await load()
     } catch (err) {
-      toast(errorText(err, 'Kunde inte spara rättelsen.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Rättelsen sparades inte.', ERRORS), { tone: 'danger' })
     } finally {
       setSaving(false)
     }
@@ -523,7 +523,7 @@ function Export({ locationId }: { locationId: string }) {
       URL.revokeObjectURL(url)
       setResult(file)
     } catch (err) {
-      toast(errorText(err, 'Kunde inte exportera.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Exporten blev inte klar.', ERRORS), { tone: 'danger' })
     } finally {
       setBusy(false)
     }

@@ -115,32 +115,32 @@ export const MISSING_LABEL: Record<Assets['missing'][number]['kind'], string> = 
 }
 
 export const FAILED_LABEL: Record<string, string> = {
-  kill_switch: 'Annonser är pausade av Booqy just nu.',
-  not_connected: 'Kopplingen till Meta saknas. Koppla igen.',
-  assets_missing: 'Något saknas hos Meta (annonskonto, sida eller bild).',
-  unknown_image: 'Bilden kunde inte användas.',
-  feature_not_in_plan: 'Annonser ingår inte längre i er plan.',
+  kill_switch: 'Booqy har pausat alla annonser just nu. Skapa annonsen igen om en stund.',
+  not_connected: 'Meta är inte kopplat längre. Koppla Meta igen här under Annonser.',
+  assets_missing: 'Något saknas hos Meta: annonskonto, sida eller bild. Lägg till det och skapa annonsen igen.',
+  unknown_image: 'Bilden gick inte att använda. Välj en annan bild och skapa annonsen igen.',
+  feature_not_in_plan: 'Annonser ingår inte längre i ert abonnemang. Ägaren ser vad som ingår under Inställningar.',
   start_failed: 'Annonsen kom aldrig i gång. Skapa den igen.',
 }
 
 export const ERRORS: Record<string, string> = {
-  not_connected: 'Koppla Meta först.',
-  assets_missing: 'Något saknas: annonskonto, Facebooksida, en bild på rätten eller restaurangens adress (sparas under Catering > Leverans).',
-  cap_exceeded: 'Budgeten skulle gå över ert månadstak. Sänk budgeten eller höj taket.',
-  kill_switch: 'Annonser är pausade av Booqy just nu. Försök igen senare.',
-  invalid_status: 'Annonsen kan inte ändras just nu.',
-  changed_retry: 'Annonsen ändrades samtidigt. Det senaste visas nu; försök igen.',
-  alcohol_not_allowed: 'Rätter med alkohol kan inte annonseras.',
+  not_connected: 'Meta är inte kopplat än. Koppla Meta först, här under Annonser.',
+  assets_missing: 'Något saknas för annonsen. Kolla att annonskonto, Facebooksida och en bild på rätten finns. Adressen sparas under Catering > Leverans.',
+  cap_exceeded: 'Budgeten går över ert månadstak. Sänk budgeten eller höj taket.',
+  kill_switch: 'Booqy har pausat alla annonser just nu. Försök igen om en stund.',
+  invalid_status: 'Annonsen går inte att ändra just nu. Den kan redan vara avslutad.',
+  changed_retry: 'Någon annan ändrade annonsen samtidigt. Nu syns det senaste. Gör din ändring igen.',
+  alcohol_not_allowed: 'Rätter med alkohol får inte annonseras. Välj en annan rätt.',
   quota_exceeded: 'Månadens textförslag är slut. Skriv texten själv.',
   ai_unavailable: 'Textförslagen fungerar inte just nu. Skriv texten själv.',
-  meta_unavailable: 'Meta svarar inte just nu. Det är inte ert fel: försök igen, eller rapportera det till Booqy om det kvarstår.',
-  invalid_state: 'Kopplingen gick ut. Försök koppla igen.',
-  invalid_cap: 'Månadstaket är för högt eller för lågt.',
-  unknown_asset: 'Välj ett konto och en sida från listan.',
-  text_too_long: 'Texten är för lång.',
-  invalid_budget: 'Budgeten ska vara 100-20 000 kr.',
-  invalid_days: 'Annonsen ska visas 3-30 dagar.',
-  invalid_radius: 'Området ska vara 1-40 km.',
+  meta_unavailable: 'Meta svarar inte just nu. Det är inte ert fel. Försök igen om en stund.',
+  invalid_state: 'Kopplingen till Meta tog för lång tid. Koppla Meta igen.',
+  invalid_cap: 'Månadstaket är för högt eller för lågt. Skriv minst 100 kr, till exempel 2 000.',
+  unknown_asset: 'Välj ett konto och en sida i listan.',
+  text_too_long: 'Texten är för lång. Korta den och försök igen.',
+  invalid_budget: 'Budgeten ska vara mellan 100 och 20 000 kr, till exempel 500.',
+  invalid_days: 'Antal dagar ska vara mellan 3 och 30, till exempel 7.',
+  invalid_radius: 'Området ska vara mellan 1 och 40 km, till exempel 5.',
 }
 
 export function newCampaignId(): string {

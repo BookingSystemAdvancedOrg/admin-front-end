@@ -36,7 +36,7 @@ export default function InlaggTab() {
       setListing(await listPosts())
       setError(null)
     } catch (err) {
-      setError(errorText(err, 'Kunde inte hämta inläggen.', ERRORS))
+      setError(errorText(err, 'Inläggen kunde inte visas.', ERRORS))
     }
   }, [])
 
@@ -106,14 +106,14 @@ function Editor({ post, listing, onClose, onChanged, onDeleted }: {
   const editable = post.status === 'draft' || post.status === 'scheduled'
   const image = menuImageUrl(post.imageKey)
 
-  async function run(name: string, fn: () => Promise<Post | void>, ok?: string) {
+  async function run(name: string, fn: () => Promise<Post | void>, ok: string | undefined, failed: string) {
     setBusy(name)
     try {
       const next = await fn()
       if (next) onChanged(next)
       if (ok) toast(ok, { tone: 'success' })
     } catch (err) {
-      toast(errorText(err, 'Det gick inte.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, failed, ERRORS), { tone: 'danger' })
     } finally {
       setBusy(null)
     }
@@ -157,22 +157,22 @@ function Editor({ post, listing, onClose, onChanged, onDeleted }: {
           {Object.entries(post.channels).map(([c, s]) => (s?.state === 'failed' || s?.state === 'needs_check') ? (
             <p key={c} className="inlagg-warn">
               {CHANNEL_LABEL[c as Channel]}: {s.state === 'needs_check' ? 'Vi kontrollerar om inlägget redan kom ut innan vi försöker igen.'
-                : FAILED_LABEL[s.lastError?.code ?? ''] ?? 'Kunde inte publiceras.'}
+                : FAILED_LABEL[s.lastError?.code ?? ''] ?? 'Inlägget publicerades inte. Försök igen.'}
             </p>
           ) : null)}
           <Bar variant="action" label="Inlägg">
             {post.status === 'draft' ? (
-              <Button variant="danger" busy={busy === 'delete'} onClick={() => void run('delete', async () => { await deletePost(post); onDeleted() })}>Ta bort</Button>
+              <Button variant="danger" busy={busy === 'delete'} onClick={() => void run('delete', async () => { await deletePost(post); onDeleted() }, undefined, 'Inlägget togs inte bort.')}>Ta bort</Button>
             ) : null}
             {post.status === 'scheduled' ? (
-              <Button variant="secondary" busy={busy === 'cancel'} onClick={() => void run('cancel', () => cancelPost(post), 'Avbrutet.')}>Avbryt</Button>
+              <Button variant="secondary" busy={busy === 'cancel'} onClick={() => void run('cancel', () => cancelPost(post), 'Avbrutet.', 'Inlägget avbröts inte.')}>Avbryt</Button>
             ) : null}
             <Button variant="secondary" disabled={!when || !channels.length} busy={busy === 'schedule'}
-              onClick={() => void run('schedule', async () => schedulePost(await saved(), { scheduledAt: toUtc(when) }), 'Schemalagt.')}>
+              onClick={() => void run('schedule', async () => schedulePost(await saved(), { scheduledAt: toUtc(when) }), 'Schemalagt.', 'Inlägget schemalades inte.')}>
               Schemalägg
             </Button>
             <Button disabled={!channels.length || post.status === 'published'} busy={busy === 'now'} busyLabel="Publicerar…"
-              onClick={() => void run('now', async () => schedulePost(await saved(), { now: true }), 'Publiceras nu.')}>
+              onClick={() => void run('now', async () => schedulePost(await saved(), { now: true }), 'Publiceras nu.', 'Inlägget publicerades inte.')}>
               Publicera nu
             </Button>
           </Bar>

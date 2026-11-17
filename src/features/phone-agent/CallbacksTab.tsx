@@ -22,7 +22,7 @@ export function CallbackList({ locationId, title, compact = false }: { locationI
       setError(null)
     } catch (err) {
       // Ett fel är inte en tom lista: listan står kvar (eller hämtas inte), felet visas i kortet.
-      setError(errorText(err, 'Kunde inte hämta återuppringningarna.', ERRORS))
+      setError(errorText(err, 'Återuppringningarna kunde inte visas.', ERRORS))
     }
   }, [locationId])
 
@@ -38,7 +38,7 @@ export function CallbackList({ locationId, title, compact = false }: { locationI
       await closeCallback(locationId, cb)
       await load()
     } catch (err) {
-      toast(errorText(err, 'Det gick inte.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Återuppringningen markerades inte som klar.', ERRORS), { tone: 'danger' })
       await load()
     } finally {
       setBusy(null)

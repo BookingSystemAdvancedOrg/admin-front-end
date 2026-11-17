@@ -99,15 +99,15 @@ export const FIELD_LABEL = { heading: 'Rubrik', text: 'Text', body: 'Text', labe
 export const FIELD_MAX = { heading: 80, text: 240, body: 4000, label: 40, alt: 160, caption: 160 } as const
 
 export const ERRORS: Record<string, string> = {
-  schema_invalid: 'Något i sidan stämmer inte. Kontrollera det markerade blocket.',
-  doc_too_large: 'Webbplatsen är för stor. Ta bort några block eller kortare texter.',
-  invalid_link: 'En länk pekar på en sida som inte finns.',
-  unknown_image: 'En bild kan inte användas. Välj en av era egna bilder.',
-  contrast_too_low: 'Färgerna går inte att läsa tillräckligt bra. Välj en annan färg.',
-  changed_retry: 'Någon annan ändrade webbplatsen samtidigt. Det senaste visas nu; spara igen om din ändring fortfarande behövs.',
+  schema_invalid: 'Något i ett block är fel ifyllt. Kolla det markerade blocket och spara igen.',
+  doc_too_large: 'Webbplatsen har blivit för stor. Ta bort några block eller korta texterna.',
+  invalid_link: 'En länk går till en sida som inte finns. Välj en annan sida.',
+  unknown_image: 'En bild går inte att använda. Välj en av era egna bilder.',
+  contrast_too_low: 'Färgerna är för svåra att läsa. Välj en mörkare eller ljusare färg.',
+  changed_retry: 'Någon annan ändrade webbplatsen samtidigt. Nu syns det senaste. Spara igen om din ändring behövs.',
   publish_running: 'En publicering pågår redan. Vänta tills den är klar.',
-  wrong_mode: 'Er webbplats sköts av Booqy och kan inte ändras här.',
-  render_missing: 'Sidan kunde inte byggas. Felet ligger hos Booqy, inte hos er. Försök igen; kvarstår det, rapportera det till Booqy.',
+  wrong_mode: 'Booqy sköter er webbplats, så den går inte att ändra här. Kontakta Booqy för ändringar.',
+  render_missing: 'Sidan gick inte att bygga. Det är Booqys fel, inte ert. Försök igen.',
 }
 
 /**
@@ -121,7 +121,7 @@ export const RESERVED_SLUGS = new Set([
   'biljett', 'assets', 'v', 'releases', 'preview',
 ])
 
-export const SLUG_ERROR = 'Adressen används redan, av en annan sida eller av sajten själv (till exempel /meny eller /kontakt). Välj en annan.'
+export const SLUG_ERROR = 'Adressen används redan, av en annan sida eller av webbplatsen själv (till exempel /meny). Välj en annan, till exempel /lunch.'
 
 /** Var i dokumentet ett fel gäller ("/pages/1/blocks/2/heading") -> sidans och blockets index, eller sidans adress. */
 export function locate(field: string | undefined): { page?: number; block?: number; slug?: boolean } {

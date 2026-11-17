@@ -26,7 +26,7 @@ export default function CallsTab({ locationId, owner }: { locationId: string; ow
       setCalls((prev) => (after ? [...(prev ?? []), ...page.calls] : page.calls))
       setCursor(page.cursor)
     } catch (err) {
-      const text = errorText(err, 'Kunde inte hämta samtalen.', ERRORS)
+      const text = errorText(err, 'Samtalen kunde inte visas.', ERRORS)
       // Första sidan: felet i kortet, inte en tom lista. "Visa fler": en toast, listan står kvar.
       if (after) toast(text, { tone: 'danger' })
       else setError(text)

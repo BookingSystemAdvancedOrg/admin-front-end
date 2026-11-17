@@ -49,7 +49,7 @@ export default function AdWizard({ locationId, onClose, onCreated }: {
     try {
       setSuggestions((await suggestCopy(locationId, menuItemId, goal)).suggestions)
     } catch (err) {
-      setError(errorText(err, 'Inga förslag just nu.', ERRORS))
+      setError(errorText(err, 'Textförslagen kom inte fram.', ERRORS))
     } finally {
       setSuggesting(false)
     }
@@ -74,7 +74,7 @@ export default function AdWizard({ locationId, onClose, onCreated }: {
       })
       onCreated()
     } catch (err) {
-      setError(errorText(err, 'Annonsen kunde inte skapas.', ERRORS, { headline: 'rubriken', primaryText: 'texten' }))
+      setError(errorText(err, 'Annonsen skapades inte.', ERRORS, { headline: 'rubriken', primaryText: 'texten' }))
     } finally {
       setCreating(false)
     }

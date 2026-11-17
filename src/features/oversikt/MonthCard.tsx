@@ -117,7 +117,7 @@ export function MonthCard({
       </div>
 
       {error ? (
-        <ErrorNote text={booqyFaultText('Kunde inte hämta månadens siffror.')} />
+        <ErrorNote text={booqyFaultText('Månadens siffror kunde inte visas.')} />
       ) : !s ? (
         <div className="month-card-loading" role="status">
           <SkelLines n={4} />

@@ -36,7 +36,7 @@ export function useTableCodes(locationId: string | null, mockTables: MockTable[]
         setCodes(list)
         setError(null)
       })
-      .catch((err: unknown) => !cancelled && setError(errorText(err, 'Kunde inte hämta QR-koderna just nu.')))
+      .catch((err: unknown) => !cancelled && setError(errorText(err, 'QR-koderna kunde inte visas.')))
     return () => {
       cancelled = true
     }

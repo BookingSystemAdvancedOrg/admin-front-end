@@ -80,18 +80,18 @@ export const savePerson = (personId: string, input: PersonInput) =>
   apiFetch<Person>(`/tenant/personalliggare/persons/${encodeURIComponent(personId)}`, { method: 'PUT', body: JSON.stringify(input) })
 
 export const ERRORS: Record<string, string> = {
-  already_checked_in: 'Personen är redan incheckad.',
-  not_checked_in: 'Personen är inte incheckad.',
-  no_person_for_user: 'Din inloggning är inte kopplad till någon i liggaren. Be ägaren lägga till dig under Personer.',
-  changed_retry: 'Någon annan registrerade samtidigt. Försök igen.',
-  reason_required: 'Skriv en orsak på 5-300 tecken.',
-  invalid_event_time: 'Tiden kan inte ligga i framtiden eller för långt bak i tiden.',
-  wrong_person: 'Rättelsen måste gälla samma person som den ursprungliga registreringen.',
-  invalid_personal_identity: 'Personnumret stämmer inte. Kontrollera siffrorna.',
-  user_already_linked: 'Inloggningen är redan kopplad till en annan person.',
-  invalid_range: 'Välj ett datumintervall på högst ett år där från-datumet kommer först.',
-  owner_only: 'Bara ägaren kan göra det här.',
-  export_too_large: 'Exporten blir för stor för en fil. Välj en kortare period, till exempel en månad i taget.',
+  already_checked_in: 'Personen är redan incheckad. Ingen ny incheckning behövs.',
+  not_checked_in: 'Personen är inte incheckad och kan inte checkas ut. Checka in först.',
+  no_person_for_user: 'Din inloggning finns inte i liggaren. Be ägaren lägga till dig under Personer.',
+  changed_retry: 'Någon annan registrerade samtidigt. Nu syns det senaste. Försök igen.',
+  reason_required: 'Skriv en orsak på 5 till 300 tecken, till exempel: Glömde checka ut.',
+  invalid_event_time: 'Tiden kan inte ligga i framtiden eller för långt bak. Välj en tid som redan har varit.',
+  wrong_person: 'Rättelsen ska gälla samma person som registreringen. Välj den personen.',
+  invalid_personal_identity: 'Personnumret ser fel ut. Skriv det så här: 19900101-1234.',
+  user_already_linked: 'Den inloggningen hör redan till en annan person. Välj en annan inloggning.',
+  invalid_range: 'Datumen går inte ihop. Välj högst ett år och sätt från-datumet först.',
+  owner_only: 'Bara ägaren kan göra det här. Be ägaren om hjälp.',
+  export_too_large: 'Exporten blir för stor. Välj en kortare period, till exempel en månad.',
 }
 
 /** Klockslag i Stockholmstid, "08:15". */

@@ -45,15 +45,15 @@ export const saveSettings = (locationId: string, s: Settings) =>
   apiFetch<Settings>(`${base(locationId)}/settings`, { method: 'PUT', body: JSON.stringify(s) })
 
 export const ERRORS: Record<string, string> = {
-  queue_full: 'Kön är full. Höj max antal under Inställningar, Restaurangen, Bokning eller ta bort någon.',
-  already_queued: 'Det numret står redan i kön i dag.',
-  table_taken: 'Bordet hann bli upptaget. Välj ett annat.',
+  queue_full: 'Kön är full. Ta bort någon ur kön, eller höj max antal under Inställningar > Restaurangen > Bokning.',
+  already_queued: 'Det numret står redan i kön i dag. Leta upp gästen i listan.',
+  table_taken: 'Bordet hann bli upptaget. Välj ett annat bord.',
   hold_expired: 'Tiden för erbjudandet gick ut. Erbjud bordet igen.',
-  invalid_state: 'Gästen har redan fått ett bord eller lämnat kön.',
-  invalid_party_size: 'Antal gäster ska vara 1-20.',
-  invalid_phone: 'Kontrollera telefonnumret.',
-  invalid_hold: 'Hålltiden ska vara 5-30 minuter.',
-  invalid_max: 'Max antal ska vara 1-200.',
+  invalid_state: 'Gästen har redan fått bord eller lämnat kön. Inget mer behövs.',
+  invalid_party_size: 'Antal gäster ska vara mellan 1 och 20, till exempel 4.',
+  invalid_phone: 'Mobilnumret ser fel ut. Skriv det så här: 070 123 45 67.',
+  invalid_hold: 'Hålltiden ska vara mellan 5 och 30 minuter, till exempel 10.',
+  invalid_max: 'Max antal ska vara mellan 1 och 200, till exempel 30.',
 }
 
 export const STATUS_LABEL: Record<EntryStatus, string> = {

@@ -19,7 +19,7 @@ export default function CallDetail({ locationId, callId, owner, onBack }: { loca
       setCall(await getCall(locationId, callId))
       setError(null)
     } catch (err) {
-      setError(errorText(err, 'Kunde inte hämta samtalet.', ERRORS))
+      setError(errorText(err, 'Samtalet kunde inte visas.', ERRORS))
     }
   }, [locationId, callId])
 
@@ -36,7 +36,7 @@ export default function CallDetail({ locationId, callId, owner, onBack }: { loca
       toast('Inspelningen är raderad.', { tone: 'success' })
       await load()
     } catch (err) {
-      toast(errorText(err, 'Kunde inte radera inspelningen.', ERRORS), { tone: 'danger' })
+      toast(errorText(err, 'Inspelningen raderades inte.', ERRORS), { tone: 'danger' })
     } finally {
       setBusy(false)
     }

@@ -3,7 +3,8 @@ import { Bar, Button, LinkButton, Printing } from '@booqy/brand'
 import { Icon } from '../../shared/Icon'
 import { HowTo } from './ForwardingStep'
 import { formatPhoneNational } from '../../shared/phone'
-import { errorText } from '../../shared/errors'
+import { booqyFaultText, errorInfo, errorText } from '../../shared/errors'
+import { ErrorActions } from '../../shared/ErrorNote'
 import { ERRORS, MODE_LABEL, REFUSED_LABEL, SETUP, listCalls, postSetupPatch, today, type LocationConfig } from './api'
 import { currentPlatform, type Platform, type Step } from './setup'
 
@@ -50,7 +51,7 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, h
     try {
       onTested(await postSetupPatch(locationId, current, { tested: true }))
     } catch (err) {
-      setSaveError(errorText(err, 'Vi kunde inte spara att det fungerar.', ERRORS))
+      setSaveError(errorText(err, 'Provsamtalet sparades inte.', ERRORS))
     }
   }
 
@@ -227,10 +228,20 @@ export default function TestCallStep({ locationId, loc, restaurantPhone, test, h
       ) : null}
 
       {status === 'failed' ? (
-        <Bar variant="banner" tone="danger" action={<Button size="sm" variant="secondary" onClick={start}>{SETUP.buttons.retry}</Button>}>
-          Vi kan inte se samtalen just nu. Det är vårt fel.
-        </Bar>
+        <PollFailed retry={start} />
       ) : null}
     </div>
+  )
+}
+
+/** Provsamtalet syns inte efter flera försök: Booqys fel (eller ingen uppkoppling), med Försök igen. */
+function PollFailed({ retry }: { retry: () => void }) {
+  const text = booqyFaultText('Vi ser inte provsamtalet just nu.')
+  return (
+    <Bar variant="banner" tone="danger" action={errorInfo(text)?.actor === 'booqy'
+      ? <ErrorActions text={text} onRetry={retry} />
+      : <Button size="sm" variant="secondary" onClick={retry}>{SETUP.buttons.retry}</Button>}>
+      {text}
+    </Bar>
   )
 }

@@ -69,7 +69,7 @@ export function Overview({ locationId, today, money, sample, sampleName }: {
 
   if (error) {
     return (
-      <ErrorNote text={booqyFaultText('Kunde inte hämta dagens siffror.')} />
+      <ErrorNote text={booqyFaultText('Dagens siffror kunde inte visas.')} />
     )
   }
   if (!data) {

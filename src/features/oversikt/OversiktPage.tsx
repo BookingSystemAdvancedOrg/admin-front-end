@@ -231,8 +231,9 @@ export default function OversiktPage() {
   )
   const setupList = steps.map(stepItem)
   // Medan något är kvar visas bara det som är kvar, så att dagens bokningar inte trycks ned.
-  const pendingList = steps.filter((s) => s.done !== true).map(stepItem)
-  const doneCount = steps.length - pendingList.length
+  // Överhoppade steg står kvar (med Ångra) tills allt är klart; bara klara steg göms.
+  const pendingList = steps.filter((s) => s.state !== 'done').map(stepItem)
+  const doneCount = steps.filter((s) => s.done === true).length
 
   const todayActive = data.today
     ? data.today.filter((r) => ACTIVE_STATUSES.includes(r.status))

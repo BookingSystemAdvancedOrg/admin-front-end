@@ -1,6 +1,6 @@
 import { sameData, useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
-import { Bar, Button, Card, Field, Input, StatTile, toast } from '@booqy/brand'
+import { Bar, Card, Field, Input, StatTile, toast } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
 import { currentLocation, useTenant } from '../../shared/tenant'
 import {
@@ -13,6 +13,8 @@ import {
   type ReviewSettings,
   type Source,
 } from './api'
+import { SaveBar } from '../../shared/SaveBar'
+import { useDirtyForm } from '../../shared/dirtyForm'
 import './google.css'
 import { ErrorActions } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
@@ -35,8 +37,14 @@ export default function OmdomenTab() {
   const [view, setView] = useState<LocationView | null>(null)
   const [connected, setConnected] = useState(false)
   const [draft, setDraft] = useState<ReviewSettings | null>(null)
+  const [saved, setSaved] = useState<ReviewSettings | null>(null)
   const [saving, setSaving] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Spara följer ändringarna (kryssen jämförs utan ordning).
+  const norm = (r: ReviewSettings | null) => r && { ...r, sources: [...r.sources].sort(), channels: [...r.channels].sort() }
+  const dirty = useDirtyForm(norm(draft), norm(saved))
 
   const load = useCallback(async () => {
     if (!locationId) return
@@ -46,6 +54,7 @@ export default function OmdomenTab() {
       setConnected(c.status === 'connected')
       setView(v)
       setDraft(v.reviewSettings)
+      setSaved(v.reviewSettings)
     } catch (err) {
       setError(errorText(err, 'Inställningarna för omdömen kunde inte visas.', ERRORS))
     }
@@ -57,7 +66,10 @@ export default function OmdomenTab() {
     if (!locationId) return
     const [c, v] = await Promise.all([getConnection(), getLocationView(locationId)])
     setConnected(c.status === 'connected')
-    if (view && draft && sameData(draft, view.reviewSettings)) setDraft(v.reviewSettings)
+    if (draft && saved && sameData(draft, saved)) {
+      setDraft(v.reviewSettings)
+      setSaved(v.reviewSettings)
+    }
     setView(v)
   }, { enabled: Boolean(locationId) && view !== null && !saving })
 
@@ -84,11 +96,15 @@ export default function OmdomenTab() {
     e.preventDefault()
     if (!draft || !locationId) return
     setSaving(true)
+    setFailed(false)
+    setNotice(null)
     try {
-      const saved = await saveReviewSettings(locationId, draft)
-      setDraft(saved)
-      toast('Sparat.', { tone: 'success' })
+      const next = await saveReviewSettings(locationId, draft)
+      setDraft(next)
+      setSaved(next)
+      setNotice('Sparat')
     } catch (err) {
+      setFailed(true)
       toast(errorText(err, 'Inställningarna för omdömen sparades inte.', ERRORS), { tone: 'danger' })
     } finally {
       setSaving(false)
@@ -152,9 +168,8 @@ export default function OmdomenTab() {
             <Input type="number" min={30} max={365} value={String(draft.minDaysBetween)} required
               onChange={(e) => setDraft({ ...draft, minDaysBetween: Number(e.target.value) })} />
           </Field>
-          <Bar variant="action" label="Spara omdömesinställningar" className="omdomen-actions">
-            <Button type="submit" busy={saving} busyLabel="Sparar…" disabled={!draft.channels.length}>Spara</Button>
-          </Bar>
+          <SaveBar dirty={dirty} busy={saving} notice={notice} failed={failed} disabled={!draft.channels.length}
+            onDiscard={() => { setDraft(saved); setFailed(false) }} />
         </form>
       </Card>
     </>

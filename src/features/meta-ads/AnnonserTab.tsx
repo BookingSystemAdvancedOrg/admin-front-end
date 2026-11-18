@@ -27,6 +27,8 @@ import {
 import { ErrorActions } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { SkelCard } from '../../shared/Skeleton'
+import { useDirtyForm } from '../../shared/dirtyForm'
+import { useUnsavedGuard } from '../../shared/unsaved'
 
 /** Marknadsföring > Annonser: koppla Meta, skapa annonser på två minuter, starta och pausa. */
 export default function AnnonserTab() {
@@ -119,7 +121,25 @@ function ConnectionCard({ connection, onSaved, onDisconnected }: {
   const [payor, setPayor] = useState(connection.dsa.payor)
   const [cap, setCap] = useState(String(connection.monthlyCapSek))
   const [saving, setSaving] = useState(false)
+  const [failed, setFailed] = useState(false)
   const [editing, setEditing] = useState(!connection.assets?.adAccountId)
+  // Spara följer ändringarna mot det sparade; första kopplingen räknas som ändrad när något är valt.
+  const savedForm = {
+    adAccountId: connection.assets?.adAccountId ?? '', pageId: connection.assets?.pageId ?? '', instagramId: connection.assets?.instagramId ?? '',
+    beneficiary: connection.dsa.beneficiary, payor: connection.dsa.payor, cap: String(connection.monthlyCapSek),
+  }
+  const dirty = useDirtyForm({ adAccountId, pageId, instagramId, beneficiary, payor, cap }, savedForm)
+  useUnsavedGuard(editing && dirty)
+  function discard() {
+    setAdAccountId(savedForm.adAccountId)
+    setPageId(savedForm.pageId)
+    setInstagramId(savedForm.instagramId)
+    setBeneficiary(savedForm.beneficiary)
+    setPayor(savedForm.payor)
+    setCap(savedForm.cap)
+    setFailed(false)
+    setEditing(!connection.assets?.adAccountId)
+  }
 
   useEffect(() => {
     if (editing) getAssets().then(setAssets).catch(() => setAssets(null))
@@ -127,7 +147,9 @@ function ConnectionCard({ connection, onSaved, onDisconnected }: {
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
+    if (!dirty) return
     setSaving(true)
+    setFailed(false)
     try {
       const saved = await saveConnection({
         adAccountId, pageId, instagramId: instagramId || null,
@@ -138,6 +160,7 @@ function ConnectionCard({ connection, onSaved, onDisconnected }: {
       setEditing(false)
       toast('Sparat.', { tone: 'success' })
     } catch (err) {
+      setFailed(true)
       toast(errorText(err, 'Annonsinställningarna sparades inte.', ERRORS, { dsa: 'annonsör och betalare', monthlyCapSek: 'månadstaket' }), { tone: 'danger' })
     } finally {
       setSaving(false)
@@ -201,9 +224,12 @@ function ConnectionCard({ connection, onSaved, onDisconnected }: {
           <Field label="Månadstak (kr)" hint="Pausar allt vid taket" required>
             <Input type="number" min={100} value={cap} required onChange={(e) => setCap(e.target.value)} />
           </Field>
-          <Bar variant="action" label="Spara Meta-konton">
+          <Bar variant="action" label="Spara Meta-konton" sticky={dirty} status={dirty && !saving ? 'Osparade ändringar' : undefined}>
             <Button type="button" variant="danger" onClick={remove}>Koppla bort Meta</Button>
-            <Button type="submit" busy={saving} busyLabel="Sparar…" disabled={!adAccountId || !pageId}>Spara</Button>
+            {dirty || connection.assets?.adAccountId ? (
+              <Button type="button" variant="secondary" disabled={saving} onClick={discard}>{dirty ? 'Ångra ändringar' : 'Avbryt'}</Button>
+            ) : null}
+            <Button type="submit" busy={saving} busyLabel="Sparar…" disabled={!dirty || !adAccountId || !pageId}>{failed ? 'Spara igen' : 'Spara'}</Button>
           </Bar>
         </form>
       )}
@@ -265,7 +291,7 @@ function Campaigns({ locationId, blocked }: { locationId: string; blocked: boole
                     {/* In the first cell so it is on screen at phone width without scrolling the table sideways (F15). */}
                     {c.status === 'paused' || c.status === 'active' ? (
                       <div className="annonser-row-action">
-                        <Button size="sm" variant={c.status === 'active' ? 'secondary' : 'primary'}
+                        <Button size="sm" variant="secondary"
                           busy={busy === c.campaignId} disabled={blocked && c.status !== 'active'}
                           onClick={() => void toggle(c)}>
                           {c.status === 'active' ? 'Pausa' : 'Starta annonsen'}

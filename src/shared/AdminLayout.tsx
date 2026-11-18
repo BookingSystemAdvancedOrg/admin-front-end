@@ -1,7 +1,7 @@
 import { isApiConfigured } from './api'
 import { useLiveRefresh } from './live'
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { BrandMark, BrandWordmark } from './BrandMark'
 import { useAuth } from '../features/auth/useAuth'
 import { primaryGroupLabel } from '../features/installningar/usersApi'
@@ -37,6 +37,7 @@ import { ErrorNote } from './ErrorNote'
 import { booqyFaultText } from './errors'
 import { Select } from './Select'
 import { BottomNav } from './BottomNav'
+import { LeaveGuard, useGuardedNavigate } from './LeaveGuard'
 import { usePhoneNav } from './dock'
 
 /** Grupperna i sidomenyn som användaren har fällt ihop (sparas i webbläsaren). */
@@ -319,6 +320,7 @@ export function AdminLayout() {
 
       <div className="admin-right">
         <BusyBar />
+        <LeaveGuard />
         {status === 'error' && error ? (
           <div className="admin-main">
             <section className="admin-card table-card tenant-notice" role="alert">
@@ -363,7 +365,7 @@ export function AdminLayout() {
 
 /** ⌘K: sidorna man får se, några åtgärder och de senast besökta sidorna. */
 function ShellPalette({ onLogout }: { onLogout: () => void }) {
-  const navigate = useNavigate()
+  const navigate = useGuardedNavigate()
   const { tenant } = useTenant()
   const { start } = useGuide()
   const items = useCallback((): PaletteItem[] => {

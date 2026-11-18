@@ -13,6 +13,7 @@ import {
 } from './edit'
 import { ErrorActions } from '../../shared/ErrorNote'
 import { DateTimeInput } from '../../shared/DateInput'
+import { useDirtyForm } from '../../shared/dirtyForm'
 
 const TYPE_FIELDS: (keyof TypeForm)[] = ['name', 'includes', 'priceKr', 'vatRate', 'perOrderMax', 'capacity', 'from', 'until']
 const SERVER_FIELD: Record<string, keyof TypeForm> = {
@@ -39,6 +40,9 @@ export function TypeEditModal({ locationId, eventId, type: opened, latest = null
   // Biljettypen dina ändringar utgår från (byts mot den senaste efter en krock).
   const [type, setType] = useState(opened)
   const [form, setForm] = useState<TypeForm>(() => typeForm(opened))
+  // Spara är avstängd tills något skiljer sig från det dialogen öppnades med.
+  const [openedForm] = useState(form)
+  const dirty = useDirtyForm(form, openedForm)
   // Ändrat på annat håll: deras värde per fält, när det skiljer sig från både utgångsläget och ditt.
   const there = latest ? typeForm(latest) : null
   const baseForm = typeForm(type)
@@ -145,8 +149,8 @@ export function TypeEditModal({ locationId, eventId, type: opened, latest = null
     <Modal open size="wide" title={`Ändra biljettyp: ${type.name}`} onClose={onClose} closeLabel="Stäng"
       footer={(
         <>
-          <Button type="button" variant="ghost" onClick={onClose}>Avbryt</Button>
-          <Button type="submit" form={formId} variant="primary" busy={busy}>Spara</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>Avbryt</Button>
+          <Button type="submit" form={formId} variant="primary" busy={busy} busyLabel="Sparar…" disabled={!dirty}>{error ? 'Spara igen' : 'Spara'}</Button>
         </>
       )}>
       <form id={formId} className="evenemang-form" noValidate onSubmit={(e) => { void save(e) }}>
@@ -223,6 +227,8 @@ export function CapacityModal({ locationId, eventId, occurrence: opened, latest 
   const [base, setBase] = useState(opened)
   const occurrence = latest ? { ...latest, capacity: base.capacity, version: base.version } : base
   const [capacity, setCapacity] = useState(String(opened.capacity))
+  const [openedCapacity] = useState(capacity)
+  const dirty = capacity.trim() !== openedCapacity
   const [clash, setClash] = useState<number | null>(null)
   const there = clash ?? (latest && latest.capacity !== base.capacity ? latest.capacity : null)
   const [fieldError, setFieldError] = useState<string | null>(null)
@@ -280,8 +286,8 @@ export function CapacityModal({ locationId, eventId, occurrence: opened, latest 
     <Modal open title="Ändra antal platser" onClose={onClose} closeLabel="Stäng"
       footer={(
         <>
-          <Button type="button" variant="ghost" onClick={onClose}>Avbryt</Button>
-          <Button type="submit" form={`${inputId}-form`} variant="primary" busy={busy}>Spara</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>Avbryt</Button>
+          <Button type="submit" form={`${inputId}-form`} variant="primary" busy={busy} busyLabel="Sparar…" disabled={!dirty}>{error || fieldError ? 'Spara igen' : 'Spara'}</Button>
         </>
       )}>
       <form id={`${inputId}-form`} className="evenemang-form" noValidate onSubmit={(e) => { void save(e) }}>

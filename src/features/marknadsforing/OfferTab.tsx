@@ -11,6 +11,8 @@ import { SkelCard, SkelPage } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { Select } from '../../shared/Select'
+import { SaveBar } from '../../shared/SaveBar'
+import { useDirtyForm } from '../../shared/dirtyForm'
 
 const PERCENTS = [5, 10, 15, 20, 25, 30, 40, 50]
 const VALID_DAYS = [7, 14, 30, 60, 90]
@@ -82,6 +84,9 @@ export function OfferTab() {
   const [saving, setSaving] = useState(false)
   const [showErrors, setShowErrors] = useState(false)
   const hasOrdering = Boolean(tenant?.entitlements.features.ordering)
+  // Spara följer ändringarna mot det som är sparat.
+  const saved = view ? toSettings(view) : null
+  const dirty = useDirtyForm(draft, saved)
 
   useEffect(() => {
     let cancelled = false
@@ -159,8 +164,6 @@ export function OfferTab() {
         ))}
       </section>
 
-      {notice && <p className="save-notice" role="status">{notice}</p>}
-      <ErrorNote text={error} />
       {!hasOrdering && (
         <p className="form-error" role="alert">
           Onlinebeställning ingår inte i er plan, så koden kan inte användas.
@@ -170,9 +173,6 @@ export function OfferTab() {
       <form className="admin-card table-card mk-offer" onSubmit={(e) => void save(e)}>
         <div className="card-head">
           <h2 className="card-title">Välkomsterbjudande</h2>
-          <button type="submit" className="btn primary square" disabled={saving}>
-            {saving ? 'Sparar…' : 'Spara'}
-          </button>
         </div>
 
         <div className="mk-editor-grid">
@@ -319,6 +319,9 @@ export function OfferTab() {
             </div>
           </div>
         </div>
+        <ErrorNote text={error} />
+        <SaveBar dirty={dirty} busy={saving} notice={notice} failed={Boolean(error) || (showErrors && problems.length > 0)}
+          onDiscard={() => { if (saved) setDraft(saved); setError(null); setShowErrors(false) }} />
       </form>
     </div>
   )

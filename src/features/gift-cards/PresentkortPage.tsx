@@ -29,6 +29,8 @@ import { ErrorNote } from '../../shared/ErrorNote'
 import { Loading } from '../../shared/Loading'
 import { PlanLocked } from '../../shared/PlanLocked'
 import { SkelCard } from '../../shared/Skeleton'
+import { SaveBar } from '../../shared/SaveBar'
+import { useDirtyForm } from '../../shared/dirtyForm'
 import './presentkort.css'
 
 /**
@@ -223,16 +225,24 @@ function CardModal({ cardId, owner, onClose, onChanged }: { cardId: string; owne
 function SettingsCard() {
   const [draft, setDraft] = useState<Settings | null>(null)
   const [amounts, setAmounts] = useState('')
+  const [saved, setSaved] = useState<Settings | null>(null)
   const [saving, setSaving] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const load = useCallback(() => {
     setLoadError(null)
-    getSettings().then((s) => { setDraft(s); setAmounts(s.amountsSek.join(', ')) })
+    getSettings().then((s) => { setDraft(s); setSaved(s); setAmounts(s.amountsSek.join(', ')) })
       .catch((err) => setLoadError(errorText(err, 'Inställningarna för presentkort kunde inte visas.', ERRORS)))
   }, [])
 
   useEffect(() => { load() }, [load])
+  // Spara följer ändringarna (beloppen jämförs som tal: "250,500" = "250, 500").
+  const dirty = useDirtyForm(
+    draft && { ...draft, amountsSek: amounts.split(/[,\s]+/).filter(Boolean).map(Number) },
+    saved,
+  )
 
   if (!draft) {
     return loadError
@@ -244,13 +254,17 @@ function SettingsCard() {
     e.preventDefault()
     if (!draft) return
     setSaving(true)
+    setFailed(false)
+    setNotice(null)
     try {
       const list = amounts.split(/[,\s]+/).filter(Boolean).map(Number)
-      const saved = await saveSettings({ ...draft, amountsSek: list })
-      setDraft(saved)
-      setAmounts(saved.amountsSek.join(', '))
-      toast('Sparat.', { tone: 'success' })
+      const next = await saveSettings({ ...draft, amountsSek: list })
+      setDraft(next)
+      setSaved(next)
+      setAmounts(next.amountsSek.join(', '))
+      setNotice('Sparat')
     } catch (err) {
+      setFailed(true)
       toast(errorText(err, 'Inställningarna för presentkort sparades inte.', ERRORS), { tone: 'danger' })
     } finally {
       setSaving(false)
@@ -276,9 +290,8 @@ function SettingsCard() {
         <Field label="Giltighet (månader)" hint="Minst 12" required>
           <Input type="number" min={12} max={60} value={String(draft.validityMonths)} onChange={(e) => setDraft({ ...draft, validityMonths: Number(e.target.value) })} />
         </Field>
-        <Bar variant="action" label="Spara presentkortsinställningar" className="presentkort-actions">
-          <Button type="submit" busy={saving} busyLabel="Sparar…">Spara</Button>
-        </Bar>
+        <SaveBar dirty={dirty} busy={saving} notice={notice} failed={failed}
+          onDiscard={() => { if (saved) { setDraft(saved); setAmounts(saved.amountsSek.join(', ')) } setFailed(false) }} />
       </form>
     </Card>
   )

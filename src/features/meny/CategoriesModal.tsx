@@ -87,7 +87,9 @@ export function CategoriesModal({
   }
 
   // Ändrade kategorier: ett klick utanför eller Escape frågar först.
-  const dirty = newName.trim() !== '' || JSON.stringify(payload(rows)) !== JSON.stringify(payload(base.categories))
+  // Spara följer listan: avstängd tills något lagts till, ändrats, flyttats eller tagits bort.
+  const changed = JSON.stringify(payload(rows)) !== JSON.stringify(payload(base.categories))
+  const dirty = newName.trim() !== '' || changed
   const [confirmEl, ask] = useConfirm()
   const closeRef = useRef<() => void>(() => {})
   closeRef.current = () => {
@@ -127,7 +129,7 @@ export function CategoriesModal({
   }
 
   async function save() {
-    if (busy || listError) return
+    if (busy || listError || !changed) return
     setBusy(true)
     setError(null)
     try {
@@ -229,10 +231,10 @@ export function CategoriesModal({
           </div>
         )}
         <ErrorNote text={listError ?? error ?? routeError} />
-        <div className="modal-actions">
+        <div className="modal-actions modal-actions--pinned">
           <button type="button" className="btn outline square" onClick={onCancel}>Avbryt</button>
-          <button type="button" className="btn primary square" disabled={Boolean(listError) || busy} onClick={() => void save()}>
-            {busy ? 'Sparar…' : 'Spara kategorier'}
+          <button type="button" className="btn primary square" disabled={!changed || Boolean(listError) || busy} onClick={() => void save()}>
+            {busy ? 'Sparar…' : error ? 'Spara igen' : 'Spara kategorier'}
           </button>
         </div>
       </div>

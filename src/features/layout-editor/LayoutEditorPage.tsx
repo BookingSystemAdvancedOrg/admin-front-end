@@ -570,6 +570,29 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
     setHistoryTick((t) => t + 1)
   }
 
+  // Spara utkast följer ändringarna: avstängd när utkastet är som det sparade.
+  const draftDirty = useMemo(
+    () => !readOnly && savedFloors.current !== null && !sameData(floors, savedFloors.current),
+    // savedFloors byts alltid tillsammans med floors (inläsning, sparning)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [floors, readOnly],
+  )
+
+  /** Ångra ändringar: tillbaka till det sparade utkastet. */
+  function discardDraft() {
+    const saved = savedFloors.current
+    if (!saved || readOnly) return
+    setFloors(saved)
+    resetHistory(saved)
+    setCurrentFloorId((id) => (saved.some((f) => f.id === id) ? id : saved[0].id))
+    setSelection(null)
+    setWallDraft(null)
+    setOpeningDraft(null)
+    setGroundDraft(null)
+    setLayoutError(null)
+    setStatusText('Ändringarna är ångrade.')
+  }
+
   const canUndo = !readOnly && history.current.past.length > 0
   const canRedo = !readOnly && history.current.future.length > 0
 
@@ -2178,10 +2201,15 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
             </button>
             {!readOnly && (
               <>
+                {draftDirty && (
+                  <button type="button" className="btn outline" disabled={saving || publishing} onClick={discardDraft}>
+                    Ångra ändringar
+                  </button>
+                )}
                 <button
                   type="button"
                   className="btn outline"
-                  disabled={saving || publishing}
+                  disabled={saving || publishing || !draftDirty}
                   onClick={saveDraft}
                 >
                   {saving && !publishing ? 'Sparar…' : 'Spara utkast'}

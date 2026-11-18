@@ -46,7 +46,8 @@ describe('TableRulesCard', () => {
     expect(within(row('4')).getByLabelText('Bord 4 från antal personer')).toHaveValue('5')
     expect(within(row('4')).getByLabelText('Bord 4 till antal personer')).toHaveValue('10')
     expect(within(row('1')).getByLabelText('Bord 1 från antal personer')).toHaveValue('1')
-    expect(screen.queryByText(/Ej sparat/)).toBeNull()
+    expect(screen.queryByText('Osparade ändringar')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Spara bordsregler' })).toBeDisabled()
   })
 
   it('saves only the tables that differ from the default, by id', async () => {
@@ -58,7 +59,7 @@ describe('TableRulesCard', () => {
     await user.click(screen.getByLabelText('Bord 1 bokas online'))
     await user.clear(screen.getByLabelText('Bord 4 från antal personer'))
     await user.type(screen.getByLabelText('Bord 4 från antal personer'), '7')
-    expect(screen.getByText('Ej sparat - klicka Spara bordsregler.')).toBeInTheDocument()
+    expect(screen.getByText('Osparade ändringar')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Spara bordsregler' }))
 
     expect(updateLocation).toHaveBeenCalledWith('loc-1', {

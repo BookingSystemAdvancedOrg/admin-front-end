@@ -26,6 +26,8 @@ import { SkelRows } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
 import { Select } from '../../shared/Select'
+import { SaveBar } from '../../shared/SaveBar'
+import { useDirtyForm } from '../../shared/dirtyForm'
 
 /**
  * Bokningstid (backend shared/booking_rules.py): standardlängd, om
@@ -97,7 +99,7 @@ function ExtensionFields({
 }
 
 export function BookingTimeCard({ locationId, isOwner }: { locationId: string | null; isOwner: boolean }) {
-  const [saved, setSaved] = useState<string | null>(null)
+  const [saved, setSaved] = useState<BookingTimeRules | null>(null)
   const [rules, setRules] = useState<BookingTimeRules | null>(null)
   const [legacy, setLegacy] = useState(false)
   const [graceMinutes, setGraceMinutes] = useState(0)
@@ -105,6 +107,7 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
     if (!locationId) return
@@ -114,7 +117,7 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
         if (cancelled) return
         const value = rulesFromLocation(loc.bookingTimeRules, loc.bookingDurationHours)
         setRules(value)
-        setSaved(JSON.stringify(toPayload(value)))
+        setSaved(value)
         setLegacy(!loc.bookingTimeRules)
         setGraceMinutes(Math.round((loc.gracePeriodHours ?? 0) * 60))
       })
@@ -125,13 +128,23 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
   }, [locationId])
 
   const disabled = !isOwner || busy || !rules
-  const dirty = rules !== null && (legacy || JSON.stringify(toPayload(rules)) !== saved)
+  // Äldre platser utan regler visar sina tider; Spara blir aktiv först när något ändras.
+  const dirty = useDirtyForm(rules ? toPayload(rules) : null, rules && saved ? toPayload(saved) : null)
   const warnings = rules ? overlapWarnings(rules) : []
 
   function change(next: BookingTimeRules) {
     setRules(next)
     setNotice(null)
     setError(null)
+    setFailed(false)
+  }
+
+  function discard() {
+    if (!saved) return
+    setRules(saved)
+    setOpen(null)
+    setError(null)
+    setFailed(false)
   }
 
   function setWindow(id: string, patch: Partial<BookingTimeWindow>) {
@@ -150,9 +163,14 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
     e.preventDefault()
     if (!locationId || !rules) return
     const problem = validateRules(rules, graceMinutes)
-    if (problem) return setError(problem)
+    if (problem) {
+      setError(problem)
+      setFailed(true)
+      return
+    }
     setError(null)
     setNotice(null)
+    setFailed(false)
     setBusy(true)
     try {
       const payload = toPayload(rules)
@@ -164,12 +182,13 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
       })
       const value = rulesFromLocation(updated.bookingTimeRules, updated.bookingDurationHours)
       setRules(value)
-      setSaved(JSON.stringify(toPayload(value)))
+      setSaved(value)
       setLegacy(!updated.bookingTimeRules)
       setOpen(null)
       setNotice('Sparat. Gäller nya bokningar; befintliga behåller sin tid.')
     } catch (err) {
       setError(errorText(err, 'Bokningstiden sparades inte.', { owner_only: 'Bara restaurangens ägare kan ändra bokningstiden. Be ägaren göra det.', forbidden: 'Bara restaurangens ägare kan ändra bokningstiden. Be ägaren göra det.' }))
+      setFailed(true)
     } finally {
       setBusy(false)
     }
@@ -397,21 +416,15 @@ export function BookingTimeCard({ locationId, isOwner }: { locationId: string | 
             <ErrorNote text={error} />
           )}
           {isOwner ? (
-            <span className="row-actions">
-              <button type="submit" className="btn primary square" disabled={disabled}>
-                {busy ? 'Sparar…' : 'Spara bokningstid'}
-              </button>
-              {notice && !dirty && (
-                <span className="save-notice" role="status">
-                  {notice}
-                </span>
-              )}
-              {dirty && !busy && !legacy && (
-                <span className="form-error" role="status">
-                  Ej sparat - klicka Spara bokningstid.
-                </span>
-              )}
-            </span>
+            <SaveBar
+              dirty={dirty}
+              busy={busy}
+              label="Spara bokningstid"
+              notice={notice}
+              failed={failed}
+              disabled={disabled}
+              onDiscard={discard}
+            />
           ) : (
             <p className="cell-muted">Bara ägaren kan ändra.</p>
           )}

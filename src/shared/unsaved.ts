@@ -35,3 +35,21 @@ export function useUnsavedGuard(dirty: boolean | (() => boolean)): void {
     }
   }, [id])
 }
+
+// ------------------------------------------------------------ lämna sidan
+type Ask = (go: () => void) => void
+let asker: Ask | null = null
+
+/** LeaveGuard registrerar frågan här (en i hela adminen). */
+export function setLeaveAsker(ask: Ask | null): void {
+  asker = ask
+}
+
+/**
+ * Gå vidare (`go`) direkt när inget är osparat; annars frågar LeaveGuard
+ * först och går bara vidare om man väljer att lämna utan att spara.
+ */
+export function requestLeave(go: () => void): void {
+  if (!hasUnsaved() || !asker) go()
+  else asker(go)
+}

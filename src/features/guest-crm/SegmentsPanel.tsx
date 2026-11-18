@@ -22,6 +22,8 @@ import './gaster.css'
 import { ErrorActions } from '../../shared/ErrorNote'
 import { useConfirm } from '../../shared/ConfirmDialog'
 import { SkelRows } from '../../shared/Skeleton'
+import { useDirtyForm } from '../../shared/dirtyForm'
+import { useUnsavedGuard } from '../../shared/unsaved'
 
 /** Målgrupper på Marknadsföring > Mottagare (ägare): sparade regler, antal och "Använd i kampanj". */
 export default function SegmentsPanel() {
@@ -39,6 +41,11 @@ export default function SegmentsPanel() {
     setDraftBase(next)
   }
   const [saving, setSaving] = useState(false)
+  const [failed, setFailed] = useState(false)
+  // Spara följer ändringarna; en ny målgrupp (även från en färdig mall) går att spara som den är.
+  const changed = useDirtyForm(draft, draftBase)
+  const isNew = Boolean(draft && !draft.version)
+  useUnsavedGuard(changed)
   const [counts, setCounts] = useState<Record<string, { total: number; reachable: number }>>({})
   const [confirmEl, ask] = useConfirm()
 
@@ -72,8 +79,9 @@ export default function SegmentsPanel() {
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
-    if (!draft) return
+    if (!draft || !(isNew || changed)) return
     setSaving(true)
+    setFailed(false)
     const send = (d: Draft) => saveSegment(d.segmentId, {
       name: d.name.trim(), rules: rulesFrom(d), ...(d.version ? { version: d.version } : {}),
     })
@@ -90,6 +98,7 @@ export default function SegmentsPanel() {
         const { merged, conflicts } = mergeEdits(draftBase, draft, theirs, ['version', 'segmentId'])
         const next = { ...merged, version: latest.version }
         if (conflicts.length) {
+          setFailed(true)
           setDraftState(next)
           setDraftBase(theirs)
           toast('Någon annan ändrade samma regel nyss. Dina värden står kvar. Spara igen för att använda dem.', { tone: 'danger' })
@@ -102,6 +111,7 @@ export default function SegmentsPanel() {
       void count(saved.segmentId)
       toast('Målgruppen är sparad.', { tone: 'success' })
     } catch (err) {
+      setFailed(true)
       toast(errorText(err, 'Målgruppen sparades inte.', {
         invalid_rules: 'En regel ser fel ut. Kolla siffrorna, till exempel minst 7 dagar sedan senaste besöket.',
         changed_retry: 'Någon annan ändrade målgruppen samtidigt. Nu visas det senaste. Spara igen om det behövs.',
@@ -194,11 +204,11 @@ export default function SegmentsPanel() {
             <input type="checkbox" className="switch" checked={draft.optedIn} onChange={(e) => set({ optedIn: e.target.checked })} />
             <span className="toggle-row-label">Vill ha erbjudanden</span>
           </label>
-          <Bar variant="action" label="Spara målgrupp">
-            <Button type="button" variant="ghost" onClick={() => setDraft(null)}>Avbryt</Button>
+          <Bar variant="action" label="Spara målgrupp" sticky={changed || isNew} status={changed && !saving ? 'Osparade ändringar' : undefined}>
+            <Button type="button" variant="secondary" onClick={() => { setDraft(null); setFailed(false) }}>Avbryt</Button>
             <Button type="submit" busy={saving} busyLabel="Sparar…"
-              disabled={!draft.name.trim() || Object.keys(rulesFrom(draft)).length === 0}>
-              Spara
+              disabled={!(isNew || changed) || !draft.name.trim() || Object.keys(rulesFrom(draft)).length === 0}>
+              {failed ? 'Spara igen' : 'Spara'}
             </Button>
           </Bar>
         </form>

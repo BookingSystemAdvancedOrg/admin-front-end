@@ -3,7 +3,6 @@ import { errorText } from '../../shared/errors'
 import { useEffect, useRef, useState } from 'react'
 import { dedupe, sameData, useLiveRefresh } from '../../shared/live'
 import { ChangedNote } from '../../shared/ChangedNote'
-import { CtaButton } from '../../shared/CtaButton'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { AdminTopbar } from '../../shared/AdminTopbar'
@@ -25,6 +24,8 @@ import { PrivacyCard } from './PrivacyCard'
 import { PrinterCard } from './PrinterCard'
 import { PaymentsCard } from './PaymentsCard'
 import { SpecialDaysCard } from './SpecialDaysCard'
+import { SaveBar } from '../../shared/SaveBar'
+import { useDirtyForm } from '../../shared/dirtyForm'
 import { TableRulesCard } from './TableRulesCard'
 import { BookingTimeCard } from './BookingTimeCard'
 import { BusinessHoursEditor } from './BusinessHoursEditor'
@@ -189,6 +190,11 @@ export default function InstallningarPage() {
   )
 
   const [saved, setSaved] = useState(false)
+  // Spara-raden: formuläret mot det sparade (eller startvärdena för en ny plats).
+  const [blank] = useState<LocationCreateRequest>(() => ({
+    name: '', address: '', email: '', phoneNumber: '', timezone: DEFAULT_TIMEZONE,
+    businessHours: EMPTY_BUSINESS_HOURS, bookingDurationHours: DEFAULT_BOOKING_DURATION_HOURS, gracePeriodHours: DEFAULT_GRACE_PERIOD_HOURS,
+  }))
   // Kortgarantin och beställningen ur samma hämtning: äpplena på fältet.
   const [locExtra, setLocExtra] = useState<Pick<Location, 'guarantee' | 'ordering'> | null>(null)
 
@@ -281,6 +287,37 @@ export default function InstallningarPage() {
       ? <ChangedNote value={v} onUse={() => { use(v); setDrift((d) => ({ ...d, [k]: undefined })) }} />
       : null
   }
+
+  const locationDirty = useDirtyForm<LocationCreateRequest>(
+    {
+      name: profile.name, address: profile.address, email: profile.email, phoneNumber: profile.phone, timezone,
+      businessHours, bookingDurationHours, gracePeriodHours,
+    },
+    savedLocation ?? (locationId || resolvingLocation ? null : blank),
+  )
+  function discardLocation() {
+    const s = savedLocation ?? blank
+    setProfile({ name: s.name, address: s.address, email: s.email ?? '', phone: s.phoneNumber ?? '' })
+    setTimezone(s.timezone)
+    setBusinessHours(s.businessHours)
+    setBookingDurationHours(s.bookingDurationHours ?? DEFAULT_BOOKING_DURATION_HOURS)
+    setGracePeriodHours(clampGraceHours(s.gracePeriodHours ?? DEFAULT_GRACE_PERIOD_HOURS))
+    setLocationError(null)
+    setDrift({})
+  }
+  const locationSaveBar = (
+    <SaveBar
+      dirty={locationDirty}
+      busy={savingLocation}
+      label="Spara ändringar"
+      onSave={() => void handleSaveAll()}
+      onDiscard={discardLocation}
+      notice={saved ? 'Sparat' : null}
+      failed={Boolean(locationError)}
+      disabled={resolvingLocation || !isOwner}
+      title={isOwner ? undefined : 'Bara ägaren kan ändra restaurangens uppgifter'}
+    />
+  )
 
   function updateProfile(field: keyof RestaurantProfile, value: string) {
     setSaved(false)
@@ -412,19 +449,6 @@ export default function InstallningarPage() {
     <>
       <AdminTopbar
         title="Inställningar"
-        actions={
-          (branch === 'profil' || branch === HOURS_BRANCH) && <span className="row-actions">
-            {saved && <span className="save-notice">Sparat</span>}
-            <CtaButton
-              label={savingLocation ? 'Sparar…' : 'Spara ändringar'}
-              win="Klart!"
-              data-tour="settings-save"
-              disabled={savingLocation || resolvingLocation || !isOwner}
-              title={isOwner ? undefined : 'Bara ägaren kan ändra restaurangens uppgifter'}
-              onClick={handleSaveAll}
-            />
-          </span>
-        }
       />
       <div className="admin-main settings-main" data-view={view.kind}>
         <SettingsTreeNav
@@ -540,6 +564,7 @@ export default function InstallningarPage() {
                   </Select>
                 </div>
               </div>
+              {isOwner && <div data-tour="settings-save">{locationSaveBar}</div>}
             </section>
           </div>
 
@@ -568,6 +593,7 @@ export default function InstallningarPage() {
                   setBusinessHours(next)
                 }}
               />
+              {isOwner && locationSaveBar}
             </section>
             <div className="settings-row" data-help="settings:dagar:SpecialDaysCard">
               <SpecialDaysCard key={locationId ?? 'none'} locationId={locationId} isOwner={isOwner} />

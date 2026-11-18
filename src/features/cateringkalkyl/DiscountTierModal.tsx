@@ -66,11 +66,13 @@ export function DiscountTierModal({
   // Ändrat något i formuläret? Då frågar ett klick utanför eller Escape först.
   const snapshot = JSON.stringify([name, fromPortions, toPortions, discountPercent, active])
   const [initialSnapshot] = useState(snapshot)
+  // Spara följer ändringarna: avstängd tills något skiljer sig från det rutan öppnades med.
+  const dirty = snapshot !== initialSnapshot
   const [confirmEl, ask] = useConfirm()
   const closeRef = useRef<() => void>(() => {})
   closeRef.current = () => {
     if (savingRef.current) return
-    if (snapshot === initialSnapshot) {
+    if (!dirty) {
       onCancel()
       return
     }
@@ -120,8 +122,8 @@ export function DiscountTierModal({
   }
 
   async function save() {
+    if (saving || !dirty) return
     setTried(true)
-    if (saving) return
     if (!valid || from === null || discount === null) {
       // Tillbaka till första fältet som är fel (på telefonen kan felet ligga utanför skärmen).
       const first = nameError ? 'tier-name' : fromError ? 'tier-from' : toError ? 'tier-to'
@@ -232,7 +234,7 @@ export function DiscountTierModal({
 
         <div className="tier-modal-actions">
           {onDelete && (
-            <button type="button" className="link-action danger" disabled={saving} onClick={onDelete}>
+            <button type="button" className="btn danger-outline square" disabled={saving} onClick={onDelete}>
               Radera nivå
             </button>
           )}
@@ -243,10 +245,10 @@ export function DiscountTierModal({
             <button
               type="button"
               className="btn primary square"
-              disabled={saving}
+              disabled={saving || !dirty}
               onClick={() => void save()}
             >
-              {saving ? 'Sparar…' : 'Spara nivå'}
+              {saving ? 'Sparar…' : saveError ? 'Spara igen' : 'Spara nivå'}
             </button>
           </span>
         </div>

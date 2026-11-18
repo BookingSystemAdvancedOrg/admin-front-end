@@ -1,0 +1,82 @@
+/* Spara-raden (SaveBar.tsx). Orörd: stilla sist i formuläret. Ändrad: glas
+   som följer med längst ner i bild, över telefonens meny (--dock-space).
+   Fråga Booqy lyfter sig själv över raden (features/help/dodge.ts). */
+
+.save-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 10px;
+  min-width: 0;
+}
+
+.save-bar-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: auto;
+  min-width: 0;
+  font: var(--fw-strong) 13px / 1.3 var(--font);
+  color: var(--ink);
+}
+
+.save-bar-status:empty {
+  display: none;
+}
+
+.save-bar-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+.save-bar--dirty {
+  position: sticky;
+  bottom: calc(var(--dock-space, 0px) + 12px);
+  z-index: 20;
+  padding: 8px 8px 8px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--glass-pop);
+  box-shadow: var(--glass-edge), var(--elev-2);
+  -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
+  backdrop-filter: blur(var(--blur-pop)) saturate(1.5);
+  animation: save-bar-in var(--dur-base, 220ms) var(--ease-out) both;
+}
+
+.save-bar--dirty .save-bar-status {
+  margin-right: auto;
+}
+
+@keyframes save-bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* Telefon: knapparna delar raden, statusen ovanför. */
+@media (max-width: 600px) {
+  /* Fri från menyns runda plusknapp, som sticker upp ovanför raden. */
+  .save-bar--dirty {
+    bottom: calc(var(--dock-space, 0px) + 24px);
+    border-radius: var(--radius-card, 22px);
+    padding: 10px;
+  }
+  .save-bar--dirty .save-bar-status {
+    flex-basis: 100%;
+    padding-left: 6px;
+  }
+  .save-bar--dirty .btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .save-bar--dirty {
+    animation: none;
+  }
+}

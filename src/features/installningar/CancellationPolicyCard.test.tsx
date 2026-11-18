@@ -63,10 +63,13 @@ describe('CancellationPolicyCard', () => {
 
   it('says clearly when a saved policy is switched off', async () => {
     const user = userEvent.setup()
-    getLocation.mockResolvedValue({ locationId: 'loc-1' })
+    getLocation.mockResolvedValue({
+      locationId: 'loc-1',
+      guarantee: { enabled: true, minPartySize: 8, noShowFeePerPerson: 200, lateCancelFeePerPerson: 100, cancelCutoffHours: 24 },
+    })
     updateLocation.mockImplementation(async (_id, body) => ({ locationId: 'loc-1', ...body }))
     render(<CancellationPolicyCard locationId="loc-1" isOwner stripeReady />)
-    expect(await screen.findByText(/Nu: avstängd/)).toBeInTheDocument()
+    await user.click(await screen.findByRole('switch', { name: 'Kortgaranti vid onlinebokning' }))
     await user.click(screen.getByRole('button', { name: 'Spara policy' }))
     expect(await screen.findByText('Sparat - kortgarantin är avstängd.')).toBeInTheDocument()
     expect(updateLocation.mock.calls[0][1].guarantee.enabled).toBe(false)
@@ -78,9 +81,10 @@ describe('CancellationPolicyCard', () => {
     updateLocation.mockImplementation(async (_id, body) => ({ locationId: 'loc-1', ...body }))
     render(<CancellationPolicyCard locationId="loc-1" isOwner stripeReady />)
     await user.click(await screen.findByRole('switch', { name: 'Kortgaranti vid onlinebokning' }))
-    expect(screen.getByText('Ej sparat - klicka Spara policy.')).toBeInTheDocument()
+    expect(screen.getByText('Osparade ändringar')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Spara policy' }))
     expect(await screen.findByText('Sparat. Gäller nya bokningar.')).toBeInTheDocument()
-    expect(screen.queryByText('Ej sparat - klicka Spara policy.')).toBeNull()
+    expect(screen.queryByText('Osparade ändringar')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Spara policy' })).toBeDisabled()
   })
 })

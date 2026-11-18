@@ -40,6 +40,9 @@ import { Select } from '../../shared/Select'
 import { KronorInput } from './KronorInput'
 import { RefundDialog } from '../../shared/RefundDialog'
 import { BackButton } from '../../shared/BackButton'
+import { useDirtyForm } from '../../shared/dirtyForm'
+import { useUnsavedGuard } from '../../shared/unsaved'
+import '../../shared/saveBar.css'
 
 /** API:ts fältnamn i offerten -> fältets id, så ett fel flyttar fokus dit. */
 const OFFER_FIELD_IDS: Record<string, string> = {
@@ -106,6 +109,9 @@ export default function CateringRequestPage() {
   const [confirm, setConfirm] = useState<'decline' | 'cancel' | null>(null)
   const [refunding, setRefunding] = useState(false)
   const [reason, setReason] = useState('')
+  // Offerten mot den sparade: Spara utkast följer ändringarna och adminen frågar innan man lämnar sidan.
+  const offerDirty = useDirtyForm(offer, offerBase ? offerFromRequest(offerBase) : null)
+  useUnsavedGuard(offerDirty)
   const returnedFromSigning = new URLSearchParams(useLocation().search).get('signering') === 'klar'
   const [menu, setMenu] = useState<{ dishes: CateringDish[]; packages: CateringPackage[] }>({ dishes: [], packages: [] })
 
@@ -499,21 +505,33 @@ export default function CateringRequestPage() {
             )}
             <ErrorNote text={error} />
             {notice && <p className="save-notice" role="status">{notice}</p>}
-            <span className="row-actions">
+            <div className={`save-bar${offerDirty ? ' save-bar--dirty' : ''}`}>
+              {offerDirty && !busy && (
+                <span className="save-bar-status" role="status">
+                  <i className="save-bar-dot" aria-hidden="true" />
+                  Osparade ändringar
+                </span>
+              )}
+              {offerDirty && (
+                <button type="button" className="btn outline square" disabled={busy}
+                  onClick={() => { if (offerBase) setOffer(offerFromRequest(offerBase)); setError(null) }}>
+                  Ångra ändringar
+                </button>
+              )}
               <button type="button" className="btn primary square" disabled={busy || !offerValid}
                 onClick={() => void run(() => sendOffer(locationId, requestId, offer), 'Offerten är klar. Signera den, sedan går den till kunden.')}>
                 {busy ? 'Skickar…' : `Skicka offert${request.currentOfferVersion ? ` v${nextVersion}` : ''}`}
               </button>
-              <button type="button" className="btn outline square" disabled={busy || !offerValid}
+              <button type="button" className="btn outline square" disabled={busy || !offerValid || !offerDirty}
                 onClick={() => void run(() => saveDraft(locationId, requestId, offer), 'Utkastet är sparat.')}>
                 Spara utkast
               </button>
-              {confirm !== 'decline' ? (
+              {confirm !== 'decline' && !offerDirty ? (
                 <button type="button" className="btn danger-outline square" disabled={busy} onClick={() => setConfirm('decline')}>
                   Neka förfrågan
                 </button>
               ) : null}
-            </span>
+            </div>
             {confirm === 'decline' && (
               <div className="catering-confirm" role="group" aria-label="Neka förfrågan">
                 <label htmlFor="decline-reason">Meddelande till kunden (valfritt)</label>

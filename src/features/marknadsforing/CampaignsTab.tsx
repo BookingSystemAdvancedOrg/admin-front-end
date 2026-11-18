@@ -95,11 +95,13 @@ export function CampaignForm({
   // Ändrat något i formuläret? Då frågar ett klick utanför eller Escape först.
   const snapshot = JSON.stringify([name, templateId, subject, type, days, loc, segment])
   const [initialSnapshot] = useState(snapshot)
+  // Spara följer ändringarna: avstängd tills något skiljer sig från det som öppnades.
+  const dirty = snapshot !== initialSnapshot
   const [confirmEl, ask] = useConfirm()
   const closeRef = useRef<() => void>(() => {})
   closeRef.current = () => {
     if (saving) return
-    if (snapshot === initialSnapshot) {
+    if (!dirty) {
       onClose()
       return
     }
@@ -112,6 +114,7 @@ export function CampaignForm({
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
+    if (!dirty) return
     if (!name.trim()) return setError('Ge kampanjen ett namn.')
     if (!templateId) return setError('Välj en mall.')
     setSaving(true)
@@ -195,9 +198,9 @@ export function CampaignForm({
         <p className="field-hint">Bara gäster som sagt ja till erbjudanden.</p>
 
         <ErrorNote text={error} />
-        <div className="modal-actions">
+        <div className="modal-actions modal-actions--pinned">
           <button type="button" className="btn outline square" onClick={onClose} disabled={saving}>Avbryt</button>
-          <button type="submit" className="btn primary square" disabled={saving}>{saving ? 'Sparar…' : 'Spara utkast'}</button>
+          <button type="submit" className="btn primary square" disabled={saving || !dirty}>{saving ? 'Sparar…' : error ? 'Spara igen' : 'Spara utkast'}</button>
         </div>
       </form>
     </ModalOverlay>
@@ -446,7 +449,7 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
                             <button type="button" className="link-action" disabled={isBusy('test')} onClick={() => void act(c, 'test')}>
                               {isBusy('test') ? 'Skickar…' : 'Testa'}
                             </button>
-                            <button type="button" className="btn primary square mk-small" onClick={() => setSending(c)}>Skicka</button>
+                            <button type="button" className="btn outline square mk-small" onClick={() => setSending(c)}>Skicka</button>
                             <button type="button" className="link-action danger" disabled={isBusy('delete')} onClick={() => void act(c, 'delete')}>Ta bort</button>
                           </>
                         )}

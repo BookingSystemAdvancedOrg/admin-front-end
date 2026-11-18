@@ -94,3 +94,48 @@ describe('DishModal Skickas till', () => {
     expect(group).toBeInTheDocument()
   })
 })
+
+describe('DishModal Spara follows the changes', () => {
+  it('is off while nothing changed, on after a change and off again after changing it back', async () => {
+    const user = userEvent.setup()
+    render(modal(DISH))
+    const save = screen.getByRole('button', { name: 'Spara ändringar' })
+    expect(save).toBeDisabled()
+    await user.type(screen.getByLabelText('Namn'), ' med smör')
+    expect(save).toBeEnabled()
+    await user.clear(screen.getByLabelText('Namn'))
+    await user.type(screen.getByLabelText('Namn'), 'Torskrygg')
+    expect(save).toBeDisabled()
+    // En kryssruta räknas också, och ångras den är det orört igen.
+    await user.click(screen.getByRole('checkbox', { name: 'Gluten' }))
+    expect(save).toBeEnabled()
+    await user.click(screen.getByRole('checkbox', { name: 'Gluten' }))
+    expect(save).toBeDisabled()
+  })
+
+  it('keeps the changes and says Spara igen when the save fails', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn().mockRejectedValue(new Error('nope'))
+    render(modal(DISH, onSave))
+    await user.clear(screen.getByLabelText('Pris (kr)'))
+    await user.type(screen.getByLabelText('Pris (kr)'), '199')
+    await user.click(screen.getByRole('button', { name: 'Spara ändringar' }))
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(await screen.findByRole('button', { name: 'Spara igen' })).toBeEnabled()
+    expect(screen.getByLabelText('Pris (kr)')).toHaveValue('199')
+  })
+
+  it('a new dish counts as changed once something is filled in, and saves once it is valid', async () => {
+    const user = userEvent.setup()
+    render(
+      <DishModal title="Lägg till rätt" initial={null} timeZone="Europe/Stockholm" categories={CATS}
+        onSave={vi.fn()} onCancel={vi.fn()} />,
+    )
+    const add = screen.getByRole('button', { name: 'Lägg till rätt' })
+    expect(add).toBeDisabled()
+    await user.type(screen.getByLabelText('Namn'), 'Pannkakor')
+    expect(add).toBeDisabled()
+    await user.type(screen.getByLabelText('Pris (kr)'), '95')
+    expect(add).toBeEnabled()
+  })
+})

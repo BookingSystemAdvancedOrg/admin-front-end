@@ -139,7 +139,17 @@ describe('StaffModal - edit mode', () => {
     expect(screen.getByLabelText('Namn')).toHaveValue('Erik Lindqvist')
     expect(screen.getByLabelText('E-post')).toHaveValue('erik@kallarestaurang.se')
     expect(screen.getByLabelText('Plats')).toHaveValue('loc-2')
-    expect(screen.getByRole('button', { name: 'Spara ändringar' })).toBeEnabled()
+  })
+
+  it('enables Spara ändringar only while something differs from the opened values', async () => {
+    const user = userEvent.setup()
+    renderInvite({ title: 'Redigera användare', initial: existingStaff })
+    const save = screen.getByRole('button', { name: 'Spara ändringar' })
+    expect(save).toBeDisabled()
+    await user.type(screen.getByLabelText('Namn'), 'x')
+    expect(save).toBeEnabled()
+    await user.type(screen.getByLabelText('Namn'), '{Backspace}')
+    expect(save).toBeDisabled()
   })
 
   it('moves a user whose location was deleted to the selected one', () => {
@@ -148,6 +158,8 @@ describe('StaffModal - edit mode', () => {
       initial: { ...existingStaff, locationId: 'loc-deleted' },
     })
     expect(screen.getByLabelText('Plats')).toHaveValue('loc-1')
+    // The move is a change: it can be saved straight away.
+    expect(screen.getByRole('button', { name: 'Spara ändringar' })).toBeEnabled()
   })
 
   it('disables the role select when lockRole is set', () => {

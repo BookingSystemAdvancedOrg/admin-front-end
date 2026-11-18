@@ -178,7 +178,10 @@ describe('MarknadsforingPage', () => {
     expect(api.audienceSize).toHaveBeenCalledWith({ type: 'segment', exportId: 'exp-1' })
     await userEvent.click(within(dialog).getByRole('button', { name: 'Avbryt' }))
     await userEvent.click(within(row).getByRole('button', { name: 'Redigera' }))
-    await userEvent.click(await screen.findByRole('button', { name: 'Spara utkast' }))
+    // Spara följer ändringarna: ett namnbyte, målgruppen följer med orörd.
+    expect(await screen.findByRole('button', { name: 'Spara utkast' })).toBeDisabled()
+    await userEvent.type(screen.getByLabelText(/^Namn/), '!')
+    await userEvent.click(screen.getByRole('button', { name: 'Spara utkast' }))
     await waitFor(() => expect(api.updateCampaign).toHaveBeenCalledWith(draftCampaign.campaignId, expect.objectContaining({
       audience: { type: 'segment', exportId: 'exp-1' },
     })))

@@ -18,6 +18,7 @@ import { TitleInfo } from '../../shared/TitleInfo'
 import { Select } from '../../shared/Select'
 import { DateInput } from '../../shared/DateInput'
 import { SkelPage, SkelRows } from '../../shared/Skeleton'
+import { SaveBar } from '../../shared/SaveBar'
 
 /**
  * Bokföring: dagens försäljning som en verifikation per dag, till Fortnox,
@@ -127,6 +128,7 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
   const [saveError, setSaveError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [touched, setTouched] = useState(false)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
     if (!locationId) return
@@ -189,10 +191,15 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
   async function save(e: FormEvent) {
     e.preventDefault()
     setTouched(true)
-    if (!locationId || !settings || !accounts || invalid) return
+    if (!locationId || !settings || !accounts) return
+    if (invalid) {
+      setFailed(true)
+      return
+    }
     setSaving(true)
     setSaveError(null)
     setNotice(null)
+    setFailed(false)
     try {
       const next = await saveAccounting(locationId, {
         accounts, series, fiscalYearStartMonth: yearStart, costCenter, version: settings.version,
@@ -203,6 +210,7 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
       setNotice('Sparat.')
     } catch (err) {
       setSaveError(message(err, 'Bokföringsinställningarna sparades inte.'))
+      setFailed(true)
     } finally {
       setSaving(false)
     }
@@ -210,7 +218,23 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
 
   function setAccount(role: AccountRole, value: string) {
     setAccounts((prev) => (prev ? { ...prev, [role]: value.replace(/\D/g, '').slice(0, 4) } : prev))
+    edited()
+  }
+
+  function edited() {
     setNotice(null)
+    setFailed(false)
+  }
+
+  function discard() {
+    if (!settings) return
+    setAccounts(settings.accounts)
+    setSeries(settings.series)
+    setYearStart(settings.fiscalYearStartMonth)
+    setCostCenter(settings.costCenter)
+    setTouched(false)
+    setSaveError(null)
+    setFailed(false)
   }
 
   if (!locationId) {
@@ -376,7 +400,7 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
               <div className="form-field">
                 <label htmlFor="bokforing-serie">Verifikationsserie</label>
                 <Select id="bokforing-serie" value={series} disabled={saving}
-                  onChange={(e) => { setSeries(e.target.value); setNotice(null) }}>
+                  onChange={(e) => { setSeries(e.target.value); edited() }}>
                   {LETTERS.map((l) => (
                     <option key={l} value={l}>
                       {l}
@@ -387,7 +411,7 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
               <div className="form-field">
                 <label htmlFor="bokforing-ar">Räkenskapsåret börjar</label>
                 <Select id="bokforing-ar" value={yearStart} disabled={saving}
-                  onChange={(e) => { setYearStart(Number(e.target.value)); setNotice(null) }}>
+                  onChange={(e) => { setYearStart(Number(e.target.value)); edited() }}>
                   {MONTHS.map((m, i) => (
                     <option key={m} value={i + 1}>
                       1 {m}
@@ -399,7 +423,7 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
                 <label htmlFor="bokforing-kst">Kostnadsställe</label>
                 <input id="bokforing-kst" value={costCenter} maxLength={10} autoComplete="off" disabled={saving}
                   aria-invalid={Boolean(costCenterError)} aria-describedby="bokforing-kst-hint"
-                  onChange={(e) => { setCostCenter(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')); setNotice(null) }} />
+                  onChange={(e) => { setCostCenter(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')); edited() }} />
                 <p id="bokforing-kst-hint" className={costCenterError ? 'form-error' : 'cell-muted'}>
                   {costCenterError ?? 'Används när flera restauranger delar Stripe-konto: försäljningen märks med koden.'}
                 </p>
@@ -408,26 +432,19 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
 
             <ErrorNote text={saveError} />
             <span className="row-actions">
-              <button type="submit" className="btn primary square" disabled={saving || !dirty}>
-                {saving ? 'Sparar…' : 'Spara'}
-              </button>
               <button
                 type="button"
                 className="btn outline square"
                 disabled={saving || isDefault}
                 onClick={() => {
                   setAccounts({ ...settings.defaults })
-                  setNotice(null)
+                  edited()
                 }}
               >
                 Återställ standardkonton
               </button>
-              {notice && (
-                <span className="save-notice" role="status">
-                  {notice}
-                </span>
-              )}
             </span>
+            <SaveBar dirty={dirty} busy={saving} notice={notice} failed={failed} onDiscard={discard} />
           </form>
         )}
       </section>

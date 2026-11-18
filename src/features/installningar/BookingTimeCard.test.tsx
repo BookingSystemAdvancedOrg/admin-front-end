@@ -54,6 +54,27 @@ describe('BookingTimeCard', () => {
     expect(updateLocation).not.toHaveBeenCalled()
   })
 
+  it('Spara bokningstid follows changes and Ångra ändringar restores the saved rules', async () => {
+    const user = userEvent.setup()
+    getLocation.mockResolvedValue({ locationId: 'loc-1', bookingDurationHours: 2, gracePeriodHours: 0.25 })
+    render(<BookingTimeCard locationId="loc-1" isOwner />)
+    await screen.findByText(/Nu: 2 tim/)
+    const save = screen.getByRole('button', { name: 'Spara bokningstid' })
+    expect(save).toBeDisabled()
+
+    await chooseOption(screen.getByLabelText('Standardlängd'), '90')
+    expect(save).toBeEnabled()
+    await chooseOption(screen.getByLabelText('Standardlängd'), '120')
+    expect(save).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'Lägg till specialtid' }))
+    expect(save).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Ångra ändringar' }))
+    expect(screen.getByText('Inga specialtider.')).toBeInTheDocument()
+    expect(save).toBeDisabled()
+    expect(updateLocation).not.toHaveBeenCalled()
+  })
+
   it('is read only for staff', async () => {
     getLocation.mockResolvedValue({
       locationId: 'loc-1', bookingDurationHours: 1.5, gracePeriodHours: 0.25,

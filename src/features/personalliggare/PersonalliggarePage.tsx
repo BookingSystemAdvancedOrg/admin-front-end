@@ -9,6 +9,7 @@ import { NoLocation } from '../../shared/NoLocation'
 import { PlanLocked } from '../../shared/PlanLocked'
 import { Loading } from '../../shared/Loading'
 import { useConfirm } from '../../shared/ConfirmDialog'
+import { useUnsavedGuard } from '../../shared/unsaved'
 import { SkelLines, SkelRows } from '../../shared/Skeleton'
 import { listUsers, type User } from '../installningar/usersApi'
 import {
@@ -325,9 +326,12 @@ function PersonForm({ person, onClose, onSaved }: { person: Person; onClose: () 
   // Ändrat något? Då frågar klick utanför, Escape och Stäng först. Avbryt stänger direkt.
   const [initialSnapshot] = useState(() => JSON.stringify(person))
   const [confirmEl, ask] = useConfirm()
+  // Spara följer ändringarna: avstängd tills något skiljer sig från det sparade.
+  const dirty = JSON.stringify(draft) !== initialSnapshot
+  useUnsavedGuard(dirty)
   const requestClose = () => {
     if (saving) return
-    if (JSON.stringify(draft) === initialSnapshot) {
+    if (!dirty) {
       onClose()
       return
     }
@@ -392,9 +396,9 @@ function PersonForm({ person, onClose, onSaved }: { person: Person; onClose: () 
           <input type="checkbox" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} />
           Arbetar här nu
         </label>
-        <Bar variant="action" label="Spara person">
-          <Button variant="ghost" type="button" onClick={onClose}>Avbryt</Button>
-          <Button type="submit" busy={saving} busyLabel="Sparar…" disabled={!draft.name.trim() || !(draft.personalIdentity ?? '').trim()}>Spara</Button>
+        <Bar variant="action" label="Spara person" sticky={dirty}>
+          <Button variant="secondary" type="button" onClick={onClose}>Avbryt</Button>
+          <Button type="submit" busy={saving} busyLabel="Sparar…" disabled={!dirty || !draft.name.trim() || !(draft.personalIdentity ?? '').trim()}>{error ? 'Spara igen' : 'Spara'}</Button>
         </Bar>
       </form>
     </Modal>
@@ -414,7 +418,11 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
   const [time, setTime] = useState('')
   const [reason, setReason] = useState('')
   const [saving, setSaving] = useState(false)
+  const [failed, setFailed] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  // Ifyllt men inte sparat: Spara följer med och adminen frågar innan man lämnar.
+  const dirty = Boolean(target || personId || time || reason.trim())
+  useUnsavedGuard(dirty)
 
   const load = useCallback(async () => {
     try {
@@ -438,6 +446,7 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
   async function save(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
+    setFailed(false)
     try {
       await correct(locationId, { personId, kind, eventTime: stockholmIso(day, time), reason: reason.trim(),
         ...(target ? { correctsSeq: target.seq } : {}) })
@@ -446,6 +455,7 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
       setReason('')
       await load()
     } catch (err) {
+      setFailed(true)
       toast(errorText(err, 'Rättelsen sparades inte.', ERRORS), { tone: 'danger' })
     } finally {
       setSaving(false)
@@ -478,10 +488,10 @@ function Corrections({ locationId, persons }: { locationId: string; persons: Per
           <Field label="Orsak" hint="5-300 tecken. Sparas i liggaren." required>
             <Input value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} />
           </Field>
-          <Bar variant="action" label="Spara rättelse"
+          <Bar variant="action" label="Spara rättelse" sticky={dirty}
             status={target ? `Rättar ${KIND_LABEL[target.kind as Kind] ?? target.kind} ${clock(target.eventTime)} för ${target.name}` : 'Efterregistrering'}>
-            {target ? <Button variant="ghost" type="button" onClick={() => pick(null)}>Ingen rad</Button> : null}
-            <Button type="submit" busy={saving} busyLabel="Sparar…" disabled={!personId || !time || reason.trim().length < 5}>Spara rättelse</Button>
+            {dirty ? <Button variant="secondary" type="button" onClick={() => { pick(null); setReason(''); setFailed(false) }}>Ångra ändringar</Button> : null}
+            <Button type="submit" busy={saving} busyLabel="Sparar…" disabled={!personId || !time || reason.trim().length < 5}>{failed ? 'Spara igen' : 'Spara rättelse'}</Button>
           </Bar>
         </form>
       </Card>

@@ -22,6 +22,8 @@ import { SkelRows } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
 import { Select } from '../../shared/Select'
+import { SaveBar } from '../../shared/SaveBar'
+import { useDirtyForm } from '../../shared/dirtyForm'
 
 /**
  * Avvikande öppettider för den valda platsen (backend shared/booking_rules.py):
@@ -76,6 +78,7 @@ export function SpecialDaysCard({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
     if (!locationId) return
@@ -100,7 +103,8 @@ export function SpecialDaysCard({
   )
   const ready = saved !== null
   const disabled = !isOwner || busy || !ready
-  const dirty = ready && JSON.stringify(sortDays(upcoming)) !== JSON.stringify(sortDays(saved.filter((d) => d.date >= today)))
+  // Tillagda och borttagna dagar mot det sparade; utkastet under "Lägg till dag" räknas inte.
+  const dirty = useDirtyForm(sortDays(upcoming), ready ? sortDays(saved.filter((d) => d.date >= today)) : null)
   // En dag har en typ: har idag redan avvikande tider erbjuds inte snabbknappen
   // (den skulle ersätta tiderna).
   const todayIsSpecial = upcoming.some((d) => d.date === today)
@@ -109,6 +113,14 @@ export function SpecialDaysCard({
     setDays(sortDays(next))
     setNotice(null)
     setError(null)
+    setFailed(false)
+  }
+
+  function discard() {
+    setDays(saved ?? [])
+    setDraft(emptyDraft())
+    setError(null)
+    setFailed(false)
   }
 
   function add() {
@@ -148,6 +160,7 @@ export function SpecialDaysCard({
     if (!locationId) return
     setError(null)
     setNotice(null)
+    setFailed(false)
     setBusy(true)
     try {
       const updated = await updateLocation(locationId, {
@@ -158,6 +171,7 @@ export function SpecialDaysCard({
       setNotice('Sparat. Bokningssidan visar det inom några minuter.')
     } catch (err) {
       setError(errorText(err, 'De avvikande dagarna sparades inte.', { owner_only: 'Bara restaurangens ägare kan ändra öppettiderna. Be ägaren göra det.', forbidden: 'Bara restaurangens ägare kan ändra öppettiderna. Be ägaren göra det.' }))
+      setFailed(true)
     } finally {
       setBusy(false)
     }
@@ -322,21 +336,15 @@ export function SpecialDaysCard({
             <ErrorNote text={error} />
           )}
           {isOwner && (
-            <span className="row-actions">
-              <button type="submit" className="btn primary square" disabled={disabled}>
-                {busy ? 'Sparar…' : 'Spara dagar'}
-              </button>
-              {notice && !dirty && (
-                <span className="save-notice" role="status">
-                  {notice}
-                </span>
-              )}
-              {dirty && !busy && (
-                <span className="form-error" role="status">
-                  Ej sparat - klicka Spara dagar.
-                </span>
-              )}
-            </span>
+            <SaveBar
+              dirty={dirty}
+              busy={busy}
+              label="Spara dagar"
+              notice={notice}
+              failed={failed}
+              disabled={disabled}
+              onDiscard={discard}
+            />
           )}
           {!isOwner && <p className="cell-muted">Bara ägaren kan ändra.</p>}
         </form>

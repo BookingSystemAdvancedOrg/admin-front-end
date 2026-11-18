@@ -28,6 +28,7 @@ import type {
 import { Num } from '../../shared/motion/Num'
 import { parseKronor } from './data'
 import ModalOverlay from '../../shared/ModalOverlay'
+import { useDirtyForm } from '../../shared/dirtyForm'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
 import { Loading } from '../../shared/Loading'
@@ -114,7 +115,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
               disabled={dishes.length === 0}>
               + Nytt paket
             </button>
-            <button type="button" className="btn primary" onClick={() => setModal({ kind: 'dish', dish: null })}>
+            <button type="button" className="btn outline" onClick={() => setModal({ kind: 'dish', dish: null })}>
               + Ny rätt
             </button>
           </span>
@@ -319,6 +320,10 @@ function DishModal({ dish, nextSort, onSave, onCancel }: {
   const [saving, setSaving] = useState(false)
   const parsed = parseKronor(price)
   const valid = name.trim() !== '' && parsed !== null
+  // Spara är avstängd tills något skiljer sig från det rutan öppnades med.
+  const form = { name, description, price, allergens: [...allergens].sort(), dietary: [...dietary].sort(), active }
+  const [opened] = useState(form)
+  const dirty = useDirtyForm(form, opened)
 
   async function save() {
     if (!valid || parsed === null) return
@@ -373,9 +378,9 @@ function DishModal({ dish, nextSort, onSave, onCancel }: {
         <button type="button" role="switch" aria-checked={active} aria-labelledby="cm-dish-active" className="switch"
           onClick={() => setActive((a) => !a)} />
       </div>
-      <div className="modal-actions">
+      <div className="modal-actions modal-actions--pinned">
         <button type="button" className="btn outline square" onClick={onCancel}>Avbryt</button>
-        <button type="button" className="btn primary square" disabled={!valid || saving} onClick={() => void save()}>
+        <button type="button" className="btn primary square" disabled={!dirty || !valid || saving} onClick={() => void save()}>
           {saving ? 'Sparar…' : 'Spara rätt'}
         </button>
       </div>
@@ -401,6 +406,9 @@ function PackageModal({ pkg, dishes, nextSort, onSave, onCancel }: {
   const min = minGuests.trim() === '' ? undefined : Number(minGuests.replace(/[^\d]/g, ''))
   const minValid = min === undefined || (min >= 1 && min <= 5000)
   const valid = name.trim() !== '' && parsed !== null && dishIds.length > 0 && dishIds.length <= 40 && minValid
+  const form = { name, description, price, minGuests, dishIds: [...dishIds].sort(), active }
+  const [opened] = useState(form)
+  const dirty = useDirtyForm(form, opened)
 
   async function save() {
     if (!valid || parsed === null) return
@@ -452,9 +460,9 @@ function PackageModal({ pkg, dishes, nextSort, onSave, onCancel }: {
           onClick={() => setActive((a) => !a)} />
       </div>
       <p className="field-note">Paketet visas bara för gäster när alla dess rätter är aktiva.</p>
-      <div className="modal-actions">
+      <div className="modal-actions modal-actions--pinned">
         <button type="button" className="btn outline square" onClick={onCancel}>Avbryt</button>
-        <button type="button" className="btn primary square" disabled={!valid || saving} onClick={() => void save()}>
+        <button type="button" className="btn primary square" disabled={!dirty || !valid || saving} onClick={() => void save()}>
           {saving ? 'Sparar…' : 'Spara paket'}
         </button>
       </div>

@@ -3,6 +3,8 @@ import { useLiveRefresh } from '../../shared/live'
 import { ConflictError, isConflict, mergeEdits } from '../../shared/merge'
 import { ChangedNote } from '../../shared/ChangedNote'
 import { Bar, Button, Card, Field, Input, Modal, toast } from '@booqy/brand'
+import { useDirtyForm } from '../../shared/dirtyForm'
+import { useUnsavedGuard } from '../../shared/unsaved'
 import { BrandSelect as Select } from '../../shared/Select'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { errorText } from '../../shared/errors'
@@ -282,9 +284,12 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
   // Ändrat något sedan kunden hämtades eller sparades? Då frågar klick utanför,
   // Escape och Stäng först, så inget slängs i tysthet.
   const [confirmEl, ask] = useConfirm()
+  // Spara följer ändringarna: avstängd när formuläret är som det sparade.
+  const dirty = useDirtyForm(form, base)
+  useUnsavedGuard(dirty)
   const requestClose = () => {
     if (saving) return
-    if (JSON.stringify(form) === JSON.stringify(base)) {
+    if (!dirty) {
       onClose()
       return
     }
@@ -385,7 +390,10 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
       onClose={requestClose}
       closeLabel="Stäng"
       footer={owner && guest ? (
-        <Button busy={saving} busyLabel="Sparar…" onClick={save}>Spara</Button>
+        <>
+          {dirty ? <Button variant="secondary" disabled={saving} onClick={() => { setForm(base); setSaveError(null) }}>Ångra ändringar</Button> : null}
+          <Button busy={saving} busyLabel="Sparar…" disabled={!dirty} onClick={save}>{saveError ? 'Spara igen' : 'Spara'}</Button>
+        </>
       ) : undefined}
     >
       {error ? (

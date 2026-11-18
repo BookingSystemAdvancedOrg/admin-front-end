@@ -19,6 +19,7 @@ import { AreaChecklist } from '../../shared/AreaChecklist'
 import { personSource, togglePerson } from '../../shared/access'
 import type { StaffAccessConfig, StaffAccessPerson } from '../../shared/access'
 import type { Tenant } from '../../shared/tenant'
+import { useDirtyForm } from '../../shared/dirtyForm'
 
 export interface StaffFormValues {
   name: string
@@ -115,10 +116,23 @@ export function StaffModal({
   const effectiveLocationId = group === 'staff_user' ? locationId.trim() : ''
   const locationError = validateLocationId(group, effectiveLocationId)
   const valid = !nameError && !emailError && !phoneError && !locationError
+  // Spara är avstängd tills något skiljer sig från det som gällde när dialogen öppnades.
+  const [opened] = useState(() => ({
+    name: initial?.name ?? '',
+    email: initial?.email ?? '',
+    phone: initial?.phone ?? '',
+    group: initial ? roleToGroup(initial.role) : 'staff_user',
+    locationId: initial ? (roleToGroup(initial.role) === 'staff_user' ? (initial.locationId ?? '') : '') : effectiveLocationId,
+    person: savedPerson,
+  }))
+  const dirty = useDirtyForm(
+    { name, email, phone, group, locationId: effectiveLocationId, person: group === 'staff_user' ? person : savedPerson },
+    opened,
+  )
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (busy || !valid) return
+    if (busy || !valid || !dirty) return
     setError(null)
     setBusy(true)
     try {
@@ -250,9 +264,9 @@ export function StaffModal({
             <button
               type="submit"
               className="btn primary square"
-              disabled={!valid || busy}
+              disabled={!valid || busy || !dirty}
             >
-              {busy ? 'Sparar…' : initial ? 'Spara ändringar' : 'Skicka inbjudan'}
+              {busy ? 'Sparar…' : initial ? (error ? 'Spara igen' : 'Spara ändringar') : 'Skicka inbjudan'}
             </button>
           </div>
         </form>

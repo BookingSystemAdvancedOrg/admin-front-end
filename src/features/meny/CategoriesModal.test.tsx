@@ -55,7 +55,7 @@ describe('CategoriesModal', () => {
     expect(screen.getByText('Huvudrätter', { selector: 'strong' })).toBeInTheDocument()
     expect(screen.getByLabelText('Kategori 1')).toHaveValue('Varmt')
     // Spara igen: går mot den senaste versionen.
-    await user.click(screen.getByRole('button', { name: 'Spara kategorier' }))
+    await user.click(screen.getByRole('button', { name: 'Spara igen' }))
     expect(onSave.mock.calls[1][1]).toBe(4)
     expect(onSave.mock.calls[1][0][0]).toEqual({ categoryId: 'mains', name: 'Varmt' })
   })
@@ -82,10 +82,24 @@ describe('CategoriesModal', () => {
     const onSave = vi.fn().mockRejectedValue(new ApiError(503, 'Tillfälligt fel.'))
     const fetchLatest = vi.fn()
     render(<CategoriesModal categories={CATS} version={1} dishCounts={{}} onSave={onSave} fetchLatest={fetchLatest} onCancel={vi.fn()} />)
+    await user.type(screen.getByLabelText('Kategori 2'), 'r')
     await user.click(screen.getByRole('button', { name: 'Spara kategorier' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Tillfälligt fel.')
     expect(fetchLatest).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'Spara kategorier' })).toBeEnabled()
+    // Ändringarna ligger kvar och knappen säger Spara igen.
+    expect(screen.getByLabelText('Kategori 2')).toHaveValue('Dryckr')
+    expect(screen.getByRole('button', { name: 'Spara igen' })).toBeEnabled()
+  })
+
+  it('keeps Spara off until the list changes, and off again after changing it back', async () => {
+    const user = userEvent.setup()
+    render(<CategoriesModal categories={CATS} version={1} dishCounts={{}} onSave={vi.fn()} fetchLatest={vi.fn()} onCancel={vi.fn()} />)
+    const save = screen.getByRole('button', { name: 'Spara kategorier' })
+    expect(save).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Flytta Dryck upp' }))
+    expect(save).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Flytta Dryck ner' }))
+    expect(save).toBeDisabled()
   })
 })
 

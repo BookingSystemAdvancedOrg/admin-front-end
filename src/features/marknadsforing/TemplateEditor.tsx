@@ -16,6 +16,9 @@ import {
 import type { Block, BlockType, Destination, TemplateInput, TemplateTheme } from './marketingApi'
 import { Icon } from '../../shared/Icon'
 import { Select } from '../../shared/Select'
+import { ErrorNote } from '../../shared/ErrorNote'
+import { SaveBar } from '../../shared/SaveBar'
+import { useDirtyForm } from '../../shared/dirtyForm'
 
 const ADDABLE: BlockType[] = ['heading', 'text', 'button', 'image', 'dish', 'divider', 'spacer']
 const PREVIEW_DELAY_MS = 600
@@ -133,12 +136,18 @@ export function TemplateEditor({
   initial,
   title,
   saving,
+  isNew = false,
+  error = null,
   onSave,
   onCancel,
 }: {
   initial: TemplateInput
   title: string
   saving: boolean
+  /** En ny mall (från en startmall) går att spara som den är. */
+  isNew?: boolean
+  /** Sparningen misslyckades: ändringarna ligger kvar, "Spara igen". */
+  error?: string | null
   onSave: (t: TemplateInput) => void
   onCancel: () => void
 }) {
@@ -151,6 +160,7 @@ export function TemplateEditor({
   const [addType, setAddType] = useState<BlockType>('text')
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const errors = templateErrors(draft)
+  const changed = useDirtyForm(draft, initial)
 
   useEffect(() => {
     if (!locationId || !draft.blocks.some((b) => b.type === 'dish')) return
@@ -210,14 +220,9 @@ export function TemplateEditor({
     <section className="admin-card table-card mk-editor" aria-label={title}>
       <div className="card-head">
         <h2 className="card-title">{title}</h2>
-        <div className="row-actions">
-          <button type="button" className="btn outline square" onClick={onCancel} disabled={saving}>
-            Avbryt
-          </button>
-          <button type="button" className="btn primary square" onClick={save} disabled={saving}>
-            {saving ? 'Sparar…' : 'Spara mallen'}
-          </button>
-        </div>
+        <button type="button" className="btn outline square" onClick={onCancel} disabled={saving}>
+          Avbryt
+        </button>
       </div>
 
       <div className="mk-editor-grid">
@@ -292,6 +297,10 @@ export function TemplateEditor({
           <p className="field-hint">Avregistreringslänk läggs till automatiskt.</p>
         </div>
       </div>
+      <ErrorNote text={error} />
+      <SaveBar dirty={isNew || changed} guard={changed} busy={saving} label="Spara mallen" onSave={save}
+        failed={Boolean(error) || (showErrors && errors.length > 0)}
+        onDiscard={changed ? () => { setDraft(initial); setShowErrors(false) } : undefined} />
     </section>
   )
 }

@@ -6,6 +6,7 @@ import { getLocation, updateLocation } from './locationApi'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
 import { Select } from '../../shared/Select'
+import { SaveBar } from '../../shared/SaveBar'
 
 /**
  * Statistik: var lunchen slutar. Lunch är bokningar och beställningar före
@@ -81,6 +82,7 @@ export function InsightsSettingsCard({ locationId }: { locationId: string | null
               onChange={(e) => {
                 setLunch(e.target.value)
                 setNotice(null)
+                setError(null)
               }}
             >
               {LUNCH_HOURS.map((h) => (
@@ -95,16 +97,16 @@ export function InsightsSettingsCard({ locationId }: { locationId: string | null
         {error && (
           <ErrorNote text={error} />
         )}
-        <span className="row-actions">
-          <button type="submit" className="btn primary square" disabled={busy || !dirty}>
-            {busy ? 'Sparar…' : 'Spara'}
-          </button>
-          {notice && (
-            <span className="save-notice" role="status">
-              {notice}
-            </span>
-          )}
-        </span>
+        <SaveBar
+          dirty={dirty}
+          busy={busy}
+          notice={notice}
+          failed={Boolean(error)}
+          onDiscard={() => {
+            setLunch(savedLunch)
+            setError(null)
+          }}
+        />
       </form>
     </section>
   )

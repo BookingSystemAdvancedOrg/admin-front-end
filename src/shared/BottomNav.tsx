@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
+import { useGuardedNavigate } from './LeaveGuard'
 import { Icon } from './Icon'
 import { MORE_SHEET_ID, MoreSheet } from './MoreSheet'
 import type { QuickAction } from './MoreSheet'
@@ -40,7 +41,7 @@ export function BottomNav({
   onLogout: () => void
 }) {
   const { pathname } = useLocation()
-  const navigate = useNavigate()
+  const navigate = useGuardedNavigate()
   const guide = useGuide()
   const moreRef = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)

@@ -1,6 +1,6 @@
 import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { Bar, Button, toast } from '@booqy/brand'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { errorText } from '../../shared/errors'
@@ -43,7 +43,6 @@ function Telefon() {
   const location = currentLocation(state)
   const locationId = location?.locationId
   const { callId } = useParams()
-  const navigate = useNavigate()
   // Från Kom igång på Översikt: /telefon?flik=installningar&steg=koppla öppnar guiden på steget.
   const [params, setParams] = useSearchParams()
   const linkedStep = STEPS.find((s) => s === params.get('steg')) ?? null
@@ -100,7 +99,7 @@ function Telefon() {
     }
   }
 
-  if (callId) return <CallDetail locationId={locationId} callId={callId} owner={owner} onBack={() => navigate('/telefon')} />
+  if (callId) return <CallDetail locationId={locationId} callId={callId} owner={owner} />
 
   const items = [
     { key: 'samtal', label: 'Samtal' },

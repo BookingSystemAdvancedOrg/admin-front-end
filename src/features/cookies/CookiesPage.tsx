@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { BackButton } from '../../shared/BackButton'
 import { AuthLayout } from '../auth/AuthLayout'
 import { STORAGE_REGISTRY } from '../../shared/storageRegistry'
 import type { StorageKind } from '../../shared/storageRegistry'
@@ -19,6 +19,7 @@ const KIND_LABEL: Record<StorageKind, string> = {
 export default function CookiesPage() {
   return (
     <AuthLayout>
+      <div className="back-row"><BackButton to="/" /></div>
       <div className="auth-heading">
         <h1>Cookies och lagring</h1>
         <p>
@@ -58,9 +59,6 @@ export default function CookiesPage() {
         loggas du ut; rensar du övrig lagring glömmer appen vald plats.
       </p>
 
-      <Link className="auth-link" to="/">
-        Tillbaka
-      </Link>
     </AuthLayout>
   )
 }

@@ -93,6 +93,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
   { n: 83, text: 'Layout versioner tidslinje' },
   { n: 84, text: 'Layout verktygspalett' },
   { n: 85, text: 'Mac-ikon i mörkt läge' },
+  { n: 86, text: 'Tillbaka-knappar' },
 ]
 
 declare const __WHATS_NEW_N__: number | undefined

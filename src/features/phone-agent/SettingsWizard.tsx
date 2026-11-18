@@ -18,6 +18,7 @@ import {
   type Config, type LocationConfig, type Mode, type Operator, type Overview,
 } from './api'
 import { STEPS, dialSteps, forwardTarget, hasBusinessHours, hoursFor, hoursSet, hoursSummary, isTestLine, type Step } from './setup'
+import { BackButton } from '../../shared/BackButton'
 
 interface Data {
   config: Config
@@ -350,7 +351,7 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
         {d.bannerError ? <RetryBanner text={d.bannerError} onRetry={() => void retry.current?.()} /> : null}
 
         <div className="telefon-foot">
-          {n > 1 ? <Button type="button" variant="secondary" onClick={back}>{SETUP.buttons.back}</Button> : <span />}
+          {n > 1 ? <BackButton onClick={back}>{SETUP.buttons.back}</BackButton> : <span />}
           {hidePrimary ? null : <Button variant="primary" type="submit" busy={d.saving} busyLabel={busyLabel}>{primary}</Button>}
         </div>
       </form>

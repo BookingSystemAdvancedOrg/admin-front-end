@@ -6,6 +6,7 @@ import { listMenuItems, menuImageUrl, type MenuItem } from '../meny/menuApi'
 import { ERRORS, GOALS, createCampaign, newCampaignId, suggestCopy, type Goal } from './api'
 import './annonser.css'
 import { ErrorActions } from '../../shared/ErrorNote'
+import { BackButton } from '../../shared/BackButton'
 
 const STEPS = ['Mål', 'Bild och text', 'Budget', 'Område', 'Förhandsvisning', 'Skapa'] as const
 const MAX_HEADLINE = 40
@@ -84,7 +85,7 @@ export default function AdWizard({ locationId, onClose, onCreated }: {
   return (
     <Modal open size="wide" title="Ny annons" onClose={onClose} closeLabel="Stäng" footer={
       <>
-        {step > 0 ? <Button variant="ghost" onClick={() => setStep(step - 1)}>Tillbaka</Button> : null}
+        {step > 0 ? <BackButton onClick={() => setStep(step - 1)} /> : null}
         {last ? (
           <Button busy={creating} busyLabel="Skapar…" onClick={create}>Skapa annonsen</Button>
         ) : (

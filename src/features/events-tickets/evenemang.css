@@ -1,7 +1,4 @@
 /* Evenemang i admin. Bara @booqy/brand-tokens. */
-.evenemang-back {
-  margin: 0 0 var(--bq-space-3);
-}
 .evenemang-actions {
   display: flex;
   flex-wrap: wrap;

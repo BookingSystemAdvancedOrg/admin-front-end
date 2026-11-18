@@ -5,6 +5,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { AuthLayout } from './AuthLayout'
 import { requestPasswordReset } from './cognito'
 import { EMAIL_PATTERN } from './resetLink'
+import { BackButton } from '../../shared/BackButton'
 import { ErrorNote } from '../../shared/ErrorNote'
 
 /**
@@ -45,6 +46,7 @@ export default function ForgotPasswordPage() {
   if (sentTo) {
     return (
       <AuthLayout>
+        <div className="back-row"><BackButton to="/logga-in" state={{ email: sentTo }}>Tillbaka till inloggningen</BackButton></div>
         <div className="auth-heading">
           <h1>Kolla din e-post</h1>
           <p>
@@ -69,16 +71,13 @@ export default function ForgotPasswordPage() {
           </p>
           <p>Har du aldrig loggat in? Använd det tillfälliga lösenordet i inbjudan.</p>
         </div>
-
-        <Link className="auth-link" to="/logga-in" state={{ email: sentTo }}>
-          Tillbaka till inloggningen
-        </Link>
       </AuthLayout>
     )
   }
 
   return (
     <AuthLayout>
+      <div className="back-row"><BackButton to="/logga-in" state={{ email: email.trim() }}>Tillbaka till inloggningen</BackButton></div>
       <div className="auth-heading">
         <h1>Glömt lösenordet?</h1>
         <p>Vi mejlar en länk.</p>
@@ -109,10 +108,6 @@ export default function ForgotPasswordPage() {
           {busy ? 'Skickar…' : 'Skicka länk'}
         </button>
       </form>
-
-      <Link className="auth-link" to="/logga-in" state={{ email: email.trim() }}>
-        Tillbaka till inloggningen
-      </Link>
     </AuthLayout>
   )
 }

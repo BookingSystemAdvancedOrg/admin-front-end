@@ -20,6 +20,7 @@ import EventEditor from './EventEditor'
 import InslappPage from './InslappPage'
 import { eventUrl, printPoster } from './posterPrint'
 import './evenemang.css'
+import { BackButton } from '../../shared/BackButton'
 
 /**
  * Evenemang (planfunktionen "events", ägare och personal). /evenemang listar,
@@ -144,15 +145,15 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
   if (missing && !event) {
     return (
       <section className="admin-card table-card">
+        <div className="back-row"><BackButton to="/evenemang">Tillbaka till evenemangen</BackButton></div>
         <h2 className="card-title">Evenemanget finns inte</h2>
-        <Link className="card-link" to="/evenemang">Tillbaka till evenemangen</Link>
       </section>
     )
   }
   if (!event && loadError) {
     return (
       <>
-        <p className="evenemang-back"><Link to="/evenemang">Tillbaka till evenemangen</Link></p>
+        <div className="back-row"><BackButton to="/evenemang">Tillbaka till evenemangen</BackButton></div>
         <ErrorNote text={loadError} onRetry={() => { setLoadError(null); void load() }} />
       </>
     )
@@ -196,7 +197,7 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
 
   return (
     <>
-      <p className="evenemang-back"><Link to="/evenemang">Alla evenemang</Link></p>
+      <div className="back-row"><BackButton to="/evenemang">Tillbaka till evenemangen</BackButton></div>
       <Card title={event.title} actions={actions}>
         <p className="cell-muted"><span className="status-badge">{STATUS_LABEL[event.status]}</span></p>
         {event.description ? <p className="evenemang-description">{event.description}</p> : null}

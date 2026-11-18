@@ -36,6 +36,7 @@ import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { Select } from '../../shared/Select'
 import { RefundDialog } from '../../shared/RefundDialog'
+import { BackButton } from '../../shared/BackButton'
 
 type Panel = null | 'no_show' | 'cancel' | 'edit' | 'extend'
 
@@ -497,9 +498,7 @@ function ExtendPanel({
         <ErrorNote text={error} />
       )}
       <div className="modal-actions">
-        <button type="button" className="btn outline square" onClick={onCancel}>
-          Tillbaka
-        </button>
+        <BackButton onClick={onCancel} />
         <button type="submit" className="btn primary square" disabled={busy || end === current}>
           {busy ? 'Sparar…' : end < current ? 'Korta bokningen' : 'Förläng'}
         </button>
@@ -532,9 +531,7 @@ function PanelButtons({
 }) {
   return (
     <div className="modal-actions">
-      <button type="button" className="btn outline square" onClick={onCancel}>
-        Tillbaka
-      </button>
+      <BackButton onClick={onCancel} />
       <button
         type="button"
         className={`btn ${danger ? 'danger-outline' : 'primary'} square`}
@@ -736,9 +733,7 @@ function EditForm({
         <ErrorNote text={error} />
       )}
       <div className="modal-actions">
-        <button type="button" className="btn outline square" onClick={onCancel}>
-          Tillbaka
-        </button>
+        <BackButton onClick={onCancel} />
         <button type="submit" className="btn primary square" disabled={!valid || busy}>
           {busy ? 'Sparar…' : 'Spara'}
         </button>

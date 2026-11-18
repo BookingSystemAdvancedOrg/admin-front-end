@@ -5,11 +5,12 @@ import { errorText } from '../../shared/errors'
 import { COUNTER_LABEL, ERRORS, OUTCOME_LABEL, deleteRecording, getCall, when, type CallDetail as Detail } from './api'
 import { ErrorActions } from '../../shared/ErrorNote'
 import { SkelLines } from '../../shared/Skeleton'
+import { BackButton } from '../../shared/BackButton'
 
 const ROLE: Record<string, string> = { agent: 'Assistenten', caller: 'Den som ringde', tool: 'Bokningssystemet', system: 'System' }
 
 /** /telefon/samtal/:callId: utskriften, beviset för AI-upplysningen och inspelningen (bara ägaren). */
-export default function CallDetail({ locationId, callId, owner, onBack }: { locationId: string; callId: string; owner: boolean; onBack: () => void }) {
+export default function CallDetail({ locationId, callId, owner }: { locationId: string; callId: string; owner: boolean }) {
   const [call, setCall] = useState<Detail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -43,7 +44,9 @@ export default function CallDetail({ locationId, callId, owner, onBack }: { loca
   }
 
   return (
-    <Card title="Samtal" actions={<Button variant="ghost" onClick={onBack}>Tillbaka till samtalen</Button>}>
+    <>
+    <div className="back-row"><BackButton to="/telefon">Tillbaka till samtalen</BackButton></div>
+    <Card title="Samtal">
       {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} onRetry={() => { setError(null); void load() }} />}>{error}</Bar> : !call ? (
         <div role="status" aria-label="Hämtar samtalet"><SkelLines n={5} /></div>
       ) : (
@@ -77,5 +80,6 @@ export default function CallDetail({ locationId, callId, owner, onBack }: { loca
         </>
       )}
     </Card>
+    </>
   )
 }

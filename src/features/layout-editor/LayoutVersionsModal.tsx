@@ -18,6 +18,7 @@ import { InfoTooltip } from '../../shared/InfoTooltip'
 import { RemovedTablesBookings } from './RemovedTablesBookings'
 import { daysUntil, earliestDate, localDate, longDate, shortDate, sizeText, versionTimeline } from './versionTimeline'
 import type { TimelineEntry } from './versionTimeline'
+import { BackButton } from '../../shared/BackButton'
 
 /** "om 22 dagar", "imorgon", "idag". */
 function inDays(date: string): string {
@@ -245,9 +246,7 @@ export function LayoutVersionsModal({
                 <p className="vt-plan-replaces">Bytet till {next.snapshot.label} {shortDate(next.from!)} stoppas.</p>
               )}
               <div className="vt-plan-actions">
-                <button type="button" className="btn outline square" disabled={busy !== null} onClick={() => setPlanning(null)}>
-                  Tillbaka
-                </button>
+                <BackButton disabled={busy !== null} onClick={() => setPlanning(null)} />
                 <button type="button" className="btn primary square"
                   disabled={busy !== null || !planning.date || planning.date < earliest}
                   onClick={() => confirmPlan(e, planning)}>

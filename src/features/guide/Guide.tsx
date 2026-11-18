@@ -5,6 +5,7 @@ import { stepsFor } from './steps'
 import type { GuideContext, GuideStep } from './steps'
 import { guideDoneOnAccount, markGuideDoneOnAccount, rememberLocally, seenLocally } from './guideApi'
 import './guide.css'
+import { BackButton } from '../../shared/BackButton'
 
 /**
  * Introduktionsguide ("tutorial") för nya användare av admin-appen.
@@ -360,9 +361,7 @@ function GuideOverlay({
             )}
             <span className="guide-actions-right">
               {onBack && (
-                <button type="button" className="btn outline square" onClick={onBack}>
-                  Tillbaka
-                </button>
+                <BackButton onClick={onBack} />
               )}
               <button ref={nextRef} type="button" className="btn primary square" onClick={onNext}>
                 {number === 1 ? 'Visa mig' : last ? 'Klar' : 'Nästa'}

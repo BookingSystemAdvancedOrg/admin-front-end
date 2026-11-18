@@ -5,6 +5,7 @@ import { BRANCH_LABEL, fold, searchLeaves, treeOf } from './settingsTree'
 import type { BranchId, Leaf, Tree, TreeId } from './settingsTree'
 import type { Apple } from './settingsApples'
 import './settingsTree.css'
+import { BackButton } from '../../shared/BackButton'
 
 /**
  * Inställningarnas fält, träd och grenar (settingsTree.ts). Datorn (från
@@ -330,9 +331,7 @@ export function SettingsTreePage({
   return (
     <div className="stree-view">
       <div className="stree-head">
-        <button type="button" className="settings-back" onClick={onField}>
-          <Icon name="chevron-left" size={16} /> Inställningar
-        </button>
+        <BackButton className="settings-back" onClick={onField}>Inställningar</BackButton>
         <nav className="stree-crumbs" aria-label="Du är här">
           <ol>
             <li><button type="button" onClick={onField}>Inställningar</button></li>
@@ -373,9 +372,7 @@ export function BranchHead({ branch, onField, onTree }: { branch: BranchId; onFi
   const tree = treeOf(branch)
   return (
     <div className="stree-head">
-      <button type="button" className="settings-back" onClick={() => onTree(tree.id)}>
-        <Icon name="chevron-left" size={16} /> {tree.label}
-      </button>
+      <BackButton className="settings-back" onClick={() => onTree(tree.id)}>{tree.label}</BackButton>
       <nav className="stree-crumbs" aria-label="Du är här">
         <ol>
           <li><button type="button" onClick={onField}>Inställningar</button></li>

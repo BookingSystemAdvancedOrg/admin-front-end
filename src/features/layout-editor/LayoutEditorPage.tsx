@@ -72,6 +72,7 @@ import './layout-editor.css'
 import { Icon, type IconName } from '../../shared/Icon'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { BackButton } from '../../shared/BackButton'
 
 const TILT_DEG = 55
 const PERSPECTIVE = 1600
@@ -2239,9 +2240,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
               ändras här. Ändringar görs i utkastet och publiceras som en ny version.
             </p>
             <span className="layout-notice-actions">
-              <button type="button" className="btn outline square" onClick={showDraft}>
-                Till utkastet
-              </button>
+              <BackButton onClick={showDraft}>Tillbaka till utkastet</BackButton>
             </span>
           </div>
         )}

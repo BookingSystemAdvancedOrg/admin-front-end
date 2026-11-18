@@ -113,6 +113,18 @@
 .auth-card .btn {
   border-radius: var(--r-pill);
 }
+/* Tillbaka-knappen på lappen: papperets färger i båda lägena, överst till vänster. */
+.auth-card .back-row {
+  align-self: stretch;
+}
+.auth-card .btn.back-btn {
+  background: var(--paper-2);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--paper-line);
+}
+.auth-card .btn.back-btn:hover:not(:disabled) {
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
 .auth-submit {
   border-radius: var(--r-pill);
   box-shadow: 0 10px 24px -14px rgba(26, 18, 14, 0.7);

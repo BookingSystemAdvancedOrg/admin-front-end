@@ -1,0 +1,49 @@
+/* Tillbaka-knappen (BackButton.tsx): sekundär pille med pil, aldrig bara text. */
+.btn.back-btn {
+  align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 44px;
+  gap: var(--space-2);
+  padding-inline: var(--space-3) var(--space-4);
+  text-decoration: none;
+}
+
+.btn.back-btn > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.back-btn-icon {
+  flex: none;
+  transition: translate var(--dur-fast) var(--ease-std);
+}
+
+.btn.back-btn:hover:not(:disabled) .back-btn-icon {
+  translate: -3px 0;
+}
+
+.btn.back-btn:active:not(:disabled) {
+  translate: 0 1px;
+  box-shadow: inset 0 0 0 1.5px var(--accent-ink);
+}
+
+.btn.back-btn:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--accent-ink), 0 0 0 3px var(--field-ring);
+}
+
+/* Överst på en sida eller ovanför ett kort. */
+.back-row {
+  display: flex;
+  margin-bottom: var(--space-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .back-btn-icon {
+    transition: none;
+  }
+  .btn.back-btn:hover:not(:disabled) .back-btn-icon {
+    translate: none;
+  }
+}

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Bar, Button, Card, Field, Input, Printing } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { ERRORS, TICKET_LABEL, getGuestList, newId, sendCheckIns, type CheckIn, type Ticket } from './api'
 import { clearScan, loadScan, parseCode, saveScan, signature, type ScanState } from './scanStore'
+import { BackButton } from '../../shared/BackButton'
 
 interface Detector { detect: (source: HTMLVideoElement) => Promise<{ rawValue: string }[]> }
 type DetectorCtor = new (opts: { formats: string[] }) => Detector
@@ -205,7 +205,7 @@ export default function InslappPage({ locationId, eventId, occurrenceId }: { loc
 
   return (
     <>
-      <p className="evenemang-back"><Link to={`/evenemang/${encodeURIComponent(eventId)}`}>Tillbaka till evenemanget</Link></p>
+      <div className="back-row"><BackButton to={`/evenemang/${encodeURIComponent(eventId)}`}>Tillbaka till evenemanget</BackButton></div>
       {!online || (state?.queue.length ?? 0) > 0 ? (
         <Bar variant="banner" tone={online ? 'info' : 'warning'}>
           {online ? `${state?.queue.length} insläpp skickas…` : `Ingen anslutning. Insläppen sparas här och skickas när nätet är tillbaka (${state?.queue.length ?? 0} i kö).`}

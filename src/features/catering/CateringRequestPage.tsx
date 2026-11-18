@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { sameData, useLiveRefresh } from '../../shared/live'
 import { ChangedNote } from '../../shared/ChangedNote'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useTenant } from '../../shared/tenant'
 import {
@@ -39,6 +39,7 @@ import { ErrorNote } from '../../shared/ErrorNote'
 import { Select } from '../../shared/Select'
 import { KronorInput } from './KronorInput'
 import { RefundDialog } from '../../shared/RefundDialog'
+import { BackButton } from '../../shared/BackButton'
 
 /** API:ts fältnamn i offerten -> fältets id, så ett fel flyttar fokus dit. */
 const OFFER_FIELD_IDS: Record<string, string> = {
@@ -216,8 +217,8 @@ export default function CateringRequestPage() {
       <>
         <AdminTopbar title="Catering" />
         <main className="admin-main">
+          <div className="back-row"><BackButton to="/catering">Tillbaka till förfrågningarna</BackButton></div>
           <ErrorNote text={loadError} onRetry={() => { setLoadError(null); void load() }} />
-          <Link to="/catering">Till alla förfrågningar</Link>
         </main>
       </>
     )
@@ -271,9 +272,9 @@ export default function CateringRequestPage() {
         subtitle={`${formatDate(request.deliveryDate)} kl ${request.deliveryTime} · ${
           request.fulfilment === 'delivery' ? 'Leverans' : 'Avhämtning'
         }`}
-        actions={<Link className="btn outline square" to="/catering">Alla förfrågningar</Link>}
       />
       <main className="admin-main catering-request">
+        <div className="back-row"><BackButton to="/catering">Tillbaka till förfrågningarna</BackButton></div>
         <div className="settings-row">
           <section className="admin-card table-card">
             <div className="card-head">

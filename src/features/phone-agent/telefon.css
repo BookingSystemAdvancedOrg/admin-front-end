@@ -585,3 +585,44 @@
 .telefon-card > input {
   flex-shrink: 0;
 }
+
+/* --- Utskriften: språkval och språkchip ---------------------------------------------- */
+.telefon-transcript__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bq-space-2) var(--bq-space-4);
+  margin: var(--bq-space-4) 0 var(--bq-space-2);
+}
+.telefon-transcript__head .telefon-sub {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bq-space-1);
+}
+.telefon-transcript__head > .bq-bar {
+  max-width: 100%;
+}
+.telefon-transcript__note {
+  margin: 0 0 var(--bq-space-2);
+  color: var(--bq-muted);
+  font-size: var(--bq-text-sm);
+}
+.telefon-turn__who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bq-space-2);
+}
+.telefon-turn__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--bq-space-2);
+  border-radius: var(--bq-radius-pill);
+  border: var(--bq-bar-hairline) solid var(--bq-line-strong);
+  background: var(--bq-surface-2);
+  color: var(--bq-ink);
+  font-size: var(--bq-text-xs);
+  line-height: 1.5;
+}

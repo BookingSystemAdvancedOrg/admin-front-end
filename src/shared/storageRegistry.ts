@@ -45,6 +45,7 @@ export const NAV_CLOSED_KEY = 'booqy-nav-closed'
 export const SAMPLE_DATA_KEY = 'booqy-sample-data'
 export const STATISTIK_OPEN_KEY_PREFIX = 'booqy-statistik-open:'
 export const UPDATED_FLAG_KEY = 'booqy-updated'
+export const CALL_TEXT_VIEW_KEY_PREFIX = 'booqy-samtal-sprak:'
 /** IndexedDB-databasen för insläpp vid dörren, en per tillfälle (CONTRACTS.md 10). */
 export const EVENT_SCAN_KEY_PREFIX = STORAGE_KEYS.EVENT_SCAN_KEY_PREFIX
 
@@ -152,6 +153,14 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     kind: 'localStorage',
     setBy: 'Booqy',
     purpose: 'Vilka avsnitt under Fördjupning på Statistik du har fällt ut, så att sidan ser likadan ut nästa gång. Inga personuppgifter.',
+    lifetime: 'Tills du rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: `${CALL_TEXT_VIEW_KEY_PREFIX}{användar-id}`,
+    kind: 'localStorage',
+    setBy: 'Booqy',
+    purpose: 'Om samtalsutskrifter under Telefon visas i original, på svenska eller på engelska. Sparas bara när du väljer. Inga personuppgifter.',
     lifetime: 'Tills du rensar webbläsaren',
     category: 'nödvändig',
   },

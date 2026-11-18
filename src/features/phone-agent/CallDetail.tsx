@@ -6,14 +6,16 @@ import { COUNTER_LABEL, ERRORS, OUTCOME_LABEL, deleteRecording, getCall, when, t
 import { ErrorActions } from '../../shared/ErrorNote'
 import { SkelLines } from '../../shared/Skeleton'
 import { BackButton } from '../../shared/BackButton'
-
-const ROLE: Record<string, string> = { agent: 'Assistenten', caller: 'Den som ringde', tool: 'Bokningssystemet', system: 'System' }
+import { useTenant } from '../../shared/tenant'
+import { Transcript } from './Transcript'
+import { translationState } from './transcriptText'
 
 /** /telefon/samtal/:callId: utskriften, beviset för AI-upplysningen och inspelningen (bara ägaren). */
 export default function CallDetail({ locationId, callId, owner }: { locationId: string; callId: string; owner: boolean }) {
   const [call, setCall] = useState<Detail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const { sub } = useTenant()
 
   const load = useCallback(async () => {
     try {
@@ -25,10 +27,12 @@ export default function CallDetail({ locationId, callId, owner }: { locationId: 
   }, [locationId, callId])
 
   useEffect(() => { void load() }, [load])
+  // Tätare medan översättningen pågår, så utskriften byts när den är klar.
+  const translating = call ? translationState(call.turns, call) === 'pending' : false
   useLiveRefresh(async () => {
     setCall(await getCall(locationId, callId))
     setError(null)
-  })
+  }, { everyMs: translating ? 5_000 : undefined })
 
   async function removeRecording() {
     setBusy(true)
@@ -68,15 +72,7 @@ export default function CallDetail({ locationId, callId, owner }: { locationId: 
               <Button variant="danger" size="sm" busy={busy} busyLabel="Raderar…" onClick={() => void removeRecording()}>Radera inspelningen</Button>
             </div>
           ) : null}
-          <h3 className="telefon-sub">Utskrift</h3>
-          <ol className="telefon-transcript">
-            {call.turns.filter((t) => t.role !== 'tool').map((t, i) => (
-              <li key={i} className={`telefon-turn telefon-turn--${t.role}`}>
-                <span className="telefon-turn__who">{ROLE[t.role] ?? t.role}</span>
-                <span>{t.text}</span>
-              </li>
-            ))}
-          </ol>
+          <Transcript turns={call.turns} call={call} userKey={sub ?? 'du'} />
         </>
       )}
     </Card>

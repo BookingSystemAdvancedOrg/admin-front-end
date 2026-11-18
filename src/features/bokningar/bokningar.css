@@ -105,6 +105,16 @@
   opacity: 0.6;
 }
 
+/* Namn, Ny gäst / Återkommande och ikonerna med luft emellan; på smala
+   skärmar bryts märket till nästa rad, kant i kant med namnet. */
+.guest-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  max-width: 100%;
+}
+
 .note-dot {
   color: var(--accent-ink);
 }

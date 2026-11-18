@@ -249,6 +249,7 @@ export default function BokningarPage() {
                       >
                         <td className="cell-strong">{r.startTime}</td>
                         <td>
+                          <span className="guest-line">
                           <span className="cell-strong">{r.customerName || 'Gäst'}</span>
                           {locationId && (
                             <Slot
@@ -259,7 +260,8 @@ export default function BokningarPage() {
                           {locationId && (
                             <Slot id="bokningar.reservation.call" props={{ locationId, reservationId: r.reservationId }} />
                           )}
-                          {r.notes && <span className="note-dot" title={r.notes}> <Icon name="note" size={14} /></span>}
+                          {r.notes && <span className="note-dot" title={r.notes}><Icon name="note" size={14} /></span>}
+                          </span>
                           {r.customerPhone && <div className="cell-muted">{r.customerPhone}</div>}
                           {r.source && r.source !== 'online' && (
                             <div className="cell-muted">{SOURCE_LABEL[r.source]}</div>

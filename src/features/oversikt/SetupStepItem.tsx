@@ -16,7 +16,8 @@ export function SetupStepItem({ step, askOn, onSkip, busy = false }: {
   onSkip?: (step: SetupStep, skipped: boolean) => void
   busy?: boolean
 }) {
-  const canSkip = Boolean(onSkip) && step.skippable && step.state === 'open'
+  // Kvar eller okänt (kunde inte kontrolleras): ägaren kan alltid hoppa över ett valbart steg.
+  const canSkip = Boolean(onSkip) && step.skippable && step.done !== true
   const canUndo = Boolean(onSkip) && step.skippedHere && step.state === 'skipped'
   return (
     <div className="activity-item setup-step">

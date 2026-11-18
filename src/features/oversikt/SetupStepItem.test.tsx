@@ -19,6 +19,15 @@ describe('Kom igång: Hoppa över och Ångra', () => {
     expect(step.locationId).toBe('loc-1')
   })
 
+  it('a step that could not be checked can still be skipped', async () => {
+    const onSkip = vi.fn()
+    const step = stepsFromServer(serverChecklist({}, { unknown: ['staff'] }), 'loc-1').find((s) => s.id === 'staff')!
+    render(<MemoryRouter><SetupStepItem step={step} askOn={false} onSkip={onSkip} /></MemoryRouter>)
+    expect(screen.getByText('Kunde inte kontrolleras')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Hoppa över: Bjud in personal' }))
+    expect(onSkip).toHaveBeenCalledWith(step, true)
+  })
+
   it('undoes its own skip, and shows it as skipped', async () => {
     const onSkip = vi.fn()
     const step = one('stripe', { stripe: 'skipped' }, ['stripe'])

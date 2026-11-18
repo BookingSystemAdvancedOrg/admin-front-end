@@ -8,25 +8,25 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { MonthCard } from './MonthCard'
 import { StatTile } from './StatTile'
 import { AdminTopbar } from '../../shared/AdminTopbar'
-import { currentLocation, stripeStage, useTenant } from '../../shared/tenant'
+import { currentLocation, useTenant } from '../../shared/tenant'
 import { canOpen } from '../../shared/access'
 import type { Area } from '../../shared/access'
 
 import { getLocation } from '../installningar/locationApi'
 import type { Location } from '../installningar/locationApi'
-import { listMenuItems } from '../meny/menuApi'
-import { listLayoutVersions } from '../layout-editor/layoutApi'
-import { listUsers } from '../installningar/usersApi'
 import {
   activeOrders,
   bookingsToday,
   clockIn,
-  hasAnyOpeningHours,
   revenueToday,
   revenueUntil,
-  setupSteps,
+  stepsFromServer,
   todoQueue,
 } from './overview'
+import type { SetupStep } from './overview'
+import { getSetup, skipSetupStep } from './setupApi'
+import type { SetupChecklist } from './setupApi'
+import { errorText } from '../../shared/errors'
 import { kronor, listOrders } from '../bestallningar/ordersApi'
 import type { Order } from '../bestallningar/ordersApi'
 import { listRequests } from '../catering/cateringApi'
@@ -51,9 +51,6 @@ import { Icon } from '../../shared/Icon'
 import type { IconName } from '../../shared/Icon'
 import { Disclosure } from '../../shared/Disclosure'
 import { SkelRows } from '../../shared/Skeleton'
-import { getLocation as getPhoneLocation, getOverview as getPhoneOverview } from '../phone-agent/api'
-import { progress as phoneProgress, type Progress } from '../phone-agent/setup'
-import { getConnection as getGoogleConnection, getLocationView as getGoogleView, googleDone } from '../google-business/api'
 import './setup.css'
 import { useHelpChatEnabled } from '../help/chatState'
 import { SetupStepItem } from './SetupStepItem'
@@ -73,9 +70,8 @@ interface OverviewData {
   /** Platsen datan gäller - en annan plats betyder att ny data hämtas. */
   forLocation: string | null
   location: Location | null
-  activeMenuItems: number | null
-  hasLiveLayout: boolean | null
-  staffCount: number | null
+  /** Kom igång från servern (alla platser); null = inte ägare eller kunde inte hämtas. */
+  setup: SetupChecklist | null
   /** Dagens bokningar (alla statusar); null = kunde inte hämtas. */
   today: Reservation[] | null
   /** Dagens beställningar; null = saknas i planen eller kunde inte hämtas. */
@@ -86,25 +82,17 @@ interface OverviewData {
   catering: RequestSummary[] | null
   /** Köksskrivarens läge; null = ingen beställning i planen eller kunde inte hämtas. */
   print: PrintStatus | null
-  /** Telefonassistentens fem steg; null = ingår inte i planen eller kunde inte hämtas. */
-  phone: Progress | null
-  /** Google-profilen klar (kopplad eller överhoppad); null = ingår inte i planen eller kunde inte hämtas. */
-  google: boolean | null
 }
 
 const EMPTY: OverviewData = {
   forLocation: null,
   location: null,
-  activeMenuItems: null,
-  hasLiveLayout: null,
-  staffCount: null,
+  setup: null,
   today: null,
   orders: null,
   ordersLastWeek: null,
   catering: null,
   print: null,
-  phone: null,
-  google: null,
 }
 
 /** Ett anrop som misslyckas ger `null` (okänt) i stället för att fälla sidan. */
@@ -156,44 +144,29 @@ export default function OversiktPage() {
   const seeBookings = sample || canOpen(tenant, 'bokningar')
   const hasOrdering = sample || (Boolean(tenant?.entitlements.features.ordering) && canOpen(tenant, 'bestallningar'))
   const hasCatering = sample || (Boolean(tenant?.entitlements.features.catering) && canOpen(tenant, 'catering'))
-  // Telefonassistenten i planen: ägarens Kom igång får ett steg med fem delsteg.
-  const hasPhone = isOwner && Boolean(tenant?.entitlements.features.phoneAgent)
-  // Google-profilen i planen: ett valfritt steg som går att hoppa över.
-  const hasGoogle = isOwner && Boolean(tenant?.entitlements.features.googleBusiness)
   const tableLabels = sample ? (SAMPLE_TABLE_LABELS as Map<string, string>) : labels
 
   const fetchOverview = useCallback((locationId: string): Promise<OverviewData> =>
     Promise.all([
       orNull(getLocation(locationId)),
-      orNull(listMenuItems(locationId)),
-      isOwner ? orNull(listLayoutVersions(locationId)) : Promise.resolve(null),
-      isOwner ? orNull(listUsers()) : Promise.resolve(null),
+      // Kom igång: servern avgör (samma regel som Booqy Console), bara för ägaren.
+      isOwner ? orNull(getSetup()) : Promise.resolve(null),
       seeBookings ? orNull(listReservations(locationId, todayIn(timezoneSetting))) : Promise.resolve(null),
       hasOrdering ? orNull(listOrders(locationId)) : Promise.resolve(null),
       hasCatering ? orNull(listRequests(locationId)) : Promise.resolve(null),
       hasOrdering ? orNull(listOrders(locationId, addDays(todayIn(timezoneSetting), -7))) : Promise.resolve(null),
       hasOrdering ? orNull(getPrintStatus(locationId)) : Promise.resolve(null),
-      hasPhone
-        ? orNull(Promise.all([getPhoneOverview(), getPhoneLocation(locationId)]).then(([o, l]) => phoneProgress(o.config, l)))
-        : Promise.resolve(null),
-      hasGoogle
-        ? orNull(Promise.all([getGoogleConnection(), getGoogleView(locationId)]).then(([c, v]) => googleDone(c, v)))
-        : Promise.resolve(null),
-    ]).then(([loc, menu, versions, users, today, orders, catering, lastWeek, print, phone, google]) => ({
+    ]).then(([loc, setup, today, orders, catering, lastWeek, print]) => ({
         forLocation: locationId,
         location: loc,
-        activeMenuItems: menu ? menu.filter((m) => m.active).length : null,
-        hasLiveLayout: versions ? versions.some((v) => v.isCurrent) : null,
-        staffCount: users ? users.filter((u) => u.role === 'staff').length : null,
+        setup,
         today,
         orders: orders ? orders.orders : null,
         ordersLastWeek: lastWeek ? lastWeek.orders : null,
         catering,
         print,
-        phone,
-        google,
       })),
-  [isOwner, timezoneSetting, seeBookings, hasOrdering, hasCatering, hasPhone, hasGoogle])
+  [isOwner, timezoneSetting, seeBookings, hasOrdering, hasCatering])
 
   useEffect(() => {
     if (!locationId) return
@@ -228,29 +201,34 @@ export default function OversiktPage() {
     setFetched((prev) => (prev.forLocation === d.forLocation && !sameData(prev, d) ? d : prev))
   }, { enabled: Boolean(locationId) && !loading && !sample })
 
-  const stage = tenant ? stripeStage(tenant.stripe) : 'missing'
   const timezone = data.location?.timezone ?? location?.timezone ?? null
-  const steps = setupSteps({
-    isOwner,
-    hasOpeningHours: data.location ? hasAnyOpeningHours(data.location.businessHours) : null,
-    activeMenuItems: data.activeMenuItems,
-    hasLiveLayout: data.hasLiveLayout,
-    stripeStage: stage,
-    staffCount: data.staffCount,
-    dpaAccepted: tenant?.dpa ? tenant.dpa.upToDate : undefined,
-    google: hasGoogle ? data.google : undefined,
-    phone: hasPhone ? data.phone : undefined,
-    printers: tenant?.entitlements.features.ordering ? fetched.print : undefined,
-  })
+  // Kom igång: alltid restaurangens riktiga lista (även i exempelläget).
+  const setup = fetched.setup
+  const steps = isOwner ? stepsFromServer(setup, locationId) : []
   const remaining = steps.filter((s) => s.done === false).length
+  // "Hoppa över" / "Ångra": servern svarar med hela listan, som ersätter den vi har.
+  const [skipping, setSkipping] = useState<string | null>(null)
+  const [skipError, setSkipError] = useState<string | null>(null)
+  const skip = (step: SetupStep, skipped: boolean) => {
+    if (skipping) return
+    setSkipping(step.id)
+    setSkipError(null)
+    skipSetupStep(step.id, step.locationId, skipped)
+      .then((next) => setFetched((prev) => (prev.forLocation === locationIdRef.current ? { ...prev, setup: next } : prev)))
+      .catch((err) => setSkipError(errorText(err, skipped ? `${step.label} kunde inte hoppas över.` : 'Det gick inte att ångra.')))
+      .finally(() => setSkipping(null))
+  }
   // Kom igång (bara ägaren): direkt under nyckeltalen så länge något är kvar
   // (eller inte gick att kontrollera), längst ned som liten bekräftelse när
   // allt är klart. Nyckeltalen står alltid först: "hur går dagen, vad
   // behöver mig nu" ska synas utan att scrolla, även på telefonen.
-  const setupIncomplete = isOwner && !loading && steps.some((s) => s.done !== true)
-  const setupComplete = isOwner && !loading && steps.every((s) => s.done === true)
+  const setupFailed = isOwner && !loading && setup === null
+  const setupIncomplete = isOwner && !loading && (setupFailed || steps.some((s) => s.done !== true))
+  const setupComplete = isOwner && !loading && steps.length > 0 && steps.every((s) => s.done === true)
 
-  const stepItem = (step: (typeof steps)[number]) => <SetupStepItem key={step.id} step={step} askOn={askOn} />
+  const stepItem = (step: (typeof steps)[number]) => (
+    <SetupStepItem key={step.id} step={step} askOn={askOn} onSkip={skip} busy={skipping !== null} />
+  )
   const setupList = steps.map(stepItem)
   // Medan något är kvar visas bara det som är kvar, så att dagens bokningar inte trycks ned.
   const pendingList = steps.filter((s) => s.done !== true).map(stepItem)
@@ -371,11 +349,16 @@ export default function OversiktPage() {
               <div>
                 <h2 className="card-title">Kom igång</h2>
               </div>
-              <span className="cell-muted">
-                {remaining === 0 ? 'Kunde inte kontrollera allt' : <><Num>{doneCount}</Num> av {steps.length} klara</>}
-              </span>
+              {!setupFailed && (
+                <span className="cell-muted">
+                  {remaining === 0 ? 'Kunde inte kontrollera allt' : <><Num>{doneCount}</Num> av {steps.length} klara</>}
+                </span>
+              )}
             </div>
-            {pendingList}
+            {setupFailed
+              ? <ErrorNote text={booqyFaultText('Kom igång kunde inte visas.')} onRetry={retryOverview} />
+              : pendingList}
+            {skipError && <ErrorNote text={skipError} />}
           </section>
         )}
 

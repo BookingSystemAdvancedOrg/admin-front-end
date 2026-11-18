@@ -93,3 +93,18 @@
   border-color: var(--warning);
   background: var(--tint-orange);
 }
+
+/* "Hoppa över" / "Ångra" bredvid raden: en textknapp, 44 px att trycka på telefonen. */
+.setup-skip {
+  flex-shrink: 0;
+  min-height: 36px;
+  margin-top: -8px;
+  white-space: nowrap;
+  font-size: 13px;
+}
+@media (pointer: coarse) {
+  .setup-skip {
+    min-height: 44px;
+    margin-top: -12px;
+  }
+}

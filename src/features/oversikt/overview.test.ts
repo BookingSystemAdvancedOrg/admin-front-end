@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { emptyBusinessHours } from '../installningar/locationApi'
-import { hasAnyOpeningHours, phoneSetupStep, printerSetupStep, setupSteps, todaysHours, weekdayIn } from './overview'
+import { hasAnyOpeningHours, stepsFromServer, todaysHours, weekdayIn } from './overview'
+import { PHONE_SUB, serverChecklist } from './setupFixture'
 
 // Fredag 9 okt 2026 23:30 UTC = lördag 01:30 i Stockholm.
 const FRIDAY_NIGHT_UTC = new Date('2026-10-09T23:30:00Z')
@@ -54,117 +55,51 @@ describe('hasAnyOpeningHours', () => {
   })
 })
 
-describe('setupSteps', () => {
-  const owner = {
-    isOwner: true,
-    hasOpeningHours: false,
-    activeMenuItems: 0,
-    hasLiveLayout: false,
-    stripeStage: 'not_started' as const,
-    staffCount: 0,
-  }
-
-  it('gives a new owner every step to do', () => {
-    const steps = setupSteps(owner)
-    expect(steps.map((s) => s.id)).toEqual(['hours', 'menu', 'layout', 'stripe', 'staff'])
-    expect(steps.every((s) => s.done === false)).toBe(true)
+describe('stepsFromServer', () => {
+  it('shows the server steps for the chosen location, in its order and with its labels', () => {
+    const steps = stepsFromServer(serverChecklist({ dpa: 'done', hours: 'done' }), 'loc-1')
+    expect(steps.map((s) => s.id)).toEqual(['dpa', 'hours', 'menu', 'printers', 'layout', 'stripe', 'staff', 'google', 'phone'])
+    expect(steps[0]).toMatchObject({ label: 'Godkänn personuppgiftsbiträdesavtalet', done: true, state: 'done', to: '/avtal', skippable: false })
+    expect(steps[2]).toMatchObject({ id: 'menu', done: false, state: 'open', to: '/meny', locationId: 'loc-1', skippable: true })
+    expect(steps[5].locationId).toBeUndefined()
   })
 
-  it('marks finished steps as done', () => {
-    const steps = setupSteps({
-      ...owner,
-      hasOpeningHours: true,
-      activeMenuItems: 12,
-      hasLiveLayout: true,
-      stripeStage: 'ready',
-      staffCount: 2,
-    })
-    expect(steps.every((s) => s.done === true)).toBe(true)
+  it('counts skipped as finished and says how it was skipped', () => {
+    const steps = stepsFromServer(serverChecklist({ stripe: 'skipped', printers: 'skipped', google: 'skipped' }, { skippedHere: ['stripe'] }), 'loc-1')
+    const by = Object.fromEntries(steps.map((s) => [s.id, s]))
+    expect(by.stripe).toMatchObject({ done: true, state: 'skipped', skippedHere: true, later: 'Överhoppat' })
+    expect(by.printers).toMatchObject({ done: true, skippedHere: false, later: 'Inga skrivare än' })
+    expect(by.google.later).toBe('Ingen Google-profil')
   })
 
-  it('keeps unknown data unknown instead of claiming done or not done', () => {
-    const steps = setupSteps({ ...owner, activeMenuItems: null, staffCount: null })
-    expect(steps.find((s) => s.id === 'menu')?.done).toBeNull()
-    expect(steps.find((s) => s.id === 'staff')?.done).toBeNull()
+  it('a step the server could not check is unknown, not done', () => {
+    const step = stepsFromServer(serverChecklist({}, { unknown: ['menu'] }), 'loc-1').find((s) => s.id === 'menu')!
+    expect(step.done).toBeNull()
+    expect(step.state).toBeNull()
   })
 
-  it('adds Kvittoskrivare after the menu when the place takes orders', () => {
-    const none = { printerCount: 0, printerConfigured: false, setupSkipped: false }
-    const steps = setupSteps({ ...owner, printers: none })
-    expect(steps.map((s) => s.id)).toEqual(['hours', 'menu', 'printers', 'layout', 'stripe', 'staff'])
-    expect(steps[2]).toEqual({ id: 'printers', label: 'Kvittoskrivare', done: false, to: '/installningar#skrivare' })
-    expect(setupSteps(owner).some((s) => s.id === 'printers')).toBe(false) // no ordering: no step
-    expect(setupSteps({ ...owner, isOwner: false, printers: none })).toEqual([])
+  it('a location the server has not seen yet is open', () => {
+    const step = stepsFromServer(serverChecklist({ hours: 'done' }), 'loc-new').find((s) => s.id === 'hours')!
+    expect(step.done).toBeNull()
   })
 
-  it('keeps Kvittoskrivare open but amber after Inga skrivare än, and done with one printer', () => {
-    expect(printerSetupStep({ printerCount: 0, printerConfigured: false, setupSkipped: true })).toMatchObject({
-      done: false, later: 'Inga skrivare än',
-    })
-    expect(printerSetupStep({ printerCount: 2, printerConfigured: true, setupSkipped: true })).toEqual({
-      id: 'printers', label: 'Kvittoskrivare', done: true, to: '/installningar#skrivare',
-    })
-    expect(printerSetupStep({ printerConfigured: true })).toMatchObject({ done: true }) // older API: no count
-    expect(printerSetupStep(null).done).toBeNull()
-  })
-
-  it('gives staff no Kom igång steps at all (owner only)', () => {
-    expect(setupSteps({ ...owner, isOwner: false })).toEqual([])
-  })
-
-  it('puts the DPA first when the API has it, and leaves it out otherwise', () => {
-    expect(setupSteps({ ...owner, dpaAccepted: false })[0]).toEqual({
-      id: 'dpa', label: 'Godkänn personuppgiftsbiträdesavtalet', done: false, to: '/avtal',
-    })
-    expect(setupSteps({ ...owner, dpaAccepted: true })[0].done).toBe(true)
-    expect(setupSteps({ ...owner, isOwner: false, dpaAccepted: false })).toEqual([])
-  })
-})
-
-describe('Telefonassistent in Kom igång', () => {
-  const owner = { isOwner: true, hasOpeningHours: true, activeMenuItems: 3, hasLiveLayout: true, stripeStage: 'ready' as const, staffCount: 1 }
-  const none = { namn: false, tider: false, nummer: false, koppla: false, prova: false }
-
-  it('is a step only when the plan has the phone assistant', () => {
-    expect(setupSteps(owner).some((s) => s.id === 'phone')).toBe(false)
-    expect(setupSteps({ ...owner, phone: none }).at(-1)?.id).toBe('phone')
-  })
-
-  it('lists the five sub-steps and links to the next open one', () => {
-    const step = phoneSetupStep({ ...none, namn: true, tider: true })
-    expect(step.label).toBe('Telefonassistent')
-    expect(step.done).toBe(false)
+  it('links the phone step to its first open sub-step and labels the sub-steps', () => {
+    const list = serverChecklist()
+    const phone = list.steps.find((s) => s.id === 'phone')!
+    phone.locations![0].sub = PHONE_SUB.map((id, i) => ({ id, done: i < 2 }))
+    const step = stepsFromServer(list, 'loc-1').find((s) => s.id === 'phone')!
     expect(step.to).toBe('/telefon?flik=installningar&steg=nummer')
-    expect(step.sub).toEqual([
-      { id: 'namn', label: 'Namn', done: true }, { id: 'tider', label: 'Tider', done: true }, { id: 'nummer', label: 'Booqy-nummer', done: false },
-      { id: 'koppla', label: 'Vidarekoppling', done: false }, { id: 'prova', label: 'Provsamtal', done: false },
-    ])
+    expect(step.sub?.map((x) => x.label)).toEqual(['Namn', 'Tider', 'Booqy-nummer', 'Vidarekoppling', 'Provsamtal'])
   })
 
-  it('is done only when all five are done, and unknown when it could not be fetched', () => {
-    expect(phoneSetupStep({ namn: true, tider: true, nummer: true, koppla: true, prova: false }).done).toBe(false)
-    const all = phoneSetupStep({ namn: true, tider: true, nummer: true, koppla: true, prova: true })
-    expect(all.done).toBe(true)
-    expect(all.to).toBe('/telefon?flik=installningar')
-    expect(phoneSetupStep(null).done).toBeNull()
-    expect(setupSteps({ ...owner, phone: null }).at(-1)?.done).toBeNull()
-  })
-})
-
-describe('Google-profil in Kom igång', () => {
-  const owner = { isOwner: true, hasOpeningHours: true, activeMenuItems: 3, hasLiveLayout: true, stripeStage: 'ready' as const, staffCount: 1 }
-
-  it('is a step only when the plan has Google, linking straight to the card, before the phone step', () => {
-    expect(setupSteps(owner).some((s) => s.id === 'google')).toBe(false)
-    const steps = setupSteps({ ...owner, google: false, phone: { namn: true, tider: true, nummer: true, koppla: true, prova: true } })
-    const google = steps.find((s) => s.id === 'google')
-    expect(google).toEqual({ id: 'google', label: 'Google-profil (valfritt)', done: false, to: '/installningar#google' })
-    expect(steps.at(-1)?.id).toBe('phone')
+  it('shows a step admin does not know yet with the server label', () => {
+    const list = serverChecklist({})
+    list.steps.push({ id: 'logo', label: 'Ladda upp logga', labelEn: 'Logo', scope: 'tenant', skippable: true, state: 'open', known: true })
+    const step = stepsFromServer(list, 'loc-1').at(-1)!
+    expect(step).toMatchObject({ label: 'Ladda upp logga', to: '/', done: false })
   })
 
-  it('is done when linked or skipped, and unknown when it could not be fetched', () => {
-    expect(setupSteps({ ...owner, google: true }).find((s) => s.id === 'google')?.done).toBe(true)
-    expect(setupSteps({ ...owner, google: null }).find((s) => s.id === 'google')?.done).toBeNull()
-    expect(setupSteps({ ...owner, google: true }).every((s) => s.done === true)).toBe(true)
+  it('nothing without a list', () => {
+    expect(stepsFromServer(null, 'loc-1')).toEqual([])
   })
 })

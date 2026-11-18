@@ -12,7 +12,8 @@ import type { HelpView } from '../help/kb'
 import { answerLocally } from '../help/retrieve'
 import { STEPS } from '../phone-agent/setup'
 import { SETUP } from '../phone-agent/api'
-import { setupSteps } from './overview'
+import { stepsFromServer } from './overview'
+import { serverChecklist } from './setupFixture'
 import type { SetupStep } from './overview'
 import { SetupStepItem } from './SetupStepItem'
 import { setupContext, setupEntries } from './setupHelp'
@@ -31,12 +32,8 @@ const ALL_STEPS: Record<SetupStep['id'], true> = {
 }
 const ALL_KEYS: SetupKey[] = [...(Object.keys(ALL_STEPS) as SetupStep['id'][]), ...STEPS.map((s) => `phone:${s}` as const)]
 
-// Allt påslaget: varje steg som funktioner eller roller kan gömma syns.
-const everything = setupSteps({
-  isOwner: true, hasOpeningHours: false, activeMenuItems: 0, hasLiveLayout: false, stripeStage: 'missing', staffCount: 0,
-  dpaAccepted: false, google: false, phone: { namn: false, tider: false, nummer: false, koppla: false, prova: false },
-  printers: { printerCount: 0, printerConfigured: false, setupSkipped: false },
-})
+// Allt påslaget: varje steg servern kan skicka.
+const everything = stepsFromServer(serverChecklist(), 'loc-1')
 const owner: HelpView = { role: 'owner_user', features: Object.fromEntries(FEATURE_KEYS.map((f) => [f, true])), staffInsights: true }
 const corpus = buildCorpus()
 

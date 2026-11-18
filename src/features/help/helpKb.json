@@ -261,9 +261,9 @@
         "Öppna Layout och rita matsalen med borden.",
         "Tryck Spara utkast.",
         "Tryck Publicera layout. Versionen aktiveras direkt.",
-        "Under Versioner ser du vilken som Gäller nu, och kan aktivera en annan.",
+        "Under Versioner ser du vilken version som gäller nu och vilken som tar över, med datum.",
         "Röda bord står ovanpå varandra: flytta isär dem och publicera igen.",
-        "Står det ej aktiverad: öppna Versioner och aktivera versionen.",
+        "En ny version tar över tidigast dagen efter bokningsfönstret (gäster bokar 21 dagar fram), så ingen bokning hamnar på en ändrad ritning. Välj datum under Versioner.",
         "Bara ägaren (och Booqy) kan publicera och aktivera. Står det Booqys fel i felrutan: tryck Rapportera till Booqy, så tar vi det."
       ],
       "actions": [
@@ -1719,8 +1719,8 @@
       "answer": "Ändringar sparas som utkast. Ägaren publicerar dem och väljer vilken version som gäller.",
       "steps": [
         "Öppna Layout och tryck Spara utkast.",
-        "Tryck Publicera layout. Den nya versionen aktiveras direkt.",
-        "Under Versioner kan du aktivera en annan version."
+        "Tryck Publicera layout. Den första versionen gäller direkt. En ny version tar över tidigast dagen efter bokningsfönstret (gäster bokar 21 dagar fram).",
+        "Under Versioner ser du vad som gäller nu och vad som tar över, och väljer datum för en annan version."
       ],
       "actions": [
         {

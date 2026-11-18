@@ -43,8 +43,9 @@ det sedan till en numrerad version (`POST …/layout/publish`).
 Under **Versioner** listas de publicerade ögonblicksbilderna, och en av dem
 kan aktiveras (`POST …/layout/versions/{n}/activate`). Aktiveringen sker
 omedelbart bara när ingen version gäller ännu - finns redan en gällande
-version schemalägger API:t bytet till 01:00 UTC fyra veckor fram, och svaret
-blir `pending` med en `cutoverAt`. Modalen visar den skillnaden, eftersom ett
+version schemalägger API:t bytet till midnatt dagen efter bokningsfönstret
+(idag + 22 dagar, i dev 5 minuter), eller ett senare `effectiveDate`, och
+svaret blir `pending` med en `cutoverAt`. Modalen visar den skillnaden, eftersom ett
 schemalagt byte annars ser ut som ett genomfört. Att begära en annan version
 medan ett byte väntar ger `409`.
 

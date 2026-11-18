@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../shared/api'
 import { errorInfo } from '../../shared/errors'
-import { BookingsOnRemovedTablesError } from './layoutApi'
+import { BookingsOnRemovedTablesError, PendingSwitchError } from './layoutApi'
 import type { LayoutActivation, PublishedLayoutSnapshot } from './layoutApi'
 
 type Activate = (locationId: string, version: number) => Promise<LayoutActivation>
@@ -78,7 +78,7 @@ describe('activatePublished (first publish)', () => {
       text:
         'Version 1 är publicerad men inte aktiverad: Du har inte behörighet att ändra layouten. ' +
         'Aktivera den under Versioner.',
-      label: 'Version 1 · ej aktiverad',
+      label: 'Version 1 · gäller inte än',
     })
   })
 
@@ -99,7 +99,7 @@ describe('activatePublished (first publish)', () => {
     const out = await activatePublished('loc', 1, deps(vi.fn<Activate>().mockResolvedValue(active), [version(1, false)]))
     expect(out.ok).toBe(false)
     expect(out.text).toBe('Version 1 är publicerad men inte aktiverad. Aktivera den under Versioner.')
-    expect(out.label).toBe('Version 1 · ej aktiverad')
+    expect(out.label).toBe('Version 1 · gäller inte än')
   })
 
   it('reports a scheduled switch when another version is current', async () => {
@@ -111,8 +111,8 @@ describe('activatePublished (first publish)', () => {
     expect(out).toEqual({
       ok: true,
       text:
-        'Publicerad som version 2. En annan version gäller redan, så bytet sker ' +
-        '14 november 2026 11:05 istället för direkt.',
+        'Publicerad som version 2. Den tar över 14 november 2026 11:05, ' +
+        'när bokningarna som redan finns har hunnit ske.',
       label: 'Gäller: Version 1',
     })
   })
@@ -127,6 +127,25 @@ describe('labelFor', () => {
   it('names the current version, else the newest as not active', () => {
     expect(labelFor([])).toBe('Aldrig publicerad')
     expect(labelFor([version(2, false), version(1, true)])).toBe('Gäller: Version 1')
-    expect(labelFor([version(1, false)])).toBe('Version 1 · ej aktiverad')
+    expect(labelFor([version(1, false)])).toBe('Version 1 · gäller inte än')
+  })
+})
+
+describe('another switch already waits', () => {
+  const waiting = (n: number) =>
+    ({ ...version(n, false), effectiveFrom: '2099-12-16T23:00:00Z' }) as PublishedLayoutSnapshot
+
+  it('says plainly what happened and what to do, without retrying', async () => {
+    const activate = vi.fn<Activate>().mockRejectedValue(new PendingSwitchError())
+    const d = deps(activate, [version(5, false), waiting(2), version(1, true)])
+    const out = await activatePublished('loc', 5, d)
+    expect(activate).toHaveBeenCalledTimes(1)
+    expect(out.ok).toBe(false)
+    expect(out.waiting).toBe(true)
+    expect(out.text).toBe(
+      'Version 5 är publicerad men gäller inte än, för Version 2 tar redan över 17 december 2099. ' +
+        'Vill du ha version 5 i stället: öppna Versioner och välj datum för den.',
+    )
+    expect(out.label).toBe('Gäller: Version 1')
   })
 })

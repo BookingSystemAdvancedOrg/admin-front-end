@@ -1,13 +1,14 @@
 import { ApiError } from '../../shared/api'
 import { describeError, rememberError } from '../../shared/errors'
-import { activateLayoutVersion, BookingsOnRemovedTablesError, listLayoutVersions } from './layoutApi'
+import { activateLayoutVersion, BookingsOnRemovedTablesError, listLayoutVersions, PendingSwitchError } from './layoutApi'
 import type { LayoutActivation, PublishedLayoutSnapshot, RemovedTableBooking } from './layoutApi'
+import { longDate, versionTimeline } from './versionTimeline'
 
-/** Etiketten bredvid Versioner-knappen, ur versionslistan. */
+/** Etiketten bredvid Versioner-knappen, ur versionslistan (nästa byte står i Versioner). */
 export function labelFor(versions: PublishedLayoutSnapshot[]): string {
   if (versions.length === 0) return 'Aldrig publicerad'
   const current = versions.find((v) => v.isCurrent)
-  return current ? `Gäller: ${current.label}` : `${versions[0].label} · ej aktiverad`
+  return current ? `Gäller: ${current.label}` : `${versions[0].label} · gäller inte än`
 }
 
 export type ActivationOutcome = {
@@ -18,6 +19,8 @@ export type ActivationOutcome = {
   label: string
   /** Bokningar som ligger på bord den nya versionen tar bort (flytta dem först). */
   removed?: RemovedTableBooking[]
+  /** Inget fel: en annan version väntar redan på att ta över. Texten säger vad man gör. */
+  waiting?: boolean
 }
 
 type Deps = {
@@ -36,7 +39,7 @@ const defaultDeps: Deps = {
 
 /** Nätverk, samtidig ändring (409) och serverfel (5xx) kan gå över av sig själva. */
 function isTransient(err: unknown): boolean {
-  if (err instanceof BookingsOnRemovedTablesError) return false
+  if (err instanceof BookingsOnRemovedTablesError || err instanceof PendingSwitchError) return false
   return err instanceof ApiError && (err.status === 0 || err.status === 409 || err.status >= 500)
 }
 
@@ -70,6 +73,18 @@ export async function activatePublished(
   const label = versions ? labelFor(versions) : ''
   const published = versions?.find((v) => v.version === version)
 
+  if (!activation && failure instanceof PendingSwitchError) {
+    const next = versions ? versionTimeline(versions).find((e) => e.kind === 'next') : undefined
+    const when = next?.from ? ` ${longDate(next.from)}` : ''
+    return {
+      ok: false,
+      waiting: true,
+      text:
+        `Version ${version} är publicerad men gäller inte än, för ${next?.snapshot.label ?? 'en annan version'} ` +
+        `tar redan över${when}. Vill du ha version ${version} i stället: öppna Versioner och välj datum för den.`,
+      label,
+    }
+  }
   if (!activation) {
     const info = describeError(failure, '')
     const detail = info.text
@@ -96,8 +111,8 @@ export async function activatePublished(
     text:
       activation.status === 'active'
         ? `Publicerad och aktiverad som version ${version} - gäller nu.`
-        : `Publicerad som version ${version}. En annan version gäller ` +
-          `redan, så bytet sker ${d.formatMoment(activation.cutoverAt)} istället för direkt.`,
+        : `Publicerad som version ${version}. Den tar över ${d.formatMoment(activation.cutoverAt)}, ` +
+          'när bokningarna som redan finns har hunnit ske.',
     label,
   }
 }

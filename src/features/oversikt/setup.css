@@ -31,7 +31,7 @@
   transition: background-color 140ms var(--ease), color 140ms var(--ease);
 }
 .setup-ask:hover {
-  background: var(--hairline);
+  background: var(--wash);
   color: var(--ink);
 }
 .setup-ask:focus-visible,

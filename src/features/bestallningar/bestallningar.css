@@ -40,7 +40,7 @@
   height: 9px;
   border-radius: 50%;
   background: var(--success);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--success) 25%, transparent);
+  box-shadow: 0 0 8px 2px color-mix(in srgb, var(--success) 35%, transparent);
 }
 
 .orders-banner.paused {
@@ -79,7 +79,7 @@
 
 .order-card.fresh {
   border-color: var(--accent);
-  box-shadow: 0 0 0 4px var(--focus);
+  box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--focus) 45%, transparent), var(--shadow);
 }
 
 .order-card-head {
@@ -209,7 +209,7 @@
   color: var(--on-slip);
   font: 700 18px/1.2 var(--sans);
   letter-spacing: 0.01em;
-  box-shadow: 0 1px 2px rgb(26 18 14 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.12);
+  box-shadow: 0 1px 2px rgb(26 18 14 / 0.18), inset 0 1px 0 transparent;
 }
 
 .table-chip-link.order-place--table:hover {
@@ -417,14 +417,17 @@
 
 .kds-ticket--preparing {
   border-top-color: var(--warning);
+  background: var(--tint-orange);
 }
 
 .kds-ticket--ready {
   border-top-color: var(--success);
+  background: var(--tint-green);
   opacity: 0.8;
 }
 
 .kds-ticket--allergy {
+  background: var(--tint-red);
   border-color: var(--danger);
   border-top-color: var(--danger);
 }

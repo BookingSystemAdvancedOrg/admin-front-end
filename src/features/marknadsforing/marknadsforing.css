@@ -134,7 +134,7 @@
 }
 
 .mk-bar {
-  fill: var(--border);
+  fill: var(--neutral-fill);
   transition: fill 160ms var(--ease);
 }
 
@@ -161,7 +161,7 @@
   height: 9px;
   margin-right: 6px;
   border-radius: var(--r-md);
-  background: var(--border);
+  background: var(--neutral-fill);
   vertical-align: -1px;
 }
 
@@ -649,7 +649,7 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 1px rgba(26, 18, 14, 0.18), 0 2px 6px -3px rgba(26, 18, 14, 0.4);
+  box-shadow: inset 0 0 0 1px transparent, 0 2px 6px -3px rgba(26, 18, 14, 0.4);
   transition: box-shadow 160ms var(--ease);
 }
 
@@ -665,7 +665,7 @@
   height: 16px;
   border-radius: 50%;
   background: var(--glass-surface);
-  box-shadow: 0 0 0 1px var(--border);
+  box-shadow: 0 0 0 1px transparent;
   font: 700 9px/1 var(--font);
   color: var(--ink);
 }
@@ -680,7 +680,8 @@
 }
 
 .mk-swatch.on .mk-swatch-dot {
-  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink);
+  box-shadow: 0 6px 14px -4px rgba(26, 18, 14, 0.55);
+  transform: scale(1.14);
 }
 
 .mk-swatch.on .mk-swatch-name {

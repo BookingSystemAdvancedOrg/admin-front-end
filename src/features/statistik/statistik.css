@@ -32,7 +32,7 @@
   border: 0;
   border-radius: var(--r-md);
   background: var(--glass-surface);
-  box-shadow: inset 0 0 0 1px var(--border);
+  box-shadow: inset 0 0 0 1px transparent;
   font: 600 13.5px/1 var(--font);
   color: var(--ink);
   cursor: default;
@@ -40,7 +40,8 @@
 }
 
 .sk-chip:hover {
-  box-shadow: inset 0 0 0 1px var(--ink);
+  background: var(--glass-fill);
+  box-shadow: inset 0 0 0 1px transparent;
 }
 
 .sk-chip[aria-pressed='true'] {
@@ -946,7 +947,7 @@
 }
 
 .sk-heat-legend .sk-swatch {
-  box-shadow: inset 0 0 0 1px var(--border);
+  box-shadow: inset 0 0 0 1px transparent;
 }
 
 .sk-heat-legend-label {
@@ -986,14 +987,16 @@
     border: 0;
     border-radius: var(--r-md);
     background: var(--glass-surface);
-    box-shadow: inset 0 0 0 1px var(--border);
+    box-shadow: inset 0 0 0 1px transparent;
     font: 600 13.5px/1 var(--font);
     color: var(--ink);
     cursor: default;
   }
 
   .sk-filter-toggle[aria-expanded='true'] {
-    box-shadow: inset 0 0 0 1.5px var(--ink);
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: inset 0 0 0 1.5px transparent;
   }
 
   .sk-filters {

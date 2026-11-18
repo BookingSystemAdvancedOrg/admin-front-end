@@ -131,7 +131,8 @@
 
 
 .bokforing-input input[aria-invalid='true'] {
-  box-shadow: 0 0 0 2px var(--danger);
+  background: var(--tint-red);
+  box-shadow: 0 0 0 2px transparent;
 }
 
 .bokforing-input-error {

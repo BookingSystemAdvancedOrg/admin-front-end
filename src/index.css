@@ -67,7 +67,10 @@
   --glass-surface: rgb(var(--bq-snow-rgb) / 0.58);
   --glass-fill: rgb(var(--bq-snow-rgb) / 0.42);
   --glass-well: rgba(246, 241, 234, 0.36);
-  --border: #e3d6c4;
+  /* Kanter: alla genomskinliga (ägaren 2026-11-18, se shared/edges.css). */
+  --border: transparent;
+  /* Neutral fyllnad för det som inte är en kant (staplar, prickar, handtag). */
+  --neutral-fill: #e3d6c4;
   --ink: #1a120e;
   --muted: #4a4a46;
   --accent: #1a120e;
@@ -148,7 +151,8 @@
   --glass-surface: rgba(42, 29, 22, 0.58);
   --glass-fill: rgba(58, 36, 24, 0.5);
   --glass-well: rgba(26, 18, 14, 0.4);
-  --border: #4a3326;
+  --border: transparent;
+  --neutral-fill: #4a3326;
   --ink: #f6f1ea;
   --muted: #d5c4ae;
   --accent: #f6f1ea;
@@ -266,7 +270,7 @@ a {
   vertical-align: baseline;
   /* Pilen, inte handen: knappen själv reagerar när pekaren är över den. */
   cursor: default;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25);
+  box-shadow: inset 0 1px 0 transparent;
   transition: background-color 0.16s, border-color 0.16s, transform 0.09s, box-shadow 0.16s;
 }
 .table-chip-link svg {
@@ -276,7 +280,7 @@ a {
 .table-chip-link:hover {
   border-color: var(--accent-ink);
   background: var(--surface);
-  box-shadow: 0 2px 8px rgb(26 18 14 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.3);
+  box-shadow: 0 2px 8px rgb(26 18 14 / 0.12), inset 0 1px 0 transparent;
 }
 .table-chip-link:hover svg {
   opacity: 1;
@@ -301,7 +305,7 @@ a {
 :root {
   --glass: rgb(var(--bq-snow-rgb) / 0.62);
   --glass-hi: rgb(var(--bq-snow-rgb) / 0.74);
-  --rim: inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.9), inset 0 0 0 1px rgb(var(--bq-snow-rgb) / 0.55);
+  --rim: inset 0 1px 0 transparent, inset 0 0 0 1px transparent;
   --r-panel: 28px;
   --backdrop-veil: rgba(246, 241, 234, 0);
   --wall-tint: rgba(58, 36, 24, 0.08);
@@ -310,7 +314,7 @@ a {
 :root[data-theme='dark'] {
   --glass: rgba(26, 18, 14, 0.7);
   --glass-hi: rgba(26, 18, 14, 0.8);
-  --rim: inset 0 1px 0 rgba(213, 196, 174, 0.18), inset 0 0 0 1px rgba(213, 196, 174, 0.1);
+  --rim: inset 0 1px 0 transparent, inset 0 0 0 1px transparent;
   --backdrop-veil: rgba(26, 18, 14, 0.72);
   --wall-tint: rgba(213, 196, 174, 0.12);
   --wall-tint-2: rgba(213, 196, 174, 0.2);

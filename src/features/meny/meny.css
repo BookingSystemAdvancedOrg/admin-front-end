@@ -143,7 +143,7 @@
   overflow: hidden;
   border-radius: var(--r-md);
   background: var(--glass-well);
-  box-shadow: inset 0 0 0 1px var(--border);
+  box-shadow: inset 0 0 0 1px transparent;
   cursor: grab;
   touch-action: none;
   -webkit-user-select: none;
@@ -169,7 +169,7 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow: inset 0 0 0 1px rgb(var(--bq-snow-rgb) / 0.5);
+  box-shadow: inset 0 0 0 1px transparent;
   background:
     linear-gradient(90deg, transparent calc(33.333% - 0.5px), rgb(var(--bq-snow-rgb) / 0.55) calc(33.333% - 0.5px), rgb(var(--bq-snow-rgb) / 0.55) calc(33.333% + 0.5px), transparent calc(33.333% + 0.5px), transparent calc(66.666% - 0.5px), rgb(var(--bq-snow-rgb) / 0.55) calc(66.666% - 0.5px), rgb(var(--bq-snow-rgb) / 0.55) calc(66.666% + 0.5px), transparent calc(66.666% + 0.5px)),
     linear-gradient(180deg, transparent calc(33.333% - 0.5px), rgb(var(--bq-snow-rgb) / 0.55) calc(33.333% - 0.5px), rgb(var(--bq-snow-rgb) / 0.55) calc(33.333% + 0.5px), transparent calc(33.333% + 0.5px), transparent calc(66.666% - 0.5px), rgb(var(--bq-snow-rgb) / 0.55) calc(66.666% - 0.5px), rgb(var(--bq-snow-rgb) / 0.55) calc(66.666% + 0.5px), transparent calc(66.666% + 0.5px));
@@ -189,7 +189,7 @@
 
 .dish-focus-frame:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 1px var(--border), 0 0 0 3px var(--focus);
+  box-shadow: inset 0 0 0 1px transparent, 0 0 0 3px var(--focus);
 }
 
 .dish-focus-help {
@@ -206,7 +206,7 @@
   height: 40px;
   border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0 0 0 2px var(--glass-surface), 0 0 0 3px var(--border);
+  box-shadow: 0 0 0 2px transparent, 0 0 0 3px transparent;
 }
 
 .dish-focus-hint {

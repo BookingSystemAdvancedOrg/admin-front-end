@@ -167,18 +167,15 @@
 
 .legend-free::before {
   background: var(--tint-green);
-  border-color: var(--green) !important;
 }
 
 .legend-small::before {
   background: var(--tint-orange);
-  border-color: var(--warning) !important;
 }
 
 .legend-full::before {
-  background: var(--glass-well);
-  border-style: dashed !important;
-  border-color: var(--border) !important;
+  background: var(--fill, var(--bg));
+  opacity: 0.6;
 }
 
 .floor-booking-panel {

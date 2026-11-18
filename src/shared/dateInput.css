@@ -62,7 +62,8 @@
 
 .date-input > input[aria-invalid='true'],
 .time-input[aria-invalid='true'] {
-  box-shadow: 0 0 0 1.5px var(--accent-ink);
+  background: var(--tint-red);
+  box-shadow: 0 0 0 1.5px transparent;
 }
 
 .datetime-input {
@@ -160,7 +161,9 @@
 }
 
 .date-cal-day.is-today {
-  box-shadow: inset 0 0 0 1.5px var(--border);
+  background: var(--glass-fill);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1.5px transparent;
 }
 
 .date-cal-day.is-selected {

@@ -83,7 +83,7 @@
 .admin-location-picker .b-select {
   border-radius: var(--r-md);
   background-color: rgba(246, 236, 233, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(246, 236, 233, 0.22);
+  box-shadow: inset 0 0 0 1px transparent;
   color: var(--on-ox);
   color-scheme: dark;
 }
@@ -258,7 +258,7 @@ button.stat-tile {
 }
 
 .stat-tile--attention {
-  box-shadow: inset 0 0 0 1.5px var(--accent-ink), var(--shadow);
+  box-shadow: inset 0 0 0 1.5px transparent, var(--shadow);
 }
 
 .stat-tile--attention .stat-tile-value {
@@ -347,18 +347,18 @@ button.stat-tile {
 .btn.outline {
   background: var(--glass-surface);
   color: var(--ink);
-  box-shadow: inset 0 0 0 1px var(--border);
+  box-shadow: inset 0 0 0 1px transparent;
 }
 
 .btn.outline:hover:not(:disabled) {
   filter: none;
-  box-shadow: inset 0 0 0 1px var(--ink);
+  box-shadow: inset 0 0 0 1px transparent;
 }
 
 .btn.danger-outline {
-  background: transparent;
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
   color: var(--danger-ink);
-  box-shadow: inset 0 0 0 1.5px currentColor;
+  box-shadow: inset 0 0 0 1.5px transparent;
 }
 
 .btn.danger-outline:hover:not(:disabled) {
@@ -723,11 +723,11 @@ html.is-saving .btn:disabled {
 .stat-tile.stat-tile--full,
 .stat-tile.liquid--full {
   --tile-glass: linear-gradient(165deg, rgb(var(--bq-snow-rgb) / 0.78), rgba(255, 252, 247, 0.56) 55%, rgba(246, 241, 234, 0.5));
-  --tile-edge: linear-gradient(170deg, rgb(var(--bq-snow-rgb) / 0.95), rgb(var(--bq-snow-rgb) / 0.35) 38%, rgba(168, 132, 98, 0.32));
+  --tile-edge: transparent;
   background: var(--tile-glass);
   -webkit-backdrop-filter: blur(14px) saturate(1.6);
   backdrop-filter: blur(14px) saturate(1.6);
-  box-shadow: inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.9), 0 1px 2px rgba(58, 36, 24, 0.06), 0 18px 36px -24px rgba(58, 36, 24, 0.45);
+  box-shadow: inset 0 1px 0 transparent, 0 1px 2px rgba(58, 36, 24, 0.06), 0 18px 36px -24px rgba(58, 36, 24, 0.45);
 }
 .glass-refract .stat-tile {
   backdrop-filter: url(#booqy-glass) blur(14px) saturate(1.6);
@@ -747,24 +747,24 @@ html.is-saving .btn:disabled {
 }
 .admin-card.stat-tile.stat-tile--attention {
   --tile-glass: linear-gradient(165deg, rgba(255, 250, 244, 0.8), rgba(232, 214, 192, 0.52) 60%, rgba(213, 196, 174, 0.46));
-  --tile-edge: linear-gradient(170deg, rgb(var(--bq-snow-rgb) / 0.95), rgba(168, 132, 98, 0.4) 45%, rgba(107, 74, 46, 0.36));
-  box-shadow: inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.85), 0 1px 2px rgba(58, 36, 24, 0.08), 0 18px 36px -22px rgba(107, 74, 46, 0.5);
+  --tile-edge: transparent;
+  box-shadow: inset 0 1px 0 transparent, 0 1px 2px rgba(58, 36, 24, 0.08), 0 18px 36px -22px rgba(107, 74, 46, 0.5);
 }
 .admin-card.stat-tile--link:hover,
 .admin-card.stat-tile.stat-tile--attention.stat-tile--link:hover {
-  box-shadow: inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.95), 0 2px 6px -2px rgba(58, 36, 24, 0.12), 0 26px 44px -24px rgba(58, 36, 24, 0.55);
+  box-shadow: inset 0 1px 0 transparent, 0 2px 6px -2px rgba(58, 36, 24, 0.12), 0 26px 44px -24px rgba(58, 36, 24, 0.55);
 }
 :root[data-theme='dark'] .admin-card.stat-tile,
 :root[data-theme='dark'] .stat-tile.stat-tile--full,
 :root[data-theme='dark'] .stat-tile.liquid--full {
   --tile-glass: linear-gradient(165deg, rgba(58, 36, 24, 0.78), rgba(42, 29, 22, 0.66) 55%, rgba(26, 18, 14, 0.62));
-  --tile-edge: linear-gradient(170deg, rgba(246, 241, 234, 0.4), rgba(213, 196, 174, 0.12) 40%, rgba(213, 196, 174, 0.22));
+  --tile-edge: transparent;
   background: var(--tile-glass);
-  box-shadow: inset 0 1px 0 rgba(213, 196, 174, 0.2), 0 1px 2px rgba(0, 0, 0, 0.3), 0 18px 36px -22px rgba(0, 0, 0, 0.8);
+  box-shadow: inset 0 1px 0 transparent, 0 1px 2px rgba(0, 0, 0, 0.3), 0 18px 36px -22px rgba(0, 0, 0, 0.8);
 }
 :root[data-theme='dark'] .admin-card.stat-tile.stat-tile--attention {
   --tile-glass: linear-gradient(165deg, rgba(107, 74, 46, 0.62), rgba(58, 36, 24, 0.7) 60%, rgba(42, 29, 22, 0.68));
-  --tile-edge: linear-gradient(170deg, rgba(246, 241, 234, 0.45), rgba(213, 196, 174, 0.2) 45%, rgba(213, 196, 174, 0.35));
+  --tile-edge: transparent;
 }
 
 /* Knappar: piller; huvudknappen är mörk espresso */
@@ -783,13 +783,13 @@ html.is-saving .btn:disabled {
 }
 .btn.outline,
 .btn.danger-outline {
-  box-shadow: inset 0 0 0 1px var(--border);
+  box-shadow: inset 0 0 0 1px transparent;
 }
 .btn.outline:hover:not(:disabled),
 .btn.danger-outline:hover:not(:disabled) {
   filter: none;
   translate: 0 -2px;
-  box-shadow: inset 0 0 0 1px var(--accent-ink), 0 10px 22px -16px rgba(58, 36, 24, 0.6);
+  box-shadow: inset 0 0 0 1px transparent, 0 10px 22px -16px rgba(58, 36, 24, 0.6);
 }
 .btn:disabled {
   translate: none;
@@ -995,7 +995,7 @@ html.is-busy * {
   border: 0;
   border-radius: var(--r-pill);
   background: var(--glass-fill);
-  box-shadow: inset 0 0 0 1px var(--border);
+  box-shadow: inset 0 0 0 1px transparent;
   color: var(--ink);
   font: 600 14px/1 var(--font);
   transition: background-color 180ms var(--ease), color 180ms var(--ease), translate 180ms var(--ease);
@@ -1044,14 +1044,15 @@ html.is-busy * {
   border: 0;
   border-radius: var(--r-md);
   background: rgb(var(--bq-snow-rgb) / 0.5);
-  box-shadow: inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.85), inset 0 0 0 1px rgba(58, 36, 24, 0.1);
+  box-shadow: inset 0 1px 0 transparent, inset 0 0 0 1px transparent;
   color: var(--ink);
   text-align: left;
   cursor: default;
   transition: background-color 200ms var(--ease), box-shadow 200ms var(--ease);
 }
 .settings-menu-item.current {
-  box-shadow: inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.85), inset 0 0 0 1.5px rgba(58, 36, 24, 0.35);
+  background: rgb(var(--bq-snow-rgb) / 0.92);
+  box-shadow: inset 0 1px 0 transparent, inset 0 0 0 1.5px transparent;
 }
 .settings-menu-text {
   display: flex;
@@ -1079,10 +1080,11 @@ html.is-busy * {
 /* en öppen grupp */
 :root[data-theme='dark'] .settings-menu-item {
   background: rgb(var(--bq-snow-rgb) / 0.05);
-  box-shadow: inset 0 1px 0 rgba(213, 196, 174, 0.18), inset 0 0 0 1px rgba(213, 196, 174, 0.12);
+  box-shadow: inset 0 1px 0 transparent, inset 0 0 0 1px transparent;
 }
 :root[data-theme='dark'] .settings-menu-item.current {
-  box-shadow: inset 0 1px 0 rgba(213, 196, 174, 0.18), inset 0 0 0 1.5px rgba(213, 196, 174, 0.4);
+  background: rgb(var(--bq-snow-rgb) / 0.14);
+  box-shadow: inset 0 1px 0 transparent, inset 0 0 0 1.5px transparent;
 }
 
 @media (hover: hover) {
@@ -1130,7 +1132,7 @@ html.is-busy * {
   background: rgb(var(--bq-snow-rgb) / 0.9) !important;
   -webkit-backdrop-filter: blur(10px) saturate(1.5);
   backdrop-filter: blur(10px) saturate(1.5);
-  box-shadow: inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.85), inset 0 0 0 1px rgba(58, 36, 24, 0.12), 0 6px 16px -12px rgba(58, 36, 24, 0.35) !important;
+  box-shadow: inset 0 1px 0 transparent, inset 0 0 0 1px transparent, 0 6px 16px -12px rgba(58, 36, 24, 0.35) !important;
 }
 
 .glass-refract [data-glide='track'] {
@@ -1197,7 +1199,7 @@ html.is-busy * {
   translate: var(--glide-x, 0) var(--glide-y, 0);
   border-radius: var(--r-pill);
   background: linear-gradient(180deg, #3a2418, #1a120e);
-  box-shadow: inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.2), 0 4px 10px -6px rgba(26, 18, 14, 0.6);
+  box-shadow: inset 0 1px 0 transparent, 0 4px 10px -6px rgba(26, 18, 14, 0.6);
   opacity: 0;
   pointer-events: none;
   will-change: translate, width;
@@ -1217,7 +1219,7 @@ html.is-busy * {
 
 :root[data-theme='dark'] [data-glide='track'] {
   background: rgb(var(--bq-snow-rgb) / 0.06) !important;
-  box-shadow: inset 0 1px 0 rgba(213, 196, 174, 0.22), inset 0 0 0 1px rgba(213, 196, 174, 0.12), 0 6px 16px -12px rgba(0, 0, 0, 0.6) !important;
+  box-shadow: inset 0 1px 0 transparent, inset 0 0 0 1px transparent, 0 6px 16px -12px rgba(0, 0, 0, 0.6) !important;
 }
 
 :root[data-theme='dark'] [data-glide='track'] > :is(button, a) {
@@ -1230,7 +1232,7 @@ html.is-busy * {
 
 :root[data-theme='dark'] [data-glide]::before {
   background: linear-gradient(180deg, var(--bq-snow), #efe7dc);
-  box-shadow: inset 0 1px 0 var(--bq-snow), 0 4px 10px -6px rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 1px 0 transparent, 0 4px 10px -6px rgba(0, 0, 0, 0.6);
 }
 
 @media (hover: hover) {
@@ -1298,7 +1300,7 @@ html.is-busy * {
   height: 22px;
   border-radius: 50%;
   background: var(--bq-snow);
-  box-shadow: 0 1px 4px rgba(26, 18, 14, 0.35), inset 0 0 0 1px rgba(58, 36, 24, 0.15);
+  box-shadow: 0 1px 4px rgba(26, 18, 14, 0.35), inset 0 0 0 1px transparent;
 }
 
 .sound-volume input[type='range']::-moz-range-thumb {
@@ -1307,7 +1309,7 @@ html.is-busy * {
   border: 0;
   border-radius: 50%;
   background: var(--bq-snow);
-  box-shadow: 0 1px 4px rgba(26, 18, 14, 0.35), inset 0 0 0 1px rgba(58, 36, 24, 0.15);
+  box-shadow: 0 1px 4px rgba(26, 18, 14, 0.35), inset 0 0 0 1px transparent;
 }
 
 .sound-volume input[type='range']:focus-visible {
@@ -1464,7 +1466,7 @@ html.is-busy * {
   background-color: rgb(var(--bq-snow-rgb) / 0.9);
   -webkit-backdrop-filter: blur(10px) saturate(1.5);
   backdrop-filter: blur(10px) saturate(1.5);
-  box-shadow: inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.85), inset 0 0 0 1px rgba(58, 36, 24, 0.12), 0 6px 16px -12px rgba(58, 36, 24, 0.35);
+  box-shadow: inset 0 1px 0 transparent, inset 0 0 0 1px transparent, 0 6px 16px -12px rgba(58, 36, 24, 0.35);
   transition: background-color 160ms var(--ease), box-shadow 160ms var(--ease);
 }
 @media (hover: hover) {
@@ -1474,7 +1476,7 @@ html.is-busy * {
 }
 :root[data-theme='dark'] .compact-select {
   background-color: rgb(var(--bq-snow-rgb) / 0.06);
-  box-shadow: inset 0 1px 0 rgba(213, 196, 174, 0.22), inset 0 0 0 1px rgba(213, 196, 174, 0.12), 0 6px 16px -12px rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 1px 0 transparent, inset 0 0 0 1px transparent, 0 6px 16px -12px rgba(0, 0, 0, 0.6);
 }
 @media (hover: hover) {
   :root[data-theme='dark'] .compact-select:hover {
@@ -1493,7 +1495,7 @@ html.is-busy * {
   padding: 3px;
   border-radius: var(--r-pill);
   background: var(--glass-fill);
-  box-shadow: inset 0 0 0 1px var(--glass-border);
+  box-shadow: inset 0 0 0 1px transparent;
 }
 .backdrop-segment button {
   appearance: none;
@@ -1530,13 +1532,14 @@ html.is-busy * {
   padding: 0;
   border: 0;
   border-radius: 999px;
-  box-shadow: inset 0 0 0 1px rgb(26 18 14 / 0.18), inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.45);
+  box-shadow: inset 0 0 0 1px transparent, inset 0 1px 0 transparent;
   color: var(--ink);
   cursor: default;
 }
 .backdrop-swatch[aria-pressed='true'],
 .backdrop-swatch[data-selected='true'] {
-  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink);
+  box-shadow: 0 6px 14px -4px rgba(26, 18, 14, 0.55);
+  transform: scale(1.14);
 }
 .backdrop-swatch:focus-visible,
 .backdrop-swatch--custom:has(input:focus-visible) {
@@ -1625,7 +1628,7 @@ html.is-busy * {
   border-radius: inherit;
   overflow: hidden;
   background: var(--glass-fill);
-  box-shadow: inset 0 0 0 1px var(--glass-border);
+  box-shadow: inset 0 0 0 1px transparent;
   cursor: default;
 }
 .bg-thumb img {
@@ -1639,7 +1642,7 @@ html.is-busy * {
   box-shadow: 0 0 0 3px var(--field-ring);
 }
 .bg-tile.is-selected .bg-thumb {
-  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink);
+  box-shadow: 0 10px 22px -12px rgba(26, 18, 14, 0.6);
 }
 .bg-check {
   position: absolute;
@@ -1721,13 +1724,13 @@ html.is-busy * {
   place-items: center;
   overflow: hidden;
   background: var(--glass-fill);
-  box-shadow: inset 0 0 0 1px var(--field-border);
+  box-shadow: inset 0 0 0 1px transparent;
   color: var(--ink);
   text-align: center;
   cursor: default;
 }
 .bg-tile--upload:has(.bg-upload-input:focus-visible) {
-  box-shadow: inset 0 0 0 1px var(--field-border), 0 0 0 3px var(--field-ring);
+  box-shadow: inset 0 0 0 1px transparent, 0 0 0 3px var(--field-ring);
 }
 .bg-tile--upload.is-disabled {
   opacity: 0.6;
@@ -1761,7 +1764,7 @@ html.is-busy * {
   grid-area: 1 / 1;
   block-size: 6px;
   border-radius: var(--r-pill);
-  background: var(--glass-border);
+  background: var(--wash-strong);
 }
 .bg-upload-bar {
   grid-area: 1 / 1;
@@ -1871,7 +1874,7 @@ html.is-busy * {
   border-radius: 50%;
   overflow: hidden;
   background: var(--glass-fill) var(--liquid-sheen);
-  box-shadow: var(--liquid-edge), inset 0 0 0 1px var(--glass-border);
+  box-shadow: var(--liquid-edge), inset 0 0 0 1px transparent;
   color: var(--ink);
   font: 700 0.8125rem/1 var(--sans);
   letter-spacing: 0.02em;
@@ -2041,7 +2044,7 @@ html.is-busy * {
   border-radius: 50%;
   overflow: hidden;
   background: var(--glass-fill);
-  box-shadow: var(--liquid-edge), 0 0 0 1px var(--glass-border);
+  box-shadow: var(--liquid-edge), 0 0 0 1px transparent;
   touch-action: none;
   cursor: grab;
 }

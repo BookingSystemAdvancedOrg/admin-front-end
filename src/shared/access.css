@@ -41,7 +41,7 @@
   margin: 0;
   border: 1.5px solid var(--muted);
   border-radius: 5px;
-  background: var(--surface);
+  background: var(--field-bg, var(--wash-strong));
   display: inline-grid;
   place-content: center;
   cursor: pointer;

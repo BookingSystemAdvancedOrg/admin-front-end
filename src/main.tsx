@@ -20,6 +20,8 @@ import NewPasswordPage from './features/auth/NewPasswordPage.tsx'
 import ForgotPasswordPage from './features/auth/ForgotPasswordPage.tsx'
 import ResetPasswordPage from './features/auth/ResetPasswordPage.tsx'
 import CookiesPage from './features/cookies/CookiesPage.tsx'
+// Sist: inga kanter någonstans (shared/edges.css vinner över allt ovan).
+import './shared/edges.css'
 
 // Top-level router. Only /logga-in, /nytt-losenord, the forgot-password
 // pages (/glomt-losenord, /aterstall-losenord - the emailed reset link) and

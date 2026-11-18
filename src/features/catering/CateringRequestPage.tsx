@@ -7,6 +7,7 @@ import { useTenant } from '../../shared/tenant'
 import {
   EQUIPMENT_RETURN_LABEL,
   cancelRequest,
+  createOfferVersion,
   declineRequest,
   documentLink,
   errorText,
@@ -18,11 +19,12 @@ import {
   markDelivered,
   markInvoicePaid,
   offerFromRequest,
+  offerStep,
   offerTotals,
   refundRequest,
   saveDraft,
   vatRateFor,
-  sendOffer,
+  sendOfferToCustomer,
   signatureLink,
   statusClass,
   statusLabel,
@@ -30,7 +32,9 @@ import {
 import type { CateringDish, CateringPackage, CateringRequest, EquipmentReturn, OfferInput } from './cateringApi'
 import { MAX_ITEM_PRICE_KR } from '../meny/menuApi'
 import './catering.css'
-import { RestaurantSigning } from './RestaurantSigning'
+import { OfferStepList, OfferSteps } from './OfferSteps'
+import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Icon } from '../../shared/Icon'
 import { DateInput } from '../../shared/DateInput'
 import { focusErrorField } from '../../shared/errors'
 import { Num } from '../../shared/motion/Num'
@@ -55,6 +59,8 @@ const EDITABLE = ['requested', 'change_requested', 'offer_sent']
 const ACTION_LABEL: Record<string, string> = {
   requested: 'Förfrågan skickad',
   offer_sent: 'Offert skickad',
+  offer_version: 'Offertversion klar för signering',
+  offer_sent_to_customer: 'Skickad till kunden',
   change_requested: 'Kunden bad om ändringar',
   rejected: 'Kunden avböjde',
   declined: 'Nekad',
@@ -77,6 +83,14 @@ const ACTION_LABEL: Record<string, string> = {
   cancelled: 'Avbokad',
   expired: 'Gick ut',
   refunded: 'Återbetalning',
+}
+
+/** Var en version står: varje version signeras av er och skickas för sig. */
+function versionState(r: CateringRequest, version: number): string {
+  if (r.signature && r.offer?.version === version && r.status !== 'offer_sent') return 'signerad av båda'
+  if (version !== r.currentOfferVersion || r.signing?.offerVersion !== version) return 'ersatt'
+  if (!r.signing.restaurant) return 'ej signerad av er'
+  return r.sentToCustomerAt ? 'skickad till kunden' : 'signerad av er, ej skickad'
 }
 
 /** Betald via bankgiro: en återbetalning görs för hand, inte via Stripe. */
@@ -105,6 +119,7 @@ export default function CateringRequestPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [sendError, setSendError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState<'decline' | 'cancel' | null>(null)
   const [refunding, setRefunding] = useState(false)
@@ -180,7 +195,7 @@ export default function CateringRequestPage() {
   }, [isOwner, locationId])
 
   const signed = useCallback((r?: CateringRequest) => {
-    setNotice('Signerad. Offerten är skickad till kunden (mejl och sms).')
+    setNotice('Signerad. Nu kan ni skicka offerten till kunden.')
     if (r) {
       setRequest(r)
       setOffer(offerFromRequest(r))
@@ -195,6 +210,22 @@ export default function CateringRequestPage() {
       window.location.assign((await documentLink(locationId, requestId, docId)).url)
     } catch (err) {
       setError(errorText(err, 'Dokumentet kunde inte öppnas.'))
+    }
+  }
+
+  /** Steg 3: felet står vid Skicka-knappen, inte längre ner i offerten. */
+  async function sendToCustomer(version: number) {
+    setBusy(true)
+    setError(null)
+    setNotice(null)
+    setSendError(null)
+    try {
+      await sendOfferToCustomer(locationId, requestId, version)
+    } catch (err) {
+      setSendError(errorText(err, 'Offerten skickades inte.'))
+    } finally {
+      await load()
+      setBusy(false)
     }
   }
 
@@ -258,6 +289,7 @@ export default function CateringRequestPage() {
     if (line) setOffer({ ...offer, lines: [...offer.lines, line] })
   }
   const nextVersion = (request.currentOfferVersion ?? 0) + 1
+  const step = offerStep(request)
   const setLine = (i: number, patch: Partial<OfferInput['lines'][number]>) =>
     setOffer({ ...offer, lines: offer.lines.map((l, n) => (n === i ? { ...l, ...patch } : l)) })
   // Offerten sparades på annat håll medan du ändrade din: din står kvar, deras visas på en rad.
@@ -369,18 +401,29 @@ export default function CateringRequestPage() {
           <p className="catering-callout">Kunden avböjde offerten{request.rejectReason ? `: ”${request.rejectReason}”` : '.'}</p>
         )}
 
-        {isOwner && request.status === 'offer_sent' && request.signing && !request.signing.restaurant
-          && request.signing.offerVersion === request.currentOfferVersion && (
-          <RestaurantSigning request={request} onSigned={signed} returned={returnedFromSigning} />
+        {step > 1 && EDITABLE.includes(request.status) && (
+          <OfferSteps request={request} canAct={isOwner} returned={returnedFromSigning} onSigned={signed}
+            sending={busy} sendError={sendError}
+            onSend={() => void sendToCustomer(request.currentOfferVersion ?? 0)} />
         )}
 
         {editable && (
           <section className="admin-card table-card">
             <div className="card-head">
               <div>
-                <h2 className="card-title">
-                  {request.status === 'requested' ? 'Offert' : `Ny offertversion (v${nextVersion})`}
-                </h2>
+                <div className="title-info">
+                  <h2 className="card-title">
+                    {request.status === 'requested' ? 'Offert' : `Ny offertversion (v${nextVersion})`}
+                  </h2>
+                  {nextVersion > 1 && (
+                    <>
+                      <span className="offer-resign-chip"><Icon name="lock" size={14} />Ny signatur krävs</span>
+                      <InfoTooltip label="Ny signatur krävs">
+                        {`v${nextVersion} måste signeras av er med BankID innan den kan skickas. När v${nextVersion} är klar kan kunden inte längre signera v${nextVersion - 1}.`}
+                      </InfoTooltip>
+                    </>
+                  )}
+                </div>
                 <p className="cell-muted">
                   Priser inkl. moms
                 </p>
@@ -395,6 +438,7 @@ export default function CateringRequestPage() {
                 )}
               </div>
             </div>
+            {step === 1 && <div className="offer-steps-editor"><OfferStepList step={1} /></div>}
             <div className="table-scroll" tabIndex={0}>
               <table className="data-table offer-table">
                 <thead>
@@ -519,8 +563,9 @@ export default function CateringRequestPage() {
                 </button>
               )}
               <button type="button" className="btn primary square" disabled={busy || !offerValid}
-                onClick={() => void run(() => sendOffer(locationId, requestId, offer), 'Offerten är klar. Signera den, sedan går den till kunden.')}>
-                {busy ? 'Skickar…' : `Skicka offert${request.currentOfferVersion ? ` v${nextVersion}` : ''}`}
+                onClick={() => void run(() => createOfferVersion(locationId, requestId, offer),
+                  `v${nextVersion} är klar. Signera den med BankID.`)}>
+                {busy ? 'Sparar…' : 'Nästa: signera'}
               </button>
               <button type="button" className="btn outline square" disabled={busy || !offerValid || !offerDirty}
                 onClick={() => void run(() => saveDraft(locationId, requestId, offer), 'Utkastet är sparat.')}>
@@ -551,7 +596,7 @@ export default function CateringRequestPage() {
         {request.offers.length > 0 && (
           <section className="admin-card table-card">
             <div className="card-head">
-              <h2 className="card-title">Skickade offerter</h2>
+              <h2 className="card-title">Offertversioner</h2>
               {request.signing?.offerVersion === request.currentOfferVersion && (
                 <button type="button" className="btn outline square" onClick={() => void openDocument('offer')}>
                   Offert v{request.currentOfferVersion} (PDF)
@@ -564,10 +609,8 @@ export default function CateringRequestPage() {
                   <strong>v{o.version}</strong> · {kronor(o.totals.total)}
                   {o.equipmentReturn === 'not_cleaned' ? ` (varav rengöring ${kronor(o.totals.cleaningFee)})` : ''}
                   {' '}· giltig t.o.m. {o.validUntil}
-                  {o.createdAt ? ` · skickad ${o.createdAt.slice(0, 16).replace('T', ' ')}` : ''}
-                  {request.signature && request.offer?.version === o.version && request.status !== 'offer_sent'
-                    ? ' · signerad'
-                    : request.signing?.offerVersion === o.version && request.signing.restaurant ? ' · signerad av er' : ''}
+                  {o.createdAt ? ` · skapad ${o.createdAt.slice(0, 16).replace('T', ' ')}` : ''}
+                  {' · '}{versionState(request, o.version)}
                 </li>
               ))}
             </ul>

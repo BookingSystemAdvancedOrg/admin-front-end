@@ -1328,7 +1328,9 @@
         "Öppna Catering och tryck på förfrågan.",
         "Justera raderna, rabatt, leverans och moms. Lägg till från cateringmenyn vid behov.",
         "Välj Giltig till och med och skriv ett meddelande till kunden.",
-        "Tryck Skicka offert (eller Spara utkast) och signera med BankID.",
+        "Tryck Nästa: signera (eller Spara utkast).",
+        "Signera med BankID. Kunden får inget innan ni har signerat.",
+        "Tryck Skicka till kunden. En ny version måste signeras igen innan den kan skickas.",
         "Vill du säga nej: tryck Neka förfrågan."
       ],
       "actions": [

@@ -164,10 +164,27 @@ export const STATUS_LABEL: Record<CateringStatus, string> = {
 export const NEEDS_OWNER: CateringStatus[] = ['requested', 'change_requested']
 
 /** Statusens etikett; en ny förfrågan som ägaren börjat på är "Under granskning". */
-export function statusLabel(r: { status: CateringStatus; reviewedAt?: string; restaurantSignedAt?: string }): string {
+export function statusLabel(r: {
+  status: CateringStatus; reviewedAt?: string; restaurantSignedAt?: string; sentToCustomerAt?: string
+}): string {
   if (r.status === 'requested' && r.reviewedAt) return 'Under granskning'
   if (r.status === 'offer_sent' && !r.restaurantSignedAt) return 'Väntar på er signatur'
+  if (r.status === 'offer_sent' && !r.sentToCustomerAt) return 'Redo att skicka'
   return STATUS_LABEL[r.status]
+}
+
+/**
+ * Offertens tre steg, alltid i den här ordningen: 1 granska (offerten låses
+ * som en version), 2 restaurangen signerar med BankID, 3 skicka till kunden.
+ * Varje ny version börjar om på steg 2. 4 = allt klart (kunden har den).
+ */
+export type OfferStep = 1 | 2 | 3 | 4
+
+export function offerStep(r: Pick<CateringRequest, 'status' | 'currentOfferVersion' | 'signing' | 'sentToCustomerAt'>): OfferStep {
+  const current = r.status === 'offer_sent' && Boolean(r.currentOfferVersion) && r.signing?.offerVersion === r.currentOfferVersion
+  if (!current) return 1
+  if (!r.signing?.restaurant) return 2
+  return r.sentToCustomerAt ? 4 : 3
 }
 
 /** Vem som har signerat den aktuella offertversionen. */
@@ -237,8 +254,10 @@ export interface RequestSummary {
   guests?: number
   /** Ägaren har börjat på offerten ("Under granskning"). */
   reviewedAt?: string
-  /** Restaurangen har signerat den skickade versionen; först då får kunden den. */
+  /** Restaurangen har signerat den aktuella versionen. */
   restaurantSignedAt?: string
+  /** Den signerade versionen är skickad till kunden; först då får kunden den. */
+  sentToCustomerAt?: string
 }
 
 export interface CateringRequest extends RequestSummary {
@@ -468,8 +487,14 @@ export function saveDraft(locationId: string, requestId: string, offer: OfferInp
   return apiFetch(`${req(locationId, requestId)}/offer`, { method: 'PUT', body: JSON.stringify(offer) })
 }
 
-export function sendOffer(locationId: string, requestId: string, offer: OfferInput): Promise<CateringRequest> {
-  return apiFetch(`${req(locationId, requestId)}/offer/send`, { method: 'POST', body: JSON.stringify(offer) })
+/** Steg 1: låser offerten som en ny version. Kunden får den inte än. */
+export function createOfferVersion(locationId: string, requestId: string, offer: OfferInput): Promise<CateringRequest> {
+  return apiFetch(`${req(locationId, requestId)}/offer/version`, { method: 'POST', body: JSON.stringify(offer) })
+}
+
+/** Steg 3: den signerade versionen till kunden. Servern nekar en osignerad (restaurant_signature_required). */
+export function sendOfferToCustomer(locationId: string, requestId: string, version: number): Promise<CateringRequest> {
+  return apiFetch(`${req(locationId, requestId)}/offer/send`, { method: 'POST', body: JSON.stringify({ version }) })
 }
 
 export function declineRequest(locationId: string, requestId: string, reason: string): Promise<CateringRequest> {
@@ -615,16 +640,18 @@ const ERRORS: Record<string, string> = {
   payment_unavailable: 'Stripe svarar inte just nu. Det är inte ert fel. Försök igen om en stund, eller rapportera det till Booqy.',
   signing_unavailable: 'Signeringen med BankID svarar inte just nu. Det är inte ert fel. Försök igen om en stund, eller rapportera det till Booqy.',
   document_unavailable: 'Offerten kunde inte göras om till en PDF just nu. Felet ligger hos Booqy, inte hos er. Försök igen, eller tryck Rapportera till Booqy.',
-  not_signable: 'Den här versionen av offerten kan inte signeras. Skicka offerten igen.',
+  not_signable: 'Den här versionen av offerten kan inte signeras. Gör en ny version av offerten.',
+  restaurant_signature_required: 'Signera med BankID först. Sedan kan ni skicka offerten till kunden.',
+  not_current_version: 'Det finns en nyare version av offerten. Nu syns det senaste.',
   already_signed: 'Restaurangen har redan signerat offerten. Du behöver inte göra något mer.',
   signing_alreadyInProgress: 'En BankID-signering pågår redan. Avbryt den i BankID-appen och försök igen.',
-  signing_document_timedout: 'Tiden för att signera tog slut. Skicka offerten igen.',
-  signing_document_canceled: 'Den här versionen av offerten kan inte signeras längre. Skicka offerten igen.',
-  signing_document_rejected: 'Signeringen avbröts. Skicka offerten igen för att börja om.',
+  signing_document_timedout: 'Tiden för att signera tog slut. Gör en ny version av offerten.',
+  signing_document_canceled: 'Den här versionen av offerten kan inte signeras längre. Gör en ny version av offerten.',
+  signing_document_rejected: 'Signeringen avbröts. Gör en ny version av offerten för att börja om.',
   signing_authentication_to_sign_method_disabled: 'Signering med BankID är inte påslagen än. Kontakta Booqy så slår vi på den.',
   signing_document_closed: 'Offerten är redan signerad av alla. Nu syns det senaste.',
   no_signing_started: 'Ingen signering är igång. Tryck på Signera med BankID.',
-  offer_expired: 'Offerten har gått ut. Välj ett senare datum i Giltig till och med och skicka den igen.',
+  offer_expired: 'Offerten har gått ut. Välj ett senare datum i Giltig till och med och gör en ny version.',
   'validUntil must not be after the delivery date': 'Giltig till och med är efter leveransdagen. Välj leveransdagen eller ett tidigare datum.',
   'validUntil must not be in the past': 'Giltig till och med har redan varit. Välj idag eller ett senare datum.',
   'validUntil must be YYYY-MM-DD': 'Datumet i Giltig till och med ser fel ut. Skriv det så här: 24/12/2026.',

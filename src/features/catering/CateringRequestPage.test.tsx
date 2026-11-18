@@ -10,7 +10,8 @@ import type { CateringRequest } from './cateringApi'
 import { chooseOption } from '../../test/select'
 
 const getRequest = vi.fn()
-const sendOffer = vi.fn()
+const createOfferVersion = vi.fn()
+const sendOfferToCustomer = vi.fn()
 const saveDraft = vi.fn()
 const declineRequest = vi.fn()
 const cancelRequest = vi.fn()
@@ -23,7 +24,8 @@ vi.mock('./cateringApi', async (orig) => ({
   ...(await orig<typeof import('./cateringApi')>()),
   refundRequest: (...a: unknown[]) => refundRequest(...a),
   getRequest: (...a: unknown[]) => getRequest(...a),
-  sendOffer: (...a: unknown[]) => sendOffer(...a),
+  createOfferVersion: (...a: unknown[]) => createOfferVersion(...a),
+  sendOfferToCustomer: (...a: unknown[]) => sendOfferToCustomer(...a),
   saveDraft: (...a: unknown[]) => saveDraft(...a),
   declineRequest: (...a: unknown[]) => declineRequest(...a),
   cancelRequest: (...a: unknown[]) => cancelRequest(...a),
@@ -74,7 +76,7 @@ function renderAt() {
 
 beforeEach(() => {
   role = 'owner_user'
-  for (const fn of [getRequest, sendOffer, saveDraft, declineRequest, cancelRequest, markDelivered, listRequests,
+  for (const fn of [getRequest, createOfferVersion, sendOfferToCustomer, saveDraft, declineRequest, cancelRequest, markDelivered, listRequests,
     refundRequest]) fn.mockReset()
 })
 
@@ -104,17 +106,17 @@ describe('CateringRequestPage', () => {
   it('prefills the offer from the guest calculation and sends it', async () => {
     const user = userEvent.setup()
     getRequest.mockResolvedValue(request())
-    sendOffer.mockResolvedValue(request({ status: 'offer_sent' }))
+    createOfferVersion.mockResolvedValue(request({ status: 'offer_sent' }))
     renderAt()
     expect(await screen.findByLabelText('Rad 1 namn')).toHaveValue('Lasagne')
     expect(screen.getByLabelText('Rad 1 pris')).toHaveValue('50')
     await user.clear(screen.getByLabelText('Rad 1 pris'))
     await user.type(screen.getByLabelText('Rad 1 pris'), '55')
-    await user.click(screen.getByRole('button', { name: 'Skicka offert' }))
-    expect(sendOffer).toHaveBeenCalledWith('loc-1', 'req-1', expect.objectContaining({
+    await user.click(screen.getByRole('button', { name: 'Nästa: signera' }))
+    expect(createOfferVersion).toHaveBeenCalledWith('loc-1', 'req-1', expect.objectContaining({
       lines: [{ menuItemId: 'm1', name: 'Lasagne', unitPrice: 55, quantity: 20 }],
     }))
-    expect(await screen.findByRole('status')).toHaveTextContent('Offerten är klar. Signera den')
+    expect(await screen.findByText('v1 är klar. Signera den med BankID.')).toBeInTheDocument()
   })
 
   it('adds a catering package for the guests, switches to food only and shows the review label', async () => {
@@ -125,7 +127,7 @@ describe('CateringRequestPage', () => {
       request: { lines: [], portions: 0, ...TOTALS, deliveryFeeManual: true },
       fulfilment: 'delivery', deliveryAddress: { street: 'Storgatan 1', postalCode: '11122', city: 'Stockholm' },
     }))
-    sendOffer.mockResolvedValue(request({ status: 'offer_sent' }))
+    createOfferVersion.mockResolvedValue(request({ status: 'offer_sent' }))
     renderAt()
     expect(await screen.findByText('Under granskning')).toBeInTheDocument()
     expect(screen.getByText('Karl Ek, VD (intygad behörighet)')).toBeInTheDocument()
@@ -135,8 +137,8 @@ describe('CateringRequestPage', () => {
     expect(screen.getByLabelText('Rad 1 antal')).toHaveValue('40')
     await chooseOption(screen.getByLabelText('Moms'), 'food')
     expect(screen.getByText('varav moms 6 %')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Skicka offert' }))
-    expect(sendOffer).toHaveBeenCalledWith('loc-1', 'req-1', expect.objectContaining({
+    await user.click(screen.getByRole('button', { name: 'Nästa: signera' }))
+    expect(createOfferVersion).toHaveBeenCalledWith('loc-1', 'req-1', expect.objectContaining({
       serviceIncluded: false, lines: [{ packageId: 'p1', name: 'Mingelpaket', unitPrice: 245, quantity: 40 }],
     }))
   })
@@ -155,9 +157,10 @@ describe('CateringRequestPage', () => {
     await user.click(screen.getByRole('button', { name: 'Signera med BankID' }))
     expect(await screen.findByAltText('QR-kod för BankID')).toHaveAttribute('src', 'data:qr,bankid.a.0.b')
     expect(await screen.findByText(/Skriv in din säkerhetskod/, {}, { timeout: 3000 })).toBeInTheDocument()
-    expect(await screen.findByText(/Signerad. Offerten är skickad till kunden/, {}, { timeout: 3000 })).toBeInTheDocument()
-    expect(screen.queryByRole('region', { name: 'Signera offerten' })).not.toBeInTheDocument()
-    expect(screen.getByText('Offert skickad')).toBeInTheDocument()
+    expect(await screen.findByText(/Signerad. Nu kan ni skicka offerten/, {}, { timeout: 3000 })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Signera med BankID' })).not.toBeInTheDocument()
+    expect(screen.getByText('Redo att skicka')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Skicka till kunden' })).toBeEnabled()
   })
 
   it('shows a not cleaned return and keeps its fee in the offer', async () => {
@@ -168,15 +171,15 @@ describe('CateringRequestPage', () => {
         equipmentReturn: 'not_cleaned', ...TOTALS, cleaningFee: 35000, total: 135000 },
       settings: { cleaningFee: 500 },
     }))
-    sendOffer.mockResolvedValue(request({ status: 'offer_sent' }))
+    createOfferVersion.mockResolvedValue(request({ status: 'offer_sent' }))
     renderAt()
     expect(await screen.findByText('Ej rengjord: vi diskar och rengör')).toBeInTheDocument()
     expect(screen.getByLabelText('Retur av utrustning')).toHaveValue('not_cleaned')
     // the fee the guest saw, not the location's newer one
     expect(screen.getByLabelText('Rengöringsavgift (kr)')).toHaveValue('350')
     expect(screen.getAllByText('Rengöringsavgift')).toHaveLength(2)
-    await user.click(screen.getByRole('button', { name: 'Skicka offert' }))
-    expect(sendOffer).toHaveBeenCalledWith('loc-1', 'req-1', expect.objectContaining({
+    await user.click(screen.getByRole('button', { name: 'Nästa: signera' }))
+    expect(createOfferVersion).toHaveBeenCalledWith('loc-1', 'req-1', expect.objectContaining({
       equipmentReturn: 'not_cleaned', cleaningFee: 350,
     }))
   })
@@ -193,7 +196,7 @@ describe('CateringRequestPage', () => {
   it('takes decimal prices typed with a comma', async () => {
     const user = userEvent.setup()
     getRequest.mockResolvedValue(request())
-    sendOffer.mockResolvedValue(request({ status: 'offer_sent' }))
+    createOfferVersion.mockResolvedValue(request({ status: 'offer_sent' }))
     renderAt()
     const price = await screen.findByLabelText('Rad 1 pris')
     await user.clear(price)
@@ -205,8 +208,8 @@ describe('CateringRequestPage', () => {
     await user.clear(delivery)
     await user.type(delivery, '49.5')
     expect(delivery).toHaveValue('49.5')
-    await user.click(screen.getByRole('button', { name: 'Skicka offert' }))
-    expect(sendOffer).toHaveBeenCalledWith('loc-1', 'req-1', expect.objectContaining({
+    await user.click(screen.getByRole('button', { name: 'Nästa: signera' }))
+    expect(createOfferVersion).toHaveBeenCalledWith('loc-1', 'req-1', expect.objectContaining({
       lines: [expect.objectContaining({ unitPrice: 89.5 })], deliveryFee: 49.5,
     }))
   })
@@ -228,7 +231,7 @@ describe('CateringRequestPage', () => {
     await user.clear(price)
     await user.type(price, '12000')
     expect(screen.getByRole('alert')).toHaveTextContent('Priset på en rad är för högt. Skriv högst')
-    expect(screen.getByRole('button', { name: 'Skicka offert' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Nästa: signera' })).toBeDisabled()
   })
 
   it('declines with a message after confirming', async () => {
@@ -246,21 +249,21 @@ describe('CateringRequestPage', () => {
   it('shows the capacity error from the server', async () => {
     const user = userEvent.setup()
     getRequest.mockResolvedValue(request())
-    sendOffer.mockRejectedValue(new ApiError(409, 'capacity_full'))
+    createOfferVersion.mockRejectedValue(new ApiError(409, 'capacity_full'))
     renderAt()
-    await user.click(await screen.findByRole('button', { name: 'Skicka offert' }))
+    await user.click(await screen.findByRole('button', { name: 'Nästa: signera' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('fullbokad')
   })
 
   it('prefills the validity date and puts focus on it when the server refuses it', async () => {
     const user = userEvent.setup()
     getRequest.mockResolvedValue(request({ deliveryDate: '2026-11-03' }))
-    sendOffer.mockRejectedValue(new ApiError(400, 'validUntil must not be after the delivery date',
+    createOfferVersion.mockRejectedValue(new ApiError(400, 'validUntil must not be after the delivery date',
       { field: 'validUntil', fromServer: true }))
     renderAt()
     const valid = await screen.findByLabelText('Giltig till och med')
     expect(valid).not.toHaveValue('')
-    await user.click(screen.getByRole('button', { name: 'Skicka offert' }))
+    await user.click(screen.getByRole('button', { name: 'Nästa: signera' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('efter leveransdagen')
     expect(valid).toHaveFocus()
     expect(valid).toHaveAttribute('aria-invalid', 'true')
@@ -270,13 +273,13 @@ describe('CateringRequestPage', () => {
   it('keeps the typed offer and marks the dropdown the server refused', async () => {
     const user = userEvent.setup()
     getRequest.mockResolvedValue(request({ settings: { cleaningFee: 500 } }))
-    sendOffer.mockRejectedValue(new ApiError(400, 'equipmentReturn is not allowed here',
+    createOfferVersion.mockRejectedValue(new ApiError(400, 'equipmentReturn is not allowed here',
       { field: 'equipmentReturn', fromServer: true }))
     renderAt()
     const delivery = await screen.findByLabelText('Leverans (kr)')
     await user.clear(delivery)
     await user.type(delivery, '250')
-    await user.click(screen.getByRole('button', { name: 'Skicka offert' }))
+    await user.click(screen.getByRole('button', { name: 'Nästa: signera' }))
     await screen.findByRole('alert')
     const ret = screen.getByRole('combobox', { name: 'Retur av utrustning' })
     expect(ret).toHaveFocus()
@@ -292,7 +295,7 @@ describe('CateringRequestPage', () => {
     getRequest.mockResolvedValue(request())
     renderAt()
     await screen.findByText('Kundens kalkyl')
-    expect(screen.queryByRole('button', { name: 'Skicka offert' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Nästa: signera' })).not.toBeInTheDocument()
   })
 
   it('shows the BankID signature and marks a confirmed order delivered', async () => {
@@ -402,10 +405,83 @@ describe('CateringRequestPage', () => {
   })
 })
 
+describe('Offer steps: 1 granska, 2 signera, 3 skicka', () => {
+  const SIGNER = { name: 'Roma AB', method: 'bankid', signedAt: '2026-10-12T12:00:00Z' }
+  const offered = (version: number, extra: Partial<CateringRequest> = {}) => request({
+    status: 'offer_sent', currentOfferVersion: version, signing: { offerVersion: version },
+    offers: Array.from({ length: version }, (_, i) => ({ version: i + 1, lines: [], totals: TOTALS, validUntil: '2026-11-01' })),
+    ...extra,
+  })
+  const stepOf = (name: string) => within(screen.getByRole('list', { name: 'Steg' })).getByText(name).closest('li') as HTMLElement
+
+  it('keeps Skicka till kunden locked until the restaurant has signed with BankID', async () => {
+    getRequest.mockResolvedValue(offered(2))
+    renderAt()
+    expect(await screen.findByText('Väntar på er signatur')).toBeInTheDocument()
+    expect(stepOf('Granska offerten')).toHaveClass('is-done')
+    expect(stepOf('Signera med BankID')).toHaveAttribute('aria-current', 'step')
+    const send = screen.getByRole('button', { name: 'Skicka till kunden' })
+    expect(send).toBeDisabled()
+    expect(send).toHaveAccessibleDescription('Signera med BankID först')
+    expect(screen.getByRole('button', { name: 'Signera med BankID' })).toHaveClass('primary')
+    expect(sendOfferToCustomer).not.toHaveBeenCalled()
+  })
+
+  it('after the signature, Skicka till kunden is the primary action and sends that version', async () => {
+    const user = userEvent.setup()
+    const signedV2 = offered(2, { restaurantSignedAt: SIGNER.signedAt, signing: { offerVersion: 2, restaurant: SIGNER } })
+    getRequest.mockResolvedValueOnce(signedV2)
+      .mockResolvedValue({ ...signedV2, sentToCustomerAt: '2026-10-12T12:05:00Z' })
+    sendOfferToCustomer.mockResolvedValue({ ...signedV2, sentToCustomerAt: '2026-10-12T12:05:00Z' })
+    renderAt()
+    expect(await screen.findByText('Redo att skicka')).toBeInTheDocument()
+    expect(stepOf('Signera med BankID')).toHaveClass('is-done')
+    expect(stepOf('Skicka till kunden')).toHaveAttribute('aria-current', 'step')
+    expect(screen.queryByText('Signera med BankID först')).not.toBeInTheDocument()
+    const send = screen.getByRole('button', { name: 'Skicka till kunden' })
+    expect(send).toBeEnabled()
+    expect(send).toHaveClass('primary')
+    await user.click(send)
+    expect(sendOfferToCustomer).toHaveBeenCalledWith('loc-1', 'req-1', 2)
+    expect(await screen.findByText('Skickad. Kunden signerar med BankID.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Skicka till kunden' })).not.toBeInTheDocument()
+  })
+
+  it('explains in plain Swedish when the server refuses an unsigned version', async () => {
+    const user = userEvent.setup()
+    getRequest.mockResolvedValue(offered(1, { restaurantSignedAt: SIGNER.signedAt, signing: { offerVersion: 1, restaurant: SIGNER } }))
+    sendOfferToCustomer.mockRejectedValue(new ApiError(409, 'restaurant_signature_required'))
+    renderAt()
+    await user.click(await screen.findByRole('button', { name: 'Skicka till kunden' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Signera med BankID först. Sedan kan ni skicka offerten till kunden.')
+  })
+
+  it('a new version needs a new restaurant signature before it can be sent', async () => {
+    const user = userEvent.setup()
+    const sentV1 = offered(1, { restaurantSignedAt: SIGNER.signedAt, sentToCustomerAt: '2026-10-12T12:05:00Z',
+      signing: { offerVersion: 1, restaurant: SIGNER } })
+    const v2 = offered(2)
+    getRequest.mockResolvedValueOnce(sentV1).mockResolvedValue(v2)
+    createOfferVersion.mockResolvedValue(v2)
+    renderAt()
+    expect(await screen.findByText('Skickad. Kunden signerar med BankID.')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Ny offertversion (v2)' })).toBeInTheDocument()
+    expect(screen.getByText('Ny signatur krävs')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Nästa: signera' }))
+    expect(createOfferVersion).toHaveBeenCalled()
+    expect(await screen.findByText('Väntar på er signatur')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Offert v2' })).toBeInTheDocument()
+    expect(stepOf('Signera med BankID')).toHaveAttribute('aria-current', 'step')
+    expect(screen.getByRole('button', { name: 'Skicka till kunden' })).toBeDisabled()
+    expect(screen.getByText(/ej signerad av er/)).toBeInTheDocument()
+  })
+})
+
 describe('CateringPage', () => {
   it('lists requests waiting for the owner first', async () => {
     listRequests.mockResolvedValue([
-      { ...request({ requestId: 'r-sent', status: 'offer_sent', customerName: 'Bo', restaurantSignedAt: '2026-10-12T12:00:00Z' }) },
+      { ...request({ requestId: 'r-sent', status: 'offer_sent', customerName: 'Bo', restaurantSignedAt: '2026-10-12T12:00:00Z',
+        sentToCustomerAt: '2026-10-12T12:05:00Z' }) },
       { ...request({ requestId: 'r-new', status: 'requested', customerName: 'Cia' }) },
     ])
     render(<MemoryRouter><CateringPage /></MemoryRouter>)

@@ -16,6 +16,9 @@ import type { Dish, DishCategory, MenuCategoryEntry } from './data'
 import { DishModal } from './DishModal'
 import type { DishFormValues } from './DishModal'
 import { CategoriesModal } from './CategoriesModal'
+import { getRouting, saveCategoryRouting } from '../bestallningar/printApi'
+import type { TicketRouting } from '../bestallningar/printApi'
+import { drinkDefaults, soundsLikeDrinks } from '../printers/kinds'
 import {
   createMenuItem,
   deleteMenuItem,
@@ -66,7 +69,19 @@ export default function MenyPage() {
   const { sub } = useAuth()
   const { locationId, resolving: resolvingLocation } = useLocationId(sub)
   const [confirmEl, ask] = useConfirm()
-  const timeZone = currentLocation(useTenant())?.timezone || DEFAULT_TIMEZONE
+  const tenantState = useTenant()
+  const timeZone = currentLocation(tenantState)?.timezone || DEFAULT_TIMEZONE
+  // Vart kategorierna skickas (bongar): bara när platsen har beställningar.
+  const ordering = Boolean(tenantState.tenant?.entitlements.features.ordering)
+  const [routing, setRouting] = useState<TicketRouting | null>(null)
+  useEffect(() => {
+    if (!ordering || !locationId) return
+    let cancelled = false
+    getRouting(locationId).then((r) => !cancelled && setRouting(r)).catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [ordering, locationId])
   // Schemats status räknas om varje minut, så badgen byter utan omladdning.
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
@@ -193,6 +208,16 @@ export default function MenyPage() {
     modal?.mode === 'edit' ? dishes.find((d) => d.id === modal.id) ?? null : null
   const editBase = modal?.mode === 'edit' ? modal.base : null
   const canEdit = Boolean(locationId) && !readOnly
+  // Äldre kategorier som låter som dryck ("Öl", "Vin") utan eget val går till
+  // Dryck, aldrig till köket (en gång per kategori; sparas som vanliga chips).
+  const healed = useRef(new Set<string>())
+  useEffect(() => {
+    if (!ordering || !locationId || !canEdit || loading || !routing) return
+    const todo = Object.fromEntries(Object.entries(drinkDefaults(routing, categories)).filter(([id]) => !healed.current.has(id)))
+    if (!Object.keys(todo).length) return
+    Object.keys(todo).forEach((id) => healed.current.add(id))
+    saveCategoryRouting(locationId, todo).then(setRouting).catch(() => undefined)
+  }, [ordering, locationId, canEdit, loading, routing, categories])
 
   const dishCounts = dishes.reduce<Record<string, number>>((acc, d) => {
     acc[d.category] = (acc[d.category] ?? 0) + 1
@@ -204,6 +229,14 @@ export default function MenyPage() {
     if (!locationId) return
     const saved = await putMenuCategories(locationId, rows, version)
     edits.current += 1
+    // En ny kategori som låter som dryck ("Öl", "Vin") skickas till Dryck, aldrig till köket.
+    const known = new Set(categories.map((c) => c.categoryId))
+    const drinks = saved.categories.filter((c) => !known.has(c.categoryId) && soundsLikeDrinks(c.name))
+    if (ordering && drinks.length) {
+      void saveCategoryRouting(locationId, Object.fromEntries(drinks.map((c) => [c.categoryId, 'bar'])))
+        .then(setRouting)
+        .catch(() => undefined)
+    }
     setCategories(saved.categories)
     setCategoriesVersion(saved.version)
     setCategoriesOpen(false)
@@ -376,6 +409,7 @@ export default function MenyPage() {
           </button>
           <CtaButton
             label="Lägg till rätt"
+            icon="plus"
             win="Kör!"
             data-tour="menu-add"
             disabled={!canEdit}
@@ -461,7 +495,7 @@ export default function MenyPage() {
           {(loadError ?? rowError) && (
             <ErrorNote text={loadError ?? rowError} />
           )}
-          <div className="table-scroll" tabIndex={0}>
+          <div className="table-scroll meny-scroll" tabIndex={0}>
             <table className="data-table meny-table">
               <thead>
                 <tr>
@@ -535,6 +569,8 @@ export default function MenyPage() {
       )}
       {categoriesOpen && (
         <CategoriesModal
+          routing={ordering && routing ? routing : undefined}
+          onRoute={canEdit && locationId ? async (categoryId, next) => setRouting(await saveCategoryRouting(locationId, { [categoryId]: next })) : undefined}
           categories={categories}
           version={categoriesVersion}
           dishCounts={dishCounts}

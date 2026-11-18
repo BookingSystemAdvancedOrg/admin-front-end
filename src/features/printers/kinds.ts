@@ -1,0 +1,137 @@
+import type { IconName } from '../../shared/Icon'
+import type { Printer, PrinterKind, Station, TicketRouting } from '../bestallningar/printApi'
+import { NO_TICKET } from '../bestallningar/printApi'
+
+/**
+ * Skrivarnas sorter: Kök (maten), Dryck (baren) och Annat (en egen station,
+ * till exempel pizzaugnen). Samma regler som servern (shared/routing.py i
+ * application): station "kok" skriver på Kök-skrivarna, "bar" på
+ * Dryck-skrivarna (finns bara en sort skriver den båda), och varje
+ * Annat-skrivare har en egen station med sitt namn.
+ */
+
+export const KINDS: PrinterKind[] = ['kok', 'dryck', 'annat']
+
+export const KIND_LABEL: Record<PrinterKind, string> = { kok: 'Kök', dryck: 'Dryck', annat: 'Annat' }
+
+export const KIND_ICON: Record<PrinterKind, IconName> = { kok: 'tool-kitchen', dryck: 'glass', annat: 'station' }
+
+/** Förslag på namn när en ny skrivare läggs till: "Kök 1", "Bar", "Station 1". */
+export function suggestName(kind: PrinterKind, printers: Printer[]): string {
+  const base = kind === 'kok' ? 'Kök' : kind === 'dryck' ? 'Bar' : 'Station'
+  const taken = new Set(printers.map((p) => p.name.trim().toLowerCase()))
+  if (kind === 'dryck' && !taken.has('bar')) return 'Bar'
+  for (let n = 1; n < 100; n += 1) {
+    const name = `${base} ${n}`
+    if (!taken.has(name.toLowerCase())) return name
+  }
+  return base
+}
+
+export function kindOf(printer: Pick<Printer, 'kind'>): PrinterKind {
+  return printer.kind ?? 'kok'
+}
+
+/** "Kök · Kök 1": sorten först, så att det alltid syns vad skrivaren är till för. */
+export function printerLabel(printer: Pick<Printer, 'kind' | 'name'>): string {
+  return `${KIND_LABEL[kindOf(printer)]} · ${printer.name}`
+}
+
+export function stationKind(station: Pick<Station, 'stationId' | 'kind'>): PrinterKind {
+  if (station.kind) return station.kind
+  return station.stationId === 'kok' ? 'kok' : station.stationId === 'bar' ? 'dryck' : 'annat'
+}
+
+/**
+ * Kategorier som låter som dryck. Samma regel som servern
+ * (application shared/routing.py sounds_like_drinks), som skickar en
+ * sådan kategori utan eget val till Dryck även om ingen öppnat Meny.
+ * Ordlistan i drinkNames.json är samma fil som serverns test använder
+ * (application tests/fixtures/drink_names.json).
+ */
+// Hela ord eller ordets början/slut (Fatöl, Rödvin), aldrig mitt i ett matord
+// (Pölsa, Mjölk, Salladsbar). \b räknar inte å, ä, ö som bokstäver, därav klassen.
+const L = 'a-zåäöéü'
+const START = `(?:^|[^${L}])`
+const END = `(?:$|[^${L}])`
+const DRINKISH = new RegExp(
+  [
+    'dryck', 'drink', 'cocktail', 'läsk', 'kaffe', 'coffee', 'juice', 'alkohol', 'sprit', 'cider', 'dricka',
+    'mocktail', 'lemonad', 'beer', 'wine', 'viner',
+    `${START}(?:bar|baren|te|tea|soda|shots?)${END}`,
+    `${START}öl`, `öl${END}`, `vin${END}`, `${START}vin(?:er|erna|lista|kort|meny)${END}`,
+  ].join('|'),
+  'i',
+)
+
+export function soundsLikeDrinks(name: string | null | undefined): boolean {
+  return typeof name === 'string' && DRINKISH.test(name)
+}
+
+/**
+ * Kategorier som låter som dryck men saknar eget val: de ska till Dryck
+ * ("bar"), aldrig till köket. Tomt när platsen saknar routing eller allt är valt.
+ */
+export function drinkDefaults(
+  routing: Pick<TicketRouting, 'categories'> | null | undefined,
+  categories: Pick<MenuCategoryLike, 'categoryId' | 'name'>[],
+): Record<string, string> {
+  if (!routing) return {}
+  return Object.fromEntries(
+    categories
+      .filter((c) => c.categoryId !== 'drinks' && !routing.categories[c.categoryId] && soundsLikeDrinks(c.name))
+      .map((c) => [c.categoryId, 'bar']),
+  )
+}
+
+type MenuCategoryLike = { categoryId: string; name: string }
+
+/**
+ * Stationen en kategori går till: ägarens val, annars Dryck för drycker
+ * och kategorier vars namn låter som dryck ("Öl", "Vin"), Kök för resten
+ * (som servern). null = ingen bong. En ny kategori som låter som dryck får
+ * dessutom Dryck sparat när den läggs till (MenyPage) och när en skrivare
+ * läggs till (PrinterTiles).
+ */
+export function categoryStation(
+  routing: Pick<TicketRouting, 'stations' | 'categories'>,
+  categoryId: string,
+  name?: string,
+): string | null {
+  const ids = routing.stations.map((s) => s.stationId ?? '')
+  const chosen = routing.categories[categoryId]
+  if (chosen === NO_TICKET) return null
+  if (chosen && ids.includes(chosen)) return chosen
+  const fallback = categoryId === 'drinks' || soundsLikeDrinks(name) ? 'bar' : 'kok'
+  if (ids.includes(fallback)) return fallback
+  return ids[0] ?? null
+}
+
+/** Rättens station: rättens eget val, annars kategorins. null = ingen bong. */
+export function dishStation(
+  routing: Pick<TicketRouting, 'stations' | 'categories'>,
+  own: string | null | undefined,
+  categoryId: string,
+  alcohol = false,
+  name?: string,
+): string | null {
+  if (own === NO_TICKET) return null
+  const ids = routing.stations.map((s) => s.stationId ?? '')
+  if (own && ids.includes(own)) return own
+  if (alcohol && !routing.categories[categoryId] && ids.includes('bar')) return 'bar'
+  return categoryStation(routing, categoryId, name)
+}
+
+/** Det som visas på en vald station: sorten och skrivarnas namn ("Kök · Kök 1, Kök 2"). */
+export function stationLabel(station: Station): string {
+  const kind = stationKind(station)
+  if (kind === 'annat') return `${KIND_LABEL.annat} · ${station.name}`
+  return KIND_LABEL[kind]
+}
+
+export function stationPrinters(station: Station, printers: Printer[] = []): string[] {
+  if (station.printerNames) return station.printerNames
+  return station.printerIds
+    .map((id) => printers.find((p) => p.deviceId === id)?.name)
+    .filter((n): n is string => Boolean(n))
+}

@@ -138,8 +138,17 @@ export const GUIDE_STEPS: GuideStep[] = [
     target: 'settings-tab-bestallning',
     ownerOnly: true,
     feature: 'ordering',
-    title: 'Beställning och QR-koder',
-    text: 'Slå på avhämtning och beställning vid bordet, och skapa QR-koder att ställa på borden.',
+    title: 'Beställning online',
+    text: 'Slå på beställning online: gästerna beställer och betalar på er hemsida och hämtar maten hos er.',
+  },
+  {
+    id: 'set-skrivare',
+    route: '/installningar#skrivare',
+    target: 'settings-tab-skrivare',
+    ownerOnly: true,
+    feature: 'ordering',
+    title: 'Kvittoskrivare',
+    text: 'Lägg till en skrivare per plats och välj Kök eller Dryck. Maten skrivs ut i köket, drycken i baren.',
   },
   {
     id: 'set-bord',
@@ -317,15 +326,15 @@ export const GUIDE_STEPS: GuideStep[] = [
     text: 'Ändringar sparas som utkast. När du publicerar ser gästerna den nya planritningen.',
   },
 
-  // --- Gäster, presentkort och webbplats ----------------------------------------
+  // --- Kunder och presentkort ----------------------------------------------------
   {
     id: 'gaster',
-    route: '/gaster',
-    target: 'nav-gaster',
+    route: '/kunder',
+    target: 'nav-kunder',
     feature: 'guestCrm',
-    section: 'Gäster',
-    title: 'Gäster',
-    text: 'Se vilka gäster som kommer tillbaka och vad de har bokat och beställt.',
+    section: 'Kunder',
+    title: 'Kunder',
+    text: 'Se vilka kunder som kommer tillbaka och vad de har bokat och beställt.',
   },
   {
     id: 'presentkort',
@@ -336,16 +345,6 @@ export const GUIDE_STEPS: GuideStep[] = [
     section: 'Presentkort',
     title: 'Presentkort',
     text: 'Sälj presentkort på er hemsida och se vad som finns kvar att lösa in.',
-  },
-  {
-    id: 'webbplats',
-    route: '/webbplats',
-    target: 'nav-webbplats',
-    feature: 'siteBuilder',
-    ownerOnly: true,
-    section: 'Webbplats',
-    title: 'Webbplats',
-    text: 'Ändra er hemsida, förhandsgranska och publicera när ni är nöjda.',
   },
 
   // --- Evenemang ---------------------------------------------------------------

@@ -46,10 +46,12 @@ export interface Order {
   status: OrderStatus
   paymentStatus?: 'processing' | 'paid' | 'failed' | 'partly_refunded' | 'refunded'
   mode: OrderMode
-  /** Bordets id i planritningen (QR-koden); står kvar om bordet byter namn. */
+  /** Bara äldre bordsbeställningar (QR-beställning vid bordet är borttagen): bordets id i planritningen; står kvar om bordet byter namn. */
   tableId?: string
-  /** Bordets namn när gästen beställde. */
+  /** Bara äldre bordsbeställningar: bordets namn när gästen beställde. */
   tableLabel?: string
+  /** Serveringsdagen i platsens tidszon (YYYY-MM-DD). */
+  date?: string
   lines: OrderLine[]
   /** Öre. */
   totalAmount: number
@@ -77,7 +79,6 @@ export interface OrderingState {
   open: boolean
   reason?: 'disabled' | 'no_payments' | 'paused' | 'closed'
   pickup?: boolean
-  table?: boolean
   prepMinutes?: number
   closesAt?: string
   lastOrderAt?: string
@@ -96,7 +97,7 @@ function base(locationId: string): string {
   return `/locations/${encodeURIComponent(locationId)}/orders`
 }
 
-/** Utan API: en bordsbeställning med burgarmeny, drink och allergi (köks- och barbong). */
+/** Utan API: en avhämtning med burgarmeny, dryck och allergi (köks- och barbong). */
 export function mockOrders(): OrderList {
   const now = Date.now()
   const at = (min: number) => new Date(now - min * 60_000).toISOString()
@@ -104,16 +105,17 @@ export function mockOrders(): OrderList {
     ({ menuItemId, name, unitPrice: kr * 100, quantity, total: kr * 100 * quantity, vatRate: 12, ...extra })
   return {
     date: new Date(now).toISOString().slice(0, 10),
-    ordering: { open: true, pickup: true, table: true, prepMinutes: 20, lastOrderAt: '21:45' },
+    ordering: { open: true, pickup: true, prepMinutes: 20, lastOrderAt: '21:45' },
     orders: [
       {
         orderId: 'mockorder00000000000000000000001', locationId: 'mock', number: 12, status: 'confirmed',
-        paymentStatus: 'paid', mode: 'table', tableId: 't7', tableLabel: '7', totalAmount: 51500, refundable: 51500,
-        customerName: 'Åsa Öberg', confirmedAt: at(3),
+        paymentStatus: 'paid', mode: 'pickup', totalAmount: 46000, refundable: 46000,
+        customerName: 'Åsa Öberg', customerPhone: '070-987 65 43', confirmedAt: at(3),
+        readyEstimate: new Date(now + 17 * 60_000).toISOString(),
         lines: [
           line('burgarmeny', 'Burgarmeny', 159, 1, { note: 'ingen lök', allergy: 'jordnötsallergi' }),
           line('skagen', 'Toast Skagen', 98, 2),
-          line('mojito', 'Mojito', 125, 1),
+          line('lemonad', 'Lemonad', 35, 1),
           line('cola', 'Coca-Cola', 35, 2),
         ],
       },
@@ -221,7 +223,7 @@ export function moveErrorText(err: unknown): string {
 export function closedText(state: OrderingState): string {
   switch (state.reason) {
     case 'disabled':
-      return 'Beställning är avstängd. Slå på den under Inställningar, Beställning, Beställning och QR-koder.'
+      return 'Beställning är avstängd. Slå på den under Inställningar, Beställning, Beställning online.'
     case 'no_payments':
       return 'Stripe-kontot kan inte ta emot betalningar än (se Inställningar, Ekonomi, Betalningar).'
     case 'paused':

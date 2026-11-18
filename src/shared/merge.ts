@@ -213,7 +213,7 @@ function mergeById(base: Keyed[], mine: Keyed[], theirs: Keyed[], path: string):
 }
 
 /**
- * Trevägsfusion av ett helt dokument (webbplatsen, layouten): objekt fält
+ * Trevägsfusion av ett helt dokument (layouten): objekt fält
  * för fält; listor med id (sidor, block) per id, så det en kollega lagt
  * till eller tagit bort står kvar; andra listor element för element när de
  * är lika långa på alla tre håll (annars som ett värde). Det du inte ändrat

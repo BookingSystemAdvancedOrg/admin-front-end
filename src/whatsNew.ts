@@ -77,6 +77,17 @@ export const WHATS_NEW: WhatsNewEntry[] = [
   { n: 65, text: 'Återbetalningar till gäster' },
   { n: 66, text: 'Inställningar, tydligare status' },
   { n: 67, text: 'Tydligare felmeddelanden' },
+  { n: 70, text: 'Webbplats borttagen' },
+  { n: 71, text: 'Återbetalning visar bordet' },
+  { n: 72, text: 'Telefon stora sällskap' },
+  { n: 73, text: 'Bord öppnar layouten' },
+  { n: 74, text: 'Gäster heter nu Kunder' },
+  { n: 75, text: 'QR-beställning vid bordet borttagen' },
+  { n: 76, text: 'Skrivare i kom igång' },
+  { n: 77, text: 'Kvittoskrivare för personalen' },
+  { n: 78, text: 'Meny rättlistan' },
+  { n: 79, text: 'Fråga Booqy placering' },
+  { n: 80, text: 'Borttagna bord' },
 ]
 
 declare const __WHATS_NEW_N__: number | undefined

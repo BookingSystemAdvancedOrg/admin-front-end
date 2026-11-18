@@ -8,12 +8,12 @@ const as = (role: string, staffAccess?: string, areas?: Area[]) =>
     role,
     insights: staffAccess ? { staffAccess } : undefined,
     access: areas ? { areas } : undefined,
-    entitlements: { maxLocations: null, features: { ordering: true, catering: true, giftCards: true, siteBuilder: true } },
+    entitlements: { maxLocations: null, features: { ordering: true, catering: true, giftCards: true, events: true } },
   }) as unknown as Tenant
 
 describe('roleAllows (older API without access.areas)', () => {
   it('stops staff on every owner-only page, also deeper paths', () => {
-    for (const p of ['/personal', '/presentkort', '/webbplats', '/marknadsforing', '/marknadsforing/kampanjer'])
+    for (const p of ['/personal', '/presentkort', '/marknadsforing', '/marknadsforing/kampanjer'])
       expect(roleAllows(p, as('staff_user'))).toBe(false)
   })
 
@@ -28,7 +28,7 @@ describe('roleAllows (older API without access.areas)', () => {
   })
 
   it('lets the owner open everything, and waits while the tenant loads', () => {
-    for (const p of ['/personal', '/presentkort', '/webbplats', '/marknadsforing']) {
+    for (const p of ['/personal', '/presentkort', '/marknadsforing']) {
       expect(roleAllows(p, as('owner_user'))).toBe(true)
       expect(roleAllows(p, null)).toBe(true)
     }
@@ -36,12 +36,12 @@ describe('roleAllows (older API without access.areas)', () => {
 })
 
 describe('staff permissions per area', () => {
-  const staff = as('staff_user', undefined, ['bokningar', 'webbplats'])
+  const staff = as('staff_user', undefined, ['bokningar', 'evenemang'])
 
   it('opens only the granted areas, also on direct URLs and sub-pages', () => {
     expect(roleAllows('/bokningar', staff)).toBe(true)
-    expect(roleAllows('/webbplats', staff)).toBe(true)
-    for (const p of ['/meny', '/statistik', '/personal', '/catering/loc/req', '/cateringkalkyl', '/gaster'])
+    expect(roleAllows('/evenemang', staff)).toBe(true)
+    for (const p of ['/meny', '/statistik', '/personal', '/catering/loc/req', '/cateringkalkyl', '/kunder'])
       expect(roleAllows(p, staff)).toBe(false)
     // Always open: Översikt, Inställningar, Hjälp.
     for (const p of ['/', '/installningar', '/hjalp']) expect(roleAllows(p, staff)).toBe(true)
@@ -50,7 +50,7 @@ describe('staff permissions per area', () => {
   it('hides what is not granted from the menu and search', () => {
     const labels = visibleNav(staff).map((i) => i.label)
     expect(labels).toContain('Bokningar')
-    expect(labels).toContain('Webbplats')
+    expect(labels).toContain('Evenemang')
     expect(labels).not.toContain('Meny')
     expect(labels).not.toContain('Statistik')
     expect(labels).not.toContain('Beställningar')
@@ -60,6 +60,17 @@ describe('staff permissions per area', () => {
     const owner = as('owner_user', undefined, [])
     expect(visibleNav(owner).map((i) => i.label)).toContain('Personal')
     expect(roleAllows('/meny', owner)).toBe(true)
+  })
+
+  it('ignores the removed site builder: a stored siteBuilder flag or webbplats grant shows nothing', () => {
+    const stale = {
+      role: 'staff_user',
+      access: { areas: ['bokningar', 'webbplats'] },
+      entitlements: { maxLocations: null, features: { siteBuilder: true } },
+    } as unknown as Tenant
+    expect(visibleNav(stale).map((i) => i.label)).not.toContain('Webbplats')
+    expect(visibleNav(as('owner_user')).map((i) => i.to)).not.toContain('/webbplats')
+    expect(areaOf('/webbplats')).toBeNull()
   })
 
   it('knows the area of a path', () => {

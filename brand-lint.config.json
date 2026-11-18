@@ -2,7 +2,6 @@
   "paths": ["src"],
   "block": [
     "features/meta-ads/**",
-    "features/site-builder/**",
     "features/guest-crm/**",
     "features/google-business/**",
     "features/gift-cards/**",

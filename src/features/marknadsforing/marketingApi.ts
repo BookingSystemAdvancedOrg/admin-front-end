@@ -258,7 +258,7 @@ export interface Audience {
   locationId?: string
 }
 
-/** En låst lista från en målgrupp i Gäster (guestCrm). */
+/** En låst lista från en målgrupp i Kunder (guestCrm). */
 export interface SegmentAudience {
   type: 'segment'
   exportId: string

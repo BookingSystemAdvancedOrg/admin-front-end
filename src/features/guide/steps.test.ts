@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { stepsFor } from './steps'
 
 const ids = (ctx: Parameters<typeof stepsFor>[0]) => stepsFor(ctx).map((s) => s.id)
-const NEW = ['personalliggare', 'gaster', 'presentkort', 'webbplats']
+const NEW = ['personalliggare', 'gaster', 'presentkort']
 
 describe('guide steps for the new nav items', () => {
   it('are skipped while the features are off', () => {
@@ -11,26 +11,24 @@ describe('guide steps for the new nav items', () => {
   })
 
   it('are shown when on, with the contract titles', () => {
-    const features = { personalliggare: true, guestCrm: true, giftCards: true, siteBuilder: true }
+    const features = { personalliggare: true, guestCrm: true, giftCards: true }
     const steps = stepsFor({ isOwner: true, features }).filter((s) => NEW.includes(s.id))
     expect(steps.map((s) => [s.target, s.title])).toEqual([
       ['nav-personalliggare', 'Personalliggare'],
-      ['nav-gaster', 'Gäster'],
+      ['nav-kunder', 'Kunder'],
       ['nav-presentkort', 'Presentkort'],
-      ['nav-webbplats', 'Webbplats'],
     ])
   })
 
-  it('follow the sidebar: Presentkort and Webbplats only for the owner', () => {
-    const staff = ids({ isOwner: false, features: { personalliggare: true, guestCrm: true, giftCards: true, siteBuilder: true } })
+  it('follow the sidebar: Presentkort only for the owner', () => {
+    const staff = ids({ isOwner: false, features: { personalliggare: true, guestCrm: true, giftCards: true } })
     expect(staff).toContain('personalliggare')
     expect(staff).toContain('gaster')
     expect(staff).not.toContain('presentkort')
-    expect(staff).not.toContain('webbplats')
   })
 
   it('Telefon and Evenemang are skipped while off and shown to owner and staff when on', () => {
-    const off = ids({ isOwner: true, features: { personalliggare: true, siteBuilder: true } })
+    const off = ids({ isOwner: true, features: { personalliggare: true } })
     expect(off).not.toContain('telefon')
     expect(off).not.toContain('evenemang')
     for (const isOwner of [true, false]) {

@@ -1,4 +1,4 @@
-/* Gäster: faktalistan i gästens kort och listan med målgrupper. Bara @booqy/brand-tokens. */
+/* Kunder: faktalistan i kundens kort och listan med målgrupper. Bara @booqy/brand-tokens. */
 .gaster-facts {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);

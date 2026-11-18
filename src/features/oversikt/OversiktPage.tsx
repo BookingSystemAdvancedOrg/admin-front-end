@@ -236,6 +236,7 @@ export default function OversiktPage() {
     dpaAccepted: tenant?.dpa ? tenant.dpa.upToDate : undefined,
     google: hasGoogle ? data.google : undefined,
     phone: hasPhone ? data.phone : undefined,
+    printers: tenant?.entitlements.features.ordering ? fetched.print : undefined,
   })
   const remaining = steps.filter((s) => s.done === false).length
   // Kom igång (bara ägaren): direkt under nyckeltalen så länge något är kvar
@@ -248,7 +249,7 @@ export default function OversiktPage() {
   const stepItem = (step: (typeof steps)[number]) => (
     <Link key={step.id} to={step.to} className="activity-item setup-step">
       <span className="activity-text">
-        <span className={`setup-check ${step.done ? 'done' : ''}`} aria-hidden="true">
+        <span className={`setup-check ${step.done ? 'done' : step.later ? 'later' : ''}`} aria-hidden="true">
           {step.done ? <Icon name="check" size={14} /> : step.done === null ? '?' : ''}
         </span>
         <span className="setup-step__label">
@@ -265,8 +266,8 @@ export default function OversiktPage() {
           ) : null}
         </span>
       </span>
-      <span className="activity-time">
-        {step.done ? 'Klart' : step.done === null ? 'Kunde inte kontrolleras' : 'Att göra'}
+      <span className={`activity-time${step.later && !step.done ? ' setup-later' : ''}`}>
+        {step.done ? 'Klart' : step.done === null ? 'Kunde inte kontrolleras' : step.later ?? 'Att göra'}
       </span>
     </Link>
   )

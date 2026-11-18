@@ -21,7 +21,6 @@ const PersonalPage = lazy(pages.personal)
 const PersonalliggarePage = lazy(pages.personalliggare)
 const GasterPage = lazy(pages.gaster)
 const PresentkortPage = lazy(pages.presentkort)
-const WebbplatsPage = lazy(pages.webbplats)
 const TelefonPage = lazy(pages.telefon)
 const EvenemangPage = lazy(pages.evenemang)
 
@@ -58,9 +57,10 @@ function App() {
         <Route path="telefon" element={<TelefonPage />} />
         <Route path="telefon/samtal/:callId" element={<TelefonPage />} />
         <Route path="layout" element={<LayoutEditorPage />} />
-        <Route path="gaster" element={<GasterPage />} />
+        <Route path="kunder" element={<GasterPage />} />
+        {/* Gäster heter nu Kunder: gamla länkar och bokmärken. */}
+        <Route path="gaster/*" element={<Navigate to="/kunder" replace />} />
         <Route path="presentkort" element={<PresentkortPage />} />
-        <Route path="webbplats" element={<WebbplatsPage />} />
         <Route path="evenemang" element={<EvenemangPage />} />
         <Route path="evenemang/:eventId" element={<EvenemangPage />} />
         <Route path="evenemang/:eventId/inslapp/:occurrenceId" element={<EvenemangPage />} />

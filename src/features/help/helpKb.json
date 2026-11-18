@@ -381,8 +381,8 @@
       "steps": [
         "Öppna Beställningar.",
         "Tryck Påbörja på en ny beställning när köket börjar.",
-        "Tryck Klar när maten är färdig (eller Klar att servera för bordsbeställningar).",
-        "Tryck Hämtad eller Serverad när gästen har fått maten."
+        "Tryck Klar när maten är färdig.",
+        "Tryck Hämtad när gästen har hämtat maten."
       ],
       "actions": [
         {
@@ -449,34 +449,29 @@
     {
       "id": "bestallning-installningar",
       "route": "/installningar",
-      "title": "Slå på beställning och QR-koder",
+      "title": "Slå på beställning online",
       "audience": "owner",
       "feature": "ordering",
       "keywords": [
-        "beställning vid bordet",
-        "qr-kod",
-        "qr",
         "ta emot beställningar",
         "tillagningstid",
         "sista beställning",
         "avhämtning inställning",
-        "beställa vid bordet",
-        "bordsbeställning",
+        "takeaway",
         "gästerna kan beställa",
-        "kan beställa vid bordet"
+        "beställning online"
       ],
-      "answer": "Avhämtning, beställning vid bordet och QR-koderna till borden ställer du in under Inställningar, Beställning, Beställning och QR-koder.",
+      "answer": "Beställning online med avhämtning slår du på under Inställningar, Beställning, Beställning online.",
       "steps": [
-        "Öppna Inställningar, välj Beställning och sedan Beställning och QR-koder.",
-        "Slå på Ta emot beställningar och välj Avhämtning och Beställning vid bordet (QR-kod).",
+        "Öppna Inställningar, välj Beställning och sedan Beställning online.",
+        "Slå på Ta emot beställningar (avhämtning).",
         "Ställ in tillagningstid som gästen ser och sista beställning före stängning.",
-        "Tryck Spara beställning.",
-        "Under QR-koder för borden trycker du Skriv ut eller Ladda ner."
+        "Tryck Spara beställning."
       ],
       "actions": [
         {
           "id": "inst-bestallning-open",
-          "label": "Öppna Beställning och QR-koder",
+          "label": "Öppna Beställning online",
           "to": "/installningar",
           "hash": "bestallning"
         }
@@ -485,31 +480,72 @@
     {
       "id": "skrivare",
       "route": "/installningar",
-      "title": "Koppla en kökskrivare",
+      "title": "Lägga till kvittoskrivare (Kök, Dryck)",
       "audience": "owner",
       "feature": "ordering",
+      "area": "bestallningar",
       "keywords": [
         "skrivare",
         "kvittoskrivare",
         "kökskrivare",
+        "bongskrivare",
+        "bong",
         "utskrift",
         "cloudprnt",
         "testutskrift",
-        "pappersbredd"
+        "pappersbredd",
+        "kök",
+        "dryck",
+        "bar",
+        "simulerad skrivare",
+        "kom igång"
       ],
-      "answer": "En kökskrivare som skriver ut beställningarna lägger du till under Inställningar, Beställning, Skrivare och stationer.",
+      "answer": "Kvittoskrivarna lägger du till under Inställningar, Beställning, Kvittoskrivare. Det är också ett steg i Kom igång. Varje skrivare är Kök, Dryck eller Annat. Maten skrivs ut på Kök, drycken på Dryck. Personal med Beställningar kan också lägga till skrivare, byta namn och sort och testa; att ta bort en skrivare och ny nyckel gör ägaren.",
       "steps": [
-        "Öppna Inställningar, välj Beställning och sedan Skrivare och stationer.",
-        "Tryck Lägg till skrivare och följ stegen. Uppgifterna som visas skriver du in i skrivaren direkt, de visas bara en gång.",
+        "Öppna Inställningar, välj Beställning och sedan Kvittoskrivare.",
+        "Tryck Lägg till skrivare och välj Kök, Dryck eller Annat. Ge den ett namn och tryck Lägg till.",
+        "Skriv in uppgifterna som visas i skrivaren direkt, de visas bara en gång.",
         "Tryck Testutskrift för att se att den fungerar.",
-        "Slå på Skriv ut beställningar automatiskt, välj skrivare och pappersbredd och tryck Spara skrivare."
+        "Under Vad skickas vart? väljer du med ett tryck vilken skrivare varje kategori går till.",
+        "Har ni ingen skrivare än, tryck Inga skrivare än. Steget står kvar i Kom igång tills en skrivare finns."
       ],
       "actions": [
         {
           "id": "inst-skrivare-open",
-          "label": "Öppna Skrivare och stationer",
+          "label": "Öppna Kvittoskrivare",
           "to": "/installningar",
           "hash": "skrivare"
+        }
+      ]
+    },
+    {
+      "id": "skickas-till",
+      "route": "/meny",
+      "title": "Välja vilken skrivare en rätt skickas till",
+      "audience": "all",
+      "feature": "ordering",
+      "keywords": [
+        "skickas till",
+        "bong",
+        "station",
+        "kök",
+        "dryck",
+        "bar",
+        "drycker till köket",
+        "kategori",
+        "skrivare"
+      ],
+      "answer": "Varje rätt och kategori har Skickas till: Kök, Dryck, en Annat-skrivare eller Ingen bong. Mat går till Kök och dryck till Dryck om inget annat är valt, även en egen kategori som heter till exempel Öl, Vin eller Te och kaffe.",
+      "steps": [
+        "Öppna Meny och tryck på rätten (eller Lägg till rätt).",
+        "Under Bong, Skickas till: tryck på skrivaren. Bongen nedanför visar var rätten hamnar.",
+        "För en hel kategori: öppna Kategorier och tryck på skrivaren under kategorin. Det sparas direkt."
+      ],
+      "actions": [
+        {
+          "id": "meny-skickas-till-open",
+          "label": "Öppna Meny",
+          "to": "/meny"
         }
       ]
     },
@@ -1083,58 +1119,64 @@
     },
     {
       "id": "gaster-sok",
-      "route": "/gaster",
-      "title": "Hitta en gäst",
+      "route": "/kunder",
+      "title": "Hitta en kund",
       "audience": "all",
       "feature": "guestCrm",
       "keywords": [
+        "kunder",
+        "kundregister",
+        "kundregistret",
         "gästregister",
         "gästregistret",
         "stamgäst",
         "stamgäster",
+        "sök kund",
+        "hitta kund",
         "sök gäst",
         "hitta gäst",
         "gästhistorik",
         "historik"
       ],
-      "answer": "Under Gäster ser du vilka som kommer tillbaka och vad de har bokat och beställt.",
+      "answer": "Under Kunder ser du vilka som kommer tillbaka och vad de har bokat och beställt.",
       "steps": [
-        "Öppna Gäster.",
+        "Öppna Kunder.",
         "Välj vad du söker på (namn, e-post eller telefon) och tryck Sök.",
-        "Tryck på gästen för att se historiken."
+        "Tryck på kunden för att se historiken."
       ],
       "actions": [
         {
           "id": "gaster-open",
-          "label": "Öppna Gäster",
-          "to": "/gaster"
+          "label": "Öppna Kunder",
+          "to": "/kunder"
         }
       ]
     },
     {
       "id": "gaster-anteckning",
-      "route": "/gaster",
-      "title": "Anteckningar och taggar på gäster",
+      "route": "/kunder",
+      "title": "Anteckningar och taggar på kunder",
       "audience": "owner",
       "feature": "guestCrm",
       "keywords": [
+        "anteckning kund",
         "anteckning gäst",
         "taggar",
         "tagg",
         "födelsedag",
         "allergi gäst"
       ],
-      "answer": "Ägaren kan skriva anteckningar, taggar och födelsedag på en gäst.",
+      "answer": "Ägaren kan skriva anteckningar, taggar och födelsedag på en kund.",
       "steps": [
-        "Öppna Gäster och tryck på gästen.",
+        "Öppna Kunder och tryck på kunden.",
         "Fyll i Anteckning, Taggar eller Födelsedag.",
         "Tryck Spara."
       ],
       "actions": [
         {
           "id": "gaster-open",
-          "label": "Öppna Gäster",
-          "to": "/gaster"
+          "label": "Öppna Kunder",
+          "to": "/kunder"
         }
       ]
     },
@@ -1190,67 +1232,6 @@
           "id": "presentkort-open",
           "label": "Öppna Presentkort",
           "to": "/presentkort"
-        }
-      ]
-    },
-    {
-      "id": "webbplats-redigera",
-      "route": "/webbplats",
-      "title": "Ändra hemsidan",
-      "audience": "owner",
-      "feature": "siteBuilder",
-      "keywords": [
-        "webbplats",
-        "hemsida",
-        "hemsidan",
-        "sida",
-        "block",
-        "färger",
-        "typsnitt",
-        "utseende hemsida"
-      ],
-      "answer": "Ägaren ändrar hemsidan under Webbplats: sidor, block och utseende.",
-      "steps": [
-        "Öppna Webbplats.",
-        "Välj sida, eller tryck Ny sida.",
-        "Tryck Lägg till block för text, bild, meny, öppettider, boka bord med mera.",
-        "Under Utseende väljer du färger och typsnitt.",
-        "Tryck Spara utkast."
-      ],
-      "actions": [
-        {
-          "id": "webbplats-open",
-          "label": "Öppna Webbplats",
-          "to": "/webbplats"
-        }
-      ]
-    },
-    {
-      "id": "webbplats-publicera",
-      "route": "/webbplats",
-      "title": "Publicera hemsidan",
-      "audience": "owner",
-      "feature": "siteBuilder",
-      "keywords": [
-        "publicera hemsida",
-        "publicera",
-        "förhandsgranska",
-        "förhandsvisning",
-        "versioner hemsida",
-        "återställ"
-      ],
-      "answer": "Ändringar på hemsidan syns för gästerna först när du publicerar. Personuppgiftsbiträdesavtalet måste vara godkänt.",
-      "steps": [
-        "Öppna Webbplats och tryck Spara utkast.",
-        "Tryck Förhandsgranska för att se resultatet.",
-        "Tryck Publicera.",
-        "Vill du gå tillbaka: Versioner, Återställ."
-      ],
-      "actions": [
-        {
-          "id": "webbplats-open",
-          "label": "Öppna Webbplats",
-          "to": "/webbplats"
         }
       ]
     },
@@ -2174,11 +2155,15 @@
         "gästerna beställer",
         "beställ mat",
         "beställa online",
-        "beställa via qr"
+        "beställa via qr",
+        "beställa vid bordet",
+        "qr-kod på bordet",
+        "betala vid bordet",
+        "bordsbeställning"
       ],
-      "answer": "Gästerna beställer under Beställ på hemsidan: avhämtning, eller vid bordet via QR-koden på bordet. De betalar i förväg.",
+      "answer": "Gästerna beställer och betalar under Beställ på hemsidan och hämtar maten hos er. Beställning och betalning med QR-kod vid bordet finns inte: gäster på plats betalar i er egen kassa.",
       "steps": [
-        "Gästen öppnar Beställ på hemsidan eller scannar QR-koden på bordet.",
+        "Gästen öppnar Beställ på hemsidan.",
         "Gästen väljer rätter och betalar.",
         "Beställningen dyker upp under Beställningar."
       ],

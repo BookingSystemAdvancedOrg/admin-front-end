@@ -206,7 +206,7 @@ describe('wizard', () => {
   it('saves the name with the friendly tone and recording off, then shows step 2', async () => {
     await open()
     fireEvent.change(screen.getByLabelText('Namn'), { target: { value: 'Sara' } })
-    expect(screen.getByText(/Hej, du pratar med Sara, en AI-assistent för Bistro/)).toBeInTheDocument()
+    expect(screen.getByText(/Hej och välkommen till Bistro\. Du talar med Sara, restaurangens AI-assistent/)).toBeInTheDocument()
     fireEvent.click(nextButton())
     await step(2)
     expect(sent('PUT', '/tenant/phone-agent/config')[0].body).toMatchObject({ agentName: 'Sara', tone: 'friendly', recording: { enabled: false }, version: 0 })
@@ -634,6 +634,23 @@ describe('Fler inställningar', () => {
     fireEvent.click(within(group).getByRole('button', { name: 'Spara' }))
     await waitFor(() => expect(sent('PUT', '/tenant/phone-agent/config')[0]?.body).toMatchObject({
       recording: { enabled: true, purpose: 'Kvalitet och utbildning', retentionDays: 30 } }))
+  })
+
+  it('saves the largest party the assistant books, refuses 51 inline, and empty means the online limit', async () => {
+    renderWizard()
+    await screen.findByRole('button', { name: 'Börja' })
+    const group = screen.getByRole('form', { name: 'Stora sällskap' })
+    const input = within(group).getByLabelText('Största sällskap')
+    fireEvent.change(input, { target: { value: '51' } })
+    fireEvent.click(within(group).getByRole('button', { name: 'Spara' }))
+    expect(await within(group).findByText(/Skriv ett helt tal från 1 till 50/)).toBeInTheDocument()
+    expect(sent('PUT', '/locations/loc-1/phone-agent')).toHaveLength(0)
+    fireEvent.change(input, { target: { value: '12' } })
+    fireEvent.click(within(group).getByRole('button', { name: 'Spara' }))
+    await waitFor(() => expect(sent('PUT', '/locations/loc-1/phone-agent')[0]?.body).toMatchObject({ phoneMaxPartySize: 12 }))
+    fireEvent.change(within(screen.getByRole('form', { name: 'Stora sällskap' })).getByLabelText('Största sällskap'), { target: { value: '' } })
+    fireEvent.click(within(screen.getByRole('form', { name: 'Stora sällskap' })).getByRole('button', { name: 'Spara' }))
+    await waitFor(() => expect(sent('PUT', '/locations/loc-1/phone-agent')[1]?.body).toMatchObject({ phoneMaxPartySize: null }))
   })
 
   it('stays open and keeps unsaved edits in other groups after Spara', async () => {

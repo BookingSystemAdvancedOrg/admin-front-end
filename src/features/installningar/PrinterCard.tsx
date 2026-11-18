@@ -1,82 +1,64 @@
 import { useLiveRefresh } from '../../shared/live'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
-  addPrinter,
   getPrinting,
   printErrorText,
-  removePrinter,
-  rotatePrinter,
+  saveCategoryRouting,
+  saveRouting,
   savePrintSettings,
-  testPrint,
 } from '../bestallningar/printApi'
-import { MAX_PRINTERS } from '../bestallningar/printApi'
-import type { PaperWidth, PrintOverview, Printer, PrinterCredentials, PrinterProtocol } from '../bestallningar/printApi'
-import { clock } from '../bestallningar/ordersApi'
+import type { PaperWidth, PrintOverview } from '../bestallningar/printApi'
+import { getMenuCategories } from '../meny/menuApi'
+import type { MenuCategoryEntry } from '../meny/data'
+import { DEFAULT_CATEGORIES } from '../meny/data'
 import './printer.css'
-import { SkelLines } from '../../shared/Skeleton'
-import { StationsCard } from './StationsCard'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { booqyFaultText } from '../../shared/errors'
 import { TitleInfo } from '../../shared/TitleInfo'
 import { Disclosure } from '../../shared/Disclosure'
 import { Select } from '../../shared/Select'
+import { Loading } from '../../shared/Loading'
+import { PrinterTiles } from '../printers/PrinterTiles'
+import { CategoryRouting } from '../printers/CategoryRouting'
+import { drinkDefaults } from '../printers/kinds'
 
 /**
- * Inställningar, Beställning, Skrivare och stationer: bongskrivarna för matbeställningar.
+ * Inställningar, Beställning, Kvittoskrivare (och steget i Kom igång).
  *
- * Skrivaren (Star CloudPRNT, t.ex. mC-Print3, eller Epson Server Direct
- * Print, t.ex. TM-m30III, med nätverkskabel eller wifi) frågar Booqy var
- * femte sekund om det finns något att skriva ut. Vilken station (Kök, Bar)
- * varje skrivare tillhör väljs i StationsCard. Ägaren lägger
- * till skrivaren här och får en adress, ett användarnamn och ett lösenord
- * att skriva in i skrivarens egen webbsida. Lösenordet visas en gång;
- * "Ny nyckel" ger ett nytt (och stänger det gamla). Personalen ser läget
- * och kan skriva ut en testlapp.
+ * Ägaren lägger till en skrivare per plats i köket eller baren och väljer
+ * med ett tryck vad den är: Kök (maten), Dryck (baren) eller Annat (en egen
+ * station, till exempel pizzaugnen). Maten skrivs ut på Kök, drycken på
+ * Dryck; finns bara den ena sorten skriver den allt. Under "Vad skickas
+ * vart?" går varje menykategori till en skrivare med ett tryck, och en
+ * rätt kan välja egen i Meny.
+ *
+ * Skrivarna (Star CloudPRNT, t.ex. mC-Print3, eller Epson Server Direct
+ * Print, t.ex. TM-m30III) frågar Booqy efter bongar via internet. Ägaren
+ * får en adress, ett användarnamn och ett lösenord att skriva in i
+ * skrivarens webbsida (visas en gång). I testmiljön finns även en
+ * simulerad skrivare som visar bongarna på skärmen.
+ *
+ * "Inga skrivare än" låter ägaren gå vidare: steget står kvar som öppet
+ * (gult) i Kom igång tills en skrivare finns.
+ *
+ * Personal med Beställningar lägger också till skrivare, byter namn och
+ * sort och testar; ta bort, ny nyckel och inställningarna är ägarens.
  */
-
-function seenText(printer: Printer): string {
-  if (!printer.lastSeenAt) return 'Väntar på första kontakt'
-  if (printer.online) return 'Ansluten'
-  return `Svarar inte (senast ${clock(printer.lastSeenAt)})`
-}
-
-function CopyField({ id, label, value, secret }: { id: string; label: string; value: string; secret?: boolean }) {
-  const [copied, setCopied] = useState(false)
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(value)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    } catch {
-      setCopied(false)
-    }
-  }
-  return (
-    <div className="form-field">
-      <label htmlFor={id}>{label}</label>
-      <div className="printer-copy">
-        <input id={id} readOnly value={value} className={secret ? 'printer-secret' : undefined}
-          onFocus={(e) => e.currentTarget.select()} />
-        <button type="button" className="btn outline square" onClick={() => void copy()}>
-          {copied ? 'Kopierat' : 'Kopiera'}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-export function PrinterCard({ locationId, isOwner }: { locationId: string | null; isOwner: boolean }) {
+export function PrinterCard({ locationId, isOwner, canSetUp = isOwner }: {
+  locationId: string | null
+  isOwner: boolean
+  /** Ägaren eller personal med Beställningar: lägga till skrivare, byta namn och sort, testa. */
+  canSetUp?: boolean
+}) {
   const [data, setData] = useState<PrintOverview | null>(null)
+  const [categories, setCategories] = useState<MenuCategoryEntry[]>(DEFAULT_CATEGORIES)
   const [loadError, setLoadError] = useState(false)
   const [autoPrint, setAutoPrint] = useState(false)
   const [printerId, setPrinterId] = useState('')
   const [paperWidth, setPaperWidth] = useState<PaperWidth>(80)
-  const [name, setName] = useState('')
-  const [protocol, setProtocol] = useState<PrinterProtocol>('star')
-  const [credentials, setCredentials] = useState<PrinterCredentials | null>(null)
-  const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [editing, setEditing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
@@ -107,7 +89,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
     if (untouched) apply(next)
     else setData(next)
     setLoadError(false)
-  }, { enabled: Boolean(locationId) && !busy })
+  }, { enabled: Boolean(locationId) && !busy && !editing })
 
   useEffect(() => {
     if (!locationId) return
@@ -115,10 +97,27 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
     getPrinting(locationId)
       .then((next) => !cancelled && apply(next))
       .catch(() => !cancelled && setLoadError(true))
+    getMenuCategories(locationId)
+      .then((c) => !cancelled && c.categories.length && setCategories(c.categories))
+      .catch(() => undefined)
     return () => {
       cancelled = true
     }
   }, [locationId])
+
+  // Äldre kategorier som låter som dryck ("Öl", "Vin") utan eget val går till
+  // Dryck, aldrig till köket (en gång per kategori; syns som vanliga chips).
+  const healed = useRef(new Set<string>())
+  const routingNow = data?.routing ?? null
+  useEffect(() => {
+    if (!locationId || !isOwner || !routingNow) return
+    const todo = Object.fromEntries(Object.entries(drinkDefaults(routingNow, categories)).filter(([id]) => !healed.current.has(id)))
+    if (!Object.keys(todo).length) return
+    Object.keys(todo).forEach((id) => healed.current.add(id))
+    saveCategoryRouting(locationId, todo)
+      .then((routing) => setData((d) => (d ? { ...d, routing } : d)))
+      .catch(() => undefined)
+  }, [locationId, isOwner, routingNow, categories])
 
   async function run(action: () => Promise<void>) {
     setBusy(true)
@@ -153,44 +152,16 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
     })
   }
 
-  function add(e: FormEvent) {
-    e.preventDefault()
-    if (!locationId) return
-    const trimmed = name.trim()
-    if (!trimmed || trimmed.length > 40) {
-      setError('Ge skrivaren ett namn, högst 40 tecken (till exempel Köket).')
-      return
-    }
+  function setAllergyTicket(on: boolean) {
+    if (!locationId || !data?.routing) return
+    const routing = data.routing
     void run(async () => {
-      setCredentials(await addPrinter(locationId, trimmed, protocol))
-      setName('')
-      await reload()
-    })
-  }
-
-  function rotate(printer: Printer) {
-    if (!locationId) return
-    void run(async () => {
-      setCredentials(await rotatePrinter(locationId, printer.deviceId))
-      await reload()
-    })
-  }
-
-  function remove(printer: Printer) {
-    if (!locationId) return
-    void run(async () => {
-      apply(await removePrinter(locationId, printer.deviceId))
-      setConfirmRemove(null)
-      if (credentials?.device.deviceId === printer.deviceId) setCredentials(null)
-      setNotice(`${printer.name} är borttagen och kan inte längre hämta utskrifter.`)
-    })
-  }
-
-  function test(printer: Printer) {
-    if (!locationId) return
-    void run(async () => {
-      await testPrint(locationId, printer.deviceId)
-      setNotice(`Testlapp skickad till ${printer.name}. Den kommer ut inom några sekunder om skrivaren är ansluten.`)
+      const saved = await saveRouting(locationId, {
+        ...routing,
+        stations: routing.stations.map(({ stationId, name, printerIds }) => ({ stationId, name, printerIds })),
+        allergyTicket: on,
+      })
+      setData({ ...data, routing: saved })
     })
   }
 
@@ -199,15 +170,13 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
   const dirty = Boolean(saved) && (saved!.autoPrint !== autoPrint || (saved!.printerId ?? '') !== printerId
     || saved!.paperWidth !== paperWidth)
   const disabled = !isOwner || busy
-  const stationsOf = (printer: Printer) =>
-    (data?.routing?.stations ?? []).filter((s) => s.printerIds.includes(printer.deviceId)).map((s) => s.name)
 
   return (
     <>
       <section id="skrivare" className="admin-card table-card printer-card">
         <TitleInfo
-          title="Bongskrivare"
-          info="Betalda beställningar skrivs ut av sig själva, en bong per station utan priser. Fungerar med Star-skrivare med CloudPRNT (till exempel mC-Print3) och Epson-skrivare med Server Direct Print (till exempel TM-m30III) som är kopplade till internet. Ingen dator eller app behöver stå på."
+          title="Kvittoskrivare"
+          info="En skrivare per plats i köket eller baren. Maten skrivs ut på Kök, drycken på Dryck. Finns bara Kök skrivs drycken där också, och tvärtom. Annat är en egen station, till exempel pizzaugnen. Fungerar med Star (CloudPRNT, till exempel mC-Print3) och Epson (Server Direct Print, till exempel TM-m30III) med internet."
         />
 
         {!locationId ? (
@@ -215,156 +184,93 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
         ) : loadError && !data ? (
           <ErrorNote text={booqyFaultText('Skrivarna kunde inte visas.')} onRetry={() => { setLoadError(false); void reload() }} />
         ) : !data ? (
-          <SkelLines n={3} />
+          <Loading label="Hämtar skrivare" />
         ) : (
-          <div className="printer-stack">
-            {credentials && (
-              <div className="printer-credentials" role="region" aria-label="Uppgifter till skrivaren">
-                <h3 className="printer-subtitle">Skriv in detta i skrivaren nu</h3>
-                <p className="cell-muted">Lösenordet visas bara nu.</p>
-                <CopyField id="printer-url"
-                  label={credentials.device.protocol === 'epson' ? 'Server-URL (Server Direct Print)' : 'Server-URL (CloudPRNT)'}
-                  value={credentials.device.serverUrl ?? ''} />
-                <CopyField id="printer-user" label="Användarnamn" value={credentials.username} />
-                <CopyField id="printer-secret" label="Lösenord" value={credentials.secret} secret />
-                <span className="row-actions">
-                  <button type="button" className="btn primary square" onClick={() => setCredentials(null)}>
-                    Klar, jag har skrivit in det
-                  </button>
-                </span>
-              </div>
-            )}
-
-            {devices.length === 0 ? (
-              <p className="cell-muted">Ingen skrivare är tillagd än.</p>
-            ) : (
-              <ul className="printer-list" aria-label="Skrivare">
-                {devices.map((printer) => {
-                  const removing = confirmRemove === printer.deviceId
-                  return (
-                    <li key={printer.deviceId} className="printer-row">
-                      <div className="printer-row-head">
-                        <strong>{printer.name}</strong>
-                        <span className={`status-badge ${printer.online ? 'reserved' : printer.lastSeenAt ? 'cancelled' : 'waiting'}`}>
-                          {seenText(printer)}
-                        </span>
-                      </div>
-                      <p className="cell-muted printer-meta">
-                        {printer.protocol === 'epson' ? 'Epson' : 'Star'}
-                        {stationsOf(printer).length ? ` · Bongar: ${stationsOf(printer).join(', ')}` : ' · Ingen station'}
-                        {printer.deviceId === saved?.printerId ? ' · Orderskrivare' : ''}
-                        {printer.mac ? ` · MAC ${printer.mac}` : ''}
-                        {printer.statusCode && !printer.statusCode.startsWith('2') ? ` · Skrivaren rapporterar: ${printer.statusCode}` : ''}
-                      </p>
-                      <span className="row-actions">
-                        <button type="button" className="btn outline square" disabled={busy}
-                          onClick={() => test(printer)}>
-                          Testutskrift
-                        </button>
-                        {isOwner && !removing && (
-                          <>
-                            <button type="button" className="btn outline square" disabled={busy}
-                              onClick={() => rotate(printer)}>
-                              Ny nyckel
-                            </button>
-                            <button type="button" className="btn danger-outline square" disabled={busy}
-                              onClick={() => setConfirmRemove(printer.deviceId)}>
-                              Ta bort
-                            </button>
-                          </>
-                        )}
-                        {isOwner && removing && (
-                          <>
-                            <button type="button" className="btn danger-outline square" disabled={busy}
-                              onClick={() => remove(printer)}>
-                              Bekräfta: ta bort {printer.name}
-                            </button>
-                            <button type="button" className="btn outline square" onClick={() => setConfirmRemove(null)}>
-                              Behåll
-                            </button>
-                          </>
-                        )}
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-
-            {isOwner && devices.length < MAX_PRINTERS && (
-              <form onSubmit={add} className="printer-add">
-                <div className="form-field">
-                  <label htmlFor="printer-name">Lägg till skrivare</label>
-                  <input id="printer-name" value={name} maxLength={40} placeholder="Till exempel Köket"
-                    disabled={busy} onChange={(e) => setName(e.target.value)} />
-                </div>
-                <div className="form-field">
-                  <label htmlFor="printer-protocol">Märke</label>
-                  <Select id="printer-protocol" value={protocol} disabled={busy}
-                    onChange={(e) => setProtocol(e.target.value as PrinterProtocol)}>
-                    <option value="star">Star (CloudPRNT)</option>
-                    <option value="epson">Epson (Server Direct Print)</option>
-                  </Select>
-                </div>
-                <button type="submit" className="btn outline square" disabled={busy}>
-                  Lägg till
-                </button>
-              </form>
-            )}
-
-            {devices.length > 0 && (
-              <form onSubmit={saveSettings} className="notifications-form printer-settings">
-                <div className="toggle-row">
-                  <div>
-                    <p className="toggle-row-label" id="print-auto-label">Skriv ut bongar automatiskt</p>
-                  </div>
-                  <button type="button" role="switch" aria-checked={autoPrint} aria-labelledby="print-auto-label"
-                    className="switch" disabled={disabled} onClick={() => { setAutoPrint(!autoPrint); setNotice(null) }} />
-                </div>
-                <div className="form-grid">
-                  <div className="form-field">
-                    <label htmlFor="print-printer">Orderskrivare (omtryck och makulering)</label>
-                    <Select id="print-printer" value={printerId} disabled={disabled}
-                      onChange={(e) => { setPrinterId(e.target.value); setNotice(null) }}>
-                      <option value="">Ingen</option>
-                      {devices.map((d) => (
-                        <option key={d.deviceId} value={d.deviceId}>{d.name}</option>
-                      ))}
-                    </Select>
-                  </div>
-                  <div className="form-field">
-                    <label htmlFor="print-width">Pappersbredd</label>
-                    <Select id="print-width" value={paperWidth} disabled={disabled}
-                      onChange={(e) => { setPaperWidth(Number(e.target.value) as PaperWidth); setNotice(null) }}>
-                      <option value={80}>80 mm (48 tecken per rad)</option>
-                      <option value={58}>58 mm (32 tecken per rad)</option>
-                    </Select>
-                  </div>
-                </div>
-                {isOwner ? (
-                  <span className="row-actions">
-                    <button type="submit" className="btn primary square" disabled={disabled}>
-                      {busy ? 'Sparar…' : 'Spara skrivare'}
-                    </button>
-                    {dirty && !busy && (
-                      <span className="form-error" role="status">Ej sparat - klicka Spara skrivare.</span>
-                    )}
-                  </span>
-                ) : (
-                  <p className="cell-muted">Bara ägaren kan ändra.</p>
-                )}
-              </form>
-            )}
-
-            <ErrorNote text={error} />
-            {notice && <p className="save-notice" role="status">{notice}</p>}
-          </div>
+          <PrinterTiles
+            locationId={locationId}
+            isOwner={isOwner}
+            canSetUp={canSetUp}
+            data={data}
+            categories={categories}
+            onChange={apply}
+            onReload={reload}
+            onEditing={setEditing}
+          />
         )}
       </section>
 
       {locationId && data?.routing && (
-        <StationsCard key={`${locationId}-${data.routing.version}`} locationId={locationId} isOwner={isOwner}
-          routing={data.routing} devices={devices} onSaved={(routing) => setData({ ...data, routing })} />
+        <section className="admin-card table-card printer-card" id="skickas-till">
+          <TitleInfo
+            title="Vad skickas vart?"
+            info="Ett tryck per kategori. Förrätter, varmrätter och efterrätter går till Kök, drycker till Dryck. Ingen bong = inget skrivs ut (läsk ur kylen). En rätt kan välja egen i Meny. Gäller skrivarna och köksskärmen."
+          />
+          <CategoryRouting
+            locationId={locationId}
+            routing={data.routing}
+            devices={devices}
+            categories={categories}
+            canEdit={isOwner}
+            onSaved={(routing) => setData({ ...data, routing })}
+          />
+        </section>
+      )}
+
+      {locationId && data && (
+        <Disclosure title="Mer inställningar" className="admin-card table-card printer-guide">
+          <form onSubmit={saveSettings} className="notifications-form printer-settings">
+            <div className="toggle-row">
+              <div>
+                <p className="toggle-row-label" id="print-auto-label">Skriv ut bongar automatiskt</p>
+              </div>
+              <button type="button" role="switch" aria-checked={autoPrint} aria-labelledby="print-auto-label"
+                className="switch" disabled={disabled} onClick={() => { setAutoPrint(!autoPrint); setNotice(null) }} />
+            </div>
+            {data.routing && (
+              <div className="toggle-row">
+                <div>
+                  <p className="toggle-row-label" id="print-allergy-label">Egen allergibong</p>
+                </div>
+                <button type="button" role="switch" aria-checked={data.routing.allergyTicket} aria-labelledby="print-allergy-label"
+                  className="switch" disabled={disabled} onClick={() => setAllergyTicket(!data.routing!.allergyTicket)} />
+              </div>
+            )}
+            <div className="form-grid">
+              <div className="form-field">
+                <label htmlFor="print-printer">Orderskrivare (omtryck och makulering)</label>
+                <Select id="print-printer" value={printerId} disabled={disabled}
+                  onChange={(e) => { setPrinterId(e.target.value); setNotice(null) }}>
+                  <option value="">Ingen</option>
+                  {devices.map((d) => (
+                    <option key={d.deviceId} value={d.deviceId}>{d.name}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="form-field">
+                <label htmlFor="print-width">Pappersbredd</label>
+                <Select id="print-width" value={paperWidth} disabled={disabled}
+                  onChange={(e) => { setPaperWidth(Number(e.target.value) as PaperWidth); setNotice(null) }}>
+                  <option value={80}>80 mm (48 tecken per rad)</option>
+                  <option value={58}>58 mm (32 tecken per rad)</option>
+                </Select>
+              </div>
+            </div>
+            {isOwner ? (
+              <span className="row-actions">
+                <button type="submit" className="btn primary square" disabled={disabled}>
+                  {busy ? 'Sparar…' : 'Spara skrivare'}
+                </button>
+                {dirty && !busy && (
+                  <span className="form-error" role="status">Ej sparat - klicka Spara skrivare.</span>
+                )}
+              </span>
+            ) : (
+              <p className="cell-muted">Bara ägaren kan ändra.</p>
+            )}
+            <ErrorNote text={error} />
+            {notice && <p className="save-notice" role="status">{notice}</p>}
+          </form>
+        </Disclosure>
       )}
 
       <Disclosure title="Så kopplar du skrivaren" className="admin-card table-card printer-guide">
@@ -378,7 +284,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
             Skriv in IP-adressen i webbläsaren på en dator i samma nätverk och logga in i skrivarens
             inställningar (användare och lösenord står i skrivarens manual, byt gärna lösenordet).
           </li>
-          <li>Lägg till skrivaren under Bongskrivare. Booqy visar Server-URL, användarnamn och lösenord.</li>
+          <li>Tryck Lägg till skrivare och välj Kök, Dryck eller Annat. Booqy visar Server-URL, användarnamn och lösenord.</li>
           <li>
             Öppna CloudPRNT i skrivarens inställningar. Slå på CloudPRNT, klistra in Server-URL och sätt
             avfrågningsintervallet (polling) till 5 sekunder.
@@ -389,7 +295,7 @@ export function PrinterCard({ locationId, isOwner }: { locationId: string | null
           </li>
           <li>
             Tryck på Testutskrift. Inom några sekunder kommer en testlapp ut och skrivaren står som
-            Ansluten. Slå sedan på Skriv ut beställningar automatiskt.
+            Ansluten.
           </li>
         </ol>
         <h3 className="printer-subtitle">Om något inte fungerar</h3>

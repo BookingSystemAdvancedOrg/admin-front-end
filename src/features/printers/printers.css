@@ -1,0 +1,789 @@
+/* Kvittoskrivare (PrinterTiles, SendTo, CategoryRouting, SimPaper). Färger
+   från temats variabler: ljust och mörkt. Sorterna har var sin ton:
+   Kök bärnsten, Dryck vinrött, Annat lila. */
+
+.pset,
+.cat-routing {
+  --kind-kok: var(--warning-ink);
+  --kind-kok-bg: var(--tint-orange);
+  --kind-dryck: var(--danger-ink);
+  --kind-dryck-bg: var(--tint-red);
+  --kind-annat: var(--purple-ink);
+  --kind-annat-bg: var(--tint-purple);
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.sendto,
+.ticket-preview,
+.sim-paper {
+  --kind-kok: var(--warning-ink);
+  --kind-kok-bg: var(--tint-orange);
+  --kind-dryck: var(--danger-ink);
+  --kind-dryck-bg: var(--tint-red);
+  --kind-annat: var(--purple-ink);
+  --kind-annat-bg: var(--tint-purple);
+}
+
+/* Antalet överst: en stor siffra. */
+.pset-count {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.pset-count .count-num,
+.pset-count > :first-child {
+  font: var(--fw-display, 800) 34px/1 var(--display);
+  color: var(--ink);
+}
+
+/* "Kök · Kök 1 är klar" */
+.pset-yay {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--tint-green);
+  color: var(--ink);
+  animation: pset-pop 420ms var(--ease) both;
+}
+
+.pset-yay-check {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--success);
+  color: var(--bg, #fff);
+  flex-shrink: 0;
+}
+
+.pset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pset-card {
+  --k: var(--kind-kok);
+  --k-bg: var(--kind-kok-bg);
+  position: relative;
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--k);
+  border-radius: var(--r-lg);
+  background: var(--glass-surface, var(--surface));
+  box-shadow: var(--shadow);
+  transition: box-shadow var(--dur-base, 200ms) var(--ease), transform var(--dur-base, 200ms) var(--ease);
+}
+
+.pset-card--dryck {
+  --k: var(--kind-dryck);
+  --k-bg: var(--kind-dryck-bg);
+}
+
+.pset-card--annat {
+  --k: var(--kind-annat);
+  --k-bg: var(--kind-annat-bg);
+}
+
+/* Ny skrivare: den skrivs ut ur springan. */
+.pset-card.is-new {
+  animation: pset-print-in 620ms var(--ease) both;
+}
+
+/* En bong landade: kortet hoppar till. */
+.pset-card.is-receiving {
+  animation: pset-receive 700ms var(--ease);
+}
+
+.pset-card-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.pset-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--k-bg, var(--kind-kok-bg));
+  color: var(--k, var(--kind-kok));
+  flex-shrink: 0;
+}
+
+.pset-icon--dryck {
+  --k: var(--kind-dryck);
+  --k-bg: var(--kind-dryck-bg);
+}
+
+.pset-icon--annat {
+  --k: var(--kind-annat);
+  --k-bg: var(--kind-annat-bg);
+}
+
+.pset-name {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pset-name strong {
+  font: 700 18px/1.2 var(--font);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.pset-kind {
+  font: 600 11px/1.2 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--k, var(--muted));
+}
+
+.pset-status {
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--fill, var(--tint-blue));
+  color: var(--ink);
+}
+
+.pset-status--ok {
+  background: var(--tint-green);
+  color: var(--success-ink);
+}
+
+.pset-status--wait {
+  background: var(--tint-orange);
+  color: var(--warning-ink);
+}
+
+.pset-status--bad {
+  background: var(--tint-red);
+  color: var(--danger-ink);
+}
+
+.pset-status--sim {
+  background: var(--tint-purple);
+  color: var(--purple-ink);
+}
+
+/* Sorten: tre knappar, ett tryck. */
+.pset-kinds {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border-radius: var(--r-md);
+  background: var(--glass-well, var(--fill));
+}
+
+.pset-kind-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font: 600 14px/1 var(--font);
+  cursor: pointer;
+  transition: background var(--dur-fast, 160ms) var(--ease), color var(--dur-fast, 160ms) var(--ease);
+}
+
+.pset-kind-btn.is-on {
+  background: var(--surface, #fff);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+}
+
+.pset-kind-btn--kok.is-on svg {
+  color: var(--kind-kok);
+}
+
+.pset-kind-btn--dryck.is-on svg {
+  color: var(--kind-dryck);
+}
+
+.pset-kind-btn--annat.is-on svg {
+  color: var(--kind-annat);
+}
+
+.pset-kind-btn:focus-visible,
+.sendto-chip:focus-visible,
+.pset-pick-tile:focus-visible,
+.pset-add:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Vad skrivaren får: kategorierna. */
+.pset-gets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.pset-gets-label {
+  font: 600 11px/1 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+.pset-tag {
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: var(--k-bg);
+  color: var(--ink);
+  font-size: 13px;
+  animation: pset-pop 300ms var(--ease) both;
+}
+
+.pset-tag--empty {
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--muted);
+}
+
+.pset-actions {
+  flex-wrap: wrap;
+}
+
+.pset-rename {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pset-rename input {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+/* Lägg till: ett stort plus. */
+.pset-add-slot {
+  display: grid;
+  min-height: 100%;
+}
+
+.pset-add {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  min-height: 160px;
+  padding: 20px;
+  border: 2px dashed var(--border);
+  border-radius: var(--r-lg);
+  background: transparent;
+  color: var(--ink);
+  font: 700 16px/1.2 var(--font);
+  cursor: pointer;
+  transition: border-color var(--dur-fast, 160ms) var(--ease), background var(--dur-fast, 160ms) var(--ease);
+}
+
+.pset-add:hover {
+  border-color: var(--muted);
+  background: var(--glass-well, var(--fill));
+}
+
+.pset-add-plus {
+  display: inline-grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: var(--shadow);
+}
+
+/* Flödet: välj sort, namn, klart. */
+.pset-flow {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--glass-surface, var(--surface));
+  animation: pset-pop 300ms var(--ease) both;
+}
+
+.pset-flow-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pset-pick {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pset-pick-tile {
+  --k: var(--kind-kok);
+  --k-bg: var(--kind-kok-bg);
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 18px 8px;
+  border: 2px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface, transparent);
+  color: var(--ink);
+  font: 700 17px/1 var(--font);
+  cursor: pointer;
+  transition: transform var(--dur-fast, 160ms) var(--ease), border-color var(--dur-fast, 160ms) var(--ease);
+}
+
+.pset-pick-tile--dryck {
+  --k: var(--kind-dryck);
+  --k-bg: var(--kind-dryck-bg);
+}
+
+.pset-pick-tile--annat {
+  --k: var(--kind-annat);
+  --k-bg: var(--kind-annat-bg);
+}
+
+.pset-pick-tile:hover {
+  transform: translateY(-2px);
+}
+
+.pset-pick-tile.is-on {
+  border-color: var(--k);
+  background: var(--k-bg);
+  animation: pset-pop 300ms var(--ease);
+}
+
+.pset-pick-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: var(--k-bg);
+  color: var(--k);
+}
+
+.pset-pick-tile.is-on .pset-pick-icon {
+  background: var(--surface, #fff);
+}
+
+.pset-pick-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--k);
+  color: var(--surface, #fff);
+}
+
+.pset-flow-rest {
+  display: grid;
+  gap: 14px;
+  animation: pset-pop 300ms var(--ease) both;
+}
+
+.pset-field-label {
+  font: 500 13px/1.3 var(--font);
+  color: var(--ink);
+}
+
+.pset-brands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Inga skrivare än */
+.pset-later {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.pset-later-pill {
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  background: var(--tint-orange);
+  color: var(--warning-ink);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* --- Skickas till: chips --------------------------------------------------- */
+
+.sendto {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sendto-chip {
+  --k: var(--ink);
+  --k-bg: var(--fill, var(--tint-blue));
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink);
+  font: 600 14px/1.1 var(--font);
+  cursor: pointer;
+  transition: background var(--dur-fast, 160ms) var(--ease), border-color var(--dur-fast, 160ms) var(--ease);
+}
+
+.sendto-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sendto--compact .sendto-chip {
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.sendto-chip svg {
+  color: var(--k);
+  flex-shrink: 0;
+}
+
+.sendto-chip--kok {
+  --k: var(--kind-kok);
+  --k-bg: var(--kind-kok-bg);
+}
+
+.sendto-chip--dryck {
+  --k: var(--kind-dryck);
+  --k-bg: var(--kind-dryck-bg);
+}
+
+.sendto-chip--annat,
+.sendto-chip--sim {
+  --k: var(--kind-annat);
+  --k-bg: var(--kind-annat-bg);
+}
+
+.sendto-chip--none {
+  --k: var(--muted);
+}
+
+.sendto-chip.is-on {
+  border-color: var(--k);
+  background: var(--k-bg);
+  animation: pset-pop 260ms var(--ease);
+}
+
+.sendto-chip:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.sendto-chip.is-on:disabled {
+  opacity: 1;
+}
+
+.sendto-check {
+  color: var(--k);
+}
+
+/* Förhandsvisningen i Meny: en liten bong. */
+.ticket-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px 6px 2px 2px;
+  background: var(--slip);
+  color: var(--on-slip, #fff);
+  font: 500 12.5px/1.35 var(--mono);
+  box-shadow: var(--shadow);
+  animation: pset-pop 260ms var(--ease) both;
+}
+
+.ticket-preview--none {
+  background: transparent;
+  color: var(--muted);
+  border: 1px dashed var(--border);
+  box-shadow: none;
+}
+
+/* --- Vad skickas vart? ----------------------------------------------------- */
+
+.cat-routing-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+
+.cat-routing-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.cat-routing-name {
+  flex: 1 1 140px;
+  max-width: 200px;
+  font-weight: 700;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.cat-routing-row .sendto {
+  flex: 999 1 300px;
+}
+
+@media (max-width: 640px) {
+  .pset-pick-tile {
+    padding: 14px 4px;
+    font-size: 15px;
+  }
+
+  .pset-pick-icon {
+    width: 52px;
+    height: 52px;
+  }
+}
+
+/* Bongen som flyger till skrivaren (fly.ts). */
+.fly-ticket {
+  position: fixed;
+  z-index: 1000;
+  width: 28px;
+  height: 34px;
+  pointer-events: none;
+  border-radius: 3px 3px 0 0;
+  background:
+    linear-gradient(var(--on-slip, #fff) 0 0) 6px 8px / 16px 2px no-repeat,
+    linear-gradient(var(--on-slip, #fff) 0 0) 6px 14px / 12px 2px no-repeat,
+    linear-gradient(var(--on-slip, #fff) 0 0) 6px 20px / 16px 2px no-repeat,
+    var(--slip);
+  box-shadow: 0 6px 14px rgba(26, 18, 14, 0.3);
+  mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 7px 100%;
+}
+
+/* --- Simulerad skrivare ---------------------------------------------------- */
+
+.modal.sim-paper {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 0;
+  width: min(440px, calc(100vw - 32px));
+  max-height: min(86svh, 820px);
+  padding: 16px 16px 0;
+  overflow: hidden;
+}
+
+.sim-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+}
+
+.sim-close {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+
+/* Springan: skenan som papperet kommer ut ur. */
+.sim-rail {
+  height: 12px;
+  margin: 0 -4px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #2a1d16, #0d0907);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+  z-index: 2;
+}
+
+.sim-feed {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  justify-items: center;
+  margin-top: -6px;
+  padding: 0 4px 24px;
+  overflow-y: auto;
+  container-type: inline-size;
+}
+
+.sim-empty {
+  margin: 28px 0;
+  color: var(--muted);
+  font: 500 13px/1.4 var(--mono);
+}
+
+/* Lappen: alltid vitt papper (även i mörkt läge), svart tryck, rivkant. */
+.sim-slip {
+  width: min(100%, 340px);
+  padding: 20px 16px 26px;
+  background: #fbfaf7;
+  color: #1a120e;
+  box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.55);
+  /* Raderna är redan brutna efter pappret (48 eller 32 tecken): texten krymper så att de får plats. */
+  --cols: 48;
+  font: 500 min(12.5px, calc((min(100cqi, var(--w, 340px)) - 32px) / (var(--cols) * 0.68))) / 1.45 var(--mono);
+  mask:
+    conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / 12px 51% repeat-x,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 12px 51% repeat-x;
+}
+
+.sim-slip:first-child {
+  mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 12px 100% repeat-x;
+}
+
+.sim-slip--58 {
+  --cols: 32;
+  --w: 250px;
+  width: min(100%, 250px);
+}
+
+.sim-slip--void .sim-row.is-big {
+  color: #9e1d26;
+}
+
+.sim-slip.is-fresh {
+  animation: sim-feed-out 900ms steps(12, end) both;
+}
+
+.sim-row {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.sim-row.is-bold {
+  font-weight: 800;
+}
+
+.sim-row.is-big {
+  font-size: 1.4em;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+}
+
+.sim-row.is-center {
+  text-align: center;
+}
+
+@keyframes pset-pop {
+  from {
+    transform: scale(0.94);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes pset-print-in {
+  from {
+    clip-path: inset(0 0 100% 0 round var(--r-lg));
+    transform: translateY(-10px);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round var(--r-lg));
+    transform: none;
+  }
+}
+
+@keyframes pset-receive {
+  0% {
+    transform: none;
+  }
+  30% {
+    transform: translateY(-3px) scale(1.015);
+    box-shadow: 0 0 0 3px var(--k), var(--shadow);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes sim-feed-out {
+  from {
+    clip-path: inset(0 0 100% 0);
+    transform: translateY(-24px);
+  }
+  to {
+    clip-path: inset(0);
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pset-yay,
+  .pset-card.is-new,
+  .pset-tag,
+  .pset-flow,
+  .pset-flow-rest,
+  .pset-pick-tile.is-on,
+  .sendto-chip.is-on,
+  .ticket-preview,
+  .sim-slip.is-fresh {
+    animation: none;
+  }
+
+  .pset-card.is-receiving {
+    animation: none;
+    box-shadow: 0 0 0 3px var(--k), var(--shadow);
+  }
+
+  .pset-pick-tile:hover {
+    transform: none;
+  }
+}

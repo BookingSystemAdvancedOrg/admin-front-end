@@ -2,12 +2,13 @@ import { test, expect, type Page, type Browser } from '@playwright/test'
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs'
 import { watch } from '../lib/watch'
 import { ready } from '../lib/ui'
-import { pick, valueOf } from '../lib/select'
+import { pick } from '../lib/select'
 import { optEnv } from '../lib/env'
+import { Api } from '../lib/api'
 import { mail, RUN } from '../lib/data'
 
 /**
- * Online pickup order and QR table order, paid with Stripe's published test
+ * Online pickup order, paid with Stripe's published test
  * card on the guest site served from localhost (customer-front-end, real dev
  * API), then seen on the orders board and the kitchen screen (KDS).
  *
@@ -57,6 +58,18 @@ async function checkout(page: Page, name: string) {
   await expect(page).toHaveURL(/\/bestallning\//, { timeout: 60000 })
 }
 
+/** The printer a category is sent to (Inställningar, Kvittoskrivare, Vad skickas vart?): one tap saves. */
+async function send(page: Page, category: string, to: string) {
+  const radio = page.getByRole('radiogroup', { name: `${category} skickas till` }).getByRole('radio', { name: to, exact: true })
+  if ((await radio.getAttribute('aria-checked')) !== 'true') await radio.click()
+  await page.waitForTimeout(800)
+}
+
+async function chosen(page: Page, category: string): Promise<string | null> {
+  const on = page.getByRole('radiogroup', { name: `${category} skickas till` }).locator('[role=radio][aria-checked=true]')
+  return (await on.count()) ? (await on.first().innerText()).trim() : null
+}
+
 test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', async ({ page }) => {
   await page.goto('/installningar#dagar')
   await ready(page, 'Inställningar')
@@ -65,7 +78,7 @@ test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', 
   if (!existsSync(RESTORE)) {
     writeFileSync(RESTORE, JSON.stringify({ day: today, opens: await opens.inputValue().catch(() => ''), closes: await closes.inputValue().catch(() => '') }))
   }
-  if (!(await opens.count())) await page.locator('.hours-editor-row', { hasText: today }).getByRole('button', { name: '+ Lägg till tid' }).click()
+  if (!(await opens.count())) await page.locator('.hours-editor-row', { hasText: today }).getByRole('button', { name: 'Lägg till tid' }).click()
   await page.getByLabel(`${today} öppnar`).first().fill('00:00')
   await page.getByLabel(`${today} stänger`).first().fill('23:59')
   await page.getByRole('button', { name: 'Spara ändringar' }).click()
@@ -74,10 +87,8 @@ test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', 
 
   await page.goto('/installningar#bestallning')
   await ready(page)
-  for (const id of ['ordering-enabled-label', 'ordering-pickup-label', 'ordering-table-label']) {
-    const sw = page.locator(`[role=switch][aria-labelledby=${id}]`)
-    if ((await sw.getAttribute('aria-checked')) !== 'true') await sw.click()
-  }
+  const on = page.locator('[role=switch][aria-labelledby=ordering-enabled-label]')
+  if ((await on.getAttribute('aria-checked')) !== 'true') await on.click()
   const r0 = JSON.parse(readFileSync(RESTORE, 'utf8'))
   if (r0.last === undefined) writeFileSync(RESTORE, JSON.stringify({ ...r0, last: await page.getByLabel('Sista beställning (min före stängning)').inputValue() }))
   await page.getByLabel('Sista beställning (min före stängning)').fill('0')
@@ -87,15 +98,15 @@ test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', 
   await page.goto('/installningar#skrivare')
   await ready(page)
   const r1 = JSON.parse(readFileSync(RESTORE, 'utf8'))
+  await page.getByText('Mer inställningar').click()
+  const allergy = page.locator('[role=switch][aria-labelledby=print-allergy-label]')
   if (r1.drinks === undefined) {
-    writeFileSync(RESTORE, JSON.stringify({ ...r1, drinks: await valueOf(page.getByLabel('Drycker')), mains: await valueOf(page.getByLabel('Varmrätter')),
-      allergy: await page.locator('[role=switch][aria-labelledby=allergy-ticket-label]').getAttribute('aria-checked') }))
+    writeFileSync(RESTORE, JSON.stringify({ ...r1, drinks: await chosen(page, 'Drycker'), mains: await chosen(page, 'Varmrätter'),
+      allergy: await allergy.getAttribute('aria-checked') }))
   }
-  await pick(page.getByLabel('Drycker'), { label: 'Bar' })
-  await pick(page.getByLabel('Varmrätter'), { label: 'Kök' })
-  const allergy = page.locator('[role=switch][aria-labelledby=allergy-ticket-label]')
+  await send(page, 'Drycker', 'Dryck')
+  await send(page, 'Varmrätter', 'Kök')
   if ((await allergy.getAttribute('aria-checked')) !== 'true') await allergy.click()
-  await page.getByRole('button', { name: 'Spara stationer' }).click()
   await page.waitForTimeout(2000)
 
   await page.goto('/meny')
@@ -104,7 +115,7 @@ test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', 
     { name: 'E2E Margherita', cat: 'Varmrätter', price: '120' },
     { name: 'E2E Cola', cat: 'Drycker', price: '30', station: 'Ingen bong' },
     { name: 'E2E Fatöl', cat: 'Drycker', price: '75', alcohol: true },
-    { name: 'E2E Pizzameny', cat: 'Varmrätter', price: '149', parts: [['Pizza', 'Kök'], ['Läsk', 'Bar']] },
+    { name: 'E2E Pizzameny', cat: 'Varmrätter', price: '149', parts: [['Pizza', 'Kök'], ['Läsk', 'Dryck']] },
   ]
   for (const d of dishes) {
     if (await page.getByRole('row', { name: new RegExp(d.name) }).count()) {
@@ -112,14 +123,14 @@ test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', 
       if ((await sw.getAttribute('aria-checked')) !== 'true') await sw.click()
       continue
     }
-    await page.getByRole('button', { name: '+ Lägg till rätt' }).click()
+    await page.getByRole('button', { name: 'Lägg till rätt' }).click()
     const dlg = page.getByRole('dialog', { name: 'Lägg till rätt' })
     await dlg.locator('input[type=file]').setInputFiles('fixtures/dish.jpg')
     await dlg.getByLabel('Namn').fill(d.name)
     await pick(dlg.getByLabel('Kategori'), { label: d.cat })
     await dlg.getByLabel('Pris (kr)').fill(d.price)
     if (d.alcohol) await dlg.getByRole('switch', { name: 'Innehåller alkohol' }).click()
-    if (d.station) await pick(dlg.locator('#dish-station'), { label: d.station })
+    if (d.station) await dlg.getByRole('radiogroup', { name: 'Skickas till' }).getByRole('radio', { name: d.station }).click()
     for (const [i, [part, st]] of (d.parts ?? []).entries()) {
       await dlg.getByRole('button', { name: i === 0 ? 'Dela upp som meny/combo' : 'Lägg till del' }).click()
       await dlg.locator(`#dish-part-${i}`).fill(part)
@@ -130,13 +141,40 @@ test('setup: open today, enable ordering, route drinks to the bar, E2E dishes', 
   }
 })
 
+test('setup printers in the UI: simulated Kök, Dryck and Annat, any kind, no old ones left', async ({ page }, info) => {
+  const api = await Api.attach(page)
+  for (const d of (await (await api.get('/print')).json()).devices as { deviceId: string; name: string }[]) {
+    if (/^E2E UI/.test(d.name)) await api.del(`/print/devices/${d.deviceId}`)
+  }
+  await page.goto('/installningar#skrivare')
+  await ready(page)
+  for (const [kind, name] of [['Kök', 'E2E UI Kök'], ['Dryck', 'E2E UI Dryck'], ['Annat', 'E2E UI Ugn']] as const) {
+    const add = page.getByRole('button', { name: 'Lägg till skrivare' })
+    if (await add.count()) await add.click() // after the first printer the form is already open
+    const form = page.getByRole('form', { name: 'Ny skrivare' })
+    await form.getByRole('radiogroup', { name: 'Sort' }).getByRole('radio', { name: kind }).click()
+    await form.locator('#printer-name').fill(name)
+    await form.getByText('Simulerad', { exact: true }).click()
+    await form.getByRole('button', { name: 'Lägg till', exact: true }).click()
+    await expect(page.getByText(name).first(), `${name} card`).toBeVisible({ timeout: 20000 })
+  }
+  await page.screenshot({ path: info.outputPath('printers.png'), fullPage: true })
+  const devices = (await (await api.get('/print')).json()).devices as { name: string; kind: string; simulated?: boolean }[]
+  for (const [name, kind] of [['E2E UI Kök', 'kok'], ['E2E UI Dryck', 'dryck'], ['E2E UI Ugn', 'annat']]) {
+    const d = devices.find((x) => x.name === name)
+    expect(d, name).toBeTruthy()
+    expect(d!.kind).toBe(kind)
+    expect(d!.simulated, 'simulated printer').toBe(true)
+  }
+})
+
 test('guest pickup order with allergy, paid with test card, appears on the board', async ({ page, browser }, info) => {
   const guest = await guestPage(browser)
   const w = watch(guest)
   await guest.goto(`${GUEST}/bestall?restaurang=${SLUG}`)
   await expect(guest.getByRole('heading', { name: /Beställ för avhämtning/ })).toBeVisible({ timeout: 30000 })
   await guest.screenshot({ path: info.outputPath('guest-menu.png') })
-  await expect.soft(guest.locator('li', { hasText: 'E2E Fatöl' }).getByText('Bara vid bordet'), 'alcohol only at the table').toBeVisible()
+  await expect.soft(guest.getByRole('button', { name: 'Lägg till E2E Fatöl' }), 'alcohol cannot be ordered online').toHaveCount(0)
   await guest.getByRole('button', { name: 'Lägg till E2E Margherita' }).click()
   await guest.getByRole('button', { name: 'Lägg till E2E Pizzameny' }).click()
   await guest.getByRole('button', { name: 'Lägg till E2E Cola' }).click()
@@ -153,7 +191,7 @@ test('guest pickup order with allergy, paid with test card, appears on the board
   await page.screenshot({ path: info.outputPath('board.png') })
 })
 
-test('kitchen screen: food to Kök, combo split, drink part to Bar, cola no ticket, allergy ticket', async ({ page }, info) => {
+test('kitchen screen: food to Kök, combo split, drink part to Dryck, cola no ticket, allergy ticket', async ({ page }, info) => {
   await page.goto('/bestallningar')
   await ready(page, 'Beställningar')
   await page.getByRole('tab', { name: 'Köksskärm' }).click()
@@ -164,49 +202,46 @@ test('kitchen screen: food to Kök, combo split, drink part to Bar, cola no tick
   expect.soft(text, 'Margherita on a kitchen ticket').toMatch(/E2E Margherita/)
   expect.soft(text, 'combo part Pizza').toMatch(/Pizza/)
   expect.soft(text, 'kitchen view does not show the drink part').not.toMatch(/Läsk/)
-  await page.getByRole('button', { name: /^Bar/ }).or(page.getByRole('tab', { name: /^Bar/ })).first().click()
+  await page.getByRole('button', { name: /^(Bar|Dryck)/ }).or(page.getByRole('tab', { name: /^(Bar|Dryck)/ })).first().click()
   await page.waitForTimeout(1500)
   const bar = await page.locator('body').innerText()
   info.annotations.push({ type: 'bar text', description: bar.slice(bar.indexOf('Köksskärm')).replace(/\s+/g, ' ').slice(0, 600) })
-  expect.soft(bar, 'combo part Läsk on the Bar station').toMatch(/Läsk/)
+  expect.soft(bar, 'combo part Läsk on the Dryck station').toMatch(/Läsk/)
   await page.screenshot({ path: info.outputPath('kds-bar.png'), fullPage: true })
   expect.soft(text, 'Cola has no ticket').not.toMatch(/E2E Cola/)
   expect.soft(text, 'allergy shown').toMatch(/[Jj]ordnöt/)
 })
 
-test('QR table order: table shown first on the board', async ({ page, browser }, info) => {
-  // the table's QR link, from the admin
-  const tokenReq = page.waitForRequest((r) => /\/orders\/table-codes/.test(r.url()) && !!r.headers()['authorization'])
-  await page.goto('/layout')
-  await ready(page, 'Layout')
-  await page.getByRole('button', { name: 'QR-koder' }).click()
-  const req = await tokenReq.catch(() => null)
-  test.skip(!req, 'no published layout with tables on the order-test restaurant')
-  const res = await page.request.get(req!.url(), { headers: { authorization: req!.headers()['authorization'] } })
-  const codes = (await res.json()).items ?? (await res.json()).codes ?? []
-  info.annotations.push({ type: 'table codes', description: JSON.stringify(codes).slice(0, 300) })
-  const first = codes[0]
-  test.skip(!first, 'no tables')
-  const url: string = first.url ?? first.orderUrl ?? ''
-  const code = first.code ?? first.key ?? new URL(url).searchParams.get('bord')
-  const guest = await guestPage(browser)
-  await guest.goto(`${GUEST}/bestall?restaurang=${SLUG}&bord=${encodeURIComponent(code)}`)
-  await expect(guest.getByRole('heading', { name: /Beställ till bordet/ })).toBeVisible({ timeout: 30000 })
-  await guest.getByRole('button', { name: 'Lägg till E2E Fatöl' }).click()
-  await guest.getByRole('button', { name: 'Lägg till E2E Margherita' }).click()
-  await checkout(guest, `E2E Bord ${RUN}`)
-  await page.goto('/bestallningar')
-  await ready(page, 'Beställningar')
-  const card = page.locator('article, li, .order-card').filter({ hasText: `E2E Bord ${RUN}` }).first()
-  await expect(card).toBeVisible({ timeout: 60000 })
-  await page.screenshot({ path: info.outputPath('board-table.png') })
-  const t = (await card.innerText()).trim()
-  info.annotations.push({ type: 'card text', description: t.slice(0, 200) })
-  expect.soft(t.split('\n')[0], 'table is the first thing on the card').toMatch(/Bord|T\d/)
+test('the simulated printers printed the order by themselves: food on Kök, drink on Dryck, none crossed', async ({ page }, info) => {
+  const api = await Api.attach(page)
+  const devices = (await (await api.get('/print')).json()).devices as { deviceId: string; name: string }[]
+  const paper = async (name: string) => {
+    const d = devices.find((x) => x.name === name)!
+    const j = await (await api.get(`/print/devices/${d.deviceId}/simulated`)).json()
+    return (j.tickets as { lines: { text: string }[] }[]).map((t) => t.lines.map((l) => l.text).join('\n')).join('\n----\n')
+  }
+  await page.waitForTimeout(3000)
+  const kok = await paper('E2E UI Kök')
+  const dryck = await paper('E2E UI Dryck')
+  info.annotations.push({ type: 'Kök paper', description: kok.replace(/\n+/g, ' | ').slice(0, 500) })
+  info.annotations.push({ type: 'Dryck paper', description: dryck.replace(/\n+/g, ' | ').slice(0, 500) })
+  expect(kok, 'food printed on Kök').toMatch(/E2E Margherita/)
+  expect(kok, 'no drink on the Kök ticket').not.toMatch(/Läsk|E2E Cola|Fatöl/)
+  expect(dryck, 'the drink part printed on Dryck').toMatch(/Läsk/)
+  expect(dryck, 'no food on the Dryck ticket').not.toMatch(/E2E Margherita/)
+  expect(dryck + kok, 'Cola is set to Ingen bong: on no ticket').not.toMatch(/E2E Cola/)
 })
 
 test.afterAll('restore: hours back, ordering off, E2E dishes off', async ({ browser }) => {
   const page = await (await browser.newContext({ storageState: '.auth/pizza.json', baseURL: test.info().project.use.baseURL })).newPage()
+  {
+    const api = await Api.attach(page)
+    for (const d of (await (await api.get('/print')).json()).devices as { deviceId: string; name: string }[]) {
+      if (/^E2E UI/.test(d.name)) await api.del(`/print/devices/${d.deviceId}`)
+    }
+    const st = (await (await api.get('/print')).json()).settings
+    if (st?.autoPrint) await api.put('/print/settings', { ...st, autoPrint: false, printerId: null })
+  }
   if (existsSync(RESTORE)) {
     const r = JSON.parse(readFileSync(RESTORE, 'utf8'))
     await page.goto('/installningar#dagar')
@@ -224,11 +259,11 @@ test.afterAll('restore: hours back, ordering off, E2E dishes off', async ({ brow
   if (r.drinks !== undefined) {
     await page.goto('/installningar#skrivare')
     await ready(page)
-    await pick(page.getByLabel('Drycker'), r.drinks)
-    await pick(page.getByLabel('Varmrätter'), r.mains)
-    const al = page.locator('[role=switch][aria-labelledby=allergy-ticket-label]')
+    if (r.drinks) await send(page, 'Drycker', r.drinks)
+    if (r.mains) await send(page, 'Varmrätter', r.mains)
+    await page.getByText('Mer inställningar').click()
+    const al = page.locator('[role=switch][aria-labelledby=print-allergy-label]')
     if ((await al.getAttribute('aria-checked')) !== r.allergy) await al.click()
-    await page.getByRole('button', { name: 'Spara stationer' }).click()
     await page.waitForTimeout(1500)
   }
   await page.goto('/installningar#bestallning')
@@ -245,8 +280,9 @@ test.afterAll('restore: hours back, ordering off, E2E dishes off', async ({ brow
     const row = page.getByRole('row', { name: new RegExp(n) }).first()
     if (await row.count()) {
       await row.getByRole('button', { name: 'Radera' }).click()
+      await page.getByRole('button', { name: 'Ta bort', exact: true }).click()
       await page.waitForTimeout(1500)
     }
   }
-  unlinkSync(RESTORE)
+  if (existsSync(RESTORE)) unlinkSync(RESTORE)
 })

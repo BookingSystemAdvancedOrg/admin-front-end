@@ -65,7 +65,7 @@ export function CampaignForm({
   const [days, setDays] = useState<number>(plain?.days ?? 90)
   const [loc, setLoc] = useState<string>(plain?.locationId ?? '')
   const [counted, setCounted] = useState<{ key: string; n: number } | null>(null)
-  // Ett gästsegment från Gäster (guestCrm) ersätter målgruppen ovan när det är valt.
+  // Ett kundsegment från Kunder (guestCrm) ersätter målgruppen ovan när det är valt.
   const [segment, setSegment] = useState<SegmentAudience | null>(savedSegment)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)

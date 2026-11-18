@@ -10,6 +10,11 @@ import { ChangedNote } from '../../shared/ChangedNote'
 import { categoryListError, MAX_CATEGORIES, mergeCategoryRows, NAME_MAX } from './menuForm'
 import type { CategoryRow as Row } from './menuForm'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
+import { NO_TICKET, printErrorText } from '../bestallningar/printApi'
+import type { TicketRouting } from '../bestallningar/printApi'
+import { SendTo } from '../printers/SendTo'
+import { categoryStation } from '../printers/kinds'
 
 /**
  * Restaurangens egna kategorier: lägg till, byt namn, flytta upp och ner,
@@ -27,6 +32,8 @@ export function CategoriesModal({
   onSave,
   fetchLatest,
   onCancel,
+  routing,
+  onRoute,
 }: {
   /** Listan som den ser ut nu (hämtas levande medan dialogen är öppen). */
   categories: MenuCategoryEntry[]
@@ -38,7 +45,28 @@ export function CategoriesModal({
   /** Den senaste sparade listan (efter 409). */
   fetchLatest: () => Promise<MenuCategories>
   onCancel: () => void
+  /** Bongarna: varje sparad kategori får "Skickas till" (sparas direkt). Saknas = inga beställningar. */
+  routing?: TicketRouting
+  onRoute?: (categoryId: string, next: string) => Promise<void>
 }) {
+  const [routeError, setRouteError] = useState<string | null>(null)
+  const [routePending, setRoutePending] = useState<Record<string, string>>({})
+  async function route(categoryId: string, next: string) {
+    if (!onRoute) return
+    setRouteError(null)
+    setRoutePending((p) => ({ ...p, [categoryId]: next }))
+    try {
+      await onRoute(categoryId, next)
+    } catch (err) {
+      setRouteError(printErrorText(err))
+    } finally {
+      setRoutePending((p) => {
+        const rest = { ...p }
+        delete rest[categoryId]
+        return rest
+      })
+    }
+  }
   // Listan och versionen som dina ändringar utgår från.
   const [base, setBase] = useState<{ categories: MenuCategoryEntry[]; version: number }>(() => ({ categories, version }))
   const [rows, setRows] = useState<Row[]>(() => categories.map((c) => ({ ...c })))
@@ -130,7 +158,14 @@ export function CategoriesModal({
     <>
     <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && closeRef.current()}>
       <div className="modal meny-categories" role="dialog" aria-modal="true" aria-label="Kategorier">
-        <h2>Kategorier</h2>
+        <div className="title-info">
+          <h2>Kategorier</h2>
+          {routing ? (
+            <InfoTooltip label="Skickas till">
+              Skickas till: vilken skrivare hela kategorins bongar hamnar på. Ett tryck sparar direkt. En rätt kan välja egen.
+            </InfoTooltip>
+          ) : null}
+        </div>
         <ol className="meny-category-list">
           {rows.map((r, i) => {
             const count = r.categoryId ? dishCounts[r.categoryId] ?? 0 : 0
@@ -163,6 +198,14 @@ export function CategoriesModal({
                   onClick={() => setRows((prev) => prev.filter((_, k) => k !== i))}>
                   <Icon name="trash" size={16} />
                 </button>
+                {routing && r.categoryId ? (
+                  <div className="meny-category-sendto">
+                    <SendTo label={`${r.name || 'Kategorin'} skickas till`} stations={routing.stations} compact
+                      disabled={!onRoute}
+                      value={routePending[r.categoryId] ?? categoryStation(routing, r.categoryId, r.name) ?? NO_TICKET}
+                      onChange={(next) => void route(r.categoryId!, next)} />
+                  </div>
+                ) : null}
               </li>
             )
           })}
@@ -185,7 +228,7 @@ export function CategoriesModal({
             </button>
           </div>
         )}
-        <ErrorNote text={listError ?? error} />
+        <ErrorNote text={listError ?? error ?? routeError} />
         <div className="modal-actions">
           <button type="button" className="btn outline square" onClick={onCancel}>Avbryt</button>
           <button type="button" className="btn primary square" disabled={Boolean(listError) || busy} onClick={() => void save()}>

@@ -29,7 +29,7 @@ describe('sample data for Översikt', () => {
 
   it('names every table it uses', () => {
     for (const r of data.today) {
-      expect(tableNames(r.tableIds, SAMPLE_TABLE_LABELS as Map<string, string>)).not.toContain('?')
+      expect(tableNames(r.tableIds, SAMPLE_TABLE_LABELS as Map<string, string>)).not.toMatch(/borttag/i)
     }
   })
 

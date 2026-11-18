@@ -166,7 +166,7 @@ describe('BestallningarPage', () => {
     }))
     render(<BestallningarPage />)
     await user.click(await screen.findByRole('button', { name: 'Återbetala' }))
-    const dialog = screen.getByRole('dialog', { name: 'Återbetala #7' })
+    const dialog = screen.getByRole('dialog', { name: 'Återbetala #7, Avhämtning' })
     await user.clear(within(dialog).getByLabelText('Belopp (kr)'))
     await user.type(within(dialog).getByLabelText('Belopp (kr)'), '50')
     await user.click(within(dialog).getByRole('button', { name: 'Återbetala 50 kr' }))
@@ -185,7 +185,20 @@ describe('BestallningarPage', () => {
     await user.click(await screen.findByText('Avslutade idag (1)'))
     await user.click(screen.getByRole('button', { name: 'Återbetala #7' }))
     expect(screen.getByText('Presentkortets del (100 kr) kommer tillbaka bara om beställningen avbryts.')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Återbetala #7, Avhämtning' })).toBeInTheDocument()
     expect(screen.getByText('Kvar att återbetala', { exact: false })).toHaveTextContent('185,50 kr')
+  })
+
+  it('names the table on a done table order and in its refund dialog', async () => {
+    const user = userEvent.setup()
+    listOrders.mockResolvedValue(list([order({
+      status: 'completed', paymentStatus: 'paid', refundable: 28550, mode: 'table', tableId: 't-3', tableLabel: '3',
+    })]))
+    render(<BestallningarPage />)
+    await user.click(await screen.findByText('Avslutade idag (1)'))
+    expect(screen.getByText(/^#7 ·/)).toHaveTextContent(/^#7 · Bord 3 ·/)
+    await user.click(screen.getByRole('button', { name: 'Återbetala #7' }))
+    expect(screen.getByRole('dialog', { name: 'Återbetala #7, Bord 3' })).toBeInTheDocument()
   })
 
   it('staff see no refund button', async () => {
@@ -240,7 +253,7 @@ describe('BestallningarPage', () => {
     await user.click(within(card).getByRole('button', { name: 'Klar att servera' }))
     expect(screen.getByText(/är klar\. Bär maten till/)).toBeInTheDocument()
     const klara = screen.getByRole('region', { name: 'Klara' })
-    expect(within(klara).getByText('Bär till Bord 7')).toBeInTheDocument()
+    expect(within(klara).getByText(/Bär till/)).toHaveTextContent('Bär till Bord 7')
     expect(within(klara).getByRole('button', { name: 'Serverad vid Bord 7' })).toBeInTheDocument()
   })
 

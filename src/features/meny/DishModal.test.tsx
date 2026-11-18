@@ -75,3 +75,22 @@ describe('DishModal closing by mistake', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('DishModal Skickas till', () => {
+  it('follows the category, shows the ticket it lands on and takes one tap to change', async () => {
+    const user = userEvent.setup()
+    render(
+      <DishModal title="Lägg till rätt" initial={null} timeZone="Europe/Stockholm" categories={CATS}
+        locationId="loc-1" onSave={vi.fn()} onCancel={vi.fn()} />,
+    )
+    const group = await screen.findByRole('radiogroup', { name: 'Skickas till' })
+    expect(screen.getByRole('radio', { name: /Som varmrätter \(Kök\)/ })).toHaveAttribute('aria-checked', 'true')
+    expect(document.querySelector('.ticket-preview')).toHaveTextContent('Kök · Köket')
+    await user.click(screen.getByRole('radio', { name: 'Dryck' }))
+    expect(screen.getByRole('radio', { name: 'Dryck' })).toHaveAttribute('aria-checked', 'true')
+    expect(document.querySelector('.ticket-preview')).toHaveTextContent('Dryck')
+    await user.click(screen.getByRole('radio', { name: 'Ingen bong' }))
+    expect(document.querySelector('.ticket-preview')).toHaveTextContent('Ingen bong')
+    expect(group).toBeInTheDocument()
+  })
+})

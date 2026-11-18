@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
-import { Icon } from './Icon'
+import { Icon, type IconName } from './Icon'
 
 /**
  * Sidans enda huvudknapp. Med musen över byter texten till en kort
@@ -11,16 +11,19 @@ import { Icon } from './Icon'
  * Efter ett klick visas knappens riktiga text igen tills musen lämnat den:
  * vinnarfrasen ("Klart!") får aldrig se ut som ett svar på ett sparande
  * som misslyckades.
+ * Knappar som lägger till något visar ett plus (icon="plus") som snurrar ett
+ * kvarts varv i stället för att flyga; planet hör till det som skickas.
  */
 export function CtaButton({
   label,
   win = 'Kör!',
+  icon = 'send',
   className = '',
   onPointerEnter,
   onPointerLeave,
   onClick,
   ...rest
-}: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & { label: ReactNode; win?: string }) {
+}: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & { label: ReactNode; win?: string; icon?: IconName }) {
   const [flying, setFlying] = useState(false)
   const [clicked, setClicked] = useState(false)
   const stopping = useRef(false)
@@ -28,7 +31,7 @@ export function CtaButton({
     <button
       type="button"
       {...rest}
-      className={`btn primary cta${flying ? ' is-flying' : ''}${clicked ? ' is-clicked' : ''} ${className}`.trim()}
+      className={`btn primary cta${icon === 'send' ? '' : ' cta-turn'}${flying ? ' is-flying' : ''}${clicked ? ' is-clicked' : ''} ${className}`.trim()}
       onClick={(e) => {
         setClicked(true)
         onClick?.(e)
@@ -53,7 +56,7 @@ export function CtaButton({
             if (stopping.current) setFlying(false)
           }}
         >
-          <Icon name="send" size={16} />
+          <Icon name={icon} size={16} />
         </span>
       </span>
       <span className="cta-label">

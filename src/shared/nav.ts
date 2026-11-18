@@ -25,6 +25,8 @@ export type NavItem = {
   browserOnly?: boolean
   /** Bara på telefon och surfplatta i webbläsaren (inte redan installerad). */
   phoneOnly?: boolean
+  /** Fler sökord i Cmd K, t.ex. ett gammalt namn på sidan. */
+  keywords?: string
 }
 
 export type NavGroup = { id: string; label: string | null; items: NavItem[] }
@@ -69,9 +71,8 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'tillvaxt',
     label: 'Tillväxt',
     items: [
-      { to: '/gaster', label: 'Gäster', icon: 'users', tour: 'nav-gaster', feature: 'guestCrm', area: 'gaster' },
+      { to: '/kunder', label: 'Kunder', icon: 'users', tour: 'nav-kunder', feature: 'guestCrm', area: 'gaster', keywords: 'gäster gästregister stamgäster' },
       { to: '/presentkort', label: 'Presentkort', icon: 'gift', tour: 'nav-presentkort', feature: 'giftCards', area: 'presentkort' },
-      { to: '/webbplats', label: 'Webbplats', icon: 'globe', tour: 'nav-webbplats', feature: 'siteBuilder', area: 'webbplats' },
       // Biljetter till kvällar och middagar; personalen scannar vid dörren, ägaren redigerar.
       { to: '/evenemang', label: 'Evenemang', icon: 'ticket', tour: 'nav-evenemang', feature: 'events', area: 'evenemang' },
       // Utskick, annonser, omdömen och inlägg, när minst en av dem ingår i planen.

@@ -119,8 +119,8 @@ describe('BottomNav on phones', () => {
   // (a) Inget tappas och inget dyker upp: raden + arket = sidomenyn.
   const cases: [string, Record<string, boolean>, { role?: string; insights?: string; locations?: unknown[] }][] = [
     ['owner, minimal plan', {}, {}],
-    ['owner, full plan', { ordering: true, catering: true, personalliggare: true, phoneAgent: true, guestCrm: true, giftCards: true, siteBuilder: true, events: true, marketing: true }, {}],
-    ['staff, full plan', { ordering: true, catering: true, personalliggare: true, phoneAgent: true, guestCrm: true, giftCards: true, siteBuilder: true, events: true, metaAds: true }, { role: 'staff_user' }],
+    ['owner, full plan', { ordering: true, catering: true, personalliggare: true, phoneAgent: true, guestCrm: true, giftCards: true, events: true, marketing: true }, {}],
+    ['staff, full plan', { ordering: true, catering: true, personalliggare: true, phoneAgent: true, guestCrm: true, giftCards: true, events: true, metaAds: true }, { role: 'staff_user' }],
     ['staff without insights', { ordering: true }, { role: 'staff_user', insights: 'none' }],
     ['owner, two locations', { catering: true }, { locations: TWO }],
   ]
@@ -138,11 +138,11 @@ describe('BottomNav on phones', () => {
   }
 
   it('shows staff no owner pages in the sheet', () => {
-    setTenant({ guestCrm: true, giftCards: true, siteBuilder: true, marketing: true }, { role: 'staff_user' })
+    setTenant({ guestCrm: true, giftCards: true, marketing: true }, { role: 'staff_user' })
     renderAt()
     const labels = sheetPageLabels()
-    for (const l of ['Personal', 'Presentkort', 'Webbplats', 'Marknadsföring']) expect(labels).not.toContain(l)
-    expect(labels).toContain('Gäster')
+    for (const l of ['Personal', 'Presentkort', 'Marknadsföring']) expect(labels).not.toContain(l)
+    expect(labels).toContain('Kunder')
   })
 
   // (f) Fjärde platsen

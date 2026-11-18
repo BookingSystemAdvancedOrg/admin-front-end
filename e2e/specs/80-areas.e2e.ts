@@ -9,8 +9,8 @@ import { adminLogin } from '../lib/login'
 const PAGES: [string, RegExp][] = [
   ['/', /Översikt/], ['/statistik', /Statistik/], ['/bokningar', /Bokningar/], ['/bestallningar', /Beställningar/],
   ['/catering', /Catering/], ['/personalliggare', /Personalliggare/], ['/telefon', /Telefon/], ['/meny', /Meny/],
-  ['/layout', /Layout/], ['/personal', /Personal/], ['/gaster', /Gäster/], ['/presentkort', /Presentkort/],
-  ['/webbplats', /Webbplats/], ['/evenemang', /Evenemang/], ['/marknadsforing', /Marknadsföring/],
+  ['/layout', /Layout/], ['/personal', /Personal/], ['/kunder', /Kunder/], ['/presentkort', /Presentkort/],
+  ['/evenemang', /Evenemang/], ['/marknadsforing', /Marknadsföring/],
   ['/installningar', /Inställningar/], ['/hjalp', /Hjälp/], ['/avtal', /Avtal/],
 ]
 
@@ -150,11 +150,11 @@ test.describe('Admin: help assistant, marketing, catering, phone', () => {
     await page.goto('/')
     await ready(page, 'Översikt')
     const ask = async (q: string) => {
-      if (!(await page.locator('.help-panel').isVisible())) await page.getByRole('button', { name: 'Fråga Booqy' }).click()
+      if (!(await page.locator('.help-panel').isVisible())) await page.getByRole('button', { name: 'Fråga Booqy' }).dispatchEvent('click') // the button steps aside while a control sits under it (dodge.ts)
       await page.locator('.help-input').fill(q)
       await page.locator('.help-input').press('Enter')
       await page.waitForTimeout(10000) // the answer may move to the right page and highlight it
-      if (!(await page.locator('.help-panel').isVisible())) await page.getByRole('button', { name: 'Fråga Booqy' }).click()
+      if (!(await page.locator('.help-panel').isVisible())) await page.getByRole('button', { name: 'Fråga Booqy' }).dispatchEvent('click') // the button steps aside while a control sits under it (dodge.ts)
       const log = (await page.locator('.help-log').innerText()).replace(/\s+/g, ' ')
       const a = log.slice(log.lastIndexOf(q) + q.length, log.lastIndexOf(q) + q.length + 260)
       info.annotations.push({ type: q, description: `${a} [page: ${new URL(page.url()).pathname}]` })
@@ -187,7 +187,7 @@ test.describe('Admin: session', () => {
     const ctx = await browser.newContext({ baseURL: test.info().project.use.baseURL, storageState: { cookies: [], origins: [] } })
     const page = await ctx.newPage()
     await adminLogin(page)
-    if (!(await page.getByRole('button', { name: 'Logga ut' }).isVisible())) await page.getByRole('button', { name: /meny|Öppna menyn|Menu/i }).first().click()
+    if (!(await page.getByRole('button', { name: 'Logga ut' }).isVisible())) await page.getByRole('button', { name: /meny|Öppna menyn|Menu|^Mer$/i }).first().click()
     await page.getByRole('button', { name: 'Logga ut' }).click()
     const confirm = page.getByRole('alertdialog').getByRole('button', { name: 'Ja, logga ut' })
     if (await confirm.isVisible({ timeout: 3000 }).catch(() => false)) await confirm.click()

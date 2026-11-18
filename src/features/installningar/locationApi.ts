@@ -70,10 +70,8 @@ export interface GuaranteePolicy {
 /** Matbeställning (backend shared/orders.py). */
 export interface OrderingPolicy {
   enabled: boolean
-  /** Beställ online, hämta på restaurangen. */
+  /** Beställ online, hämta på restaurangen (det enda sättet; beställning vid bordet är borttagen). */
   pickup: boolean
-  /** Beställ via QR-koden på bordet, serveras vid bordet. */
-  table: boolean
   /** Beräknad tillagningstid som gästen ser (5-180 min). */
   prepMinutes: number
   /** Sista beställning så här många minuter före stängning (0-120). */

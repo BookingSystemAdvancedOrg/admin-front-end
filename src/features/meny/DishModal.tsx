@@ -4,7 +4,9 @@ import type { ChangeEvent } from 'react'
 import { ALLERGENS, ALLERGEN_LABEL, categoryName } from './data'
 import type { Allergen, Dish, DishCategory, DishComponent, MenuCategoryEntry, OptionGroup } from './data'
 import { getRouting, NO_TICKET } from '../bestallningar/printApi'
-import type { Station } from '../bestallningar/printApi'
+import type { TicketRouting } from '../bestallningar/printApi'
+import { SendTo, TicketPreview } from '../printers/SendTo'
+import { categoryStation, dishStation, stationLabel, stationPrinters } from '../printers/kinds'
 import { parsePrice, validateDishName } from './menuApi'
 import { ChangedNote } from '../../shared/ChangedNote'
 import { serverChanges } from '../../shared/merge'
@@ -31,7 +33,7 @@ export interface DishFormValues {
   category: DishCategory
   price: number
   active: boolean
-  /** Innehåller alkohol - 25 % moms, kan bara beställas vid bordet. */
+  /** Innehåller alkohol - 25 % moms, kan inte beställas online. */
   alcohol: boolean
   /**
    * Nyvald bildfil att ladda upp till S3, eller null när bilden inte bytts.
@@ -133,7 +135,8 @@ export function DishModal({
   const [scheduleOn, setScheduleOn] = useState(Boolean(initialFrom || initialUntil))
   const [station, setStation] = useState<string>(initial?.station ?? '')
   const [parts, setParts] = useState<DishComponent[]>(initial?.components ?? [])
-  const [stations, setStations] = useState<Station[]>([])
+  const [routing, setRouting] = useState<TicketRouting | null>(null)
+  const stations = routing?.stations ?? []
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -141,7 +144,7 @@ export function DishModal({
   useEffect(() => {
     if (!locationId) return
     let cancelled = false
-    getRouting(locationId).then((r) => !cancelled && setStations(r.stations)).catch(() => undefined)
+    getRouting(locationId).then((r) => !cancelled && setRouting(r)).catch(() => undefined)
     return () => {
       cancelled = true
     }
@@ -451,7 +454,7 @@ export function DishModal({
         <div className="toggle-row">
           <span className="toggle-row-label">
             Innehåller alkohol
-            <InfoTooltip label="Alkohol">25 % moms. Kan bara beställas vid bordet.</InfoTooltip>
+            <InfoTooltip label="Alkohol">25 % moms. Kan inte beställas online.</InfoTooltip>
           </span>
           <button
             type="button"
@@ -466,20 +469,27 @@ export function DishModal({
         <fieldset className="dish-ticket">
           <legend>
             Bong
-            <InfoTooltip label="Meny eller combo">
-              En meny eller combo delas upp: varje del får sin egen bong, till exempel burgare och pommes till köket och drycken till baren.
+            <InfoTooltip label="Bong">
+              Skickas till: vilken skrivare bongen hamnar på. Mat går till Kök, dryck till Dryck. En meny eller combo delas upp: varje del får sin egen bong, till exempel burgare till Kök och drycken till Dryck.
             </InfoTooltip>
           </legend>
-          <div className="form-field">
-            <label htmlFor="dish-station">Vart går rätten?</label>
-            <Select id="dish-station" value={station} onChange={(e) => setStation(e.target.value)}>
-              <option value="">Som kategorin {categoryName(categories, category).toLowerCase()}</option>
-              {stations.map((s) => (
-                <option key={s.stationId} value={s.stationId}>{s.name}</option>
-              ))}
-              <option value={NO_TICKET}>Ingen bong</option>
-            </Select>
-          </div>
+          {routing ? (
+            <div className="form-field dish-sendto">
+              <span className="pset-field-label" id="dish-station-label">Skickas till</span>
+              <SendTo label="Skickas till" stations={stations} value={station} onChange={setStation}
+                inherit={{
+                  text: `Som ${categoryName(categories, category).toLowerCase()}`,
+                  resolves: alcohol && !routing.categories[category] && stations.some((s) => s.stationId === 'bar')
+                    ? 'bar'
+                    : categoryStation(routing, category, categoryName(categories, category)),
+                }} />
+              {(() => {
+                const sid = dishStation(routing, station || null, category, alcohol, categoryName(categories, category))
+                const target = stations.find((s) => s.stationId === sid) ?? null
+                return <TicketPreview station={target} printers={target ? stationPrinters(target) : []} />
+              })()}
+            </div>
+          ) : null}
           {parts.map((part, i) => (
             <div key={i} className="dish-part">
               <div className="form-field">
@@ -493,7 +503,7 @@ export function DishModal({
                   onChange={(e) => setParts((prev) => prev.map((p, j) => (j === i ? { ...p, station: e.target.value || null } : p)))}>
                   <option value="">Som rätten</option>
                   {stations.map((s) => (
-                    <option key={s.stationId} value={s.stationId}>{s.name}</option>
+                    <option key={s.stationId} value={s.stationId}>{stationLabel(s)}</option>
                   ))}
                   <option value={NO_TICKET}>Ingen bong</option>
                 </Select>

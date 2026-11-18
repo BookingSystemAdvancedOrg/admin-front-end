@@ -23,14 +23,14 @@ export function SetupStepItem({ step, askOn, onSkip, busy = false }: {
     <div className="activity-item setup-step">
       <div className="setup-step__row">
         <Link to={step.to} className="setup-step__link">
-          <span className="activity-text">
-            <span className={`setup-check ${step.state === 'done' ? 'done' : step.later ? 'later' : ''}`} aria-hidden="true">
-              {step.state === 'done' ? <Icon name="check" size={14} /> : step.done === null ? '?' : ''}
-            </span>
-            <span className="setup-step__label">{step.label}</span>
+          <span className={`setup-check ${step.state === 'done' ? 'done' : step.later ? 'later' : ''}`} aria-hidden="true">
+            {step.state === 'done' ? <Icon name="check" size={14} /> : step.done === null ? '?' : ''}
           </span>
-          <span className={`activity-time${step.later ? ' setup-later' : ''}`}>
-            {step.state === 'done' ? 'Klart' : step.later ?? (step.done === null ? 'Kunde inte kontrolleras' : 'Att göra')}
+          <span className="setup-step__text">
+            <span className="activity-text setup-step__label">{step.label}</span>
+            <span className={`activity-time setup-status ${step.state === 'done' ? 'is-done' : step.later ? 'setup-later' : step.done === null ? 'is-unknown' : 'is-todo'}`}>
+              {step.state === 'done' ? 'Klart' : step.later ?? (step.done === null ? 'Kunde inte kontrolleras' : 'Att göra')}
+            </span>
           </span>
         </Link>
         {canSkip || canUndo ? (

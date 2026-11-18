@@ -87,7 +87,7 @@ export function BottomNav({
 
   const quick: QuickAction[] = [
     ...(helpChatEnabled()
-      ? [{ id: 'ask', label: 'Fråga Booqy', icon: 'help' as const, run: () => after(openHelpChat) }]
+      ? [{ id: 'ask', label: 'Fråga Booqy', icon: 'help' as const, run: () => after(() => openHelpChat()) }]
       : []),
     { id: 'search', label: 'Sök', icon: 'search', run: () => after(openPalette) },
     { id: 'guide', label: 'Guiden', icon: 'book', run: () => after(guide.start) },

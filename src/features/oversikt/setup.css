@@ -1,13 +1,51 @@
-/* Översikt, Kom igång: delstegen under en rad (telefonassistentens fem steg). */
+/* Översikt, Kom igång: raden är en länk till steget, ? bredvid frågar Booqy om steget. */
+.setup-step__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.setup-step__link {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
 .setup-step__label {
-  display: grid;
-  gap: 6px;
   min-width: 0;
 }
+.setup-ask {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: -6px -6px 0 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: default;
+  transition: background-color 140ms var(--ease), color 140ms var(--ease);
+}
+.setup-ask:hover {
+  background: var(--hairline);
+  color: var(--ink);
+}
+.setup-ask:focus-visible,
+.setup-sub__ask:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+/* Delstegen under raden (telefonassistentens fem steg): tryck för att fråga om delsteget. */
 .setup-sub {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 6px;
+  gap: 6px;
+  margin: 6px 0 0 30px;
 }
 .setup-sub__item {
   display: inline-flex;
@@ -26,6 +64,24 @@
 }
 .setup-sub__item.done svg {
   color: var(--green);
+}
+.setup-sub__ask {
+  min-height: 28px;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  cursor: default;
+  transition: border-color 140ms var(--ease), color 140ms var(--ease);
+}
+.setup-sub__ask:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.setup-sub__item .setup-sub__q,
+.setup-sub__item.done .setup-sub__q {
+  margin-left: 2px;
+  color: var(--muted);
+  opacity: 0.8;
 }
 
 /* Ett steg ägaren lagt åt sidan ("Inga skrivare än"): öppet men gult. */

@@ -5,7 +5,7 @@ import type { Reservation } from '../bokningar/bookingsApi'
 import type { Order } from '../bestallningar/ordersApi'
 import type { RequestSummary } from '../catering/cateringApi'
 import type { PrintStatus } from '../bestallningar/printApi'
-import { STEPS, firstOpen, type Progress } from '../phone-agent/setup'
+import { STEPS, firstOpen, type Progress, type Step } from '../phone-agent/setup'
 import { SETUP } from '../phone-agent/api'
 
 /**
@@ -56,7 +56,7 @@ export interface SetupStep {
   later?: string
   to: string
   /** Delstegen (telefonassistentens fem steg), visas under raden. */
-  sub?: { label: string; done: boolean }[]
+  sub?: { id: Step; label: string; done: boolean }[]
 }
 
 /**
@@ -70,7 +70,7 @@ export function phoneSetupStep(progress: Progress | null): SetupStep {
     label: 'Telefonassistent',
     done: progress ? next === null : null,
     to: `/telefon?flik=installningar${next ? `&steg=${next}` : ''}`,
-    sub: progress ? STEPS.map((s, i) => ({ label: SETUP.STEP_LABEL[i], done: progress[s] })) : undefined,
+    sub: progress ? STEPS.map((s, i) => ({ id: s, label: SETUP.STEP_LABEL[i], done: progress[s] })) : undefined,
   }
 }
 

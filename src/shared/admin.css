@@ -1407,7 +1407,7 @@ dialog.modal-layer::backdrop {
   text-decoration: none;
 }
 
-.setup-step:hover .activity-text {
+.setup-step__link:hover .activity-text {
   text-decoration: underline;
   text-underline-offset: 3px;
 }

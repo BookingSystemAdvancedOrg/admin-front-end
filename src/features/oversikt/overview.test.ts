@@ -136,8 +136,8 @@ describe('Telefonassistent in Kom igång', () => {
     expect(step.done).toBe(false)
     expect(step.to).toBe('/telefon?flik=installningar&steg=nummer')
     expect(step.sub).toEqual([
-      { label: 'Namn', done: true }, { label: 'Tider', done: true }, { label: 'Booqy-nummer', done: false },
-      { label: 'Vidarekoppling', done: false }, { label: 'Provsamtal', done: false },
+      { id: 'namn', label: 'Namn', done: true }, { id: 'tider', label: 'Tider', done: true }, { id: 'nummer', label: 'Booqy-nummer', done: false },
+      { id: 'koppla', label: 'Vidarekoppling', done: false }, { id: 'prova', label: 'Provsamtal', done: false },
     ])
   })
 

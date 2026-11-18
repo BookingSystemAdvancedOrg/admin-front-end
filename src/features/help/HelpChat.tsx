@@ -14,7 +14,8 @@ import { spotlight } from './spotlight'
 import { useDodge, useHideOnScroll } from './dodge'
 import { usePhoneNav } from '../../shared/dock'
 import type { HelpTurn } from './helpApi'
-import { OPEN_EVENT, helpChatEnabled, setHelpChatEnabled } from './chatState'
+import { OPEN_EVENT, helpChatEnabled, setHelpChatEnabled, withContext } from './chatState'
+import type { HelpContext } from './chatState'
 import { KB, actionAllowed, actionHref, entryVisible, viewOf } from './kb'
 import type { HelpAction, HelpAnswer } from './kb'
 import './helpChat.css'
@@ -27,10 +28,12 @@ import './helpChat.css'
  * skickar. Samtalet finns bara i fliken och försvinner vid utloggning.
  *
  * Öppnas med knappen nere till höger eller från ⌘K ("Fråga hjälpassistenten").
+ * Från ? vid ett steg i Kom igång öppnas den med steget som sammanhang:
+ * stegets frågor föreslås och stegets namn följer med varje fråga.
  */
 
 type Message =
-  | { id: number; role: 'user'; text: string }
+  | { id: number; role: 'user'; text: string; sent: string }
   | { id: number; role: 'assistant'; answer: HelpAnswer }
   | { id: number; role: 'notice'; text: string; info?: ErrorInfo; retry?: string }
 
@@ -45,6 +48,9 @@ export function HelpChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [draft, setDraft] = useState('')
   const [waiting, setWaiting] = useState(false)
+  // Steget man frågar om (Kom igång), och om dess förslag redan använts.
+  const [context, setContext] = useState<HelpContext | null>(null)
+  const [contextAsked, setContextAsked] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const launcherRef = useRef<HTMLButtonElement>(null)
   // Telefon: ingen flytande knapp, Fråga Booqy ligger under Mer i menyn längst ner.
@@ -71,8 +77,13 @@ export function HelpChat() {
     }
   }, [status])
 
-  const show = useCallback(() => {
+  const show = useCallback((e?: Event) => {
     if (!helpChatEnabled()) return
+    const next = e instanceof CustomEvent ? (e.detail as HelpContext | undefined) : undefined
+    if (next) {
+      setContext(next)
+      setContextAsked(false)
+    }
     // Safari fokuserar inte knappar vid klick: då är det <body>, inget att gå tillbaka till.
     const from = document.activeElement
     returnTo.current = from instanceof HTMLElement && from !== document.body ? from : null
@@ -100,24 +111,26 @@ export function HelpChat() {
 
   useEffect(() => {
     if (open) inputRef.current?.focus()
-  }, [open])
+  }, [open, context])
 
   useEffect(() => {
     const log = logRef.current
     if (log) log.scrollTop = log.scrollHeight
-  }, [messages, waiting])
+  }, [messages, waiting, context])
 
   const ask = async (question: string) => {
     const text = question.trim()
     if (!text || waiting) return
+    const sent = withContext(text, context)
     const history: HelpTurn[] = messages.flatMap((m): HelpTurn[] =>
-      m.role === 'user' ? [{ role: 'user', text: m.text }] : m.role === 'assistant' ? [{ role: 'assistant', text: m.answer.text }] : [],
+      m.role === 'user' ? [{ role: 'user', text: m.sent }] : m.role === 'assistant' ? [{ role: 'assistant', text: m.answer.text }] : [],
     )
-    setMessages((ms) => [...ms, { id: nextId++, role: 'user', text }])
+    setMessages((ms) => [...ms, { id: nextId++, role: 'user', text, sent }])
     setDraft('')
+    setContextAsked(true)
     setWaiting(true)
     try {
-      let answer = await askHelp(text, history, viewOf(tenant))
+      let answer = await askHelp(sent, history, viewOf(tenant))
       if (answer.live) answer = await withLive(answer)
       setMessages((ms) => [...ms, { id: nextId++, role: 'assistant', answer }])
       // En levande siffra visas också där den står (Statistik), upplyst.
@@ -148,9 +161,14 @@ export function HelpChat() {
     }
   }
 
+  const restart = () => {
+    setMessages([])
+    setContext(null)
+  }
+
   const turnOff = () => {
     setHelpChatEnabled(false)
-    setMessages([])
+    restart()
     close()
     setEnabled(false)
   }
@@ -214,6 +232,7 @@ export function HelpChat() {
     .filter((e) => e.suggestion && entryVisible(e, view))
     .slice(0, 3)
     .map((e) => e.suggestion as string)
+  const contextQuestions = context && !contextAsked ? context.questions.slice(0, 3) : []
   const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant')?.id
 
   return (
@@ -226,7 +245,7 @@ export function HelpChat() {
           aria-label="Fråga Booqy"
           aria-expanded={false}
           aria-controls={panelId}
-          onClick={show}
+          onClick={() => show()}
         >
           <Icon name="help" size={18} />
           <span className="help-launcher-text" aria-hidden="true">Fråga Booqy</span>
@@ -256,7 +275,7 @@ export function HelpChat() {
             </div>
             <div className="help-head-actions">
               {messages.length > 0 && (
-                <button type="button" className="help-icon-btn" onClick={() => setMessages([])} aria-label="Börja om">
+                <button type="button" className="help-icon-btn" onClick={restart} aria-label="Börja om">
                   <Icon name="undo" size={16} />
                 </button>
               )}
@@ -266,8 +285,24 @@ export function HelpChat() {
             </div>
           </header>
 
+          {context && (
+            <div className="help-context">
+              <span className="help-context__pill" data-help-context={context.key}>
+                <span className="help-context__label">{context.label}</span>
+                <button
+                  type="button"
+                  className="help-context__clear"
+                  onClick={() => setContext(null)}
+                  aria-label={`Sluta fråga om ${context.label}`}
+                >
+                  <Icon name="close" size={12} />
+                </button>
+              </span>
+            </div>
+          )}
+
           <ol className="help-log" ref={logRef} aria-live="polite" aria-label="Samtal">
-            {messages.length === 0 && (
+            {messages.length === 0 && !context && (
               <li className="help-empty">
                 <p>Fråga hur något fungerar.</p>
                 {suggestions.length > 0 && (
@@ -312,6 +347,17 @@ export function HelpChat() {
                   />
                 </li>
               ),
+            )}
+            {contextQuestions.length > 0 && (
+              <li className="help-empty help-context-ask">
+                <div className="help-suggestions">
+                  {contextQuestions.map((s) => (
+                    <button key={s} type="button" className="help-chip" onClick={() => void ask(s)}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </li>
             )}
             {waiting && (
               <li className="help-msg help-msg--bot help-msg--waiting">

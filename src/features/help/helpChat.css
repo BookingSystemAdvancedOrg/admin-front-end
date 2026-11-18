@@ -360,3 +360,57 @@
     transition: none;
   }
 }
+
+/* Steget man frågar om (från ? i Kom igång): en etikett under rubriken. */
+.help-context {
+  display: flex;
+  flex-shrink: 0;
+  padding: var(--space-3) var(--space-5) var(--space-2);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.help-context__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  min-height: 28px;
+  padding: 0 var(--space-1) 0 var(--space-3);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-pill);
+  font: var(--fw-medium, 500) var(--fs-sm) / 1.3 var(--font);
+  color: var(--ink);
+}
+
+.help-context__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.help-context__clear {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--muted);
+  cursor: default;
+}
+
+.help-context__clear:hover {
+  background: var(--hairline);
+  color: var(--ink);
+}
+
+.help-context__clear:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.help-context-ask {
+  align-self: stretch;
+}

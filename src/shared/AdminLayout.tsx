@@ -380,7 +380,7 @@ function ShellPalette({ onLogout }: { onLogout: () => void }) {
       { id: 'a-look', group: 'Åtgärder', label: 'Utseende och ljud', hint: 'Inställningar', icon: 'gear', keywords: 'mörkt ljust tema klickljud', run: () => navigate('/installningar#utseende') },
       { id: 'a-guide', group: 'Åtgärder', label: 'Starta guiden', icon: 'help', keywords: 'hjälp introduktion', run: start },
       ...(helpChatEnabled()
-        ? [{ id: 'a-ask', group: 'Åtgärder' as const, label: 'Fråga hjälpassistenten', icon: 'help' as const, keywords: 'chatt fråga hur gör jag assistent', run: openHelpChat }]
+        ? [{ id: 'a-ask', group: 'Åtgärder' as const, label: 'Fråga hjälpassistenten', icon: 'help' as const, keywords: 'chatt fråga hur gör jag assistent', run: () => openHelpChat() }]
         : []),
       { id: 'a-logout', group: 'Åtgärder', label: 'Logga ut', icon: 'logout', run: onLogout },
     ]

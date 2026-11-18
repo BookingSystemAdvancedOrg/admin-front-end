@@ -55,6 +55,8 @@ import { getLocation as getPhoneLocation, getOverview as getPhoneOverview } from
 import { progress as phoneProgress, type Progress } from '../phone-agent/setup'
 import { getConnection as getGoogleConnection, getLocationView as getGoogleView, googleDone } from '../google-business/api'
 import './setup.css'
+import { useHelpChatEnabled } from '../help/chatState'
+import { SetupStepItem } from './SetupStepItem'
 
 // Genvägskorten längst ned som länkar till de andra sidorna. Ägaren får
 // Statistik i stället för "Se alla bokningar" (dagens bokningar har redan
@@ -130,6 +132,8 @@ export default function OversiktPage() {
   const location = currentLocation(tenantState)
   const { labels } = useTables(locationId)
   const isOwner = tenant?.role === 'owner_user'
+  // Fråga Booqy om ett steg: bara när assistenten är på för restaurangen.
+  const askOn = useHelpChatEnabled()
   // Kommer man hit direkt efter att ha godkänt avtalet (AvtalPage) står en kvittens överst.
   const { state: navState, pathname: here } = useLocation()
   const navigate = useNavigate()
@@ -246,31 +250,7 @@ export default function OversiktPage() {
   const setupIncomplete = isOwner && !loading && steps.some((s) => s.done !== true)
   const setupComplete = isOwner && !loading && steps.every((s) => s.done === true)
 
-  const stepItem = (step: (typeof steps)[number]) => (
-    <Link key={step.id} to={step.to} className="activity-item setup-step">
-      <span className="activity-text">
-        <span className={`setup-check ${step.done ? 'done' : step.later ? 'later' : ''}`} aria-hidden="true">
-          {step.done ? <Icon name="check" size={14} /> : step.done === null ? '?' : ''}
-        </span>
-        <span className="setup-step__label">
-          {step.label}
-          {step.sub ? (
-            <span className="setup-sub" aria-label={`${step.sub.filter((x) => x.done).length} av ${step.sub.length} delsteg klara`}>
-              {step.sub.map((x) => (
-                <span key={x.label} className={`setup-sub__item${x.done ? ' done' : ''}`}>
-                  {x.done ? <Icon name="check" size={12} /> : null}
-                  {x.label}
-                </span>
-              ))}
-            </span>
-          ) : null}
-        </span>
-      </span>
-      <span className={`activity-time${step.later && !step.done ? ' setup-later' : ''}`}>
-        {step.done ? 'Klart' : step.done === null ? 'Kunde inte kontrolleras' : step.later ?? 'Att göra'}
-      </span>
-    </Link>
-  )
+  const stepItem = (step: (typeof steps)[number]) => <SetupStepItem key={step.id} step={step} askOn={askOn} />
   const setupList = steps.map(stepItem)
   // Medan något är kvar visas bara det som är kvar, så att dagens bokningar inte trycks ned.
   const pendingList = steps.filter((s) => s.done !== true).map(stepItem)

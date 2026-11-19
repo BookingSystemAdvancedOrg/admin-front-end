@@ -63,7 +63,7 @@ export default function CallDetail({ locationId, callId, owner }: { locationId: 
             <dt>AI-upplysning</dt>
             <dd>
               {call.disclosure.playedAt ? <>Spelades upp <span className="telefon-nowrap">{when(call.disclosure.playedAt)}</span></> : 'Sades i hälsningen'}
-              {call.disclosure.repeats ? `, upprepad ${call.disclosure.repeats} gång${call.disclosure.repeats > 1 ? 'er' : ''}` : ''}
+              {call.disclosure.repeats ? <>, <span className="telefon-nowrap">upprepad {call.disclosure.repeats} gång{call.disclosure.repeats > 1 ? 'er' : ''}</span></> : null}
             </dd>
           </dl>
           {owner && call.recordingUrl ? (

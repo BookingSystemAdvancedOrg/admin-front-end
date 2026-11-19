@@ -168,6 +168,11 @@
   display: grid;
   gap: var(--bq-space-3);
 }
+/* Arabisk skrift ser mindre ut än latinsk i samma storlek: lite större och luftigare. */
+.telefon-turn > span[lang]:is(:lang(ar), :lang(fa), :lang(ur)) {
+  font-size: 1.15em;
+  line-height: 1.7;
+}
 .telefon-turn__lang {
   font-style: italic;
 }
@@ -214,7 +219,24 @@
   min-width: 0;
   color: var(--bq-muted);
   text-align: right;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+}
+/* Numret bryts aldrig mitt i ("+46 10 000 00" och "01" på var sin rad). */
+.telefon-checklist__value .telefon-mono {
+  white-space: nowrap;
+}
+/* Smalt kort (telefon, iPad mini stående): värdet under namnet i stället för bredvid. */
+.telefon-checklist {
+  container-type: inline-size;
+}
+@container (max-width: 399px) {
+  .telefon-checklist__row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .telefon-checklist__value {
+    grid-column: 2;
+    text-align: left;
+  }
 }
 .telefon-big {
   min-height: 52px;
@@ -430,13 +452,6 @@
   }
   .telefon-foot > span:empty {
     display: none;
-  }
-  .telefon-checklist__row {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-  .telefon-checklist__value {
-    grid-column: 2;
-    text-align: left;
   }
 }
 
@@ -682,11 +697,19 @@
   font-variant-numeric: tabular-nums;
 }
 .telefon-calls__summary {
-  min-width: 12em;
-  overflow-wrap: anywhere;
+  min-width: 16em;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
+/* Utfallet: brickan och tillägget ("Erbjöd annan tid") hålls ihop var för sig,
+   tillägget hamnar helt under brickan i stället för att lämna ett ord ensamt. */
 .telefon-calls__outcome .status-badge {
   white-space: nowrap;
+}
+.telefon-calls__outcome .cell-muted {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
 @container (max-width: 639px) {
   .telefon-calls.data-table,
@@ -749,5 +772,25 @@
   }
   .telefon-calls__summary:empty {
     display: none !important;
+  }
+}
+
+/* --- Surfplatta och telefon med pekskärm: minst 44 px att trycka på ------------------ */
+@media (pointer: coarse), (any-pointer: coarse) {
+  .telefon-section .bq-bar__item,
+  .telefon-transcript__head .bq-bar__item,
+  [id^='telefon-panel-'] .bq-btn,
+  [id^='telefon-panel-'] .btn,
+  .bq-bar--banner:has(+ .telefon-section) .bq-btn {
+    min-height: 44px;
+  }
+  [id^='telefon-panel-'] .info-tooltip .info-tooltip-trigger,
+  .telefon-transcript__head .info-tooltip .info-tooltip-trigger {
+    box-sizing: content-box;
+    width: 22px;
+    height: 22px;
+    margin: -11px;
+    border: 11px solid transparent;
+    background-clip: padding-box;
   }
 }

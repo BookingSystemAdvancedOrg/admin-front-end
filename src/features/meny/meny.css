@@ -239,6 +239,44 @@
   min-width: 0;
 }
 
+/* Listan ryms alltid i kortets bredd (se ovan), så den behöver ingen egen
+   rullning: då kan "…"-menyn sväva ovanför raderna utan att klippas. */
+.meny-scroll.table-scroll {
+  overflow: visible;
+}
+
+/* "…"-menyn svävar under knappen, vid högerkanten. Den ligger aldrig i
+   radens flöde (det tryckte isär kortet och gjorde raden tre gånger högre). */
+.meny-table .row-menu {
+  position: relative;
+}
+
+.meny-table .row-menu-list {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 30;
+  background: var(--glass-modal, var(--glass-surface));
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  backdrop-filter: blur(28px) saturate(1.4);
+  box-shadow: var(--liquid-edge), var(--elev-2, 0 8px 24px rgb(0 0 0 / 0.18));
+}
+
+/* Dela (en Button) står i linje med Redigera och Radera */
+.meny-table .row-menu-list > * {
+  justify-content: flex-start;
+  width: 100%;
+  text-align: left;
+}
+
+/* Långa kategorinamn bryts mellan orden i stället för att göra tabellen
+   bredare än kortet (Åtgärder hamnade utanför, priset klipptes). */
+.meny-table td .status-badge {
+  white-space: normal;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
 /* Redigera, Radera och Dela på en rad, vid högerkanten under Åtgärder */
 .meny-table .row-actions.row-actions--inline {
   flex-wrap: nowrap;

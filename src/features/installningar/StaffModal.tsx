@@ -20,6 +20,7 @@ import { personSource, togglePerson } from '../../shared/access'
 import type { StaffAccessConfig, StaffAccessPerson } from '../../shared/access'
 import type { Tenant } from '../../shared/tenant'
 import { useDirtyForm } from '../../shared/dirtyForm'
+import './staffModal.css'
 
 export interface StaffFormValues {
   name: string
@@ -160,7 +161,7 @@ export function StaffModal({
     >
       <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
         <h2>{title}</h2>
-        <form onSubmit={handleSubmit}>
+        <form className="staff-form" onSubmit={handleSubmit}>
           <div className="form-field">
             <label htmlFor="staff-name">Namn</label>
             <input
@@ -187,7 +188,7 @@ export function StaffModal({
             <PhoneInput id="staff-phone" value={phone} onChange={setPhone} />
           </div>
 
-          <div className="form-grid">
+          <div className="staff-form-pair">
             <div className="form-field">
               <label htmlFor="staff-role">Roll</label>
               <Select
@@ -214,6 +215,7 @@ export function StaffModal({
                 <Select
                   id="staff-location"
                   value={locationId}
+                  title={locations.find((l) => l.locationId === locationId)?.name}
                   disabled={locations.length === 0}
                   onChange={(e) => setLocationId(e.target.value)}
                 >

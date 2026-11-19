@@ -10,6 +10,34 @@
   min-width: 0;
 }
 
+/* Listan ryms alltid i kortets bredd, så den behöver ingen egen rullning:
+   då kan "…"-menyn sväva ovanför raderna utan att klippas. */
+.personal-scroll.table-scroll {
+  overflow: visible;
+}
+
+/* "…"-menyn svävar under knappen, vid högerkanten, utanför radens flöde. */
+.personal-table .row-menu {
+  position: relative;
+}
+
+.personal-table .row-menu-list {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 30;
+  background: var(--glass-modal, var(--glass-surface));
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  backdrop-filter: blur(28px) saturate(1.4);
+  box-shadow: var(--liquid-edge), var(--elev-2, 0 8px 24px rgb(0 0 0 / 0.18));
+}
+
+.personal-table .row-menu-list > * {
+  justify-content: flex-start;
+  width: 100%;
+  text-align: left;
+}
+
 /* Redigera, Inaktivera och Ta bort på en rad, vid högerkanten under Åtgärder */
 .personal-table .row-actions.row-actions--inline {
   flex-wrap: nowrap;

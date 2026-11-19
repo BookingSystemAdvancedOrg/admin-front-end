@@ -18,6 +18,7 @@ const api = {
 vi.mock('../table-order/tableOrderApi', () => ({
   TAB_POLL_MS: 5000,
   newRequestId: () => 'r'.repeat(32),
+  pollVersion: (v: number | undefined) => v,
   getFloorPlan: () => Promise.resolve([]),
   listTabs: (...a: unknown[]) => api.listTabs(...a),
   sendHeld: (...a: unknown[]) => api.sendHeld(...a),

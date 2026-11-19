@@ -37,6 +37,31 @@ export { mockSentRounds } from './tableOrderMock'
 /** Bord view, table picker and an open tab poll this often while visible. */
 export const TAB_POLL_MS = 5000
 
+/**
+ * Klar on Köksskärm lives with the tickets and does not move the list's
+ * version, so while any open tab waits on the kitchen or bar the poll loads
+ * the whole list (no version) about this often.
+ */
+export const TICKET_POLL_MS = 15000
+
+/** True while a sent ticket is not yet Klar (or cancelled). */
+export function waitsOnTickets(tabs: Tab[] | undefined): boolean {
+  return (tabs ?? []).some((t) =>
+    t.rounds.some((r) => (r.tickets ?? []).some((k) => k.status === 'sent' || k.status === 'preparing')),
+  )
+}
+
+/** The version to poll with: none (a full load) when ticket states may have moved. */
+export function pollVersion(
+  version: number | undefined,
+  tabs: Tab[] | undefined,
+  lastFullAt: number,
+  now = Date.now(),
+): number | undefined {
+  if (version === undefined) return undefined
+  return waitsOnTickets(tabs) && now - lastFullAt >= TICKET_POLL_MS ? undefined : version
+}
+
 function base(locationId: string): string {
   return `/locations/${encodeURIComponent(locationId)}/table-orders`
 }

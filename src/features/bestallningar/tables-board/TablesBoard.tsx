@@ -8,6 +8,7 @@ import {
   listTabs,
   moveTab,
   newRequestId,
+  pollVersion,
   redispatchRound,
   reopenTab,
   sendHeld,
@@ -78,6 +79,7 @@ export function TablesBoard({ locationId, isOwner }: { locationId: string; isOwn
   const navigate = useNavigate()
   const [data, setData] = useState<TabsResponse | null>(null)
   const version = useRef<number | undefined>(undefined)
+  const lastFull = useRef<{ at: number; tabs: Tab[] }>({ at: 0, tabs: [] })
   const seen = useRef<Set<string> | null>(null)
   const readyBefore = useRef<Set<string>>(new Set())
   const [loadError, setLoadError] = useState(false)
@@ -159,13 +161,14 @@ export function TablesBoard({ locationId, isOwner }: { locationId: string; isOwn
     seen.current = ids
     if (said.length) setAnnounce(said.join('. '))
     version.current = next.version
+    lastFull.current = { at: Date.now(), tabs: next.tabs }
     setData(next)
     setNow(Date.now())
   }, [])
 
   const refresh = useCallback(async () => {
     try {
-      const res = await listTabs(locationId, version.current)
+      const res = await listTabs(locationId, pollVersion(version.current, lastFull.current.tabs, lastFull.current.at))
       if (!('unchanged' in res)) take(res)
       setLoadError(false)
     } catch {

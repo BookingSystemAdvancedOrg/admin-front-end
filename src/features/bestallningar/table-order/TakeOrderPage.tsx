@@ -50,6 +50,7 @@ import {
   getTabMenu,
   listTabs,
   newRequestId,
+  pollVersion,
   openTab,
   redispatchRound,
   TAB_POLL_MS,
@@ -117,6 +118,7 @@ export default function TakeOrderPage() {
 
   const [data, setData] = useState<TabsResponse | null>(null)
   const version = useRef<number | undefined>(undefined)
+  const lastFull = useRef<{ at: number; tabs: Tab[] }>({ at: 0, tabs: [] })
   const [menu, setMenu] = useState<TabMenu | null>(null)
   const [floors, setFloors] = useState<Floor[] | null>(null)
   const [loadError, setLoadError] = useState(false)
@@ -155,9 +157,10 @@ export default function TakeOrderPage() {
   const refresh = useCallback(async () => {
     if (!locationId) return
     try {
-      const res = await listTabs(locationId, version.current)
+      const res = await listTabs(locationId, pollVersion(version.current, lastFull.current.tabs, lastFull.current.at))
       if ('unchanged' in res) return
       version.current = res.version
+      lastFull.current = { at: Date.now(), tabs: res.tabs }
       setData(res)
       setLoadError(false)
     } catch {

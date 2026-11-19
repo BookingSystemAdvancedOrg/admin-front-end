@@ -126,13 +126,18 @@ export function ColumnChart({
   if (points.length === 0 || points.every((p) => p.value === 0 && !p.previous)) return <Empty text="Inget att visa i perioden." />
   const hasPrev = points.some((p) => p.previous !== undefined)
   const max = niceMax(Math.max(...points.map((p) => Math.max(p.value, p.previous ?? 0)), 1))
-  const innerW = W - PAD.left - PAD.right
+  const ticks = axisTicks(max, unit)
+  // The y axis is as wide as its longest label ("18,8 tkr"): mono, about 6,4 px per character.
+  const left = Math.max(36, Math.ceil(Math.max(...ticks.map((t) => tickLabel(t, unit).length)) * 6.4) + 14)
+  const innerW = W - left - PAD.right
   const innerH = H - PAD.top - PAD.bottom
   const slot = innerW / points.length
-  const barW = Math.max(4, Math.min(30, slot * 0.62))
+  // bars never overlap: a long period (a year of days) gets thin bars, not a solid block
+  const barW = Math.min(30, Math.max(slot * 0.62, Math.min(4, slot * 0.85)))
+  // one marker per day only while the markers have room; otherwise the line alone
+  const dense = slot < 10
   const y = (v: number) => PAD.top + innerH - (Math.max(0, v) / max) * innerH
-  const x = (i: number) => PAD.left + slot * i + slot / 2
-  const ticks = axisTicks(max, unit)
+  const x = (i: number) => left + slot * i + slot / 2
   const labelEvery = Math.ceil(points.length / Math.max(3, Math.floor(innerW / 64)))
   const peak = points.reduce((best, p, i) => (p.value > points[best].value ? i : best), 0)
   const line = hasPrev
@@ -164,11 +169,11 @@ export function ColumnChart({
         {...tip.surface}
       >
         <title id={`${id}-t`}>{ariaLabel}</title>
-        {a !== null && <rect x={PAD.left + slot * a} y={PAD.top} width={slot} height={innerH} className="chart-band" />}
+        {a !== null && <rect x={left + slot * a} y={PAD.top} width={slot} height={innerH} className="chart-band" />}
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} className="sk-grid" />
-            <text x={PAD.left - 8} y={y(t) + 4} textAnchor="end" className="sk-tick">
+            <line x1={left} x2={W - PAD.right} y1={y(t)} y2={y(t)} className="sk-grid" />
+            <text x={left - 8} y={y(t) + 4} textAnchor="end" className="sk-tick">
               {tickLabel(t, unit)}
             </text>
           </g>
@@ -189,20 +194,26 @@ export function ColumnChart({
                 {p.label}
               </text>
             )}
-            {i === peak && p.value > 0 && (
-              <text x={x(i)} y={y(p.value) - 6} textAnchor="middle" className="sk-value">
-                {format(p.value)}
-              </text>
-            )}
           </g>
         ))}
-        {hasPrev && <path d={line} pathLength={1} className="sk-line sk-line--draw" />}
+        {hasPrev && <path d={line} pathLength={1} className={`sk-line sk-line--draw${dense ? ' sk-line--dense' : ''}`} />}
         {hasPrev &&
+          !dense &&
           points.map((p, i) => (
             <circle key={p.key} cx={x(i)} cy={y(p.previous ?? 0)} r={2.4} className="sk-dot sk-dot--in" style={{ '--i': i } as CSSProperties} />
           ))}
+        {points[peak].value > 0 && (
+          <text
+            x={Math.min(Math.max(x(peak), left + 40), W - PAD.right - 40)}
+            y={Math.max(12, y(points[peak].value) - 6)}
+            textAnchor="middle"
+            className="sk-value sk-value--halo"
+          >
+            {format(points[peak].value)}
+          </text>
+        )}
         {points.map((p, i) => (
-          <rect key={p.key} x={PAD.left + slot * i} y={PAD.top} width={slot} height={innerH + PAD.bottom} className="chart-hit" {...tip.hit(i)} />
+          <rect key={p.key} x={left + slot * i} y={PAD.top} width={slot} height={innerH + PAD.bottom} className="chart-hit" {...tip.hit(i)} />
         ))}
       </svg>
       <ChartTip

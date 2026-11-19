@@ -1320,13 +1320,15 @@
 
 .sk-dishes th + .num,
 .sk-dishes td + .num {
-  padding-left: 12px;
+  padding-left: 24px;
 }
 
 /* a very long dish name breaks inside the word, so the figures beside it
    keep their room instead of being pushed out of the card */
 .sk-dishes td:not(.num, .sk-rank) {
   overflow-wrap: anywhere;
+  -webkit-hyphens: auto;
+  hyphens: auto;
 }
 
 .sk-dishes .sk-rank {
@@ -1367,9 +1369,10 @@
   }
 }
 
-/* Telefon och smala kort: varje rad blir ett litet kvitto, namnet överst och
-   siffrorna med sina rubriker under, så att inget behöver rullas i sidled. */
-@container (max-width: 360px) {
+/* Telefon och smala kort (även iPad stående): varje rad blir ett litet
+   kvitto, namnet överst och siffrorna med sina rubriker under, så att inget
+   behöver rullas i sidled och två siffror aldrig läses som en. */
+@container (max-width: 480px) {
   .sk-dishes,
   .sk-dishes tbody {
     display: block;
@@ -1467,6 +1470,16 @@
   overflow-wrap: break-word;
 }
 
+/* a long dish name in a title breaks at a syllable with a hyphen, never one
+   letter alone; the running text keeps whole words */
+.sk-card-head .card-title,
+.sk-todo-title,
+.sk-pairs li > span:first-child {
+  -webkit-hyphens: auto;
+  hyphens: auto;
+  hyphenate-limit-chars: 12 5 5;
+}
+
 /* Pekskärm (iPad): kontrollerna här går att träffa med fingret, 44 px. */
 @media (pointer: coarse) {
   .sk-filterbar .sk-chips > .sk-chip,
@@ -1560,4 +1573,30 @@
 .sk-todo-item > div {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+/* Omsättningsdiagrammet: toppvärdet läses ovanpå staplar och linje, och en
+   lång period (år, kvartal) ritar förra perioden som en tunn linje. */
+.sk-value--halo {
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.sk-line--dense {
+  stroke-width: 1;
+  opacity: 0.75;
+}
+
+/* Filterraden som följer med: helt tät, så att inget syns igenom, och bara där
+   skärmen är stor nog (iPad har den stilla överst, som telefonen). */
+.sk-filterbar {
+  --glass-text-bg: var(--surface);
+}
+
+@media (max-width: 1024px), (max-height: 860px) {
+  .sk-filterbar {
+    position: static;
+  }
 }

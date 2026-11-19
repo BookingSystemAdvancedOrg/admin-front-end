@@ -178,7 +178,7 @@
   min-width: 7.5rem;
 }
 .evenemang-table .cell-muted {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .evenemang-table .evenemang-amount {
   white-space: nowrap;
@@ -293,4 +293,47 @@
     display: inline-flex;
     align-items: center;
   }
+}
+/* Momsvalet (biljettyp i redigeraren och i dialogen): den långa texten
+   bryts på flera rader i stället för att kapas. */
+.evenemang-form .b-select-value {
+  padding-block: 2px;
+  white-space: normal;
+  overflow-wrap: break-word;
+  text-overflow: clip;
+  line-height: 1.3;
+}
+/* Tillfällen: alla rader delar samma kolumner, så mätaren är lika lång och
+   knapparna står i linje även när ett inställt tillfälle saknar knappar. */
+.evenemang-occs {
+  container-type: inline-size;
+}
+@container (min-width: 40rem) {
+  .evenemang-occs > .evenemang-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--bq-space-3);
+  }
+  .evenemang-occs .evenemang-occ {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: center;
+  }
+  .evenemang-occs .evenemang-occ > .evenemang-actions {
+    justify-content: flex-end;
+  }
+  .evenemang-occs .evenemang-occ > .evenemang-actions:empty {
+    display: block;
+  }
+}
+/* Statusen har varken fyllning eller kant, så den står kant i kant med sin
+   rubrik och i samma höjd som värdena bredvid. */
+.evenemang-table .status-badge[class] {
+  display: inline;
+  padding: 0;
+}
+.evenemang-occ .status-badge[class] {
+  justify-self: start;
+  padding-inline: 0;
 }

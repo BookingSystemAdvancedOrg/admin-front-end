@@ -159,7 +159,7 @@ export function TypeEditModal({ locationId, eventId, type: opened, latest = null
             {takenText(type.sold, type.held)}. Sålda och reserverade biljetter behåller sitt pris och sin moms.
           </p>
         ) : null}
-        <div className="evenemang-row">
+        <div className="evenemang-row evenemang-type-row">
           <Field label="Namn" required error={errors.name} hint={note('name')}>
             <Input id={id('name')} value={form.name} maxLength={80} onChange={(e) => set({ name: e.target.value })} required />
           </Field>

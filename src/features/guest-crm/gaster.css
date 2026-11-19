@@ -142,3 +142,25 @@
     min-height: 44px;
   }
 }
+/* Kundens kort: anteckningen (upp till 300 tecken) syns hel, med luft runt
+   texten, i stället för att pressas in i ett enradsfält. */
+.bq-input.gaster-note {
+  display: block;
+  height: auto;
+  min-height: calc(4 * 1.4em + 20px);
+  padding: 10px var(--bq-space-4);
+  line-height: 1.4;
+  resize: vertical;
+}
+/* Ett långt kundnamn i rubriken bryts och lämnar plats åt stängknappen. */
+.bq-modal__panel:has(.gaster-facts, .gaster-note) .bq-modal__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+/* Statusen har varken fyllning eller kant, så den står kant i kant med sin
+   rubrik och i samma höjd som värdena bredvid. */
+:is(.gaster-table, .gaster-history) .status-badge[class] {
+  display: inline;
+  padding: 0;
+}

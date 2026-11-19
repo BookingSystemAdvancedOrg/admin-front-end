@@ -539,10 +539,14 @@
 }
 
 .mk-offer-headline {
-  margin-right: 60px;
   font: 700 17px/1.2 var(--font);
   color: var(--ink);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+}
+
+/* plats för maträttens bild bara när det finns en bild */
+.mk-offer-dish + .mk-offer-headline {
+  margin-right: 60px;
 }
 
 .mk-offer-text {
@@ -651,9 +655,10 @@
   color: var(--muted);
 }
 
+/* Jämna kolumner: alla färger lika breda, även den med två rader text. */
 .mk-swatches {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
   gap: 6px;
 }
 
@@ -663,9 +668,7 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  width: auto;
-  min-width: 76px;
-  max-width: 120px;
+  min-width: 0;
   padding: 8px 4px 6px;
   border: 0;
   border-radius: var(--r-md);
@@ -767,4 +770,18 @@
 }
 .mk-offer-consent i {
   background: rgba(26, 18, 14, 0.14);
+}
+/* iPad (pek): valen under Erbjudande och Kampanjer minst 44 px höga. */
+@media (pointer: coarse) {
+  .admin-main:has(> .mk-tabs) .check-row {
+    align-items: center;
+    min-height: 44px;
+  }
+}
+/* Osparade ändringar: raden är tät, så fält som rullar under den inte syns
+   igenom, och ingen egen oskärpa ovanpå sidans glas. */
+.admin-main:has(> .mk-tabs) .save-bar--dirty {
+  background: var(--bq-surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }

@@ -47,6 +47,11 @@
   align-items: center;
   gap: var(--bq-space-2);
 }
+@media (pointer: coarse) {
+  .presentkort-check {
+    min-height: 44px;
+  }
+}
 .presentkort-check input {
   accent-color: var(--bq-accent);
 }
@@ -136,4 +141,10 @@
     align-items: center;
     min-height: 44px;
   }
+}
+/* Statusen har varken fyllning eller kant, så den står kant i kant med sin
+   rubrik och i samma höjd som värdena bredvid. */
+.presentkort-table .status-badge[class] {
+  display: inline;
+  padding: 0;
 }

@@ -439,7 +439,7 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
           {owner ? (
             <div className="form-grid">
               <Field label="Anteckning" hint={textNote('note') ?? 'Skriv aldrig allergier eller hälsouppgifter här.'}>
-                <textarea className="bq-input" maxLength={300} value={form.note} onChange={(e) => set({ note: e.target.value })} />
+                <textarea className="bq-input gaster-note" rows={4} maxLength={300} value={form.note} onChange={(e) => set({ note: e.target.value })} />
               </Field>
               <Field label="Taggar" hint={textNote('tags') ?? 'Max 10, skilj med komma'}>
                 <Input value={form.tags} onChange={(e) => set({ tags: e.target.value })} />

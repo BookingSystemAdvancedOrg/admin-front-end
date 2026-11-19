@@ -229,6 +229,7 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
         </ul>
       </Card>
       <Card title="Tillfällen">
+        <div className="evenemang-occs">
         <ul className="evenemang-list">
           {event.occurrences.map((o) => (
             <li key={o.occurrenceId} className="evenemang-occ">
@@ -257,6 +258,7 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
             </li>
           ))}
         </ul>
+        </div>
       </Card>
       {isOwner && event.status !== 'draft' ? <Orders locationId={locationId} eventId={event.eventId} onChanged={() => void load()} /> : null}
       {editingType ? (
@@ -416,7 +418,7 @@ function Orders({ locationId, eventId, onChanged }: { locationId: string; eventI
               {orders.map((o) => (
                 <tr key={o.orderId}>
                   <td>
-                    {o.buyerName ?? 'Raderad'}<br /><span className="cell-muted">{o.buyerEmail ?? ''}</span>
+                    {o.buyerName ?? 'Raderad'}<br /><span className="cell-muted">{o.buyerEmail ? <>{o.buyerEmail.split('@')[0]}<wbr />{o.buyerEmail.slice(o.buyerEmail.split('@')[0].length)}</> : ''}</span>
                     {o.resale ? <><br /><span className="status-badge">Andrahandsköp</span></> : null}
                   </td>
                   <td data-label="Belopp"><span className="evenemang-amount">{kr(o.amountOre)}</span>{o.refundedOre ? <><br /><span className="cell-muted"><span className="evenemang-amount">{kr(o.refundedOre)}</span> återbetalt</span></> : null}</td>

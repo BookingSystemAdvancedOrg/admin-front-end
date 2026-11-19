@@ -170,14 +170,14 @@
 .setup-card .setup-check {
   width: 28px;
   height: 28px;
-  background: color-mix(in srgb, var(--neutral-fill) 70%, transparent);
+  background: color-mix(in srgb, var(--muted) 26%, transparent);
   font-size: 12px;
 }
 .setup-card .setup-check.done {
   background: var(--green);
 }
 .setup-card .setup-check.later {
-  background: var(--tint-orange);
+  background: color-mix(in srgb, var(--warning) 34%, transparent);
 }
 .setup-card .setup-step {
   padding: 14px 0;

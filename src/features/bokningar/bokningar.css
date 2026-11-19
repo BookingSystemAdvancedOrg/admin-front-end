@@ -135,6 +135,17 @@
   width: 580px;
 }
 
+/* Knapparna längst ned ligger i dialogens nederkant i stället för ovanpå
+   anteckningsrutan: formuläret räknar med hela knappraden och dialogen har
+   ingen egen luft under den. */
+.booking-modal {
+  padding-bottom: 0;
+}
+
+.booking-modal .modal-actions--pinned {
+  margin-bottom: 0;
+}
+
 .booking-modal-head {
   display: flex;
   align-items: flex-start;
@@ -386,12 +397,13 @@
 
 /* --- Passform (2026-11-19): listan ryms i kortet på alla skärmar ---------- */
 
-/* Långa namn bryts i stället för att trycka Status utanför kortet. */
+/* Långa namn bryts i stället för att trycka Status utanför kortet, utan
+   inlagda bindestreck som inte hör till namnet. */
 .bookings-table .bk-guest,
 .bookings-table .bk-guest .cell-strong,
 .bookings-table .bk-tables {
   overflow-wrap: anywhere;
-  hyphens: auto;
+  hyphens: manual;
 }
 
 /* Tid, antal och status står på en rad och siffrorna är lika breda. */
@@ -435,8 +447,13 @@
 
 /* iPad mini: smalast innehåll bredvid menyn, gästen får ge med sig mest. */
 @media (min-width: 601px) and (max-width: 800px) {
+  .bookings-table th,
+  .bookings-table td {
+    padding-right: 8px;
+  }
+
   .bookings-table .bk-guest {
-    min-width: 96px;
+    min-width: 112px;
   }
 }
 

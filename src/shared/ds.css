@@ -1328,6 +1328,67 @@ html.is-desktop-glass .admin-main {
   cursor: not-allowed;
 }
 
+/* Fältskal: pillret (ikon + fält, t.ex. sök) är själva fältet. Fältet inuti
+   får ingen egen fyllning, kant, skugga eller fokusring, så det syns aldrig
+   ett fält i fältet. Fokusringen hamnar på pillret (:focus-within). */
+.field-shell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 1px solid var(--field-border);
+  border-radius: var(--r-pill);
+  background-color: var(--field-bg);
+  box-shadow: var(--field-inset);
+  color: var(--muted);
+  cursor: text;
+  transition: border-color 160ms var(--ease), background-color 160ms var(--ease), box-shadow 160ms var(--ease);
+}
+.field-shell:hover {
+  border-color: var(--field-border-hover);
+}
+.field-shell:focus-within {
+  border-color: var(--ink);
+  background-color: var(--field-bg-focus);
+  box-shadow: var(--field-inset), 0 0 0 3px var(--field-ring);
+}
+.field-shell > svg {
+  flex: none;
+}
+.field-shell input,
+.field-shell input:hover,
+.field-shell input:focus,
+.field-shell input:focus-visible {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 46px;
+  margin: 0;
+  padding: 0 0 0 2px;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
+  color: var(--ink);
+  font: inherit;
+  /* 16 px: iOS zoomar inte in i fältet */
+  font-size: 16px;
+  text-overflow: ellipsis;
+}
+.field-shell input::-webkit-search-decoration,
+.field-shell input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .field-shell {
+    background-color: var(--surface);
+  }
+}
+
 /* Flytande brytning, bara Chromium och Electron (glassFilter.ts sätter
    .glass-refract där). Safari behåller den vanliga -webkit-oskärpan. */
 .glass-refract .admin-main,

@@ -139,34 +139,9 @@
   color: var(--danger-ink);
 }
 
+/* .to-search sits on .field-shell (shared/ds.css): one field, room on both sides. */
 .to-search {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 48px;
-  padding: 0 var(--space-4);
-  border-radius: var(--r-pill);
-  background: var(--field-bg);
-  box-shadow: var(--field-inset);
-  color: var(--muted);
-}
-
-.to-search:focus-within {
-  background: var(--field-bg-focus);
-  box-shadow: var(--field-inset), 0 0 0 3px var(--field-ring);
-}
-
-.to-search input {
-  flex: 1;
-  min-width: 0;
-  height: 44px;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--ink);
-  /* 16 px: iOS does not zoom into the field */
-  font: inherit;
-  font-size: 16px;
+  width: 100%;
 }
 
 .to-kbd {

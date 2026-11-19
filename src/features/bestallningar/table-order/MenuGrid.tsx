@@ -69,14 +69,14 @@ export function MenuGrid({
   return (
     <section className="to-menu" aria-label="Meny">
       <div className="to-menu-bar">
-        <label className="to-search">
+        <label className="field-shell to-search">
           <Icon name="search" size={18} />
           <span className="sr-only">Sök rätt</span>
           <input
             ref={searchRef}
             type="search"
             value={query}
-            placeholder="Sök rätt"
+            placeholder="Sök rätt…"
             autoComplete="off"
             enterKeyHint="done"
             onChange={(e) => setQuery(e.target.value)}

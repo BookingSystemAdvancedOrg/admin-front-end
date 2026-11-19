@@ -79,10 +79,10 @@ export function TablePicker({
         <FloorMap floors={floors} tables={tables} tabs={tabs} now={now} onPick={onPick} selectedId={selectedId} label="Välj bord" />
       ) : (
         <>
-          <label className="to-search">
+          <label className="field-shell to-search">
             <Icon name="search" size={18} />
             <span className="sr-only">Sök bord eller gäst</span>
-            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Bord eller gäst"
+            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Bord eller gäst…"
               autoComplete="off" enterKeyHint="search" />
           </label>
           <div className="to-table-list">

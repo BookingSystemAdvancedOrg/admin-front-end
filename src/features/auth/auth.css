@@ -261,3 +261,13 @@ a.auth-submit {
     padding: 28px 20px;
   }
 }
+
+/* Pekskärm (iPad, telefon): länkarna under formuläret får 44 px att trycka på. */
+@media (pointer: coarse) {
+  .auth-card > .auth-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+  }
+}

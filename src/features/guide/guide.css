@@ -15,7 +15,7 @@
 
 .guide-bubble {
   position: fixed;
-  width: min(320px, calc(100vw - 32px));
+  width: min(340px, calc(100vw - 32px));
   padding: 20px;
   border-radius: var(--r-lg);
   background: var(--glass-pop);
@@ -86,18 +86,21 @@
 
 .guide-title {
   margin: 0 0 6px;
+  overflow-wrap: break-word;
   font: 600 19px/1.25 var(--font);
   letter-spacing: -0.01em;
 }
 
 .guide-text {
   margin: 0;
+  overflow-wrap: break-word;
   font: 400 15px/1.45 var(--font);
   color: var(--muted);
 }
 
 .guide-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -110,10 +113,19 @@
   margin-left: auto;
 }
 
+/* Knapparna i bubblan: minst 44 px att trycka på (iPad). */
+.guide-actions .btn {
+  min-height: 44px;
+}
+
 .guide-skip {
-  padding: 0;
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 4px;
+  margin-left: -4px;
   border: 0;
   background: none;
+  white-space: nowrap;
   font: 500 14px/1 var(--font);
   color: var(--muted);
   cursor: default;
@@ -158,10 +170,16 @@
 }
 
 .help-sections strong {
+  min-width: 0;
   font: 600 15px/1.4 var(--font);
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .help-sections span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  hyphens: auto;
   font: 400 15px/1.45 var(--font);
   color: var(--muted);
 }
@@ -170,5 +188,18 @@
   .help-sections li {
     grid-template-columns: minmax(0, 1fr);
     gap: 4px;
+  }
+}
+
+/* Hjälp-sidan: Starta guiden och länkarna går att trycka på med fingret (iPad). */
+.help-start {
+  min-height: 44px;
+}
+
+@media (pointer: coarse) {
+  .help-cookies-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 }

@@ -206,7 +206,8 @@ interface Placement {
   side: 'right' | 'left' | 'below' | 'above' | 'center'
 }
 
-const BUBBLE_WIDTH = 320
+/** Bubblans bredd (samma som i guide.css); smalare skärmar mäter den riktiga. */
+const BUBBLE_WIDTH = 340
 const GAP = 14
 const PAD = 6
 
@@ -214,12 +215,12 @@ function centerPoint(): Rect {
   return { top: window.innerHeight / 2, left: window.innerWidth / 2, width: 0, height: 0 }
 }
 
-function place(step: GuideStep | null, bubbleHeight: number): Placement | null {
+function place(step: GuideStep | null, bubbleHeight: number, bubbleWidth = BUBBLE_WIDTH): Placement | null {
   const vw = window.innerWidth
   const vh = window.innerHeight
   const centered: Placement = {
     spot: centerPoint(),
-    bubble: { top: Math.max(16, (vh - bubbleHeight) / 2), left: Math.max(16, (vw - BUBBLE_WIDTH) / 2) },
+    bubble: { top: Math.max(16, (vh - bubbleHeight) / 2), left: Math.max(16, (vw - bubbleWidth) / 2) },
     side: 'center',
   }
   if (!step || !step.target) return centered
@@ -229,14 +230,14 @@ function place(step: GuideStep | null, bubbleHeight: number): Placement | null {
   const r = el.getBoundingClientRect()
   const spot = { top: r.top - PAD, left: r.left - PAD, width: r.width + PAD * 2, height: r.height + PAD * 2 }
   const clampTop = (t: number) => Math.min(Math.max(16, t), vh - bubbleHeight - 16)
-  const clampLeft = (l: number) => Math.min(Math.max(16, l), vw - BUBBLE_WIDTH - 16)
+  const clampLeft = (l: number) => Math.min(Math.max(16, l), vw - bubbleWidth - 16)
   const middle = r.top + r.height / 2 - bubbleHeight / 2
   // Smala mål (menyval, knappar): bredvid. Breda mål (tabeller, tavlor): under/över.
-  if (r.width < vw / 2 && vw - r.right >= BUBBLE_WIDTH + GAP + 16) {
+  if (r.width < vw / 2 && vw - r.right >= bubbleWidth + GAP + 16) {
     return { spot, bubble: { top: clampTop(middle), left: r.right + GAP }, side: 'right' }
   }
-  if (r.width < vw / 2 && r.left >= BUBBLE_WIDTH + GAP + 16) {
-    return { spot, bubble: { top: clampTop(middle), left: r.left - GAP - BUBBLE_WIDTH }, side: 'left' }
+  if (r.width < vw / 2 && r.left >= bubbleWidth + GAP + 16) {
+    return { spot, bubble: { top: clampTop(middle), left: r.left - GAP - bubbleWidth }, side: 'left' }
   }
   if (vh - r.bottom >= bubbleHeight + GAP + 16) {
     return { spot, bubble: { top: r.bottom + GAP, left: clampLeft(r.left) }, side: 'below' }
@@ -245,7 +246,7 @@ function place(step: GuideStep | null, bubbleHeight: number): Placement | null {
     return { spot, bubble: { top: r.top - GAP - bubbleHeight, left: clampLeft(r.left) }, side: 'above' }
   }
   // Mycket stort mål: bubblan inuti, nere till höger.
-  return { spot, bubble: { top: vh - bubbleHeight - 16, left: vw - BUBBLE_WIDTH - 16 }, side: 'center' }
+  return { spot, bubble: { top: vh - bubbleHeight - 16, left: vw - bubbleWidth - 16 }, side: 'center' }
 }
 
 /**
@@ -291,7 +292,7 @@ function GuideOverlay({
       el.scrollIntoView({ block: hidden ? 'center' : 'nearest', inline: 'nearest' })
     }
     const update = () => {
-      const next = place(step, bubbleRef.current?.offsetHeight ?? 180)
+      const next = place(step, bubbleRef.current?.offsetHeight ?? 180, bubbleRef.current?.offsetWidth || BUBBLE_WIDTH)
       if (next) setPlacement(next)
     }
     // Målet glider in (telefonens ark bakom Mer): mät igen när det står still,

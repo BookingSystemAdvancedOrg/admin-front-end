@@ -25,7 +25,7 @@ export default function HjalpPage() {
             <div>
               <h2 className="card-title">Guiden</h2>
             </div>
-            <button type="button" className="btn primary square" onClick={start}>
+            <button type="button" className="btn primary square help-start" onClick={start}>
               Starta guiden
             </button>
           </div>
@@ -47,7 +47,7 @@ export default function HjalpPage() {
           <h2 className="card-title">Cookies och lagring</h2>
           <p className="cell-muted">
             Appen sparar bara det som behövs för att du ska vara inloggad och för dina egna val.{' '}
-            <Link className="card-link" to="/cookies">
+            <Link className="card-link help-cookies-link" to="/cookies">
               Se vad som sparas
             </Link>
           </p>

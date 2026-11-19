@@ -384,9 +384,10 @@
 }
 
 .help-context__label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  padding: var(--space-1) 0;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .help-context__clear {
@@ -414,4 +415,25 @@
 
 .help-context-ask {
   align-self: stretch;
+}
+
+/* Pekskärm (iPad, telefon): minst 44 px att trycka på. */
+@media (pointer: coarse) {
+  .help-icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .help-chip {
+    min-height: 44px;
+  }
+
+  .help-context__pill {
+    min-height: 44px;
+  }
+
+  .help-context__clear {
+    width: 40px;
+    height: 40px;
+  }
 }

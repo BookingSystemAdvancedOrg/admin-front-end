@@ -105,6 +105,11 @@ function message(err: unknown, fallback: string): string {
   return commonError(err, fallback, ERRORS, FIELDS)
 }
 
+/** "25 %" bryts aldrig så att procenttecknet hamnar ensamt på nästa rad. */
+function keepPercent(text: string | undefined): string | undefined {
+  return text?.replace(/ %/g, '\u00a0%')
+}
+
 export function BokforingCard({ locationId, giftCards = false }: { locationId: string | null; giftCards?: boolean }) {
   const groups = giftCards ? [...GROUPS, GIFT_CARD_GROUP] : GROUPS
   // Bara kontona som visas kontrolleras; en dold grupp får inte stoppa Spara.
@@ -367,7 +372,7 @@ export function BokforingCard({ locationId, giftCards = false }: { locationId: s
                         <span className="bokforing-row-label">{LABEL[role]}</span>
                         <span className="bokforing-row-hint">
                           {accounts[role] === settings.defaults[role]
-                            ? settings.names[role]
+                            ? keepPercent(settings.names[role])
                             : `Standard ${settings.defaults[role]}`}
                         </span>
                       </label>

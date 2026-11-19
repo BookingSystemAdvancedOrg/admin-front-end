@@ -47,6 +47,16 @@
   flex: 1;
   min-width: 0;
 }
+/* Långa namn (träd, grenar, rubriker) bryts i stället för att gå utanför. */
+.stree-label,
+.stree-branch .settings-tab-title,
+.stree-card-title,
+.stree-card-branch,
+.stree-result-label,
+.stree-title {
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
 .stree-icon {
   display: inline-grid;
   flex: none;
@@ -434,6 +444,11 @@
   gap: 28px;
   min-width: 0;
 }
+/* Två kort bredvid varandra bara när båda får minst 420 px: på datorn står
+   trädet till vänster, och två smala kort klippte väljare och kontonamn. */
+.settings-branch .settings-row {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+}
 .settings-branch:not([hidden]) {
   animation: stree-in 260ms var(--ease) both;
 }
@@ -463,6 +478,48 @@
 }
 .stree-pager-link.next {
   margin-left: auto;
+}
+
+/* Bord vid onlinebokning (TableRulesCard): fälten når 44 px för fingret på
+   surfplattan, och i telefonen står varje rubrik på samma höjd med värdet
+   mitt för fältet bredvid. */
+.settings-branch .rules-number {
+  min-height: 44px;
+  font-variant-numeric: tabular-nums;
+}
+.settings-branch .rules-table input[type='checkbox'] {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+}
+@media (max-width: 600px) {
+  .settings-branch .rules-table tr {
+    align-items: start;
+  }
+  .settings-branch .rules-table td[data-label] {
+    display: grid;
+    grid-template-rows: auto 44px;
+    align-items: center;
+  }
+}
+
+/* Öppettiderna (BusinessHoursEditor): tiderna och knapparna når 44 px för
+   fingret på surfplattan, texten läses utan att luta sig fram. */
+.settings-branch .hours-editor-row {
+  font-size: 15px;
+}
+.settings-branch .hours-editor-interval .time-input {
+  min-height: 44px;
+  padding: 8px 10px;
+  font: 400 15px var(--sans);
+  font-variant-numeric: tabular-nums;
+}
+.settings-branch .hours-editor-intervals .link-action {
+  min-width: 44px;
+  min-height: 44px;
+}
+.settings-branch .hours-editor-next {
+  font-size: 13px;
 }
 
 /* Bladet man sökte: en ton över raden som tonar bort (ingen ram). */

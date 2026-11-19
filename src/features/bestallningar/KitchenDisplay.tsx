@@ -37,6 +37,11 @@ const VOID_TEXT: Record<string, string> = {
   other: 'Annat',
 }
 
+/** Makuleringens skäl i klartext (voidReason från servern, äldre bongar i notes). */
+function voidText(t: StationTicket): string | null {
+  return VOID_TEXT[t.voidReason ?? ''] ?? VOID_TEXT[t.notes ?? ''] ?? null
+}
+
 /** Bongens bord; utan ritningen (labels null) det namn som står på bongen. */
 function where(t: StationTicket, labels: Map<string, string> | null = null, tableId?: string): string {
   if (t.mode === 'table' || isTabTicket(t)) return tableTitle(orderTable(t.tableId ?? tableId, t.tableLabel, labels).label)
@@ -177,7 +182,7 @@ export function KitchenDisplay({ locationId, station, onStation, labels = null, 
             {[t.waiter, t.covers ? `${t.covers} gäster` : null].filter(Boolean).join(' · ')}
           </p>
         ) : null}
-        {voided && <p className="kds-void" role="note">MAKULERAD{t.notes && VOID_TEXT[t.notes] ? `: ${VOID_TEXT[t.notes]}` : ''}</p>}
+        {voided && <p className="kds-void" role="note">MAKULERAD{voidText(t) ? `: ${voidText(t)}` : ''}</p>}
         {t.fire && <p className="kds-fire" role="note">SKICKA NU: {tabCourseText(t.fire).toUpperCase()}</p>}
         {t.allergy && <p className="kds-allergy" role="note">Allergi: kontrollera innan maten går ut</p>}
         {byCourse(t.entries).map((group) => (
@@ -308,7 +313,8 @@ export function KitchenDisplay({ locationId, station, onStation, labels = null, 
           {printing.waiting?.length ? (
             <p>Väntar: {printing.waiting.map((w) => `${tabCourseText(w.course)} ${w.quantity}`).join(', ')}</p>
           ) : null}
-          {printing.notes && <p><b>NOTERING: {printing.notes}</b></p>}
+          {printing.kind === 'tab_void' && voidText(printing) && <p>{voidText(printing)}</p>}
+          {printing.notes && !(printing.kind === 'tab_void' && VOID_TEXT[printing.notes]) && <p><b>NOTERING: {printing.notes}</b></p>}
         </div>
       )}
     </div>

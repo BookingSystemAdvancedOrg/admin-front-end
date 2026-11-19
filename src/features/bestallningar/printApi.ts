@@ -113,6 +113,8 @@ export interface StationTicket {
   waiting?: { course: TabCourse; quantity: number }[]
   fromLabel?: string
   toLabel?: string
+  /** Varför en makulering gjordes (tab_void): wrong, guest_changed eller other. */
+  voidReason?: string
 }
 
 /** Bong från en bordsbeställning (inte en onlinebeställning)? */

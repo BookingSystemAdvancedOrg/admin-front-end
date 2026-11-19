@@ -98,16 +98,24 @@ export function TablesBoard({ locationId, isOwner }: { locationId: string; isOwn
   const [now, setNow] = useState(() => Date.now())
   const wide = useSyncExternalStore(subscribeWide, wideNow, () => true)
   /** The published plan's geometry for Karta (loaded the first time the map is shown). */
-  const [floors, setFloors] = useState<Floor[] | null>(null)
+  const [floors, setFloors] = useState<{ key: string; floors: Floor[] } | null>(null)
   const [mapError, setMapError] = useState(false)
+  // A newly published plan changes the tables: the map geometry is fetched again.
+  const tablesKey = (data?.tables ?? []).map((t) => t.tableId).sort().join(',')
   useEffect(() => {
-    if (view !== 'karta' || floors) return
+    if (view !== 'karta' || (floors && floors.key === tablesKey)) return
     let off = false
-    getFloorPlan(locationId).then((f) => !off && setFloors(f)).catch(() => !off && setMapError(true))
+    getFloorPlan(locationId)
+      .then((f) => {
+        if (off) return
+        setFloors({ key: tablesKey, floors: f })
+        setMapError(false)
+      })
+      .catch(() => !off && setMapError(true))
     return () => {
       off = true
     }
-  }, [view, floors, locationId])
+  }, [view, floors, tablesKey, locationId])
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (!params.has('markera')) return
@@ -195,8 +203,11 @@ export function TablesBoard({ locationId, isOwner }: { locationId: string; isOwn
     })
   }
 
+  /** One write at a time: a second tap before React re-renders must not send twice. */
+  const writing = useRef(false)
   async function act<T>(tabId: string, work: () => Promise<T>, inDialog = false): Promise<T | null> {
-    if (busy) return null
+    if (writing.current) return null
+    writing.current = true
     setBusy(tabId)
     setProblem(null)
     setDialogProblem(null)
@@ -210,6 +221,7 @@ export function TablesBoard({ locationId, isOwner }: { locationId: string; isOwn
       void refresh()
       return null
     } finally {
+      writing.current = false
       setBusy(null)
     }
   }
@@ -342,7 +354,7 @@ export function TablesBoard({ locationId, isOwner }: { locationId: string; isOwn
                 ) : floors === null ? (
                   <Loading label="Hämtar bordskartan" />
                 ) : (
-                  <FloorMap floors={floors} tables={data.tables} tabs={tabs} now={now} onPick={pickTable}
+                  <FloorMap floors={floors.floors} tables={data.tables} tabs={tabs} now={now} onPick={pickTable}
                     selectedId={current?.tableId ?? null} label="Bord"
                     highlightIds={new Set(tabs.filter((t) => fresh.has(t.tabId) || fireReady(t)).map((t) => t.tableId))} />
                 )}

@@ -102,7 +102,10 @@
 
 .tab-card-open {
   display: flex;
+  flex: 1;
   flex-direction: column;
+  /* Cards in one row share a height: the table name stays at the top of each. */
+  justify-content: flex-start;
   align-items: stretch;
   gap: 10px;
   width: 100%;

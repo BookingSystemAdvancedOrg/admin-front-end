@@ -35,11 +35,14 @@ export function VoidDialog({
   const [reason, setReason] = useState<VoidReason | null>(null)
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
-  const picked = sent.filter((i) => (qty[i.itemId] ?? 0) > 0).map((i) => ({ itemId: i.itemId, quantity: qty[i.itemId] }))
+  // Clamped: after a 409 the fresh tab may have fewer of a dish left than was picked.
+  const picked = sent
+    .map((i) => ({ itemId: i.itemId, quantity: Math.min(qty[i.itemId] ?? 0, i.quantity) }))
+    .filter((p) => p.quantity > 0)
   const count = picked.reduce((s, p) => s + p.quantity, 0)
 
   function step(itemId: string, max: number, by: number) {
-    setQty((q) => ({ ...q, [itemId]: Math.min(max, Math.max(0, (q[itemId] ?? 0) + by)) }))
+    setQty((q) => ({ ...q, [itemId]: Math.min(max, Math.max(0, Math.min(q[itemId] ?? 0, max) + by)) }))
   }
 
   async function confirm() {
@@ -72,7 +75,7 @@ export function VoidDialog({
       ) : (
         <ul className="void-list" aria-label="Skickat">
           {sent.map((i) => {
-            const n = qty[i.itemId] ?? 0
+            const n = Math.min(qty[i.itemId] ?? 0, i.quantity)
             return (
               <li key={i.itemId} className={n ? 'picked' : ''}>
                 <span className="void-name">

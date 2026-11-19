@@ -86,14 +86,14 @@ describe('KitchenDisplay', () => {
     const user = userEvent.setup()
     const VOID: StationTicket = {
       sourceId: `${'b'.repeat(32)}r3`, stationId: 'kok', stationName: 'Kök', status: 'sent', allergy: false,
-      kind: 'tab_void', tabId: 'b'.repeat(32), round: 3, mode: 'table', tableLabel: '5', notes: 'wrong',
+      kind: 'tab_void', tabId: 'b'.repeat(32), round: 3, mode: 'table', tableLabel: '5', voidReason: 'guest_changed',
       entries: [{ name: 'Burrata', quantity: 1, course: 'starters' }],
     }
     listTickets.mockResolvedValue([KITCHEN, VOID])
     const onSource = vi.fn()
     const { rerender } = render(<KitchenDisplay locationId="loc-1" station="kok" onStation={() => {}} onSource={onSource} />)
     const ticket = await screen.findByRole('article', { name: 'Bong Bord 5, runda 3, makulerad' })
-    expect(within(ticket).getByText('MAKULERAD: Fel registrerad')).toBeInTheDocument()
+    expect(within(ticket).getByText('MAKULERAD: Gästen ändrade sig')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Bord' }))
     expect(onSource).toHaveBeenCalledWith('bord')
     rerender(<KitchenDisplay locationId="loc-1" station="kok" onStation={() => {}} source="bord" onSource={onSource} />)

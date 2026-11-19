@@ -506,7 +506,7 @@ export default function BestallningarPage() {
               </button>
             </div>
             {bord ? (
-              <TablesBoard locationId={locationId} isOwner={isOwner} />
+              <TablesBoard key={locationId} locationId={locationId} isOwner={isOwner} />
             ) : kds ? (
               <KitchenDisplay locationId={locationId} station={params.get('station')}
                 onStation={(station) => view({ station })} labels={labels} tableIds={ticketTables}

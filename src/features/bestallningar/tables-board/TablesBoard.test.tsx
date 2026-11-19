@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -107,6 +107,19 @@ describe('TablesBoard', () => {
     expect(api.sendHeld).toHaveBeenCalledWith('loc-1', 'a'.repeat(32), { requestId: 'r'.repeat(32), courses: ['mains'] })
     expect(await screen.findByText('Skickat till Kök')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Skicka varmrätt/ })).toBeNull()
+  })
+
+  it('a double tap on Skicka varmrätt sends the course once', async () => {
+    const sent = tab({ version: 4, items: tab().items.map((i) => ({ ...i, state: 'sent' as const, round: i.round ?? 2 })) })
+    let finish: (v: unknown) => void = () => {}
+    api.sendHeld.mockReturnValue(new Promise((r) => { finish = r }))
+    renderBoard()
+    const btn = await screen.findByRole('button', { name: /Skicka varmrätt/ })
+    fireEvent.click(btn)
+    fireEvent.click(btn)
+    finish({ tab: sent, round: { ...sent.rounds[0], round: 2, kind: 'fire' }, warnings: [] })
+    expect(await screen.findByText('Skickat till Kök')).toBeInTheDocument()
+    expect(api.sendHeld).toHaveBeenCalledTimes(1)
   })
 
   it('closes after the guest paid in the POS, and Ångra reopens it', async () => {

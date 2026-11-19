@@ -101,7 +101,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
   const dishName = (id: string) => dishes.find((d) => d.dishId === id)?.name ?? 'Borttagen rätt'
 
   return (
-    <section className="admin-card table-card">
+    <section className="admin-card table-card cm-card">
       <div className="card-head">
         <div>
           <TitleInfo title="Cateringmeny" info="Rätter och paket som gästen kan välja i kalkylen. Skild från den vanliga menyn." />
@@ -130,7 +130,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
         </p>
       ) : (
         <div className="table-scroll" tabIndex={0}>
-          <table className="data-table">
+          <table className="data-table cm-table">
             <thead>
               <tr>
                 <th>Rätt</th>
@@ -144,7 +144,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
             <tbody>
               {dishes.map((d) => (
                 <tr key={d.dishId}>
-                  <td>
+                  <td className="cm-name">
                     <span className="cell-strong">{d.name}</span>
                     {d.dietary.length > 0 && (
                       <span className="cm-tags">{d.dietary.map((x) => DIETARY_LABEL[x]).join(' · ')}</span>
@@ -154,20 +154,20 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
                   <td className="cm-allergens">
                     {d.allergens.length ? d.allergens.map((a) => ALLERGEN_LABEL[a]).join(', ') : <span className="cell-muted">Inga</span>}
                   </td>
-                  <td>
+                  <td className="cm-status">
                     <span className={`status-badge ${d.active ? 'reserved' : 'cancelled-free'}`}>
                       {d.active ? 'Aktiv' : 'Inaktiv'}
                     </span>
                   </td>
                   {isOwner && (
-                    <td>
+                    <td className="cm-switch">
                       <button type="button" role="switch" aria-checked={d.active} aria-label={`${d.name} aktiv`}
                         className="switch"
                         onClick={() => void run(() => saveCateringDish(locationId!, { ...dishInput(d), active: !d.active }, d))} />
                     </td>
                   )}
                   {isOwner && (
-                    <td className="right">
+                    <td className="right cm-actions">
                       <RowActions label="Åtgärder">
                         <button type="button" className="link-action" onClick={() => setModal({ kind: 'dish', dish: d })}>
                           Redigera
@@ -192,7 +192,7 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
         <p className="cm-empty">Inga paket än.</p>
       ) : (
         <div className="table-scroll" tabIndex={0}>
-          <table className="data-table">
+          <table className="data-table cm-table">
             <thead>
               <tr>
                 <th>Paket</th>
@@ -206,17 +206,17 @@ export function CateringMenuCard({ locationId, isOwner }: { locationId: string |
             <tbody>
               {packages.map((p) => (
                 <tr key={p.packageId}>
-                  <td className="cell-strong">{p.name}</td>
+                  <td className="cell-strong cm-name">{p.name}</td>
                   <td className="cell-price"><Num>{`${kr.format(p.pricePerGuest)} kr`}</Num></td>
                   <td className="cm-allergens">{p.dishIds.map(dishName).join(', ')}</td>
-                  <td>{p.minGuests ? `${p.minGuests} gäster` : <span className="cell-muted">-</span>}</td>
-                  <td>
+                  <td className="cm-min">{p.minGuests ? `${p.minGuests} gäster` : <span className="cell-muted">-</span>}</td>
+                  <td className="cm-status">
                     <span className={`status-badge ${p.active ? 'reserved' : 'cancelled-free'}`}>
                       {p.active ? 'Aktivt' : 'Inaktivt'}
                     </span>
                   </td>
                   {isOwner && (
-                    <td className="right">
+                    <td className="right cm-actions">
                       <RowActions label="Åtgärder">
                         <button type="button" className="link-action" onClick={() => setModal({ kind: 'package', pkg: p })}>
                           Redigera

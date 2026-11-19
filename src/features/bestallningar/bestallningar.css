@@ -135,6 +135,21 @@
   margin-left: auto;
 }
 
+/* Huvudknappen på en egen rad över hela lappen, de lugnare knapparna delar
+   raden under: samma fot på varje lapp, inget "Avbryt" ensamt på en rad. */
+.order-actions > .btn.primary {
+  flex: 1 1 100%;
+}
+
+.order-actions > .btn.outline,
+.order-actions > .btn.danger-outline {
+  flex: 1 1 auto;
+}
+
+.order-actions > .order-cancel {
+  margin-left: 0;
+}
+
 /* Beloppet (ibland med presentkortets del) får radbryta i en smal kolumn. */
 .order-actions .order-cancel-confirm {
   max-width: 100%;

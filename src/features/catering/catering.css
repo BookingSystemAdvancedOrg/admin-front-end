@@ -4,6 +4,7 @@
   display: grid;
   gap: 8px;
   margin: 12px 0 0;
+  container-type: inline-size;
 }
 
 .catering-facts > div {
@@ -12,13 +13,37 @@
   gap: 12px;
 }
 
+/* Smalt kort (iPad på höjden, telefon): rubriken ovanför värdet, så värdet
+   får hela bredden och långa ord inte bryts i småbitar. */
+@container (max-width: 480px) {
+  .catering-facts {
+    gap: 12px;
+  }
+
+  .catering-facts > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .catering-facts dt {
+    font-size: 13px;
+  }
+}
+
 .catering-facts dt {
   color: var(--muted);
 }
 
 .catering-facts dd {
   margin: 0;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* E-post och telefon: inget avstavningsstreck som ser ut att höra till adressen. */
+.catering-facts dd a {
   overflow-wrap: anywhere;
+  hyphens: manual;
 }
 
 .catering-facts .mono {
@@ -36,8 +61,9 @@
 
 .catering-lines li {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 12px;
+  gap: 2px 12px;
 }
 
 .catering-lines-total {
@@ -301,13 +327,19 @@
 /* --- Passform: iPad och telefon ------------------------------------------- */
 
 /* Beloppet står kvar på en rad bredvid texten; texten bryts i stället. */
+/* En lång rad tar hela bredden och beloppet går ned till höger under den,
+   i stället för att namnet trycks ihop till småbitar. */
 .catering-lines li > span:first-child {
+  flex: 1 1 auto;
   min-width: 0;
-  overflow-wrap: anywhere;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .catering-lines li > span:last-child {
   flex: none;
+  margin-left: auto;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -318,9 +350,10 @@
   line-height: 1.3;
 }
 
-/* Förfrågningarna: tabell när kortet är brett, annars ett kort per rad med
-   Öppna uppe till höger, så inget gömmer sig bakom sidled-scroll på iPad. */
-.catering-list {
+/* Förfrågningarna: tabell när den får plats (900 px), annars ett kort per
+   rad med Öppna uppe till höger, så inget gömmer sig bakom sidled-scroll på
+   iPad (också på höjden och liggande). */
+.catering-list .table-scroll {
   container-type: inline-size;
 }
 
@@ -339,8 +372,19 @@
   width: 100%;
 }
 
-.offer-table .offer-name input {
+/* Radens namn radbryts (växer på höjden) i stället för att klippas vid kanten. */
+.offer-table .offer-name textarea {
+  display: block;
+  width: 100%;
   min-width: 200px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  font: inherit;
+  line-height: 1.4;
+  resize: none;
+  field-sizing: content;
+  overflow-wrap: break-word;
 }
 
 .offer-table .offer-price input {
@@ -362,11 +406,7 @@
   container-type: inline-size;
 }
 
-@container (max-width: 720px) {
-  .catering-list .table-scroll {
-    overflow-x: visible;
-  }
-
+@container (max-width: 899px) {
   .catering-list-table,
   .offer-table {
     display: block;
@@ -437,7 +477,7 @@
     width: auto;
   }
 
-  .offer-table .offer-name input {
+  .offer-table .offer-name textarea {
     min-width: 0;
   }
 
@@ -445,12 +485,14 @@
     align-items: flex-end;
   }
 
-  .offer-table .offer-price { flex: 1 1 96px; }
+  /* Á-pris och Antal lika breda på varje rad, så kolumnerna står i linje
+     oavsett hur lång summan är; summan tar resten, till höger. */
+  .offer-table .offer-price { flex: 0 0 112px; }
   .offer-table .offer-qty { flex: 0 0 84px; }
   .offer-table .offer-price input,
   .offer-table .offer-qty input { width: 100%; }
-  .offer-table .offer-sum { flex: 0 0 auto; min-width: 6.5em; padding-bottom: 10px !important; text-align: right; }
-  .offer-table .offer-remove { flex: none; align-self: flex-end; }
+  .offer-table .offer-sum { flex: 1 1 auto; padding-bottom: 10px !important; text-align: right; }
+  .offer-table .offer-remove { flex: none; align-self: flex-end; margin-left: auto; }
 
   .offer-table .offer-remove .link-action {
     display: inline-flex;

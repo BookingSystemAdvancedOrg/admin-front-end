@@ -447,7 +447,9 @@ export default function CateringRequestPage() {
                 <tbody>
                   {offer.lines.map((l, i) => (
                     <tr key={i}>
-                      <td className="offer-name"><input aria-label={`Rad ${i + 1} namn`} value={l.name} onChange={(e) => setLine(i, { name: e.target.value })} /></td>
+                      <td className="offer-name"><textarea aria-label={`Rad ${i + 1} namn`} rows={1} title={l.name} value={l.name} ref={fitHeight} onInput={(e) => fitHeight(e.currentTarget)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}
+                        onChange={(e) => setLine(i, { name: e.target.value.replace(/\s*\n\s*/g, ' ') })} /></td>
                       <td className="offer-price" data-label="Á-pris (kr)"><KronorInput aria-label={`Rad ${i + 1} pris`} value={l.unitPrice}
                         onValue={(unitPrice) => setLine(i, { unitPrice })} /></td>
                       <td className="offer-qty" data-label="Antal"><input aria-label={`Rad ${i + 1} antal`} inputMode="numeric" value={String(l.quantity)}
@@ -765,4 +767,11 @@ export default function CateringRequestPage() {
       </main>
     </>
   )
+}
+
+/** Radens namn växer på höjden med texten där field-sizing saknas (äldre Safari). */
+function fitHeight(el: HTMLTextAreaElement | null) {
+  if (!el || (typeof CSS !== 'undefined' && CSS.supports?.('field-sizing', 'content'))) return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
 }

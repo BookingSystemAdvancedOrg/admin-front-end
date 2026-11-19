@@ -37,3 +37,30 @@
 .gaster-segments p {
   margin: var(--bq-space-1) 0 0;
 }
+/* Färdiga målgrupper att börja från: knappar i naturlig bredd som bryts till
+   nya rader, vänsterställda (inte utsträckta i ett rutnät med text i mitten). */
+.gaster-seg-starters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--bq-space-2);
+  margin: 0 0 var(--bq-space-5);
+}
+.gaster-seg-starters > button {
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+}
+/* Kundens kort: luft mellan Historik, tabellen och formuläret under. */
+.gaster-facts ~ .form-section-label {
+  margin: 0 0 var(--bq-space-3);
+}
+.gaster-facts ~ .table-scroll {
+  margin-bottom: var(--bq-space-5);
+}
+/* Telefon: kundens namn står alltid på en egen rad överst, även när det är
+   kort, så att alla rader har samma ordning. */
+@media (max-width: 600px) {
+  .gaster-table td:first-child {
+    flex: 1 1 100%;
+  }
+}

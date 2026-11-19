@@ -144,9 +144,9 @@ export default function SegmentsPanel() {
         <div role="status" aria-label="Hämtar målgrupper" aria-busy="true"><SkelRows n={3} cols={2} /></div>
       ) : null}
       {segments && segments.length === 0 && !draft ? (
-        <div className="quick-links-row">
+        <div className="gaster-seg-starters">
           {templates.map((t) => (
-            <Button key={t.templateId} size="sm" variant="ghost"
+            <Button key={t.templateId} size="sm" variant="secondary"
               onClick={() => setDraft(draftFrom(newId(), t.name, t.rules))}>
               {t.name}
             </Button>
@@ -200,10 +200,11 @@ export default function SegmentsPanel() {
               </Select>
             </Field>
           ) : null}
-          <label className="toggle-row">
-            <input type="checkbox" className="switch" checked={draft.optedIn} onChange={(e) => set({ optedIn: e.target.checked })} />
-            <span className="toggle-row-label">Vill ha erbjudanden</span>
-          </label>
+          <div className="toggle-row toggle-row--field">
+            <span className="toggle-row-label" id="gaster-seg-optin-label">Vill ha erbjudanden</span>
+            <button type="button" role="switch" aria-checked={Boolean(draft.optedIn)} aria-labelledby="gaster-seg-optin-label"
+              className="switch" onClick={() => set({ optedIn: !draft.optedIn })} />
+          </div>
           <Bar variant="action" label="Spara målgrupp" sticky={changed || isNew} status={changed && !saving ? 'Osparade ändringar' : undefined}>
             <Button type="button" variant="secondary" onClick={() => { setDraft(null); setFailed(false) }}>Avbryt</Button>
             <Button type="submit" busy={saving} busyLabel="Sparar…"

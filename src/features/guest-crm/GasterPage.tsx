@@ -216,7 +216,7 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
         ) : null}
         {guests && guests.length > 0 ? (
           <div className="table-scroll" tabIndex={0}>
-            <table className="data-table">
+            <table className="data-table gaster-table">
               <caption className="bq-sr-only">Kunder, senast här först</caption>
               <thead>
                 <tr><th scope="col">Namn</th><th scope="col">Senast här</th><th scope="col">Besök</th><th scope="col">Kund</th></tr>
@@ -447,10 +447,11 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
               <Field label="Födelsedag" hint={textNote('birthday') ?? 'MM-DD'}>
                 <Input value={form.birthday} placeholder="03-14" inputMode="numeric" onChange={(e) => set({ birthday: e.target.value })} />
               </Field>
-              <label className="toggle-row">
-                <input type="checkbox" className="switch" checked={form.excluded} onChange={(e) => set({ excluded: e.target.checked })} />
-                <span className="toggle-row-label">Kunden vill inte ingå i utskick</span>
-              </label>
+              <div className="toggle-row toggle-row--field">
+                <span className="toggle-row-label" id="gaster-excluded-label">Kunden vill inte ingå i utskick</span>
+                <button type="button" role="switch" aria-checked={form.excluded} aria-labelledby="gaster-excluded-label"
+                  className="switch" onClick={() => set({ excluded: !form.excluded })} />
+              </div>
               {clash('excluded') !== undefined && (
                 <ChangedNote value={clash('excluded') ? 'ingår inte i utskick' : 'ingår i utskick'} onUse={() => set({ excluded: Boolean(clash('excluded')) })} />
               )}

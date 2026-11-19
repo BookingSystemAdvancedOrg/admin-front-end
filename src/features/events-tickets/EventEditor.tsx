@@ -222,7 +222,7 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
             <fieldset className="evenemang-fieldset">
               <legend>Biljettyper</legend>
               {types.map((t, i) => (
-                <div className="evenemang-row" key={t.typeId}>
+                <div className="evenemang-row evenemang-type-row" key={t.typeId}>
                   <Field label="Namn"><Input value={t.name} maxLength={80} onChange={(e) => setType(i, { name: e.target.value })} required /></Field>
                   <Field label="Pris (kr inkl. moms)"><Input inputMode="decimal" value={t.priceKr} onChange={(e) => setType(i, { priceKr: e.target.value })} required /></Field>
                   <Field label="Moms" hint="Revisorn ska godkänna momssatsen.">

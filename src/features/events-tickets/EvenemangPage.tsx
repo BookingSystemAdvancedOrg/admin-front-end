@@ -85,7 +85,7 @@ function EventList({ locationId, isOwner }: { locationId: string; isOwner: boole
       ) : null}
       {events?.length ? (
         <div className="table-scroll" tabIndex={0}>
-          <table className="data-table">
+          <table className="data-table evenemang-table">
             <thead><tr><th scope="col">Evenemang</th><th scope="col">Nästa tillfälle</th><th scope="col">Sålda</th><th scope="col">Status</th></tr></thead>
             <tbody>
               {events.map((e) => (
@@ -410,7 +410,7 @@ function Orders({ locationId, eventId, onChanged }: { locationId: string; eventI
       {orders && orders.length === 0 ? <p className="admin-empty">Inga köp än.</p> : null}
       {orders?.length ? (
         <div className="table-scroll" tabIndex={0}>
-          <table className="data-table">
+          <table className="data-table evenemang-table">
             <thead><tr><th scope="col">Köpare</th><th scope="col">Belopp</th><th scope="col">Biljetter</th></tr></thead>
             <tbody>
               {orders.map((o) => (

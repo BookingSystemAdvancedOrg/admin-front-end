@@ -374,9 +374,10 @@
   color: var(--bq-ink);
   overflow-wrap: anywhere;
 }
-/* I stegen: numret på en rad, som man läser upp det. */
+/* I stegen: numret på en rad, som man läser upp det. Storleken följer
+   stegets egen bredd (inte fönstret), så numret ryms även bredvid sidomenyn. */
 .telefon-howto .telefon-bignumber__value {
-  font-size: clamp(18px, 5.4vw, 30px);
+  font-size: clamp(18px, 10cqi, 30px);
   white-space: nowrap;
 }
 .telefon-tag {
@@ -508,6 +509,7 @@
   display: grid;
   gap: var(--bq-space-3);
   min-width: 0;
+  container-type: inline-size;
 }
 .telefon-howto__icon {
   color: var(--bq-muted);
@@ -698,8 +700,10 @@
 }
 .telefon-calls__summary {
   min-width: 16em;
-  overflow-wrap: break-word;
-  hyphens: auto;
+  overflow-wrap: anywhere;
+  /* Inga automatiska bindestreck: de hamnar annars mitt i adresser och
+     e-post och ger fel adress. */
+  hyphens: manual;
 }
 /* Utfallet: brickan och tillägget ("Erbjöd annan tid") hålls ihop var för sig,
    tillägget hamnar helt under brickan i stället för att lämna ett ord ensamt. */
@@ -793,4 +797,10 @@
     border: 11px solid transparent;
     background-clip: padding-box;
   }
+}
+
+/* Tiderna: ett tidsspann ("sön 02:00-10:00") bryts aldrig, raden bryts
+   bara efter kommatecknen. */
+.telefon-hours__part {
+  white-space: nowrap;
 }

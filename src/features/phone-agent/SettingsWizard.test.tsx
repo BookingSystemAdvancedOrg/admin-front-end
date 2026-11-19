@@ -228,9 +228,9 @@ describe('wizard', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Fortsätt: Tider' }))
     await step(2)
     expect(screen.getByLabelText('När ni har stängt')).toBeChecked()
-    expect(screen.getByText('Mån-tor 22:00-11:00, fre 22:00-mån 11:00')).toBeInTheDocument()
+    expect(screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === 'Mån-tor 22:00-11:00, fre 22:00-mån 11:00')).toBeInTheDocument()
     fireEvent.click(screen.getByLabelText('När ni inte hinner svara'))
-    expect(screen.getByText('Mån-fre 11:00-22:00')).toBeInTheDocument()
+    expect(screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === 'Mån-fre 11:00-22:00')).toBeInTheDocument()
     fireEvent.click(nextButton())
     await step(3)
     const put = sent('PUT', '/locations/loc-1/phone-agent')[0].body!

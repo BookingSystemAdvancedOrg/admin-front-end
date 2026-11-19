@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Bar, Button, Card, Field, Input, Printing } from '@booqy/brand'
 import { BrandSelect as Select } from '../../shared/Select'
@@ -315,7 +315,9 @@ function Wizard({ locationId, data, start, onConfig, onLoc, onExit }: {
               })}
             </fieldset>
             {hasHours ? (
-              <p className="telefon-hint">{d.mode === 'always' ? 'Dygnet runt' : hoursSummary(hoursFor(d.mode, businessHours))}</p>
+              <p className="telefon-hint">{d.mode === 'always' ? 'Dygnet runt' : hoursSummary(hoursFor(d.mode, businessHours)).split(', ').map((part, i, all) => (
+                <Fragment key={i}>{i ? ' ' : ''}<span className="telefon-hours__part">{part}{i < all.length - 1 ? ',' : ''}</span></Fragment>
+              ))}</p>
             ) : (
               <p className="telefon-hint">Lägg in öppettider först. <Link to="/installningar">Öppna Inställningar</Link></p>
             )}

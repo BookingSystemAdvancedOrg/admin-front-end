@@ -705,6 +705,19 @@
   animation: palette-fade var(--dur-base) var(--ease-out);
 }
 
+/* Hela sidan bakom paletten blir suddig, även på en lång rullad sida, så
+   listan inte tävlar med skarp text nedanför panelen. Eget lager (inte på
+   bakgrunden själv) så panelens glas fortfarande ser sidan. */
+.palette-backdrop::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  -webkit-backdrop-filter: blur(var(--blur-pop));
+  backdrop-filter: blur(var(--blur-pop));
+  pointer-events: none;
+}
+
 .palette {
   display: flex;
   flex-direction: column;
@@ -1018,6 +1031,13 @@
   .info-tooltip-panel,
   .palette {
     background: var(--glass-surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .palette-backdrop::before {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
@@ -1448,7 +1468,9 @@ input[type='number']::-webkit-outer-spin-button {
 /* Menyns rullyta (AdminLayout): samma kolumn som panelen, rullar när den inte får plats. */
 .admin-sidebar-scroll {
   display: flex;
-  flex: 1 1 auto;
+  /* Krymper inte: när menyn rullar räknas panelens nedre luft med, så Logga ut
+     hamnar inte mot det rundade hörnet. */
+  flex: 1 0 auto;
   flex-direction: column;
   gap: inherit;
   min-block-size: 0;
@@ -1566,6 +1588,11 @@ html.drawer-lock body {
 .tenant-notice .card-title {
   overflow-wrap: anywhere;
   hyphens: auto;
+}
+
+/* Rollen (Ägare, Personal) delas aldrig: raden bryts före punkten. */
+.admin-user-role {
+  white-space: nowrap;
 }
 
 /* Fråga Booqy: förslagen syns som knappar (fyllning, inga kanter sedan

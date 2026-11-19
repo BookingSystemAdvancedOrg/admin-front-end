@@ -304,7 +304,8 @@ export function AdminLayout() {
             <MyAvatarButton name={displayName} email={email} />
             <span className="admin-user-name">
               {/* Rollen enligt servern när restaurangen är laddad. */}
-              {displayName} · {primaryGroupLabel(tenant ? [tenant.role] : groups)}
+              {displayName}{' '}
+              <span className="admin-user-role">· {primaryGroupLabel(tenant ? [tenant.role] : groups)}</span>
             </span>
           </div>
           <button

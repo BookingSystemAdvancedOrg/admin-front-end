@@ -261,7 +261,7 @@ export function DishModal({
     <ModalOverlay
       onPointerDown={(e) => e.target === e.currentTarget && closeRef.current()}
     >
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="modal meny-dish-modal" role="dialog" aria-modal="true" aria-label={title}>
         <h2>{title}</h2>
 
         <div className="form-field">

@@ -61,7 +61,8 @@
 }
 .pl-facts {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  /* rubriken (Arbetsgivare) är aldrig smalare än sitt ord */
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, 2fr);
   gap: var(--bq-space-2) var(--bq-space-4);
   margin: 0;
 }
@@ -70,6 +71,8 @@
 }
 .pl-facts dd {
   margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .pl-sub {
   margin: var(--bq-space-4) 0 var(--bq-space-2);

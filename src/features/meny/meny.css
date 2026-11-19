@@ -239,6 +239,12 @@
   min-width: 0;
 }
 
+/* Redigera, Radera och Dela på en rad, vid högerkanten under Åtgärder */
+.meny-table .row-actions.row-actions--inline {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
 @container meny-list (max-width: 1000px) {
   .meny-table .row-actions.row-actions--inline {
     display: none;
@@ -297,9 +303,51 @@
     flex: 1 1 100%;
   }
 
-  /* "…" längst till höger på raden med reglaget */
-  .meny-table td:last-child {
+  /* Kortet: bild, namn och "…" överst; kategori, pris och status under.
+     Reglaget står alltid vid högerkanten (samma plats på varje kort). */
+  .meny-scroll .data-table.meny-table td.dish-cell-image {
+    order: 0;
+  }
+
+  .meny-scroll .data-table.meny-table td.cell-strong {
+    order: 1;
+    flex: 1 1 calc(100% - 56px - 44px - 28px);
+    overflow-wrap: anywhere;
+  }
+
+  .meny-scroll .data-table.meny-table td.right {
+    order: 2;
+    flex: 0 0 auto;
+    margin-left: 0;
+  }
+
+  .meny-scroll .data-table.meny-table td:nth-child(3) {
+    order: 3;
+    min-width: 0;
+  }
+
+  .meny-scroll .data-table.meny-table td.cell-price {
+    order: 4;
+  }
+
+  .meny-scroll .data-table.meny-table td:nth-child(5) {
+    order: 5;
     margin-left: auto;
+  }
+
+  .meny-table .dish-status {
+    flex-direction: row-reverse;
+  }
+
+  /* långa kategorinamn och "Schemalagd (startar ...)" bryts i stället för att gå utanför kortet */
+  .meny-table td .status-badge {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* kortet säger själv vad varje värde är (kategori, kr, status) */
+  .meny-scroll .data-table.meny-table td[data-label]::before {
+    display: none;
   }
 
   .dish-row {
@@ -647,9 +695,9 @@
 }
 
 .btn.meny-icon-btn {
-  width: 40px;
-  min-width: 40px;
-  height: 40px;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
   padding: 0;
   justify-content: center;
 }
@@ -668,4 +716,11 @@
 .dish-sendto {
   display: grid;
   gap: 10px;
+}
+
+/* Avbryt och Spara ligger kvar ända nere vid dialogens kant: den klistrade
+   raden räknas annars från innerkanten och innehållet syntes under den. */
+.meny-dish-modal > .modal-actions--pinned,
+.meny-categories > .modal-actions--pinned {
+  bottom: calc(-1 * var(--modal-pad, 24px));
 }

@@ -55,7 +55,7 @@ export function CallbackList({ locationId, title, compact = false }: { locationI
             <li key={cb.callbackId}>
               <div>
                 <strong>{cb.name || 'Okänt namn'}</strong>
-                <span className="cell-muted"> {when(cb.createdAt)}</span>
+                {' '}<span className="cell-muted telefon-nowrap">{when(cb.createdAt)}</span>
                 <div>{cb.topic}</div>
               </div>
               <div className="telefon-callbacks__actions">

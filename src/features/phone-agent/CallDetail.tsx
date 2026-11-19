@@ -56,13 +56,13 @@ export default function CallDetail({ locationId, callId, owner }: { locationId: 
       ) : (
         <>
           <dl className="telefon-facts">
-            <dt>När</dt><dd>{when(call.startedAt)}</dd>
+            <dt>När</dt><dd className="telefon-nowrap">{when(call.startedAt)}</dd>
             {owner && call.from ? <><dt>Från</dt><dd className="telefon-mono">{call.from}</dd></> : null}
             <dt>Utfall</dt><dd>{call.outcome ? OUTCOME_LABEL[call.outcome] : 'Pågår'}{call.counterOffer !== 'none' ? `, ${COUNTER_LABEL[call.counterOffer].toLowerCase()}` : ''}</dd>
             <dt>Minuter</dt><dd>{call.billedMinutes}</dd>
             <dt>AI-upplysning</dt>
             <dd>
-              {call.disclosure.playedAt ? `Spelades upp ${when(call.disclosure.playedAt)}` : 'Sades i hälsningen'}
+              {call.disclosure.playedAt ? <>Spelades upp <span className="telefon-nowrap">{when(call.disclosure.playedAt)}</span></> : 'Sades i hälsningen'}
               {call.disclosure.repeats ? `, upprepad ${call.disclosure.repeats} gång${call.disclosure.repeats > 1 ? 'er' : ''}` : ''}
             </dd>
           </dl>

@@ -95,6 +95,20 @@
   padding-top: 4px;
 }
 
+/* Orderskrivare och Pappersbredd sida vid sida bara när väljarna rymmer hela
+   texten ("80 mm (48 tecken per rad)" klipptes i en smal kolumn). */
+.printer-settings .form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+}
+
+/* Vad skickas vart?: kategorinamnet (restaurangens egen text) får hela raden
+   när knapparna bryts under, och långa ord avstavas i stället för att klippas. */
+.printer-card .cat-routing-name {
+  max-width: none;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
 .printer-steps {
   display: grid;
   gap: 10px;

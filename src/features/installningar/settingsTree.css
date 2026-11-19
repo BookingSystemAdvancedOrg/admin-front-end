@@ -492,6 +492,46 @@
   height: 22px;
   margin: 0;
 }
+/* Tabellen ryms i kortet (348-720 px) i stället för globala 900 px bakom
+   en osynlig sidled-scroll: rubrikerna får brytas, bordets namn hålls ihop. */
+@media (min-width: 601px) {
+  .settings-branch .rules-table {
+    min-width: 0 !important;
+  }
+  .settings-branch .rules-table th {
+    padding-right: 10px;
+    white-space: normal;
+    vertical-align: bottom;
+  }
+  .settings-branch .rules-table td {
+    padding-right: 10px;
+  }
+  .settings-branch .rules-table td.cell-strong {
+    white-space: nowrap;
+  }
+  .settings-branch .rules-table .rules-number {
+    width: 60px;
+  }
+}
+
+/* Kryssrutorna i Bokning (Bokningstid, Ny kombination, Kö) blir 22 px och
+   raden 44 px hög för fingret på surfplattan. */
+.settings-branch :is(.check-row, .table-chip, .queue-checks label) {
+  min-height: 44px;
+  align-items: center;
+}
+.settings-branch :is(.check-row, .table-chip, .queue-checks label) > input[type='checkbox'] {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+}
+
+/* Två fält i rad (Bokningstid, Kvittoskrivare): väljarna står på samma höjd
+   även när den ena rubriken har (i) eller bryts på två rader. */
+.settings-branch .form-grid {
+  align-items: end;
+}
 @media (max-width: 600px) {
   .settings-branch .rules-table tr {
     align-items: start;
@@ -519,7 +559,11 @@
   min-height: 44px;
 }
 .settings-branch .hours-editor-next {
+  order: 1; /* krysset står kvar direkt efter tiderna, "natt mot söndag" bryts efter */
   font-size: 13px;
+}
+.settings-branch .hours-editor {
+  margin-bottom: 16px;
 }
 
 /* Bladet man sökte: en ton över raden som tonar bort (ingen ram). */

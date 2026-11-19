@@ -110,7 +110,8 @@
 }
 
 .bokforing-row-hint {
-  font-size: 12px;
+  font-size: 13px;
+  text-wrap: pretty; /* inget ensamt "moms" på sista raden */
   line-height: 1.35;
   color: var(--muted);
   /* "Företagskonto/checkkonto/affärskonto" har inga mellanslag. */

@@ -194,6 +194,18 @@
   gap: var(--space-3);
 }
 
+/* Knapparna börjar vid vänsterkanten som texten ovanför, även på telefon. */
+.help-msg--fault .error-note-actions {
+  justify-content: flex-start;
+}
+
+.help-msg--fault .error-note-actions .btn {
+  flex: 0 1 auto;
+  max-width: 100%;
+  white-space: normal;
+  text-align: start;
+}
+
 .help-answer {
   margin: 0;
 }
@@ -436,4 +448,13 @@
     width: 40px;
     height: 40px;
   }
+
+  .help-msg--fault .error-note-actions .btn {
+    min-height: 44px;
+  }
+}
+
+/* Under introduktionsguiden: knappen döljs så den inte täcker det upplysta målet. */
+.help-launcher.help-launcher--guide {
+  display: none;
 }

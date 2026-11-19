@@ -18,6 +18,7 @@ import { OPEN_EVENT, helpChatEnabled, setHelpChatEnabled, withContext } from './
 import type { HelpContext } from './chatState'
 import { KB, actionAllowed, actionHref, entryVisible, viewOf } from './kb'
 import type { HelpAction, HelpAnswer } from './kb'
+import { useGuide } from '../guide/Guide'
 import './helpChat.css'
 
 /**
@@ -55,6 +56,8 @@ export function HelpChat() {
   const launcherRef = useRef<HTMLButtonElement>(null)
   // Telefon: ingen flytande knapp, Fråga Booqy ligger under Mer i menyn längst ner.
   const phone = usePhoneNav()
+  // Under introduktionsguiden döljs knappen, den ska inte täcka det upplysta målet.
+  const guideActive = useGuide().active
   useDodge(launcherRef, enabled && status === 'ready' && !open && !phone)
   useHideOnScroll(launcherRef, enabled && status === 'ready' && !open && !phone)
   const logRef = useRef<HTMLOListElement>(null)
@@ -241,7 +244,7 @@ export function HelpChat() {
         <button
           ref={launcherRef}
           type="button"
-          className="help-launcher"
+          className={`help-launcher${guideActive ? ' help-launcher--guide' : ''}`}
           aria-label="Fråga Booqy"
           aria-expanded={false}
           aria-controls={panelId}

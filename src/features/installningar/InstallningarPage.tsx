@@ -486,7 +486,7 @@ export default function InstallningarPage() {
 
           {/* Grenar döljs (hidden) i stället för att tas bort - osparade ändringar ligger kvar. */}
           <div {...pane('profil')}>
-            <section className="admin-card table-card" data-help="settings:profil:InstallningarPage">
+            <section className="admin-card table-card settings-profile-card" data-help="settings:profil:InstallningarPage">
               <div className="card-head">
                 <div>
                   <h2 className="card-title">Restaurangprofil</h2>

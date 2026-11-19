@@ -43,6 +43,8 @@
 .cookie-item .status-badge {
   display: inline-block;
   min-width: 0;
+  /* Står kvar vid högerkanten även när den går ner på en egen rad. */
+  margin-left: auto;
   padding: 3px 7px 2px;
   border: 1.5px solid currentColor;
   border-radius: var(--r-md);

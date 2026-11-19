@@ -207,13 +207,15 @@ export function TableRulesCard({
                       <td className="cell-strong">Bord {t.label}</td>
                       <td>{t.seats}</td>
                       <td>
-                        <input
-                          type="checkbox"
-                          aria-label={`Bord ${t.label} bokas online`}
-                          checked={row.online}
-                          disabled={disabled}
-                          onChange={(e) => setRow(t.tableId, { online: e.target.checked })}
-                        />
+                        <label className="rules-online">
+                          <input
+                            type="checkbox"
+                            aria-label={`Bord ${t.label} bokas online`}
+                            checked={row.online}
+                            disabled={disabled}
+                            onChange={(e) => setRow(t.tableId, { online: e.target.checked })}
+                          />
+                        </label>
                       </td>
                       <td>
                         <input

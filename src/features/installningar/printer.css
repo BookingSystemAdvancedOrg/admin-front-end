@@ -210,3 +210,8 @@
 .printer-subtitle--gap {
   margin-top: 20px;
 }
+
+/* Vad skickas vart?: Kök/Dryck/Ingen bong når 44 px för fingret på surfplattan. */
+.printer-card .sendto--compact .sendto-chip {
+  min-height: 44px;
+}

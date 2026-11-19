@@ -92,12 +92,12 @@ export default function CateringPage() {
           ) : <NoLocation />
         ) : (
           <>
-          <section className="stats-row" aria-label="Cateringens siffror">
+          <section className="stats-row catering-stats" aria-label="Cateringens siffror">
             {tiles.map((t, i) => (
               <StatTile key={t.label} {...t} loading={rows === null && !error} index={i} />
             ))}
           </section>
-          <section className="admin-card table-card" data-tour="catering-list">
+          <section className="admin-card table-card catering-list" data-tour="catering-list">
             <div className="card-head">
               <h2 className="card-title">Förfrågningar och beställningar</h2>
               <Select className="compact-select" aria-label="Visa" value={filter} onChange={(e) => setFilter(e.target.value as Filter)}>
@@ -114,7 +114,7 @@ export default function CateringPage() {
             )}
             {visible.length > 0 && (
               <div className="table-scroll" tabIndex={0}>
-                <table className="data-table">
+                <table className="data-table catering-list-table">
                   <thead>
                     <tr>
                       <th>Datum</th>
@@ -128,27 +128,27 @@ export default function CateringPage() {
                   <tbody>
                     {visible.map((r) => (
                       <tr key={r.requestId}>
-                        <td className="cell-strong">
+                        <td className="cell-strong catering-when">
                           {formatDate(r.deliveryDate)} {r.deliveryTime}
                           <div className="cell-muted">
                             {r.fulfilment === 'delivery' ? 'Leverans' : 'Avhämtning'}
                             {r.equipmentReturn === 'not_cleaned' && <> · <span className="catering-return-flag">ej rengjord retur</span></>}
                           </div>
                         </td>
-                        <td>
+                        <td className="catering-who">
                           {r.companyName ? `${r.companyName} · ` : ''}
                           {r.customerName}
                         </td>
-                        <td>{r.guests != null ? <Num>{r.guests}</Num> : r.portions != null ? <><Num>{r.portions}</Num> port</> : '-'}</td>
-                        <td><Num>{kronor(r.total)}</Num></td>
-                        <td>
+                        <td className="catering-guests" data-label="Gäster">{r.guests != null ? <Num>{r.guests}</Num> : r.portions != null ? <><Num>{r.portions}</Num> port</> : '-'}</td>
+                        <td className="catering-amount" data-label="Belopp"><Num>{kronor(r.total)}</Num></td>
+                        <td className="catering-state">
                           <span className={`status-badge ${statusClass(r.status)}`}>{statusLabel(r)}</span>
                           {r.paid && <span className="cell-muted"> · betald</span>}
                           {(r.refundedAmount ?? 0) > 0 && (
                             <span className="cell-muted"> · återbetalt <Num>{kronor(r.refundedAmount)}</Num></span>
                           )}
                         </td>
-                        <td>
+                        <td className="catering-open">
                           <Link className="link-action" to={`/catering/${locationId}/${r.requestId}`}>
                             Öppna
                           </Link>

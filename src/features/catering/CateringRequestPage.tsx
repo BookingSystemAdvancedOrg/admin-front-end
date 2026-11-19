@@ -442,18 +442,18 @@ export default function CateringRequestPage() {
             <div className="table-scroll" tabIndex={0}>
               <table className="data-table offer-table">
                 <thead>
-                  <tr><th>Rad</th><th>Á-pris (kr)</th><th>Antal</th><th>Summa</th><th /></tr>
+                  <tr><th className="offer-name">Rad</th><th className="offer-price">Á-pris (kr)</th><th className="offer-qty">Antal</th><th className="offer-sum">Summa</th><th className="offer-remove" /></tr>
                 </thead>
                 <tbody>
                   {offer.lines.map((l, i) => (
                     <tr key={i}>
-                      <td><input aria-label={`Rad ${i + 1} namn`} value={l.name} onChange={(e) => setLine(i, { name: e.target.value })} /></td>
-                      <td><KronorInput aria-label={`Rad ${i + 1} pris`} value={l.unitPrice}
+                      <td className="offer-name"><input aria-label={`Rad ${i + 1} namn`} value={l.name} onChange={(e) => setLine(i, { name: e.target.value })} /></td>
+                      <td className="offer-price" data-label="Á-pris (kr)"><KronorInput aria-label={`Rad ${i + 1} pris`} value={l.unitPrice}
                         onValue={(unitPrice) => setLine(i, { unitPrice })} /></td>
-                      <td><input aria-label={`Rad ${i + 1} antal`} inputMode="numeric" value={String(l.quantity)}
+                      <td className="offer-qty" data-label="Antal"><input aria-label={`Rad ${i + 1} antal`} inputMode="numeric" value={String(l.quantity)}
                         onChange={(e) => setLine(i, { quantity: Number(e.target.value.replace(/\D/g, '')) || 0 })} /></td>
-                      <td><Num>{kronor(Math.round(l.unitPrice * 100) * l.quantity)}</Num></td>
-                      <td>
+                      <td className="offer-sum" data-label="Summa"><Num>{kronor(Math.round(l.unitPrice * 100) * l.quantity)}</Num></td>
+                      <td className="offer-remove">
                         <button type="button" className="link-action danger" aria-label={`Ta bort rad ${i + 1}`}
                           onClick={() => setOffer({ ...offer, lines: offer.lines.filter((_, n) => n !== i) })}>Ta bort</button>
                       </td>

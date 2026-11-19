@@ -472,7 +472,7 @@ export default function BestallningarPage() {
             {loadError && (
               <ErrorNote text={booqyFaultText('Beställningarna kunde inte visas.')} />
             )}
-            {!bord && <section className="stats-row" aria-label="Dagens siffror">
+            {!bord && <section className="stats-row orders-stats" aria-label="Dagens siffror">
               {tiles.map((t, i) => (
                 <StatTile key={t.label} {...t} loading={orders === null} index={i} />
               ))}

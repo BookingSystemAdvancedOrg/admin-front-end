@@ -185,8 +185,10 @@ export function pauseOrdering(locationId: string, minutes: number): Promise<{ or
 
 /** "285,50 kr" från öre. */
 export function kronor(ore: number): string {
-  const text = (ore / 100).toFixed(2).replace('.', ',')
-  return `${text.endsWith(',00') ? text.slice(0, -3) : text} kr`
+  const [whole, frac] = (ore / 100).toFixed(2).split('.')
+  // Tusentalsavgränsning med mellanslag ("1 234 567 kr"), som Num och catering.
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+  return `${frac === '00' ? grouped : `${grouped},${frac}`} kr`
 }
 
 /** "18:40" i restaurangens tid (platsens tidszon, annars Europe/Stockholm),

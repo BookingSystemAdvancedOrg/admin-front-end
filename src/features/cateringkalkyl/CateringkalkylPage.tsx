@@ -337,7 +337,7 @@ export default function CateringkalkylPage() {
           </SkelPage>
         </main>
       ) : (
-      <main className="admin-main">
+      <main className="admin-main cat-kalkyl">
         <ErrorNote text={saveError} />
         {changedThere && <ChangedNote onUse={takeTheirs} />}
         {/* Huvudreglaget först: syns catering på webbplatsen eller inte. */}
@@ -666,7 +666,7 @@ export default function CateringkalkylPage() {
             notice={saveNotice} failed={failed} disabled={!loaded} />
         )}
 
-        <section className="admin-card table-card">
+        <section className="admin-card table-card cat-tiers">
           <div className="card-head">
             <div>
               <TitleInfo title="Rabattnivåer" info="Räknas på antal gäster. När nivån nås rabatteras alla rätter." />
@@ -681,7 +681,7 @@ export default function CateringkalkylPage() {
           </div>
           <ErrorNote text={tierError} />
           <div className="table-scroll" tabIndex={0}>
-            <table className="data-table">
+            <table className="data-table tier-table">
               <thead>
                 <tr>
                   <th>Nivå</th>
@@ -699,19 +699,19 @@ export default function CateringkalkylPage() {
                     <td className="cell-strong">{t.name}</td>
                     <td data-label="Från">{t.fromPortions} gäster</td>
                     <td data-label={t.toPortions != null ? "Till" : undefined}>{t.toPortions != null ? `${t.toPortions} gäster` : 'och uppåt'}</td>
-                    <td>
+                    <td data-label="Rabatt">
                       {t.discountPercent > 0 ? (
                         <span className="cell-price">-{t.discountPercent} %</span>
                       ) : (
                         <span className="cell-muted">Ingen rabatt</span>
                       )}
                     </td>
-                    <td>
+                    <td className="tier-status">
                       <span className={`status-badge ${t.active ? 'reserved' : 'cancelled-free'}`}>
                         {t.active ? 'Aktiv' : 'Inaktiv'}
                       </span>
                     </td>
-                    <td>
+                    <td className="tier-switch">
                       <button
                         type="button"
                         role="switch"
@@ -721,7 +721,7 @@ export default function CateringkalkylPage() {
                         onClick={() => toggleTierActive(t.id)}
                       />
                     </td>
-                    <td className="right">
+                    <td className="right tier-actions">
                       <RowActions label="Åtgärder">
                         <button
                           type="button"

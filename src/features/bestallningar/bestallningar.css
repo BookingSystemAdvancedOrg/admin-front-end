@@ -597,3 +597,69 @@
     font-weight: 700;
   }
 }
+
+/* --- Passform: iPad och telefon ------------------------------------------- */
+
+/* Pausväljaren i toppraden: "Välj…" syns helt och är lätt att träffa. */
+.orders-pause {
+  flex-wrap: wrap;
+}
+
+.orders-pause .b-select {
+  flex: none;
+  min-width: 8.5em;
+  min-height: 44px;
+}
+
+/* Omsättningen får plats i sin ruta: siffran krymper med rutan i stället
+   för att "kr" hamnar på en egen rad. */
+.orders-stats .stat-tile {
+  container-type: inline-size;
+}
+
+.orders-stats .stat-tile-value {
+  font-size: clamp(22px, 14cqi, 34px);
+  white-space: nowrap;
+}
+
+/* Lapparna: långa ord (namn, önskemål) bryts inne i lappen. */
+.order-card,
+.kds-ticket {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.order-card-head,
+.kds-ticket-head {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.order-card-head .order-place,
+.kds-ticket-head .order-place {
+  min-width: 0;
+}
+
+.order-meta,
+.order-notes,
+.order-lines,
+.kds-lines {
+  overflow-wrap: anywhere;
+}
+
+.orders-done li {
+  overflow-wrap: anywhere;
+}
+
+/* Knapparna på lappen: minst 44 px att trycka på med fingret. */
+.order-actions .btn.square,
+.orders-views button,
+.kds-stations button {
+  min-height: 44px;
+}
+
+/* Ett belopp bryts aldrig mitt i ("1 234 / 567 kr"). */
+.order-meta .count-num,
+.orders-done .count-num {
+  white-space: nowrap;
+}

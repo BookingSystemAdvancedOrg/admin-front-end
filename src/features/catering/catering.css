@@ -297,3 +297,211 @@
     animation: none;
   }
 }
+
+/* --- Passform: iPad och telefon ------------------------------------------- */
+
+/* Beloppet står kvar på en rad bredvid texten; texten bryts i stället. */
+.catering-lines li > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.catering-lines li > span:last-child {
+  flex: none;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Filtret: "Pågående" med hela g:et, inte avklippt under. */
+.catering-list .compact-select {
+  line-height: 1.3;
+}
+
+/* Förfrågningarna: tabell när kortet är brett, annars ett kort per rad med
+   Öppna uppe till höger, så inget gömmer sig bakom sidled-scroll på iPad. */
+.catering-list {
+  container-type: inline-size;
+}
+
+.catering-list-table .catering-amount,
+.catering-list-table .catering-guests {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.catering-list-table .catering-who {
+  overflow-wrap: anywhere;
+}
+
+/* Offertens rader: namnet får plats, priset och antalet är lagom smala. */
+.offer-table td.offer-name {
+  width: 100%;
+}
+
+.offer-table .offer-name input {
+  min-width: 200px;
+}
+
+.offer-table .offer-price input {
+  width: 112px;
+  min-width: 0;
+}
+
+.offer-table .offer-qty input {
+  width: 84px;
+  min-width: 0;
+}
+
+.offer-table .offer-sum {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.table-scroll:has(> .offer-table) {
+  container-type: inline-size;
+}
+
+@container (max-width: 720px) {
+  .catering-list .table-scroll {
+    overflow-x: visible;
+  }
+
+  .catering-list-table,
+  .offer-table {
+    display: block;
+    min-width: 0 !important;
+  }
+
+  .catering-list-table thead,
+  .offer-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .catering-list-table tbody,
+  .offer-table tbody {
+    display: block;
+  }
+
+  .catering-list-table tr,
+  .offer-table tr {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .catering-list-table tbody tr:first-child,
+  .offer-table tbody tr:first-child {
+    border-top: 0;
+  }
+
+  .catering-list-table td,
+  .offer-table td {
+    display: block;
+    min-width: 0;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  .catering-list-table td[data-label]::before,
+  .offer-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font: 500 12px/1.3 var(--font);
+    color: var(--muted);
+  }
+
+  .catering-list-table .catering-when { order: 0; flex: 1 1 0; }
+  .catering-list-table .catering-open { order: 1; flex: none; }
+  .catering-list-table .catering-who { order: 2; flex: 1 1 100%; }
+  .catering-list-table .catering-guests { order: 3; flex: none; }
+  .catering-list-table .catering-amount { order: 4; flex: 1 1 auto; }
+  .catering-list-table .catering-state { order: 5; flex: 1 1 100%; }
+
+  .catering-list-table .catering-open .link-action {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .offer-table td.offer-name {
+    flex: 1 1 100%;
+    width: auto;
+  }
+
+  .offer-table .offer-name input {
+    min-width: 0;
+  }
+
+  .offer-table tr {
+    align-items: flex-end;
+  }
+
+  .offer-table .offer-price { flex: 1 1 96px; }
+  .offer-table .offer-qty { flex: 0 0 84px; }
+  .offer-table .offer-price input,
+  .offer-table .offer-qty input { width: 100%; }
+  .offer-table .offer-sum { flex: 0 0 auto; min-width: 6.5em; padding-bottom: 10px !important; text-align: right; }
+  .offer-table .offer-remove { flex: none; align-self: flex-end; }
+
+  .offer-table .offer-remove .link-action {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+/* Rubriken med kundens företagsnamn: långa ord bryts i stället för att
+   trycka ut sidan i sidled (iPad mini, telefon). */
+.admin-right:has(.catering-request) .admin-topbar-titles h1 {
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+/* Fingrar på iPad: länkknappar och väljare minst 44 px höga. */
+@media (pointer: coarse) {
+  .catering-request .link-action,
+  .catering-list .link-action {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .offer-add-row .b-select,
+  .catering-list .compact-select {
+    min-height: 44px;
+  }
+}
+
+/* Värdet får plats i sin ruta: siffran krymper med rutan i stället för att
+   "kr" hamnar på en egen rad. */
+.catering-stats .stat-tile {
+  container-type: inline-size;
+}
+
+.catering-stats .stat-tile-value {
+  font-size: clamp(22px, 14cqi, 34px);
+  white-space: nowrap;
+}
+
+/* Ett belopp bryts aldrig mitt i ("1 234 / 567 kr"). */
+.catering-request .count-num,
+.catering-list .count-num {
+  white-space: nowrap;
+}
+
+/* Väljarna i offerten: hela valet syns (radbryts) på telefon. */
+.catering-request .form-field .b-select-value {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  line-height: 1.3;
+}

@@ -46,6 +46,8 @@ export const SAMPLE_DATA_KEY = 'booqy-sample-data'
 export const STATISTIK_OPEN_KEY_PREFIX = 'booqy-statistik-open:'
 export const UPDATED_FLAG_KEY = 'booqy-updated'
 export const CALL_TEXT_VIEW_KEY_PREFIX = 'booqy-samtal-sprak:'
+/** Bordsbeställningens osända rätter och vyn Karta/Lista, per plats. */
+export const TABLE_ORDER_DRAFT_KEY_PREFIX = 'booqy-bordsbestallning:'
 /** IndexedDB-databasen för insläpp vid dörren, en per tillfälle (CONTRACTS.md 10). */
 export const EVENT_SCAN_KEY_PREFIX = STORAGE_KEYS.EVENT_SCAN_KEY_PREFIX
 
@@ -162,6 +164,14 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     setBy: 'Booqy',
     purpose: 'Om samtalsutskrifter under Telefon visas i original, på svenska eller på engelska. Sparas bara när du väljer. Inga personuppgifter.',
     lifetime: 'Tills du rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: `${TABLE_ORDER_DRAFT_KEY_PREFIX}{plats}`,
+    kind: 'localStorage',
+    setBy: 'Booqy (Beställningar, Ny bordsbeställning)',
+    purpose: 'Rätter du har tryckt in men inte skickat än, bordet och gästens namn om du skrev ett, så att du kan fortsätta där du var. Och om bordsväljaren visar Karta eller Lista. Inga betalningsuppgifter.',
+    lifetime: 'Tills beställningen skickas, högst 12 timmar',
     category: 'nödvändig',
   },
   {

@@ -515,12 +515,11 @@ export function FloorBooking({
                           )}
                           {(() => {
                             const fit = labelFit(label(t), t)
-                            const lift = (fit.lines.length - 1) * fit.size * 0.55
                             return (
                               <g transform={`rotate(${-t.rotation})`}>
                                 {fit.cut && <title>{label(t)}</title>}
                                 {/* Trailing space: screen readers and axe join the two texts, "T1 4 pl" not "T14 pl". */}
-                                <text className="floor-map-label" y={-4 - lift} style={fit.style}>
+                                <text className="floor-map-label" y={fit.y} style={fit.style}>
                                   {fit.lines.length === 1
                                     ? `${fit.lines[0]} `
                                     : fit.lines.map((line, i) => (
@@ -529,7 +528,7 @@ export function FloorBooking({
                                         </tspan>
                                       ))}
                                 </text>
-                                <text className="floor-map-seats" y={14 + lift}>
+                                <text className="floor-map-seats" y={fit.seatsY}>
                                   {t.seats} pl
                                 </text>
                               </g>
@@ -679,22 +678,59 @@ function labelFit(text: string, t: { w: number; h: number; rotation: number }) {
   const perChar = 0.62
   const max = 19
   const min = 13
-  const fits = (n: number) => Math.min(max, room / Math.max(1, n * perChar))
+  // Två rader får vara något mindre än en rad; de syns ändå tydligt.
+  const small = 10
+  const fits = (n: number, cap = max) => Math.min(cap, room / Math.max(1, n * perChar))
   const one = fits(text.length)
   if (one >= min) {
-    return { size: one, lines: [text], cut: false, style: one < max ? { fontSize: `${one}px` } : undefined }
+    return {
+      size: one,
+      lines: [text],
+      cut: false,
+      y: -4,
+      seatsY: 14,
+      style: one < max ? { fontSize: `${one}px` } : undefined,
+    }
   }
-  const per = Math.max(2, Math.floor(room / (perChar * min)))
-  const shorten = (s: string) => (s.length > per ? `${s.slice(0, per - 1)}…` : s)
-  // Två rader och platsantalet under ska rymmas på höjden, annars en rad.
-  if (tall < 2 * 1.1 * min + 30) {
-    return { size: min, lines: [shorten(text)], cut: true, style: { fontSize: `${min}px` } }
+  // Två rader och platsantalet under ska rymmas på höjden.
+  const twoCap = Math.min(max, (tall - 18) / 2.2)
+  if (twoCap < small) {
+    // Bara en rad: början och slutet syns, så numret i "Terrassen 12" finns kvar.
+    const per = Math.max(3, Math.floor(room / (perChar * min)))
+    const head = Math.ceil((per - 1) / 2)
+    const tail = per - 1 - head
+    const short = `${text.slice(0, head).trimEnd()}…${tail > 0 ? text.slice(-tail).trimStart() : ''}`
+    return { size: min, lines: [short], cut: true, y: -4, seatsY: 14, style: { fontSize: `${min}px` } }
   }
-  // Bryt vid ett mellanslag om första raden då blir lagom lång, annars mitt i ordet med bindestreck.
-  const space = text.lastIndexOf(' ', per)
-  const first = space > per / 3 ? text.slice(0, space) : `${text.slice(0, per - 1)}-`
-  const rest = space > per / 3 ? text.slice(space + 1) : text.slice(per - 1)
-  const second = shorten(rest)
-  const size = Math.max(min, fits(Math.max(first.length, second.length)))
-  return { size, lines: [first, second], cut: second !== rest, style: { fontSize: `${size}px` } }
+  // Bryt vid det mellanslag som ger jämnast rader.
+  let lines: string[] | null = null
+  for (let i = text.indexOf(' '); i > 0; i = text.indexOf(' ', i + 1)) {
+    const cand = [text.slice(0, i), text.slice(i + 1)]
+    if (!lines || Math.max(...cand.map((l) => l.length)) < Math.max(...lines.map((l) => l.length))) lines = cand
+  }
+  let cut = false
+  if (!lines || fits(Math.max(...lines.map((l) => l.length)), twoCap) < small) {
+    const per = Math.max(3, Math.floor(room / (perChar * small)))
+    if (text.length <= 2 * per - 1) {
+      // Mitt i ordet med bindestreck.
+      lines = [`${text.slice(0, per - 1)}-`, text.slice(per - 1)]
+    } else {
+      // För långt även på två rader: början och slutet, hela namnet i title.
+      const space = text.lastIndexOf(' ', per)
+      const first = space > per / 3 ? text.slice(0, space) : text.slice(0, per)
+      lines = [first, `…${text.slice(-(per - 1)).trimStart()}`]
+      cut = true
+    }
+  }
+  const size = Math.max(small, fits(Math.max(...lines.map((l) => l.length)), twoCap))
+  // Blocket (två rader, 2 enheter luft, platsantalet 12) centreras på bordet.
+  const top = -(2 * 1.1 * size + 2 + 12) / 2
+  return {
+    size,
+    lines,
+    cut,
+    y: top + 0.55 * size,
+    seatsY: top + 2.2 * size + 8,
+    style: { fontSize: `${size}px` },
+  }
 }

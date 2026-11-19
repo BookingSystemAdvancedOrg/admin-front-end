@@ -19,7 +19,7 @@
   flex: 1 1 320px;
   margin: 0;
   max-width: 75ch;
-  text-wrap: pretty;
+  text-wrap: balance;
 }
 
 .layout-notice strong {
@@ -350,6 +350,8 @@
   margin: 0;
   color: var(--muted);
   text-align: right;
+  /* Inget ensamt ord ("här") på en egen rad. */
+  text-wrap: balance;
 }
 
 .shortcut-row kbd {
@@ -779,17 +781,37 @@
 }
 
 /* Resize-handtag: dra en sida (bredd) eller ände (djup) för att ändra
-   bordets mått fritt - samma accentprick som väggarnas handtag. */
+   bordets mått fritt. Träffytan är 22 px men genomskinlig; det som syns är
+   en smal list längs kanten, så att bordsnumret och platsbrickan inte döljs
+   av handtagen när bordet är litet eller ritytan utzoomad. */
 .table-handle {
   position: absolute;
   width: 22px;
   height: 22px;
-  border-radius: 3px;
+  transform: translateZ(calc(var(--th, 22px) + 4px));
+  z-index: 2;
+}
+
+.table-handle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 8px;
+  margin: -4px 0 0 -11px;
+  border-radius: 4px;
   background: var(--accent);
   border: 2px solid var(--bq-snow);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-  transform: translateZ(calc(var(--th, 22px) + 4px));
-  z-index: 2;
+  box-sizing: border-box;
+}
+
+.table-handle.e::after,
+.table-handle.w::after {
+  width: 8px;
+  height: 22px;
+  margin: -11px 0 0 -4px;
 }
 
 .table-handle.e {
@@ -933,8 +955,9 @@
   max-width: 100%;
   /* Skalas ritytan ned (passa in på surfplattan, 62-79 %) blev siffrorna
      6-7 px. Texten växer i motsvarande grad så den aldrig blir mindre än
-     11 px på skärmen (högst 20 px i planens mått). */
-  font: 700 clamp(12px, calc(11px / var(--zoom, 1)), 20px)/1.15 var(--sans);
+     11 px på skärmen (högst 20 px i planens mått), men aldrig mer än att
+     numret och platsbrickan ryms på bordet (--tmin = bordets kortaste sida). */
+  font: 700 min(clamp(12px, calc(11px / var(--zoom, 1)), 20px), max(10px, calc((var(--tmin, 60px) - 14px) / 2.3)))/1.15 var(--sans);
   color: var(--bq-espresso);
   font-variant-numeric: tabular-nums;
   text-align: center;
@@ -945,7 +968,7 @@
 .table-seats {
   flex: none;
   white-space: nowrap;
-  font: 700 clamp(10.5px, calc(10px / var(--zoom, 1)), 18px)/1.2 var(--sans);
+  font: 700 min(clamp(10.5px, calc(10px / var(--zoom, 1)), 18px), max(9px, calc((var(--tmin, 60px) - 14px) / 2.55)))/1.2 var(--sans);
   font-variant-numeric: tabular-nums;
   color: var(--bq-snow);
   background: var(--bq-espresso);
@@ -1205,7 +1228,7 @@
   margin: 0;
   font: 400 15px/1.5 var(--font);
   color: var(--ink);
-  text-wrap: pretty;
+  text-wrap: balance;
 }
 
 .versions-summary strong {

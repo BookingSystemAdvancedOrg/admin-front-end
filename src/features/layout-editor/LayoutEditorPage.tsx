@@ -2499,6 +2499,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                         width: size.w,
                         height: size.h,
                         ['--th' as string]: `${TABLE_HEIGHT}px`,
+                        ['--tmin' as string]: `${Math.min(size.w, size.h)}px`,
                       }}
                       onPointerDown={(e) => onElementPointerDown(e, 'table', t.id, t.x, t.y)}
                     >

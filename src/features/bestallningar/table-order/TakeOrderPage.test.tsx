@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -119,6 +119,21 @@ describe('TakeOrderPage', () => {
     expect(await screen.findByText('Skickat till Bar')).toBeInTheDocument()
   })
 
+  it('flipping a course after a failed send makes the next send a new request with the new choice', async () => {
+    const user = userEvent.setup()
+    openTab.mockRejectedValueOnce(new NetworkError())
+    renderAt('/bestallningar/bord/ny?bord=mock-t5')
+    await user.click(await screen.findByRole('button', { name: /^Cola, / }))
+    await user.click(within(summary()).getByRole('button', { name: /Skicka$/ }))
+    expect(await within(summary()).findByRole('button', { name: /Försök igen$/ })).toBeInTheDocument()
+    const drinks = within(summary()).getByRole('region', { name: 'Dryck' })
+    await user.click(within(drinks).getByRole('radio', { name: 'Vänta' }))
+    await user.click(within(summary()).getByRole('button', { name: /Skicka$/ }))
+    expect(openTab).toHaveBeenCalledTimes(2)
+    expect(openTab.mock.calls[1][1].requestId).not.toBe(openTab.mock.calls[0][1].requestId)
+    expect(openTab.mock.calls[1][1].items).toEqual([expect.objectContaining({ menuItemId: 'm-cola', hold: true })])
+  })
+
   it('two quick taps on Skicka send once', async () => {
     const user = userEvent.setup()
     renderAt('/bestallningar/bord/ny?bord=mock-t5')
@@ -136,7 +151,8 @@ describe('TakeOrderPage', () => {
     await mockOpen({ requestId: h.real.newRequestId(), tableId: 'mock-t5', items: [{ menuItemId: 'm-vatten', quantity: 1 }] })
     await user.click(within(summary()).getByRole('button', { name: /Skicka$/ }))
     expect(await screen.findByText(/Bord 5 har redan en öppen beställning/)).toBeInTheDocument()
-    expect(screen.getByTestId('where').textContent).toMatch(/\/lagg-till$/)
+    // the router may apply the new location a render after the notice
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toMatch(/\/lagg-till$/))
     expect(await screen.findByRole('heading', { name: 'Lägg till på Bord 5' })).toBeInTheDocument()
     expect(within(summary()).getByText('Cola')).toBeInTheDocument()
     await user.click(within(summary()).getByRole('button', { name: /Skicka$/ }))

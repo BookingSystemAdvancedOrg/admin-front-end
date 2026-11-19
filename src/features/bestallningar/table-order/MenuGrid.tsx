@@ -44,11 +44,13 @@ export function MenuGrid({
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  // The chosen category can leave the menu (its last dish sold out): show Alla then.
+  const cat = category === ALL || categories.some((c) => c.categoryId === category) ? category : ALL
   const q = query.trim().toLowerCase()
   const visible = menu.items.filter(
-    (i) => (q ? i.name.toLowerCase().includes(q) : category === ALL || i.categoryId === category),
+    (i) => (q ? i.name.toLowerCase().includes(q) : cat === ALL || i.categoryId === cat),
   )
-  const sections = q || category !== ALL
+  const sections = q || cat !== ALL
     ? [{ id: 'hits', name: '', items: visible }]
     : categories.map((c) => ({ id: c.categoryId, name: c.name, items: visible.filter((i) => i.categoryId === c.categoryId) }))
 
@@ -96,8 +98,8 @@ export function MenuGrid({
               key={c.categoryId}
               type="button"
               role="tab"
-              aria-selected={!q && category === c.categoryId}
-              className={!q && category === c.categoryId ? 'active' : ''}
+              aria-selected={!q && cat === c.categoryId}
+              className={!q && cat === c.categoryId ? 'active' : ''}
               onClick={() => {
                 setQuery('')
                 setCategory(c.categoryId)

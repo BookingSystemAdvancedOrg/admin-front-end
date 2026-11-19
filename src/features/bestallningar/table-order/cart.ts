@@ -175,3 +175,30 @@ export function sendPreview(
     waiting: COURSE_ORDER.filter((c) => waiting.has(c)).map((c) => ({ course: c, quantity: waiting.get(c)! })),
   }
 }
+
+/**
+ * The cart against the menu as it is now (Meny changed a price, a dish sold
+ * out or was deleted): names, prices and stations follow the menu, dishes no
+ * longer on it are left out and named in `dropped`. `changed` is false when
+ * nothing differs, so callers can skip a render.
+ */
+export function reconcile(lines: CartLine[], menu: TabMenu): { lines: CartLine[]; dropped: string[]; changed: boolean } {
+  const byId = new Map(menu.items.map((i) => [i.menuItemId, i]))
+  const dropped: string[] = []
+  let changed = false
+  const out: CartLine[] = []
+  for (const l of lines) {
+    const item = byId.get(l.menuItemId)
+    if (!item) {
+      dropped.push(l.name)
+      changed = true
+      continue
+    }
+    const unitPrice = unitPriceOf(item, l.options)
+    if (unitPrice !== l.unitPrice || item.name !== l.name || item.stationId !== l.stationId || item.stationName !== l.stationName) {
+      changed = true
+      out.push({ ...l, name: item.name, unitPrice, stationId: item.stationId, stationName: item.stationName })
+    } else out.push(l)
+  }
+  return { lines: changed ? out : lines, dropped, changed }
+}

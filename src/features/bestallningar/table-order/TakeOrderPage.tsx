@@ -27,6 +27,7 @@ import {
   makeLine,
   MAX_LINES,
   needsOptions,
+  reconcile,
   replaceLine,
   setQuantity,
   toNewItems,
@@ -271,9 +272,10 @@ export default function TakeOrderPage() {
     if (!table || tab || prefilled.current === table.tableId) return
     prefilled.current = table.tableId
     const g = table.guest && !table.guest.upcoming ? table.guest : null
-    setCovers((c) => (draft?.tableId === table.tableId ? c : g?.partySize ?? null))
-    setGuestName((n) => (draft?.tableId === table.tableId ? n : g?.name ?? ''))
-  }, [table, tab, draft])
+    // A restored draft marks its table as prefilled, so its own covers and name stay.
+    setCovers(g?.partySize ?? null)
+    setGuestName(g?.name ?? '')
+  }, [table, tab])
 
   function pickTable(t: TableState) {
     setChangingTable(false)
@@ -310,6 +312,20 @@ export default function TakeOrderPage() {
       holds: holdOverride,
     })
   }, [locationId, lines, holdOverride, covers, guestName, tableId, tab])
+
+  // The cart follows Meny: new prices and stations, sold out or deleted dishes
+  // leave with a notice. Not while a failed send waits for Försök igen: that
+  // retry must stay the very same request (the server answers for the dish).
+  useEffect(() => {
+    if (!menu || inflight.current || lines.length === 0) return
+    const next = reconcile(lines, menu)
+    if (!next.changed) return
+    setLines(next.lines)
+    if (next.dropped.length) {
+      dirty.current = true
+      setNotice(`${next.dropped.join(', ')} går inte att beställa just nu och togs bort.`)
+    }
+  }, [menu, lines])
 
   function edit(next: (prev: CartLine[]) => CartLine[]) {
     dirty.current = true
@@ -617,6 +633,14 @@ export default function TakeOrderPage() {
       hold={hold}
       onHold={(course, h) => {
         dirty.current = true
+        // A failed send carried this course the other way: the retry would fire
+        // (or hold) it against the waiter's choice, so the next send is new.
+        const job = inflight.current
+        if (job && job.items.some((i) => i.course === course && Boolean(i.hold) !== h)) {
+          inflight.current = null
+          setRetry(false)
+          setError(null)
+        }
         setHoldOverride((o) => ({ ...o, [course]: h }))
       }}
       onQuantity={(key, q) => edit((prev) => setQuantity(prev, key, q))}

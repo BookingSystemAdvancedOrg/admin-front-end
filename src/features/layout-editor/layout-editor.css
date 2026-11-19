@@ -280,10 +280,14 @@
   right: 16px;
   z-index: 6;
   width: min(560px, calc(100% - 32px));
-  max-height: calc(100% - 96px);
   overflow: auto;
   padding: 16px 18px;
-  background: var(--glass-pop);
+  /* Ogenomskinlig: bord och tomtext bakom listan syntes mellan raderna.
+     Höjden ryms i fönstret, och sista raderna kan skrollas fram ovanför
+     Fråga Booqy-knappen längst ner till höger. */
+  max-height: min(calc(100% - 96px), calc(100dvh - 120px));
+  padding-bottom: 64px;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   box-shadow: 0 12px 32px -12px rgba(26, 18, 14, 0.35);
@@ -927,7 +931,10 @@
   -webkit-line-clamp: 2;
   overflow: hidden;
   max-width: 100%;
-  font: 700 12px/1.15 var(--sans);
+  /* Skalas ritytan ned (passa in på surfplattan, 62-79 %) blev siffrorna
+     6-7 px. Texten växer i motsvarande grad så den aldrig blir mindre än
+     11 px på skärmen (högst 20 px i planens mått). */
+  font: 700 clamp(12px, calc(11px / var(--zoom, 1)), 20px)/1.15 var(--sans);
   color: var(--bq-espresso);
   font-variant-numeric: tabular-nums;
   text-align: center;
@@ -938,7 +945,7 @@
 .table-seats {
   flex: none;
   white-space: nowrap;
-  font: 700 10.5px/1.2 var(--sans);
+  font: 700 clamp(10.5px, calc(10px / var(--zoom, 1)), 18px)/1.2 var(--sans);
   font-variant-numeric: tabular-nums;
   color: var(--bq-snow);
   background: var(--bq-espresso);
@@ -998,6 +1005,8 @@
 .props-title {
   font: 600 20px/1.2 var(--serif);
   color: var(--ink);
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .props-label {
@@ -1142,11 +1151,16 @@
 
 /* --- Statusrad ---------------------------------------------------------- */
 
+/* Två delar som bryts på var sin rad när ett långt våningsnamn inte ryms
+   bredvid statusen. Marginalen under gör att raden kan skrollas fram ovanför
+   Fråga Booqy-knappen (raden är sist på sidan). */
 .editor-statusbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: 8px 16px;
   width: 100%;
+  margin-bottom: 64px;
   padding: 14px 20px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
@@ -1156,8 +1170,14 @@
 }
 
 .editor-statusbar .grow {
-  flex: 1 1 0;
-  min-width: 1px;
+  flex: 1 1 260px;
+  min-width: min(260px, 100%);
+}
+
+.editor-statusbar-floor {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 1280px) {
@@ -1186,6 +1206,9 @@
    ovanför kanten med listan synlig under sig). */
 .versions-modal .modal-actions--pinned {
   bottom: calc(-1 * var(--modal-pad, 24px));
+  /* Ogenomskinlig: rader som skrollade under syntes som skuggtext bredvid Stäng. */
+  background: var(--surface);
+  box-shadow: 0 -10px 18px -14px rgba(26, 18, 14, 0.35);
 }
 
 .versions-summary {
@@ -1680,17 +1703,17 @@
 /* Surfplatta på höjden (ritytan runt 470 px): kontrollerna är bredare än
    ytan och sköts annars ut över vänsterkanten (ångra syntes inte). De bryts
    på två rader inom ytan, och våningsflikarna lägger sig under båda. */
+/* Våningsflikarna göms medan listan är öppen, i alla bredder: ett långt
+   våningsnamn sköts annars in under listan och klipptes. */
+.floor-scene:has(.shortcut-sheet) .floor-tabs {
+  visibility: hidden;
+}
+
 @container (max-width: 600px) {
-  /* Lite ovanför våningsflikarna: listan täcker dem helt, inget flikhörn
-     syns vid listans rundade hörn. */
-  /* Glaset är genomskinligt: flikarna under listan syntes som en skugga. */
-  .floor-scene:has(.shortcut-sheet) .floor-tabs {
-    visibility: hidden;
-  }
 
   .shortcut-sheet {
     top: 98px;
-    max-height: calc(100% - 110px);
+    max-height: min(calc(100% - 110px), calc(100dvh - 120px));
   }
 
   .scene-controls {
@@ -1716,7 +1739,8 @@
     min-width: 44px;
   }
 
-  .layout-mode-switch button {
+  .layout-mode-switch button,
+  .layout-actions .btn {
     min-height: 44px;
   }
 
@@ -1766,7 +1790,7 @@
 
     .shortcut-sheet {
       top: 122px;
-      max-height: calc(100% - 134px);
+      max-height: min(calc(100% - 134px), calc(100dvh - 120px));
     }
   }
 }

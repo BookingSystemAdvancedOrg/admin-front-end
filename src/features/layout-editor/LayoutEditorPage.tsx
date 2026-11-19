@@ -2180,7 +2180,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       <AdminTopbar
         title="Layout"
         actions={
-          <span className="row-actions">
+          <span className="row-actions layout-actions">
             {modeSwitch}
             <span className="cell-muted">{versionLabel}</span>
             <button
@@ -2942,7 +2942,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
               ? 'Layouten ändrades nyss på en annan plats. Dina ändringar läggs ovanpå när du sparar.'
               : statusText)}
           </span>
-          <span>
+          <span className="editor-statusbar-floor">
             {floor.name}
             {editorName ? ` · Redigeras av ${editorName}` : ''}
           </span>

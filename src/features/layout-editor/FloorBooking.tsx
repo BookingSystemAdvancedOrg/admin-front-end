@@ -448,6 +448,13 @@ export function FloorBooking({
                   role="group"
                   aria-label={`Bord på ${floor.name}`}
                 >
+                  {/* Fullbokat: randigt, samma ränder som i teckenförklaringen. */}
+                  <defs>
+                    <pattern id="floor-map-full" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                      <rect className="floor-map-full-base" width="8" height="8" />
+                      <rect className="floor-map-full-stripe" width="4" height="8" />
+                    </pattern>
+                  </defs>
                   {floor.grounds.map((g) => (
                     <rect key={g.id} className="floor-map-ground" x={g.x} y={g.y} width={g.w} height={g.h} />
                   ))}
@@ -506,15 +513,28 @@ export function FloorBooking({
                           ) : (
                             <rect className="floor-map-top" x={-t.w / 2} y={-t.h / 2} width={t.w} height={t.h} rx={6} />
                           )}
-                          <g transform={`rotate(${-t.rotation})`}>
-                            {/* Trailing space: screen readers and axe join the two texts, "T1 4 pl" not "T14 pl". */}
-                            <text className="floor-map-label" y={-4} {...labelFit(label(t), t)}>
-                              {label(t)}{' '}
-                            </text>
-                            <text className="floor-map-seats" y={14}>
-                              {t.seats} pl
-                            </text>
-                          </g>
+                          {(() => {
+                            const fit = labelFit(label(t), t)
+                            const lift = (fit.lines.length - 1) * fit.size * 0.55
+                            return (
+                              <g transform={`rotate(${-t.rotation})`}>
+                                {fit.cut && <title>{label(t)}</title>}
+                                {/* Trailing space: screen readers and axe join the two texts, "T1 4 pl" not "T14 pl". */}
+                                <text className="floor-map-label" y={-4 - lift} style={fit.style}>
+                                  {fit.lines.length === 1
+                                    ? `${fit.lines[0]} `
+                                    : fit.lines.map((line, i) => (
+                                        <tspan key={i} x={0} dy={i === 0 ? 0 : fit.size * 1.1}>
+                                          {i === fit.lines.length - 1 ? `${line} ` : line}
+                                        </tspan>
+                                      ))}
+                                </text>
+                                <text className="floor-map-seats" y={14 + lift}>
+                                  {t.seats} pl
+                                </text>
+                              </g>
+                            )
+                          })()}
                         </g>
                       </g>
                     )
@@ -647,16 +667,34 @@ export function FloorBooking({
 }
 
 /**
- * Bordsnumret ska rymmas på bordet: ett långt namn får mindre text (ned till
- * 10 px) och trycks ihop först när inte ens det räcker. Bara utseende.
+ * Bordsnumret ska rymmas på bordet och gå att läsa: ett långt namn får mindre
+ * text (ned till 13, inte mindre). Räcker inte det bryts det på två rader om
+ * bordet är högt nog, annars kortas det med "…"; hela namnet ligger då i en
+ * title. Bara utseende.
  */
 function labelFit(text: string, t: { w: number; h: number; rotation: number }) {
-  const room = (t.rotation % 180 === 0 ? t.w : Math.min(t.w, t.h)) - 10
+  const upright = t.rotation % 180 === 0
+  const room = (upright ? t.w : Math.min(t.w, t.h)) - 10
+  const tall = upright ? t.h : t.w
   const perChar = 0.62
-  const size = Math.max(10, Math.min(19, room / Math.max(1, text.length * perChar)))
-  const width = text.length * perChar * size
-  return {
-    style: size < 19 ? { fontSize: `${size}px` } : undefined,
-    ...(width > room ? { textLength: room, lengthAdjust: 'spacingAndGlyphs' as const } : {}),
+  const max = 19
+  const min = 13
+  const fits = (n: number) => Math.min(max, room / Math.max(1, n * perChar))
+  const one = fits(text.length)
+  if (one >= min) {
+    return { size: one, lines: [text], cut: false, style: one < max ? { fontSize: `${one}px` } : undefined }
   }
+  const per = Math.max(2, Math.floor(room / (perChar * min)))
+  const shorten = (s: string) => (s.length > per ? `${s.slice(0, per - 1)}…` : s)
+  // Två rader och platsantalet under ska rymmas på höjden, annars en rad.
+  if (tall < 2 * 1.1 * min + 30) {
+    return { size: min, lines: [shorten(text)], cut: true, style: { fontSize: `${min}px` } }
+  }
+  // Bryt vid ett mellanslag om första raden då blir lagom lång, annars mitt i ordet med bindestreck.
+  const space = text.lastIndexOf(' ', per)
+  const first = space > per / 3 ? text.slice(0, space) : `${text.slice(0, per - 1)}-`
+  const rest = space > per / 3 ? text.slice(space + 1) : text.slice(per - 1)
+  const second = shorten(rest)
+  const size = Math.max(min, fits(Math.max(first.length, second.length)))
+  return { size, lines: [first, second], cut: second !== rest, style: { fontSize: `${size}px` } }
 }

@@ -5,6 +5,10 @@
 .floor-map-card {
   --floor-free: color-mix(in srgb, var(--green) 22%, var(--tint-green));
   --floor-small: color-mix(in srgb, var(--warning) 28%, var(--tint-orange));
+  /* Fullbokat: neutrala ränder, tydligt mörkare (ljust tema) eller ljusare
+     (mörkt) än kortet, så nyckeln och borden syns och inte liknar Ledigt. */
+  --floor-full: color-mix(in srgb, var(--muted) 45%, var(--neutral-fill));
+  --floor-full-base: var(--neutral-fill);
 }
 
 .floor-booking-controls,
@@ -96,8 +100,20 @@
   stroke-dasharray: 4 3;
 }
 
+.floor-map-table.is-full .floor-map-top {
+  fill: url(#floor-map-full);
+}
+
+.floor-map-full-base {
+  fill: var(--floor-full-base);
+}
+
+.floor-map-full-stripe {
+  fill: var(--floor-full);
+}
+
 .floor-map-table.is-full {
-  opacity: 0.6;
+  opacity: 0.75;
 }
 
 .floor-map-table.is-selected .floor-map-top {
@@ -183,8 +199,12 @@
 }
 
 .legend-full::before {
-  background: var(--neutral-fill);
-  opacity: 0.6;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--floor-full) 0 2.5px,
+    var(--floor-full-base) 2.5px 5px
+  );
+  opacity: 0.75;
 }
 
 .floor-booking-panel {

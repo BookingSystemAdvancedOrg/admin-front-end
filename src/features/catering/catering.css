@@ -61,7 +61,7 @@
 
 .catering-lines li {
   display: flex;
-  flex-wrap: wrap;
+  align-items: baseline;
   justify-content: space-between;
   gap: 2px 12px;
 }
@@ -326,11 +326,10 @@
 
 /* --- Passform: iPad och telefon ------------------------------------------- */
 
-/* Beloppet står kvar på en rad bredvid texten; texten bryts i stället. */
-/* En lång rad tar hela bredden och beloppet går ned till höger under den,
-   i stället för att namnet trycks ihop till småbitar. */
+/* Beloppet står kvar på raden till höger, i linje med de andra beloppen;
+   ett långt namn bryts i stället. */
 .catering-lines li > span:first-child {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-width: 0;
   max-width: 100%;
   overflow-wrap: break-word;
@@ -472,10 +471,19 @@
     min-height: 44px;
   }
 
+  /* Namnet och "Ta bort" på första raden, Á-pris, Antal och Summa under;
+     "Ta bort" och summan slutar i samma högerkant. */
   .offer-table td.offer-name {
-    flex: 1 1 100%;
+    order: 0;
+    /* Lämnar precis plats för "Ta bort", så Á-pris börjar på nästa rad. */
+    flex: 1 1 calc(100% - 88px);
     width: auto;
   }
+
+  .offer-table td.offer-remove { order: 1; }
+  .offer-table td.offer-price { order: 2; }
+  .offer-table td.offer-qty { order: 3; }
+  .offer-table td.offer-sum { order: 4; }
 
   .offer-table .offer-name textarea {
     min-width: 0;
@@ -492,12 +500,13 @@
   .offer-table .offer-price input,
   .offer-table .offer-qty input { width: 100%; }
   .offer-table .offer-sum { flex: 1 1 auto; padding-bottom: 10px !important; text-align: right; }
-  .offer-table .offer-remove { flex: none; align-self: flex-end; margin-left: auto; }
+  .offer-table .offer-remove { flex: none; align-self: flex-start; margin-left: auto; }
 
   .offer-table .offer-remove .link-action {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
+    padding-right: 0;
   }
 }
 
@@ -535,4 +544,22 @@
   overflow-wrap: anywhere;
   text-overflow: clip;
   line-height: 1.3;
+}
+
+/* Postnummer, datum och belopp bryts aldrig mitt i ("118 / 46", "2026- / 11-29"). */
+.catering-nowrap {
+  white-space: nowrap;
+}
+
+/* "Meddelande till kunden" får samma avstånd till fälten ovanför som
+   fälten har sinsemellan. */
+.catering-request .form-grid + .form-field {
+  margin-top: 20px;
+}
+
+/* Statusen står i kolumnens textkant, som rubriken och "250 kr" under den
+   (stämpeln har ingen synlig ram eller bakgrund att luftas mot). */
+.catering-list-table .status-badge {
+  padding-inline: 0;
+  border-inline-width: 0;
 }

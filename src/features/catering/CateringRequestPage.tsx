@@ -338,9 +338,9 @@ export default function CateringRequestPage() {
                 <div>
                   <dt>Adress</dt>
                   <dd>
-                    {request.deliveryAddress.street}, {request.deliveryAddress.postalCode} {request.deliveryAddress.city}
+                    {request.deliveryAddress.street}, <span className="catering-nowrap">{request.deliveryAddress.postalCode}</span> {request.deliveryAddress.city}
                     {request.request.distanceKm != null
-                      ? ` (${String(request.request.distanceKm).replace('.', ',')} km)`
+                      ? <> <span className="catering-nowrap">({String(request.request.distanceKm).replace('.', ',')} km)</span></>
                       : request.deliveryZone === 'beyond' ? ' (utanför området)' : ''}
                   </dd>
                 </div>
@@ -608,10 +608,10 @@ export default function CateringRequestPage() {
             <ul className="catering-versions">
               {[...request.offers].reverse().map((o) => (
                 <li key={o.version}>
-                  <strong>v{o.version}</strong> · {kronor(o.totals.total)}
-                  {o.equipmentReturn === 'not_cleaned' ? ` (varav rengöring ${kronor(o.totals.cleaningFee)})` : ''}
-                  {' '}· giltig t.o.m. {o.validUntil}
-                  {o.createdAt ? ` · skapad ${o.createdAt.slice(0, 16).replace('T', ' ')}` : ''}
+                  <strong>v{o.version}</strong> · <span className="catering-nowrap">{kronor(o.totals.total)}</span>
+                  {o.equipmentReturn === 'not_cleaned' ? <> (varav rengöring <span className="catering-nowrap">{kronor(o.totals.cleaningFee)}</span>)</> : ''}
+                  {' '}· giltig t.o.m. <span className="catering-nowrap">{o.validUntil}</span>
+                  {o.createdAt ? <> · skapad <span className="catering-nowrap">{o.createdAt.slice(0, 16).replace('T', ' ')}</span></> : ''}
                   {' · '}{versionState(request, o.version)}
                 </li>
               ))}

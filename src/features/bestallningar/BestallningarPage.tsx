@@ -360,7 +360,7 @@ export default function BestallningarPage() {
         {order.notes && <p className="order-notes">”{order.notes}”</p>}
         <p className="order-meta cell-muted">
           {order.customerName}
-          {order.customerPhone ? ` · ${order.customerPhone}` : ''} · <Num>{kronor(order.totalAmount)}</Num>
+          {order.customerPhone ? <> · <span className="order-meta-phone">{order.customerPhone}</span></> : ''} · <Num>{kronor(order.totalAmount)}</Num>
           {refundLabel(order) ? <span className="order-refunded"> · {refundLabel(order)}</span> : null}
           {order.discount ? ` (rabatt ${order.discount.percent} %, kod ${order.discount.code})` : ''}
           {order.mode === 'pickup' && order.status !== 'ready' && order.readyEstimate
@@ -637,9 +637,12 @@ export function cancelRefund(order: Order): { card: number; gift: number } {
   return { card, gift }
 }
 
-function cancelConfirmLabel(order: Order): string {
+function cancelConfirmLabel(order: Order) {
   const { card, gift } = cancelRefund(order)
   if (card + gift <= 0) return 'Bekräfta: avbryt'
-  const parts = gift > 0 && card > 0 ? ` (presentkort ${kronor(gift)})` : gift > 0 ? ' till presentkortet' : ''
-  return `Bekräfta: avbryt och återbetala ${kronor(card + gift)}${parts}`
+  // Beloppet bryts aldrig mitt i ("1 234 / 567 kr").
+  const kr = (ore: number) => <span className="order-nowrap">{kronor(ore)}</span>
+  const parts = gift > 0 && card > 0 ? <> (presentkort {kr(gift)})</> : gift > 0 ? ' till presentkortet' : ''
+  // Ett enda barn: knappen är flex med gap, som annars läggs in före beloppet.
+  return <span>Bekräfta: avbryt och återbetala {kr(card + gift)}{parts}</span>
 }

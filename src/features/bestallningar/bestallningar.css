@@ -667,3 +667,10 @@
 .orders-done .count-num {
   white-space: nowrap;
 }
+
+/* Gästens nummer står på en rad, personalen läser och ringer det; beloppet
+   i "Bekräfta: avbryt och återbetala" bryts inte mitt i. */
+.order-meta-phone,
+.order-nowrap {
+  white-space: nowrap;
+}

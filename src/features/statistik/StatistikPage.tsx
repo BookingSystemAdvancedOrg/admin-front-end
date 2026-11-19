@@ -786,7 +786,7 @@ export default function StatistikPage() {
                 <>
                   <Disclosure id="meny" title="Beställningar och meny" className="sk-acc" defaultOpen={open.includes('meny')} onToggle={toggle('meny')}>
                     <div className="sk-charts">
-                    <Card title={money ? `${fmtKr(s.avgOrder)} per beställning` : `${fmtInt(s.orders)} beställningar`} label="Beställningarna" info="Betalda onlinebeställningar i perioden, räknat på dagen de betalades.">
+                    <Card title={money && s.avgOrder != null ? `${fmtKr(s.avgOrder)} per beställning` : `${fmtInt(s.orders)} beställningar`} label="Beställningarna" info="Betalda onlinebeställningar i perioden, räknat på dagen de betalades.">
                       {money && (
                         <Ring
                           title="Var pengarna kommer ifrån"

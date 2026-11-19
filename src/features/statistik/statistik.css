@@ -204,6 +204,16 @@
   background: var(--muted);
 }
 
+/* Mörkt läge: --muted och --accent-ink är samma färg, så Ej markerade får en
+   dämpad ton som skiljer sig från Uteblev. */
+:root[data-theme='dark'] .sk-ring-seg--muted {
+  stroke: color-mix(in srgb, var(--muted) 42%, var(--surface));
+}
+
+:root[data-theme='dark'] .sk-swatch--muted {
+  background: color-mix(in srgb, var(--muted) 42%, var(--surface));
+}
+
 .sk-bar {
   fill: var(--ink);
 }
@@ -908,13 +918,13 @@
 }
 
 .sk-heat-cell--0 {
-  fill: color-mix(in srgb, var(--ink) 7%, var(--surface));
-  background: color-mix(in srgb, var(--ink) 7%, var(--glass-surface));
+  fill: color-mix(in srgb, var(--ink) 15%, var(--surface));
+  background: color-mix(in srgb, var(--ink) 15%, var(--glass-surface));
 }
 
 .sk-heat-cell--1 {
-  fill: color-mix(in srgb, var(--ink) 22%, var(--surface));
-  background: color-mix(in srgb, var(--ink) 22%, var(--glass-surface));
+  fill: color-mix(in srgb, var(--ink) 28%, var(--surface));
+  background: color-mix(in srgb, var(--ink) 28%, var(--glass-surface));
 }
 
 .sk-heat-cell--2 {
@@ -1483,8 +1493,31 @@
     min-height: 44px;
   }
 
+  .sk-filterbar .sk-chips > .sk-chip {
+    min-width: 44px;
+  }
+
+  /* (i) och textlänkarna: samma 44 px yta som på telefon (tapTargets.css),
+     även på iPad. Den osynliga ramen ger ytan utan att flytta layouten. */
+  html .sk-page .info-tooltip .info-tooltip-trigger {
+    box-sizing: content-box;
+    width: 22px;
+    height: 22px;
+    margin: -11px;
+    border: 11px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .sk-page .card-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
   /* keeps the disclosure triangle: taller by padding, not by display */
   .sk-table summary {
+    box-sizing: border-box;
+    min-height: 44px;
     padding-block: 13px;
     margin-block: -8px;
   }

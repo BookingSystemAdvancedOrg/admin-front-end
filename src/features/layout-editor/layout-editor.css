@@ -1201,16 +1201,6 @@
   width: 560px;
 }
 
-/* Stäng ligger kvar längst ner när listan skrollar. Klistrad mot dialogens
-   kant (bottom 0 räknas innanför dess utfyllnad, så raden svävade 24 px
-   ovanför kanten med listan synlig under sig). */
-.versions-modal .modal-actions--pinned {
-  bottom: calc(-1 * var(--modal-pad, 24px));
-  /* Ogenomskinlig: rader som skrollade under syntes som skuggtext bredvid Stäng. */
-  background: var(--surface);
-  box-shadow: 0 -10px 18px -14px rgba(26, 18, 14, 0.35);
-}
-
 .versions-summary {
   margin: 0;
   font: 400 15px/1.5 var(--font);

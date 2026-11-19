@@ -32,6 +32,16 @@
   white-space: nowrap;
 }
 
+/* I formulär bryts ett långt val på flera rader i stället för att kapas
+   ("Ej rengjord utrustning (rengöringsavgift)", platsens namn). */
+.form-field .b-select-value {
+  padding-block: 2px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  line-height: 1.3;
+}
+
 .b-select-chevron {
   flex: none;
   margin-right: -2px;

@@ -9,9 +9,12 @@
   text-decoration: none;
 }
 
+/* Etiketten bryts hellre än att kapas ("Den här enheten" var 4 px för bred). */
 .btn.back-btn > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
 }
 
 .back-btn-icon {

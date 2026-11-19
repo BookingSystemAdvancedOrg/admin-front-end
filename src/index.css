@@ -448,3 +448,9 @@ html.is-desktop-glass[data-glass-backdrop='image'][data-theme='dark'] body::befo
     var(--user-image) center / cover no-repeat,
     var(--bg);
 }
+
+/* Mörkt läge: en tom kryssruta var en mörk ruta på det mörka kortet och
+   syntes knappt. Tom ruta ritas ljus, ikryssad följer accentfärgen. */
+:root[data-theme='dark'] input[type='checkbox']:not(:checked) {
+  color-scheme: light;
+}

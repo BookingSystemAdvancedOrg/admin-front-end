@@ -756,9 +756,3 @@
   gap: 10px;
 }
 
-/* Avbryt och Spara ligger kvar ända nere vid dialogens kant: den klistrade
-   raden räknas annars från innerkanten och innehållet syntes under den. */
-.meny-dish-modal > .modal-actions--pinned,
-.meny-categories > .modal-actions--pinned {
-  bottom: calc(-1 * var(--modal-pad, 24px));
-}

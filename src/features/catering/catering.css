@@ -523,17 +523,6 @@
   }
 }
 
-/* Värdet får plats i sin ruta: siffran krymper med rutan i stället för att
-   "kr" hamnar på en egen rad. */
-.catering-stats .stat-tile {
-  container-type: inline-size;
-}
-
-.catering-stats .stat-tile-value {
-  font-size: clamp(22px, 14cqi, 34px);
-  white-space: nowrap;
-}
-
 /* Ett belopp bryts aldrig mitt i ("1 234 / 567 kr"). */
 .catering-request .count-num,
 .catering-list .count-num {

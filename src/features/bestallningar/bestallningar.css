@@ -626,17 +626,6 @@
   min-height: 44px;
 }
 
-/* Omsättningen får plats i sin ruta: siffran krymper med rutan i stället
-   för att "kr" hamnar på en egen rad. */
-.orders-stats .stat-tile {
-  container-type: inline-size;
-}
-
-.orders-stats .stat-tile-value {
-  font-size: clamp(22px, 14cqi, 34px);
-  white-space: nowrap;
-}
-
 /* Lapparna: långa ord (namn, önskemål) bryts inne i lappen. */
 .order-card,
 .kds-ticket {

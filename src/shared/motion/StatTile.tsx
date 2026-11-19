@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { helpSlug } from '../helpId'
-import type { PointerEvent } from 'react'
+import type { CSSProperties, PointerEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Num } from './Num'
 import { useLiquidFill } from './useLiquidFill'
@@ -77,7 +77,11 @@ export function StatTile({
         {label}
         {trend && !loading && <TrendBadge trend={trend} chip className="stat-tile-delta" />}
       </p>
-      <p ref={valueRef} className={`stat-tile-value${toneClass(trendTone)}`}>
+      <p
+        ref={valueRef}
+        className={`stat-tile-value${toneClass(trendTone)}`}
+        style={{ '--stat-len': Math.max(value.length, 3) } as CSSProperties}
+      >
         {loading ? '…' : <Num delayMs={index * STAGGER_MS}>{value}</Num>}
       </p>
     </>

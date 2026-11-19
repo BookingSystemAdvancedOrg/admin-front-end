@@ -72,7 +72,7 @@ function SettingsForm({ locationId }: { locationId: string }) {
 
   return (
     <Card title="Kö">
-      <form className="form-grid" onSubmit={save} aria-label="Köinställningar">
+      <form className="form-grid queue-form" onSubmit={save} aria-label="Köinställningar">
         <fieldset className="queue-checks">
           <legend>Kön</legend>
           <label><input type="checkbox" checked={draft.enabled} onChange={(e) => edit({ ...draft, enabled: e.target.checked })} /> På</label>

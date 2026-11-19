@@ -1193,17 +1193,33 @@
     color: var(--muted);
   }
 
+  /* "…"-menyn: ingen rubrik "Åtgärder" ovanför och ingen egen rad, den
+     står vid radens högerkant */
+  .data-table:not(.keep-table) td:has(> .row-actions-box)::before {
+    display: none;
+  }
+
+  .data-table:not(.keep-table) td:has(> .row-actions-box) {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
   /* radens namn står överst på en egen rad, värdena under */
   .data-table:not(.keep-table) td.cell-strong:first-child {
     flex: 1 1 100%;
   }
 }
 
-/* Surfplattan: tabellen får krympa till kortets bredd (texten bryts) i
-   stället för att kräva 900 px och sidled-scroll. */
-@media (min-width: 601px) and (max-width: 1100px) {
+/* Surfplattan (även iPad liggande och iPad Pro 13): tabellen får krympa
+   till kortets bredd (rubriker och text bryts mellan orden) i stället för
+   att kräva 900 px och sidled-scroll. */
+@media (min-width: 601px) and (max-width: 1399px), (min-width: 601px) and (pointer: coarse) {
   .data-table:not(.keep-table) {
     min-width: 0 !important;
+  }
+
+  .data-table:not(.keep-table) th {
+    white-space: normal;
   }
 }
 

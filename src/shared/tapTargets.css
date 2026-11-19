@@ -101,6 +101,14 @@
     min-height: 44px;
   }
 
+  /* Flikar i märkespaketets Bar (Samtal, Original ...) och felrutans
+     knappar (Försök igen, Rapportera till Booqy) var 36 px. */
+  html .bq-bar__item,
+  html .error-note-actions .btn,
+  html .compact-select {
+    min-height: 44px;
+  }
+
   /* Profilbilden i sidomenyn (26 px): träffytan växer, bilden står still. */
   html .admin-avatar-btn {
     box-sizing: content-box;

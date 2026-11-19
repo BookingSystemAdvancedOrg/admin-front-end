@@ -135,17 +135,6 @@
   width: 580px;
 }
 
-/* Knapparna längst ned ligger i dialogens nederkant i stället för ovanpå
-   anteckningsrutan: formuläret räknar med hela knappraden och dialogen har
-   ingen egen luft under den. */
-.booking-modal {
-  padding-bottom: 0;
-}
-
-.booking-modal .modal-actions--pinned {
-  margin-bottom: 0;
-}
-
 .booking-modal-head {
   display: flex;
   align-items: flex-start;

@@ -94,3 +94,10 @@ hr {
   box-shadow: none !important;
   background: color-mix(in srgb, var(--bq-danger) 12%, var(--bq-surface)) !important;
 }
+
+/* Fält i märkespaketets dialoger (presentkort, kundkortet): fältet hade
+   samma färg som dialogen och utan kant syntes det inte alls. En svag
+   fyllnad visar var man skriver, i ljust och mörkt läge. */
+.bq-modal :is(.bq-input, .bq-select, textarea) {
+  background: var(--neutral-fill);
+}

@@ -187,7 +187,10 @@ export function AdminLayout() {
         <span className="admin-mobilebar-brand">
           <BrandWordmark height={18} />
         </span>
-        <span className="admin-mobilebar-name">
+        <span
+          className="admin-mobilebar-name"
+          title={[tenant?.name, locations.length > 1 ? locationName : ''].filter(Boolean).join(' · ') || undefined}
+        >
           {tenant?.name ?? ''}
           {locations.length > 1 && locationName && <span className="admin-mobilebar-place"> · {locationName}</span>}
         </span>

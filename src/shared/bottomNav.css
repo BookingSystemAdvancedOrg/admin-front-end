@@ -306,19 +306,19 @@
     min-width: 0;
   }
 
+  /* Restaurangens namn och rollen radbryts (med avstavning) i stället för att
+     klippas: personalen ska kunna läsa hela namnet. */
   .bq-more__name {
-    overflow: hidden;
     font: var(--fw-strong) var(--fs-base) / 1.25 var(--font);
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    overflow-wrap: anywhere;
+    hyphens: auto;
   }
 
   .bq-more__role {
-    overflow: hidden;
     font-size: var(--fs-sm);
     color: var(--muted);
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    overflow-wrap: anywhere;
+    hyphens: auto;
   }
 
   .bq-more__list {
@@ -384,6 +384,12 @@
   .bq-more__tile.is-pressed .bq-more__tile-disc,
   .bq-more__tile:active .bq-more__tile-disc {
     transform: scale(0.94);
+  }
+
+  /* Profilbilden i arkets huvud: samma skiva som snabbvalen, annars syns bara
+     initialen på det ljusa arket. */
+  .bq-more__head .avatar {
+    background: var(--dock-pill) var(--liquid-sheen);
   }
 
   .bq-more__tile:focus-visible {

@@ -1,8 +1,8 @@
-/* Telefon: varje knapp och länk går att träffa med tummen, minst 44 x 44 px
-   (Apple HIG, WCAG 2.5.5). Laddas efter ds.css (AdminLayout). Små runda
+/* Telefon och surfplatta (pekskärm): varje knapp och länk går att träffa med
+   tummen, minst 44 x 44 px (Apple HIG, WCAG 2.5.5). Laddas efter ds.css (AdminLayout). Små runda
    kontroller (switch, (i)) behåller sin bild: träffytan växer med en
    genomskinlig kant och negativ marginal, så att raden inte flyttar sig. */
-@media (max-width: 640px) {
+@media (max-width: 640px), (pointer: coarse) {
   html .palette-trigger,
   html .topbar-tool,
   html .admin-topbar .theme-toggle {
@@ -77,5 +77,35 @@
   html .admin-app-hint-close {
     width: 44px;
     height: 44px;
+  }
+
+  /* Sidomenyn på surfplattan: raderna och gruppernas rubriker. */
+  html .admin-nav-item,
+  html .admin-nav-toggle {
+    min-height: 44px;
+  }
+
+  /* Greppet överst i Mer-arket: 44 px att träffa, arket flyttar sig inte. */
+  html .bq-more__grab {
+    height: 44px;
+    margin-bottom: -16px;
+  }
+
+  /* Fråga Booqy: stängknappen och förslagen. */
+  html .help-icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  html .help-chip {
+    min-height: 44px;
+  }
+
+  /* Profilbilden i sidomenyn (26 px): träffytan växer, bilden står still. */
+  html .admin-avatar-btn {
+    box-sizing: content-box;
+    margin: -9px;
+    border: 9px solid transparent;
+    background-clip: padding-box;
   }
 }

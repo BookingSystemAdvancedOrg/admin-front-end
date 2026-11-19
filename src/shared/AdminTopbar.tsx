@@ -41,11 +41,16 @@ export function AdminTopbar({
         <h1>{title}</h1>
         {text && <p>{text}</p>}
       </div>
-      <div className="admin-topbar-actions">
+      {/* Datum och knappar hålls ihop till höger på datorn. På surfplatta och
+          telefon (ds.css) står datumet på egen rad och knappraden radbryts
+          aldrig mitt i. */}
+      <div className="admin-topbar-side">
         {!actions && <span className="admin-topbar-date">{todayLabel()}</span>}
-        <PaletteTrigger />
-        <TopbarTools />
-        {actions}
+        <div className="admin-topbar-actions">
+          <PaletteTrigger />
+          <TopbarTools />
+          {actions}
+        </div>
       </div>
     </header>
   )

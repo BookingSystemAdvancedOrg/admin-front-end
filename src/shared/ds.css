@@ -1486,3 +1486,94 @@ html.drawer-lock body {
     transition: bottom 200ms var(--ease-out);
   }
 }
+
+/* --- Sidhuvudet: datumet på egen plats (AdminTopbar) ------------------------- */
+
+/* Dator: titel till vänster, datum och knappar ihop till höger. Blir titeln
+   för lång flyttar datum och knappar tillsammans till nästa rad. */
+.admin-topbar-side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2) var(--space-4);
+  order: 2;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.admin-topbar-titles {
+  order: 1;
+}
+
+.admin-topbar-date {
+  order: 2;
+}
+
+.admin-topbar-actions {
+  order: 3;
+}
+
+/* Surfplatta: titeln och knapparna på första raden när de får plats, annars
+   knapparna samlat under titeln från vänsterkanten; datumet på egen rad.
+   Knappraden bryts aldrig mitt i (Sök på en rad, Hjälp/ljud/tema på nästa). */
+@media (max-width: 1100px) {
+  .admin-topbar-side {
+    display: contents;
+  }
+
+  .admin-topbar-actions {
+    order: 2;
+    justify-content: flex-start;
+  }
+
+  .admin-topbar-date {
+    order: 3;
+    flex: 1 0 100%;
+  }
+}
+
+/* Telefon: datumet direkt under titeln, knapparna under det. */
+@media (max-width: 600px) {
+  .admin-topbar-date {
+    order: 2;
+  }
+
+  .admin-topbar-actions {
+    order: 3;
+  }
+}
+
+/* Fråga Booqy flyter längst ner till höger: arbetsytan slutar ovanför den, så
+   att knappen aldrig ligger över sidans sista rad (telefonen har den under Mer). */
+@media (min-width: 601px) and (min-height: 501px), (min-width: 601px) and (pointer: fine) {
+  .admin-shell:has(.help-launcher) .admin-right {
+    padding-bottom: 64px;
+  }
+}
+
+/* Långa namn och titlar (t.ex. "Personuppgiftsbiträdesavtalet"): radbryts med
+   avstavning inom rutan i stället för att gå utanför den eller ge sidled. */
+.admin-topbar-titles {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-topbar-titles h1,
+.admin-topbar-titles p,
+.admin-logo-name,
+.admin-user-name,
+.tenant-notice .card-title {
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+/* Fråga Booqy: förslagen syns som knappar (fyllning, inga kanter sedan
+   edges.css), inte som lös text. */
+html .help-chip {
+  background: var(--wash);
+}
+
+html .help-chip:hover {
+  background: var(--dock-pill, var(--wash));
+}

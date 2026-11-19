@@ -287,11 +287,11 @@
 }
 
 .to-table-row-who {
-  overflow: hidden;
+  min-width: 0;
   color: var(--muted);
   font-size: var(--fs-sm);
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 /* --- Floor map ------------------------------------------------------------- */

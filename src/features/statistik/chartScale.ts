@@ -8,6 +8,19 @@ export function niceMax(max: number): number {
   return step * pow
 }
 
+/**
+ * Axelns steg: fyra lika steg upp till max. Antal (gäster, bokningar) får
+ * bara hela tal, så en liten skala (max 5) går i ettor i stället för 1,3 och 3,8.
+ */
+export function axisTicks(max: number, unit: 'kr' | 'count'): number[] {
+  const quarters = [0, 0.25, 0.5, 0.75, 1].map((f) => f * max)
+  if (unit !== 'count' || quarters.every(Number.isInteger)) return quarters
+  const step = [1, 2, 5, 10].find((s) => max / s <= 5) ?? Math.ceil(max / 5)
+  const out: number[] = []
+  for (let v = 0; v <= max; v += step) out.push(v)
+  return out
+}
+
 /** Kompakta axelvärden: "2 tkr", "12", "1,5 mkr". */
 export function tickLabel(v: number, unit: 'kr' | 'count'): string {
   if (unit === 'count') return v.toLocaleString('sv-SE', { maximumFractionDigits: v < 10 ? 1 : 0 })

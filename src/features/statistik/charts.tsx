@@ -4,7 +4,7 @@ import { ChartTip } from '../../shared/ChartTip'
 import { useChartTip } from '../../shared/chartTipState'
 import type { TipContent } from '../../shared/chartTipState'
 import { reducedMotion } from '../../shared/motion/countUp'
-import { heatStep, niceMax, tickLabel } from './chartScale'
+import { axisTicks, heatStep, niceMax, tickLabel } from './chartScale'
 import { fmtPct } from './stats'
 
 /**
@@ -132,7 +132,7 @@ export function ColumnChart({
   const barW = Math.max(4, Math.min(30, slot * 0.62))
   const y = (v: number) => PAD.top + innerH - (Math.max(0, v) / max) * innerH
   const x = (i: number) => PAD.left + slot * i + slot / 2
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => f * max)
+  const ticks = axisTicks(max, unit)
   const labelEvery = Math.ceil(points.length / Math.max(3, Math.floor(innerW / 64)))
   const peak = points.reduce((best, p, i) => (p.value > points[best].value ? i : best), 0)
   const line = hasPrev
@@ -326,6 +326,15 @@ export interface RingSegment {
 }
 
 const SIZE = 150
+
+/** Delar en tom-text i två rader vid mellanrummet närmast mitten ("Inget betalt" / "än"). */
+function ringLines(text: string): string[] {
+  if (text.length <= 10 || !text.includes(' ')) return [text]
+  const mid = text.length / 2
+  let at = -1
+  for (let i = 0; i < text.length; i++) if (text[i] === ' ' && (at < 0 || Math.abs(i - mid) < Math.abs(at - mid))) at = i
+  return [text.slice(0, at), text.slice(at + 1)]
+}
 const R = 58
 const C = 2 * Math.PI * R
 
@@ -415,8 +424,13 @@ export function Ring({ title, segments, total, centerLabel, empty, format, value
             </text>
           </>
         ) : (
+          // two short lines, so the words stay inside the ring
           <text x={SIZE / 2} y={SIZE / 2 + 4} textAnchor="middle" className="sk-ring-center">
-            {empty}
+            {ringLines(empty).map((l, i, all) => (
+              <tspan key={i} x={SIZE / 2} dy={i === 0 ? (all.length - 1) * -7 : 14}>
+                {l}
+              </tspan>
+            ))}
           </text>
         )}
       </svg>

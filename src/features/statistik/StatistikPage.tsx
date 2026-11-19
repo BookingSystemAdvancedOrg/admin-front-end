@@ -850,7 +850,7 @@ export default function StatistikPage() {
                                 </th>
                                 {money && (
                                   <th scope="col" className="num">
-                                    Omsättning
+                                    {'Omsätt\u00ADning'}
                                   </th>
                                 )}
                                 {p && (
@@ -865,10 +865,10 @@ export default function StatistikPage() {
                                 <tr key={d.id}>
                                   <td className="sk-rank">{i + 1}</td>
                                   <td>{d.name}</td>
-                                  <td className="num">{fmtInt(d.quantity)}</td>
-                                  {money && <td className="num">{fmtKr(d.revenue)}</td>}
+                                  <td className="num" data-label="Antal">{fmtInt(d.quantity)}</td>
+                                  {money && <td className="num" data-label="Omsättning">{fmtKr(d.revenue)}</td>}
                                   {p && (
-                                    <td className="num">
+                                    <td className="num" data-label="Ändring">
                                       <TrendBadge trend={trendOf(d.quantity, d.previousQuantity ?? 0, 'dishQuantity', cmp)} />
                                     </td>
                                   )}
@@ -893,7 +893,7 @@ export default function StatistikPage() {
                                 </th>
                                 {money && (
                                   <th scope="col" className="num">
-                                    Omsättning
+                                    {'Omsätt\u00ADning'}
                                   </th>
                                 )}
                               </tr>
@@ -902,8 +902,8 @@ export default function StatistikPage() {
                               {bottomDishes.map((d) => (
                                 <tr key={d.id}>
                                   <td>{d.name}</td>
-                                  <td className="num">{fmtInt(d.quantity)}</td>
-                                  {money && <td className="num">{fmtKr(d.revenue)}</td>}
+                                  <td className="num" data-label="Antal">{fmtInt(d.quantity)}</td>
+                                  {money && <td className="num" data-label="Omsättning">{fmtKr(d.revenue)}</td>}
                                 </tr>
                               ))}
                             </tbody>
@@ -995,12 +995,18 @@ export default function StatistikPage() {
                     <div className="sk-charts">
                     <Card title={s.web.conversionPct !== null ? `${fmtPct(s.web.conversionPct)} av besöken blev en bokning eller beställning` : 'Besök på hemsidan'} label="Hemsidan" info="Besök på restaurangens hemsida (räknas utan cookies) och bokningar och beställningar som gjordes direkt efter ett besök, räknat på dagen de gjordes. Bokningar längre upp räknas på besöksdagen, så siffrorna kan skilja." wide>
                       <dl className="sk-facts sk-facts--row">
-                        <dt>Besök</dt>
-                        <dd>{fmtInt(s.web.visits)}</dd>
-                        <dt>Bokningar</dt>
-                        <dd>{fmtInt(s.web.bookings)}</dd>
-                        <dt>Beställningar</dt>
-                        <dd>{fmtInt(s.web.orders)}</dd>
+                        <div>
+                          <dt>Besök</dt>
+                          <dd>{fmtInt(s.web.visits)}</dd>
+                        </div>
+                        <div>
+                          <dt>Bokningar</dt>
+                          <dd>{fmtInt(s.web.bookings)}</dd>
+                        </div>
+                        <div>
+                          <dt>Beställningar</dt>
+                          <dd>{fmtInt(s.web.orders)}</dd>
+                        </div>
                       </dl>
                       {s.web.channels.length > 0 && (
                         <div className="sk-scroll">
@@ -1012,13 +1018,13 @@ export default function StatistikPage() {
                                   Besök
                                 </th>
                                 <th scope="col" className="num">
-                                  Bokningar
+                                  {'Bok\u00ADningar'}
                                 </th>
                                 <th scope="col" className="num">
-                                  Beställningar
+                                  {'Beställ\u00ADningar'}
                                 </th>
                                 <th scope="col" className="num">
-                                  Konvertering
+                                  {'Konver\u00ADtering'}
                                 </th>
                               </tr>
                             </thead>
@@ -1026,10 +1032,10 @@ export default function StatistikPage() {
                               {s.web.channels.map((c) => (
                                 <tr key={c.channel}>
                                   <td>{channelLabel(c.channel)}</td>
-                                  <td className="num">{fmtInt(c.visits)}</td>
-                                  <td className="num">{fmtInt(c.bookings)}</td>
-                                  <td className="num">{fmtInt(c.orders)}</td>
-                                  <td className="num">{fmtPct(c.conversionPct)}</td>
+                                  <td className="num" data-label="Besök">{fmtInt(c.visits)}</td>
+                                  <td className="num" data-label="Bokningar">{fmtInt(c.bookings)}</td>
+                                  <td className="num" data-label="Beställningar">{fmtInt(c.orders)}</td>
+                                  <td className="num" data-label="Konvertering">{fmtPct(c.conversionPct)}</td>
                                 </tr>
                               ))}
                             </tbody>

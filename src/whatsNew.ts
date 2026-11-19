@@ -100,6 +100,10 @@ export const WHATS_NEW: WhatsNewEntry[] = [
   { n: 90, text: 'Samtal översättning' },
   { n: 91, text: 'Utan kanter' },
   { n: 92, text: 'Kom igång rader' },
+  { n: 93, text: 'Ny bordsbeställning' },
+  { n: 94, text: 'Bord i Beställningar' },
+  { n: 95, text: 'Köksskärm bordsbongar' },
+  { n: 96, text: 'Kategorier med rätt' },
 ]
 
 declare const __WHATS_NEW_N__: number | undefined

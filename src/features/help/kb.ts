@@ -112,6 +112,8 @@ export const ROUTE_PATTERNS = [
   '/statistik',
   '/bokningar',
   '/bestallningar',
+  '/bestallningar/bord/ny',
+  '/bestallningar/bord/:tabId/lagg-till',
   '/meny',
   '/cateringkalkyl',
   '/catering',

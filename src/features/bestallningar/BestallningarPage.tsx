@@ -33,7 +33,11 @@ import { booqyFaultText } from '../../shared/errors'
 import { Select } from '../../shared/Select'
 import { NoLocation } from '../../shared/NoLocation'
 import { RefundDialog } from '../../shared/RefundDialog'
-import { useTenant } from '../../shared/tenant'
+import { hasFeature, useTenant } from '../../shared/tenant'
+import { useInRouterContext, useNavigate } from 'react-router-dom'
+import { CtaButton } from '../../shared/CtaButton'
+import { TablesBoard } from './tables-board/TablesBoard'
+import { NEW_ORDER_PATH } from './tables-board/tabState'
 
 /** Hur ofta listan hämtas om (köksskärmen står öppen hela kvällen). */
 export const POLL_MS = 10_000
@@ -83,7 +87,11 @@ export default function BestallningarPage() {
   /** Beställningen ägaren återbetalar (dialogen är öppen). */
   // Bara id: dialogen följer listan, så en 409 som laddar om visar det senaste beloppet.
   const [refundingId, setRefundingId] = useState<string | null>(null)
-  const isOwner = useTenant().tenant?.role === 'owner_user'
+  const tenant = useTenant().tenant
+  const isOwner = tenant?.role === 'owner_user'
+  /** Bordsbeställningar följer planens beställningar, inte onlinepausen. */
+  const tableOrders = !tenant?.entitlements || hasFeature(tenant, 'ordering')
+  const inRouter = useInRouterContext()
   const [fresh, setFresh] = useState<Set<string>>(new Set())
   const seen = useRef<Set<string> | null>(null)
   const [print, setPrint] = useState<PrintStatus | null>(null)
@@ -106,7 +114,8 @@ export default function BestallningarPage() {
     labelsRef.current = labels
   }, [labels])
   const kds = params.get('vy') === 'kok'
-  function view(next: { vy?: string | null; station?: string | null }) {
+  const bord = params.get('vy') === 'bord' && tableOrders
+  function view(next: { vy?: string | null; station?: string | null; kalla?: string | null }) {
     const p = new URLSearchParams(params)
     for (const [k, v] of Object.entries(next)) {
       if (v) p.set(k, v)
@@ -414,7 +423,15 @@ export default function BestallningarPage() {
 
   return (
     <>
-      <AdminTopbar title="Beställningar" actions={ordering ? pauseControls : undefined} />
+      <AdminTopbar
+        title="Beställningar"
+        actions={ordering || tableOrders ? (
+          <>
+            {ordering && !bord ? pauseControls : null}
+            {tableOrders && inRouter && <NewTableOrderButton />}
+          </>
+        ) : undefined}
+      />
       <div className="admin-main">
         {!locationId ? (
           resolving ? (
@@ -427,19 +444,19 @@ export default function BestallningarPage() {
           )
         ) : (
           <>
-            {ordering && !ordering.open && (
+            {!bord && ordering && !ordering.open && (
               <p className={paused ? 'orders-banner paused' : 'orders-banner'} role="status">
                 {closedText(ordering)}
               </p>
             )}
-            {ordering?.open && (
+            {!bord && ordering?.open && (
               <p className="orders-banner open" role="status">
                 Tar emot beställningar
                 {ordering.lastOrderAt ? ` · sista beställning ${ordering.lastOrderAt}` : ''}
                 {ordering.prepMinutes ? ` · ca ${ordering.prepMinutes} min` : ''}
               </p>
             )}
-            {printBannerText(print) && (
+            {!bord && printBannerText(print) && (
               <p className={print?.online ? 'orders-banner' : 'orders-banner paused'} role="status">
                 {printBannerText(print)}
               </p>
@@ -455,12 +472,12 @@ export default function BestallningarPage() {
             {loadError && (
               <ErrorNote text={booqyFaultText('Beställningarna kunde inte visas.')} />
             )}
-            <section className="stats-row" aria-label="Dagens siffror">
+            {!bord && <section className="stats-row" aria-label="Dagens siffror">
               {tiles.map((t, i) => (
                 <StatTile key={t.label} {...t} loading={orders === null} index={i} />
               ))}
-            </section>
-            {serveTo && (
+            </section>}
+            {!bord && serveTo && (
               <div className="orders-serve" role="status">
                 <span>
                   #{serveTo.number ?? ''} är klar. Bär maten till
@@ -473,19 +490,28 @@ export default function BestallningarPage() {
             )}
             <p className="sr-only" aria-live="polite">{announce}</p>
             <div className="orders-views" role="tablist" aria-label="Vy">
-              <button type="button" role="tab" aria-selected={!kds} className={!kds ? 'active' : ''}
+              <button type="button" role="tab" aria-selected={!kds && !bord} className={!kds && !bord ? 'active' : ''}
                 onClick={() => view({ vy: null })}>
-                Alla beställningar
+                Beställningar
               </button>
+              {tableOrders && (
+                <button type="button" role="tab" aria-selected={bord} className={bord ? 'active' : ''}
+                  onClick={() => view({ vy: 'bord' })}>
+                  Bord
+                </button>
+              )}
               <button type="button" role="tab" aria-selected={kds} className={kds ? 'active' : ''}
                 onClick={() => view({ vy: 'kok' })}>
                 Köksskärm
               </button>
             </div>
-            {kds ? (
+            {bord ? (
+              <TablesBoard locationId={locationId} isOwner={isOwner} />
+            ) : kds ? (
               <KitchenDisplay locationId={locationId} station={params.get('station')}
                 onStation={(station) => view({ station })} labels={labels} tableIds={ticketTables}
-                date={listDate ?? undefined} />
+                date={listDate ?? undefined} source={params.get('kalla')}
+                onSource={(kalla) => view({ kalla })} />
             ) : <>
             {placeOptions.length > 1 && (
               <div className="orders-filter">
@@ -566,6 +592,15 @@ export default function BestallningarPage() {
         />
       )}
     </>
+  )
+}
+
+/** Toppfältets huvudknapp: personalen tar en beställning vid bordet. */
+function NewTableOrderButton() {
+  const navigate = useNavigate()
+  return (
+    <CtaButton className="orders-new-table" label="Ny bordsbeställning" icon="plus" win="Kör!"
+      onClick={() => navigate(NEW_ORDER_PATH)} />
   )
 }
 

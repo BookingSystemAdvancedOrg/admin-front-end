@@ -23,6 +23,8 @@ const GasterPage = lazy(pages.gaster)
 const PresentkortPage = lazy(pages.presentkort)
 const TelefonPage = lazy(pages.telefon)
 const EvenemangPage = lazy(pages.evenemang)
+/** Personalen tar beställningen vid bordet (admin-flow). */
+const TakeOrderPage = lazy(() => import('./features/bestallningar/table-order/TakeOrderPage'))
 
 
 /**
@@ -48,6 +50,8 @@ function App() {
         <Route path="statistik" element={<StatistikPage />} />
         <Route path="bokningar" element={<BokningarPage />} />
         <Route path="bestallningar" element={<BestallningarPage />} />
+        <Route path="bestallningar/bord/ny" element={<TakeOrderPage />} />
+        <Route path="bestallningar/bord/:tabId/lagg-till" element={<TakeOrderPage />} />
         <Route path="meny" element={<MenyPage />} />
         <Route path="cateringkalkyl" element={<CateringkalkylPage />} />
         <Route path="catering" element={<CateringPage />} />

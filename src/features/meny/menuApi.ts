@@ -402,7 +402,7 @@ export function getMenuCategories(locationId: string): Promise<MenuCategories> {
 /** Hela listan: ny kategori utan categoryId, byt namn, ordning, ta bort. */
 export function putMenuCategories(
   locationId: string,
-  categories: { categoryId?: string; name: string }[],
+  categories: { categoryId?: string; name: string; course?: MenuCategoryEntry['course'] }[],
   version: number,
 ): Promise<MenuCategories> {
   return call(() =>

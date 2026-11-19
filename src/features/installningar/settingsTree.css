@@ -747,8 +747,7 @@
   }
 }
 
-/* Fingret på surfplattan: statuschippen, Bakgrund (Färg/Egen bild, färgerna)
-   och Volym når 44 px. */
+/* Fingret på surfplattan: statuschippen når 44 px. */
 @media (pointer: coarse) {
   .stree-apple {
     min-height: 44px;
@@ -757,19 +756,6 @@
   .stree-apple::after {
     inset: 0;
   }
-}
-.settings-branch #utseende .backdrop-segment button {
-  min-height: 44px;
-}
-.settings-branch #utseende .backdrop-swatch {
-  width: 44px;
-  height: 44px;
-}
-.settings-branch #utseende .sound-volume input[type='range'] {
-  box-sizing: border-box;
-  height: 44px;
-  padding: 19px 0;
-  background-clip: content-box;
 }
 
 /* Restaurangprofil: två fält i rad bara när varje fält rymmer namn, adress

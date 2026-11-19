@@ -778,10 +778,3 @@
     min-height: 44px;
   }
 }
-/* Osparade ändringar: raden är tät, så fält som rullar under den inte syns
-   igenom, och ingen egen oskärpa ovanpå sidans glas. */
-.admin-main:has(> .mk-tabs) .save-bar--dirty {
-  background: var(--bq-surface);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}

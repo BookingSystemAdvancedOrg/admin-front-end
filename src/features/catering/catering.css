@@ -556,10 +556,3 @@
 .catering-request .form-grid + .form-field {
   margin-top: 20px;
 }
-
-/* Statusen står i kolumnens textkant, som rubriken och "250 kr" under den
-   (stämpeln har ingen synlig ram eller bakgrund att luftas mot). */
-.catering-list-table .status-badge {
-  padding-inline: 0;
-  border-inline-width: 0;
-}

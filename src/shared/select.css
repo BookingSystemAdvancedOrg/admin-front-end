@@ -34,10 +34,10 @@
 
 /* I formulär bryts ett långt val på flera rader i stället för att kapas
    ("Ej rengjord utrustning (rengöringsavgift)", platsens namn). */
-.form-field .b-select-value {
+:is(.form-field, .bq-field) .b-select-value {
   padding-block: 2px;
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   text-overflow: clip;
   line-height: 1.3;
 }

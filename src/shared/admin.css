@@ -291,7 +291,7 @@
   font: 600 34px/1.1 var(--font);
   /* Storleken följer antalet tecken (--stat-len, StatTile.tsx): korta tal
      står stora, "1 234 567 kr" krymper så att det ryms på en rad. */
-  font-size: clamp(18px, calc(100cqi / (var(--stat-len, 6) * 0.6)), 34px);
+  font-size: clamp(18px, calc(100cqi / (var(--stat-len, 6) * 0.68)), 34px);
   white-space: nowrap;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -1024,7 +1024,10 @@ dialog.modal-layer::backdrop {
   z-index: 5;
   margin: 0 calc(-1 * var(--modal-pad, 24px));
   padding: 12px var(--modal-pad, 24px) var(--modal-pad, 24px);
-  background: var(--surface);
+  /* Same glass as the dialog; rows that scroll under it are blurred. */
+  background: var(--glass-modal, var(--surface));
+  -webkit-backdrop-filter: blur(var(--blur-modal, 18px)) saturate(1.2);
+  backdrop-filter: blur(var(--blur-modal, 18px)) saturate(1.2);
   box-shadow: 0 -10px 18px -14px rgba(26, 18, 14, 0.35);
 }
 
@@ -1423,7 +1426,7 @@ dialog.modal-layer::backdrop {
 
   .stat-tile-value,
   .stats-row .stat-tile-value {
-    font-size: clamp(16px, calc(100cqi / (var(--stat-len, 6) * 0.6)), 26px);
+    font-size: clamp(16px, calc(100cqi / (var(--stat-len, 6) * 0.68)), 26px);
   }
 
   .modal-overlay {

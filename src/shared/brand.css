@@ -280,7 +280,10 @@ button.stat-tile {
 }
 
 .stat-tile-value {
-  font: 820 34px/1.05 var(--font);
+  /* Longhands, so the length-based font-size from admin.css stays. */
+  font-weight: 820;
+  line-height: 1.05;
+  font-family: var(--font);
   font-stretch: 112%;
   letter-spacing: -0.02em;
 }
@@ -320,7 +323,9 @@ button.stat-tile {
 /* --- Statusstämplar ------------------------------------------------------ */
 
 .status-badge[class] {
-  padding: 3px 7px 2px;
+  /* The frame is gone (edges.css), so the text starts at the column edge. */
+  padding: 3px 0 2px;
+  border-inline-width: 0;
   border: 1.5px solid currentColor;
   border-radius: var(--r-md);
   background: transparent;
@@ -2079,4 +2084,22 @@ html.is-busy * {
 }
 .avatar-crop .modal-actions {
   inline-size: 100%;
+}
+
+/* Touch: Bakgrund (Färg/Egen bild, färgerna) and Volym reach 44 px wherever
+   they appear; the range track still looks 6 px. */
+@media (pointer: coarse) {
+  .backdrop-segment button {
+    min-height: 44px;
+  }
+  .backdrop-swatch {
+    width: 44px;
+    height: 44px;
+  }
+  .sound-volume input[type='range'] {
+    box-sizing: border-box;
+    height: 44px;
+    padding: 19px 0;
+    background-clip: content-box;
+  }
 }

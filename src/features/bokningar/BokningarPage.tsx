@@ -247,8 +247,8 @@ export default function BokningarPage() {
                           }
                         }}
                       >
-                        <td className="cell-strong">{r.startTime}</td>
-                        <td>
+                        <td className="cell-strong bk-time">{r.startTime}</td>
+                        <td className="bk-guest">
                           <span className="guest-line">
                           <span className="cell-strong">{r.customerName || 'Gäst'}</span>
                           {locationId && (
@@ -267,9 +267,9 @@ export default function BokningarPage() {
                             <div className="cell-muted">{SOURCE_LABEL[r.source]}</div>
                           )}
                         </td>
-                        <td data-label="Pers"><Num>{r.partySize}</Num></td>
-                        <td>{locationId === MOCK_LOCATION_ID ? tableNames(r.tableIds, labels) : <TableLinks ids={r.tableIds} labels={labels} date={r.date} />}</td>
-                        <td>
+                        <td className="bk-pers" data-label="Pers"><Num>{r.partySize}</Num></td>
+                        <td className="bk-tables">{locationId === MOCK_LOCATION_ID ? tableNames(r.tableIds, labels) : <TableLinks ids={r.tableIds} labels={labels} date={r.date} />}</td>
+                        <td className="bk-status">
                           <span className={`status-badge ${STATUS_CLASS[r.status]}`}>
                             {STATUS_LABEL[r.status]}
                           </span>

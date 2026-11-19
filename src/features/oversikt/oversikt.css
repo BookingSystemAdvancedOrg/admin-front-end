@@ -1,0 +1,33 @@
+/* Översikt: passform på surfplattan och för stora tal (2026-11-19). */
+
+/* Den här månaden: på iPad i stående läge får ringen och siffrorna var sin
+   rad, som på telefonen, så att fyra tal ryms bredvid varandra två och två. */
+@media (min-width: 701px) and (max-width: 1100px) {
+  .month-card-body {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: stretch;
+  }
+}
+
+/* Talen krymper med skärmen och bryts vid mellanslag i stället för att
+   rinna in i rutan bredvid (1 234 567 kr). */
+.month-kpi {
+  min-width: 0;
+}
+
+.month-kpi dd {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: clamp(20px, 0.9vw + 13px, 26px);
+}
+
+/* Dagens bokningar: "2 pers ·" hålls ihop så att punkten aldrig börjar en rad. */
+.keep-line {
+  white-space: nowrap;
+}
+
+.today-list li > span:nth-child(2) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

@@ -52,6 +52,7 @@ import type { IconName } from '../../shared/Icon'
 import { Disclosure } from '../../shared/Disclosure'
 import { SkelRows } from '../../shared/Skeleton'
 import './setup.css'
+import './oversikt.css'
 import { useHelpChatEnabled } from '../help/chatState'
 import { SetupStepItem } from './SetupStepItem'
 
@@ -377,7 +378,7 @@ export default function OversiktPage() {
                   <li key={r.reservationId}>
                     <span className="cell-strong">{r.startTime}</span>
                     <span>
-                      {r.customerName || 'Gäst'} · <Num>{r.partySize}</Num> pers · {sample ? tableNames(r.tableIds, tableLabels) : <TableLinks ids={r.tableIds} labels={tableLabels} date={r.date} />}
+                      {r.customerName || 'Gäst'} · <span className="keep-line"><Num>{r.partySize}</Num> pers ·</span> {sample ? tableNames(r.tableIds, tableLabels) : <TableLinks ids={r.tableIds} labels={tableLabels} date={r.date} />}
                     </span>
                     <span className={`status-badge ${STATUS_CLASS[r.status]}`}>
                       {STATUS_LABEL[r.status]}

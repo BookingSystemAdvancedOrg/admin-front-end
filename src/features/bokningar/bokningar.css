@@ -146,6 +146,21 @@
   margin-top: 4px;
 }
 
+/* Långa gästnamn bryts i rubriken; statusen står kvar i hörnet. */
+.booking-modal-head > div {
+  min-width: 0;
+}
+
+.booking-modal-head h2 {
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.booking-modal-head > .status-badge {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .booking-details {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
@@ -366,5 +381,93 @@
 
   .channel-option-text {
     align-items: center;
+  }
+}
+
+/* --- Passform (2026-11-19): listan ryms i kortet på alla skärmar ---------- */
+
+/* Långa namn bryts i stället för att trycka Status utanför kortet. */
+.bookings-table .bk-guest,
+.bookings-table .bk-guest .cell-strong,
+.bookings-table .bk-tables {
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+/* Tid, antal och status står på en rad och siffrorna är lika breda. */
+.bookings-table .bk-time,
+.bookings-table .bk-pers,
+.bookings-table .bk-status .status-badge {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.bookings-table .bk-status {
+  white-space: nowrap;
+}
+
+/* Surfplattan och laptopen: tabellen följer kortets bredd, gästen tar
+   det som blir över och Status syns alltid. */
+@media (min-width: 601px) {
+  .bookings-table {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  .bookings-table .bk-guest {
+    width: 100%;
+    min-width: 120px;
+  }
+}
+
+/* iPad i stående läge: lite tätare kolumner så att Status ryms. */
+@media (min-width: 601px) and (max-width: 1100px) {
+  .bookings-table th,
+  .bookings-table td {
+    padding-right: 12px;
+  }
+
+  .bookings-table th:last-child,
+  .bookings-table td:last-child {
+    padding-right: 0;
+  }
+}
+
+/* iPad mini: smalast innehåll bredvid menyn, gästen får ge med sig mest. */
+@media (min-width: 601px) and (max-width: 800px) {
+  .bookings-table .bk-guest {
+    min-width: 96px;
+  }
+}
+
+/* Telefonen: samma kort för varje bokning, tiden och gästen överst och
+   Pers, Bord och Status på en rad under, kant i kant. */
+@media (max-width: 600px) {
+  .data-table.bookings-table:not(.keep-table) tr.booking-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr) auto;
+    gap: 8px 14px;
+    align-items: start;
+  }
+
+  .data-table.bookings-table:not(.keep-table) tr.booking-row > td.bk-time,
+  .data-table.bookings-table:not(.keep-table) tr.booking-row > td.bk-guest {
+    grid-column: 1 / -1;
+  }
+
+  .data-table.bookings-table:not(.keep-table) tr.booking-row > td.bk-status {
+    justify-self: end;
+    text-align: right;
+  }
+
+  .data-table.bookings-table:not(.keep-table) tr.booking-row > td.bk-status .cell-muted {
+    white-space: normal;
+  }
+}
+
+/* Laptop och iPad Pro liggande: gott om plats, så bordet står på en rad. */
+@media (min-width: 1101px) {
+  .bookings-table .bk-tables {
+    white-space: nowrap;
   }
 }

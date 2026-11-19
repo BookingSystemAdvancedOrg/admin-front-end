@@ -618,7 +618,8 @@
   gap: 12px 16px;
   padding: 14px 16px;
   border-radius: var(--r-lg);
-  background: var(--glass-text-bg) var(--liquid-sheen);
+  /* tät: rubrikerna under ska inte synas igenom när raden följer med */
+  background: var(--surface) var(--liquid-sheen);
   box-shadow: var(--liquid-edge), var(--liquid-depth);
   -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.6);
   backdrop-filter: blur(var(--blur-pop)) saturate(1.6);

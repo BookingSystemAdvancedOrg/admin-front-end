@@ -350,7 +350,7 @@
   .meny-scroll .data-table.meny-table td.cell-strong {
     order: 1;
     flex: 1 1 calc(100% - 56px - 44px - 28px);
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
 
   .meny-scroll .data-table.meny-table td.right {
@@ -756,3 +756,11 @@
   gap: 10px;
 }
 
+
+/* Långa ord i rättens namn och beskrivning avstavas (med bindestreck) i
+   stället för att lämna en ensam bokstav på en egen rad. */
+.meny-table td.cell-strong,
+.meny-table td.cell-strong * {
+  overflow-wrap: break-word;
+  hyphens: auto;
+}

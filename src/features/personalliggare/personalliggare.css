@@ -33,6 +33,19 @@
   padding: var(--bq-space-2) 0;
   border-bottom: 1px solid var(--bq-line);
 }
+/* Namnet bryts inom sin del av raden; tid, personnummer och Rätta står
+   alltid vid högerkanten, även när namnet går över flera rader. */
+.pl-present li > :first-child {
+  flex: 1 1 0;
+  min-width: 8rem;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+.pl-present li > :not(:first-child) {
+  flex: none;
+  margin-left: auto;
+  white-space: nowrap;
+}
 .pl-mono {
   font-family: var(--bq-font-mono);
 }
@@ -42,6 +55,92 @@
   padding: 0;
   font: inherit;
   cursor: default;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  max-width: 100%;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Tabellerna (Liggaren, Personer): namn och anmärkningar bryts mellan
+   orden i stället för att knuffa kolumner bakom sidled-scroll. */
+.pl-scroll {
+  container: pl-list / inline-size;
+}
+.data-table.pl-table {
+  min-width: 0;
+}
+.pl-table td {
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+.pl-table td.pl-mono {
+  white-space: nowrap;
+}
+.pl-table td.pl-note {
+  min-width: 12rem;
+}
+
+/* Smalt kort (telefon, iPad stående): varje rad blir ett kort med namnet
+   överst och värdena under, var och en med sin rubrik. */
+@container pl-list (max-width: 640px) {
+  .pl-scroll .data-table.pl-table,
+  .pl-scroll .data-table.pl-table tbody {
+    display: block;
+  }
+  .pl-scroll .data-table.pl-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .pl-scroll .data-table.pl-table tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px 20px;
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
+  }
+  .pl-scroll .data-table.pl-table tbody tr:first-child {
+    border-top: 0;
+  }
+  .pl-scroll .data-table.pl-table td {
+    display: block;
+    order: 1;
+    min-width: 0;
+    padding: 0 !important;
+    border: 0 !important;
+    background: none !important;
+  }
+  .pl-scroll .data-table.pl-table td.pl-name {
+    order: 0;
+    flex: 1 1 100%;
+    font-weight: 600;
+  }
+  /* namnet säger själv vad det är (rubriken sätts av tabellen) */
+  .pl-scroll .data-table.pl-table td.pl-name::before {
+    display: none !important;
+  }
+  .pl-scroll .data-table.pl-table td.pl-note {
+    order: 2;
+    flex: 1 1 100%;
+  }
+  .pl-scroll .data-table.pl-table td.pl-note:empty {
+    display: none;
+  }
+  .pl-scroll .data-table.pl-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+  }
 }
 .pl-check {
   display: flex;

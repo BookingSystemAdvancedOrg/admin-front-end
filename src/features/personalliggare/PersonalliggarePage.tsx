@@ -220,7 +220,7 @@ function Today({ locationId, owner, persons }: { locationId: string; owner: bool
 function Rows({ rows, identity = false }: { rows: Row[]; identity?: boolean }) {
   if (rows.length === 0) return <p className="admin-empty">Inga registreringar.</p>
   return (
-    <div className="table-scroll" tabIndex={0}>
+    <div className="table-scroll pl-scroll" tabIndex={0}>
       <table className="data-table pl-table">
         <thead>
           <tr>
@@ -231,11 +231,11 @@ function Rows({ rows, identity = false }: { rows: Row[]; identity?: boolean }) {
         <tbody>
           {rows.map((r) => (
             <tr key={`${r.seq}-${r.correctedBySeq ?? 0}`}>
-              <td>{clock(r.eventTime)}</td>
-              <td>{r.name}</td>
-              {identity ? <td className="pl-mono">{r.personalIdentity}</td> : null}
-              <td>{KIND_LABEL[r.kind as Kind] ?? r.kind}</td>
-              <td>
+              <td data-label="Tid">{clock(r.eventTime)}</td>
+              <td className="pl-name">{r.name}</td>
+              {identity ? <td className="pl-mono" data-label="Personnummer">{r.personalIdentity}</td> : null}
+              <td data-label="In/ut">{KIND_LABEL[r.kind as Kind] ?? r.kind}</td>
+              <td className="pl-note" data-label="Anmärkning">
                 {r.original ? `Rättad (var ${KIND_LABEL[r.original.kind as Kind] ?? r.original.kind} ${clock(r.original.eventTime)}): ${r.reason}` : null}
                 {r.late ? `Efterregistrerad: ${r.reason}` : null}
               </td>
@@ -292,16 +292,16 @@ function Persons({ persons, onSaved }: { persons: Person[]; onSaved: () => Promi
   return (
     <Card title="Personer" actions={<Button onClick={() => setEditing(blank)}>Lägg till person</Button>}>
       {persons.length === 0 ? <p className="admin-empty">Inga personer än.</p> : (
-        <div className="table-scroll" tabIndex={0}>
-          <table className="data-table">
+        <div className="table-scroll pl-scroll" tabIndex={0}>
+          <table className="data-table pl-table">
             <thead><tr><th scope="col">Namn</th><th scope="col">Personnummer</th><th scope="col">Inloggning</th><th scope="col">Status</th></tr></thead>
             <tbody>
               {persons.map((p) => (
                 <tr key={p.personId}>
-                  <td><button type="button" className="card-link pl-open" onClick={() => setEditing(p)}>{p.name}</button></td>
-                  <td className="pl-mono">{p.personalIdentity}</td>
-                  <td>{p.userSub ? 'Kopplad' : 'Ingen'}</td>
-                  <td><span className="status-badge">{p.active ? 'Aktiv' : 'Slutat'}</span></td>
+                  <td className="pl-name"><button type="button" className="card-link pl-open" onClick={() => setEditing(p)}>{p.name}</button></td>
+                  <td className="pl-mono" data-label="Personnummer">{p.personalIdentity}</td>
+                  <td data-label="Inloggning">{p.userSub ? 'Kopplad' : 'Ingen'}</td>
+                  <td data-label="Status"><span className="status-badge">{p.active ? 'Aktiv' : 'Slutat'}</span></td>
                 </tr>
               ))}
             </tbody>

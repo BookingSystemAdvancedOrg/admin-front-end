@@ -257,6 +257,13 @@
   accent-color: var(--green);
 }
 
+/* iPad och telefon: 44 px att trycka på. */
+@media (pointer: coarse) {
+  .table-chip {
+    min-height: 44px;
+  }
+}
+
 .table-chip.selected {
   border-color: var(--green);
   background: var(--tint-blue);
@@ -393,6 +400,28 @@
 .bookings-table .bk-tables {
   overflow-wrap: anywhere;
   hyphens: manual;
+}
+
+/* Ett långt ord i namnet avstavas med bindestreck i stället för att
+   brytas mitt i en bokstavsföljd. */
+.bookings-table .bk-guest,
+.bookings-table .bk-guest .cell-strong {
+  hyphens: auto;
+}
+
+/* Bordknappen i en bokningsrad: 44 px att trycka på iPad, så att ett tryck
+   nära bordets namn öppnar bordskartan och inte bokningen. */
+@media (pointer: coarse) {
+  .bookings-table .table-chip-link {
+    position: relative;
+    z-index: 1;
+  }
+
+  .bookings-table .table-chip-link::after {
+    content: '';
+    position: absolute;
+    inset: -10px -4px;
+  }
 }
 
 /* Tid, antal och status står på en rad och siffrorna är lika breda. */

@@ -230,8 +230,10 @@ export function SlotTablePicker({
                   checked={tableIds.includes(t.tableId)}
                   onChange={() => toggle(t.tableId)}
                 />
-                Bord {tableLabel(t.tableId)}
-                {t.seats > 0 && <span className="cell-muted"> · {t.seats} pl</span>}
+                <span>
+                  Bord {tableLabel(t.tableId)}
+                  {t.seats > 0 && <span className="cell-muted"> · {t.seats} pl</span>}
+                </span>
               </label>
             ))}
           </div>

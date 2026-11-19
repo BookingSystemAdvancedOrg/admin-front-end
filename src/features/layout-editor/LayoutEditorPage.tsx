@@ -2535,7 +2535,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                         )}
                         <div className="table-top">
                           <span className="table-labels">
-                            <span className="table-label">{t.label}</span>
+                            <span className="table-label" title={t.label}>{t.label}</span>
                             {/* Platsantalet i samma stil som bordsnumret: T3 / P4. */}
                             <span className="table-seats">P{t.seats}</span>
                           </span>

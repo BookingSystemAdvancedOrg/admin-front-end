@@ -508,7 +508,7 @@ export function FloorBooking({
                           )}
                           <g transform={`rotate(${-t.rotation})`}>
                             {/* Trailing space: screen readers and axe join the two texts, "T1 4 pl" not "T14 pl". */}
-                            <text className="floor-map-label" y={-4}>
+                            <text className="floor-map-label" y={-4} {...labelFit(label(t), t)}>
                               {label(t)}{' '}
                             </text>
                             <text className="floor-map-seats" y={14}>
@@ -644,4 +644,19 @@ export function FloorBooking({
       </div>
     </>
   )
+}
+
+/**
+ * Bordsnumret ska rymmas på bordet: ett långt namn får mindre text (ned till
+ * 10 px) och trycks ihop först när inte ens det räcker. Bara utseende.
+ */
+function labelFit(text: string, t: { w: number; h: number; rotation: number }) {
+  const room = (t.rotation % 180 === 0 ? t.w : Math.min(t.w, t.h)) - 10
+  const perChar = 0.62
+  const size = Math.max(10, Math.min(19, room / Math.max(1, text.length * perChar)))
+  const width = text.length * perChar * size
+  return {
+    style: size < 19 ? { fontSize: `${size}px` } : undefined,
+    ...(width > room ? { textLength: room, lengthAdjust: 'spacingAndGlyphs' as const } : {}),
+  }
 }

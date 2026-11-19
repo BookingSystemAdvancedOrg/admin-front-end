@@ -118,7 +118,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font: 600 10.5px/1 var(--font);
+  /* 1.25, inte 1: med overflow: hidden klipptes j/g av (Välj, Vägg). */
+  font: 600 11px/1.25 var(--font);
+  padding-bottom: 1px;
   color: var(--muted);
 }
 
@@ -323,18 +325,24 @@
 
 .shortcut-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 12px;
+  gap: 2px 12px;
   padding: 4px 0;
   border-top: 1px dashed var(--border);
   font: 400 12px/1.35 var(--sans);
 }
 
 .shortcut-row dt {
-  flex-shrink: 0;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
+/* Minst 7em innan texten bryts: annars blev den ett ord per rad bredvid
+   en lång tangent (Cmd/Ctrl medan du drar). Då hamnar den under i stället. */
 .shortcut-row dd {
+  flex: 1 1 7em;
+  min-width: 0;
   margin: 0;
   color: var(--muted);
   text-align: right;
@@ -883,9 +891,15 @@
   flex-direction: column;
   align-items: center;
   gap: 1px;
+  max-width: 100%;
   transform-origin: bottom center;
-  transform: translateZ(1px) rotateZ(calc(-1 * var(--spin, 0deg)))
-    rotateX(calc(-1 * var(--tilt, 0deg)));
+  /* Skylten står mitt på bordet i både 2D och 3D. Origo är underkanten,
+     så vridningen mot vyn (rotateZ) görs kring skyltens mitt: flytta upp
+     halva höjden, vrid, flytta tillbaka. Sedan flyttas foten mot kameran så
+     att skyltens mitt, när den rest sig (rotateX), syns mitt på bordet:
+     halva höjden delat med cos(lutningen). */
+  transform: translateZ(1px) translateY(-50%) rotateZ(calc(-1 * var(--spin, 0deg)))
+    translateY(calc(50% / cos(var(--tilt, 0deg)))) rotateX(calc(-1 * var(--tilt, 0deg)));
   transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -906,12 +920,26 @@
 /* Bordsskivan är ljus i båda lägena (.table-top), så texten på den har fasta
    färger: med temats bläck blev den ljus på ljust i mörkt läge. */
 .table-label {
-  font: 700 11px/1.1 var(--sans);
+  /* Ett långt bordsnamn bryts på högst två rader inom bordet (hela namnet i
+     title), i stället för att växa upp över bordsskivan. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  max-width: 100%;
+  font: 700 12px/1.15 var(--sans);
   color: var(--bq-espresso);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .table-seats {
-  font: 700 10px/1.1 var(--sans);
+  flex: none;
+  white-space: nowrap;
+  font: 700 10.5px/1.2 var(--sans);
+  font-variant-numeric: tabular-nums;
   color: var(--bq-snow);
   background: var(--bq-espresso);
   border-radius: var(--r-md);
@@ -936,9 +964,11 @@
   box-shadow: 0 0 0 3px transparent;
 }
 
+/* Platsbrickan i motsatt färg mot den valda skivan: i mörkt läge är skivan
+   ljus, och ljus bricka med brons text syntes knappt. */
 .table-el.selected .table-seats {
-  color: var(--bq-bronze);
-  background: var(--bq-snow);
+  color: var(--accent);
+  background: var(--on-accent);
 }
 
 .floor-entry-label {
@@ -1151,6 +1181,13 @@
   width: 560px;
 }
 
+/* Stäng ligger kvar längst ner när listan skrollar. Klistrad mot dialogens
+   kant (bottom 0 räknas innanför dess utfyllnad, så raden svävade 24 px
+   ovanför kanten med listan synlig under sig). */
+.versions-modal .modal-actions--pinned {
+  bottom: calc(-1 * var(--modal-pad, 24px));
+}
+
 .versions-summary {
   margin: 0;
   font: 400 15px/1.5 var(--font);
@@ -1336,12 +1373,15 @@
 /* Surfplatta och smal laptop: ritytan är för smal för en svävande palett,
    så den blir en rad ovanför ritytan (skrollbar i sidled vid behov). */
 @media (max-width: 1100px) {
+  /* Raden bryts i stället för att skrolla i sidled: alla verktyg syns på en
+     surfplatta, inget ligger halvt utanför kanten. */
   .editor-toolbar {
     position: static;
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
     width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
     padding: 6px;
   }
 
@@ -1637,6 +1677,100 @@
   }
 }
 
+/* Surfplatta på höjden (ritytan runt 470 px): kontrollerna är bredare än
+   ytan och sköts annars ut över vänsterkanten (ångra syntes inte). De bryts
+   på två rader inom ytan, och våningsflikarna lägger sig under båda. */
+@container (max-width: 600px) {
+  /* Lite ovanför våningsflikarna: listan täcker dem helt, inget flikhörn
+     syns vid listans rundade hörn. */
+  /* Glaset är genomskinligt: flikarna under listan syntes som en skugga. */
+  .floor-scene:has(.shortcut-sheet) .floor-tabs {
+    visibility: hidden;
+  }
+
+  .shortcut-sheet {
+    top: 98px;
+    max-height: calc(100% - 110px);
+  }
+
+  .scene-controls {
+    left: 12px;
+    right: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .floor-tabs {
+    top: 104px;
+  }
+}
+
+/* Pekskärm (iPad): varje knapp på ritytan är minst 44 px hög att träffa. */
+@media (pointer: coarse) {
+  .scene-controls .view-toggle button,
+  .floor-tabs button {
+    min-height: 44px;
+  }
+
+  .floor-tabs button.add {
+    min-width: 44px;
+  }
+
+  .layout-mode-switch button {
+    min-height: 44px;
+  }
+
+  /* Egenskapspanelen och versionslistan: samma 44 px på surfplattan. */
+  .step-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .shape-toggle button,
+  .zone-chip,
+  .floor-pill,
+  .props-panel .btn,
+  .vt-actions .link-action,
+  .versions-modal .modal-actions .btn {
+    min-height: 44px;
+  }
+
+  .vt-actions .link-action {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .props-tip summary {
+    padding: 11px 0;
+  }
+
+  .view-toggle button.view-icon,
+  .view-toggle button {
+    min-width: 44px;
+  }
+}
+
+@container (max-width: 860px) {
+  @media (pointer: coarse) {
+    .floor-tabs {
+      top: 76px;
+    }
+  }
+}
+
+@container (max-width: 600px) {
+  @media (pointer: coarse) {
+    .floor-tabs {
+      top: 128px;
+    }
+
+    .shortcut-sheet {
+      top: 122px;
+      max-height: calc(100% - 134px);
+    }
+  }
+}
+
 /* Tipset i sidopanelen: en rad, resten bakom "Mer" */
 .props-tip {
   font-size: 13px;
@@ -1716,7 +1850,7 @@
 .removed-bookings li + li { border-top: 1px solid var(--border); }
 .removed-bookings-day,
 .removed-bookings-table { color: var(--muted); }
-.removed-bookings-guest { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.removed-bookings-guest { min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 600px) {
   .removed-bookings li { grid-template-columns: 5.5em 3.5em minmax(0, 1fr); }
   .removed-bookings-table { grid-column: 3; }

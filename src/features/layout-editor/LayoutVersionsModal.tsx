@@ -297,7 +297,7 @@ export function LayoutVersionsModal({
             <p className="cell-muted">Bara ägare och systemadmin kan byta version.</p>
           )}
 
-          <div className="modal-actions">
+          <div className="modal-actions modal-actions--pinned">
             <button type="button" className="btn outline square" onClick={onClose}>
               Stäng
             </button>

@@ -1,5 +1,12 @@
 /* Boka från bordskartan (FloorBooking.tsx). */
 
+/* Bordens lägen syns bara genom fyllnaden (inga kanter, edges.css), så den
+   är lite mättad: tydlig på glaset i ljust och mörkt läge. */
+.floor-map-card {
+  --floor-free: color-mix(in srgb, var(--green) 22%, var(--tint-green));
+  --floor-small: color-mix(in srgb, var(--warning) 28%, var(--tint-orange));
+}
+
 .floor-booking-controls,
 .floor-map-card,
 .floor-booking-panel {
@@ -69,20 +76,22 @@
 }
 
 .floor-map-top {
-  fill: var(--tint-green);
+  fill: var(--floor-free);
   stroke: var(--green);
   stroke-width: 2;
   transition: fill 0.15s, stroke-width 0.15s;
 }
 
 .floor-map-table.is-small .floor-map-top {
-  fill: var(--tint-orange);
+  fill: var(--floor-small);
   stroke: var(--warning);
 }
 
 .floor-map-table.is-full .floor-map-top,
 .floor-map-table.is-loading .floor-map-top {
-  fill: var(--fill, var(--bg));
+  /* Utan kanter (edges.css) syns bordet bara genom sin fyllnad: en tydlig
+     neutral yta, inte bakgrundens färg. */
+  fill: var(--neutral-fill);
   stroke: var(--border);
   stroke-dasharray: 4 3;
 }
@@ -157,24 +166,24 @@
 .floor-map-legend > span[class^='legend-']::before {
   content: '';
   display: inline-block;
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   margin-right: 6px;
-  vertical-align: -1px;
-  border-radius: 3px;
-  border: 1.5px solid;
+  vertical-align: -2px;
+  border-radius: 4px;
 }
 
+/* Rutorna har samma fyllnad som borden på kartan. */
 .legend-free::before {
-  background: var(--tint-green);
+  background: var(--floor-free);
 }
 
 .legend-small::before {
-  background: var(--tint-orange);
+  background: var(--floor-small);
 }
 
 .legend-full::before {
-  background: var(--fill, var(--bg));
+  background: var(--neutral-fill);
   opacity: 0.6;
 }
 

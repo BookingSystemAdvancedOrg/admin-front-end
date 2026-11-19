@@ -245,7 +245,26 @@ function place(step: GuideStep | null, bubbleHeight: number, bubbleWidth = BUBBL
   if (r.top >= bubbleHeight + GAP + 16) {
     return { spot, bubble: { top: r.top - GAP - bubbleHeight, left: clampLeft(r.left) }, side: 'above' }
   }
-  // Mycket stort mål: bubblan inuti, nere till höger.
+  // Mycket stort mål (lång bokningslista): lys bara upp den övre delen som
+  // får plats och lägg bubblan under den, så att bubblan inte täcker raderna
+  // som steget pekar på.
+  const capTop = Math.max(spot.top, 8)
+  let capBottom = Math.min(spot.top + spot.height, vh - bubbleHeight - GAP - 16)
+  // Klipp vid en hel rad, inte mitt i en bokning.
+  let rowEnd = 0
+  for (const row of el.querySelectorAll('tr, li, [role="row"]')) {
+    const b = row.getBoundingClientRect().bottom + PAD
+    if (b <= capBottom && b > rowEnd) rowEnd = b
+  }
+  if (rowEnd - capTop >= 120) capBottom = rowEnd
+  if (capBottom - capTop >= 120) {
+    return {
+      spot: { top: capTop, left: spot.left, width: spot.width, height: capBottom - capTop },
+      bubble: { top: capBottom + GAP, left: clampLeft(r.left) },
+      side: 'below',
+    }
+  }
+  // Inget annat går: bubblan inuti, nere till höger.
   return { spot, bubble: { top: vh - bubbleHeight - 16, left: vw - bubbleWidth - 16 }, side: 'center' }
 }
 

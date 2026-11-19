@@ -1606,9 +1606,13 @@ html.drawer-lock body {
   hyphens: auto;
 }
 
-/* Rollen (Ägare, Personal) delas aldrig: raden bryts före punkten. */
+/* Rollen (Ägare, Personal) står på egen rad under namnet, utan
+   avskiljare, så ingen rad börjar eller slutar med en lös punkt. */
 .admin-user-role {
+  display: block;
   white-space: nowrap;
+  font-size: 12px;
+  opacity: 0.78;
 }
 
 /* Fråga Booqy: förslagen syns som knappar (fyllning, inga kanter sedan

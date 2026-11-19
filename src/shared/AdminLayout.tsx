@@ -305,7 +305,7 @@ export function AdminLayout() {
             <span className="admin-user-name">
               {/* Rollen enligt servern när restaurangen är laddad. */}
               {displayName}{' '}
-              <span className="admin-user-role">· {primaryGroupLabel(tenant ? [tenant.role] : groups)}</span>
+              <span className="admin-user-role">{primaryGroupLabel(tenant ? [tenant.role] : groups)}</span>
             </span>
           </div>
           <button

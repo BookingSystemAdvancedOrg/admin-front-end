@@ -741,3 +741,30 @@
   outline: 2px solid var(--ink);
   outline-offset: 1px;
 }
+
+/* Flikraden: raderna börjar alltid vid vänsterkanten, i linje med innehållet
+   under (inte utsträckta och centrerade, så att en ensam flik hamnade mitt i). */
+.mk-tabs[data-glide='track'] {
+  justify-content: flex-start;
+}
+.mk-tabs[data-glide='track'] > .mk-tab {
+  flex: 0 0 auto;
+}
+
+/* iPad (pek): flikar och periodvalet minst 44 px höga. */
+@media (pointer: coarse) {
+  .mk-tabs[data-glide] > .mk-tab,
+  .mk-segment > button,
+  .mk-stack .link-btn {
+    min-height: 44px;
+  }
+}
+
+/* Förhandsvisningen av kupongen: kanterna är borta i appen, så fältet och
+   kryssrutan syns med en svag fyllnad på det vita papperet. */
+.mk-offer-input {
+  background: rgba(26, 18, 14, 0.06);
+}
+.mk-offer-consent i {
+  background: rgba(26, 18, 14, 0.14);
+}

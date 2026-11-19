@@ -250,8 +250,8 @@ export default function InslappPage({ locationId, eventId, occurrenceId }: { loc
                       return (
                         <tr key={t.ticketId}>
                           <td>{t.holderName || 'Namn saknas'}</td>
-                          <td>{t.typeName}</td>
-                          <td><span className="status-badge">{label}</span></td>
+                          <td data-label="Biljett">{t.typeName}</td>
+                          <td data-label="Status"><span className="status-badge">{label}</span></td>
                           <td>
                             {t.status === 'valid' && !localAt ? (
                               <Button size="sm" variant="secondary" onClick={() => { void admit(t.ticketId, null) }}>Släpp in</Button>

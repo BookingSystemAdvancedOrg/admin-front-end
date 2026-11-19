@@ -229,9 +229,9 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
                         {g.name || 'Namn saknas'}
                       </button>
                     </td>
-                    <td>{formatDay(g.lastSeenAt)}</td>
-                    <td>{g.visits}</td>
-                    <td><span className="status-badge">{g.returning ? 'Återkommande' : 'Ny'}</span></td>
+                    <td data-label="Senast här">{formatDay(g.lastSeenAt)}</td>
+                    <td data-label="Besök">{g.visits}</td>
+                    <td data-label="Kund"><span className="status-badge">{g.returning ? 'Återkommande' : 'Ny'}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -419,17 +419,17 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
           <h3 className="form-section-label">Historik</h3>
           {guest.history.length === 0 ? <p className="cell-muted">Ingen historik.</p> : (
             <div className="table-scroll" tabIndex={0}>
-              <table className="data-table">
+              <table className="data-table gaster-history">
                 <thead>
                   <tr><th scope="col">Datum</th><th scope="col">Vad</th><th scope="col">Restaurang</th>{guest.spendSek ? <th scope="col">Belopp</th> : null}</tr>
                 </thead>
                 <tbody>
                   {guest.history.map((h) => (
                     <tr key={`${h.kind}-${h.sourceId}`}>
-                      <td>{h.date ?? formatDay(h.at)}</td>
-                      <td>{KIND_LABEL[h.kind]}{h.partySize ? `, ${h.partySize} pers.` : ''}{h.sourceId.endsWith('.noshow') ? ' (uteblev)' : ''}</td>
-                      <td>{h.locationId ? locationName(h.locationId) : ''}</td>
-                      {guest.spendSek ? <td>{h.amountOre ? `${Math.round(h.amountOre / 100).toLocaleString('sv-SE')} kr` : ''}</td> : null}
+                      <td data-label="Datum">{h.date ?? formatDay(h.at)}</td>
+                      <td data-label="Vad">{KIND_LABEL[h.kind]}{h.partySize ? `, ${h.partySize} pers.` : ''}{h.sourceId.endsWith('.noshow') ? ' (uteblev)' : ''}</td>
+                      <td data-label="Restaurang">{h.locationId ? locationName(h.locationId) : ''}</td>
+                      {guest.spendSek ? <td data-label="Belopp" className="gaster-amount">{h.amountOre ? `${Math.round(h.amountOre / 100).toLocaleString('sv-SE')} kr` : ''}</td> : null}
                     </tr>
                   ))}
                 </tbody>

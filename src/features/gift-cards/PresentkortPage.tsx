@@ -95,15 +95,15 @@ function GiftCards({ owner }: { owner: boolean }) {
         {listing && cards.length === 0 ? <p className="admin-empty">Inga presentkort än.</p> : null}
         {cards.length ? (
           <div className="table-scroll" tabIndex={0}>
-            <table className="data-table">
+            <table className="data-table presentkort-table">
               <thead><tr><th scope="col">Kort</th><th scope="col">Saldo</th><th scope="col">Status</th><th scope="col">Gäller till</th></tr></thead>
               <tbody>
                 {cards.map((c) => (
                   <tr key={c.cardId}>
                     <td><button type="button" className="card-link presentkort-open" onClick={() => setOpenId(c.cardId)}>****{c.last4}</button></td>
-                    <td>{c.balanceSek.toLocaleString('sv-SE')} av {c.initialSek.toLocaleString('sv-SE')} kr</td>
-                    <td><span className="status-badge">{STATUS_LABEL[c.status]}</span></td>
-                    <td>{stockholmDate(c.expiresAt)}</td>
+                    <td data-label="Saldo"><span className="presentkort-amount">{c.balanceSek.toLocaleString('sv-SE')}</span> av <span className="presentkort-amount">{c.initialSek.toLocaleString('sv-SE')} kr</span></td>
+                    <td data-label="Status"><span className="status-badge">{STATUS_LABEL[c.status]}</span></td>
+                    <td data-label="Gäller till" className="presentkort-date">{stockholmDate(c.expiresAt)}</td>
                   </tr>
                 ))}
               </tbody>

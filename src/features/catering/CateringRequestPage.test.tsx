@@ -534,6 +534,21 @@ describe('CateringPage', () => {
     expect(await screen.findByText('Förfrågningar och beställningar')).toBeInTheDocument()
   })
 
+  it('a press that only closes the open filter list does not open the row under it', async () => {
+    listRequests.mockResolvedValue(twoRows())
+    const user = userEvent.setup()
+    renderList()
+    const rows = await screen.findAllByRole('row')
+    await user.click(screen.getByRole('combobox', { name: 'Visa' }))
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+    await user.click(within(rows[1]).getByText('Bo'))
+    expect(screen.queryByRole('listbox')).toBeNull()
+    expect(screen.queryByText('Öppnad r-bo')).toBeNull()
+    // Nästa tryck, utan öppen lista, öppnar raden som vanligt.
+    await user.click(within(rows[1]).getByText('Bo'))
+    expect(await screen.findByText('Öppnad r-bo')).toBeInTheDocument()
+  })
+
   it('reaches each row with Tab, names it by customer and date, opens with Enter and Space', async () => {
     listRequests.mockResolvedValue(twoRows())
     const user = userEvent.setup()

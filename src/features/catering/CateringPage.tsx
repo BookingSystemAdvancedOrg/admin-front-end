@@ -15,6 +15,7 @@ import { SkelCard, SkelPage, SkelRows, SkelTiles } from '../../shared/Skeleton'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { booqyFaultText } from '../../shared/errors'
 import { Select } from '../../shared/Select'
+import { pressClosedSelect } from '../../shared/selectPress'
 import { NoLocation } from '../../shared/NoLocation'
 import { currentLocation, useTenant } from '../../shared/tenant'
 import { addDays, todayIn } from '../bokningar/bookingsApi'
@@ -38,11 +39,13 @@ export default function CateringPage() {
 
   // Hela raden öppnar förfrågan. Länken "Öppna" är radens enda tabbstopp
   // och sköter sig själv (Enter, cmd-klick); ett tryck på resten av raden
-  // gör samma sak, utom när någon markerar text för att kopiera den.
+  // gör samma sak, utom när någon markerar text för att kopiera den eller
+  // när trycket bara stängde en öppen rullista (filtret ligger över raderna).
   function openRow(e: MouseEvent<HTMLTableRowElement>, href: string) {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
     if ((e.target as Element).closest('a, button')) return
     if (window.getSelection()?.toString()) return
+    if (pressClosedSelect()) return
     navigate(href)
   }
   // Mellanslag öppnar också, som på en knapp (en länk gör det inte själv).

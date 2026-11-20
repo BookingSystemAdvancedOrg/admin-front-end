@@ -25,17 +25,14 @@
 
 /* --- Tryck (shared/press.ts) ------------------------------------------------
    Klämningen syns när fingret går ned (inte när det lyfts) och släpper när
-   det lyfts. Ett system: .btn har ingen egen :active-skala längre. */
+   det lyfts. Ett system: .btn har ingen egen :active-skala längre.
+   Övergången (100 ms in, 140 ms ut) läggs inline till elementets egna i
+   press.ts, så att den inte förlorar mot knappens egen transition. */
 .is-pressed {
   scale: 0.97;
-  transition: scale var(--m-press) var(--e-out);
-}
-.is-released {
-  transition: scale var(--m-fast) var(--e-out);
 }
 .is-pressed-text {
   opacity: 0.6;
-  transition: opacity var(--m-press) var(--e-out);
 }
 
 /* En ring från trycket, bara på det som går att trycka på. Kort och tyst:
@@ -119,6 +116,31 @@
     .board-overlay > * {
       scale: 1;
       translate: 0 32px;
+    }
+  }
+}
+
+/* Dialogerna från @booqy/brand (<Modal>, 12 ställen, bland annat rätternas
+   tillval i Ny bordsbeställning) hade ett fall på 640 ms från mitten. Samma
+   som ModalOverlay i stället: 200 ms ur det man tryckte på (origin.ts,
+   installDialogOrigin), slöjan på 140 ms, stängs direkt. */
+@media (prefers-reduced-motion: no-preference) {
+  .bq-modal[open] {
+    animation: none;
+    transition:
+      opacity var(--m-base) var(--e-out),
+      scale var(--m-base) var(--e-out);
+  }
+  .bq-modal[open]::backdrop {
+    transition: opacity var(--m-fast) var(--e-out);
+  }
+  @starting-style {
+    .bq-modal[open] {
+      opacity: 0;
+      scale: 0.96;
+    }
+    .bq-modal[open]::backdrop {
+      opacity: 0;
     }
   }
 }

@@ -43,3 +43,22 @@ export function useOrigin(panel: RefObject<HTMLElement | null>, open: boolean, a
     if (open) setOrigin(panel.current, anchor?.current)
   }, [open, panel, anchor])
 }
+
+let dialogsWatched = false
+
+/**
+ * Dialogerna från @booqy/brand (<Modal>, dialog.bq-modal) öppnas utanför
+ * vår kod. När en av dem får `open` sätts dess transform-origin till det
+ * senaste trycket innan den ritas (MutationObserver körs före nästa bild),
+ * så att även de växer ur knappen eller raden (motion.css).
+ */
+export function installDialogOrigin() {
+  if (dialogsWatched || typeof MutationObserver === 'undefined') return
+  dialogsWatched = true
+  new MutationObserver((records) => {
+    for (const r of records) {
+      const el = r.target
+      if (el instanceof HTMLDialogElement && el.open && el.classList.contains('bq-modal')) setOrigin(el)
+    }
+  }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['open'] })
+}

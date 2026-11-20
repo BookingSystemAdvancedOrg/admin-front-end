@@ -507,7 +507,7 @@
   }
 }
 
-/* Bokningen man just sparade (PeakSuccess, försvinner efter 5 s). */
+/* Bokningen man just sparade (PeakSuccess, går bort vid nästa tryck). */
 .bk-landed {
   margin: 4px 0 10px;
   color: var(--success-ink, var(--ink));

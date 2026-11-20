@@ -57,10 +57,20 @@ export default function BokningarPage() {
   const [date, setDate] = useState(today)
   // Bokningen man just sparade: bocken ritas in en gång och raden blinkar där den hamnade.
   const [landed, setLanded] = useState<Reservation | null>(null)
+  // Raden går bort vid nästa tryck eller tangent, inte på en timer: då flyttar
+  // sig listan bara när personalen själv gör något (ingen layoutförskjutning).
   useEffect(() => {
     if (!landed) return
-    const id = window.setTimeout(() => setLanded(null), 5000)
-    return () => window.clearTimeout(id)
+    const clear = () => setLanded(null)
+    const id = window.setTimeout(() => {
+      document.addEventListener('pointerdown', clear, { once: true })
+      document.addEventListener('keydown', clear, { once: true })
+    }, 600)
+    return () => {
+      window.clearTimeout(id)
+      document.removeEventListener('pointerdown', clear)
+      document.removeEventListener('keydown', clear)
+    }
   }, [landed])
   // Listan hör alltid ihop med den plats/dag den hämtades för - en annan
   // dags bokningar visas aldrig under fel rubrik, inte ens en stund.

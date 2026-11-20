@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import '@booqy/brand/styles.css'
 import './index.css'
 import { installPress } from './shared/press'
+import { installDialogOrigin } from './shared/motion/origin'
 import { installTableLabels } from './shared/tableLabels'
 import { installGlide } from './shared/glide'
 import { installGlassFilter } from './shared/glassFilter'
@@ -31,6 +32,7 @@ import './shared/edges.css'
 // and is gated by RequireAuth, which redirects signed-out visitors to
 // /logga-in.
 installPress()
+installDialogOrigin()
 installTableLabels()
 installGlide()
 installGlassFilter()

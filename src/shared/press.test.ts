@@ -35,4 +35,17 @@ describe('pressIn', () => {
     release()
     expect(btn.classList.contains('is-pressed')).toBe(false)
   })
+
+  it("adds the squeeze to the element's own transition inline and gives it back after", () => {
+    vi.useFakeTimers()
+    const btn = document.createElement('button')
+    btn.style.transition = 'color 1s'
+    document.body.appendChild(btn)
+    const release = pressIn(btn)
+    expect(btn.style.transition).toContain('scale')
+    release()
+    vi.advanceTimersByTime(PRESS_MIN_MS + 200)
+    expect(btn.style.transition).toBe('color 1s')
+    btn.remove()
+  })
 })

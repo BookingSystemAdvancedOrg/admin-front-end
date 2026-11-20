@@ -278,23 +278,56 @@ function pressClass(el: Element): string {
   return el.matches(BLOCK) ? 'is-pressed' : 'is-pressed-text'
 }
 
+/** Elementets egen inline-transition innan trycket rörde den. */
+const ownInline = new WeakMap<HTMLElement, string>()
+const E_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)'
+
+/**
+ * Lägger klämningens övergång till elementets egna, inline. En klass räcker
+ * inte: många knappar (.btn, rätterna, borden) har en egen transition som
+ * vinner i kaskaden, och då hoppade klämningen i stället för att glida.
+ */
+function addTransition(el: Element, prop: 'scale' | 'opacity', ms: number) {
+  if (!(el instanceof HTMLElement) || typeof getComputedStyle !== 'function') return
+  if (!ownInline.has(el)) ownInline.set(el, el.style.transition)
+  el.style.transition = ownInline.get(el) ?? ''
+  const own = getComputedStyle(el).transition ?? ''
+  const keep = /^\s*(all 0s|none)\b/.test(own) && !own.includes(',')
+    ? []
+    : own.split(/,(?![^(]*\))/).map((p) => p.trim()).filter((p) => p && !p.startsWith(`${prop} `))
+  el.style.transition = [...keep, `${prop} ${ms}ms ${E_OUT}`].join(', ')
+}
+
+function dropTransition(el: Element) {
+  if (!(el instanceof HTMLElement) || !ownInline.has(el)) return
+  el.style.transition = ownInline.get(el) ?? ''
+  ownInline.delete(el)
+}
+
 /**
  * Klämningen: på när fingret eller musknappen går ned, av när den släpps
  * (minst PRESS_MIN_MS), med en mjuk återgång. Returnerar släppet.
  */
 export function pressIn(el: Element): () => void {
   const cls = pressClass(el)
+  const prop = cls === 'is-pressed' ? 'scale' : 'opacity'
   const at = performance.now()
   el.classList.remove('is-released')
+  addTransition(el, prop, PRESS_MIN_MS)
   el.classList.add(cls)
   let released = false
   return () => {
     if (released) return
     released = true
     const out = () => {
+      addTransition(el, prop, 140)
       el.classList.remove(cls)
       el.classList.add('is-released')
-      window.setTimeout(() => el.classList.remove('is-released'), RELEASE_MS)
+      window.setTimeout(() => {
+        if (el.classList.contains(cls)) return // ett nytt tryck har tagit över
+        el.classList.remove('is-released')
+        dropTransition(el)
+      }, RELEASE_MS)
     }
     const wait = PRESS_MIN_MS - (performance.now() - at)
     if (wait > 0) window.setTimeout(out, wait)

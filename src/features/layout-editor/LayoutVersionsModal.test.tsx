@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as layoutApi from './layoutApi'
 import { LayoutVersionsModal } from './LayoutVersionsModal'
-import { earliestDate } from './versionTimeline'
+import { earliestDate, snapshotLabels } from './versionTimeline'
 import type { LayoutElement, PublishedLayoutSnapshot } from './layoutApi'
 
 vi.mock('./layoutApi', async () => {
@@ -14,6 +14,7 @@ vi.mock('./layoutApi', async () => {
     archiveLayoutVersion: vi.fn(),
     activateLayoutVersion: vi.fn(),
     cancelPendingLayoutActivation: vi.fn(),
+    reschedulePendingLayoutActivation: vi.fn(),
   }
 })
 
@@ -105,9 +106,85 @@ describe('LayoutVersionsModal timeline', () => {
   })
 })
 
+describe('LayoutVersionsModal: bookings on tables only the new version has', () => {
+  const at = (id: string, floorId: string) => ({ elementId: id, type: 'table', seats: 2, floorId }) as LayoutElement
+  const floorEl = (id: string, level: number) => ({ elementId: id, type: 'floor', level }) as LayoutElement
+  // Version 2 adds t-new (its Bord 2) to the current t-a.
+  const NEW_TABLES = [
+    version(5),
+    version(2, { effectiveFrom: '2099-12-16T23:00:00Z', elements: [floorEl('f1', 0), at('t-a', 'f1'), at('t-new', 'f1')] }),
+    version(1, { isCurrent: true, effectiveFrom: '2026-10-01T00:00:00Z', effectiveTo: '2099-12-16T23:00:00Z',
+      elements: [floorEl('f1', 0), at('t-a', 'f1')] }),
+  ]
+  const refused = (text: string) => new layoutApi.BookingsOnRemovedTablesError(
+    text,
+    [{ reservationId: 'r1', date: '2099-12-18', startTime: '18:00', tableIds: ['t-new'] }],
+    'next',
+  )
+
+  beforeEach(() => {
+    vi.mocked(layoutApi.loadLayoutVersions).mockResolvedValue(list(NEW_TABLES))
+    vi.mocked(layoutApi.reschedulePendingLayoutActivation).mockReset()
+  })
+
+  it('Stoppa bytet: shows the refusal and the bookings, tables numbered as in the new version', async () => {
+    const user = userEvent.setup()
+    vi.mocked(layoutApi.cancelPendingLayoutActivation).mockRejectedValue(refused(layoutApi.CANCEL_NEW_TABLES_TEXT))
+    open()
+    await user.click(await screen.findByRole('button', { name: 'Stoppa bytet' }))
+    await user.click(within(screen.getByRole('alertdialog', { name: 'Stoppa bytet till Version 2?' }))
+      .getByRole('button', { name: 'Stoppa bytet' }))
+    expect(await screen.findByText(layoutApi.CANCEL_NEW_TABLES_TEXT)).toBeInTheDocument()
+    const listEl = screen.getByRole('list', { name: 'Bokningar att flytta' })
+    expect(within(listEl).getByText('18:00')).toBeInTheDocument()
+    expect(within(listEl).getByText('Bord 2')).toBeInTheDocument()
+  })
+
+  it('Ändra datum to a later day: shows the refusal and the same list', async () => {
+    const user = userEvent.setup()
+    vi.mocked(layoutApi.reschedulePendingLayoutActivation).mockRejectedValue(refused(layoutApi.MOVE_NEW_TABLES_TEXT))
+    open()
+    await user.click(await screen.findByRole('button', { name: 'Ändra datum' }))
+    const field = screen.getByLabelText('Version 2 tar över')
+    await user.clear(field)
+    await user.type(field, '20/12/2099')
+    await user.click(screen.getByRole('button', { name: 'Byt 20 dec. 2099' }))
+    expect(layoutApi.reschedulePendingLayoutActivation).toHaveBeenCalledWith('loc-1', '2099-12-20')
+    expect(await screen.findByText(layoutApi.MOVE_NEW_TABLES_TEXT)).toBeInTheDocument()
+    expect(within(screen.getByRole('list', { name: 'Bokningar att flytta' })).getByText('Bord 2')).toBeInTheDocument()
+  })
+
+  it('planning another version: a refused stop shows the list and activates nothing', async () => {
+    const user = userEvent.setup()
+    vi.mocked(layoutApi.cancelPendingLayoutActivation).mockRejectedValue(refused(layoutApi.CANCEL_NEW_TABLES_TEXT))
+    open()
+    await user.click(await screen.findByRole('button', { name: 'Välj datum för bytet' }))
+    await user.click(screen.getByRole('button', { name: 'Byt 10 dec. 2099' }))
+    await user.click(within(screen.getByRole('alertdialog', { name: 'Byta ut Version 2?' }))
+      .getByRole('button', { name: 'Ja, Version 5' }))
+    expect(await screen.findByText(layoutApi.CANCEL_NEW_TABLES_TEXT)).toBeInTheDocument()
+    expect(within(screen.getByRole('list', { name: 'Bokningar att flytta' })).getByText('Bord 2')).toBeInTheDocument()
+    expect(layoutApi.activateLayoutVersion).not.toHaveBeenCalled()
+  })
+
+  it('numbers a version\'s tables across floors like the guest site', () => {
+    const labels = snapshotLabels({ elements: [
+      floorEl('up', 1), at('u1', 'up'), floorEl('down', 0), at('d1', 'down'), at('d2', 'down'),
+    ] })
+    expect([...labels.entries()]).toEqual([['d1', '1'], ['d2', '2'], ['u1', '3']])
+  })
+})
+
 describe('earliestDate', () => {
   it('uses the API date, else today + booking horizon + 1 day', () => {
     expect(earliestDate({ earliestChangeDate: '2026-12-10', bookingHorizonDays: 21 })).toBe('2026-12-10')
     expect(earliestDate({ earliestChangeDate: null, bookingHorizonDays: 21 }, new Date('2026-11-18T11:00:00Z'))).toBe('2026-12-10')
+  })
+
+  it('falls back to today + 22: Fri 20 Nov 2026 gives Sat 12 Dec, one day after the last bookable date', () => {
+    expect(earliestDate({ earliestChangeDate: null, bookingHorizonDays: 21 }, new Date('2026-11-20T10:00:00Z'))).toBe('2026-12-12')
+    // 23:30 in Stockholm is still Friday; 00:30 is Saturday.
+    expect(earliestDate({ earliestChangeDate: null, bookingHorizonDays: 21 }, new Date('2026-11-20T22:30:00Z'))).toBe('2026-12-12')
+    expect(earliestDate({ earliestChangeDate: null, bookingHorizonDays: 21 }, new Date('2026-11-20T23:30:00Z'))).toBe('2026-12-13')
   })
 })

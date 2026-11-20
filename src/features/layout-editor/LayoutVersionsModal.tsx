@@ -16,9 +16,10 @@ import { ErrorNote } from '../../shared/ErrorNote'
 import { DateInput } from '../../shared/DateInput'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { RemovedTablesBookings } from './RemovedTablesBookings'
-import { daysUntil, earliestDate, localDate, longDate, shortDate, sizeText, versionTimeline } from './versionTimeline'
+import { daysUntil, earliestDate, localDate, longDate, shortDate, sizeText, snapshotLabels, versionTimeline } from './versionTimeline'
 import type { TimelineEntry } from './versionTimeline'
 import { BackButton } from '../../shared/BackButton'
+import { BOOKING_HORIZON_DAYS } from '../bokningar/bookingsApi'
 
 /** "om 22 dagar", "imorgon", "idag". */
 function inDays(date: string): string {
@@ -35,9 +36,12 @@ type Planning = { version: number; mode: 'activate' | 'move'; date: string }
  * datum), sist de som inte är inplanerade. Varje knapp säger vad den gör.
  *
  * Ett byte till en ny ritning sker tidigast dagen efter bokningsfönstret
- * (gäster bokar 21 dagar fram), så ingen bokning hamnar på en ritning som
- * ändrats under den. Bara ett byte kan vänta åt gången: att planera in en
- * annan version avbryter först det väntande bytet (efter en fråga).
+ * (alla bokar idag till och med idag + 21, bytet tidigast idag + 22), så
+ * ingen bokning hamnar på en ritning som ändrats under den. Bara ett byte
+ * kan vänta åt gången: att planera in en annan version avbryter först det
+ * väntande bytet (efter en fråga). Servern nekar att stoppa eller skjuta upp
+ * ett byte när bokningar redan står på bord som bara den nya versionen har;
+ * då visas bokningarna, med borden numrerade som i den nya versionen.
  *
  * Bara ägare och systemadmin får ändra något, så listan visas för alla men
  * knapparna bara för dem.
@@ -57,7 +61,7 @@ export function LayoutVersionsModal({
   const [confirmEl, ask] = useConfirm()
   const [list, setList] = useState<LayoutVersionList | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [removed, setRemoved] = useState<RemovedTableBooking[]>([])
+  const [removed, setRemoved] = useState<{ bookings: RemovedTableBooking[]; labels?: Map<string, string> }>({ bookings: [] })
   const [busy, setBusy] = useState<string | null>(null)
   const [planning, setPlanning] = useState<Planning | null>(null)
   const [result, setResult] = useState<string | null>(null)
@@ -71,7 +75,7 @@ export function LayoutVersionsModal({
       .catch((err) => {
         if (!cancelled) {
           setError(errorText(err, 'Versionerna kunde inte visas.'))
-          setList({ items: [], earliestChangeDate: null, bookingHorizonDays: 21 })
+          setList({ items: [], earliestChangeDate: null, bookingHorizonDays: BOOKING_HORIZON_DAYS })
         }
       })
     return () => {
@@ -88,7 +92,7 @@ export function LayoutVersionsModal({
 
   async function run(key: string, work: () => Promise<string | null>) {
     setError(null)
-    setRemoved([])
+    setRemoved({ bookings: [] })
     setResult(null)
     setBusy(key)
     try {
@@ -99,7 +103,11 @@ export function LayoutVersionsModal({
       onActivated()
     } catch (err) {
       setError(errorText(err, 'Det gick inte. Försök igen.'))
-      if (err instanceof BookingsOnRemovedTablesError) setRemoved(err.bookings)
+      if (err instanceof BookingsOnRemovedTablesError) {
+        // Stoppa eller skjuta upp: borden finns bara i den väntande versionen.
+        const labels = err.tablesIn === 'next' && next ? snapshotLabels(next.snapshot) : undefined
+        setRemoved({ bookings: err.bookings, labels })
+      }
     } finally {
       setBusy(null)
     }
@@ -238,7 +246,7 @@ export function LayoutVersionsModal({
               <p className="vt-plan-why">
                 Tidigast {longDate(earliest)}.
                 <InfoTooltip label="Varför tidigast">
-                  Gäster kan boka {list?.bookingHorizonDays ?? 21} dagar fram. Bytet sker dagen efter, så
+                  Gäster kan boka {list?.bookingHorizonDays ?? BOOKING_HORIZON_DAYS} dagar fram. Bytet sker dagen efter, så
                   ingen bokning hamnar på en ritning som ändrats.
                 </InfoTooltip>
               </p>
@@ -273,8 +281,8 @@ export function LayoutVersionsModal({
           {summary && <p className="versions-summary" role="status">{summary}</p>}
 
           <ErrorNote text={error} />
-          {error && removed.length > 0 && (
-            <RemovedTablesBookings locationId={locationId} bookings={removed} />
+          {error && removed.bookings.length > 0 && (
+            <RemovedTablesBookings locationId={locationId} bookings={removed.bookings} labels={removed.labels} />
           )}
           {result && <p className="save-notice" role="status">{result}</p>}
 

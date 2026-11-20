@@ -44,10 +44,14 @@ Under **Versioner** listas de publicerade ögonblicksbilderna, och en av dem
 kan aktiveras (`POST …/layout/versions/{n}/activate`). Aktiveringen sker
 omedelbart bara när ingen version gäller ännu - finns redan en gällande
 version schemalägger API:t bytet till midnatt dagen efter bokningsfönstret
-(idag + 22 dagar, i dev 5 minuter), eller ett senare `effectiveDate`, och
+(idag + 22 dagar, i dev som i prod; bokningar går idag till och med idag +
+21), eller ett senare `effectiveDate`, och
 svaret blir `pending` med en `cutoverAt`. Modalen visar den skillnaden, eftersom ett
 schemalagt byte annars ser ut som ett genomfört. Att begära en annan version
-medan ett byte väntar ger `409`.
+medan ett byte väntar ger `409`. Att stoppa bytet (`DELETE
+…/layout/pending-activation`) eller flytta det till ett senare datum (`PUT`)
+nekas med `409 bookings_on_removed_tables` när bokningar redan står på bord
+som bara den nya versionen har; modalen visar då bokningarna.
 
 Den aktiva layouten är också det `GET …/availability` läser bord ur, så
 kedjan spara → publicera → aktivera → bokningsbara tider hänger ihop.

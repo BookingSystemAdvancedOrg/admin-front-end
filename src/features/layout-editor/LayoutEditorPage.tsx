@@ -2076,9 +2076,9 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
    * fallet. Aktiveringen är serverns beslut, inte vårt: saknas en gällande
    * version blir det omedelbart, men finns redan en schemalägger API:t
    * bytet en bit fram i tiden istället (samma regel som att aktivera
-   * manuellt under Versioner - den går inte att kringgå härifrån): i prod
-   * tidigast midnatt dagen efter bokningsfönstret, 5 minuter i dev. Därför
-   * visas alltid det riktiga datumet från `cutoverAt`.
+   * manuellt under Versioner - den går inte att kringgå härifrån): tidigast
+   * midnatt dagen efter bokningsfönstret (idag + 22), i dev som i prod.
+   * Därför visas alltid det riktiga datumet från `cutoverAt`.
    *
    * Ordningen save->publish är viktig: publish kopierar det som ligger i
    * utkastet på servern, så osparade ändringar skulle annars inte komma

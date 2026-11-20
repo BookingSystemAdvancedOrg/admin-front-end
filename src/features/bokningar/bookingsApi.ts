@@ -228,6 +228,20 @@ export function availableActions(r: Reservation, isOwner: boolean) {
   }
 }
 
+// --- booking window (same rule as the server: shared/availability.py) --------
+
+/**
+ * Hur många hela dagar efter idag som går att boka, för gäster, personal och
+ * telefonen: idag till och med idag + 21 (22 datum). Samma överallt, inte en
+ * inställning. En ny layoutversion tar därför över tidigast idag + 22.
+ */
+export const BOOKING_HORIZON_DAYS = 21
+
+/** Sista datum som går att boka (YYYY-MM-DD) räknat från idag. */
+export function lastBookableDate(today: string): string {
+  return addDays(today, BOOKING_HORIZON_DAYS)
+}
+
 // --- guest fields (same rules as the server: shared/reservations.py) ----------
 
 export const NAME_MAX = 100
@@ -319,7 +333,7 @@ const VALIDATION_TEXT: [RegExp, string][] = [
   [/^a walk-in is booked for today/, 'En drop-in gäller alltid idag. Välj dagens datum.'],
   [/^a walk-in stays on its day/, 'En drop-in kan inte flyttas till en annan dag. Gör en ny bokning i stället.'],
   [/^date must not be in the past/, 'Datumet har redan varit. Välj idag eller en senare dag.'],
-  [/^date must not be more than 21 days ahead/, 'Det går bara att boka 21 dagar fram. Välj ett tidigare datum.'],
+  [/^date must not be more than \d+ days ahead/, `Det går bara att boka ${BOOKING_HORIZON_DAYS} dagar fram. Välj ett tidigare datum.`],
   [/^phone must be a valid/, 'Telefonnumret ser fel ut. Skriv det så här: 070 123 45 67.'],
   [/^(email|phone) is required/, 'En onlinebokning behöver både e-post och telefon. Fyll i båda.'],
   [/^email must be a valid/, 'E-postadressen ser fel ut. Skriv den så här: namn@exempel.se.'],

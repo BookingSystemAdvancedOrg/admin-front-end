@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { addDays, dayNotice, errorMessage, getAvailability, LOCATION_NOT_BOOKABLE } from './bookingsApi'
+import { dayNotice, errorMessage, getAvailability, lastBookableDate, LOCATION_NOT_BOOKABLE } from './bookingsApi'
 import type { AvailabilitySlot, DayStatus } from './bookingsApi'
 import { useTables } from '../../shared/tables'
 import { DateInput } from '../../shared/DateInput'
@@ -8,8 +8,6 @@ import { Select } from '../../shared/Select'
 
 /** Hur ofta listan med lediga tider hämtas om medan formuläret är öppet. */
 export const SLOT_REFRESH_MS = 60_000
-/** Längst fram man kan boka (servern: 21 dagar). */
-const HORIZON_DAYS = 20
 
 export interface SlotValue {
   date: string
@@ -172,7 +170,7 @@ export function SlotTablePicker({
             id="slot-date"
             value={date}
             min={today}
-            max={addDays(today, HORIZON_DAYS)}
+            max={lastBookableDate(today)}
             disabled={walkIn}
             onChange={(e) =>
               e.target.value && pick({ date: e.target.value, startTime: '', tableIds: [] })

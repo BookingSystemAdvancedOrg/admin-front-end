@@ -1863,8 +1863,10 @@
   margin: 8px 0 0;
 }
 
-/* Bokningar på bord som en ny version tar bort (409 bookings_on_removed_tables) */
+/* Bokningar att flytta först (409 bookings_on_removed_tables) */
 .removed-bookings {
+  /* I en modal som scrollar: krymper annars till noll (en scrollyta har ingen minsta höjd). */
+  flex-shrink: 0;
   list-style: none;
   margin: 8px 0 12px;
   padding: 0;

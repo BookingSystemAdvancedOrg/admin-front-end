@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as api from '../../shared/api'
 import { ApiError } from '../../shared/api'
 import {
+  BOOKING_HORIZON_DAYS,
   addDays,
   availableActions,
   changeStatus,
@@ -13,6 +14,7 @@ import {
   formatKr,
   getAvailability,
   isStaleSlotError,
+  lastBookableDate,
   listReservations,
   normalizePhone,
   paymentAction,
@@ -55,6 +57,12 @@ describe('bookingsApi', () => {
     expect(addDays('2026-03-01', -1)).toBe('2026-02-28')
     expect(dayLabel('2026-10-12')).toBe('Måndag 12 oktober')
     expect(todayIn('Europe/Stockholm', new Date('2026-10-11T22:30:00Z'))).toBe('2026-10-12')
+  })
+
+  it('books today through today + 21 (22 dates): Fri 20 Nov 2026 ends Fri 11 Dec', () => {
+    expect(BOOKING_HORIZON_DAYS).toBe(21)
+    expect(lastBookableDate('2026-11-20')).toBe('2026-12-11')
+    expect(lastBookableDate('2026-12-20')).toBe('2027-01-10')
   })
 
   it('offers the right actions per status', () => {

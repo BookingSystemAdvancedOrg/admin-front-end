@@ -36,17 +36,22 @@ function useGuestNames(locationId: string, bookings: RemovedTableBooking[]): Map
 }
 
 /**
- * Bokningarna som ligger på bord den nya versionen tar bort: dag, tid, gäst
- * och bord (numren i den gällande ritningen), så de kan flyttas först.
+ * Bokningarna som måste flyttas först: dag, tid, gäst och bord. Bordens
+ * nummer är den gällande ritningens (bord som en ny version tar bort), eller
+ * `labels` när borden bara finns i den väntande versionen.
  */
 export function RemovedTablesBookings({
   locationId,
   bookings,
+  labels: given,
 }: {
   locationId: string
   bookings: RemovedTableBooking[]
+  /** Bordens nummer i en annan ritning än den gällande. */
+  labels?: Map<string, string>
 }) {
-  const { labels } = useTables(locationId)
+  const current = useTables(given ? null : locationId)
+  const labels = given ?? current.labels
   const names = useGuestNames(locationId, bookings)
   if (bookings.length === 0) return null
   return (

@@ -3,11 +3,10 @@ import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { currentLocation, useTenant } from '../../shared/tenant'
-import { ACTIVE_STATUSES, addDays, dayLabel, listReservations, todayIn } from '../bokningar/bookingsApi'
+import { ACTIVE_STATUSES, BOOKING_HORIZON_DAYS, addDays, dayLabel, listReservations, todayIn } from '../bokningar/bookingsApi'
 import { getLocation, updateLocation } from './locationApi'
 import type { BusinessHoursInterval, SpecialDay, SpecialDayKind } from './locationApi'
 import {
-  BOOKING_HORIZON_DAYS,
   DAYS_AHEAD,
   KIND_LABEL,
   NOTE_MAX,

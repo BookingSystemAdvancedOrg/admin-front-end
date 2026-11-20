@@ -6,6 +6,8 @@ import {
   LEGACY_FLOOR_ID,
   UNITS_PER_METER,
   BookingsOnRemovedTablesError,
+  CANCEL_NEW_TABLES_TEXT,
+  MOVE_NEW_TABLES_TEXT,
   PendingSwitchError,
   TooEarlyError,
   activateLayoutVersion,
@@ -15,6 +17,7 @@ import {
   listLayoutElements,
   listLayoutVersions,
   publishLayout,
+  reschedulePendingLayoutActivation,
   saveLayout,
   toApiElements,
   toApiLayout,
@@ -569,6 +572,7 @@ describe('publishing', () => {
     const typed = err as BookingsOnRemovedTablesError
     expect(typed.status).toBe(409)
     expect(typed.message).toBe(message)
+    expect(typed.tablesIn).toBe('current')
     expect(typed.message).not.toMatch(/redan inbokat/)
     expect(typed.bookings).toEqual([
       { reservationId: 'r1', date: '2026-11-20', startTime: '18:00', tableIds: ['t9'] },
@@ -648,6 +652,84 @@ describe('cancelPendingLayoutActivation', () => {
   it('maps 403 to the permission message (staff may not cancel)', async () => {
     mockedApiFetch.mockRejectedValue(new ApiError(403, 'forbidden'))
     await expect(cancelPendingLayoutActivation('loc-1')).rejects.toThrow(/får inte ändra layouten/)
+  })
+
+  it('a 409 bookings_on_removed_tables lists the bookings on tables only the new version has', async () => {
+    mockedApiFetch.mockRejectedValue(onNewTables())
+    const err = await cancelPendingLayoutActivation('loc-1').catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(BookingsOnRemovedTablesError)
+    const typed = err as BookingsOnRemovedTablesError
+    expect(typed.status).toBe(409)
+    expect(typed.message).toBe(CANCEL_NEW_TABLES_TEXT)
+    expect(typed.message).toBe('Bytet går inte att stoppa: det finns bokningar på bord som bara finns i den nya versionen. Flytta dem till andra bord först.')
+    expect(typed.tablesIn).toBe('next')
+    expect(typed.bookings).toEqual([
+      { reservationId: 'r1', date: '2026-12-01', startTime: '18:00', tableIds: ['t-new'] },
+    ])
+    expect(errorText(typed, 'Kunde inte stoppa bytet.')).toBe(CANCEL_NEW_TABLES_TEXT)
+  })
+})
+
+/** Serverns 409 när bokningar står på bord som bara den väntande versionen har. */
+function onNewTables(missingFrom: 'current' | 'new' = 'current'): ApiError {
+  const serverText = 'bookings would end up on tables the current layout lacks'
+  return new ApiError(409, serverText, {
+    code: 'bookings_on_removed_tables',
+    fromServer: true,
+    details: {
+      error: serverText,
+      code: 'bookings_on_removed_tables',
+      missingFrom,
+      reservations: [
+        { reservationId: 'r1', date: '2026-12-01', startTime: '18:00', tableIds: ['t-new'] },
+        'bogus',
+      ],
+    },
+  })
+}
+
+describe('reschedulePendingLayoutActivation', () => {
+  it('PUTs the new date to the pending-activation resource', async () => {
+    mockedApiFetch.mockResolvedValue({ status: 'pending', version: 2, currentVersion: 1, cutoverAt: '2026-12-19T23:00:00Z' })
+    await reschedulePendingLayoutActivation('loc-1', '2026-12-20')
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/locations/loc-1/layout/pending-activation',
+      { method: 'PUT', body: JSON.stringify({ effectiveDate: '2026-12-20' }) },
+    )
+  })
+
+  it('a 409 bookings_on_removed_tables lists the bookings on tables only the new version has', async () => {
+    mockedApiFetch.mockRejectedValue(onNewTables())
+    const err = await reschedulePendingLayoutActivation('loc-1', '2026-12-20').catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(BookingsOnRemovedTablesError)
+    const typed = err as BookingsOnRemovedTablesError
+    expect(typed.message).toBe(MOVE_NEW_TABLES_TEXT)
+    expect(typed.message).toBe('Datumet går inte att flytta: det finns bokningar på bord som bara finns i den nya versionen. Flytta dem till andra bord först.')
+    expect(typed.tablesIn).toBe('next')
+    expect(typed.bookings).toEqual([
+      { reservationId: 'r1', date: '2026-12-01', startTime: '18:00', tableIds: ['t-new'] },
+    ])
+  })
+
+  it('an earlier date refused for tables the new version removes keeps the activation wording', async () => {
+    mockedApiFetch.mockRejectedValue(onNewTables('new'))
+    const err = await reschedulePendingLayoutActivation('loc-1', '2026-12-12').catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(BookingsOnRemovedTablesError)
+    const typed = err as BookingsOnRemovedTablesError
+    expect(typed.message).toMatch(/inte finns i den nya layouten/)
+    expect(typed.tablesIn).toBe('current')
+  })
+
+  it('keeps too_early and other 409s apart from the bookings case', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError(409, 'too early', {
+      code: 'too_early', fromServer: true, details: { earliestCutoverAt: '2026-12-11T23:00:00Z' },
+    }))
+    const early = await reschedulePendingLayoutActivation('loc-1', '2026-12-01').catch((e: unknown) => e)
+    expect(early).toBeInstanceOf(TooEarlyError)
+    mockedApiFetch.mockRejectedValue(new ApiError(409, 'cutover already applied', { code: 'conflict', fromServer: true }))
+    const other = await reschedulePendingLayoutActivation('loc-1', '2026-12-20').catch((e: unknown) => e)
+    expect(other).not.toBeInstanceOf(BookingsOnRemovedTablesError)
+    expect((other as Error).message).toMatch(/hann redan ske/)
   })
 })
 

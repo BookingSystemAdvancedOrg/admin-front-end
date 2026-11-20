@@ -10,7 +10,6 @@ import type { StaffChannel } from '../bokningar/ChannelPicker'
 import {
   EMAIL_MAX,
   NAME_MAX,
-  addDays,
   NOTES_MAX,
   createManualReservation,
   dayNotice,
@@ -18,6 +17,7 @@ import {
   LOCATION_NOT_BOOKABLE,
   getAvailability,
   isStaleSlotError,
+  lastBookableDate,
   normalizePhone,
   todayIn,
   validEmail,
@@ -31,9 +31,6 @@ import type { Floor, TableElement } from './data'
 import '../bokningar/bokningar.css'
 import './floor-booking.css'
 import { ErrorNote } from '../../shared/ErrorNote'
-
-/** Längst fram personalen kan boka (servern: 21 dagar). */
-const HORIZON_DAYS = 20
 
 interface PublicLayout {
   floors: { floorId: string; name?: string; level: number }[]
@@ -253,7 +250,7 @@ export function FloorBooking({
     )[0]
     setFloorId(home.id)
     const d = focus.date
-    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= today && d <= addDays(today, HORIZON_DAYS)) setDate(d)
+    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= today && d <= lastBookableDate(today)) setDate(d)
     // Ett bord: det väljs (tider och formulär). Flera: alla markeras, inget väljs.
     setTableId(ids.length === 1 ? ids[0] : null)
     setStartTime('')
@@ -379,7 +376,7 @@ export function FloorBooking({
                     id="fb-date"
                     value={date}
                     min={today}
-                    max={addDays(today, HORIZON_DAYS)}
+                    max={lastBookableDate(today)}
                     disabled={walkIn}
                     onChange={(e) => {
                       if (!e.target.value) return

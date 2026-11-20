@@ -1,3 +1,4 @@
+import { tablesFromLayout } from '../../shared/tables'
 import type { LayoutVersionList, PublishedLayoutSnapshot } from './layoutApi'
 
 /**
@@ -59,6 +60,19 @@ export function versionTimeline(
     .sort((a, b) => b.version - a.version)
     .map((v) => entry(v, 'unscheduled'))
   return [...current, ...next, ...rest]
+}
+
+/**
+ * Bordens nummer i en version ("Bord 3" som gästerna ser det när versionen
+ * gäller), med samma numrering som den gällande ritningen (shared/tables.ts).
+ */
+export function snapshotLabels(snapshot: Pick<PublishedLayoutSnapshot, 'elements'>): Map<string, string> {
+  const elements = snapshot.elements ?? []
+  const floors = elements
+    .filter((el) => el.type === 'floor')
+    .map((el) => ({ floorId: el.elementId, level: el.level ?? 0 }))
+  const rest = elements.filter((el) => el.type !== 'floor')
+  return new Map(tablesFromLayout({ floors, elements: rest }).map((t) => [t.tableId, t.label]))
 }
 
 /** "4 bord, 12 platser" (och våningar när de är fler än en). */

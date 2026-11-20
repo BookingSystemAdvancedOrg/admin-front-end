@@ -1,11 +1,11 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CateringRequestPage from './CateringRequestPage'
 import CateringPage from './CateringPage'
 import { ApiError } from '../../shared/api'
-import { offerTotals } from './cateringApi'
+import { formatDate, offerTotals } from './cateringApi'
 import type { CateringRequest } from './cateringApi'
 import { chooseOption } from '../../test/select'
 
@@ -477,7 +477,84 @@ describe('Offer steps: 1 granska, 2 signera, 3 skicka', () => {
   })
 })
 
+function Opened() {
+  const { requestId } = useParams()
+  const navigate = useNavigate()
+  return (
+    <>
+      <p>Öppnad {requestId}</p>
+      <button type="button" onClick={() => navigate(-1)}>Tillbaka</button>
+    </>
+  )
+}
+
+function renderList() {
+  return render(
+    <MemoryRouter initialEntries={['/catering']}>
+      <Routes>
+        <Route path="/catering" element={<CateringPage />} />
+        <Route path="/catering/:locationId/:requestId" element={<Opened />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
+
 describe('CateringPage', () => {
+  const twoRows = () => [
+    request({ requestId: 'r-bo', customerName: 'Bo', deliveryDate: '2026-11-20' }),
+    request({ requestId: 'r-cia', customerName: 'Cia', companyName: 'Cia AB', deliveryDate: '2026-11-21' }),
+  ]
+
+  it('opens a request from anywhere on its row, on every row', async () => {
+    listRequests.mockResolvedValue(twoRows())
+    const user = userEvent.setup()
+    const first = renderList()
+    await user.click(await screen.findByText('Cia AB · Cia'))
+    expect(await screen.findByText('Öppnad r-cia')).toBeInTheDocument()
+    first.unmount()
+    renderList()
+    const rows = await screen.findAllByRole('row')
+    await user.click(within(rows[1]).getByText('Avhämtning'))
+    expect(await screen.findByText('Öppnad r-bo')).toBeInTheDocument()
+  })
+
+  it('has one link per row and a click on Öppna opens once, not twice', async () => {
+    listRequests.mockResolvedValue(twoRows())
+    const user = userEvent.setup()
+    renderList()
+    const rows = (await screen.findAllByRole('row')).slice(1)
+    for (const row of rows) {
+      expect(within(row).getAllByRole('link')).toHaveLength(1)
+      expect(within(row).queryByRole('button')).toBeNull()
+    }
+    await user.click(within(rows[0]).getByRole('link'))
+    expect(await screen.findByText('Öppnad r-bo')).toBeInTheDocument()
+    // Ett steg tillbaka är listan igen: raden lade inte till en andra navigering.
+    await user.click(screen.getByRole('button', { name: 'Tillbaka' }))
+    expect(await screen.findByText('Förfrågningar och beställningar')).toBeInTheDocument()
+  })
+
+  it('reaches each row with Tab, names it by customer and date, opens with Enter and Space', async () => {
+    listRequests.mockResolvedValue(twoRows())
+    const user = userEvent.setup()
+    const first = renderList()
+    const links = await screen.findAllByRole('link', { name: /^Öppna / })
+    expect(links[0]).toHaveAccessibleName(`Öppna Bo, ${formatDate('2026-11-20')} 12:00`)
+    expect(links[1]).toHaveAccessibleName(`Öppna Cia AB, Cia, ${formatDate('2026-11-21')} 12:00`)
+    for (let i = 0; i < 10 && document.activeElement !== links[0]; i++) await user.tab()
+    expect(links[0]).toHaveFocus()
+    await user.tab()
+    expect(links[1]).toHaveFocus()
+    await user.keyboard(' ')
+    expect(await screen.findByText('Öppnad r-cia')).toBeInTheDocument()
+    first.unmount()
+    renderList()
+    const again = await screen.findAllByRole('link', { name: /^Öppna / })
+    again[0].focus()
+    await user.keyboard('{Enter}')
+    expect(await screen.findByText('Öppnad r-bo')).toBeInTheDocument()
+  })
+
   it('lists requests waiting for the owner first', async () => {
     listRequests.mockResolvedValue([
       { ...request({ requestId: 'r-sent', status: 'offer_sent', customerName: 'Bo', restaurantSignedAt: '2026-10-12T12:00:00Z',
@@ -490,7 +567,7 @@ describe('CateringPage', () => {
     expect(rows[1]).toHaveTextContent('Ny förfrågan')
     expect(rows[2]).toHaveTextContent('Offert skickad')
     expect(screen.getByText('1 väntar på dig')).toBeInTheDocument()
-    expect(within(rows[1]).getByRole('link', { name: 'Öppna' })).toHaveAttribute('href', '/catering/loc-1/r-new')
+    expect(within(rows[1]).getByRole('link', { name: /^Öppna Cia, / })).toHaveAttribute('href', '/catering/loc-1/r-new')
   })
 
   it('counts deliveries in the coming 7 days by the Stockholm date, not UTC', async () => {

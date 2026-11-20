@@ -1,8 +1,10 @@
 import { useLiveRefresh } from '../../shared/live'
 import { useEffect, useState } from 'react'
+import type { KeyboardEvent, MouseEvent } from 'react'
 import { StatTile } from '../../shared/motion/StatTile'
 import { Num } from '../../shared/motion/Num'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { Icon } from '../../shared/Icon'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useLocationId } from '../../shared/location'
 import { useAuth } from '../auth/useAuth'
@@ -32,6 +34,23 @@ export default function CateringPage() {
   const [error, setError] = useState(false)
   const [filter, setFilter] = useState<Filter>('aktiva')
   const timezone = currentLocation(useTenant())?.timezone
+  const navigate = useNavigate()
+
+  // Hela raden öppnar förfrågan. Länken "Öppna" är radens enda tabbstopp
+  // och sköter sig själv (Enter, cmd-klick); ett tryck på resten av raden
+  // gör samma sak, utom när någon markerar text för att kopiera den.
+  function openRow(e: MouseEvent<HTMLTableRowElement>, href: string) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+    if ((e.target as Element).closest('a, button')) return
+    if (window.getSelection()?.toString()) return
+    navigate(href)
+  }
+  // Mellanslag öppnar också, som på en knapp (en länk gör det inte själv).
+  function spaceOpens(e: KeyboardEvent<HTMLAnchorElement>, href: string) {
+    if (e.key !== ' ') return
+    e.preventDefault()
+    navigate(href)
+  }
 
   useEffect(() => {
     if (!locationId) return
@@ -126,35 +145,45 @@ export default function CateringPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {visible.map((r) => (
-                      <tr key={r.requestId}>
-                        <td className="cell-strong catering-when">
-                          {formatDate(r.deliveryDate)} {r.deliveryTime}
-                          <div className="cell-muted">
-                            {r.fulfilment === 'delivery' ? 'Leverans' : 'Avhämtning'}
-                            {r.equipmentReturn === 'not_cleaned' && <> · <span className="catering-return-flag">ej rengjord retur</span></>}
-                          </div>
-                        </td>
-                        <td className="catering-who">
-                          {r.companyName ? `${r.companyName} · ` : ''}
-                          {r.customerName}
-                        </td>
-                        <td className="catering-guests" data-label="Gäster">{r.guests != null ? <Num>{r.guests}</Num> : r.portions != null ? <><Num>{r.portions}</Num> port</> : '-'}</td>
-                        <td className="catering-amount" data-label="Belopp"><Num>{kronor(r.total)}</Num></td>
-                        <td className="catering-state">
-                          <span className={`status-badge ${statusClass(r.status)}`}>{statusLabel(r)}</span>
-                          {r.paid && <span className="cell-muted"> · betald</span>}
-                          {(r.refundedAmount ?? 0) > 0 && (
-                            <span className="cell-muted"> · återbetalt <Num>{kronor(r.refundedAmount)}</Num></span>
-                          )}
-                        </td>
-                        <td className="catering-open">
-                          <Link className="link-action" to={`/catering/${locationId}/${r.requestId}`}>
-                            Öppna
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
+                    {visible.map((r) => {
+                      const href = `/catering/${locationId}/${r.requestId}`
+                      const who = r.companyName ? `${r.companyName}, ${r.customerName}` : r.customerName
+                      return (
+                        <tr key={r.requestId} className="catering-row" onClick={(e) => openRow(e, href)}>
+                          <td className="cell-strong catering-when">
+                            {formatDate(r.deliveryDate)} {r.deliveryTime}
+                            <div className="cell-muted">
+                              {r.fulfilment === 'delivery' ? 'Leverans' : 'Avhämtning'}
+                              {r.equipmentReturn === 'not_cleaned' && <> · <span className="catering-return-flag">ej rengjord retur</span></>}
+                            </div>
+                          </td>
+                          <td className="catering-who">
+                            {r.companyName ? `${r.companyName} · ` : ''}
+                            {r.customerName}
+                          </td>
+                          <td className="catering-guests" data-label="Gäster">{r.guests != null ? <Num>{r.guests}</Num> : r.portions != null ? <><Num>{r.portions}</Num> port</> : '-'}</td>
+                          <td className="catering-amount" data-label="Belopp"><Num>{kronor(r.total)}</Num></td>
+                          <td className="catering-state">
+                            <span className={`status-badge ${statusClass(r.status)}`}>{statusLabel(r)}</span>
+                            {r.paid && <span className="cell-muted"> · betald</span>}
+                            {(r.refundedAmount ?? 0) > 0 && (
+                              <span className="cell-muted"> · återbetalt <Num>{kronor(r.refundedAmount)}</Num></span>
+                            )}
+                          </td>
+                          <td className="catering-open">
+                            <Link
+                              className="catering-open-link"
+                              to={href}
+                              aria-label={`Öppna ${who}, ${formatDate(r.deliveryDate)} ${r.deliveryTime}`}
+                              onKeyDown={(e) => spaceOpens(e, href)}
+                            >
+                              Öppna
+                              <Icon name="arrow-right" size={16} className="catering-open-arrow" />
+                            </Link>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

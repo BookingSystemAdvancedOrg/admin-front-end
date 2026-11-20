@@ -110,6 +110,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
   { n: 100, text: 'Rätter plus och minus' },
   { n: 101, text: 'Rörelse i hela appen' },
   { n: 102, text: 'Bokningsfönster och versionsbyte' },
+  { n: 103, text: 'Catering klickbara rader' },
 ]
 
 declare const __WHATS_NEW_N__: number | undefined

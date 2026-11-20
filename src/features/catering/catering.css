@@ -354,6 +354,103 @@
    iPad (också på höjden och liggande). */
 .catering-list .table-scroll {
   container-type: inline-size;
+  /* Markeringen når 12 px utanför texten, texten står kvar under rubriken. */
+  margin: 0 -12px;
+}
+
+.catering-list-table th:first-child,
+.catering-list-table td:first-child {
+  padding-left: 12px;
+}
+
+.catering-list-table th:last-child,
+.catering-list-table td:last-child {
+  padding-right: 12px;
+}
+
+/* Hela raden öppnar förfrågan (CateringPage): ljusare vid hovring och tryck,
+   en ring runt raden när Öppna har tangentbordsfokus. Pilen, inte handen
+   (ägarens regel); markeringen och knappen visar att raden går att trycka på. */
+.catering-row,
+.catering-row * {
+  cursor: default;
+}
+
+.catering-row > td {
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.catering-row:hover > td,
+.catering-row:active > td,
+.catering-row:has(.catering-open-link:focus-visible) > td {
+  background-color: color-mix(in srgb, var(--glass-highlight) 55%, transparent);
+}
+
+.catering-row:hover > td:first-child,
+.catering-row:active > td:first-child,
+.catering-row:has(.catering-open-link:focus-visible) > td:first-child {
+  border-radius: var(--r-md) 0 0 var(--r-md);
+}
+
+.catering-row:hover > td:last-child,
+.catering-row:active > td:last-child,
+.catering-row:has(.catering-open-link:focus-visible) > td:last-child {
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+}
+
+.catering-row:has(.catering-open-link:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.catering-list-table .catering-open {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Öppna: radens enda knapp, i handlingsfärgen. Ljust blå i vila, full blå
+   och pilen ett steg framåt när raden hovras eller har fokus. */
+.catering-open-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px 0 16px;
+  border-radius: var(--r-pill);
+  background: var(--cta-soft);
+  color: var(--ink);
+  font: 600 14px/1 var(--font);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.catering-open-arrow {
+  flex: none;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.catering-row:hover .catering-open-link,
+.catering-open-link:focus-visible {
+  background: var(--cta);
+  color: var(--on-cta);
+}
+
+.catering-row:active .catering-open-link {
+  background: var(--cta-active);
+  color: var(--on-cta);
+}
+
+.catering-row:hover .catering-open-arrow,
+.catering-open-link:focus-visible .catering-open-arrow {
+  transform: translateX(3px);
+}
+
+/* Ringen ligger runt hela raden, inte en till runt knappen. */
+.catering-open-link:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .catering-list-table .catering-amount,
@@ -465,10 +562,42 @@
   .catering-list-table .catering-amount { order: 4; flex: 1 1 auto; }
   .catering-list-table .catering-state { order: 5; flex: 1 1 100%; }
 
-  .catering-list-table .catering-open .link-action {
-    display: inline-flex;
-    align-items: center;
+  .catering-list-table .catering-open {
+    width: auto;
+  }
+
+  /* Datum och Öppna på samma rad också på telefon: telefonens tabellkort
+     (ds.css) ger annars första cellen en egen rad och Öppna hamnar under. */
+  .catering-list .catering-list-table tr.catering-row > td.catering-when {
+    flex: 1 1 0;
+  }
+
+  .catering-list-table .catering-open .catering-open-link {
     min-height: 44px;
+  }
+
+  /* Raden är ett kort här: markeringen och ringen följer kortets hörn. */
+  .catering-list-table tr.catering-row {
+    padding: 14px 12px;
+    border-radius: var(--r-md);
+    transition: background-color var(--dur-fast) var(--ease-out);
+  }
+
+  .catering-row:hover > td,
+  .catering-row:active > td,
+  .catering-row:has(.catering-open-link:focus-visible) > td {
+    background-color: transparent;
+  }
+
+  .catering-row:hover,
+  .catering-row:active,
+  .catering-row:has(.catering-open-link:focus-visible) {
+    background-color: color-mix(in srgb, var(--glass-highlight) 55%, transparent);
+  }
+
+  .catering-row:has(.catering-open-link:focus-visible) {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--focus);
   }
 
   /* Namnet och "Ta bort" på första raden, Á-pris, Antal och Summa under;
@@ -519,10 +648,13 @@
 
 /* Fingrar på iPad: länkknappar och väljare minst 44 px höga. */
 @media (pointer: coarse) {
-  .catering-request .link-action,
-  .catering-list .link-action {
+  .catering-request .link-action {
     display: inline-flex;
     align-items: center;
+    min-height: 44px;
+  }
+
+  .catering-list .catering-open-link {
     min-height: 44px;
   }
 

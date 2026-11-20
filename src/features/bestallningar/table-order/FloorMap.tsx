@@ -29,6 +29,9 @@ export const MAP_STATE_TEXT: Record<MapTableState, string> = {
   upcoming: 'Bokat senare',
 }
 
+/** Short state words: the legend and the list chips say the same thing. */
+export const MAP_STATE_SHORT: Record<MapTableState, string> = { ...MAP_STATE_TEXT, upcoming: 'Senare' }
+
 export function initials(name: string): string {
   return name
     .split(/\s+/)
@@ -328,7 +331,7 @@ export function FloorMap({ floors, tables, tabs, now, onPick, selectedId, disabl
         {(['free', 'booked', 'upcoming', 'open'] as const).map((k) => (
           <li key={k} className={`is-${k}`}>
             <span className="to-legend-swatch" aria-hidden="true" />
-            {k === 'upcoming' ? 'Senare' : MAP_STATE_TEXT[k]}
+            {MAP_STATE_SHORT[k]}
           </li>
         ))}
       </ul>

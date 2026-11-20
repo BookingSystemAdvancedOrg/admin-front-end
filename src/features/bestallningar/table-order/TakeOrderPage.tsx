@@ -139,6 +139,23 @@ export default function TakeOrderPage() {
   const [editing, setEditing] = useState<{ item: TabMenuItem; line: CartLine | null } | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
 
+  // The order sheet is a modal: focus moves into it on open (the bar that
+  // opened it unmounts), Escape closes it from anywhere, and focus returns
+  // to the bar afterwards.
+  useEffect(() => {
+    if (!sheetOpen) return
+    const raf = requestAnimationFrame(() => document.querySelector<HTMLElement>('.to-sheet-close')?.focus())
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSheetOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      cancelAnimationFrame(raf)
+      document.removeEventListener('keydown', onKey)
+      requestAnimationFrame(() => document.querySelector<HTMLElement>('.to-sendbar-sum')?.focus())
+    }
+  }, [sheetOpen])
+
   const [sending, setSending] = useState(false)
   const sendingRef = useRef(false)
   const inflight = useRef<Inflight | null>(null)
@@ -716,8 +733,7 @@ export default function TakeOrderPage() {
             {sheetOpen && createPortal(<div className="to-scrim" onClick={() => setSheetOpen(false)} aria-hidden="true" />, document.body)}
             {sheetOpen && createPortal(
               <div id="to-sheet" className={`to-sheet to-sheet--${layout}`} style={frameStyle} role="dialog" aria-modal="true"
-                aria-label="Beställning" data-dock-hide={layout === 'phone' ? '' : undefined}
-                onKeyDown={(e) => e.key === 'Escape' && setSheetOpen(false)}>
+                aria-label="Beställning" data-dock-hide={layout === 'phone' ? '' : undefined}>
                 <div className="to-sheet-grip">
                   <button type="button" className="to-sheet-close" onClick={() => setSheetOpen(false)} aria-label="Dölj beställningen">
                     <Icon name="chevron-down" size={22} />

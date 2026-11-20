@@ -303,6 +303,29 @@
   background: var(--st-open);
 }
 
+/* The row's state chip wears the same fills as the map and its legend. */
+.to-table-row .to-chip {
+  background: var(--st-free);
+  color: var(--ink);
+}
+
+.to-table-row .to-chip--booked {
+  background: var(--st-booked);
+}
+
+.to-table-row .to-chip--upcoming {
+  background: var(--st-upcoming);
+}
+
+.to-table-row .to-chip--open {
+  background: var(--st-open);
+}
+
+/* "34 min", "4 pers": a number never wraps away from its unit. */
+.to-keep {
+  white-space: nowrap;
+}
+
 .to-table-row-body {
   display: flex;
   flex-direction: column;

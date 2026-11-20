@@ -8,7 +8,7 @@ import { listTabs } from './tableOrderApi'
 import type * as Api from './tableOrderApi'
 import { mockOpen, resetMockStore } from './tableOrderMock'
 
-const h = vi.hoisted(() => ({ real: null as unknown as typeof Api }))
+const h = vi.hoisted(() => ({ real: null as unknown as typeof Api, phone: false }))
 const { openTab, addItems } = vi.hoisted(() => ({ openTab: vi.fn(), addItems: vi.fn() }))
 
 vi.mock('./tableOrderApi', async (orig) => {
@@ -27,6 +27,10 @@ vi.mock('../../../shared/AdminTopbar', () => ({
       {actions}
     </header>
   ),
+}))
+vi.mock('../../../shared/dock', async (orig) => ({
+  ...(await orig<typeof import('../../../shared/dock')>()),
+  usePhoneNav: () => h.phone,
 }))
 vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ sub: 'staff' }) }))
 vi.mock('../../../shared/location', () => ({
@@ -56,6 +60,7 @@ const tile = (name: string) => screen.getByRole('button', { name: new RegExp(`^$
 const summary = () => screen.getByRole('complementary', { name: 'Beställning' })
 
 beforeEach(() => {
+  h.phone = false
   resetMockStore()
   localStorage.clear()
   openTab.mockReset()
@@ -189,5 +194,18 @@ describe('TakeOrderPage', () => {
     await user.click(await screen.findByRole('button', { name: /Fortsätt där du var/ }))
     expect(await screen.findByText('Cola', { selector: '.to-line-name' })).toBeInTheDocument()
     expect(screen.getByTestId('where').textContent).toBe('/bestallningar/bord/ny?bord=mock-t5')
+  })
+
+  it('the phone order sheet takes focus, closes on Escape and hands focus back', async () => {
+    h.phone = true
+    const user = userEvent.setup()
+    renderAt('/bestallningar/bord/ny?bord=mock-t5')
+    await user.click(await screen.findByRole('button', { name: /^Cola, / }))
+    await user.click(screen.getByRole('button', { name: /1 rätt/ }))
+    const sheet = await screen.findByRole('dialog', { name: 'Beställning' })
+    await waitFor(() => expect(within(sheet).getByRole('button', { name: 'Dölj beställningen' })).toHaveFocus())
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: 'Beställning' })).toBeNull()
+    await waitFor(() => expect(screen.getByRole('button', { name: /1 rätt/ })).toHaveFocus())
   })
 })

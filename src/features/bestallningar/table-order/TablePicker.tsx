@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import type { Floor } from '../../layout-editor/data'
 import { Icon } from '../../../shared/Icon'
 import { tableTitle } from '../../../shared/tables'
-import { elapsed, FloorMap, hhmm, MAP_STATE_TEXT, tableMapState } from './FloorMap'
+import { elapsed, FloorMap, hhmm, MAP_STATE_SHORT, tableMapState } from './FloorMap'
 import { TableKeypad } from './TableKeypad'
 import type { PickerView } from './draft'
 import type { Tab, TableState } from './types'
@@ -107,12 +107,12 @@ export function TablePicker({
                               <span className="to-table-row-name">{tableTitle(t.label)}</span>
                               <span className="to-table-row-who">
                                 {who ?? `${t.seats} platser`}
-                                {who && pers ? ` · ${pers} pers` : ''}
+                                {who && pers ? <> · <span className="to-keep">{pers} pers</span></> : ''}
                                 {kind === 'upcoming' && t.guest ? ` · ${hhmm(t.guest.startTime)}` : ''}
-                                {tab ? ` · ${elapsed(tab.openedAt, now)}` : ''}
+                                {tab ? <> · <span className="to-keep">{elapsed(tab.openedAt, now)}</span></> : ''}
                               </span>
                             </span>
-                            <span className={`to-chip to-chip--${kind}`}>{MAP_STATE_TEXT[kind]}</span>
+                            <span className={`to-chip to-chip--${kind}`}>{MAP_STATE_SHORT[kind]}</span>
                           </button>
                         </li>
                       )

@@ -24,7 +24,7 @@ describe('TablePicker', () => {
     const bord3 = screen.getByRole('button', { name: /^Bord 3/ })
     expect(bord3).toHaveTextContent('Åsa Öberg')
     expect(bord3).toHaveTextContent('Öppen')
-    expect(screen.getByRole('button', { name: /^Bord 7/ })).toHaveTextContent('Bokat senare')
+    expect(screen.getByRole('button', { name: /^Bord 7/ })).toHaveTextContent('Senare')
     await userEvent.type(screen.getByRole('searchbox'), 'maja')
     expect(screen.queryByRole('button', { name: /^Bord 3/ })).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: /^Bord 10/ }))

@@ -406,7 +406,7 @@
   /* --pan-x/--pan-y: panorering i skärmpixlar (scroll, hand, mellanslag). */
   transform: translate(calc(-50% + var(--pan-x, 0px)), calc(-50% + var(--pan-y, 0px)))
     scale(var(--zoom, 1)) rotateX(var(--tilt, 0deg)) rotateZ(var(--spin, 0deg));
-  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 400ms var(--e-out);
 }
 
 /* Under fri dragrotation (handverktyget) stängs övergången av - annars
@@ -420,7 +420,7 @@
   position: relative;
   border: 1px dashed rgba(0, 0, 0, 0.18);
   transform-style: preserve-3d;
-  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 400ms var(--e-out);
 }
 
 /*
@@ -682,7 +682,7 @@
   top: 50%;
   transform-style: preserve-3d;
   transform: translateZ(calc(var(--tagz, var(--wh, 90px)) + 6px));
-  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 400ms var(--e-out);
   pointer-events: none;
 }
 
@@ -690,7 +690,7 @@
   display: inline-block;
   transform: translate(-50%, -50%)
     rotateZ(calc(-1 * var(--spin, 0deg))) rotateX(calc(-1 * var(--tilt, 0deg)));
-  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 400ms var(--e-out);
   font: 700 10px/1 var(--sans);
   letter-spacing: 0.08em;
   color: var(--muted);
@@ -926,7 +926,7 @@
      halva höjden delat med cos(lutningen). */
   transform: translateZ(1px) translateY(-50%) rotateZ(calc(-1 * var(--spin, 0deg)))
     translateY(calc(50% / cos(var(--tilt, 0deg)))) rotateX(calc(-1 * var(--tilt, 0deg)));
-  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 400ms var(--e-out);
 }
 
 .table-el.round .table-top,
@@ -1616,13 +1616,14 @@
   -webkit-backdrop-filter: blur(14px) saturate(1.3);
   backdrop-filter: blur(14px) saturate(1.3);
   opacity: 1;
-  transition: opacity 520ms var(--ease), visibility 0s linear 0s;
+  transition: opacity 240ms var(--ease), visibility 0s linear 0s;
 }
 .layout-prep.is-done {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 520ms var(--ease), visibility 0s linear 520ms;
+  /* går undan fortare än den kom (ux-motion 18) */
+  transition: opacity 160ms var(--e-in), visibility 0s linear 160ms;
 }
 .layout-prep-card {
   display: grid;
@@ -1632,7 +1633,7 @@
   border-radius: var(--r-lg);
   background: var(--glass-hi, color-mix(in srgb, var(--glass-surface) 70%, transparent));
   box-shadow: var(--rim, none), var(--shadow, 0 20px 40px -24px rgba(26, 18, 14, 0.4));
-  transition: translate 520ms var(--ease), scale 520ms var(--ease);
+  transition: translate 160ms var(--e-in), scale 160ms var(--e-in);
 }
 .layout-prep.is-done .layout-prep-card {
   translate: 0 -6px;

@@ -1,9 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import type { CSSProperties, RefObject } from 'react'
+import type { RefObject } from 'react'
 import { ChartTip } from '../../shared/ChartTip'
 import { useChartTip } from '../../shared/chartTipState'
 import type { TipContent } from '../../shared/chartTipState'
 import { reducedMotion } from '../../shared/motion/countUp'
+import { spreadStyle, staggerStyle } from '../../shared/motion/stagger'
 import { axisTicks, heatStep, niceMax, tickLabel } from './chartScale'
 import { fmtPct } from './stats'
 
@@ -187,7 +188,7 @@ export function ColumnChart({
               height={Math.max(0, PAD.top + innerH - y(p.value))}
               rx={2}
               className={`sk-bar sk-bar--grow${i === peak && p.value > 0 ? ' sk-bar--peak' : ''}`}
-              style={{ '--i': i } as CSSProperties}
+              style={spreadStyle(i, points.length)}
             />
             {i % labelEvery === 0 && (
               <text x={x(i)} y={H - 10} textAnchor="middle" className="sk-tick">
@@ -200,7 +201,7 @@ export function ColumnChart({
         {hasPrev &&
           !dense &&
           points.map((p, i) => (
-            <circle key={p.key} cx={x(i)} cy={y(p.previous ?? 0)} r={2.4} className="sk-dot sk-dot--in" style={{ '--i': i } as CSSProperties} />
+            <circle key={p.key} cx={x(i)} cy={y(p.previous ?? 0)} r={2.4} className="sk-dot sk-dot--in" style={spreadStyle(i, points.length)} />
           ))}
         {points[peak].value > 0 && (
           <text
@@ -303,7 +304,7 @@ export function BarChart({ rows, format, seriesLabel, ariaLabel, tableHead, tabl
                 height={16}
                 rx={2}
                 className={`sk-bar sk-bar--row${i === peak ? ' sk-bar--peak' : ''}`}
-                style={{ '--i': i } as CSSProperties}
+                style={staggerStyle(i)}
               />
               <text x={labelW + Math.max(r.value > 0 ? 3 : 0, w) + 8} y={cy + 4} className="sk-value">
                 {r.value > 0 ? format(r.value) : ''}

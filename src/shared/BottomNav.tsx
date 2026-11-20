@@ -16,7 +16,8 @@ import { helpChatEnabled, openHelpChat } from '../features/help/chatState'
 import './bottomNav.css'
 
 /** Hur länge arket glider ned innan det tas bort (som i CSS:en). */
-const CLOSE_MS = 220
+// Arket går ut på 140 ms (bottomNav.css); lite marginal så att sista bildrutan hinner ritas.
+const CLOSE_MS = 180
 
 /**
  * Telefonens meny längst ner, där tummen är (ersätter menyknappen uppe till

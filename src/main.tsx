@@ -20,6 +20,8 @@ import NewPasswordPage from './features/auth/NewPasswordPage.tsx'
 import ForgotPasswordPage from './features/auth/ForgotPasswordPage.tsx'
 import ResetPasswordPage from './features/auth/ResetPasswordPage.tsx'
 import CookiesPage from './features/cookies/CookiesPage.tsx'
+// Rörelsens tider och kurvor, tryck, menyer och dialoger (efter appens stilar).
+import './shared/motion/motion.css'
 // Sist: inga kanter någonstans (shared/edges.css vinner över allt ovan).
 import './shared/edges.css'
 

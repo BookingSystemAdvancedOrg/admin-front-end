@@ -506,3 +506,9 @@
     white-space: nowrap;
   }
 }
+
+/* Bokningen man just sparade (PeakSuccess, försvinner efter 5 s). */
+.bk-landed {
+  margin: 4px 0 10px;
+  color: var(--success-ink, var(--ink));
+}

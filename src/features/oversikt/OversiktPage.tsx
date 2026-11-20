@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { sameData, useLiveRefresh } from '../../shared/live'
 import type { CSSProperties } from 'react'
 import { Num } from '../../shared/motion/Num'
@@ -55,6 +55,8 @@ import './setup.css'
 import './oversikt.css'
 import { useHelpChatEnabled } from '../help/chatState'
 import { SetupStepItem } from './SetupStepItem'
+import { setupProgress } from './setupProgress'
+import { PeakMoment, PeakSuccess } from '../../shared/motion/PeakSuccess'
 
 // Genvägskorten längst ned som länkar till de andra sidorna. Ägaren får
 // Statistik i stället för "Se alla bokningar" (dagens bokningar har redan
@@ -235,6 +237,17 @@ export default function OversiktPage() {
   // Överhoppade steg står kvar (med Ångra) tills allt är klart; bara klara steg göms.
   const pendingList = steps.filter((s) => s.state !== 'done').map(stepItem)
   const doneCount = steps.filter((s) => s.done === true).length
+  // Ett steg som blivit klart sedan förra besöket får en bock som ritas in;
+  // hela listan klar får ögonblicket (PeakSuccess / PeakMoment).
+  const progressSig = loading || !setup ? '' : steps.map((s) => `${s.id}:${s.state}`).join(',')
+  const progress = useMemo(
+    () => (progressSig ? setupProgress(`setup:${locationId ?? ''}`, steps) : { fresh: [], finished: false }),
+    // steps följer progressSig
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [progressSig, locationId],
+  )
+  const freshLabels = steps.filter((s) => progress.fresh.includes(s.id)).map((s) => s.label)
+  const [finishSeen, setFinishSeen] = useState(false)
 
   const todayActive = data.today
     ? data.today.filter((r) => ACTIVE_STATUSES.includes(r.status))
@@ -357,6 +370,11 @@ export default function OversiktPage() {
                 </span>
               )}
             </div>
+            {freshLabels.length > 0 && (
+              <p className="setup-fresh">
+                <PeakSuccess text={freshLabels.length === 1 ? `${freshLabels[0]}: klart` : `${freshLabels.length} steg klara`} />
+              </p>
+            )}
             {setupFailed
               ? <ErrorNote text={booqyFaultText('Kom igång kunde inte visas.')} onRetry={retryOverview} />
               : pendingList}
@@ -432,6 +450,9 @@ export default function OversiktPage() {
           </section>
         </Disclosure>
 
+        {setupComplete && progress.finished && !finishSeen && (
+          <PeakMoment text="Kom igång är klart" sub="Restaurangen är redo för gäster" onDone={() => setFinishSeen(true)} />
+        )}
         {setupComplete && (
           <details className="admin-card setup-card setup-card--done" data-tour="getting-started">
             <summary className="setup-done-summary">

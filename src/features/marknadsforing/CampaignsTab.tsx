@@ -3,6 +3,7 @@ import { useLiveRefresh } from '../../shared/live'
 import { RowActions } from '../../shared/RowActions'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Num } from '../../shared/motion/Num'
+import { PeakMoment } from '../../shared/motion/PeakSuccess'
 import type { FormEvent } from 'react'
 import { useTenant } from '../../shared/tenant'
 import {
@@ -214,7 +215,7 @@ function toLocalInput(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone: (msg: string) => void; onClose: () => void }) {
+function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone: (msg: string, later: boolean) => void; onClose: () => void }) {
   const [when, setWhen] = useState<'now' | 'later'>('now')
   const [at, setAt] = useState(() => {
     const d = new Date(Date.now() + 24 * 3600 * 1000)
@@ -250,6 +251,7 @@ function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone:
         when === 'later'
           ? `Kampanjen skickas ${formatDateTime(out.scheduledAt)} till ${out.audienceSize} mottagare.`
           : `Kampanjen skickas nu till ${out.audienceSize} mottagare. Det tar några minuter.`,
+        when === 'later',
       )
     } catch (err) {
       setError(errorText(err, 'Kampanjen skickades inte.'))
@@ -301,6 +303,8 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
   const [notice, setNotice] = useState<string | null>(null)
   const [form, setForm] = useState<{ campaign: Campaign | null } | null>(null)
   const [sending, setSending] = useState<Campaign | null>(null)
+  // En kampanj ute hos gästerna händer sällan: det får ett eget ögonblick (PeakMoment).
+  const [peak, setPeak] = useState<{ text: string; sub: string } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [confirmEl, ask] = useConfirm()
   // Det som misslyckades sist: Försök igen hämtar listan, eller gör om åtgärden (utan ny fråga).
@@ -489,11 +493,13 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
           }}
         />
       )}
+      {peak && <PeakMoment text={peak.text} sub={peak.sub} onDone={() => setPeak(null)} />}
       {sending && (
         <SendDialog
           campaign={sending}
           onClose={() => setSending(null)}
-          onDone={(msg) => {
+          onDone={(msg, later) => {
+            setPeak({ text: later ? 'Kampanjen är schemalagd' : 'Kampanjen är på väg', sub: sending.name })
             setSending(null)
             setNotice(msg)
             load()

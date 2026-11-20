@@ -175,11 +175,13 @@
     inset: 0;
     z-index: 55;
     background: var(--dock-scrim);
-    animation: bq-fade-in 280ms var(--ease-out) both;
+    transition: opacity var(--m-panel) var(--e-out);
   }
 
+  /* Stänger snabbare än det öppnar, med ease-in (ux-motion 18). */
   .bq-more-scrim.is-closing {
-    animation: bq-fade-out 220ms var(--ease-out) both;
+    opacity: 0;
+    transition: opacity var(--m-exit) var(--e-in);
   }
 
   .bq-more {
@@ -201,9 +203,24 @@
     backdrop-filter: blur(var(--blur-modal)) saturate(1.5);
     color: var(--ink);
     transform-origin: 50% 100%;
-    animation: bq-sheet-in 280ms var(--ease-out) both;
-    transition: transform 220ms var(--ease-out);
+    /* Övergångar, inte keyframes: arket kan vändas mitt i rörelsen. translate
+       för öppna och stäng, transform för dragningen. */
+    transition:
+      transform 220ms var(--ease-out),
+      translate var(--m-panel) var(--e-out),
+      opacity var(--m-panel) var(--e-out);
     overflow: hidden;
+  }
+
+  @starting-style {
+    .bq-more-scrim {
+      opacity: 0;
+    }
+
+    .bq-more {
+      opacity: 0;
+      translate: 0 calc(100% + var(--dock-space));
+    }
   }
 
   /* Raden är gömd (en rullista över arket): arket går ned till kanten. */
@@ -212,22 +229,13 @@
   }
 
   .bq-more.is-closing {
-    animation: bq-sheet-out 220ms var(--ease-out) forwards;
+    opacity: 0;
+    translate: 0 calc(100% + var(--dock-space));
+    transition:
+      transform 140ms var(--e-in),
+      translate 140ms var(--e-in),
+      opacity 140ms var(--e-in);
     pointer-events: none;
-  }
-
-  @keyframes bq-sheet-in {
-    from {
-      opacity: 0;
-      transform: translateY(calc(100% + var(--dock-space)));
-    }
-  }
-
-  @keyframes bq-sheet-out {
-    to {
-      opacity: 0;
-      transform: translateY(calc(100% + var(--dock-space)));
-    }
   }
 
   @keyframes bq-fade-in {
@@ -574,9 +582,16 @@
       transform: translateY(-22px);
     }
 
-    .bq-more {
-      animation: bq-fade-in 120ms linear both;
-      transition: none;
+    .bq-more,
+    .bq-more.is-closing {
+      translate: none;
+      transition: opacity 120ms linear;
+    }
+
+    @starting-style {
+      .bq-more {
+        translate: none;
+      }
     }
 
     .bq-more.is-closing {

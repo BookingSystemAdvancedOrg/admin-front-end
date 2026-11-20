@@ -1,5 +1,6 @@
 import { Icon } from './Icon'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useOrigin } from './motion/origin'
 
 /**
  * Åtgärder på en rad i en tabell eller lista: lugna knappar utan kant
@@ -10,6 +11,10 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 export function RowActions({ label, children, tour }: { label: string; children: ReactNode; tour?: string }) {
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLSpanElement>(null)
+  const toggle = useRef<HTMLButtonElement>(null)
+  const list = useRef<HTMLSpanElement>(null)
+  // Menyn växer ur "…"-knappen (motion.css).
+  useOrigin(list, open, toggle)
   useEffect(() => {
     if (!open) return
     const away = (e: MouseEvent) => {
@@ -30,6 +35,7 @@ export function RowActions({ label, children, tour }: { label: string; children:
       <span className="row-actions row-actions--inline">{children}</span>
       <span className="row-menu">
         <button
+          ref={toggle}
           type="button"
           className="row-action row-menu-toggle"
           aria-label={label}
@@ -39,7 +45,7 @@ export function RowActions({ label, children, tour }: { label: string; children:
           <Icon name="more" size={18} />
         </button>
         {open && (
-          <span className="row-menu-list" onClick={() => setOpen(false)}>
+          <span ref={list} className="row-menu-list" onClick={() => setOpen(false)}>
             {children}
           </span>
         )}

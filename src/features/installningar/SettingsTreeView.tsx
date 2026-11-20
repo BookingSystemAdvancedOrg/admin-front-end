@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, FocusEvent, KeyboardEvent, RefObject } from 'react'
+import type { FocusEvent, KeyboardEvent, RefObject } from 'react'
 import { Icon } from '../../shared/Icon'
+import { staggerStyle } from '../../shared/motion/stagger'
 import { BRANCH_LABEL, fold, searchLeaves, treeOf } from './settingsTree'
 import type { BranchId, Leaf, Tree, TreeId } from './settingsTree'
 import type { Apple } from './settingsApples'
@@ -282,7 +283,7 @@ export function SettingsField({
       <LeafSearch visible={visible} onLeaf={onLeaf} />
       <div className="stree-grid">
         {trees.map((tree, i) => (
-          <section key={tree.id} className="admin-card stree-card" style={{ '--i': i } as CSSProperties} aria-labelledby={`stree-${tree.id}`}>
+          <section key={tree.id} className="admin-card stree-card" style={staggerStyle(i)} aria-labelledby={`stree-${tree.id}`}>
             <h2 className="stree-card-heading" id={`stree-${tree.id}`}>
               <button type="button" className="stree-card-head" data-stree-from={tree.id} onClick={() => onTree(tree.id)}>
                 <span className="stree-icon" aria-hidden="true"><Icon name={tree.icon} size={20} /></span>

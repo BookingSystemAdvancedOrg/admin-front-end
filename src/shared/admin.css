@@ -515,12 +515,10 @@
   cursor: default;
   white-space: nowrap;
   text-decoration: none;
-  transition: background 200ms var(--ease), transform 200ms var(--ease), filter 200ms var(--ease);
+  transition: background 200ms var(--ease), filter 200ms var(--ease);
 }
 
-.btn:active:not(:disabled) {
-  transform: scale(0.98);
-}
+/* Trycket: en klämning från shared/press.ts (.is-pressed), ingen egen :active. */
 
 .btn.primary {
   background: var(--cta);
@@ -823,7 +821,16 @@
   border-radius: var(--r-pill);
   background: var(--bq-snow);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  transition: transform 300ms var(--spring);
+  transition: transform 180ms var(--e-move, var(--ease)), scale var(--m-press, 100ms) var(--e-out, var(--ease));
+}
+
+/* Tummen trycks ihop under fingret (ux-motion 1) och glider över på 180 ms. */
+.switch.is-pressed {
+  scale: 1;
+}
+
+.switch.is-pressed::after {
+  scale: 1.15 0.9;
 }
 
 .switch[aria-checked='true'] {
@@ -1650,16 +1657,11 @@ dialog.modal-layer::backdrop {
   width: 100%;
 }
 
-/* Nyckeltalen överst på Översikt: hela rutan är en länk till åtgärden. */
+/* Nyckeltalen överst på Översikt: hela rutan är en länk till åtgärden.
+   Lyftet vid hovring finns i brand.css (bara med mus). */
 .stat-tile--link {
   text-decoration: none;
   color: inherit;
-  transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease);
-}
-
-.stat-tile--link:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
 }
 
 /* Något väntar: rutan markeras med varningsfärg. */

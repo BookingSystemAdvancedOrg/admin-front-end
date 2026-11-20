@@ -265,54 +265,56 @@
   font-size: 16px;
 }
 
-/* --- Rörelse: bara när den inte är avstängd ------------------------------ */
+/* --- Rörelse: bara när den inte är avstängd ------------------------------
+   Listan växer ur knappen (ovanför eller under den), arket glider upp.
+   Övergångar, inte keyframes: öppna och stäng mitt i rörelsen och den
+   fortsätter därifrån. Stängs direkt (listan avmonteras). */
 
 @media (prefers-reduced-motion: no-preference) {
-  .b-select-pop.is-placed {
-    animation: b-select-in 180ms var(--ease) both;
+  .b-select-pop:not(.b-select-sheet) {
+    opacity: 0;
+    scale: 0.97;
+    transform-origin: 50% 0;
+    transition:
+      opacity var(--m-fast, 140ms) var(--e-out, var(--ease)),
+      scale var(--m-fast, 140ms) var(--e-out, var(--ease));
   }
 
-  .b-select-pop.is-above.is-placed {
-    animation-name: b-select-in-above;
+  .b-select-pop.is-above {
+    transform-origin: 50% 100%;
+  }
+
+  .b-select-pop.is-placed:not(.b-select-sheet) {
+    opacity: 1;
+    scale: 1;
   }
 
   .b-select-pop.b-select-sheet {
-    animation: b-select-sheet-in 260ms var(--ease) both;
+    transition: translate var(--m-panel, 280ms) var(--e-out, var(--ease));
   }
 
   .b-select-scrim {
-    animation: b-select-fade 200ms var(--ease) both;
+    transition: opacity var(--m-base, 200ms) var(--e-out, var(--ease));
+  }
+
+  @starting-style {
+    .b-select-pop.is-placed:not(.b-select-sheet) {
+      opacity: 0;
+      scale: 0.97;
+    }
+
+    .b-select-pop.b-select-sheet {
+      translate: 0 100%;
+    }
+
+    .b-select-scrim {
+      opacity: 0;
+    }
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .b-select-chevron {
     transition: none;
-  }
-}
-
-@keyframes b-select-in {
-  from {
-    opacity: 0;
-    translate: 0 -4px;
-  }
-}
-
-@keyframes b-select-in-above {
-  from {
-    opacity: 0;
-    translate: 0 4px;
-  }
-}
-
-@keyframes b-select-sheet-in {
-  from {
-    translate: 0 100%;
-  }
-}
-
-@keyframes b-select-fade {
-  from {
-    opacity: 0;
   }
 }

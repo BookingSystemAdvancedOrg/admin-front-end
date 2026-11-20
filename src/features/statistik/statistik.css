@@ -490,31 +490,32 @@
   color: var(--muted);
 }
 
-/* Diagrammen växer upp en gång; linjen ritas, punkterna kommer sist. */
+/* Diagrammen växer upp en gång; linjen ritas, punkterna kommer sist. Hela
+   kaskaden högst 7 steg (shared/motion/stagger.ts), allt klart inom 0,6 s. */
 @media (prefers-reduced-motion: no-preference) {
   .sk-bar--grow {
     transform-box: fill-box;
     transform-origin: bottom;
-    animation: sk-grow 640ms var(--ease) both;
-    animation-delay: calc(var(--i, 0) * 14ms);
+    animation: sk-grow 360ms var(--ease) both;
+    animation-delay: calc(var(--i, 0) * 30ms);
   }
 
   .sk-bar--row {
     transform-box: fill-box;
-    animation: sk-row 560ms var(--ease) both;
-    animation-delay: calc(var(--i, 0) * 50ms);
+    animation: sk-row 320ms var(--ease) both;
+    animation-delay: calc(var(--i, 0) * 40ms);
   }
 
   .sk-line--draw {
     stroke-dasharray: 1;
     stroke-dashoffset: 1;
-    animation: sk-draw 1000ms var(--ease) 160ms forwards;
+    animation: sk-draw 500ms var(--ease) 100ms forwards;
   }
 
   .sk-dot--in {
     opacity: 0;
-    animation: sk-in 300ms var(--ease) forwards;
-    animation-delay: calc(260ms + var(--i, 0) * 18ms);
+    animation: sk-in 200ms var(--ease) forwards;
+    animation-delay: calc(300ms + var(--i, 0) * 30ms);
   }
 }
 

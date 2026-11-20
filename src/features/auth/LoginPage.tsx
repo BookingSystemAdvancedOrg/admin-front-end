@@ -1,5 +1,6 @@
 import { errorText } from '../../shared/errors'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { shake } from '../../shared/motion/shake'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { isMockAuthEnabled, MOCK_EMAIL, MOCK_PASSWORD } from './mockAuth'
@@ -21,6 +22,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const passwordRef = useRef<HTMLInputElement>(null)
 
   // Sidan användaren försökte nå innan RequireAuth skickade hit dem.
   const from = state?.from?.pathname ?? '/'
@@ -44,6 +46,10 @@ export default function LoginPage() {
       }
     } catch (err) {
       setError(errorText(err, 'Inloggningen gick inte.'))
+      // Lösenordsfältet skakar och får fokus: där rättar man oftast (ux-motion 9).
+      const field = passwordRef.current
+      shake(field)
+      field?.select()
     } finally {
       setBusy(false)
     }
@@ -75,6 +81,7 @@ export default function LoginPage() {
           <div className="auth-field">
             <label htmlFor="login-password">Lösenord</label>
             <input
+              ref={passwordRef}
               id="login-password"
               type="password"
               autoComplete="current-password"

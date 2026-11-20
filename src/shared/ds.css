@@ -533,7 +533,8 @@
 }
 
 .cta.is-flying:not(:disabled) .cta-plane-fly {
-  animation: cta-fly var(--dur-cta) var(--ease-std) infinite;
+  /* en flygtur per gång pekaren kommer in, inte i slinga (ux-motion 20) */
+  animation: cta-fly var(--dur-cta) var(--ease-std) 1;
 }
 
 @keyframes cta-fly {
@@ -705,7 +706,8 @@
   align-items: flex-start;
   padding: min(14vh, 120px) var(--space-4) var(--space-4);
   background: var(--dim);
-  animation: palette-fade var(--dur-base) var(--ease-out);
+  /* ⌘K öppnas många gånger om dagen: nästan direkt, ingen flärd (ux-motion 20). */
+  transition: opacity 100ms var(--e-out);
 }
 
 /* Hela sidan bakom paletten blir suddig, även på en lång rullad sida, så
@@ -732,19 +734,20 @@
   -webkit-backdrop-filter: blur(var(--blur-modal)) saturate(1.6);
   backdrop-filter: blur(var(--blur-modal)) saturate(1.6);
   overflow: hidden;
-  animation: palette-in var(--dur-slow) var(--ease-out);
+  transform-origin: 50% 0;
+  transition:
+    opacity 120ms var(--e-out),
+    scale 120ms var(--e-out);
 }
 
-@keyframes palette-fade {
-  from {
+@starting-style {
+  .palette-backdrop,
+  .palette {
     opacity: 0;
   }
-}
 
-@keyframes palette-in {
-  from {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.98);
+  .palette {
+    scale: 0.98;
   }
 }
 

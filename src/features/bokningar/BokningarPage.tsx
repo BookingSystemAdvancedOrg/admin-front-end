@@ -34,6 +34,7 @@ import { Icon } from '../../shared/Icon'
 import { SkelCard, SkelPage, SkelTableRows, SkelTiles } from '../../shared/Skeleton'
 import { NoLocation } from '../../shared/NoLocation'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { PeakSuccess } from '../../shared/motion/PeakSuccess'
 
 /**
  * Bokningar för vald plats och dag (GET /locations/{id}/reservations).
@@ -54,6 +55,13 @@ export default function BokningarPage() {
   const { labels } = useTables(locationId === MOCK_LOCATION_ID ? null : locationId)
 
   const [date, setDate] = useState(today)
+  // Bokningen man just sparade: bocken ritas in en gång och raden blinkar där den hamnade.
+  const [landed, setLanded] = useState<Reservation | null>(null)
+  useEffect(() => {
+    if (!landed) return
+    const id = window.setTimeout(() => setLanded(null), 5000)
+    return () => window.clearTimeout(id)
+  }, [landed])
   // Listan hör alltid ihop med den plats/dag den hämtades för - en annan
   // dags bokningar visas aldrig under fel rubrik, inte ens en stund.
   const [loaded, setLoaded] = useState<{ key: string; items: Reservation[]; error: string | null } | null>(
@@ -213,6 +221,15 @@ export default function BokningarPage() {
               {error && (
                 <ErrorNote text={error} />
               )}
+              {landed && (
+                <p className="bk-landed">
+                  <PeakSuccess
+                    key={landed.reservationId}
+                    text="Bokningen är sparad"
+                    sub={`${dayLabel(landed.date)} ${landed.startTime} · ${landed.partySize} pers`}
+                  />
+                </p>
+              )}
 
               <div className="table-scroll" tabIndex={0} data-tour="booking-list">
                 <table className="data-table bookings-table">
@@ -237,7 +254,7 @@ export default function BokningarPage() {
                     {visible.map((r) => (
                       <tr
                         key={r.reservationId}
-                        className={`booking-row${isCancelled(r.status) ? ' muted' : ''}`}
+                        className={`booking-row${isCancelled(r.status) ? ' muted' : ''}${landed?.reservationId === r.reservationId ? ' m-landed' : ''}`}
                         tabIndex={0}
                         onClick={() => setOpenId(r.reservationId)}
                         onKeyDown={(e) => {
@@ -312,6 +329,7 @@ export default function BokningarPage() {
           today={today}
           onCreated={(created) => {
             setCreating(false)
+            setLanded(created)
             if (created.date === date) replace(created)
             else setDate(created.date)
           }}

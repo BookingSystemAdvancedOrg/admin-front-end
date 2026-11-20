@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useOrigin } from './motion/origin'
 
 /**
  * Litet infoikon-uppslag: klick öppnar en förklarande bubbla, stängs via X,
@@ -18,6 +19,9 @@ export function InfoTooltip({
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLSpanElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  // Bubblan växer ur i:et (motion.css), innan den flyttas in i fönstret.
+  useOrigin(panelRef, open, triggerRef)
 
   // Bubblan stannar inom fönstret: flyttas i sidled om den skulle gå utanför.
   useLayoutEffect(() => {
@@ -59,6 +63,7 @@ export function InfoTooltip({
   return (
     <span className="info-tooltip" ref={rootRef}>
       <button
+        ref={triggerRef}
         type="button"
         className="info-tooltip-trigger"
         aria-label={`Förklaring: ${label}`}

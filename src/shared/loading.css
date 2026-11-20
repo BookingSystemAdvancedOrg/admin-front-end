@@ -8,6 +8,15 @@
   gap: 12px;
   vertical-align: middle;
   color: var(--muted);
+  /* Syns först efter 150 ms: en snabb hämtning blinkar inte förbi som ett
+     halvskrivet kvitto (busy-baren svarar direkt ändå). */
+  animation: loading-show 120ms var(--e-out, ease-out) 150ms backwards;
+}
+
+@keyframes loading-show {
+  from {
+    opacity: 0;
+  }
 }
 
 .loading--block {

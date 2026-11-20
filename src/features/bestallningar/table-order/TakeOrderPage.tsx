@@ -42,6 +42,7 @@ import { MenuGrid } from './MenuGrid'
 import { OptionSheet } from './OptionSheet'
 import { joinNames, OrderSummary, SendPreview } from './OrderSummary'
 import { SendBar } from './SendBar'
+import { PeakSuccess } from '../../../shared/motion/PeakSuccess'
 import { TablePicker } from './TablePicker'
 import {
   addItems,
@@ -603,8 +604,15 @@ export default function TakeOrderPage() {
   const doneBox = done && (
     <div className="to-done" role="status">
       <p className="to-done-title">
-        <Icon name="check" size={20} />
-        {done.stationNames.length ? `Skickat till ${joinNames(done.stationNames)}` : 'Sparat'}
+        {done.result.warnings.length === 0 ? (
+          // Bocken ritas in en gång när rundan är ute (PeakSuccess, liten och tyst).
+          <PeakSuccess text={done.stationNames.length ? `Skickat till ${joinNames(done.stationNames)}` : 'Sparat'} announce={false} />
+        ) : (
+          <>
+            <Icon name="check" size={20} />
+            {done.stationNames.length ? `Skickat till ${joinNames(done.stationNames)}` : 'Sparat'}
+          </>
+        )}
       </p>
       {done.held.length > 0 && (
         <p className="cell-muted">Väntar: {done.held.map((h) => `${COURSE_LABEL[h.course]} ${h.quantity}`).join(' · ')}</p>

@@ -225,8 +225,8 @@
   gap: 14px;
   min-width: 0;
   padding: 18px 20px 12px;
-  animation: stree-rise 420ms var(--ease) both;
-  animation-delay: calc(var(--i, 0) * 45ms);
+  animation: stree-rise 240ms var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
 }
 .stree-card-heading {
   margin: 0;

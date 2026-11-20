@@ -2,7 +2,8 @@ import { useRef } from 'react'
 import { helpSlug } from '../helpId'
 import type { CSSProperties, PointerEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Num } from './Num'
+import { Num, REVEAL_MS } from './Num'
+import { staggerIndex } from './stagger'
 import { useLiquidFill } from './useLiquidFill'
 import { useMotionAllowed } from './MotionScope'
 import { TrendBadge } from '../TrendBadge'
@@ -10,7 +11,9 @@ import { useTrendPop } from './useTrendPop'
 import { toneClass } from '../trend'
 import type { Trend } from '../trend'
 
-const STAGGER_MS = 140
+/** Vätskan (en gång per inloggning) får ta sin tid; talen (varje besök) inte. */
+const LIQUID_STAGGER_MS = 140
+const NUM_STAGGER_MS = 40
 
 export interface StatTileProps {
   label: string
@@ -52,8 +55,8 @@ export function StatTile({
   const allowed = useMotionAllowed()
   const trendTone = !loading && trend ? trend.tone : 'neutral'
   // Lyser upp när talet nästan landat och blivit grönt.
-  const valueRef = useTrendPop<HTMLParagraphElement>(trendTone, index * STAGGER_MS + 700)
-  const liquid = useLiquidFill(tileRef, canvasRef, { active: !loading, enabled: allowed, index, staggerMs: STAGGER_MS, reveal: true })
+  const valueRef = useTrendPop<HTMLParagraphElement>(trendTone, staggerIndex(index) * NUM_STAGGER_MS + REVEAL_MS - 200)
+  const liquid = useLiquidFill(tileRef, canvasRef, { active: !loading, enabled: allowed, index, staggerMs: LIQUID_STAGGER_MS, reveal: true })
 
   const touch = (e: PointerEvent<HTMLElement>, force: number) => {
     const tile = tileRef.current
@@ -82,7 +85,7 @@ export function StatTile({
         className={`stat-tile-value${toneClass(trendTone)}`}
         style={{ '--stat-len': Math.max(value.length, 3) } as CSSProperties}
       >
-        {loading ? '…' : <Num delayMs={index * STAGGER_MS}>{value}</Num>}
+        {loading ? '…' : <Num delayMs={staggerIndex(index) * NUM_STAGGER_MS}>{value}</Num>}
       </p>
     </>
   )

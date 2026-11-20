@@ -63,3 +63,20 @@ describe('TablePicker', () => {
     expect(onPick).toHaveBeenCalledWith(expect.objectContaining({ label: '12' }))
   })
 })
+
+describe('drawnSize', () => {
+  it('never draws a table smaller than its text needs, with air inside', async () => {
+    const { drawnSize } = await import('./FloorMap')
+    const tiny = drawnSize({ w: 40, h: 40, shape: 'square', rotation: 0 }, 0.3)
+    expect(tiny.w).toBeGreaterThanOrEqual(64)
+    expect(tiny.h).toBeGreaterThanOrEqual(56)
+    expect(tiny.textW).toBeLessThanOrEqual(tiny.w - 16)
+    const round = drawnSize({ w: 40, h: 40, shape: 'round', rotation: 0 }, 0.3)
+    expect(round.w).toBeGreaterThanOrEqual(68)
+    expect(round.textW).toBeGreaterThan(30)
+    const turned = drawnSize({ w: 200, h: 80, shape: 'square', rotation: 90 }, 1)
+    expect(turned.boxW).toBeCloseTo(80)
+    expect(turned.boxH).toBeCloseTo(200)
+    expect(turned.textW).toBe(60)
+  })
+})

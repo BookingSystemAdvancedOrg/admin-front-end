@@ -73,7 +73,12 @@ describe('TakeOrderPage', () => {
     expect(await screen.findByRole('heading', { name: 'Ny bordsbeställning' })).toBeInTheDocument()
 
     await user.click(await screen.findByRole('button', { name: /^Toast Skagen, / }))
+    // a second tap on a chosen dish adds nothing: the stepper does
     await user.click(tile('Toast Skagen'))
+    const skagen = screen.getByRole('group', { name: 'Toast Skagen, antal' })
+    expect(within(skagen).getByText('1')).toBeInTheDocument()
+    await user.click(within(skagen).getByRole('button', { name: 'Lägg till en' }))
+    expect(within(skagen).getByText('2')).toBeInTheDocument()
     await user.click(tile('Pilsner'))
     // Oxfilé needs Stekgrad first
     await user.click(tile('Oxfilé'))

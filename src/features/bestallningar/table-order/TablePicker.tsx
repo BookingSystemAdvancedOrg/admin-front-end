@@ -102,12 +102,15 @@ export function TablePicker({
                         <li key={t.tableId}>
                           <button type="button" className={`to-table-row is-${kind}${t.tableId === selectedId ? ' is-selected' : ''}`}
                             onClick={() => onPick(t)}>
-                            <span className="to-table-row-name">{tableTitle(t.label)}</span>
-                            <span className="to-table-row-who">
-                              {who ?? `${t.seats} platser`}
-                              {who && pers ? ` · ${pers} pers` : ''}
-                              {kind === 'upcoming' && t.guest ? ` · ${hhmm(t.guest.startTime)}` : ''}
-                              {tab ? ` · ${elapsed(tab.openedAt, now)}` : ''}
+                            <span className="to-table-row-badge" aria-hidden="true">{t.label}</span>
+                            <span className="to-table-row-body">
+                              <span className="to-table-row-name">{tableTitle(t.label)}</span>
+                              <span className="to-table-row-who">
+                                {who ?? `${t.seats} platser`}
+                                {who && pers ? ` · ${pers} pers` : ''}
+                                {kind === 'upcoming' && t.guest ? ` · ${hhmm(t.guest.startTime)}` : ''}
+                                {tab ? ` · ${elapsed(tab.openedAt, now)}` : ''}
+                              </span>
                             </span>
                             <span className={`to-chip to-chip--${kind}`}>{MAP_STATE_TEXT[kind]}</span>
                           </button>

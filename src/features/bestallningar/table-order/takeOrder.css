@@ -1,8 +1,8 @@
 /* Ny bordsbeställning (TakeOrderPage) and the floor map shared with the Bord
    view. Layout per space, not per device: the page measures its own width
    (the sidebar takes 248 px on tablets and computers) and sets
-   .to-root--phone | --sheet | --split | --monitor. Wine (open order) is
-   --dock-wine: #350001 in light, a readable rose in dark. */
+   .to-root--phone | --sheet | --split | --monitor. Counts, open orders and
+   chosen dishes use the accent (the brand's CTA colour), never a rose. */
 
 /* --- Shared bits ----------------------------------------------------------- */
 
@@ -38,9 +38,10 @@
   margin-left: var(--space-1);
   padding: 0 var(--space-1);
   border-radius: var(--r-pill);
-  background: var(--dock-wine);
+  background: var(--accent);
   color: var(--on-accent);
   font: var(--fw-strong) 11px / 1 var(--mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .to-flip {
@@ -109,8 +110,8 @@
 }
 
 .to-chip--open {
-  background: var(--dock-wine);
-  color: var(--on-accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--ink);
 }
 
 .to-chip--booked,
@@ -120,7 +121,7 @@
 }
 
 .to-chip--upcoming {
-  background: repeating-linear-gradient(135deg, var(--tint-orange) 0 6px, transparent 6px 10px);
+  background: repeating-linear-gradient(135deg, var(--tint-orange) 0 2px, transparent 2px 7px);
   color: var(--warning-ink);
 }
 
@@ -230,14 +231,32 @@
   list-style: none;
 }
 
+/* Table states, shared by the map shapes, the list badges and the legend.
+   The app has no edges (src/shared/edges.css), so a state is a fill: free is
+   the raised surface, booked a warm amber wash, later today a fine amber
+   hatch, an open order the accent (the brand's CTA colour). */
+.to-map,
+.to-table-list {
+  --st-free: color-mix(in srgb, var(--ink) 4%, var(--surface));
+  --st-booked: color-mix(in srgb, var(--warning) 26%, var(--surface));
+  --st-upcoming: repeating-linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--warning) 20%, transparent) 0 1.5px,
+      transparent 1.5px 8px
+    ),
+    var(--st-free);
+  --st-open: color-mix(in srgb, var(--accent) 24%, var(--surface));
+  --st-ring: var(--accent);
+}
+
 .to-table-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-3);
   width: 100%;
-  min-height: 56px;
-  padding: var(--space-2) var(--space-4);
+  min-height: 64px;
+  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-3);
   border: 0;
   border-radius: var(--r-md);
   background: var(--glass-text-bg) var(--liquid-sheen);
@@ -246,18 +265,53 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 
-.to-table-row.is-open {
-  box-shadow: inset 4px 0 0 var(--dock-wine), var(--liquid-edge), var(--elev-1);
+.to-table-row:active {
+  transform: scale(0.985);
 }
 
 .to-table-row.is-selected {
-  background: var(--wash-strong);
+  outline: 1.5px solid var(--st-ring);
+  outline-offset: 2px;
+}
+
+.to-table-row-badge {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--st-free);
+  box-shadow: var(--liquid-edge);
+  font: 700 var(--fs-md) / 1 var(--display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.to-table-row.is-booked .to-table-row-badge {
+  background: var(--st-booked);
+}
+
+.to-table-row.is-upcoming .to-table-row-badge {
+  background: var(--st-upcoming);
+}
+
+.to-table-row.is-open .to-table-row-badge {
+  background: var(--st-open);
+}
+
+.to-table-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .to-table-row-name {
-  font: var(--fw-display) var(--fs-md) / 1.1 var(--display);
+  font: var(--fw-strong) var(--fs-base) / 1.2 var(--font);
   white-space: nowrap;
 }
 
@@ -266,6 +320,7 @@
   color: var(--muted);
   font-size: var(--fs-sm);
   line-height: 1.3;
+  font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
 
@@ -274,144 +329,227 @@
 .to-map {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
   min-width: 0;
 }
 
-.to-map-svg {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: 64vh;
-  border-radius: var(--r-md);
+/* The plan's frame. Scrolls sideways only when the plan would otherwise
+   shrink its tables below a readable size (narrow phones). */
+.to-map-well {
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border-radius: var(--r-lg);
   background: var(--glass-well);
-  touch-action: manipulation;
+  box-shadow: var(--liquid-edge);
+  scrollbar-width: thin;
+  scrollbar-color: var(--wash-strong) transparent;
+}
+
+.to-map-stage {
+  position: relative;
+  margin-inline: auto;
+}
+
+.to-map-plan {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
 .to-map-ground {
-  fill: var(--glass-text-bg);
+  fill: color-mix(in srgb, var(--ink) 2.5%, transparent);
 }
 
 .to-map-wall {
-  stroke: var(--ink);
-  stroke-width: 6;
+  stroke: color-mix(in srgb, var(--ink) 22%, transparent);
+  stroke-width: 2.5;
   stroke-linecap: round;
-  opacity: 0.45;
+  vector-effect: non-scaling-stroke;
 }
 
-.to-map-hit {
-  fill: transparent;
-  cursor: pointer;
-}
-
+/* One table: a button the size of the rotated shape (never under 52 px),
+   the shape itself, and the upright number + seats over it. */
 .to-map-table {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   outline: none;
 }
 
+.to-map-table.is-round {
+  border-radius: 50%;
+}
+
 .to-map-top {
-  fill: var(--glass-pop);
-  stroke: var(--muted);
-  stroke-width: 1.5;
-  transition: stroke-width var(--dur-fast) var(--ease-out);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--shape-w);
+  height: var(--shape-h);
+  border-radius: 14px;
+  background: var(--st-free);
+  box-shadow: var(--liquid-edge), var(--elev-1);
+  transform: translate(-50%, -50%) rotate(var(--rot));
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    outline-color var(--dur-fast) var(--ease-out),
+    outline-offset var(--dur-fast) var(--ease-out);
+  outline: 2px solid transparent;
+  outline-offset: 6px;
+}
+
+.to-map-table.is-round .to-map-top {
+  border-radius: 50%;
 }
 
 .to-map-table.is-booked .to-map-top {
-  fill: var(--tint-orange);
-  stroke: var(--warning);
-  stroke-width: 2;
+  background: var(--st-booked);
 }
 
 .to-map-table.is-upcoming .to-map-top {
-  fill: var(--glass-pop);
-  stroke: var(--warning);
-  stroke-width: 2;
-  stroke-dasharray: 6 4;
+  background: var(--st-upcoming);
 }
 
 .to-map-table.is-open .to-map-top {
-  fill: var(--dock-wine);
-  stroke: var(--dock-wine);
+  background: var(--st-open);
 }
 
-.to-map-table.is-selected .to-map-top,
+.to-map-table.is-selected .to-map-top {
+  outline-color: var(--st-ring);
+  outline-offset: 3px;
+  box-shadow: var(--liquid-edge), var(--elev-2);
+}
+
 .to-map-table:focus-visible .to-map-top {
-  stroke: var(--ink);
-  stroke-width: 4;
+  outline-color: var(--focus);
+  outline-offset: 3px;
+}
+
+.to-map-table.is-selected:focus-visible .to-map-top {
+  outline-color: var(--st-ring);
+  box-shadow: 0 0 0 7px var(--focus), var(--elev-2);
 }
 
 .to-map-table.is-highlight .to-map-top {
-  stroke: var(--warning);
-  stroke-width: 5;
+  outline-color: var(--warning);
+  outline-offset: 3px;
+  animation: to-map-pulse 1.8s var(--ease-out) infinite;
+}
+
+@keyframes to-map-pulse {
+  50% {
+    outline-offset: 7px;
+    outline-color: color-mix(in srgb, var(--warning) 25%, transparent);
+  }
 }
 
 .to-map-table.is-disabled {
   cursor: not-allowed;
-  opacity: 0.45;
+  opacity: 0.4;
 }
 
 @media (hover: hover) {
   .to-map-table:not(.is-disabled):hover .to-map-top {
-    stroke-width: 3.5;
+    transform: translate(-50%, calc(-50% - 2px)) rotate(var(--rot));
+    box-shadow: var(--liquid-edge), var(--elev-2);
   }
 }
 
-.to-map-label,
-.to-map-sub {
-  fill: var(--ink);
-  text-anchor: middle;
-  dominant-baseline: middle;
+.to-map-table:not(.is-disabled):active .to-map-top {
+  transform: translate(-50%, -50%) rotate(var(--rot)) scale(0.96);
+}
+
+.to-map-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  max-width: var(--text-w);
+  transform: translate(-50%, -50%);
   pointer-events: none;
   user-select: none;
+  text-align: center;
 }
 
 .to-map-label {
-  font: 800 20px / 1 var(--display);
+  max-width: 100%;
+  overflow: hidden;
+  font: 700 var(--num) / 1 var(--display);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .to-map-sub {
-  font: 600 12px / 1 var(--mono);
-  opacity: 0.8;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--muted);
+  font: var(--fw-strong) 11px / 1.1 var(--font);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
-.to-map-table.is-open .to-map-label,
-.to-map-table.is-open .to-map-sub {
-  fill: var(--on-accent);
-  opacity: 1;
+.to-map-unit {
+  font-weight: 500;
+  opacity: 0.75;
 }
 
 .to-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  padding: 0 var(--space-1);
+  list-style: none;
   color: var(--muted);
   font-size: var(--fs-xs);
+  font-weight: var(--fw-strong);
 }
 
-.to-legend span {
+.to-legend li {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 
-.to-legend span::before {
-  content: '';
-  width: 14px;
-  height: 14px;
-  border-radius: var(--r-sm);
-  background: var(--wash-strong);
+.to-legend-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: var(--st-free);
+  box-shadow: var(--elev-1);
 }
 
-.to-legend .is-booked::before {
-  background: var(--warning);
+.to-legend .is-booked .to-legend-swatch {
+  background: var(--st-booked);
 }
 
-.to-legend .is-upcoming::before {
-  background: repeating-linear-gradient(135deg, var(--warning) 0 3px, transparent 3px 6px);
+.to-legend .is-upcoming .to-legend-swatch {
+  background: var(--st-upcoming);
 }
 
-.to-legend .is-open::before {
-  background: var(--dock-wine);
+.to-legend .is-open .to-legend-swatch {
+  background: var(--st-open);
 }
 
 /* --- Keypad ---------------------------------------------------------------- */
@@ -683,11 +821,20 @@
   border-radius: var(--r-md);
   background: var(--glass-text-bg) var(--liquid-sheen);
   box-shadow: var(--liquid-edge), var(--elev-1);
-  transition: box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  outline: 1.5px solid transparent;
+  outline-offset: -1.5px;
+  transition:
+    box-shadow var(--dur-base, 220ms) var(--ease-out),
+    outline-color var(--dur-base, 220ms) var(--ease-out),
+    background-color var(--dur-base, 220ms) var(--ease-out);
 }
 
+/* Chosen: a calm accent wash and a thin accent line, no heavy outline. */
 .to-tile.has-count {
-  background: color-mix(in srgb, var(--dock-wine) 12%, var(--glass-text-bg)) var(--liquid-sheen);
+  background: color-mix(in srgb, var(--accent) 9%, var(--glass-text-bg)) var(--liquid-sheen);
+  box-shadow: var(--liquid-edge), var(--elev-2);
+  outline: 1.5px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  outline-offset: -1.5px;
 }
 
 .to-tile-main {
@@ -707,8 +854,10 @@
   text-align: left;
   cursor: pointer;
   -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
   user-select: none;
   touch-action: manipulation;
+  transition: transform var(--dur-fast) var(--ease-out);
 }
 
 .to-tile-main:active {
@@ -716,7 +865,12 @@
 }
 
 .to-tile.has-count .to-tile-main {
-  padding-bottom: 56px;
+  cursor: default;
+  padding-bottom: 66px;
+}
+
+.to-tile.has-count .to-tile-main:active {
+  transform: none;
 }
 
 .to-tile-img {
@@ -796,25 +950,10 @@
   display: none;
 }
 
-.to-tile-count {
-  position: absolute;
-  right: 62px;
-  bottom: 14px;
-  display: grid;
-  place-items: center;
-  min-width: 30px;
-  height: 30px;
-  padding: 0 var(--space-2);
-  border-radius: var(--r-pill);
-  background: var(--dock-wine);
-  color: var(--on-accent);
-  font: var(--fw-display) var(--fs-sm) / 1 var(--mono);
-  pointer-events: none;
-}
-
-.to-tile-minus,
 .to-tile-more {
   position: absolute;
+  top: 2px;
+  right: 2px;
   display: grid;
   place-items: center;
   width: 44px;
@@ -822,30 +961,95 @@
   border: 0;
   border-radius: var(--r-pill);
   background: transparent;
-  color: var(--ink);
+  color: var(--muted);
   cursor: pointer;
 }
 
-.to-tile-more {
-  top: 2px;
-  right: 2px;
-  color: var(--muted);
+/* Minus, count, plus: shown once the dish is chosen. Plus is the filled
+   accent (the next likely tap), minus stays quiet. */
+.to-tstep {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  left: var(--space-2);
+  display: grid;
+  grid-template-columns: 44px minmax(2.5ch, 1fr) 44px;
+  align-items: center;
+  height: 48px;
+  padding: 2px;
+  border-radius: var(--r-pill);
+  background: var(--glass-pop);
+  box-shadow: var(--liquid-edge), var(--elev-1);
+  animation: to-tstep-in var(--dur-base, 220ms) var(--ease-out) both;
 }
 
-.to-tile-minus {
-  right: 6px;
-  bottom: 6px;
-  background: var(--wash);
-}
-
-@media (pointer: coarse) {
-  .to-tile-minus {
-    width: 48px;
-    height: 48px;
+@keyframes to-tstep-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
   }
 }
 
-/* Phones: one row per dish, tap the row (or +) to add. */
+.to-tile.is-nudge .to-tstep {
+  animation: to-tstep-nudge 420ms var(--ease-out);
+}
+
+@keyframes to-tstep-nudge {
+  35% {
+    transform: scale(1.04);
+    box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--accent) 55%, transparent), var(--elev-1);
+  }
+}
+
+.to-tstep-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+
+.to-tstep-btn:last-child {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+@media (hover: hover) {
+  .to-tstep-btn:first-child:hover {
+    background: var(--wash);
+  }
+
+  .to-tstep-btn:last-child:hover {
+    background: var(--accent-hover);
+  }
+}
+
+.to-tstep-btn:active {
+  transform: scale(0.92);
+}
+
+.to-tstep-btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.to-tstep-count {
+  color: var(--ink);
+  font: 700 var(--fs-md) / 1 var(--display);
+  font-variant-numeric: tabular-nums lining-nums;
+  text-align: center;
+}
+
+/* Phones: one row per dish. Before the first tap a quiet + says "tap to
+   choose"; after it the stepper takes its place at the row's end. */
 .to-root--phone .to-grid {
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-2);
@@ -868,7 +1072,7 @@
 }
 
 .to-root--phone .to-tile.has-count .to-tile-text {
-  padding-right: 56px;
+  padding-right: 144px;
 }
 
 .to-root--phone .to-tile-name {
@@ -879,33 +1083,23 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--r-pill);
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--wash);
+  color: var(--ink);
 }
 
 .to-root--phone .to-tile-more {
   display: none;
 }
 
-.to-root--phone .to-tile-count {
+.to-root--phone .to-tstep {
   top: 50%;
-  right: 112px;
   bottom: auto;
-  transform: translateY(-50%);
-}
-
-.to-root--phone .to-tile-minus {
-  top: 50%;
-  right: 60px;
-  bottom: auto;
-  transform: translateY(-50%);
-}
-
-.to-root--phone .to-tile.has-count .to-tile-text {
-  padding-right: 100px;
+  left: auto;
+  width: 136px;
+  margin-top: -24px;
 }
 
 /* --- Order summary --------------------------------------------------------- */
@@ -1543,8 +1737,26 @@
   .to-tile,
   .to-tile-main,
   .to-seg button,
-  .to-map-top {
+  .to-map-top,
+  .to-table-row,
+  .to-tstep-btn {
     transition: none;
+  }
+
+  .to-tstep,
+  .to-tile.is-nudge .to-tstep,
+  .to-map-table.is-highlight .to-map-top {
+    animation: none;
+  }
+
+  .to-map-table:not(.is-disabled):hover .to-map-top,
+  .to-map-table:not(.is-disabled):active .to-map-top {
+    transform: translate(-50%, -50%) rotate(var(--rot));
+  }
+
+  .to-tstep-btn:active,
+  .to-table-row:active {
+    transform: none;
   }
 
   .to-tile-main:active {

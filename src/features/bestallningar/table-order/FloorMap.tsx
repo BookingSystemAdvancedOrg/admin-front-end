@@ -8,7 +8,7 @@ import './takeOrder.css'
 /**
  * The published floor plan with every table tinted by what is happening
  * there right now: free (glass), booked now (amber, guest initials), open
- * order (accent, minutes since it opened) and a booking later today (dashed).
+ * order (baby blue, minutes since it opened) and a booking later today (dashed).
  * Used by the table picker in Ny bordsbeställning and by the Bord view in
  * Beställningar (admin-board imports it).
  */

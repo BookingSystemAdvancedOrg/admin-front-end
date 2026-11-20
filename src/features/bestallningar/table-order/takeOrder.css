@@ -2,7 +2,7 @@
    view. Layout per space, not per device: the page measures its own width
    (the sidebar takes 248 px on tablets and computers) and sets
    .to-root--phone | --sheet | --split | --monitor. Counts, open orders and
-   chosen dishes use the accent (the brand's CTA colour), never a rose. */
+   chosen dishes use the baby-blue CTA (--cta, text --on-cta) only. */
 
 /* --- Shared bits ----------------------------------------------------------- */
 
@@ -38,8 +38,8 @@
   margin-left: var(--space-1);
   padding: 0 var(--space-1);
   border-radius: var(--r-pill);
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--cta);
+  color: var(--on-cta);
   font: var(--fw-strong) 11px / 1 var(--mono);
   font-variant-numeric: tabular-nums;
 }
@@ -110,7 +110,7 @@
 }
 
 .to-chip--open {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  background: color-mix(in srgb, var(--cta) 30%, transparent);
   color: var(--ink);
 }
 
@@ -234,7 +234,7 @@
 /* Table states, shared by the map shapes, the list badges and the legend.
    The app has no edges (src/shared/edges.css), so a state is a fill: free is
    the raised surface, booked a warm amber wash, later today a fine amber
-   hatch, an open order the accent (the brand's CTA colour). */
+   hatch, an open order the baby-blue CTA. */
 .to-map,
 .to-table-list {
   --st-free: color-mix(in srgb, var(--ink) 4%, var(--surface));
@@ -245,7 +245,7 @@
       transparent 1.5px 8px
     ),
     var(--st-free);
-  --st-open: color-mix(in srgb, var(--accent) 24%, var(--surface));
+  --st-open: color-mix(in srgb, var(--cta) 38%, var(--surface));
   --st-ring: var(--accent);
 }
 
@@ -591,8 +591,8 @@
 }
 
 .to-key--ok {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--cta);
+  color: var(--on-cta);
 }
 
 .to-key:disabled {
@@ -831,9 +831,9 @@
 
 /* Chosen: a calm accent wash and a thin accent line, no heavy outline. */
 .to-tile.has-count {
-  background: color-mix(in srgb, var(--accent) 9%, var(--glass-text-bg)) var(--liquid-sheen);
+  background: color-mix(in srgb, var(--cta) 16%, var(--glass-text-bg)) var(--liquid-sheen);
   box-shadow: var(--liquid-edge), var(--elev-2);
-  outline: 1.5px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  outline: 1.5px solid color-mix(in srgb, var(--cta) 85%, transparent);
   outline-offset: -1.5px;
 }
 
@@ -997,7 +997,7 @@
 @keyframes to-tstep-nudge {
   35% {
     transform: scale(1.04);
-    box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--accent) 55%, transparent), var(--elev-1);
+    box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--cta) 55%, transparent), var(--elev-1);
   }
 }
 
@@ -1018,8 +1018,8 @@
 }
 
 .to-tstep-btn:last-child {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--cta);
+  color: var(--on-cta);
 }
 
 @media (hover: hover) {
@@ -1028,7 +1028,7 @@
   }
 
   .to-tstep-btn:last-child:hover {
-    background: var(--accent-hover);
+    background: var(--cta-hover);
   }
 }
 

@@ -522,7 +522,7 @@
   }
 
   .bq-more__logout .bq-more__row-icon {
-    color: var(--dock-wine);
+    color: var(--danger-ink);
   }
 
   /* --- Utan oskärpa, minskad genomskinlighet och minskad rörelse ----------- */

@@ -10,7 +10,7 @@
   padding: 8px 14px;
   border: 1px solid var(--glass-border, rgba(58, 36, 24, 0.18));
   border-radius: 999px;
-  background: var(--glass-pop, rgba(246, 241, 234, 0.9));
+  background: var(--glass-pop, rgba(242, 232, 218, 0.9));
   -webkit-backdrop-filter: blur(var(--blur-pop, 24px));
   backdrop-filter: blur(var(--blur-pop, 24px));
   box-shadow: var(--elev-2, 0 8px 24px -12px rgba(0, 0, 0, 0.35));

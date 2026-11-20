@@ -523,16 +523,16 @@
 }
 
 .btn.primary {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--cta);
+  color: var(--on-cta);
 }
 
 .btn.primary:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--cta-hover);
 }
 
 .btn.primary:active:not(:disabled) {
-  background: var(--accent-active);
+  background: var(--cta-active);
 }
 
 .btn.outline {

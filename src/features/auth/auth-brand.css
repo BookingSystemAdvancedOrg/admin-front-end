@@ -50,12 +50,12 @@
   --auth-ink: #1a120e;
   --auth-muted: #4a4a46;
   --auth-error: #9e1d26;
-  --auth-error-bg: #f6e6e4;
+  --auth-error-bg: #f7e4dc;
   --accent: #1a120e;
   --accent-hover: #3a2418;
   --on-accent: #fbfaf6;
   --accent-ink: #6b4a2e;
-  --focus: rgba(168, 132, 98, 0.45);
+  --focus: rgba(63, 127, 196, 0.7);
   --success-ink: #2c6a3f;
   --surface: var(--paper);
   --glass-fill: var(--paper-2);

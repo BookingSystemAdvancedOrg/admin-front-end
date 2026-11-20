@@ -485,7 +485,7 @@
   padding: 2px 8px;
   border-radius: var(--r-md);
   background: var(--dock-wine);
-  color: var(--dock-disc-ink);
+  color: var(--on-dock-wine);
   font-size: 18px;
 }
 

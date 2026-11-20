@@ -110,7 +110,9 @@
   --dock-disc-shadow: 0 6px 18px rgba(53, 0, 1, 0.22), 0 1px 0 transparent inset;
   --dock-shadow: 0 10px 30px rgba(26, 18, 14, 0.18);
   --dock-scrim: rgba(26, 18, 14, 0.32);
-  --dock-wine: #350001;
+  /* Öppen nota, räknare och markeringar: babyblått (förr vinrött/rosa). */
+  --dock-wine: var(--cta);
+  --on-dock-wine: var(--on-cta);
   /* Täckande: Safari lät sidans text lysa igenom även vid 95 %. */
   --dock-sheet: rgb(var(--bq-snow-rgb));
 }
@@ -150,7 +152,8 @@
   --dock-disc-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
   --dock-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
   --dock-scrim: var(--dim);
-  --dock-wine: #ee8a90;
+  --dock-wine: var(--cta);
+  --on-dock-wine: var(--on-cta);
   --dock-sheet: rgb(36, 25, 19);
 }
 
@@ -505,7 +508,7 @@
 }
 
 .btn.primary {
-  box-shadow: var(--bq-shadow-pill, 0 10px 24px -14px rgba(26, 18, 14, 0.7));
+  box-shadow: 0 10px 24px -14px rgb(var(--cta-rgb) / 0.9), 0 2px 6px -3px rgba(59, 36, 24, 0.28);
 }
 
 /* Huvudknappen: texten byts mot en vinnarfras och planet flyger i slinga. */

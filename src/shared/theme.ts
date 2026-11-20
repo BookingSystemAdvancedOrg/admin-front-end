@@ -13,7 +13,7 @@ export type Theme = 'light' | 'dark'
 export const DEFAULT_THEME: Theme = 'light'
 
 /** Färgen webbläsarens egen ram får (meta theme-color): skrivbordet. */
-const THEME_COLOR: Record<Theme, string> = { light: '#f6f1ea', dark: '#1a120e' }
+const THEME_COLOR: Record<Theme, string> = { light: '#f2e8da', dark: '#1a120e' }
 
 function isTheme(value: unknown): value is Theme {
   return value === 'light' || value === 'dark'

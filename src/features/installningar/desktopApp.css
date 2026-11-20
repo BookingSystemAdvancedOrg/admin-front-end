@@ -50,7 +50,7 @@
 .desktop-app__list a:hover, .desktop-app__list a:focus-visible { border-color: var(--ink); border-style: solid; background: var(--glass-pop, var(--glass-fill, rgb(251 250 246 / 0.6)));
   transform: translateY(-1px); box-shadow: 0 10px 22px -14px rgb(28 25 24 / 0.55); }
 .desktop-app__list a:hover::after, .desktop-app__list a:focus-visible::after { opacity: 1; transform: none; }
-.desktop-app__list a:focus-visible { outline: 2px solid #9e1d26; outline-offset: 2px; }
+.desktop-app__list a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .desktop-app__list a:active { transform: none; box-shadow: none; }
 @media (prefers-reduced-motion: reduce) {
   .desktop-app__list a, .desktop-app__list a::after { transition: none; }

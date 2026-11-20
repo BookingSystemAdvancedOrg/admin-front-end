@@ -227,3 +227,9 @@
   min-height: 0;
   padding: var(--bq-space-1) 0;
 }
+/* iPad (pek): På, När och Hur minst 44 px höga. */
+@media (pointer: coarse) {
+  .omdomen-checks label {
+    min-height: 44px;
+  }
+}

@@ -40,7 +40,7 @@
   height: 9px;
   border-radius: 50%;
   background: var(--success);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--success) 25%, transparent);
+  box-shadow: 0 0 8px 2px color-mix(in srgb, var(--success) 35%, transparent);
 }
 
 .orders-banner.paused {
@@ -79,7 +79,7 @@
 
 .order-card.fresh {
   border-color: var(--accent);
-  box-shadow: 0 0 0 4px var(--focus);
+  box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--focus) 45%, transparent), var(--shadow);
 }
 
 .order-card-head {
@@ -133,6 +133,21 @@
 
 .order-cancel {
   margin-left: auto;
+}
+
+/* Huvudknappen på en egen rad över hela lappen, de lugnare knapparna delar
+   raden under: samma fot på varje lapp, inget "Avbryt" ensamt på en rad. */
+.order-actions > .btn.primary {
+  flex: 1 1 100%;
+}
+
+.order-actions > .btn.outline,
+.order-actions > .btn.danger-outline {
+  flex: 1 1 auto;
+}
+
+.order-actions > .order-cancel {
+  margin-left: 0;
 }
 
 /* Beloppet (ibland med presentkortets del) får radbryta i en smal kolumn. */
@@ -209,7 +224,7 @@
   color: var(--on-slip);
   font: 700 18px/1.2 var(--sans);
   letter-spacing: 0.01em;
-  box-shadow: 0 1px 2px rgb(26 18 14 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.12);
+  box-shadow: 0 1px 2px rgb(26 18 14 / 0.18), inset 0 1px 0 transparent;
 }
 
 .table-chip-link.order-place--table:hover {
@@ -417,14 +432,17 @@
 
 .kds-ticket--preparing {
   border-top-color: var(--warning);
+  background: var(--tint-orange);
 }
 
 .kds-ticket--ready {
   border-top-color: var(--success);
+  background: var(--tint-green);
   opacity: 0.8;
 }
 
 .kds-ticket--allergy {
+  background: var(--tint-red);
   border-color: var(--danger);
   border-top-color: var(--danger);
 }
@@ -462,6 +480,105 @@
   font-size: 16px;
 }
 
+/* Bordsbeställningar på köksskärmen: runda, servitör, SKICKA NU, väntar, makulerad, flyttad. */
+.kds-round {
+  padding: 2px 8px;
+  border-radius: var(--r-md);
+  background: var(--dock-wine);
+  color: var(--on-dock-wine);
+  font-size: 18px;
+}
+
+.kds-tab-meta {
+  margin: 0;
+  color: var(--muted);
+  font: 600 14px/1.3 var(--sans);
+}
+
+.kds-fire,
+.kds-void {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  background: var(--slip);
+  color: var(--on-slip);
+  font: 800 16px/1.2 var(--sans);
+  letter-spacing: 0.04em;
+}
+
+.kds-void {
+  background: var(--danger);
+  color: var(--on-danger, var(--on-slip));
+}
+
+.kds-ticket--void .kds-lines {
+  text-decoration: line-through;
+}
+
+.kds-waiting {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: var(--r-md);
+  background: var(--wash-strong, var(--tint-blue));
+  font: 700 14px/1.3 var(--sans);
+}
+
+.kds-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kds-sources button {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--wash, var(--glass-surface));
+  color: var(--ink);
+  font: 600 13px/1 var(--sans);
+  cursor: default;
+}
+
+.kds-sources button.active {
+  background: var(--slip);
+  color: var(--on-slip);
+}
+
+.kds-slips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kds-slip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 6px 6px 14px;
+  border-radius: var(--r-md);
+  background: var(--tint-blue);
+  font-size: 14px;
+}
+
+@media (pointer: coarse) {
+  .kds-sources button,
+  .orders-views button,
+  .kds-stations button {
+    min-height: 44px;
+  }
+}
+
+/* Ny bordsbeställning i toppfältet: kortare på telefonen. */
+@media (max-width: 600px) {
+  .admin-topbar .orders-new-table .cta-text {
+    font-size: 14px;
+  }
+}
+
 /* "Skriv ut här": bara bongen på papperet. */
 .kds-paper {
   display: none;
@@ -494,4 +611,66 @@
     font-size: 18px;
     font-weight: 700;
   }
+}
+
+/* --- Passform: iPad och telefon ------------------------------------------- */
+
+/* Pausväljaren i toppraden: "Välj…" syns helt och är lätt att träffa. */
+.orders-pause {
+  flex-wrap: wrap;
+}
+
+.orders-pause .b-select {
+  flex: none;
+  min-width: 8.5em;
+  min-height: 44px;
+}
+
+/* Lapparna: långa ord (namn, önskemål) bryts inne i lappen. */
+.order-card,
+.kds-ticket {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.order-card-head,
+.kds-ticket-head {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.order-card-head .order-place,
+.kds-ticket-head .order-place {
+  min-width: 0;
+}
+
+.order-meta,
+.order-notes,
+.order-lines,
+.kds-lines {
+  overflow-wrap: anywhere;
+}
+
+.orders-done li {
+  overflow-wrap: anywhere;
+}
+
+/* Knapparna på lappen: minst 44 px att trycka på med fingret. */
+.order-actions .btn.square,
+.orders-views button,
+.kds-stations button {
+  min-height: 44px;
+}
+
+/* Ett belopp bryts aldrig mitt i ("1 234 / 567 kr"). */
+.order-meta .count-num,
+.orders-done .count-num {
+  white-space: nowrap;
+}
+
+/* Gästens nummer står på en rad, personalen läser och ringer det; beloppet
+   i "Bekräfta: avbryt och återbetala" bryts inte mitt i. */
+.order-meta-phone,
+.order-nowrap {
+  white-space: nowrap;
 }

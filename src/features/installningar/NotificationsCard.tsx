@@ -7,6 +7,7 @@ import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { Select } from '../../shared/Select'
+import { SaveBar } from '../../shared/SaveBar'
 
 /**
  * Notiser: vad gäster och restaurangen får när någon bokar.
@@ -30,35 +31,54 @@ function hoursLabel(hours: number): string {
 }
 
 export function NotificationsCard({ tenant, isOwner }: { tenant: Tenant; isOwner: boolean }) {
-  const saved = tenant.notifications ?? DEFAULTS
+  // Det som gäller (efter en sparning: svaret, även innan tenant hunnit uppdateras).
+  const [stored, setStored] = useState(() => ({ notifications: tenant.notifications ?? DEFAULTS, senderName: tenant.senderName ?? '' }))
+  const saved = stored.notifications
   const [values, setValues] = useState<TenantNotifications>(saved)
-  const [senderName, setSenderName] = useState(tenant.senderName ?? '')
+  const [senderName, setSenderName] = useState(stored.senderName)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+  const [senderInvalid, setSenderInvalid] = useState(false)
 
   const senderTrimmed = senderName.trim()
   const dirty =
     values.sms !== saved.sms ||
     values.staffEmails !== saved.staffEmails ||
     values.reminderHours !== saved.reminderHours ||
-    senderTrimmed !== (tenant.senderName ?? '')
+    senderTrimmed !== stored.senderName
 
   function set<K extends keyof TenantNotifications>(key: K, value: TenantNotifications[K]) {
     setValues((v) => ({ ...v, [key]: value }))
     setNotice(null)
+    setFailed(false)
+  }
+
+  function discard() {
+    setValues(saved)
+    setSenderName(stored.senderName)
+    setError(null)
+    setFailed(false)
+    setSenderInvalid(false)
   }
 
   async function save(e: FormEvent) {
     e.preventDefault()
     setError(null)
     setNotice(null)
-    if (senderTrimmed && !SENDER_NAME.test(senderTrimmed)) {
-      setError('Avsändarnamnet får ha högst 11 tecken: bokstäver a-z, siffror och mellanslag. Till exempel Bistro Nord.')
-      return
-    }
-    if (values.sms && !/[A-Za-z]/.test(senderTrimmed)) {
-      setError('Skriv ett avsändarnamn för SMS, till exempel Bistro Nord.')
+    setFailed(false)
+    setSenderInvalid(false)
+    const senderProblem =
+      senderTrimmed && !SENDER_NAME.test(senderTrimmed)
+        ? 'Avsändarnamnet får ha högst 11 tecken: bokstäver a-z, siffror och mellanslag. Till exempel Bistro Nord.'
+        : values.sms && !/[A-Za-z]/.test(senderTrimmed)
+          ? 'Skriv ett avsändarnamn för SMS, till exempel Bistro Nord.'
+          : null
+    if (senderProblem) {
+      setError(senderProblem)
+      setSenderInvalid(true)
+      setFailed(true)
       return
     }
     setBusy(true)
@@ -68,11 +88,13 @@ export function NotificationsCard({ tenant, isOwner }: { tenant: Tenant; isOwner
         senderName: senderTrimmed || null,
       })
       replaceTenant(updated)
+      setStored({ notifications: updated.notifications, senderName: updated.senderName ?? '' })
       setValues(updated.notifications)
       setSenderName(updated.senderName ?? '')
       setNotice('Sparat.')
     } catch (err) {
       setError(errorText(err, 'Notiserna sparades inte.', { owner_only: 'Bara restaurangens ägare kan ändra notiser. Be ägaren göra det.', forbidden: 'Bara restaurangens ägare kan ändra notiser. Be ägaren göra det.' }))
+      setFailed(true)
     } finally {
       setBusy(false)
     }
@@ -117,9 +139,12 @@ export function NotificationsCard({ tenant, isOwner }: { tenant: Tenant; isOwner
             maxLength={11}
             placeholder="t.ex. Roma"
             disabled={disabled}
+            aria-invalid={senderInvalid || undefined}
             onChange={(e) => {
               setSenderName(e.target.value)
               setNotice(null)
+              setFailed(false)
+              setSenderInvalid(false)
             }}
           />
         </div>
@@ -160,16 +185,14 @@ export function NotificationsCard({ tenant, isOwner }: { tenant: Tenant; isOwner
           <ErrorNote text={error} />
         )}
         {isOwner && (
-          <span className="row-actions">
-            <button type="submit" className="btn primary square" disabled={busy || !dirty}>
-              {busy ? 'Sparar…' : 'Spara notiser'}
-            </button>
-            {notice && (
-              <span className="save-notice" role="status">
-                {notice}
-              </span>
-            )}
-          </span>
+          <SaveBar
+            dirty={dirty}
+            busy={busy}
+            label="Spara notiser"
+            notice={notice}
+            failed={failed}
+            onDiscard={discard}
+          />
         )}
         {!isOwner && <p className="cell-muted">Bara ägaren kan ändra.</p>}
       </form>

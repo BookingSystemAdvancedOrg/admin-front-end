@@ -2,6 +2,7 @@ import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BestallningarPage, { POLL_MS } from './BestallningarPage'
+import { MemoryRouter } from 'react-router-dom'
 import { ApiError } from '../../shared/api'
 import type { Order, OrderList } from './ordersApi'
 import { chooseOption, optionTexts } from '../../test/select'
@@ -275,4 +276,18 @@ describe('BestallningarPage', () => {
     await user.click(screen.getByRole('button', { name: 'Visa alla' }))
     expect(screen.getAllByRole('article')).toHaveLength(3)
   })
+
+  it('has the Bord tab and Ny bordsbeställning in the top bar (with a router)', async () => {
+    const user = userEvent.setup()
+    listOrders.mockResolvedValue(list([]))
+    window.history.replaceState(null, '', '/bestallningar')
+    render(<MemoryRouter><BestallningarPage /></MemoryRouter>)
+    expect(await screen.findByRole('button', { name: /Ny bordsbeställning/ })).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'Bord' }))
+    expect(window.location.search).toBe('?vy=bord')
+    expect(screen.queryByRole('region', { name: 'Nya' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Bord' })).toHaveAttribute('aria-selected', 'true')
+    window.history.replaceState(null, '', '/')
+  })
 })
+

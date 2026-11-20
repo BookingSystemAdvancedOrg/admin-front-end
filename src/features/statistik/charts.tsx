@@ -1,10 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import type { CSSProperties, RefObject } from 'react'
+import type { RefObject } from 'react'
 import { ChartTip } from '../../shared/ChartTip'
 import { useChartTip } from '../../shared/chartTipState'
 import type { TipContent } from '../../shared/chartTipState'
 import { reducedMotion } from '../../shared/motion/countUp'
-import { heatStep, niceMax, tickLabel } from './chartScale'
+import { spreadStyle, staggerStyle } from '../../shared/motion/stagger'
+import { axisTicks, heatStep, niceMax, tickLabel } from './chartScale'
 import { fmtPct } from './stats'
 
 /**
@@ -126,13 +127,18 @@ export function ColumnChart({
   if (points.length === 0 || points.every((p) => p.value === 0 && !p.previous)) return <Empty text="Inget att visa i perioden." />
   const hasPrev = points.some((p) => p.previous !== undefined)
   const max = niceMax(Math.max(...points.map((p) => Math.max(p.value, p.previous ?? 0)), 1))
-  const innerW = W - PAD.left - PAD.right
+  const ticks = axisTicks(max, unit)
+  // The y axis is as wide as its longest label ("18,8 tkr"): mono, about 6,4 px per character.
+  const left = Math.max(36, Math.ceil(Math.max(...ticks.map((t) => tickLabel(t, unit).length)) * 6.4) + 14)
+  const innerW = W - left - PAD.right
   const innerH = H - PAD.top - PAD.bottom
   const slot = innerW / points.length
-  const barW = Math.max(4, Math.min(30, slot * 0.62))
+  // bars never overlap: a long period (a year of days) gets thin bars, not a solid block
+  const barW = Math.min(30, Math.max(slot * 0.62, Math.min(4, slot * 0.85)))
+  // one marker per day only while the markers have room; otherwise the line alone
+  const dense = slot < 10
   const y = (v: number) => PAD.top + innerH - (Math.max(0, v) / max) * innerH
-  const x = (i: number) => PAD.left + slot * i + slot / 2
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => f * max)
+  const x = (i: number) => left + slot * i + slot / 2
   const labelEvery = Math.ceil(points.length / Math.max(3, Math.floor(innerW / 64)))
   const peak = points.reduce((best, p, i) => (p.value > points[best].value ? i : best), 0)
   const line = hasPrev
@@ -164,11 +170,11 @@ export function ColumnChart({
         {...tip.surface}
       >
         <title id={`${id}-t`}>{ariaLabel}</title>
-        {a !== null && <rect x={PAD.left + slot * a} y={PAD.top} width={slot} height={innerH} className="chart-band" />}
+        {a !== null && <rect x={left + slot * a} y={PAD.top} width={slot} height={innerH} className="chart-band" />}
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} className="sk-grid" />
-            <text x={PAD.left - 8} y={y(t) + 4} textAnchor="end" className="sk-tick">
+            <line x1={left} x2={W - PAD.right} y1={y(t)} y2={y(t)} className="sk-grid" />
+            <text x={left - 8} y={y(t) + 4} textAnchor="end" className="sk-tick">
               {tickLabel(t, unit)}
             </text>
           </g>
@@ -182,27 +188,33 @@ export function ColumnChart({
               height={Math.max(0, PAD.top + innerH - y(p.value))}
               rx={2}
               className={`sk-bar sk-bar--grow${i === peak && p.value > 0 ? ' sk-bar--peak' : ''}`}
-              style={{ '--i': i } as CSSProperties}
+              style={spreadStyle(i, points.length)}
             />
             {i % labelEvery === 0 && (
               <text x={x(i)} y={H - 10} textAnchor="middle" className="sk-tick">
                 {p.label}
               </text>
             )}
-            {i === peak && p.value > 0 && (
-              <text x={x(i)} y={y(p.value) - 6} textAnchor="middle" className="sk-value">
-                {format(p.value)}
-              </text>
-            )}
           </g>
         ))}
-        {hasPrev && <path d={line} pathLength={1} className="sk-line sk-line--draw" />}
+        {hasPrev && <path d={line} pathLength={1} className={`sk-line sk-line--draw${dense ? ' sk-line--dense' : ''}`} />}
         {hasPrev &&
+          !dense &&
           points.map((p, i) => (
-            <circle key={p.key} cx={x(i)} cy={y(p.previous ?? 0)} r={2.4} className="sk-dot sk-dot--in" style={{ '--i': i } as CSSProperties} />
+            <circle key={p.key} cx={x(i)} cy={y(p.previous ?? 0)} r={2.4} className="sk-dot sk-dot--in" style={spreadStyle(i, points.length)} />
           ))}
+        {points[peak].value > 0 && (
+          <text
+            x={Math.min(Math.max(x(peak), left + 40), W - PAD.right - 40)}
+            y={Math.max(12, y(points[peak].value) - 6)}
+            textAnchor="middle"
+            className="sk-value sk-value--halo"
+          >
+            {format(points[peak].value)}
+          </text>
+        )}
         {points.map((p, i) => (
-          <rect key={p.key} x={PAD.left + slot * i} y={PAD.top} width={slot} height={innerH + PAD.bottom} className="chart-hit" {...tip.hit(i)} />
+          <rect key={p.key} x={left + slot * i} y={PAD.top} width={slot} height={innerH + PAD.bottom} className="chart-hit" {...tip.hit(i)} />
         ))}
       </svg>
       <ChartTip
@@ -292,7 +304,7 @@ export function BarChart({ rows, format, seriesLabel, ariaLabel, tableHead, tabl
                 height={16}
                 rx={2}
                 className={`sk-bar sk-bar--row${i === peak ? ' sk-bar--peak' : ''}`}
-                style={{ '--i': i } as CSSProperties}
+                style={staggerStyle(i)}
               />
               <text x={labelW + Math.max(r.value > 0 ? 3 : 0, w) + 8} y={cy + 4} className="sk-value">
                 {r.value > 0 ? format(r.value) : ''}
@@ -326,6 +338,15 @@ export interface RingSegment {
 }
 
 const SIZE = 150
+
+/** Delar en tom-text i två rader vid mellanrummet närmast mitten ("Inget betalt" / "än"). */
+function ringLines(text: string): string[] {
+  if (text.length <= 10 || !text.includes(' ')) return [text]
+  const mid = text.length / 2
+  let at = -1
+  for (let i = 0; i < text.length; i++) if (text[i] === ' ' && (at < 0 || Math.abs(i - mid) < Math.abs(at - mid))) at = i
+  return [text.slice(0, at), text.slice(at + 1)]
+}
 const R = 58
 const C = 2 * Math.PI * R
 
@@ -415,8 +436,13 @@ export function Ring({ title, segments, total, centerLabel, empty, format, value
             </text>
           </>
         ) : (
+          // two short lines, so the words stay inside the ring
           <text x={SIZE / 2} y={SIZE / 2 + 4} textAnchor="middle" className="sk-ring-center">
-            {empty}
+            {ringLines(empty).map((l, i, all) => (
+              <tspan key={i} x={SIZE / 2} dy={i === 0 ? (all.length - 1) * -7 : 14}>
+                {l}
+              </tspan>
+            ))}
           </text>
         )}
       </svg>

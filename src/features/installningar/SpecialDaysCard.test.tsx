@@ -58,7 +58,7 @@ describe('SpecialDaysCard', () => {
     await user.type(screen.getByLabelText('Datum'), '24/12/2026')
     await user.type(screen.getByLabelText('Anteckning till gästerna (valfritt)'), 'Julafton')
     await user.click(screen.getByRole('button', { name: 'Lägg till' }))
-    expect(screen.getByText('Ej sparat - klicka Spara dagar.')).toBeInTheDocument()
+    expect(screen.getByText('Osparade ändringar')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Spara dagar' }))
 
     expect(updateLocation).toHaveBeenCalledWith('loc-1', {
@@ -132,5 +132,58 @@ describe('SpecialDaysCard', () => {
     await user.click(await screen.findByRole('button', { name: 'Ta bort Torsdag 24 december' }))
     await user.click(screen.getByRole('button', { name: 'Spara dagar' }))
     expect(updateLocation).toHaveBeenCalledWith('loc-1', { specialDays: null })
+  })
+
+  it('Spara dagar follows changes: off when clean, on after a change, off again after reverting', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    getLocation.mockResolvedValue({ locationId: 'loc-1', specialDays: [{ date: '2026-12-24', kind: 'closed' }] })
+    render(<SpecialDaysCard locationId="loc-1" isOwner />)
+    const save = await screen.findByRole('button', { name: 'Spara dagar' })
+    expect(save).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Ångra ändringar' })).toBeNull()
+
+    // A typed but not added day does not count.
+    await user.type(screen.getByLabelText('Datum'), '31/12/2026')
+    expect(save).toBeDisabled()
+
+    // Adding a day is a change.
+    await user.click(screen.getByRole('button', { name: 'Lägg till' }))
+    expect(save).toBeEnabled()
+    expect(screen.getByText('Osparade ändringar')).toBeInTheDocument()
+
+    // Removing it again brings back the saved list: clean.
+    await user.click(screen.getByRole('button', { name: 'Ta bort Torsdag 31 december' }))
+    expect(save).toBeDisabled()
+    expect(screen.queryByText('Osparade ändringar')).toBeNull()
+
+    // Removing a saved day is a change too.
+    await user.click(screen.getByRole('button', { name: 'Ta bort Torsdag 24 december' }))
+    expect(save).toBeEnabled()
+  })
+
+  it('Ångra ändringar restores the saved days', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    getLocation.mockResolvedValue({ locationId: 'loc-1', specialDays: [{ date: '2026-12-24', kind: 'closed', note: 'Julafton' }] })
+    render(<SpecialDaysCard locationId="loc-1" isOwner />)
+    await user.click(await screen.findByRole('button', { name: 'Ta bort Torsdag 24 december' }))
+    expect(screen.getByText('Inga avvikande dagar.')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Ångra ändringar' }))
+    expect(screen.getByText(/Stängt · ”Julafton”/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Spara dagar' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Ångra ändringar' })).toBeNull()
+    expect(updateLocation).not.toHaveBeenCalled()
+  })
+
+  it('a failed save keeps the changes and offers Spara igen', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    getLocation.mockResolvedValue({ locationId: 'loc-1', specialDays: [{ date: '2026-12-24', kind: 'closed' }] })
+    updateLocation.mockRejectedValueOnce(new Error('nätverket'))
+    render(<SpecialDaysCard locationId="loc-1" isOwner />)
+    await user.click(await screen.findByRole('button', { name: 'Ta bort Torsdag 24 december' }))
+    await user.click(screen.getByRole('button', { name: 'Spara dagar' }))
+    expect(await screen.findByRole('button', { name: 'Spara igen' })).toBeEnabled()
+    expect(screen.getByText('Inga avvikande dagar.')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
   })
 })

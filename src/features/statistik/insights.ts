@@ -366,7 +366,7 @@ export function signals(
       id: 'lead',
       weight: 30,
       title: `${fmtPct((lateLead / ahead) * 100)} bokar samma dag eller dagen före`,
-      text: 'Gästerna bestämmer sig sent. Lägg ut erbjudanden 1-2 dagar före, inte en vecka innan.',
+      text: 'Gästerna bestämmer sig sent. Lägg ut erbjudanden 1\u2060-\u20602 dagar före, inte en vecka innan.',
       to: marketing ? '/marknadsforing' : '/bokningar',
       linkLabel: marketing ? 'Planera ett utskick' : 'Till bokningarna',
     })

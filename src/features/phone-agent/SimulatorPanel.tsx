@@ -47,7 +47,7 @@ export default function SimulatorPanel({ locationId }: { locationId: string }) {
       </ol>
       <form onSubmit={send} aria-label="Prova assistenten">
         <Field label="Du säger">
-          <Input value={text} maxLength={500} placeholder="Hej, jag vill boka ett bord för fyra imorgon klockan 19" onChange={(e) => setText(e.target.value)} />
+          <Input value={text} maxLength={500} placeholder="Boka bord för fyra imorgon kl 19" onChange={(e) => setText(e.target.value)} />
         </Field>
         <Bar variant="action" label="Skicka">
           <Button variant="ghost" type="button" onClick={() => { setSession(newId()); setLines([]) }}>Börja om</Button>

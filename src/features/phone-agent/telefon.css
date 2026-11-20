@@ -18,16 +18,21 @@
 }
 .telefon-facts {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  /* Rubriken på en rad ("AI-upplysning" bryts aldrig mitt i), värdet tar resten. */
+  grid-template-columns: max-content minmax(0, 1fr);
   gap: var(--bq-space-2) var(--bq-space-4);
   margin: 0 0 var(--bq-space-4);
 }
 .telefon-facts dt {
   color: var(--bq-muted);
+  white-space: nowrap;
 }
 .telefon-facts dd {
   margin: 0;
+  min-width: 0;
   color: var(--bq-ink);
+  overflow-wrap: break-word;
+  font-variant-numeric: tabular-nums;
 }
 .telefon-sub {
   margin: var(--bq-space-4) 0 var(--bq-space-2);
@@ -54,6 +59,13 @@
   font-size: var(--bq-text-xs);
   color: var(--bq-muted);
 }
+.telefon-turn {
+  min-width: 0;
+}
+.telefon-turn > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .telefon-recording {
   display: flex;
   flex-wrap: wrap;
@@ -70,14 +82,29 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: var(--bq-space-2);
+  align-items: center;
+  gap: var(--bq-space-2) var(--bq-space-4);
   padding: var(--bq-space-2) 0;
   border-bottom: var(--bq-bar-hairline) solid var(--bq-line);
 }
+.telefon-callbacks li > div:first-child {
+  flex: 1 1 18em;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .telefon-callbacks__actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--bq-space-3);
+  gap: var(--bq-space-2) var(--bq-space-3);
+  min-width: 0;
+}
+/* Ring upp: hela raden är tryckbar på surfplattan (minst 44 px). */
+.telefon-callbacks__actions > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  white-space: nowrap;
 }
 .telefon-fixed {
   margin: 0;
@@ -88,6 +115,13 @@
   display: flex;
   align-items: center;
   gap: var(--bq-space-2);
+  min-height: 44px;
+}
+.telefon-check > input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
 }
 .telefon-hours {
   border: 0;
@@ -133,6 +167,11 @@
 .telefon-sim {
   display: grid;
   gap: var(--bq-space-3);
+}
+/* Arabisk skrift ser mindre ut än latinsk i samma storlek: lite större och luftigare. */
+.telefon-turn > span[lang]:is(:lang(ar), :lang(fa), :lang(ur)) {
+  font-size: 1.15em;
+  line-height: 1.7;
 }
 .telefon-turn__lang {
   font-style: italic;
@@ -180,7 +219,24 @@
   min-width: 0;
   color: var(--bq-muted);
   text-align: right;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+}
+/* Numret bryts aldrig mitt i ("+46 10 000 00" och "01" på var sin rad). */
+.telefon-checklist__value .telefon-mono {
+  white-space: nowrap;
+}
+/* Smalt kort (telefon, iPad mini stående): värdet under namnet i stället för bredvid. */
+.telefon-checklist {
+  container-type: inline-size;
+}
+@container (max-width: 399px) {
+  .telefon-checklist__row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .telefon-checklist__value {
+    grid-column: 2;
+    text-align: left;
+  }
 }
 .telefon-big {
   min-height: 52px;
@@ -296,8 +352,8 @@
   accent-color: var(--bq-accent);
 }
 .telefon-card:has(input:checked) {
-  border-color: var(--bq-ink);
-  box-shadow: inset 0 0 0 1px var(--bq-ink);
+  background: color-mix(in srgb, var(--bq-ink) 10%, var(--bq-surface));
+  box-shadow: inset 0 0 0 1px transparent;
 }
 .telefon-card:has(input:focus-visible) {
   outline: 2px solid var(--bq-focus);
@@ -318,9 +374,10 @@
   color: var(--bq-ink);
   overflow-wrap: anywhere;
 }
-/* I stegen: numret på en rad, som man läser upp det. */
+/* I stegen: numret på en rad, som man läser upp det. Storleken följer
+   stegets egen bredd (inte fönstret), så numret ryms även bredvid sidomenyn. */
 .telefon-howto .telefon-bignumber__value {
-  font-size: clamp(18px, 5.4vw, 30px);
+  font-size: clamp(18px, 10cqi, 30px);
   white-space: nowrap;
 }
 .telefon-tag {
@@ -355,6 +412,9 @@
   gap: var(--bq-space-2);
 }
 .telefon-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   padding: 0;
   border: 0;
   background: none;
@@ -393,13 +453,6 @@
   }
   .telefon-foot > span:empty {
     display: none;
-  }
-  .telefon-checklist__row {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-  .telefon-checklist__value {
-    grid-column: 2;
-    text-align: left;
   }
 }
 
@@ -456,6 +509,7 @@
   display: grid;
   gap: var(--bq-space-3);
   min-width: 0;
+  container-type: inline-size;
 }
 .telefon-howto__icon {
   color: var(--bq-muted);
@@ -584,4 +638,169 @@
 }
 .telefon-card > input {
   flex-shrink: 0;
+}
+
+/* --- Utskriften: språkval och språkchip ---------------------------------------------- */
+.telefon-transcript__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bq-space-2) var(--bq-space-4);
+  margin: var(--bq-space-4) 0 var(--bq-space-2);
+}
+.telefon-transcript__head .telefon-sub {
+  flex: none;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bq-space-1);
+}
+.telefon-transcript__head > .bq-bar {
+  max-width: 100%;
+}
+.telefon-transcript__note {
+  margin: 0 0 var(--bq-space-2);
+  color: var(--bq-muted);
+  font-size: var(--bq-text-sm);
+}
+.telefon-turn__who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bq-space-2);
+}
+.telefon-turn__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--bq-space-2);
+  border-radius: var(--bq-radius-pill);
+  border: var(--bq-bar-hairline) solid var(--bq-line-strong);
+  background: var(--bq-surface-2);
+  color: var(--bq-ink);
+  font-size: var(--bq-text-xs);
+  line-height: 1.5;
+}
+
+/* --- Samtalslistan ------------------------------------------------------------------- */
+/* Tabellen när kortet är brett (surfplatta liggande, dator): datum, nummer och
+   längd på en rad, sammanfattningen bryts. Smalare kort (telefon, surfplatta
+   stående): varje samtal blir ett litet kort, inget gömt bakom sidled-scroll. */
+.telefon-calls-wrap {
+  container-type: inline-size;
+}
+.telefon-calls.data-table {
+  min-width: 0;
+}
+.telefon-calls__when,
+.telefon-calls__from,
+.telefon-calls__len {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.telefon-calls__summary {
+  min-width: 16em;
+  overflow-wrap: anywhere;
+  /* Inga automatiska bindestreck: de hamnar annars mitt i adresser och
+     e-post och ger fel adress. */
+  hyphens: manual;
+}
+/* Utfallet: brickan och tillägget ("Erbjöd annan tid") hålls ihop var för sig,
+   tillägget hamnar helt under brickan i stället för att lämna ett ord ensamt. */
+.telefon-calls__outcome .status-badge {
+  white-space: nowrap;
+}
+.telefon-calls__outcome .cell-muted {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+@container (max-width: 639px) {
+  .telefon-calls.data-table,
+  .telefon-calls tbody {
+    display: block;
+  }
+  .telefon-calls thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .telefon-calls tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--bq-space-2) var(--bq-space-4);
+    padding: var(--bq-space-3) 0;
+    border-top: var(--bq-bar-hairline) solid var(--bq-line);
+  }
+  .telefon-calls tbody tr:first-child {
+    border-top: 0;
+  }
+  .telefon-calls td {
+    display: block;
+    min-width: 0;
+    padding: 0 !important;
+    border: 0 !important;
+    background: none !important;
+  }
+  .telefon-calls td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    color: var(--bq-muted);
+    font-family: var(--bq-font-sans, inherit);
+    font-size: var(--bq-text-xs);
+    font-weight: 500;
+  }
+  .telefon-calls__when {
+    grid-column: 1;
+    font-weight: 600;
+  }
+  .telefon-calls__len {
+    grid-column: 2;
+    grid-row: 1;
+    text-align: right;
+  }
+  .telefon-calls__len::before {
+    display: inline !important;
+    margin: 0 0.4em 0 0 !important;
+  }
+  .telefon-calls__from,
+  .telefon-calls__outcome,
+  .telefon-calls__summary {
+    grid-column: 1 / -1;
+  }
+  .telefon-calls__summary {
+    min-width: 0;
+  }
+  .telefon-calls__summary:empty {
+    display: none !important;
+  }
+}
+
+/* --- Surfplatta och telefon med pekskärm: minst 44 px att trycka på ------------------ */
+@media (pointer: coarse), (any-pointer: coarse) {
+  .telefon-section .bq-bar__item,
+  .telefon-transcript__head .bq-bar__item,
+  [id^='telefon-panel-'] .bq-btn,
+  [id^='telefon-panel-'] .btn,
+  .bq-bar--banner:has(+ .telefon-section) .bq-btn {
+    min-height: 44px;
+  }
+  [id^='telefon-panel-'] .info-tooltip .info-tooltip-trigger,
+  .telefon-transcript__head .info-tooltip .info-tooltip-trigger {
+    box-sizing: content-box;
+    width: 22px;
+    height: 22px;
+    margin: -11px;
+    border: 11px solid transparent;
+    background-clip: padding-box;
+  }
+}
+
+/* Tiderna: ett tidsspann ("sön 02:00-10:00") bryts aldrig, raden bryts
+   bara efter kommatecknen. */
+.telefon-hours__part {
+  white-space: nowrap;
 }

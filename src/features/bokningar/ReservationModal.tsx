@@ -36,6 +36,8 @@ import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { Select } from '../../shared/Select'
 import { RefundDialog } from '../../shared/RefundDialog'
+import { BackButton } from '../../shared/BackButton'
+import { useUnsavedGuard } from '../../shared/unsaved'
 
 type Panel = null | 'no_show' | 'cancel' | 'edit' | 'extend'
 
@@ -260,7 +262,7 @@ export function ReservationModal({
                 {actions.retryCharge && (
                   <button
                     type="button"
-                    className="btn primary square"
+                    className={`btn ${actions.arrive ? 'outline' : 'primary'} square`}
                     disabled={busy}
                     onClick={() => run(() => paymentAction(r.locationId, r.reservationId, 'charge'))}
                   >
@@ -497,9 +499,7 @@ function ExtendPanel({
         <ErrorNote text={error} />
       )}
       <div className="modal-actions">
-        <button type="button" className="btn outline square" onClick={onCancel}>
-          Tillbaka
-        </button>
+        <BackButton onClick={onCancel} />
         <button type="submit" className="btn primary square" disabled={busy || end === current}>
           {busy ? 'Sparar…' : end < current ? 'Korta bokningen' : 'Förläng'}
         </button>
@@ -532,9 +532,7 @@ function PanelButtons({
 }) {
   return (
     <div className="modal-actions">
-      <button type="button" className="btn outline square" onClick={onCancel}>
-        Tillbaka
-      </button>
+      <BackButton onClick={onCancel} />
       <button
         type="button"
         className={`btn ${danger ? 'danger-outline' : 'primary'} square`}
@@ -603,6 +601,9 @@ function EditForm({
   }
 
   const edit = changes()
+  // Spara följer ändringarna: avstängd tills något skiljer sig från bokningen.
+  const dirty = Object.keys(edit).some((k) => k !== 'notifyGuest')
+  useUnsavedGuard(dirty)
   const valid =
     sizeOk &&
     !overSeats &&
@@ -613,11 +614,7 @@ function EditForm({
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    if (!valid || busy) return
-    if (Object.keys(edit).length === 0) {
-      onCancel()
-      return
-    }
+    if (!valid || busy || !dirty) return
     setBusy(true)
     setError(null)
     try {
@@ -735,12 +732,10 @@ function EditForm({
       {error && (
         <ErrorNote text={error} />
       )}
-      <div className="modal-actions">
-        <button type="button" className="btn outline square" onClick={onCancel}>
-          Tillbaka
-        </button>
-        <button type="submit" className="btn primary square" disabled={!valid || busy}>
-          {busy ? 'Sparar…' : 'Spara'}
+      <div className="modal-actions modal-actions--pinned">
+        <BackButton onClick={onCancel} />
+        <button type="submit" className="btn primary square" disabled={!dirty || !valid || busy}>
+          {busy ? 'Sparar…' : error ? 'Spara igen' : 'Spara'}
         </button>
       </div>
     </form>

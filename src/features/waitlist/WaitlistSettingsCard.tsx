@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Bar, Button, Card, Field, Input, toast } from '@booqy/brand'
+import { Card, Field, Input } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { SkelCard } from '../../shared/Skeleton'
 import { useTenant } from '../../shared/tenant'
+import { SaveBar } from '../../shared/SaveBar'
+import { useDirtyForm } from '../../shared/dirtyForm'
 import { ERRORS, getQueue, saveSettings, type Settings } from './api'
 import './waitlist.css'
 
@@ -20,14 +22,18 @@ export default function WaitlistSettingsCard({ locationId }: { locationId: strin
 }
 
 function SettingsForm({ locationId }: { locationId: string }) {
+  const [saved, setSaved] = useState<Settings | null>(null)
   const [draft, setDraft] = useState<Settings | null>(null)
   const [saving, setSaving] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const dirty = useDirtyForm(draft, saved)
 
   const load = useCallback(() => {
     let live = true
     setLoadError(null)
-    getQueue(locationId, today()).then((q) => { if (live) setDraft(q.settings) })
+    getQueue(locationId, today()).then((q) => { if (live) { setSaved(q.settings); setDraft(q.settings) } })
       .catch((err) => { if (live) setLoadError(errorText(err, 'Köinställningarna kunde inte visas.', ERRORS)) })
     return () => { live = false }
   }, [locationId])
@@ -44,35 +50,54 @@ function SettingsForm({ locationId }: { locationId: string }) {
     e.preventDefault()
     if (!draft) return
     setSaving(true)
+    setSaveError(null)
+    setNotice(null)
     try {
-      setDraft(await saveSettings(locationId, draft))
-      toast('Sparat.', { tone: 'success' })
+      const next = await saveSettings(locationId, draft)
+      setSaved(next)
+      setDraft(next)
+      setNotice('Sparat.')
     } catch (err) {
-      toast(errorText(err, 'Köinställningarna sparades inte.', ERRORS), { tone: 'danger' })
+      setSaveError(errorText(err, 'Köinställningarna sparades inte.', ERRORS))
     } finally {
       setSaving(false)
     }
   }
 
+  function edit(next: Settings) {
+    setDraft(next)
+    setNotice(null)
+    setSaveError(null)
+  }
+
   return (
     <Card title="Kö">
-      <form className="form-grid" onSubmit={save} aria-label="Köinställningar">
+      <form className="form-grid queue-form" onSubmit={save} aria-label="Köinställningar">
         <fieldset className="queue-checks">
           <legend>Kön</legend>
-          <label><input type="checkbox" checked={draft.enabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} /> På</label>
-          <label><input type="checkbox" checked={draft.publicJoin} onChange={(e) => setDraft({ ...draft, publicJoin: e.target.checked })} /> Kö från hemsidan</label>
+          <label><input type="checkbox" checked={draft.enabled} onChange={(e) => edit({ ...draft, enabled: e.target.checked })} /> På</label>
+          <label><input type="checkbox" checked={draft.publicJoin} onChange={(e) => edit({ ...draft, publicJoin: e.target.checked })} /> Kö från hemsidan</label>
         </fieldset>
         <Field label="Hålltid (minuter)" hint="5-30 min" required>
           <Input type="number" min={5} max={30} value={String(draft.holdMinutes)} required
-            onChange={(e) => setDraft({ ...draft, holdMinutes: Number(e.target.value) })} />
+            onChange={(e) => edit({ ...draft, holdMinutes: Number(e.target.value) })} />
         </Field>
         <Field label="Max antal i kö" hint="1-200 sällskap" required>
           <Input type="number" min={1} max={200} value={String(draft.maxWaiting)} required
-            onChange={(e) => setDraft({ ...draft, maxWaiting: Number(e.target.value) })} />
+            onChange={(e) => edit({ ...draft, maxWaiting: Number(e.target.value) })} />
         </Field>
-        <Bar variant="action" label="Spara köinställningar" className="queue-actions">
-          <Button type="submit" busy={saving} busyLabel="Sparar…">Spara</Button>
-        </Bar>
+        {saveError && <div className="queue-actions"><ErrorNote text={saveError} /></div>}
+        <SaveBar
+          className="queue-actions"
+          dirty={dirty}
+          busy={saving}
+          notice={notice}
+          failed={Boolean(saveError)}
+          onDiscard={() => {
+            setDraft(saved)
+            setSaveError(null)
+          }}
+        />
       </form>
     </Card>
   )

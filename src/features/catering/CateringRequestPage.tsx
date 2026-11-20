@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { sameData, useLiveRefresh } from '../../shared/live'
 import { ChangedNote } from '../../shared/ChangedNote'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useTenant } from '../../shared/tenant'
 import {
   EQUIPMENT_RETURN_LABEL,
   cancelRequest,
+  createOfferVersion,
   declineRequest,
   documentLink,
   errorText,
@@ -18,11 +19,12 @@ import {
   markDelivered,
   markInvoicePaid,
   offerFromRequest,
+  offerStep,
   offerTotals,
   refundRequest,
   saveDraft,
   vatRateFor,
-  sendOffer,
+  sendOfferToCustomer,
   signatureLink,
   statusClass,
   statusLabel,
@@ -30,7 +32,9 @@ import {
 import type { CateringDish, CateringPackage, CateringRequest, EquipmentReturn, OfferInput } from './cateringApi'
 import { MAX_ITEM_PRICE_KR } from '../meny/menuApi'
 import './catering.css'
-import { RestaurantSigning } from './RestaurantSigning'
+import { OfferStepList, OfferSteps } from './OfferSteps'
+import { InfoTooltip } from '../../shared/InfoTooltip'
+import { Icon } from '../../shared/Icon'
 import { DateInput } from '../../shared/DateInput'
 import { focusErrorField } from '../../shared/errors'
 import { Num } from '../../shared/motion/Num'
@@ -39,6 +43,10 @@ import { ErrorNote } from '../../shared/ErrorNote'
 import { Select } from '../../shared/Select'
 import { KronorInput } from './KronorInput'
 import { RefundDialog } from '../../shared/RefundDialog'
+import { BackButton } from '../../shared/BackButton'
+import { useDirtyForm } from '../../shared/dirtyForm'
+import { useUnsavedGuard } from '../../shared/unsaved'
+import '../../shared/saveBar.css'
 
 /** API:ts fältnamn i offerten -> fältets id, så ett fel flyttar fokus dit. */
 const OFFER_FIELD_IDS: Record<string, string> = {
@@ -51,6 +59,8 @@ const EDITABLE = ['requested', 'change_requested', 'offer_sent']
 const ACTION_LABEL: Record<string, string> = {
   requested: 'Förfrågan skickad',
   offer_sent: 'Offert skickad',
+  offer_version: 'Offertversion klar för signering',
+  offer_sent_to_customer: 'Skickad till kunden',
   change_requested: 'Kunden bad om ändringar',
   rejected: 'Kunden avböjde',
   declined: 'Nekad',
@@ -73,6 +83,14 @@ const ACTION_LABEL: Record<string, string> = {
   cancelled: 'Avbokad',
   expired: 'Gick ut',
   refunded: 'Återbetalning',
+}
+
+/** Var en version står: varje version signeras av er och skickas för sig. */
+function versionState(r: CateringRequest, version: number): string {
+  if (r.signature && r.offer?.version === version && r.status !== 'offer_sent') return 'signerad av båda'
+  if (version !== r.currentOfferVersion || r.signing?.offerVersion !== version) return 'ersatt'
+  if (!r.signing.restaurant) return 'ej signerad av er'
+  return r.sentToCustomerAt ? 'skickad till kunden' : 'signerad av er, ej skickad'
 }
 
 /** Betald via bankgiro: en återbetalning görs för hand, inte via Stripe. */
@@ -101,10 +119,14 @@ export default function CateringRequestPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [sendError, setSendError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState<'decline' | 'cancel' | null>(null)
   const [refunding, setRefunding] = useState(false)
   const [reason, setReason] = useState('')
+  // Offerten mot den sparade: Spara utkast följer ändringarna och adminen frågar innan man lämnar sidan.
+  const offerDirty = useDirtyForm(offer, offerBase ? offerFromRequest(offerBase) : null)
+  useUnsavedGuard(offerDirty)
   const returnedFromSigning = new URLSearchParams(useLocation().search).get('signering') === 'klar'
   const [menu, setMenu] = useState<{ dishes: CateringDish[]; packages: CateringPackage[] }>({ dishes: [], packages: [] })
 
@@ -173,7 +195,7 @@ export default function CateringRequestPage() {
   }, [isOwner, locationId])
 
   const signed = useCallback((r?: CateringRequest) => {
-    setNotice('Signerad. Offerten är skickad till kunden (mejl och sms).')
+    setNotice('Signerad. Nu kan ni skicka offerten till kunden.')
     if (r) {
       setRequest(r)
       setOffer(offerFromRequest(r))
@@ -188,6 +210,22 @@ export default function CateringRequestPage() {
       window.location.assign((await documentLink(locationId, requestId, docId)).url)
     } catch (err) {
       setError(errorText(err, 'Dokumentet kunde inte öppnas.'))
+    }
+  }
+
+  /** Steg 3: felet står vid Skicka-knappen, inte längre ner i offerten. */
+  async function sendToCustomer(version: number) {
+    setBusy(true)
+    setError(null)
+    setNotice(null)
+    setSendError(null)
+    try {
+      await sendOfferToCustomer(locationId, requestId, version)
+    } catch (err) {
+      setSendError(errorText(err, 'Offerten skickades inte.'))
+    } finally {
+      await load()
+      setBusy(false)
     }
   }
 
@@ -216,8 +254,8 @@ export default function CateringRequestPage() {
       <>
         <AdminTopbar title="Catering" />
         <main className="admin-main">
+          <div className="back-row"><BackButton to="/catering">Tillbaka till förfrågningarna</BackButton></div>
           <ErrorNote text={loadError} onRetry={() => { setLoadError(null); void load() }} />
-          <Link to="/catering">Till alla förfrågningar</Link>
         </main>
       </>
     )
@@ -251,6 +289,7 @@ export default function CateringRequestPage() {
     if (line) setOffer({ ...offer, lines: [...offer.lines, line] })
   }
   const nextVersion = (request.currentOfferVersion ?? 0) + 1
+  const step = offerStep(request)
   const setLine = (i: number, patch: Partial<OfferInput['lines'][number]>) =>
     setOffer({ ...offer, lines: offer.lines.map((l, n) => (n === i ? { ...l, ...patch } : l)) })
   // Offerten sparades på annat håll medan du ändrade din: din står kvar, deras visas på en rad.
@@ -271,9 +310,9 @@ export default function CateringRequestPage() {
         subtitle={`${formatDate(request.deliveryDate)} kl ${request.deliveryTime} · ${
           request.fulfilment === 'delivery' ? 'Leverans' : 'Avhämtning'
         }`}
-        actions={<Link className="btn outline square" to="/catering">Alla förfrågningar</Link>}
       />
       <main className="admin-main catering-request">
+        <div className="back-row"><BackButton to="/catering">Tillbaka till förfrågningarna</BackButton></div>
         <div className="settings-row">
           <section className="admin-card table-card">
             <div className="card-head">
@@ -299,9 +338,9 @@ export default function CateringRequestPage() {
                 <div>
                   <dt>Adress</dt>
                   <dd>
-                    {request.deliveryAddress.street}, {request.deliveryAddress.postalCode} {request.deliveryAddress.city}
+                    {request.deliveryAddress.street}, <span className="catering-nowrap">{request.deliveryAddress.postalCode}</span> {request.deliveryAddress.city}
                     {request.request.distanceKm != null
-                      ? ` (${String(request.request.distanceKm).replace('.', ',')} km)`
+                      ? <> <span className="catering-nowrap">({String(request.request.distanceKm).replace('.', ',')} km)</span></>
                       : request.deliveryZone === 'beyond' ? ' (utanför området)' : ''}
                   </dd>
                 </div>
@@ -362,18 +401,29 @@ export default function CateringRequestPage() {
           <p className="catering-callout">Kunden avböjde offerten{request.rejectReason ? `: ”${request.rejectReason}”` : '.'}</p>
         )}
 
-        {isOwner && request.status === 'offer_sent' && request.signing && !request.signing.restaurant
-          && request.signing.offerVersion === request.currentOfferVersion && (
-          <RestaurantSigning request={request} onSigned={signed} returned={returnedFromSigning} />
+        {step > 1 && EDITABLE.includes(request.status) && (
+          <OfferSteps request={request} canAct={isOwner} returned={returnedFromSigning} onSigned={signed}
+            sending={busy} sendError={sendError}
+            onSend={() => void sendToCustomer(request.currentOfferVersion ?? 0)} />
         )}
 
         {editable && (
           <section className="admin-card table-card">
             <div className="card-head">
               <div>
-                <h2 className="card-title">
-                  {request.status === 'requested' ? 'Offert' : `Ny offertversion (v${nextVersion})`}
-                </h2>
+                <div className="title-info">
+                  <h2 className="card-title">
+                    {request.status === 'requested' ? 'Offert' : `Ny offertversion (v${nextVersion})`}
+                  </h2>
+                  {nextVersion > 1 && (
+                    <>
+                      <span className="offer-resign-chip"><Icon name="lock" size={14} />Ny signatur krävs</span>
+                      <InfoTooltip label="Ny signatur krävs">
+                        {`v${nextVersion} måste signeras av er med BankID innan den kan skickas. När v${nextVersion} är klar kan kunden inte längre signera v${nextVersion - 1}.`}
+                      </InfoTooltip>
+                    </>
+                  )}
+                </div>
                 <p className="cell-muted">
                   Priser inkl. moms
                 </p>
@@ -388,21 +438,24 @@ export default function CateringRequestPage() {
                 )}
               </div>
             </div>
+            {step === 1 && <div className="offer-steps-editor"><OfferStepList step={1} /></div>}
             <div className="table-scroll" tabIndex={0}>
               <table className="data-table offer-table">
                 <thead>
-                  <tr><th>Rad</th><th>Á-pris (kr)</th><th>Antal</th><th>Summa</th><th /></tr>
+                  <tr><th className="offer-name">Rad</th><th className="offer-price">Á-pris (kr)</th><th className="offer-qty">Antal</th><th className="offer-sum">Summa</th><th className="offer-remove" /></tr>
                 </thead>
                 <tbody>
                   {offer.lines.map((l, i) => (
                     <tr key={i}>
-                      <td><input aria-label={`Rad ${i + 1} namn`} value={l.name} onChange={(e) => setLine(i, { name: e.target.value })} /></td>
-                      <td><KronorInput aria-label={`Rad ${i + 1} pris`} value={l.unitPrice}
+                      <td className="offer-name"><textarea aria-label={`Rad ${i + 1} namn`} rows={1} title={l.name} value={l.name} ref={fitHeight} onInput={(e) => fitHeight(e.currentTarget)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}
+                        onChange={(e) => setLine(i, { name: e.target.value.replace(/\s*\n\s*/g, ' ') })} /></td>
+                      <td className="offer-price" data-label="Á-pris (kr)"><KronorInput aria-label={`Rad ${i + 1} pris`} value={l.unitPrice}
                         onValue={(unitPrice) => setLine(i, { unitPrice })} /></td>
-                      <td><input aria-label={`Rad ${i + 1} antal`} inputMode="numeric" value={String(l.quantity)}
+                      <td className="offer-qty" data-label="Antal"><input aria-label={`Rad ${i + 1} antal`} inputMode="numeric" value={String(l.quantity)}
                         onChange={(e) => setLine(i, { quantity: Number(e.target.value.replace(/\D/g, '')) || 0 })} /></td>
-                      <td><Num>{kronor(Math.round(l.unitPrice * 100) * l.quantity)}</Num></td>
-                      <td>
+                      <td className="offer-sum" data-label="Summa"><Num>{kronor(Math.round(l.unitPrice * 100) * l.quantity)}</Num></td>
+                      <td className="offer-remove">
                         <button type="button" className="link-action danger" aria-label={`Ta bort rad ${i + 1}`}
                           onClick={() => setOffer({ ...offer, lines: offer.lines.filter((_, n) => n !== i) })}>Ta bort</button>
                       </td>
@@ -498,21 +551,34 @@ export default function CateringRequestPage() {
             )}
             <ErrorNote text={error} />
             {notice && <p className="save-notice" role="status">{notice}</p>}
-            <span className="row-actions">
+            <div className={`save-bar${offerDirty ? ' save-bar--dirty' : ''}`}>
+              {offerDirty && !busy && (
+                <span className="save-bar-status" role="status">
+                  <i className="save-bar-dot" aria-hidden="true" />
+                  Osparade ändringar
+                </span>
+              )}
+              {offerDirty && (
+                <button type="button" className="btn outline square" disabled={busy}
+                  onClick={() => { if (offerBase) setOffer(offerFromRequest(offerBase)); setError(null) }}>
+                  Ångra ändringar
+                </button>
+              )}
               <button type="button" className="btn primary square" disabled={busy || !offerValid}
-                onClick={() => void run(() => sendOffer(locationId, requestId, offer), 'Offerten är klar. Signera den, sedan går den till kunden.')}>
-                {busy ? 'Skickar…' : `Skicka offert${request.currentOfferVersion ? ` v${nextVersion}` : ''}`}
+                onClick={() => void run(() => createOfferVersion(locationId, requestId, offer),
+                  `v${nextVersion} är klar. Signera den med BankID.`)}>
+                {busy ? 'Sparar…' : 'Nästa: signera'}
               </button>
-              <button type="button" className="btn outline square" disabled={busy || !offerValid}
+              <button type="button" className="btn outline square" disabled={busy || !offerValid || !offerDirty}
                 onClick={() => void run(() => saveDraft(locationId, requestId, offer), 'Utkastet är sparat.')}>
                 Spara utkast
               </button>
-              {confirm !== 'decline' ? (
+              {confirm !== 'decline' && !offerDirty ? (
                 <button type="button" className="btn danger-outline square" disabled={busy} onClick={() => setConfirm('decline')}>
                   Neka förfrågan
                 </button>
               ) : null}
-            </span>
+            </div>
             {confirm === 'decline' && (
               <div className="catering-confirm" role="group" aria-label="Neka förfrågan">
                 <label htmlFor="decline-reason">Meddelande till kunden (valfritt)</label>
@@ -532,7 +598,7 @@ export default function CateringRequestPage() {
         {request.offers.length > 0 && (
           <section className="admin-card table-card">
             <div className="card-head">
-              <h2 className="card-title">Skickade offerter</h2>
+              <h2 className="card-title">Offertversioner</h2>
               {request.signing?.offerVersion === request.currentOfferVersion && (
                 <button type="button" className="btn outline square" onClick={() => void openDocument('offer')}>
                   Offert v{request.currentOfferVersion} (PDF)
@@ -542,13 +608,11 @@ export default function CateringRequestPage() {
             <ul className="catering-versions">
               {[...request.offers].reverse().map((o) => (
                 <li key={o.version}>
-                  <strong>v{o.version}</strong> · {kronor(o.totals.total)}
-                  {o.equipmentReturn === 'not_cleaned' ? ` (varav rengöring ${kronor(o.totals.cleaningFee)})` : ''}
-                  {' '}· giltig t.o.m. {o.validUntil}
-                  {o.createdAt ? ` · skickad ${o.createdAt.slice(0, 16).replace('T', ' ')}` : ''}
-                  {request.signature && request.offer?.version === o.version && request.status !== 'offer_sent'
-                    ? ' · signerad'
-                    : request.signing?.offerVersion === o.version && request.signing.restaurant ? ' · signerad av er' : ''}
+                  <strong>v{o.version}</strong> · <span className="catering-nowrap">{kronor(o.totals.total)}</span>
+                  {o.equipmentReturn === 'not_cleaned' ? <> (varav rengöring <span className="catering-nowrap">{kronor(o.totals.cleaningFee)}</span>)</> : ''}
+                  {' '}· giltig t.o.m. <span className="catering-nowrap">{o.validUntil}</span>
+                  {o.createdAt ? <> · skapad <span className="catering-nowrap">{o.createdAt.slice(0, 16).replace('T', ' ')}</span></> : ''}
+                  {' · '}{versionState(request, o.version)}
                 </li>
               ))}
             </ul>
@@ -703,4 +767,11 @@ export default function CateringRequestPage() {
       </main>
     </>
   )
+}
+
+/** Radens namn växer på höjden med texten där field-sizing saknas (äldre Safari). */
+function fitHeight(el: HTMLTextAreaElement | null) {
+  if (!el || (typeof CSS !== 'undefined' && CSS.supports?.('field-sizing', 'content'))) return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
 }

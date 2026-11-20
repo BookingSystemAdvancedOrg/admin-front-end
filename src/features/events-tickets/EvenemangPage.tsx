@@ -20,6 +20,7 @@ import EventEditor from './EventEditor'
 import InslappPage from './InslappPage'
 import { eventUrl, printPoster } from './posterPrint'
 import './evenemang.css'
+import { BackButton } from '../../shared/BackButton'
 
 /**
  * Evenemang (planfunktionen "events", ägare och personal). /evenemang listar,
@@ -84,7 +85,7 @@ function EventList({ locationId, isOwner }: { locationId: string; isOwner: boole
       ) : null}
       {events?.length ? (
         <div className="table-scroll" tabIndex={0}>
-          <table className="data-table">
+          <table className="data-table evenemang-table">
             <thead><tr><th scope="col">Evenemang</th><th scope="col">Nästa tillfälle</th><th scope="col">Sålda</th><th scope="col">Status</th></tr></thead>
             <tbody>
               {events.map((e) => (
@@ -97,9 +98,9 @@ function EventList({ locationId, isOwner }: { locationId: string; isOwner: boole
                   onKeyDown={(ev) => { if (isRowOpenKey(ev)) { ev.preventDefault(); navigate(`/evenemang/${encodeURIComponent(e.eventId)}`) } }}
                 >
                   <td className="cell-strong">{e.title}</td>
-                  <td>{e.nextOccurrence ? when(e.nextOccurrence) : '-'}</td>
-                  <td>{e.sold} av {e.capacity}</td>
-                  <td><span className="status-badge">{STATUS_LABEL[e.status]}</span></td>
+                  <td data-label="Nästa tillfälle">{e.nextOccurrence ? when(e.nextOccurrence) : '-'}</td>
+                  <td data-label="Sålda">{e.sold} av {e.capacity}</td>
+                  <td data-label="Status"><span className="status-badge">{STATUS_LABEL[e.status]}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -144,15 +145,15 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
   if (missing && !event) {
     return (
       <section className="admin-card table-card">
+        <div className="back-row"><BackButton to="/evenemang">Tillbaka till evenemangen</BackButton></div>
         <h2 className="card-title">Evenemanget finns inte</h2>
-        <Link className="card-link" to="/evenemang">Tillbaka till evenemangen</Link>
       </section>
     )
   }
   if (!event && loadError) {
     return (
       <>
-        <p className="evenemang-back"><Link to="/evenemang">Tillbaka till evenemangen</Link></p>
+        <div className="back-row"><BackButton to="/evenemang">Tillbaka till evenemangen</BackButton></div>
         <ErrorNote text={loadError} onRetry={() => { setLoadError(null); void load() }} />
       </>
     )
@@ -196,7 +197,7 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
 
   return (
     <>
-      <p className="evenemang-back"><Link to="/evenemang">Alla evenemang</Link></p>
+      <div className="back-row"><BackButton to="/evenemang">Tillbaka till evenemangen</BackButton></div>
       <Card title={event.title} actions={actions}>
         <p className="cell-muted"><span className="status-badge">{STATUS_LABEL[event.status]}</span></p>
         {event.description ? <p className="evenemang-description">{event.description}</p> : null}
@@ -228,6 +229,7 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
         </ul>
       </Card>
       <Card title="Tillfällen">
+        <div className="evenemang-occs">
         <ul className="evenemang-list">
           {event.occurrences.map((o) => (
             <li key={o.occurrenceId} className="evenemang-occ">
@@ -256,6 +258,7 @@ function EventView({ locationId, eventId, isOwner, primaryDomain }: { locationId
             </li>
           ))}
         </ul>
+        </div>
       </Card>
       {isOwner && event.status !== 'draft' ? <Orders locationId={locationId} eventId={event.eventId} onChanged={() => void load()} /> : null}
       {editingType ? (
@@ -409,17 +412,17 @@ function Orders({ locationId, eventId, onChanged }: { locationId: string; eventI
       {orders && orders.length === 0 ? <p className="admin-empty">Inga köp än.</p> : null}
       {orders?.length ? (
         <div className="table-scroll" tabIndex={0}>
-          <table className="data-table">
+          <table className="data-table evenemang-table">
             <thead><tr><th scope="col">Köpare</th><th scope="col">Belopp</th><th scope="col">Biljetter</th></tr></thead>
             <tbody>
               {orders.map((o) => (
                 <tr key={o.orderId}>
                   <td>
-                    {o.buyerName ?? 'Raderad'}<br /><span className="cell-muted">{o.buyerEmail ?? ''}</span>
+                    {o.buyerName ?? 'Raderad'}<br /><span className="cell-muted">{o.buyerEmail ? <>{o.buyerEmail.split('@')[0]}<wbr />{o.buyerEmail.slice(o.buyerEmail.split('@')[0].length)}</> : ''}</span>
                     {o.resale ? <><br /><span className="status-badge">Andrahandsköp</span></> : null}
                   </td>
-                  <td>{kr(o.amountOre)}{o.refundedOre ? <><br /><span className="cell-muted">{kr(o.refundedOre)} återbetalt</span></> : null}</td>
-                  <td>
+                  <td data-label="Belopp"><span className="evenemang-amount">{kr(o.amountOre)}</span>{o.refundedOre ? <><br /><span className="cell-muted"><span className="evenemang-amount">{kr(o.refundedOre)}</span> återbetalt</span></> : null}</td>
+                  <td data-label="Biljetter">
                     <ul className="evenemang-list">
                       {o.tickets.map((t) => (
                         <li key={t.ticketId}>

@@ -3,6 +3,7 @@ import { NO_TICKET, printErrorText, saveCategoryRouting } from '../bestallningar
 import type { Printer, TicketRouting } from '../bestallningar/printApi'
 import type { MenuCategoryEntry } from '../meny/data'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 import { categoryStation } from './kinds'
 import { SendTo } from './SendTo'
 import './printers.css'
@@ -47,6 +48,10 @@ export function CategoryRouting({
 
   return (
     <div className="cat-routing">
+      <p className="title-info cat-routing-tables">
+        <span className="cell-muted">Bordsbeställningar</span>
+        <InfoTooltip label="Bordsbeställningar">Bordsbeställningar följer samma val.</InfoTooltip>
+      </p>
       <ul className="cat-routing-list" aria-label="Kategorier">
         {categories.map((c) => {
           const value = pending[c.categoryId] ?? categoryStation(routing, c.categoryId, c.name) ?? NO_TICKET

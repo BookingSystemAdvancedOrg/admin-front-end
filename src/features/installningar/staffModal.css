@@ -1,0 +1,10 @@
+/* Bjud in personal / Redigera medarbetare: samma luft mellan fälten som
+   i rättdialogen, så varje rubrik sitter tätt ovanför sitt eget fält.
+   Roll och Plats står under varandra, så platsens namn alltid får plats. */
+.staff-form,
+.staff-form-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}

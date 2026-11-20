@@ -1,12 +1,12 @@
 import type { BusinessHours, Weekday } from '../installningar/locationApi'
 import { WEEKDAYS } from '../installningar/locationApi'
-import type { StripeStage } from '../../shared/tenant'
 import type { Reservation } from '../bokningar/bookingsApi'
 import type { Order } from '../bestallningar/ordersApi'
 import type { RequestSummary } from '../catering/cateringApi'
 import type { PrintStatus } from '../bestallningar/printApi'
-import { STEPS, firstOpen, type Progress } from '../phone-agent/setup'
+import { STEPS, type Step } from '../phone-agent/setup'
 import { SETUP } from '../phone-agent/api'
+import type { SetupChecklist, SetupState } from './setupApi'
 
 /**
  * Ren logik för Översikten - utan React, så den går att testa direkt.
@@ -47,121 +47,78 @@ export function hasAnyOpeningHours(hours: BusinessHours | undefined): boolean {
   return WEEKDAYS.some((d) => (hours?.[d]?.length ?? 0) > 0)
 }
 
+export type SetupStepId = 'dpa' | 'hours' | 'menu' | 'printers' | 'layout' | 'stripe' | 'staff' | 'google' | 'phone'
+
+/** Vart varje steg i Kom igång leder. Ett nytt steg från servern utan rad här leder till Översikt. */
+export const SETUP_LINKS: Record<SetupStepId, string> = {
+  dpa: '/avtal',
+  hours: '/installningar#dagar',
+  menu: '/meny',
+  printers: '/installningar#skrivare',
+  layout: '/layout',
+  stripe: '/installningar#betalningar',
+  staff: '/personal',
+  google: '/installningar#google',
+  phone: '/telefon?flik=installningar',
+}
+
+/** Stegets egna sätt att hoppa över (inte "Hoppa över"-knappen). */
+const OWN_SKIP: Partial<Record<SetupStepId, string>> = {
+  printers: 'Inga skrivare än',
+  google: 'Ingen Google-profil',
+}
+
 export interface SetupStep {
-  id: 'dpa' | 'hours' | 'menu' | 'printers' | 'layout' | 'stripe' | 'staff' | 'google' | 'phone'
+  id: SetupStepId
   label: string
-  /** null = okänt (data kunde inte hämtas) - visas varken som klart eller ej. */
+  /** true = klart eller överhoppat, false = kvar, null = kunde inte kontrolleras. */
   done: boolean | null
-  /** Ägaren valde "senare" (Inga skrivare än): öppet men gult, stoppar inget. */
+  state: SetupState | null
+  skippable: boolean
+  /** Överhoppat med "Hoppa över": kan ångras här. */
+  skippedHere: boolean
+  /** Platsen ett platssteg gäller (för "Hoppa över"). */
+  locationId?: string
+  /** Överhoppat: texten som visas i stället för "Klart". */
   later?: string
   to: string
   /** Delstegen (telefonassistentens fem steg), visas under raden. */
-  sub?: { label: string; done: boolean }[]
+  sub?: { id: Step; label: string; done: boolean }[]
 }
 
 /**
- * Telefonassistenten som ett steg i Kom igång: klart först när alla fem
- * delsteg är klara; länken öppnar guiden på första steget som inte är klart.
+ * Kom igång för den valda platsen ur serverns lista: tenant-steg som de är,
+ * platssteg för platsen. Ordningen och etiketterna är serverns, så ett nytt
+ * steg syns här utan ändring i admin.
  */
-export function phoneSetupStep(progress: Progress | null): SetupStep {
-  const next = progress ? firstOpen(progress) : null
-  return {
-    id: 'phone',
-    label: 'Telefonassistent',
-    done: progress ? next === null : null,
-    to: `/telefon?flik=installningar${next ? `&steg=${next}` : ''}`,
-    sub: progress ? STEPS.map((s, i) => ({ label: SETUP.STEP_LABEL[i], done: progress[s] })) : undefined,
-  }
-}
-
-export interface SetupInput {
-  isOwner: boolean
-  hasOpeningHours: boolean | null
-  activeMenuItems: number | null
-  hasLiveLayout: boolean | null
-  stripeStage: StripeStage
-  staffCount: number | null
-  /** Personuppgiftsbiträdesavtalet: undefined = API:t saknar det (inget steg). */
-  dpaAccepted?: boolean
-  /**
-   * Google-profilen (valfri): klart när en plats är kopplad eller ägaren
-   * hoppat över. undefined = ingår inte i planen (inget steg), null = kunde inte hämtas.
-   */
-  google?: boolean | null
-  /** Telefonassistentens steg: undefined = ingår inte i planen (inget steg), null = kunde inte hämtas. */
-  phone?: Progress | null
-  /**
-   * Kvittoskrivarna (när platsen har beställningar): undefined = ingen
-   * beställning i planen (inget steg), null = kunde inte hämtas.
-   */
-  printers?: Pick<PrintStatus, 'printerCount' | 'printerConfigured' | 'setupSkipped'> | null
-}
-
-/**
- * Kvittoskrivare i Kom igång: klart när platsen har minst en skrivare.
- * "Inga skrivare än" låter ägaren gå vidare; steget står då kvar som gult.
- */
-export function printerSetupStep(print: SetupInput['printers']): SetupStep {
-  const count = print ? print.printerCount ?? (print.printerConfigured ? 1 : 0) : null
-  return {
-    id: 'printers',
-    label: 'Kvittoskrivare',
-    done: count === null ? null : count > 0,
-    to: '/installningar#skrivare',
-    ...(print?.setupSkipped && count === 0 ? { later: 'Inga skrivare än' } : {}),
-  }
-}
-
-/**
- * "Kom igång"-listan: det en ny restaurang behöver göra innan gäster kan
- * boka. Bara för ägaren - personal får inga steg alls.
- */
-export function setupSteps(input: SetupInput): SetupStep[] {
-  if (!input.isOwner) return []
-  const steps: SetupStep[] = [
-    // Först: en ny restaurang publiceras inte förrän avtalet är godkänt.
-    ...(input.dpaAccepted === undefined
-      ? []
-      : [{ id: 'dpa' as const, label: 'Godkänn personuppgiftsbiträdesavtalet', done: input.dpaAccepted, to: '/avtal' }]),
-    {
-      id: 'hours',
-      label: 'Lägg in öppettider',
-      done: input.hasOpeningHours,
-      to: '/installningar#dagar',
-    },
-    {
-      id: 'menu',
-      label: 'Lägg upp menyn',
-      done: input.activeMenuItems === null ? null : input.activeMenuItems > 0,
-      to: '/meny',
-    },
-    ...(input.printers === undefined ? [] : [printerSetupStep(input.printers)]),
-  ]
-  return [
-    ...steps,
-    {
-      id: 'layout',
-      label: 'Publicera och aktivera en bordslayout',
-      done: input.hasLiveLayout,
-      to: '/layout',
-    },
-    {
-      id: 'stripe',
-      label: 'Slutför Stripe för kortbetalningar',
-      done: input.stripeStage === 'ready',
-      to: '/installningar#betalningar',
-    },
-    {
-      id: 'staff',
-      label: 'Bjud in personal',
-      done: input.staffCount === null ? null : input.staffCount > 0,
-      to: '/personal',
-    },
-    ...(input.google === undefined
-      ? []
-      : [{ id: 'google' as const, label: 'Google-profil (valfritt)', done: input.google, to: '/installningar#google' }]),
-    ...(input.phone === undefined ? [] : [phoneSetupStep(input.phone)]),
-  ]
+export function stepsFromServer(checklist: SetupChecklist | null, locationId: string | null): SetupStep[] {
+  if (!checklist) return []
+  return checklist.steps.map((s) => {
+    const place = s.scope === 'location' ? s.locations?.find((p) => p.locationId === locationId) : undefined
+    const state: SetupState = s.scope === 'location' ? place?.state ?? 'open' : s.state
+    const known = s.scope === 'location' ? place?.known ?? false : s.known
+    const skippedHere = Boolean(s.scope === 'location' ? place?.skippedHere : s.skippedHere)
+    const id = s.id as SetupStepId
+    const sub = place?.sub
+      ? place.sub
+        .filter((x) => (STEPS as string[]).includes(x.id))
+        .map((x) => ({ id: x.id as Step, label: SETUP.STEP_LABEL[STEPS.indexOf(x.id as Step)], done: x.done }))
+      : undefined
+    const next = sub?.find((x) => !x.done)?.id
+    const to = id === 'phone' && next ? `${SETUP_LINKS.phone}&steg=${next}` : SETUP_LINKS[id] ?? '/'
+    return {
+      id,
+      label: s.label,
+      done: state !== 'open' ? true : known ? false : null,
+      state: state !== 'open' || known ? state : null,
+      skippable: s.skippable,
+      skippedHere,
+      ...(s.scope === 'location' && locationId ? { locationId } : {}),
+      ...(state === 'skipped' ? { later: skippedHere ? 'Överhoppat' : OWN_SKIP[id] ?? 'Överhoppat' } : {}),
+      to,
+      ...(sub ? { sub } : {}),
+    }
+  })
 }
 
 /* --- Nyckeltalen överst på Översikt ---------------------------------------- */

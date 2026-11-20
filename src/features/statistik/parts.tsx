@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { Num } from '../../shared/motion/Num'
 import { useTrendPop } from '../../shared/motion/useTrendPop'
@@ -45,7 +45,8 @@ export function Tile({
         {trend && <TrendBadge trend={trend} chip className="sk-kpi-delta" />}
         {tip && <InfoTooltip label={label}>{tip}</InfoTooltip>}
       </span>
-      <strong ref={valueRef} className={`sk-kpi-value${toneClass(trendTone)}`}>
+      {/* --sk-len: the type shrinks for long values (1 234 567 kr) so the number stays inside the tile */}
+      <strong ref={valueRef} className={`sk-kpi-value${toneClass(trendTone)}`} style={{ '--sk-len': Math.max(value.length, 5) } as CSSProperties}>
         <Num>{value}</Num>
       </strong>
     </div>

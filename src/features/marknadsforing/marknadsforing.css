@@ -12,6 +12,14 @@
   max-width: 100%;
 }
 
+/* Nio flikar får inte rulla ut ur spåret (texten klipptes mitt i ordet på
+   surfplattan): spåret bryts till fler rader. Glidpillen följer offsetTop. */
+.mk-tabs[data-glide='track'] {
+  flex-wrap: wrap !important;
+  overflow: visible;
+  border-radius: 20px !important;
+}
+
 .mk-tab {
   padding: 8px 14px;
   border: 0;
@@ -134,7 +142,7 @@
 }
 
 .mk-bar {
-  fill: var(--border);
+  fill: var(--neutral-fill);
   transition: fill 160ms var(--ease);
 }
 
@@ -161,7 +169,7 @@
   height: 9px;
   margin-right: 6px;
   border-radius: var(--r-md);
-  background: var(--border);
+  background: var(--neutral-fill);
   vertical-align: -1px;
 }
 
@@ -173,6 +181,23 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
+}
+
+/* Två tabeller bredvid varandra: de får krympa till kortets bredd i stället
+   för 900 px, annars gömdes Omsättning bakom sidledsrullning. */
+.mk-two .data-table {
+  min-width: 0;
+}
+
+.mk-two .data-table th {
+  white-space: normal;
+}
+
+/* iPad liggande (1180) och mindre datorer: korten för smala för fyra kolumner. */
+@media (max-width: 1279px) {
+  .mk-two {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .mk-footnote {
@@ -449,6 +474,10 @@
   /* Förhandsvisningen av gästens kupong: alltid vitt papper med Booqys röda,
      oavsett läge (så ser den ut i gästens e-post). */
   --accent-ink: #9e1d26;
+  /* Ljusa lägets text även i mörkt läge: annars blev rubrik och text ljusa
+     på det vita papperet och gick inte att läsa. */
+  --ink: #1a120e;
+  --muted: #4a4a46;
   color: #1a120e;
   color-scheme: light;
   display: grid;
@@ -510,10 +539,14 @@
 }
 
 .mk-offer-headline {
-  margin-right: 60px;
   font: 700 17px/1.2 var(--font);
   color: var(--ink);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+}
+
+/* plats för maträttens bild bara när det finns en bild */
+.mk-offer-dish + .mk-offer-headline {
+  margin-right: 60px;
 }
 
 .mk-offer-text {
@@ -622,9 +655,10 @@
   color: var(--muted);
 }
 
+/* Jämna kolumner: alla färger lika breda, även den med två rader text. */
 .mk-swatches {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
   gap: 6px;
 }
 
@@ -634,7 +668,7 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  width: 76px;
+  min-width: 0;
   padding: 8px 4px 6px;
   border: 0;
   border-radius: var(--r-md);
@@ -649,7 +683,7 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 1px rgba(26, 18, 14, 0.18), 0 2px 6px -3px rgba(26, 18, 14, 0.4);
+  box-shadow: inset 0 0 0 1px transparent, 0 2px 6px -3px rgba(26, 18, 14, 0.4);
   transition: box-shadow 160ms var(--ease);
 }
 
@@ -665,7 +699,7 @@
   height: 16px;
   border-radius: 50%;
   background: var(--glass-surface);
-  box-shadow: 0 0 0 1px var(--border);
+  box-shadow: 0 0 0 1px transparent;
   font: 700 9px/1 var(--font);
   color: var(--ink);
 }
@@ -680,7 +714,8 @@
 }
 
 .mk-swatch.on .mk-swatch-dot {
-  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink);
+  box-shadow: 0 6px 14px -4px rgba(26, 18, 14, 0.55);
+  transform: scale(1.14);
 }
 
 .mk-swatch.on .mk-swatch-name {
@@ -708,4 +743,38 @@
 .mk-swatch:has(.mk-swatch-input:focus-visible) {
   outline: 2px solid var(--ink);
   outline-offset: 1px;
+}
+
+/* Flikraden: raderna börjar alltid vid vänsterkanten, i linje med innehållet
+   under (inte utsträckta och centrerade, så att en ensam flik hamnade mitt i). */
+.mk-tabs[data-glide='track'] {
+  justify-content: flex-start;
+}
+.mk-tabs[data-glide='track'] > .mk-tab {
+  flex: 0 0 auto;
+}
+
+/* iPad (pek): flikar och periodvalet minst 44 px höga. */
+@media (pointer: coarse) {
+  .mk-tabs[data-glide] > .mk-tab,
+  .mk-segment > button,
+  .mk-stack .link-btn {
+    min-height: 44px;
+  }
+}
+
+/* Förhandsvisningen av kupongen: kanterna är borta i appen, så fältet och
+   kryssrutan syns med en svag fyllnad på det vita papperet. */
+.mk-offer-input {
+  background: rgba(26, 18, 14, 0.06);
+}
+.mk-offer-consent i {
+  background: rgba(26, 18, 14, 0.14);
+}
+/* iPad (pek): valen under Erbjudande och Kampanjer minst 44 px höga. */
+@media (pointer: coarse) {
+  .admin-main:has(> .mk-tabs) .check-row {
+    align-items: center;
+    min-height: 44px;
+  }
 }

@@ -1,7 +1,4 @@
 /* Evenemang i admin. Bara @booqy/brand-tokens. */
-.evenemang-back {
-  margin: 0 0 var(--bq-space-3);
-}
 .evenemang-actions {
   display: flex;
   flex-wrap: wrap;
@@ -44,20 +41,44 @@
 .evenemang-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
-  align-items: end;
+  /* fälten i en rad börjar på samma höjd, även när ett av dem har en hjälptext */
+  align-items: start;
   gap: var(--bq-space-3);
 }
+/* en kryssruta bredvid ett fält: i höjd med fältet, inte med etiketten */
+.evenemang-row > .evenemang-check {
+  align-self: end;
+  min-height: 44px;
+}
+/* Biljettyp: momsvalet har lång text, så det får en egen hel rad. */
+.evenemang-type-row {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+}
+.evenemang-type-row > .bq-field:nth-child(3) {
+  grid-column: 1 / -1;
+}
+.evenemang-type-row > .bq-btn {
+  justify-self: start;
+  align-self: end;
+}
+/* Kanterna är borta i hela appen, så gruppen får ingen indragning: rubrik och
+   fält står i linje med resten av formuläret. */
 .evenemang-fieldset {
   display: grid;
   gap: var(--bq-space-3);
   margin: 0;
-  padding: var(--bq-space-3);
-  border: 1px solid var(--bq-line);
-  border-radius: var(--bq-radius-inner);
+  padding: 0;
+  border: 0;
+  min-width: 0;
 }
 .evenemang-fieldset legend {
-  padding: 0 var(--bq-space-1);
-  color: var(--bq-muted);
+  margin-bottom: var(--bq-space-2);
+  padding: 0;
+  font: 600 var(--bq-text-sm)/1.3 var(--bq-font-sans);
+  color: var(--bq-ink);
+}
+.evenemang-fieldset > .bq-btn {
+  justify-self: start;
 }
 .evenemang-text {
   width: 100%;
@@ -128,6 +149,7 @@
 }
 .evenemang-image-empty {
   padding: var(--bq-space-2);
+  background: var(--glass-fill);
   font-size: var(--bq-text-sm);
   color: var(--bq-muted);
   text-align: center;
@@ -136,4 +158,173 @@
   display: inline-flex;
   align-items: center;
   gap: var(--bq-space-2);
+}
+/* Tabellerna (evenemang, köp, gästlista) ska rymmas i kortet på iPad utan att
+   sista kolumnen (status, Släpp in) hamnar bakom sidledsrullning. Den delade
+   .data-table har min-width 900px, bredare än kortet på iPad (784px liggande),
+   så den släpps här. Ord bryts vid mellanslag; bara ett ord som inte ryms
+   (lång e-post) bryts mitt i. */
+.data-table.evenemang-table {
+  min-width: 0;
+}
+.evenemang-table th {
+  white-space: normal;
+}
+.evenemang-table td {
+  overflow-wrap: break-word;
+  hyphens: manual;
+}
+.evenemang-table td:first-child {
+  min-width: 7.5rem;
+}
+.evenemang-table .cell-muted {
+  overflow-wrap: break-word;
+}
+.evenemang-table .evenemang-amount {
+  white-space: nowrap;
+}
+@media (min-width: 601px) {
+  .evenemang-table td:has(> .status-badge:only-child),
+  .evenemang-table td:has(> .bq-btn:only-child) {
+    width: 1%;
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
+}
+/* Smalt kort (iPad mini och iPad stående, 350-440px): fyra kolumner ryms
+   inte, så varje rad blir ett litet kort som i telefonen, med rubriken
+   ovanför varje värde. */
+.table-scroll:has(> .evenemang-table) {
+  container-type: inline-size;
+}
+@container (max-width: 560px) {
+  .data-table.evenemang-table,
+  .evenemang-table tbody {
+    display: block;
+  }
+  .evenemang-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .evenemang-table tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 8px 16px;
+    padding: 14px 0;
+  }
+  .evenemang-table td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+  }
+  .evenemang-table td:first-child,
+  .evenemang-table td:has(> .evenemang-list) {
+    flex: 1 1 100%;
+  }
+  .evenemang-table td:empty {
+    display: none;
+  }
+  .evenemang-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .evenemang-table td:is(:has(> .status-badge:only-child), :has(> .bq-btn:only-child)) {
+    width: auto;
+  }
+  .evenemang-table td:has(> .bq-btn:only-child) {
+    margin-left: auto;
+  }
+  /* en knapp säger själv vad den gör: ingen "Åtgärd"-rubrik ovanför */
+  .evenemang-table td:has(> .bq-btn:only-child)::before {
+    display: none;
+  }
+}
+.evenemang-table .status-badge {
+  white-space: nowrap;
+}
+.evenemang-table .evenemang-list li > span {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+/* Biljettkod: knappen i höjd med fältet (inte med hjälptexten under). */
+.evenemang-code {
+  align-items: start;
+  flex: 1 1 20rem;
+}
+.evenemang-code .bq-field {
+  flex: 1 1 12rem;
+}
+.evenemang-code > .bq-btn,
+.evenemang-scan > .bq-btn {
+  margin-top: calc(var(--bq-text-sm) * 1.3 + 6px);
+}
+.evenemang-scan {
+  align-items: start;
+}
+/* Telefon: en tom åtgärdscell (biljetten redan insläppt) visar ingen rubrik,
+   och värdena i en rad står på samma höjd. */
+@media (max-width: 600px) {
+  .evenemang-table td:empty {
+    display: none;
+  }
+  .evenemang-table tr {
+    align-items: flex-end;
+  }
+  /* en knapp säger själv vad den gör: ingen "Åtgärd"-rubrik ovanför */
+  .evenemang-table td:has(> .bq-btn:only-child)::before {
+    display: none;
+  }
+}
+/* iPad (pek): varje knapp och länk på evenemang och vid insläppet går att
+   träffa med fingret, minst 44 px hög. */
+@media (pointer: coarse) {
+  :is(.evenemang-actions, .evenemang-list, .evenemang-table, .evenemang-scan, .evenemang-code, .evenemang-image) :is(.bq-btn, .card-link, .link-action) {
+    min-height: 44px;
+  }
+  :is(.evenemang-actions, .evenemang-list, .evenemang-table) .card-link {
+    display: inline-flex;
+    align-items: center;
+  }
+}
+/* Tillfällen: alla rader delar samma kolumner, så mätaren är lika lång och
+   knapparna står i linje även när ett inställt tillfälle saknar knappar. */
+.evenemang-occs {
+  container-type: inline-size;
+}
+@container (min-width: 40rem) {
+  .evenemang-occs > .evenemang-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--bq-space-3);
+  }
+  .evenemang-occs .evenemang-occ {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: center;
+  }
+  .evenemang-occs .evenemang-occ > .evenemang-actions {
+    justify-content: flex-end;
+  }
+  .evenemang-occs .evenemang-occ > .evenemang-actions:empty {
+    display: block;
+  }
+}
+/* Statusen har varken fyllning eller kant, så den står kant i kant med sin
+   rubrik och i samma höjd som värdena bredvid. */
+.evenemang-table .status-badge[class] {
+  display: inline;
+  padding: 0;
+}
+.evenemang-occ .status-badge[class] {
+  justify-self: start;
+  padding-inline: 0;
 }

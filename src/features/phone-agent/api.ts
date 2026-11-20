@@ -75,7 +75,24 @@ export interface CallRow {
   refusedReason?: string | null
   from?: string | null
 }
-export interface Turn { role: 'agent' | 'caller' | 'tool' | 'system'; text: string; at: string; toolName?: string; toolOk?: boolean }
+/** Översättningen av en tur, görs efter samtalet (phone-agent-translate). */
+export type Translation = 'pending' | 'done' | 'failed' | 'skipped'
+export interface Turn {
+  role: 'agent' | 'caller' | 'tool' | 'system'
+  /** Originalet, som det sades. Ändras aldrig. */
+  text: string
+  at: string
+  toolName?: string
+  toolOk?: boolean
+  /** Samtalets språk när turen sades (ISO-kod). */
+  lang?: Lang
+  /** Uppringarens turer: taligenkänningens språk (Lex-locale), t.ex. sv_SE. */
+  asrLocale?: string
+  /** Översatt till svenska respektive engelska; saknas när turen redan var på det språket. */
+  textSv?: string
+  textEn?: string
+  translation?: Translation
+}
 export interface CallDetail extends CallRow {
   billedMinutes: number
   disclosure: { text?: string; playedAt?: string | null; spoken?: string; verbatim?: boolean; repeats?: number; languages?: string[] }
@@ -131,7 +148,8 @@ export async function getPlaceBasics(locationId: string): Promise<{ businessHour
   const place = await getPlace(locationId)
   return { businessHours: place.businessHours ?? null, phoneNumber: place.phoneNumber ?? null }
 }
-export const getCall = (locationId: string, callId: string) => apiFetch<CallDetail>(`${loc(locationId)}/calls/${encodeURIComponent(callId)}`)
+export const getCall = (locationId: string, callId: string) => (isApiConfigured()
+  ? apiFetch<CallDetail>(`${loc(locationId)}/calls/${encodeURIComponent(callId)}`) : mock.call(callId))
 export const deleteRecording = (locationId: string, callId: string) =>
   apiFetch<void>(`${loc(locationId)}/calls/${encodeURIComponent(callId)}/recording`, { method: 'DELETE' })
 export const listCallbacks = (locationId: string, status: 'open' | 'closed' | 'all' = 'open') =>
@@ -275,13 +293,64 @@ const MOCK_HOURS: BusinessHours = {
   wednesday: [{ opensAt: '11:00', closesAt: '22:00' }], thursday: [{ opensAt: '11:00', closesAt: '22:00' }],
   friday: [{ opensAt: '11:00', closesAt: '23:00' }], saturday: [{ opensAt: '12:00', closesAt: '23:00' }], sunday: [],
 }
-interface MockState { config: Config; loc: LocationConfig; calls: CallRow[]; place: { businessHours: BusinessHours | null; phoneNumber: string | null } }
+interface MockState { config: Config; loc: LocationConfig; calls: CallRow[]; details: Record<string, CallDetail>; deTranslatedAt: number; place: { businessHours: BusinessHours | null; phoneNumber: string | null } }
 let mockState: MockState = freshMock()
 function freshMock(): MockState {
   return {
     config: { agentName: 'Booqy', tone: 'formal', languages: ['sv', 'en'], recording: { enabled: false }, minutesCapPerMonth: 300, version: 0 },
-    loc: mockLoc(), calls: [], place: { businessHours: MOCK_HOURS, phoneNumber: '+46812345678' },
+    loc: mockLoc(), ...mockCalls(), deTranslatedAt: Date.now() + 20_000, place: { businessHours: MOCK_HOURS, phoneNumber: '+46812345678' },
   }
+}
+/** Två påhittade samtal: ett på arabiska och ett på tyska, båda börjar på svenska. */
+function mockCalls(): { calls: CallRow[]; details: Record<string, CallDetail> } {
+  const ago = (min: number, sec = 0) => new Date(Date.now() - min * 60_000 + sec * 1000).toISOString()
+  const greet = (sec: number, start: number): Turn => ({
+    role: 'agent', lang: 'sv', at: ago(start, sec), translation: 'done',
+    text: 'Hej och välkommen till Demo. Du talar med Booqy, restaurangens AI-assistent. Vad kan jag hjälpa dig med?',
+    textEn: 'Hi and welcome to Demo. You are speaking with Booqy, the restaurant\'s AI assistant. How can I help you?',
+  })
+  const t = (role: Turn['role'], lang: Lang, text: string, textSv: string, textEn: string, at: string): Turn => ({
+    role, lang, text, textSv, textEn, at, translation: 'done', ...(role === 'caller' ? { asrLocale: lang === 'ar' ? 'ar_AE' : 'de_DE' } : {}),
+  })
+  const ar: CallDetail = {
+    callId: 'mock-call-ar', startedAt: ago(95), durationSec: 142, language: 'ar', outcome: 'booked', counterOffer: 'none',
+    reservationId: 'mock-res-1', callbackId: null, summary: 'Bord för två i kväll 20:00', from: '+46701234567', billedMinutes: 3,
+    disclosure: { playedAt: ago(95, 2), repeats: 1, languages: ['sv', 'ar'] },
+    turns: [
+      greet(1, 95),
+      // Sagt innan bytet: den svenska taligenkänningen hör bara språkets namn.
+      { role: 'caller', lang: 'sv', asrLocale: 'sv_SE', at: ago(95, 9), translation: 'done', text: 'Marhaba. Arabiska?', textEn: 'Marhaba. Arabic?' },
+      t('agent', 'ar', 'أهلا بك. أنا Booqy، مساعد المطعم بالذكاء الاصطناعي. كيف يمكنني مساعدتك؟',
+        'Välkommen. Jag är Booqy, restaurangens AI-assistent. Hur kan jag hjälpa dig?',
+        'Welcome. I am Booqy, the restaurant\'s AI assistant. How can I help you?', ago(95, 14)),
+      t('caller', 'ar', 'أريد حجز طاولة لشخصين الليلة الساعة الثامنة.',
+        'Jag vill boka ett bord för två i kväll klockan åtta.', 'I would like to book a table for two tonight at eight.', ago(95, 24)),
+      { role: 'tool', text: 'hold_table', toolName: 'hold_table', toolOk: true, at: ago(95, 26) },
+      t('agent', 'ar', 'تم الحجز لشخصين الليلة الساعة الثامنة. شكرا لاتصالك.',
+        'Bordet för två är bokat i kväll klockan åtta. Tack för att du ringde.',
+        'The table for two is booked tonight at eight. Thank you for calling.', ago(95, 31)),
+    ],
+  }
+  // Slutade för en minut sedan: översättningen pågår fortfarande (se `call`).
+  const DE_AGO = 3
+  const de: CallDetail = {
+    callId: 'mock-call-de', startedAt: ago(DE_AGO), durationSec: 118, language: 'de', outcome: 'booked', counterOffer: 'other_time',
+    reservationId: 'mock-res-2', callbackId: null, summary: 'Bord för fyra i morgon 19:30', from: '+4915112345678', billedMinutes: 2,
+    disclosure: { playedAt: ago(DE_AGO, 2), repeats: 1, languages: ['sv', 'de'] },
+    turns: [
+      greet(1, 30),
+      t('caller', 'de', 'Guten Abend, haben Sie morgen um sieben einen Tisch für vier Personen?',
+        'God kväll, har ni ett bord för fyra personer i morgon klockan sju?', 'Good evening, do you have a table for four tomorrow at seven?', ago(DE_AGO, 10)),
+      t('agent', 'de', 'Guten Abend. Morgen um 19 Uhr ist leider alles belegt. Ich kann Ihnen 19:30 Uhr anbieten.',
+        'God kväll. I morgon klockan 19 är tyvärr allt fullt. Jag kan erbjuda 19:30.',
+        'Good evening. Tomorrow at 7 pm we are unfortunately full. I can offer 7:30 pm.', ago(DE_AGO, 18)),
+      t('caller', 'de', 'Ja, 19:30 passt gut.', 'Ja, 19:30 passar bra.', 'Yes, 7:30 works well.', ago(DE_AGO, 25)),
+      t('agent', 'de', 'Sehr gerne. Der Tisch für vier ist morgen um 19:30 Uhr reserviert.',
+        'Gärna. Bordet för fyra är bokat i morgon klockan 19:30.', 'Gladly. The table for four is booked tomorrow at 7:30 pm.', ago(DE_AGO, 33)),
+    ],
+  }
+  const row = ({ billedMinutes: _b, disclosure: _d, turns: _t, recordingUrl: _r, ...r }: CallDetail): CallRow => r
+  return { calls: [row(de), row(ar)], details: { [ar.callId]: ar, [de.callId]: de } }
 }
 /** Bara lokal utveckling och tester: börja om, eventuellt från ett givet läge. */
 export function resetPhoneMock(over: Partial<MockState> = {}): void {
@@ -349,6 +418,15 @@ const mock = {
     toolCalls: [], state: {}, disclosure: true,
   }),
   calls: () => later({ calls: mockState.calls, cursor: null }),
+  call: (callId: string) => {
+    const call = mockState.details[callId]
+    if (!call) return Promise.reject(new ApiError(404, 'not_found', { code: 'not_found', fromServer: true }))
+    // Det tyska samtalet översätts fortfarande de första 20 sekunderna (sedan: klart vid nästa hämtning).
+    if (call.language === 'de' && Date.now() < mockState.deTranslatedAt) {
+      return later<CallDetail>({ ...call, turns: call.turns.map(({ textSv: _sv, textEn: _en, ...t }) => ({ ...t, translation: 'pending' })) })
+    }
+    return later(call)
+  },
   place: () => later(mockState.place),
 }
 

@@ -10,6 +10,8 @@ import { imageAltError, imageFields, initialImage, type EventImage } from './eve
 import { ErrorActions } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { DateInput, TimeInput } from '../../shared/DateInput'
+import { useDirtyForm } from '../../shared/dirtyForm'
+import { useUnsavedGuard } from '../../shared/unsaved'
 
 interface TypeRow { typeId: string; name: string; priceKr: string; vatRate: VatRate; perOrderMax: string; capacity: string; includes: string }
 
@@ -99,6 +101,14 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [eventId] = useState(() => existing?.eventId ?? newId())
+  // Spara följer ändringarna: avstängd tills något skiljer sig från det som öppnades.
+  const form = {
+    title, description, date, start, end, capacity, repeat, until, types, perOrderMax, transferAllowed, resaleAllowed, refundPolicy,
+    image: { key: image.key, alt: image.alt, file: image.file ? [image.file.name, image.file.size] : null },
+  }
+  const [opened] = useState(form)
+  const dirty = useDirtyForm(form, opened)
+  useUnsavedGuard(dirty)
 
   function setType(i: number, patch: Partial<TypeRow>) {
     setTypes((rows) => rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
@@ -212,7 +222,7 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
             <fieldset className="evenemang-fieldset">
               <legend>Biljettyper</legend>
               {types.map((t, i) => (
-                <div className="evenemang-row" key={t.typeId}>
+                <div className="evenemang-row evenemang-type-row" key={t.typeId}>
                   <Field label="Namn"><Input value={t.name} maxLength={80} onChange={(e) => setType(i, { name: e.target.value })} required /></Field>
                   <Field label="Pris (kr inkl. moms)"><Input inputMode="decimal" value={t.priceKr} onChange={(e) => setType(i, { priceKr: e.target.value })} required /></Field>
                   <Field label="Moms" hint="Revisorn ska godkänna momssatsen.">
@@ -268,9 +278,9 @@ export default function EventEditor({ locationId, existing, fetchLatest, onSaved
           <textarea className="evenemang-text" value={refundPolicy} maxLength={1000} rows={2} onChange={(e) => setRefundPolicy(e.target.value)} />
         </Field>
         {error ? <Bar variant="banner" tone="danger" action={<ErrorActions text={error} />}>{error}</Bar> : null}
-        <Bar variant="action" label="Spara evenemanget">
-          <Button type="button" variant="ghost" onClick={onCancel}>Avbryt</Button>
-          <Button type="submit" variant="primary" busy={busy}>Spara</Button>
+        <Bar variant="action" label="Spara evenemanget" sticky={dirty} status={dirty && !busy ? 'Osparade ändringar' : undefined}>
+          <Button type="button" variant="secondary" onClick={onCancel}>Avbryt</Button>
+          <Button type="submit" variant="primary" busy={busy} busyLabel="Sparar…" disabled={!dirty}>{error ? 'Spara igen' : 'Spara'}</Button>
         </Bar>
       </form>
     </Card>

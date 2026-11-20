@@ -105,6 +105,16 @@
   opacity: 0.6;
 }
 
+/* Namn, Ny gäst / Återkommande och ikonerna med luft emellan; på smala
+   skärmar bryts märket till nästa rad, kant i kant med namnet. */
+.guest-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  max-width: 100%;
+}
+
 .note-dot {
   color: var(--accent-ink);
 }
@@ -134,6 +144,21 @@
 
 .booking-modal-head p {
   margin-top: 4px;
+}
+
+/* Långa gästnamn bryts i rubriken; statusen står kvar i hörnet. */
+.booking-modal-head > div {
+  min-width: 0;
+}
+
+.booking-modal-head h2 {
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.booking-modal-head > .status-badge {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .booking-details {
@@ -232,6 +257,13 @@
   accent-color: var(--green);
 }
 
+/* iPad och telefon: 44 px att trycka på. */
+@media (pointer: coarse) {
+  .table-chip {
+    min-height: 44px;
+  }
+}
+
 .table-chip.selected {
   border-color: var(--green);
   background: var(--tint-blue);
@@ -299,7 +331,7 @@
   padding: 4px;
   border-radius: var(--r-md);
   background: var(--glass-well);
-  box-shadow: inset 0 0 0 1px var(--border);
+  box-shadow: inset 0 0 0 1px transparent;
 }
 
 .channel-option {
@@ -357,4 +389,126 @@
   .channel-option-text {
     align-items: center;
   }
+}
+
+/* --- Passform (2026-11-19): listan ryms i kortet på alla skärmar ---------- */
+
+/* Långa namn bryts i stället för att trycka Status utanför kortet, utan
+   inlagda bindestreck som inte hör till namnet. */
+.bookings-table .bk-guest,
+.bookings-table .bk-guest .cell-strong,
+.bookings-table .bk-tables {
+  overflow-wrap: anywhere;
+  hyphens: manual;
+}
+
+/* Ett långt ord i namnet avstavas med bindestreck i stället för att
+   brytas mitt i en bokstavsföljd. */
+.bookings-table .bk-guest,
+.bookings-table .bk-guest .cell-strong {
+  hyphens: auto;
+}
+
+/* Bordknappen i en bokningsrad: 44 px att trycka på iPad, så att ett tryck
+   nära bordets namn öppnar bordskartan och inte bokningen. */
+@media (pointer: coarse) {
+  .bookings-table .table-chip-link {
+    position: relative;
+    z-index: 1;
+  }
+
+  .bookings-table .table-chip-link::after {
+    content: '';
+    position: absolute;
+    inset: -10px -4px;
+  }
+}
+
+/* Tid, antal och status står på en rad och siffrorna är lika breda. */
+.bookings-table .bk-time,
+.bookings-table .bk-pers,
+.bookings-table .bk-status .status-badge {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.bookings-table .bk-status {
+  white-space: nowrap;
+}
+
+/* Surfplattan och laptopen: tabellen följer kortets bredd, gästen tar
+   det som blir över och Status syns alltid. */
+@media (min-width: 601px) {
+  .bookings-table {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  .bookings-table .bk-guest {
+    width: 100%;
+    min-width: 120px;
+  }
+}
+
+/* iPad i stående läge: lite tätare kolumner så att Status ryms. */
+@media (min-width: 601px) and (max-width: 1100px) {
+  .bookings-table th,
+  .bookings-table td {
+    padding-right: 12px;
+  }
+
+  .bookings-table th:last-child,
+  .bookings-table td:last-child {
+    padding-right: 0;
+  }
+}
+
+/* iPad mini: smalast innehåll bredvid menyn, gästen får ge med sig mest. */
+@media (min-width: 601px) and (max-width: 800px) {
+  .bookings-table th,
+  .bookings-table td {
+    padding-right: 8px;
+  }
+
+  .bookings-table .bk-guest {
+    min-width: 112px;
+  }
+}
+
+/* Telefonen: samma kort för varje bokning, tiden och gästen överst och
+   Pers, Bord och Status på en rad under, kant i kant. */
+@media (max-width: 600px) {
+  .data-table.bookings-table:not(.keep-table) tr.booking-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr) auto;
+    gap: 8px 14px;
+    align-items: start;
+  }
+
+  .data-table.bookings-table:not(.keep-table) tr.booking-row > td.bk-time,
+  .data-table.bookings-table:not(.keep-table) tr.booking-row > td.bk-guest {
+    grid-column: 1 / -1;
+  }
+
+  .data-table.bookings-table:not(.keep-table) tr.booking-row > td.bk-status {
+    justify-self: end;
+    text-align: right;
+  }
+
+  .data-table.bookings-table:not(.keep-table) tr.booking-row > td.bk-status .cell-muted {
+    white-space: normal;
+  }
+}
+
+/* Laptop och iPad Pro liggande: gott om plats, så bordet står på en rad. */
+@media (min-width: 1101px) {
+  .bookings-table .bk-tables {
+    white-space: nowrap;
+  }
+}
+
+/* Bokningen man just sparade (PeakSuccess, går bort vid nästa tryck). */
+.bk-landed {
+  margin: 4px 0 10px;
+  color: var(--success-ink, var(--ink));
 }

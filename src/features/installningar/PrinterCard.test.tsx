@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PrinterCard } from './PrinterCard'
@@ -95,7 +95,10 @@ describe('PrinterCard', () => {
     await user.click(screen.getByRole('button', { name: 'Lägg till' }))
     expect(api.addPrinter).toHaveBeenCalledWith('loc-1', 'Kök 1', 'star', 'kok')
     expect(api.saveCategoryRouting).toHaveBeenCalledWith('loc-1', { c0a1b2c3d4: 'bar' })
-    expect(await screen.findByRole('status')).toHaveTextContent('Kök · Kök 1 är klar')
+    // The save bar of Mer inställningar has a status line of its own.
+    await waitFor(() =>
+      expect(screen.getAllByRole('status').some((el) => el.textContent?.includes('Kök · Kök 1 är klar'))).toBe(true),
+    )
     const box = screen.getByRole('region', { name: 'Uppgifter till skrivaren' })
     expect(within(box).getByLabelText('Lösenord')).toHaveValue('s3cret')
     expect(within(box).getByLabelText('Server-URL (CloudPRNT)')).toHaveValue(PRINTER.serverUrl)

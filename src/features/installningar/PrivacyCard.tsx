@@ -29,6 +29,7 @@ import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { SkelLines, SkelPage } from '../../shared/Skeleton'
+import { SaveBar } from '../../shared/SaveBar'
 
 /**
  * Integritet: restaurangen är personuppgiftsansvarig för sina gäster.
@@ -168,6 +169,7 @@ function NoticeEditor() {
   // Det som misslyckades, så att Försök igen gör om just det (utan ny fråga).
   const [retry, setRetry] = useState<(() => void) | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
+  const [failed, setFailed] = useState(false)
 
   function fail(text: string, again: () => void) {
     setError(text)
@@ -198,8 +200,10 @@ function NoticeEditor() {
     e.preventDefault()
     setError(null)
     setNotice(null)
+    setFailed(false)
     if (!text.trim()) {
       setError('Texten är tom. Skriv en text, eller återställ mallen.')
+      setFailed(true)
       return
     }
     setBusy(true)
@@ -210,6 +214,7 @@ function NoticeEditor() {
       setNotice('Sparat. Gästerna ser den nya texten direkt.')
     } catch (err) {
       fail(errorText(err, 'Integritetspolicyn sparades inte.'), () => formRef.current?.requestSubmit())
+      setFailed(true)
     } finally {
       setBusy(false)
     }
@@ -223,6 +228,7 @@ function NoticeEditor() {
   async function doReset() {
     setError(null)
     setNotice(null)
+    setFailed(false)
     setBusy(true)
     try {
       const n = await resetPrivacyNotice()
@@ -272,9 +278,11 @@ function NoticeEditor() {
               value={text}
               disabled={busy}
               spellCheck
+              aria-invalid={(failed && !text.trim()) || undefined}
               onChange={(e) => {
                 setText(e.target.value)
                 setNotice(null)
+                setFailed(false)
               }}
             />
             <p className="cell-muted privacy-hint">
@@ -285,9 +293,6 @@ function NoticeEditor() {
           {error && <ErrorNote text={error} onRetry={retry ?? undefined} />}
           {confirmEl}
           <span className="row-actions">
-            <button type="submit" className="btn primary square" disabled={busy || !dirty}>
-              {busy ? 'Sparar…' : 'Spara text'}
-            </button>
             <button
               type="button"
               className="btn outline square"
@@ -296,12 +301,19 @@ function NoticeEditor() {
             >
               Återställ mallen
             </button>
-            {notice && (
-              <span className="save-notice" role="status">
-                {notice}
-              </span>
-            )}
           </span>
+          <SaveBar
+            dirty={dirty}
+            busy={busy}
+            label="Spara text"
+            notice={notice}
+            failed={failed}
+            onDiscard={() => {
+              setText(saved.body)
+              setError(null)
+              setFailed(false)
+            }}
+          />
         </form>
       )}
     </section>

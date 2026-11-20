@@ -1,5 +1,7 @@
 import { errorText as commonError } from '../../shared/errors'
 import { ApiError, apiFetch, isApiConfigured } from '../../shared/api'
+import type { Course as TabCourse } from './table-order/types'
+import { mockSentRounds } from './table-order/tableOrderApi'
 
 /**
  * Bongar och skrivare (backend print-jobs, shared/routing.py i application).
@@ -97,6 +99,27 @@ export interface StationTicket {
   placedAt?: string
   createdAt?: string
   updatedAt?: string
+  /** Bordsbeställning (personalen tog den vid bordet): bong, makulering eller flytt. */
+  kind?: 'tab' | 'tab_void' | 'tab_move'
+  tabId?: string
+  /** Rundan på bordsbeställningen (R2). */
+  round?: number
+  covers?: number
+  /** Servitörens förnamn. */
+  waiter?: string
+  /** "SKICKA NU: VARMRÄTT" när en väntande rätt skickas. */
+  fire?: TabCourse
+  /** Det som väntar för den här stationen ("Väntar: Varmrätt 4"). */
+  waiting?: { course: TabCourse; quantity: number }[]
+  fromLabel?: string
+  toLabel?: string
+  /** Varför en makulering gjordes (tab_void): wrong, guest_changed eller other. */
+  voidReason?: string
+}
+
+/** Bong från en bordsbeställning (inte en onlinebeställning)? */
+export function isTabTicket(t: Pick<StationTicket, 'kind' | 'tabId'>): boolean {
+  return Boolean(t.kind?.startsWith('tab') || t.tabId)
 }
 
 /** En stations läge på en beställning (tavlan). */
@@ -479,8 +502,38 @@ export async function saveRouting(locationId: string, routing: TicketRouting): P
   return apiFetch(`${base(locationId)}/routing`, { method: 'PUT', body: JSON.stringify(routing) })
 }
 
+/** Bordsbeställningarnas bongar i mockläget (admin-flow:s mock), en per station och runda. */
+const mockTabStatus = new Map<string, TicketState>()
+
+function mockTabTickets(): StationTicket[] {
+  const out: StationTicket[] = []
+  for (const r of mockSentRounds()) {
+    const stations = new Map<string, StationTicket>()
+    for (const i of r.items) {
+      if (!i.stationId) continue
+      const sourceId = `${r.tabId}r${r.round}`
+      const t = stations.get(i.stationId) ?? {
+        sourceId, stationId: i.stationId, stationName: i.stationName ?? i.stationId,
+        status: mockTabStatus.get(`${sourceId}/${i.stationId}`) ?? 'sent', allergy: false, entries: [],
+        kind: r.kind === 'void' ? 'tab_void' : 'tab', tabId: r.tabId, round: r.round, mode: 'table',
+        tableId: r.tableId, tableLabel: r.tableLabel, waiter: r.waiter, placedAt: r.placedAt,
+        ...(r.fire ? { fire: r.fire } : {}),
+      }
+      t.allergy = t.allergy || Boolean(i.allergy)
+      t.entries.push({
+        name: i.name, quantity: i.quantity, course: i.course === 'other' ? null : i.course,
+        ...(i.options.length ? { options: i.options.map((o) => `${o.group}: ${o.choice}`) } : {}),
+        ...(i.note ? { note: i.note } : {}),
+      })
+      stations.set(i.stationId, t)
+    }
+    out.push(...stations.values())
+  }
+  return out
+}
+
 export async function listTickets(locationId: string): Promise<StationTicket[]> {
-  if (!isApiConfigured()) return mockTickets
+  if (!isApiConfigured()) return [...mockTickets, ...mockTabTickets()]
   return (await apiFetch<{ tickets: StationTicket[] }>(`${base(locationId)}/tickets`)).tickets
 }
 
@@ -491,6 +544,7 @@ function ticketPath(locationId: string, t: { sourceId: string; stationId: string
 export async function setTicketStatus(locationId: string, ticket: StationTicket, status: Exclude<TicketState, 'cancelled'>): Promise<StationTicket> {
   if (!isApiConfigured()) {
     const next = { ...ticket, status, updatedAt: new Date().toISOString() }
+    if (isTabTicket(ticket)) mockTabStatus.set(`${ticket.sourceId}/${ticket.stationId}`, status)
     mockTickets = mockTickets.map((t) => (t.sourceId === ticket.sourceId && t.stationId === ticket.stationId ? next : t))
     return next
   }
@@ -517,6 +571,11 @@ export const COURSE_TEXT: Record<Course, string> = {
 }
 
 const COURSE_ORDER: Course[] = ['starters', 'mains', 'desserts', 'drinks']
+
+/** "Varmrätt", "Övrigt": en bordsbeställnings rätt (fire, waiting). */
+export function tabCourseText(course: TabCourse): string {
+  return course === 'other' ? 'Övrigt' : COURSE_TEXT[course]
+}
 
 /** Bongens rader per rätt (förrätt, varmrätt, ...); en grupp utan namn när allt är samma. */
 export function byCourse(entries: TicketEntry[]): { course: string | null; entries: TicketEntry[] }[] {

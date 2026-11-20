@@ -37,3 +37,130 @@
 .gaster-segments p {
   margin: var(--bq-space-1) 0 0;
 }
+/* Färdiga målgrupper att börja från: knappar i naturlig bredd som bryts till
+   nya rader, vänsterställda (inte utsträckta i ett rutnät med text i mitten). */
+.gaster-seg-starters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--bq-space-2);
+  margin: 0 0 var(--bq-space-5);
+}
+.gaster-seg-starters > button {
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+}
+/* Kundens kort: luft mellan Historik, tabellen och formuläret under. */
+.gaster-facts ~ .form-section-label {
+  margin: 0 0 var(--bq-space-3);
+}
+.gaster-facts ~ .table-scroll {
+  margin-bottom: var(--bq-space-5);
+}
+/* Telefon: kundens namn står alltid på en egen rad överst, även när det är
+   kort, så att alla rader har samma ordning. */
+@media (max-width: 600px) {
+  .gaster-table td:first-child {
+    flex: 1 1 100%;
+  }
+}
+/* Kundlistan och kundens historik ryms i kortet på iPad: den delade
+   .data-table har min-width 900px (bredare än kortet), så den släpps här.
+   Ett långt namn bryts på flera rader i stället för att skjuta ut kolumnerna. */
+.data-table.gaster-table,
+.data-table.gaster-history {
+  min-width: 0;
+}
+.gaster-table td,
+.gaster-history td {
+  overflow-wrap: break-word;
+}
+.gaster-table .link-action {
+  max-width: 100%;
+  margin-left: -10px;
+  white-space: normal;
+  text-align: left;
+  justify-content: flex-start;
+}
+.gaster-table td:has(> .status-badge:only-child) {
+  width: 1%;
+  white-space: nowrap;
+}
+/* Smalt kort (iPad mini och iPad stående, kundens kort): raderna blir små
+   kort med rubriken ovanför varje värde, som i telefonen. */
+.table-scroll:has(> :is(.gaster-table, .gaster-history)) {
+  container-type: inline-size;
+}
+@container (max-width: 560px) {
+  .data-table:is(.gaster-table, .gaster-history),
+  :is(.gaster-table, .gaster-history) tbody {
+    display: block;
+  }
+  :is(.gaster-table, .gaster-history) thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  :is(.gaster-table, .gaster-history) tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 8px 16px;
+    padding: 14px 0;
+  }
+  :is(.gaster-table, .gaster-history) td,
+  .gaster-table td:has(> .status-badge:only-child) {
+    display: block;
+    width: auto;
+    min-width: 0;
+    padding: 0;
+  }
+  .gaster-table td:first-child {
+    flex: 1 1 100%;
+  }
+  :is(.gaster-table, .gaster-history) td:empty {
+    display: none;
+  }
+  :is(.gaster-table, .gaster-history) td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+  }
+}
+.gaster-amount {
+  white-space: nowrap;
+}
+/* iPad (pek): kundens namn och knapparna minst 44 px höga. */
+@media (pointer: coarse) {
+  .gaster-table .link-action,
+  :is(.admin-card, .bq-card):has(.gaster-table) .bq-btn {
+    min-height: 44px;
+  }
+}
+/* Kundens kort: anteckningen (upp till 300 tecken) syns hel, med luft runt
+   texten, i stället för att pressas in i ett enradsfält. */
+.bq-input.gaster-note {
+  display: block;
+  height: auto;
+  min-height: calc(4 * 1.4em + 20px);
+  padding: 10px var(--bq-space-4);
+  line-height: 1.4;
+  resize: vertical;
+}
+/* Ett långt kundnamn i rubriken bryts och lämnar plats åt stängknappen. */
+.bq-modal__panel:has(.gaster-facts, .gaster-note) .bq-modal__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+/* Statusen har varken fyllning eller kant, så den står kant i kant med sin
+   rubrik och i samma höjd som värdena bredvid. */
+:is(.gaster-table, .gaster-history) .status-badge[class] {
+  display: inline;
+  padding: 0;
+}

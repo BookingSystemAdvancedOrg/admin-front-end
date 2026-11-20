@@ -7,6 +7,7 @@ import { getLocation, updateLocation } from './locationApi'
 import type { GuaranteePolicy } from './locationApi'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
+import { SaveBar } from '../../shared/SaveBar'
 
 /**
  * Avbokningspolicy / kortgaranti för den valda platsen.
@@ -66,6 +67,8 @@ export function CancellationPolicyCard({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+  const [invalid, setInvalid] = useState<(keyof FormState)[]>([])
 
   useEffect(() => {
     if (!locationId) return
@@ -100,6 +103,21 @@ export function CancellationPolicyCard({
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }))
     setNotice(null)
+    setFailed(false)
+    setInvalid((list) => list.filter((k) => k !== key))
+  }
+
+  function discard() {
+    setForm(toForm(saved ?? DEFAULTS))
+    setError(null)
+    setFailed(false)
+    setInvalid([])
+  }
+
+  function refuse(text: string, fields: (keyof FormState)[]) {
+    setError(text)
+    setInvalid(fields)
+    setFailed(true)
   }
 
   async function save(e: FormEvent) {
@@ -107,17 +125,22 @@ export function CancellationPolicyCard({
     if (!locationId) return
     setError(null)
     setNotice(null)
+    setFailed(false)
+    setInvalid([])
     const minPartySize = whole(form.minPartySize, 1, 50)
     const noShow = whole(form.noShow, 0, 5000)
     const lateCancel = whole(form.lateCancel, 0, 5000)
     const cutoff = whole(form.cutoff, 0, 168)
-    if (minPartySize === null) return setError('Sällskapets storlek ska vara 1 till 50 personer. Skriv till exempel 8.')
+    if (minPartySize === null) return refuse('Sällskapets storlek ska vara 1 till 50 personer. Skriv till exempel 8.', ['minPartySize'])
     if (noShow === null || lateCancel === null) {
-      return setError('Avgiften ska vara 0 till 5 000 kr per person. Skriv till exempel 200.')
+      return refuse('Avgiften ska vara 0 till 5 000 kr per person. Skriv till exempel 200.', [
+        ...(noShow === null ? ['noShow' as const] : []),
+        ...(lateCancel === null ? ['lateCancel' as const] : []),
+      ])
     }
-    if (cutoff === null) return setError('Avbokningsgränsen ska vara 0 till 168 timmar. Skriv till exempel 24.')
+    if (cutoff === null) return refuse('Avbokningsgränsen ska vara 0 till 168 timmar. Skriv till exempel 24.', ['cutoff'])
     if (form.enabled && noShow === 0 && lateCancel === 0) {
-      return setError('Fyll i minst en avgift: no-show eller sen avbokning.')
+      return refuse('Fyll i minst en avgift: no-show eller sen avbokning.', ['noShow', 'lateCancel'])
     }
     const policy: GuaranteePolicy = {
       enabled: form.enabled,
@@ -133,6 +156,7 @@ export function CancellationPolicyCard({
       setNotice(policy.enabled ? 'Sparat. Gäller nya bokningar.' : 'Sparat - kortgarantin är avstängd.')
     } catch (err) {
       setError(errorText(err, 'Avbokningspolicyn sparades inte.', { owner_only: 'Bara restaurangens ägare kan ändra policyn. Be ägaren göra det.', forbidden: 'Bara restaurangens ägare kan ändra policyn. Be ägaren göra det.' }))
+      setFailed(true)
     } finally {
       setBusy(false)
     }
@@ -187,6 +211,7 @@ export function CancellationPolicyCard({
                 inputMode="numeric"
                 value={form.minPartySize}
                 disabled={disabled}
+                aria-invalid={invalid.includes('minPartySize') || undefined}
                 onChange={(e) => set('minPartySize', e.target.value)}
               />
             </div>
@@ -197,6 +222,7 @@ export function CancellationPolicyCard({
                 inputMode="numeric"
                 value={form.cutoff}
                 disabled={disabled}
+                aria-invalid={invalid.includes('cutoff') || undefined}
                 onChange={(e) => set('cutoff', e.target.value)}
               />
             </div>
@@ -207,6 +233,7 @@ export function CancellationPolicyCard({
                 inputMode="numeric"
                 value={form.noShow}
                 disabled={disabled}
+                aria-invalid={invalid.includes('noShow') || undefined}
                 onChange={(e) => set('noShow', e.target.value)}
               />
             </div>
@@ -217,6 +244,7 @@ export function CancellationPolicyCard({
                 inputMode="numeric"
                 value={form.lateCancel}
                 disabled={disabled}
+                aria-invalid={invalid.includes('lateCancel') || undefined}
                 onChange={(e) => set('lateCancel', e.target.value)}
               />
             </div>
@@ -235,21 +263,15 @@ export function CancellationPolicyCard({
             <ErrorNote text={error} />
           )}
           {isOwner && (
-            <span className="row-actions">
-              <button type="submit" className="btn primary square" disabled={disabled}>
-                {busy ? 'Sparar…' : 'Spara policy'}
-              </button>
-              {notice && !dirty && (
-                <span className="save-notice" role="status">
-                  {notice}
-                </span>
-              )}
-              {dirty && !busy && (
-                <span className="form-error" role="status">
-                  Ej sparat - klicka Spara policy.
-                </span>
-              )}
-            </span>
+            <SaveBar
+              dirty={dirty}
+              busy={busy}
+              label="Spara policy"
+              notice={notice}
+              failed={failed}
+              disabled={disabled}
+              onDiscard={discard}
+            />
           )}
           {!isOwner && <p className="cell-muted">Bara ägaren kan ändra.</p>}
         </form>

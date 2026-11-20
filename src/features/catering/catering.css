@@ -4,6 +4,7 @@
   display: grid;
   gap: 8px;
   margin: 12px 0 0;
+  container-type: inline-size;
 }
 
 .catering-facts > div {
@@ -12,13 +13,37 @@
   gap: 12px;
 }
 
+/* Smalt kort (iPad på höjden, telefon): rubriken ovanför värdet, så värdet
+   får hela bredden och långa ord inte bryts i småbitar. */
+@container (max-width: 480px) {
+  .catering-facts {
+    gap: 12px;
+  }
+
+  .catering-facts > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .catering-facts dt {
+    font-size: 13px;
+  }
+}
+
 .catering-facts dt {
   color: var(--muted);
 }
 
 .catering-facts dd {
   margin: 0;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* E-post och telefon: inget avstavningsstreck som ser ut att höra till adressen. */
+.catering-facts dd a {
   overflow-wrap: anywhere;
+  hyphens: manual;
 }
 
 .catering-facts .mono {
@@ -36,8 +61,9 @@
 
 .catering-lines li {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: 2px 12px;
 }
 
 .catering-lines-total {
@@ -107,12 +133,161 @@
   min-width: 0;
 }
 
-/* Restaurangens BankID-signering av offerten. */
+/* Offertens tre steg: 1 granska, 2 signera med BankID, 3 skicka till kunden.
+   Rubriken har card-head:s luft under sig; stegen och knapparna samma luft
+   som korten bredvid (12 px efter rubriken, 20 px till knapparna). */
+.offer-steps {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  counter-reset: none;
+}
+
+.offer-steps li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--muted);
+}
+
+.offer-step-dot {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  font: 600 14px/1 var(--font);
+}
+
+.offer-step-label {
+  font: 500 15px/1.3 var(--font);
+  overflow-wrap: anywhere;
+}
+
+.offer-steps li.is-current {
+  color: var(--ink);
+}
+
+.offer-steps li.is-current .offer-step-dot {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.offer-steps li.is-current .offer-step-label {
+  font-weight: 700;
+}
+
+.offer-steps li.is-done {
+  color: var(--ink);
+}
+
+.offer-steps li.is-done .offer-step-dot {
+  border-color: transparent;
+  background: var(--tint-green);
+  color: var(--success-ink);
+}
+
+.offer-steps-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 16px;
+  margin-top: 20px;
+}
+
+.offer-steps-actions .btn {
+  gap: 8px;
+}
+
+/* Skicka innan signering: låst, med skälet på en rad under knappen. */
+.offer-send-locked {
+  display: inline-grid;
+  justify-items: start;
+  gap: 6px;
+}
+
+.offer-lock-reason {
+  font: 500 13px/1.3 var(--font);
+  color: var(--muted);
+}
+
+.offer-steps-done {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 20px 0 0;
+  color: var(--success-ink);
+  font-weight: 600;
+}
+
+/* Steg 1 står överst i offerten när ingen version finns än. */
+.offer-steps-editor {
+  margin-bottom: 16px;
+}
+
+.offer-steps-editor .offer-steps {
+  margin-top: 0;
+}
+
+/* En ny version: kräver en ny signatur av restaurangen. */
+.offer-resign-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: var(--tint-orange);
+  color: var(--warning-ink);
+  font: 600 12px/1.3 var(--font);
+  white-space: nowrap;
+}
+
+/* Smalt kort (telefon, platta på höjden med menyn bredvid): stegen under varandra. */
+.offer-steps-card,
+.offer-steps-editor {
+  container-type: inline-size;
+}
+
+@container (max-width: 560px) {
+  .offer-steps {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .offer-steps-actions > * {
+    flex: 1 1 100%;
+  }
+
+  .offer-steps-actions .btn {
+    width: 100%;
+  }
+
+  .offer-send-locked {
+    justify-items: stretch;
+  }
+}
+
+/* Restaurangens BankID-signering av offerten (steg 2). */
+.restaurant-signing {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+
 .restaurant-signing .bankid-box {
   display: grid;
   justify-items: start;
   gap: 12px;
-  margin-top: 12px;
 }
 
 .restaurant-signing .bankid-qr {
@@ -147,4 +322,372 @@
   .checking-dots::after {
     animation: none;
   }
+}
+
+/* --- Passform: iPad och telefon ------------------------------------------- */
+
+/* Beloppet står kvar på raden till höger, i linje med de andra beloppen;
+   ett långt namn bryts i stället. */
+.catering-lines li > span:first-child {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.catering-lines li > span:last-child {
+  flex: none;
+  margin-left: auto;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Filtret: "Pågående" med hela g:et, inte avklippt under. */
+.catering-list .compact-select {
+  line-height: 1.3;
+}
+
+/* Förfrågningarna: tabell när den får plats (900 px), annars ett kort per
+   rad med Öppna uppe till höger, så inget gömmer sig bakom sidled-scroll på
+   iPad (också på höjden och liggande). */
+.catering-list .table-scroll {
+  container-type: inline-size;
+  /* Markeringen når 12 px utanför texten, texten står kvar under rubriken. */
+  margin: 0 -12px;
+}
+
+.catering-list-table th:first-child,
+.catering-list-table td:first-child {
+  padding-left: 12px;
+}
+
+.catering-list-table th:last-child,
+.catering-list-table td:last-child {
+  padding-right: 12px;
+}
+
+/* Hela raden öppnar förfrågan (CateringPage): ljusare vid hovring och tryck,
+   en ring runt raden när Öppna har tangentbordsfokus. Pilen, inte handen
+   (ägarens regel); markeringen och knappen visar att raden går att trycka på. */
+.catering-row,
+.catering-row * {
+  cursor: default;
+}
+
+.catering-row > td {
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.catering-row:hover > td,
+.catering-row:active > td,
+.catering-row:has(.catering-open-link:focus-visible) > td {
+  background-color: color-mix(in srgb, var(--glass-highlight) 55%, transparent);
+}
+
+.catering-row:hover > td:first-child,
+.catering-row:active > td:first-child,
+.catering-row:has(.catering-open-link:focus-visible) > td:first-child {
+  border-radius: var(--r-md) 0 0 var(--r-md);
+}
+
+.catering-row:hover > td:last-child,
+.catering-row:active > td:last-child,
+.catering-row:has(.catering-open-link:focus-visible) > td:last-child {
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+}
+
+.catering-row:has(.catering-open-link:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.catering-list-table .catering-open {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Öppna: radens enda knapp, i handlingsfärgen. Ljust blå i vila, full blå
+   och pilen ett steg framåt när raden hovras eller har fokus. */
+.catering-open-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px 0 16px;
+  border-radius: var(--r-pill);
+  background: var(--cta-soft);
+  color: var(--ink);
+  font: 600 14px/1 var(--font);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.catering-open-arrow {
+  flex: none;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.catering-row:hover .catering-open-link,
+.catering-open-link:focus-visible {
+  background: var(--cta);
+  color: var(--on-cta);
+}
+
+.catering-row:active .catering-open-link {
+  background: var(--cta-active);
+  color: var(--on-cta);
+}
+
+.catering-row:hover .catering-open-arrow,
+.catering-open-link:focus-visible .catering-open-arrow {
+  transform: translateX(3px);
+}
+
+/* Ringen ligger runt hela raden, inte en till runt knappen. */
+.catering-open-link:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.catering-list-table .catering-amount,
+.catering-list-table .catering-guests {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.catering-list-table .catering-who {
+  overflow-wrap: anywhere;
+}
+
+/* Offertens rader: namnet får plats, priset och antalet är lagom smala. */
+.offer-table td.offer-name {
+  width: 100%;
+}
+
+/* Radens namn radbryts (växer på höjden) i stället för att klippas vid kanten. */
+.offer-table .offer-name textarea {
+  display: block;
+  width: 100%;
+  min-width: 200px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  font: inherit;
+  line-height: 1.4;
+  resize: none;
+  field-sizing: content;
+  overflow-wrap: break-word;
+}
+
+.offer-table .offer-price input {
+  width: 112px;
+  min-width: 0;
+}
+
+.offer-table .offer-qty input {
+  width: 84px;
+  min-width: 0;
+}
+
+.offer-table .offer-sum {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.table-scroll:has(> .offer-table) {
+  container-type: inline-size;
+}
+
+@container (max-width: 899px) {
+  .catering-list-table,
+  .offer-table {
+    display: block;
+    min-width: 0 !important;
+  }
+
+  .catering-list-table thead,
+  .offer-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .catering-list-table tbody,
+  .offer-table tbody {
+    display: block;
+  }
+
+  .catering-list-table tr,
+  .offer-table tr {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .catering-list-table tbody tr:first-child,
+  .offer-table tbody tr:first-child {
+    border-top: 0;
+  }
+
+  .catering-list-table td,
+  .offer-table td {
+    display: block;
+    min-width: 0;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  .catering-list-table td[data-label]::before,
+  .offer-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font: 500 12px/1.3 var(--font);
+    color: var(--muted);
+  }
+
+  .catering-list-table .catering-when { order: 0; flex: 1 1 0; }
+  .catering-list-table .catering-open { order: 1; flex: none; }
+  .catering-list-table .catering-who { order: 2; flex: 1 1 100%; }
+  .catering-list-table .catering-guests { order: 3; flex: none; }
+  .catering-list-table .catering-amount { order: 4; flex: 1 1 auto; }
+  .catering-list-table .catering-state { order: 5; flex: 1 1 100%; }
+
+  .catering-list-table .catering-open {
+    width: auto;
+  }
+
+  /* Datum och Öppna på samma rad också på telefon: telefonens tabellkort
+     (ds.css) ger annars första cellen en egen rad och Öppna hamnar under. */
+  .catering-list .catering-list-table tr.catering-row > td.catering-when {
+    flex: 1 1 0;
+  }
+
+  .catering-list-table .catering-open .catering-open-link {
+    min-height: 44px;
+  }
+
+  /* Raden är ett kort här: markeringen och ringen följer kortets hörn. I
+     vila är hörnen raka, så linjen mellan raderna inte böjer sig i ändarna;
+     när markeringen tonar ut står hörnen kvar runda tills den är borta. */
+  .catering-list-table tr.catering-row {
+    padding: 14px 12px;
+    transition: background-color var(--dur-fast) var(--ease-out), border-radius 0s linear var(--dur-fast);
+  }
+
+  .catering-row:hover > td,
+  .catering-row:active > td,
+  .catering-row:has(.catering-open-link:focus-visible) > td {
+    background-color: transparent;
+  }
+
+  .catering-list-table tr.catering-row:hover,
+  .catering-list-table tr.catering-row:active,
+  .catering-list-table tr.catering-row:has(.catering-open-link:focus-visible) {
+    border-radius: var(--r-md);
+    background-color: color-mix(in srgb, var(--glass-highlight) 55%, transparent);
+    transition: background-color var(--dur-fast) var(--ease-out), border-radius 0s;
+  }
+
+  .catering-row:has(.catering-open-link:focus-visible) {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--focus);
+  }
+
+  /* Namnet och "Ta bort" på första raden, Á-pris, Antal och Summa under;
+     "Ta bort" och summan slutar i samma högerkant. */
+  .offer-table td.offer-name {
+    order: 0;
+    /* Lämnar precis plats för "Ta bort", så Á-pris börjar på nästa rad. */
+    flex: 1 1 calc(100% - 88px);
+    width: auto;
+  }
+
+  .offer-table td.offer-remove { order: 1; }
+  .offer-table td.offer-price { order: 2; }
+  .offer-table td.offer-qty { order: 3; }
+  .offer-table td.offer-sum { order: 4; }
+
+  .offer-table .offer-name textarea {
+    min-width: 0;
+  }
+
+  .offer-table tr {
+    align-items: flex-end;
+  }
+
+  /* Á-pris och Antal lika breda på varje rad, så kolumnerna står i linje
+     oavsett hur lång summan är; summan tar resten, till höger. */
+  .offer-table .offer-price { flex: 0 0 112px; }
+  .offer-table .offer-qty { flex: 0 0 84px; }
+  .offer-table .offer-price input,
+  .offer-table .offer-qty input { width: 100%; }
+  .offer-table .offer-sum { flex: 1 1 auto; padding-bottom: 10px !important; text-align: right; }
+  .offer-table .offer-remove { flex: none; align-self: flex-start; margin-left: auto; }
+
+  .offer-table .offer-remove .link-action {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-right: 0;
+  }
+}
+
+/* Rubriken med kundens företagsnamn: långa ord bryts i stället för att
+   trycka ut sidan i sidled (iPad mini, telefon). */
+.admin-right:has(.catering-request) .admin-topbar-titles h1 {
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+/* Fingrar på iPad: länkknappar och väljare minst 44 px höga. */
+@media (pointer: coarse) {
+  .catering-request .link-action {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .catering-list .catering-open-link {
+    min-height: 44px;
+  }
+
+  .offer-add-row .b-select,
+  .catering-list .compact-select {
+    min-height: 44px;
+  }
+}
+
+/* Ett belopp bryts aldrig mitt i ("1 234 / 567 kr"). */
+.catering-request .count-num,
+.catering-list .count-num {
+  white-space: nowrap;
+}
+
+/* Väljarna i offerten: hela valet syns (radbryts) på telefon. */
+.catering-request .form-field .b-select-value {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  line-height: 1.3;
+}
+
+/* Postnummer, datum och belopp bryts aldrig mitt i ("118 / 46", "2026- / 11-29"). */
+.catering-nowrap {
+  white-space: nowrap;
+}
+
+/* "Meddelande till kunden" får samma avstånd till fälten ovanför som
+   fälten har sinsemellan. */
+.catering-request .form-grid + .form-field {
+  margin-top: 20px;
 }

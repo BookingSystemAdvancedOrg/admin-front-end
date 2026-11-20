@@ -1,67 +1,50 @@
 import { errorText } from '../../shared/errors'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import {
   BookingsOnRemovedTablesError,
   activateLayoutVersion,
   archiveLayoutVersion,
   cancelPendingLayoutActivation,
-  listLayoutVersions,
+  loadLayoutVersions,
+  reschedulePendingLayoutActivation,
 } from './layoutApi'
-import type { LayoutActivation, PublishedLayoutSnapshot, RemovedTableBooking } from './layoutApi'
+import type { LayoutActivation, LayoutVersionList, RemovedTableBooking } from './layoutApi'
 import { SkelRows } from '../../shared/Skeleton'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { useConfirm } from '../../shared/ConfirmDialog'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { DateInput } from '../../shared/DateInput'
+import { InfoTooltip } from '../../shared/InfoTooltip'
 import { RemovedTablesBookings } from './RemovedTablesBookings'
+import { daysUntil, earliestDate, localDate, longDate, shortDate, sizeText, snapshotLabels, versionTimeline } from './versionTimeline'
+import type { TimelineEntry } from './versionTimeline'
+import { BackButton } from '../../shared/BackButton'
+import { BOOKING_HORIZON_DAYS } from '../bokningar/bookingsApi'
 
-/** "2026-10-05T01:00:00Z" -> "5 oktober 2026, 03:00" i lokal tid. */
-function formatMoment(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return new Intl.DateTimeFormat('sv-SE', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(d)
+/** "om 22 dagar", "imorgon", "idag". */
+function inDays(date: string): string {
+  const n = daysUntil(date)
+  if (n <= 0) return 'idag'
+  if (n === 1) return 'imorgon'
+  return `om ${n} dagar`
 }
 
-/** Kort variant för statusmärket i listan - "5 okt. 2026" - så raden inte
- *  tvingar fram sidscroll. Fulla datumet + klockslag står redan i
- *  bekräftelsetexten ovanför listan när man just aktiverat något. */
-function formatShortDate(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return new Intl.DateTimeFormat('sv-SE', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(d)
-}
+type Planning = { version: number; mode: 'activate' | 'move'; date: string }
 
 /**
- * Publicerade layoutversioner, med möjlighet att aktivera, avbryta eller
- * arkivera en av dem.
+ * Versioner som en tidslinje: den som gäller nu, sedan den som tar över (med
+ * datum), sist de som inte är inplanerade. Varje knapp säger vad den gör.
  *
- * Aktiveringen är omedelbar bara när ingen version gäller ännu. Finns redan
- * en gällande version schemalägger API:t bytet ett stycke fram i tiden i
- * stället - hur långt är miljöberoende (bekräftat av backend-teamet
- * 2026-09-29: 5 minuter i dev, annars 28 dagar/fyra veckor) - det måste
- * synas, annars tror man att bytet skett direkt.
+ * Ett byte till en ny ritning sker tidigast dagen efter bokningsfönstret
+ * (alla bokar idag till och med idag + 21, bytet tidigast idag + 22), så
+ * ingen bokning hamnar på en ritning som ändrats under den. Bara ett byte
+ * kan vänta åt gången: att planera in en annan version avbryter först det
+ * väntande bytet (efter en fråga). Servern nekar att stoppa eller skjuta upp
+ * ett byte när bokningar redan står på bord som bara den nya versionen har;
+ * då visas bokningarna, med borden numrerade som i den nya versionen.
  *
- * Ett schemalagt byte går att avbryta (fick stöd i API:t 2026-09-29): den
- * väntande versionen (badgen "Aktiveras …") får en "Avbryt"-knapp som bara
- * rör SCHEMALÄGGNINGEN - den gällande versionen fortsätter gälla utan
- * slutdatum, och den avbrutna versionen blir en vanlig inaktiv version igen
- * (kan därefter arkiveras precis som vilken annan inaktiv version som helst).
- *
- * Arkivering (fick också stöd 2026-09-29) städar bort gamla, aldrig
- * aktiverade eller redan förbrukade versioner ur listan - bara gällande och
- * väntande version kan inte arkiveras direkt (avbryt bytet först).
- *
- * Bara ägare och systemadmin får göra något av detta, så listan visas för
- * alla men knapparna bara för dem.
+ * Bara ägare och systemadmin får ändra något, så listan visas för alla men
+ * knapparna bara för dem.
  */
 export function LayoutVersionsModal({
   locationId,
@@ -74,29 +57,25 @@ export function LayoutVersionsModal({
   onClose: () => void
   onActivated: () => void
 }) {
+  const titleId = useId()
   const [confirmEl, ask] = useConfirm()
-  const [versions, setVersions] = useState<PublishedLayoutSnapshot[] | null>(null)
+  const [list, setList] = useState<LayoutVersionList | null>(null)
   const [error, setError] = useState<string | null>(null)
-  // Bokningar på bord som versionen tar bort (409 bookings_on_removed_tables).
-  const [removed, setRemoved] = useState<RemovedTableBooking[]>([])
-  const [busyVersion, setBusyVersion] = useState<number | null>(null)
-  const [archivingVersion, setArchivingVersion] = useState<number | null>(null)
-  const [cancelling, setCancelling] = useState(false)
-  const [result, setResult] = useState<LayoutActivation | null>(null)
-  const busy = busyVersion !== null || archivingVersion !== null || cancelling
+  const [removed, setRemoved] = useState<{ bookings: RemovedTableBooking[]; labels?: Map<string, string> }>({ bookings: [] })
+  const [busy, setBusy] = useState<string | null>(null)
+  const [planning, setPlanning] = useState<Planning | null>(null)
+  const [result, setResult] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    listLayoutVersions(locationId)
-      .then((items) => {
-        if (!cancelled) setVersions(items)
+    loadLayoutVersions(locationId)
+      .then((l) => {
+        if (!cancelled) setList(l)
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(
-            errorText(err, 'Versionerna kunde inte visas.'),
-          )
-          setVersions([])
+          setError(errorText(err, 'Versionerna kunde inte visas.'))
+          setList({ items: [], earliestChangeDate: null, bookingHorizonDays: BOOKING_HORIZON_DAYS })
         }
       })
     return () => {
@@ -104,188 +83,236 @@ export function LayoutVersionsModal({
     }
   }, [locationId])
 
-  async function activate(version: number) {
+  const entries = list ? versionTimeline(list.items) : []
+  const current = entries.find((e) => e.kind === 'current')
+  const next = entries.find((e) => e.kind === 'next')
+  const planned = entries.filter((e) => e.kind !== 'unscheduled')
+  const saved = entries.filter((e) => e.kind === 'unscheduled')
+  const earliest = list ? earliestDate(list) : ''
+
+  async function run(key: string, work: () => Promise<string | null>) {
     setError(null)
-    setRemoved([])
+    setRemoved({ bookings: [] })
     setResult(null)
-    setBusyVersion(version)
+    setBusy(key)
     try {
-      const activation = await activateLayoutVersion(locationId, version)
-      setResult(activation)
-      // Läs om listan: lifecycle-fälten på både den nya och den gamla
-      // versionen ändras av aktiveringen.
-      setVersions(await listLayoutVersions(locationId))
+      const done = await work()
+      setPlanning(null)
+      setResult(done)
+      setList(await loadLayoutVersions(locationId))
       onActivated()
     } catch (err) {
-      setError(errorText(err, 'Versionen aktiverades inte.'))
-      if (err instanceof BookingsOnRemovedTablesError) setRemoved(err.bookings)
+      setError(errorText(err, 'Det gick inte. Försök igen.'))
+      if (err instanceof BookingsOnRemovedTablesError) {
+        // Stoppa eller skjuta upp: borden finns bara i den väntande versionen.
+        const labels = err.tablesIn === 'next' && next ? snapshotLabels(next.snapshot) : undefined
+        setRemoved({ bookings: err.bookings, labels })
+      }
     } finally {
-      setBusyVersion(null)
+      setBusy(null)
     }
   }
 
-  /**
-   * Mjuk arkivering - bara inaktiva versioner (aldrig gällande/väntande, det
-   * filtreras bort i knappen nedan). Ögonblicksbilden finns kvar i lagringen,
-   * men försvinner ur listan och går inte att ångra via API:t, därför en
-   * bekräftelse innan anropet (samma mönster som "Ta bort"-knapparna för
-   * användare/rätter).
-   */
-  async function archive(version: number, label: string) {
-    if (!(await ask({ title: `Arkivera ${label}?`, text: 'Går inte att ångra.', confirmLabel: 'Arkivera', danger: true })))
+  const outcome = (label: string, a: LayoutActivation) =>
+    a.status === 'active' ? `${label} gäller nu.` : `Klart. ${label} tar över ${longDate(a.cutoverAt)}.`
+
+  function activateNow(e: TimelineEntry) {
+    void run(`now-${e.snapshot.version}`, async () =>
+      outcome(e.snapshot.label, await activateLayoutVersion(locationId, e.snapshot.version)),
+    )
+  }
+
+  async function confirmPlan(e: TimelineEntry, p: Planning) {
+    const label = e.snapshot.label
+    if (p.mode === 'move') {
+      void run(`plan-${p.version}`, async () =>
+        outcome(label, await reschedulePendingLayoutActivation(locationId, p.date)),
+      )
       return
-    setError(null)
-    setArchivingVersion(version)
-    try {
-      await archiveLayoutVersion(locationId, version)
-      setVersions((prev) => prev?.filter((v) => v.version !== version) ?? prev)
-    } catch (err) {
-      setError(errorText(err, 'Versionen arkiverades inte.'))
-    } finally {
-      setArchivingVersion(null)
     }
+    if (next) {
+      const ok = await ask({
+        title: `Byta ut ${next.snapshot.label}?`,
+        text: `${next.snapshot.label} tar inte över ${longDate(next.from!)}. ${label} tar över ${longDate(p.date)} i stället.`,
+        confirmLabel: `Ja, ${label}`,
+        cancelLabel: 'Nej',
+      })
+      if (!ok) return
+    }
+    void run(`plan-${p.version}`, async () => {
+      if (next) await cancelPendingLayoutActivation(locationId)
+      return outcome(label, await activateLayoutVersion(locationId, p.version, p.date))
+    })
   }
 
-  /**
-   * Avbryter det väntande bytet (utan att röra vilken version som är vald
-   * för det) - den gällande versionen fortsätter gälla utan slutdatum, och
-   * den väntande versionen blir en vanlig inaktiv version igen (går då att
-   * arkivera precis som vilken annan inaktiv version som helst). Läser om
-   * listan efteråt eftersom både den gällande och den väntande versionens
-   * lifecycle-fält ändras.
-   */
-  async function cancelPending() {
-    if (!(await ask({ title: 'Avbryta det schemalagda bytet?', confirmLabel: 'Avbryt bytet', cancelLabel: 'Behåll' }))) return
-    setError(null)
-    setResult(null)
-    setCancelling(true)
-    try {
+  async function cancelNext(e: TimelineEntry) {
+    const ok = await ask({
+      title: `Stoppa bytet till ${e.snapshot.label}?`,
+      text: `${current?.snapshot.label ?? 'Nuvarande version'} fortsätter gälla. ${e.snapshot.label} sparas och kan planeras in igen.`,
+      confirmLabel: 'Stoppa bytet',
+      cancelLabel: 'Behåll',
+    })
+    if (!ok) return
+    void run('cancel', async () => {
       await cancelPendingLayoutActivation(locationId)
-      setVersions(await listLayoutVersions(locationId))
-    } catch (err) {
-      setError(errorText(err, 'Bytet avbröts inte.'))
-    } finally {
-      setCancelling(false)
-    }
+      return `Bytet är stoppat. ${current?.snapshot.label ?? 'Nuvarande version'} gäller.`
+    })
   }
 
-  // En väntande version har ett framtida effectiveFrom men gäller inte än.
-  const pendingVersion = versions?.find(
-    (v) => !v.isCurrent && v.effectiveFrom && new Date(v.effectiveFrom) > new Date(),
-  )
-  const currentVersion = versions?.find((v) => v.isCurrent)
+  async function remove(e: TimelineEntry) {
+    const ok = await ask({
+      title: `Ta bort ${e.snapshot.label}?`,
+      text: 'Den försvinner ur listan. Det går inte att ångra.',
+      confirmLabel: 'Ta bort',
+      danger: true,
+    })
+    if (!ok) return
+    void run(`remove-${e.snapshot.version}`, async () => {
+      await archiveLayoutVersion(locationId, e.snapshot.version)
+      return `${e.snapshot.label} är borttagen.`
+    })
+  }
+
+  const summary = !list || list.items.length === 0
+    ? null
+    : current && next
+      ? <><strong>Nu gäller {current.snapshot.label}.</strong> {next.snapshot.label} tar över av sig själv {longDate(next.from!)} ({inDays(localDate(next.from!))}).</>
+      : current
+        ? <><strong>Nu gäller {current.snapshot.label}.</strong> Inget byte är inplanerat.</>
+        : <><strong>Ingen version gäller än.</strong> Välj en, så kan gäster boka bord.</>
+
+  function row(e: TimelineEntry) {
+    const v = e.snapshot.version
+    const label = e.snapshot.label
+    const open = planning?.version === v
+    const meta = [
+      sizeText(e),
+      e.endedAt ? `gällde till ${shortDate(e.endedAt)}` : `publicerad ${shortDate(e.snapshot.createdAt)}`,
+    ].join(' · ')
+    return (
+      <li key={v} className={`vt-row vt-${e.kind}`}>
+        <span className="vt-dot" aria-hidden="true" />
+        <div className="vt-body">
+          <div className="vt-head">
+            <span className="vt-name">{label}</span>
+            {e.kind === 'current' && <span className="vt-stamp vt-stamp-now">Gäller nu</span>}
+            {e.kind === 'next' && e.from && (
+              <span className="vt-stamp vt-stamp-next">Från {shortDate(e.from)}</span>
+            )}
+          </div>
+          <p className="vt-meta">{meta}</p>
+
+          {canActivate && !open && e.kind === 'next' && (
+            <div className="vt-actions">
+              <button type="button" className="link-action" disabled={busy !== null}
+                onClick={() => setPlanning({ version: v, mode: 'move', date: localDate(e.from!) })}>
+                Ändra datum
+              </button>
+              <button type="button" className="link-action danger" disabled={busy !== null} onClick={() => cancelNext(e)}>
+                {busy === 'cancel' ? 'Stoppar…' : 'Stoppa bytet'}
+              </button>
+            </div>
+          )}
+          {canActivate && !open && e.kind === 'unscheduled' && (
+            <div className="vt-actions">
+              {current ? (
+                <button type="button" className="link-action strong" disabled={busy !== null}
+                  onClick={() => setPlanning({ version: v, mode: 'activate', date: earliest })}>
+                  Välj datum för bytet
+                </button>
+              ) : (
+                <button type="button" className="link-action strong" disabled={busy !== null} onClick={() => activateNow(e)}>
+                  {busy === `now-${v}` ? 'Aktiverar…' : 'Använd nu'}
+                </button>
+              )}
+              <button type="button" className="link-action danger" disabled={busy !== null} onClick={() => remove(e)}>
+                {busy === `remove-${v}` ? 'Tar bort…' : 'Ta bort'}
+              </button>
+            </div>
+          )}
+
+          {open && planning && (
+            <div className="vt-plan">
+              <label className="vt-plan-label" htmlFor={`vt-date-${v}`}>
+                {label} tar över
+              </label>
+              <DateInput
+                id={`vt-date-${v}`}
+                inputClassName="bq-input"
+                value={planning.date}
+                min={earliest}
+                onChange={(ev) => setPlanning({ ...planning, date: ev.target.value })}
+              />
+              <p className="vt-plan-why">
+                Tidigast {longDate(earliest)}.
+                <InfoTooltip label="Varför tidigast">
+                  Gäster kan boka {list?.bookingHorizonDays ?? BOOKING_HORIZON_DAYS} dagar fram. Bytet sker dagen efter, så
+                  ingen bokning hamnar på en ritning som ändrats.
+                </InfoTooltip>
+              </p>
+              {planning.mode === 'activate' && next && (
+                <p className="vt-plan-replaces">Bytet till {next.snapshot.label} {shortDate(next.from!)} stoppas.</p>
+              )}
+              <div className="vt-plan-actions">
+                <BackButton disabled={busy !== null} onClick={() => setPlanning(null)} />
+                <button type="button" className="btn primary square"
+                  disabled={busy !== null || !planning.date || planning.date < earliest}
+                  onClick={() => confirmPlan(e, planning)}>
+                  {busy === `plan-${v}`
+                    ? 'Sparar…'
+                    : planning.date
+                      ? `Byt ${shortDate(planning.date)}`
+                      : 'Välj ett datum'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </li>
+    )
+  }
 
   return (
     <>
-    <ModalOverlay role="dialog" aria-modal="true">
-      <div className="modal">
-        <h2>Publicerade versioner</h2>
+      <ModalOverlay role="dialog" aria-modal="true" aria-labelledby={titleId}>
+        <div className="modal versions-modal">
+          <h2 id={titleId}>Versioner</h2>
 
-        {error && (
+          {summary && <p className="versions-summary" role="status">{summary}</p>}
+
           <ErrorNote text={error} />
-        )}
-        {error && removed.length > 0 && (
-          <RemovedTablesBookings locationId={locationId} bookings={removed} />
-        )}
+          {error && removed.bookings.length > 0 && (
+            <RemovedTablesBookings locationId={locationId} bookings={removed.bookings} labels={removed.labels} />
+          )}
+          {result && <p className="save-notice" role="status">{result}</p>}
 
-        {result && (
-          <p className="save-notice" role="status">
-            {result.status === 'active'
-              ? `Version ${result.version} gäller nu.`
-              : `Version ${result.version} tar över från version ${result.currentVersion} den ${formatMoment(result.cutoverAt)}.`}
-          </p>
-        )}
+          {list === null && <SkelRows n={4} cols={2} />}
 
-        {pendingVersion && (
-          <p className="pending-version-notice">
-            <strong>Bara {currentVersion ? currentVersion.label : 'den nuvarande versionen'} gäller just nu.</strong>{' '}
-            {pendingVersion.label} tar över automatiskt
-            {pendingVersion.effectiveFrom
-              ? ` den ${formatShortDate(pendingVersion.effectiveFrom)}`
-              : ''}{' '}
-            - inte förrän dess.
-          </p>
-        )}
+          {list?.items.length === 0 && !error && (
+            <p className="cell-muted">Inga versioner än. Tryck Publicera layout först.</p>
+          )}
 
-        {versions === null && <SkelRows n={4} cols={3} />}
+          {planned.length > 0 && <ol className="version-timeline" aria-label="Gäller och nästa">{planned.map(row)}</ol>}
 
-        {versions?.length === 0 && !error && (
-          <p className="cell-muted">
-            Inga publicerade versioner än. Publicera layouten först.
-          </p>
-        )}
+          {saved.length > 0 && (
+            <section className="versions-saved" aria-labelledby={`${titleId}-saved`}>
+              <h3 id={`${titleId}-saved`}>{current ? 'Inte inplanerade' : 'Publicerade'}</h3>
+              <ol className="version-timeline">{saved.map(row)}</ol>
+            </section>
+          )}
 
-        {versions && versions.length > 0 && (
-          <div className="versions-list">
-            {versions.map((v) => {
-              const isPending = pendingVersion?.version === v.version
-              return (
-                <div className="version-row" key={v.version}>
-                  <div className="version-row-main">
-                    <span className="cell-strong">{v.label}</span>
-                    <span className="cell-muted">{v.elements.length} element</span>
-                  </div>
-                  <div className="version-row-right">
-                    {v.isCurrent ? (
-                      <span className="status-badge reserved">Gäller nu</span>
-                    ) : isPending ? (
-                      <span className="status-badge pending-version">
-                        Aktiveras {v.effectiveFrom ? formatShortDate(v.effectiveFrom) : ''}
-                      </span>
-                    ) : (
-                      <span className="cell-muted">Inaktiv</span>
-                    )}
-                    {canActivate && isPending && (
-                      <button
-                        type="button"
-                        className="link-action danger"
-                        disabled={busy}
-                        onClick={cancelPending}
-                      >
-                        {cancelling ? 'Avbryter…' : 'Avbryt'}
-                      </button>
-                    )}
-                    {canActivate && !v.isCurrent && !isPending && (
-                      <>
-                        <button
-                          type="button"
-                          className="link-action"
-                          disabled={busy}
-                          onClick={() => activate(v.version)}
-                        >
-                          {busyVersion === v.version ? 'Aktiverar…' : 'Aktivera'}
-                        </button>
-                        <button
-                          type="button"
-                          className="link-action danger"
-                          disabled={busy}
-                          onClick={() => archive(v.version, v.label)}
-                        >
-                          {archivingVersion === v.version ? 'Arkiverar…' : 'Arkivera'}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+          {!canActivate && list && list.items.length > 0 && (
+            <p className="cell-muted">Bara ägare och systemadmin kan byta version.</p>
+          )}
+
+          <div className="modal-actions modal-actions--pinned">
+            <button type="button" className="btn outline square" onClick={onClose}>
+              Stäng
+            </button>
           </div>
-        )}
-
-        {!canActivate && versions && versions.length > 0 && (
-          <p className="cell-muted">
-            Bara ägare och systemadmin kan aktivera en version.
-          </p>
-        )}
-
-        <div className="modal-actions">
-          <button type="button" className="btn outline square" onClick={onClose}>
-            Stäng
-          </button>
         </div>
-      </div>
-    </ModalOverlay>
-    {confirmEl}
+      </ModalOverlay>
+      {confirmEl}
     </>
   )
 }

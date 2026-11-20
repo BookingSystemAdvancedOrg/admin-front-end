@@ -47,7 +47,7 @@
 
 /* Det gröna talet lyser upp en gång när det landar (useTrendPop). */
 .trend-pop {
-  animation: trend-pop 520ms var(--ease) both;
+  animation: trend-pop 300ms var(--ease) both;
 }
 
 @keyframes trend-pop {

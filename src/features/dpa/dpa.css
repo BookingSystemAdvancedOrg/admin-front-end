@@ -13,7 +13,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 16px 20px;
-  background: var(--glass-text-bg) var(--liquid-sheen);
+  background: var(--tint-orange) var(--liquid-sheen);
   border-left: 4px solid var(--warning);
   border-radius: var(--r-lg);
   box-shadow: var(--liquid-edge), var(--liquid-depth);

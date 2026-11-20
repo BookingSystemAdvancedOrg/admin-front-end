@@ -8,21 +8,22 @@ import {
   EMAIL_MAX,
   NAME_MAX,
   NOTES_MAX,
-  addDays,
   createManualReservation,
   errorMessage,
   LOCATION_NOT_BOOKABLE,
   isStaleSlotError,
+  lastBookableDate,
   normalizePhone,
   validEmail,
 } from './bookingsApi'
 import type { Reservation } from './bookingsApi'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { useUnsavedGuard } from '../../shared/unsaved'
 
-/** Ett datum inom bokningsbara dagar (idag … idag + 20). */
+/** Ett datum inom bokningsbara dagar (idag till och med idag + 21). */
 function clampDate(date: string, today: string): string {
-  const last = addDays(today, 20)
+  const last = lastBookableDate(today)
   if (date < today) return today
   if (date > last) return last
   return date
@@ -72,6 +73,8 @@ export function NewReservationModal({
   const valid =
     sizeOk && name.trim() && slot.startTime && slot.tableIds.length > 0 && phoneOk && emailOk
   const canNotify = Boolean(phone.trim() || email.trim())
+  // Ifyllt men inte bokat: adminen frågar innan man lämnar sidan. Boka kräver ett giltigt formulär.
+  useUnsavedGuard(Boolean(name.trim() || phone.trim() || email.trim() || notes.trim() || slot.startTime))
 
   function chooseSource(value: StaffChannel) {
     if (value === source) return
@@ -201,7 +204,7 @@ export function NewReservationModal({
           {error && (
             <ErrorNote text={error} />
           )}
-          <div className="modal-actions">
+          <div className="modal-actions modal-actions--pinned">
             <button type="button" className="btn outline square" onClick={onCancel}>
               Avbryt
             </button>

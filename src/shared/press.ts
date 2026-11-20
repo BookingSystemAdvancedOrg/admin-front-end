@@ -1,13 +1,14 @@
 import { useSyncExternalStore } from 'react'
 import { SOUND_KEY, SOUND_VOLUME_KEY } from './storageRegistry'
+import { reducedMotion } from './motion/countUp'
 
 /**
  * Tryckkänsla, samma som booqy.se och Booqy Console: ett modernt, tyst
  * ett krispigt musklick som på en gamingmus (Web Audio, uträknat i förväg, inga filer) och en klämning plus
- * en brun krusning, vid tryck och vid Enter eller mellanslag. Aldrig vid
- * hovring. Ljudet är på från början och startar vid första trycket
+ * en tunn brun ring, vid tryck och vid Enter eller mellanslag. Aldrig vid
+ * hovring. Klämningen syns när fingret går ned och släpper när det lyfts. Ljudet är på från början och startar vid första trycket
  * (webbläsarnas regler för ljud); Inställningar, Den här enheten, Utseende och ljud stänger av det
- * ("booqy-sound" i localStorage). Minska rörelse: krusningen blir en kort
+ * ("booqy-sound" i localStorage). Minska rörelse: ringen är av, klämningen blir en kort
  * blinkning, ljudet är kvar.
  */
 
@@ -26,9 +27,6 @@ const VOICES: Record<'tick' | 'press' | 'cta', [number, number]> = {
   cta: [3864, 0.56],
 }
 
-function reducedMotion(): boolean {
-  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
 
 function storedSound(): boolean {
   try {
@@ -223,7 +221,7 @@ function clickBuffer(c: AudioContext, kind: keyof typeof VOICES): AudioBuffer {
   return buf
 }
 
-function play(kind: keyof typeof VOICES) {
+export function play(kind: keyof typeof VOICES) {
   if (!on || volume <= 0) return
   try {
     const c = ctx
@@ -262,14 +260,82 @@ function kindOf(el: Element): keyof typeof VOICES {
   return 'tick'
 }
 
-function visual(el: Element, x: number | null, y: number | null) {
-  const cls = el.matches(BLOCK) ? 'is-pressed' : 'is-pressed-text'
-  el.classList.add(cls)
-  window.setTimeout(() => el.classList.remove(cls), 160)
-  if (x != null && y != null) signal(x, y)
+/** Var och när det senaste trycket hände (dialoger och menyer växer därifrån). */
+let last: { x: number; y: number; at: number } | null = null
+
+/** Senaste trycket, om det var nyss (inom `withinMs`). */
+export function lastPress(withinMs = 1000): { x: number; y: number } | null {
+  if (!last || performance.now() - last.at > withinMs) return null
+  return { x: last.x, y: last.y }
 }
 
-// signalen: en prick och två ringar där man trycker, var som helst på sidan
+/** Kortaste tid klämningen syns, så att ett snabbt tryck ändå märks. */
+export const PRESS_MIN_MS = 100
+/** Hur länge släppet får sin egen (lite längre) övergång. */
+const RELEASE_MS = 160
+
+function pressClass(el: Element): string {
+  return el.matches(BLOCK) ? 'is-pressed' : 'is-pressed-text'
+}
+
+/** Elementets egen inline-transition innan trycket rörde den. */
+const ownInline = new WeakMap<HTMLElement, string>()
+const E_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)'
+
+/**
+ * Lägger klämningens övergång till elementets egna, inline. En klass räcker
+ * inte: många knappar (.btn, rätterna, borden) har en egen transition som
+ * vinner i kaskaden, och då hoppade klämningen i stället för att glida.
+ */
+function addTransition(el: Element, prop: 'scale' | 'opacity', ms: number) {
+  if (!(el instanceof HTMLElement) || typeof getComputedStyle !== 'function') return
+  if (!ownInline.has(el)) ownInline.set(el, el.style.transition)
+  el.style.transition = ownInline.get(el) ?? ''
+  const own = getComputedStyle(el).transition ?? ''
+  const keep = /^\s*(all 0s|none)\b/.test(own) && !own.includes(',')
+    ? []
+    : own.split(/,(?![^(]*\))/).map((p) => p.trim()).filter((p) => p && !p.startsWith(`${prop} `))
+  el.style.transition = [...keep, `${prop} ${ms}ms ${E_OUT}`].join(', ')
+}
+
+function dropTransition(el: Element) {
+  if (!(el instanceof HTMLElement) || !ownInline.has(el)) return
+  el.style.transition = ownInline.get(el) ?? ''
+  ownInline.delete(el)
+}
+
+/**
+ * Klämningen: på när fingret eller musknappen går ned, av när den släpps
+ * (minst PRESS_MIN_MS), med en mjuk återgång. Returnerar släppet.
+ */
+export function pressIn(el: Element): () => void {
+  const cls = pressClass(el)
+  const prop = cls === 'is-pressed' ? 'scale' : 'opacity'
+  const at = performance.now()
+  el.classList.remove('is-released')
+  addTransition(el, prop, PRESS_MIN_MS)
+  el.classList.add(cls)
+  let released = false
+  return () => {
+    if (released) return
+    released = true
+    const out = () => {
+      addTransition(el, prop, 140)
+      el.classList.remove(cls)
+      el.classList.add('is-released')
+      window.setTimeout(() => {
+        if (el.classList.contains(cls)) return // ett nytt tryck har tagit över
+        el.classList.remove('is-released')
+        dropTransition(el)
+      }, RELEASE_MS)
+    }
+    const wait = PRESS_MIN_MS - (performance.now() - at)
+    if (wait > 0) window.setTimeout(out, wait)
+    else out()
+  }
+}
+
+// signalen: en tunn ring där man trycker, bara på det som går att trycka på
 function signal(x: number, y: number) {
   if (reducedMotion()) return
   const ripple = document.createElement('span')
@@ -277,35 +343,55 @@ function signal(x: number, y: number) {
   ripple.style.left = `${x}px`
   ripple.style.top = `${y}px`
   document.body.appendChild(ripple)
-  window.setTimeout(() => ripple.remove(), 900)
+  window.setTimeout(() => ripple.remove(), 420)
 }
 
 let installed = false
 
-/** Lyssnar en gång på dokumentet; varje tryck i appen får känslan. */
+/** Det trycket gäller, eller null (tom yta, avstängd knapp). */
+function targetOf(t: EventTarget | null): Element | null {
+  const el = (t as Element | null)?.closest?.(TARGETS) ?? null
+  if (!el || (el as HTMLButtonElement).disabled || el.getAttribute('aria-disabled') === 'true') return null
+  return el
+}
+
 /**
- * Touch screens: a press that turns into a scroll must stay silent. On touch
- * and pen the sound and ripple wait for the finger to lift without having
- * moved (a scroll cancels the pointer or moves it); the mouse stays instant.
+ * Pekskärmar: klämningen syns direkt när fingret går ned (svar inom 100 ms),
+ * men ljudet och ringen väntar tills fingret lyfts utan att ha rört sig, så
+ * att ett tryck som blir en rullning är tyst; rullningen släpper klämningen.
+ * Musen ger allt direkt.
  */
 function onTap(fire: (e: PointerEvent) => void) {
-  let pending: { id: number; x: number; y: number; down: PointerEvent } | null = null
+  let pending: { id: number; x: number; y: number; down: PointerEvent; release: (() => void) | null } | null = null
   const SLOP = 10
+  const drop = () => {
+    pending?.release?.()
+    pending = null
+  }
   document.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse') { fire(e); return }
-    pending = { id: e.pointerId, x: e.clientX, y: e.clientY, down: e }
+    if (e.button !== 0) return
+    last = { x: e.clientX, y: e.clientY, at: performance.now() }
+    drop()
+    const el = targetOf(e.target)
+    const release = el ? pressIn(el) : null
+    if (e.pointerType === 'mouse') {
+      fire(e)
+      pending = { id: e.pointerId, x: e.clientX, y: e.clientY, down: e, release }
+      return
+    }
+    pending = { id: e.pointerId, x: e.clientX, y: e.clientY, down: e, release }
   }, { passive: true })
   document.addEventListener('pointermove', (e) => {
-    if (pending && e.pointerId === pending.id && Math.hypot(e.clientX - pending.x, e.clientY - pending.y) > SLOP) pending = null
+    if (pending && e.pointerId === pending.id && Math.hypot(e.clientX - pending.x, e.clientY - pending.y) > SLOP) drop()
   }, { passive: true })
-  const drop = () => { pending = null }
   document.addEventListener('pointercancel', drop, { passive: true })
   document.addEventListener('scroll', drop, { capture: true, passive: true })
   document.addEventListener('pointerup', (e) => {
     if (!pending || e.pointerId !== pending.id) return
-    const down = pending.down
+    const { down, release } = pending
     pending = null
-    fire(down)
+    release?.()
+    if (down.pointerType !== 'mouse') fire(down)
   }, { passive: true })
 }
 
@@ -338,22 +424,19 @@ export function installPress() {
     if (ctx && document.visibilityState === 'visible') stale = true
   })
   onTap((e) => {
-      if (e.button !== 0) return
-      const el = (e.target as Element | null)?.closest?.(TARGETS)
-      if (!el || (el as HTMLButtonElement).disabled) {
-        signal(e.clientX, e.clientY)
-        return
-      }
-      if (!el.closest(SILENT)) play(kindOf(el))
-      visual(el, e.clientX, e.clientY)
-    })
+    const el = targetOf(e.target)
+    if (!el) return
+    if (!el.closest(SILENT)) play(kindOf(el))
+    signal(e.clientX, e.clientY)
+  })
   document.addEventListener('keydown', (e) => {
     if (e.repeat || (e.key !== 'Enter' && e.key !== ' ')) return
     const el = document.activeElement
     if (!el || !el.matches(TARGETS) || el.matches("input[type='text'], input[type='email'], input[type='tel'], input[type='search'], input[type='password'], textarea")) return
     if (e.key === ' ' && el.matches('a[href]')) return
     const r = el.getBoundingClientRect()
+    last = { x: r.left + r.width / 2, y: r.top + r.height / 2, at: performance.now() }
     if (!el.closest(SILENT)) play(kindOf(el))
-    visual(el, r.left + r.width / 2, r.top + r.height / 2)
+    window.setTimeout(pressIn(el), PRESS_MIN_MS)
   })
 }

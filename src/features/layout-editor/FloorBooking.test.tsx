@@ -153,6 +153,28 @@ describe('FloorBooking', () => {
     expect(screen.getByRole('heading', { name: 'Bord 2 + 3' })).toBeInTheDocument()
   })
 
+  it('the date field ends at today + 21, and a link to that day opens it', async () => {
+    render(
+      <MemoryRouter>
+        <FloorBooking focus={{ tableIds: ['t-a'], date: '2026-12-04' }} />
+      </MemoryRouter>,
+    )
+    const field = await screen.findByLabelText('Datum')
+    expect(field).toHaveAttribute('data-max', '2026-12-04')
+    expect(await screen.findByRole('heading', { name: 'Bord 1' })).toBeInTheDocument()
+    expect(getAvailability).toHaveBeenLastCalledWith('loc-1', '2026-12-04', { walkIn: false })
+  })
+
+  it('a link to a day past the booking window stays on today', async () => {
+    render(
+      <MemoryRouter>
+        <FloorBooking focus={{ tableIds: ['t-a'], date: '2026-12-05' }} />
+      </MemoryRouter>,
+    )
+    expect(await screen.findByRole('heading', { name: 'Bord 1' })).toBeInTheDocument()
+    expect(getAvailability).toHaveBeenLastCalledWith('loc-1', '2026-11-13', { walkIn: false })
+  })
+
   it('explains when no layout is published', async () => {
     apiFetch.mockRejectedValue(new ApiError(404, 'not found'))
     renderIt()

@@ -56,14 +56,14 @@ width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;padding:10p
 border-radius:16px;border:1px solid var(--glass-edge,rgba(253,250,246,.55));
 background:var(--glass-pop,rgba(251,250,246,.74));color:var(--ink,#1c1918);
 -webkit-backdrop-filter:blur(20px) saturate(1.5);backdrop-filter:blur(20px) saturate(1.5);
-box-shadow:0 14px 34px -12px rgba(28,25,24,.45),inset 0 1px 0 rgba(253,250,246,.6);
+box-shadow:0 14px 34px -12px rgba(28,25,24,.45),inset 0 1px 0 transparent;
 font:600 0.95rem/1.3 system-ui,-apple-system,"Segoe UI",sans-serif;animation:booqy-update-in .42s cubic-bezier(.16,1,.3,1)}
 .booqy-update__text{flex:1 1 auto;position:relative}
 .booqy-update__news{display:block;margin-top:7px;max-width:26rem}
 .booqy-update__list{display:flex;flex-wrap:wrap;gap:4px;margin:0;padding:0;list-style:none}
 .booqy-update__item{font:600 .66rem/1.3 var(--mono,ui-monospace,"SF Mono",Menlo,Consolas,monospace);letter-spacing:.06em;
 text-transform:uppercase;padding:3px 7px 2px;border-radius:6px;background:rgba(28,25,24,.06);
-box-shadow:inset 0 0 0 1px rgba(28,25,24,.14);overflow-wrap:anywhere}
+box-shadow:inset 0 0 0 1px transparent;overflow-wrap:anywhere}
 .booqy-update__item--more{background:transparent;box-shadow:none;opacity:.7;padding-inline:3px}
 .booqy-update__sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 @media (max-width:560px){.booqy-update.has-news:not([data-phase]){flex-wrap:wrap;row-gap:10px;width:calc(100vw - 32px);padding:12px 12px 12px 16px}
@@ -71,56 +71,56 @@ box-shadow:inset 0 0 0 1px rgba(28,25,24,.14);overflow-wrap:anywhere}
 .booqy-update.has-news:not([data-phase]) .booqy-update__reload{flex:1 1 0}}
 .booqy-update__note{display:block;font-weight:500;font-size:.82rem;opacity:.75}
 .booqy-update__btn{appearance:none;border:0;border-radius:999px;padding:9px 16px;cursor: default;
-background:#1c1918;color:#fbfaf6;font:inherit;font-weight:700;white-space:nowrap;position:relative}
-.booqy-update__btn:hover{background:#350001}
-.booqy-update__btn--ghost{background:transparent;color:inherit;box-shadow:inset 0 0 0 1px currentColor}
-.booqy-update__btn--ghost:hover{background:rgba(28,25,24,.08)}
+background:#8ec5ff;color:#3b2418;font:inherit;font-weight:700;white-space:nowrap;position:relative}
+.booqy-update__btn:hover{background:#a6d2ff}
+.booqy-update__btn--ghost{background:rgba(28,25,24,.08);color:inherit;box-shadow:inset 0 0 0 1px transparent}
+.booqy-update__btn--ghost:hover{background:rgba(28,25,24,.14)}
 @media (max-width:420px){.booqy-update[data-phase=confirm]{flex-wrap:wrap;row-gap:10px;width:calc(100vw - 32px);padding:12px}
 .booqy-update[data-phase=confirm] .booqy-update__text{flex-basis:100%}
 .booqy-update[data-phase=confirm] .booqy-update__btn{flex:1 1 0}}
-.booqy-update__btn:focus-visible,.booqy-update__close:focus-visible{outline:2px solid #9e1d26;outline-offset:2px}
+.booqy-update__btn:focus-visible,.booqy-update__close:focus-visible{outline:2px solid #3f7fc4;outline-offset:2px}
 .booqy-update__close{appearance:none;border:0;background:transparent;color:inherit;opacity:.7;cursor: default;
 width:32px;height:32px;border-radius:999px;font:inherit;font-size:1.15rem;line-height:1;position:relative}
 .booqy-update__close:hover{opacity:1}
 .booqy-update__fill{position:absolute;inset:0;z-index:-1;transform-origin:0 50%;transform:scaleX(0);
-background:linear-gradient(90deg,rgba(158,29,38,.06),rgba(158,29,38,.2) 70%,rgba(158,29,38,.34));will-change:transform}
+background:linear-gradient(90deg,rgba(142,197,255,.12),rgba(142,197,255,.36) 70%,rgba(142,197,255,.56));will-change:transform}
 .booqy-update__glow{position:absolute;inset:0;z-index:-1;border-radius:inherit;opacity:0;pointer-events:none;
-background:radial-gradient(120% 160% at 100% 50%,rgba(158,29,38,.38),transparent 60%);transition:opacity .3s ease-out}
+background:radial-gradient(120% 160% at 100% 50%,rgba(142,197,255,.55),transparent 60%);transition:opacity .3s ease-out}
 .booqy-update__pct{font-variant-numeric:tabular-nums;font-weight:700;min-width:3.4em;text-align:right;padding-right:8px;position:relative}
 .booqy-update.is-loading{padding-right:12px}
 .booqy-update.is-done .booqy-update__glow{opacity:1}
 .booqy-update.is-done{animation:booqy-update-pop .42s cubic-bezier(.16,1,.3,1)}
 .booqy-curtain{position:fixed;inset:0;z-index:2147482999;pointer-events:none;opacity:0;
-background:rgba(246,241,234,.38);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:opacity .38s ease-out}
+background:rgba(242,232,218,.38);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:opacity .38s ease-out}
 .booqy-curtain.is-on{opacity:1}
 .booqy-updated{position:fixed;z-index:2147483000;left:50%;bottom:max(16px,env(safe-area-inset-bottom));
 transform:translateX(-50%);display:flex;align-items:center;gap:10px;box-sizing:border-box;padding:10px 18px 10px 12px;
 border-radius:999px;border:1px solid var(--glass-edge,rgba(253,250,246,.55));
 background:var(--glass-pop,rgba(251,250,246,.74));color:var(--ink,#1c1918);pointer-events:none;
 -webkit-backdrop-filter:blur(20px) saturate(1.5);backdrop-filter:blur(20px) saturate(1.5);
-box-shadow:0 14px 34px -12px rgba(28,25,24,.45),inset 0 1px 0 rgba(253,250,246,.6);
+box-shadow:0 14px 34px -12px rgba(28,25,24,.45),inset 0 1px 0 transparent;
 font:700 0.95rem/1.3 system-ui,-apple-system,"Segoe UI",sans-serif;
 animation:booqy-update-in .42s cubic-bezier(.16,1,.3,1),booqy-updated-out .4s ease-in 1.1s forwards}
-.booqy-updated__badge{position:relative;width:26px;height:26px;border-radius:999px;background:#350001;flex:none;
+.booqy-updated__badge{position:relative;width:26px;height:26px;border-radius:999px;background:#8ec5ff;flex:none;
 animation:booqy-updated-badge .5s cubic-bezier(.34,1.56,.64,1)}
-.booqy-updated__leg{position:absolute;height:2.6px;border-radius:2px;background:#fbfaf6;transform-origin:0 50%;transform:scaleX(0)}
+.booqy-updated__leg{position:absolute;height:2.6px;border-radius:2px;background:#3b2418;transform-origin:0 50%;transform:scaleX(0)}
 .booqy-updated__leg--a{left:7px;top:13.5px;width:5px;transform:rotate(45deg) scaleX(0);animation:booqy-tick-a .16s ease-out .18s forwards}
 .booqy-updated__leg--b{left:9.6px;top:16.6px;width:10.5px;transform:rotate(-50deg) scaleX(0);animation:booqy-tick-b .22s ease-out .33s forwards}
 .booqy-updated__spark{position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px;border-radius:999px;opacity:0;
 animation:booqy-spark .7s cubic-bezier(.16,1,.3,1) .22s forwards}
-[data-theme="dark"] .booqy-update,[data-theme="dark"] .booqy-updated{background:var(--glass-pop,rgba(31,22,18,.78));color:#f6ece9;
-border-color:var(--glass-edge,rgba(246,236,233,.16));box-shadow:0 14px 34px -12px rgba(0,0,0,.7),inset 0 1px 0 rgba(246,236,233,.08)}
-[data-theme="dark"] .booqy-update__btn{background:#fbfaf6;color:#1c1918}
-[data-theme="dark"] .booqy-update__btn:hover{background:#f6ece9}
-[data-theme="dark"] .booqy-update__btn--ghost{background:transparent;color:inherit}
-[data-theme="dark"] .booqy-update__btn--ghost:hover{background:rgba(246,236,233,.1)}
-[data-theme="dark"] .booqy-update__item{background:rgba(246,236,233,.07);box-shadow:inset 0 0 0 1px rgba(246,236,233,.18)}
+[data-theme="dark"] .booqy-update,[data-theme="dark"] .booqy-updated{background:var(--glass-pop,rgba(31,22,18,.78));color:#f2e8da;
+border-color:var(--glass-edge,rgba(242,232,218,.16));box-shadow:0 14px 34px -12px rgba(0,0,0,.7),inset 0 1px 0 transparent}
+[data-theme="dark"] .booqy-update__btn{background:#8ec5ff;color:#3b2418}
+[data-theme="dark"] .booqy-update__btn:hover{background:#a6d2ff}
+[data-theme="dark"] .booqy-update__btn--ghost{background:rgba(242,232,218,.1);color:inherit}
+[data-theme="dark"] .booqy-update__btn--ghost:hover{background:rgba(242,232,218,.16)}
+[data-theme="dark"] .booqy-update__item{background:rgba(242,232,218,.07);box-shadow:inset 0 0 0 1px transparent}
 [data-theme="dark"] .booqy-update__item--more{background:transparent;box-shadow:none}
-[data-theme="dark"] .booqy-update__fill{background:linear-gradient(90deg,rgba(158,29,38,.18),rgba(158,29,38,.45) 70%,rgba(196,60,66,.62))}
-[data-theme="dark"] .booqy-update__glow{background:radial-gradient(120% 160% at 100% 50%,rgba(214,92,96,.5),transparent 60%)}
+[data-theme="dark"] .booqy-update__fill{background:linear-gradient(90deg,rgba(142,197,255,.1),rgba(142,197,255,.26) 70%,rgba(142,197,255,.4))}
+[data-theme="dark"] .booqy-update__glow{background:radial-gradient(120% 160% at 100% 50%,rgba(142,197,255,.4),transparent 60%)}
 [data-theme="dark"] .booqy-curtain{background:rgba(20,14,12,.42)}
-[data-theme="dark"] .booqy-updated__badge{background:#f6ece9}
-[data-theme="dark"] .booqy-updated__leg{background:#350001}
+[data-theme="dark"] .booqy-updated__badge{background:#8ec5ff}
+[data-theme="dark"] .booqy-updated__leg{background:#3b2418}
 @media (prefers-reduced-motion:reduce){.booqy-update,.booqy-update.is-done,.booqy-updated,.booqy-updated__badge{animation:none}
 .booqy-updated{animation:booqy-updated-out .01s linear 1.4s forwards}
 .booqy-updated__leg--a{animation:none;transform:rotate(45deg)}.booqy-updated__leg--b{animation:none;transform:rotate(-50deg)}
@@ -511,7 +511,7 @@ export function showUpdatedIfFlagged(labels: Pick<UpdateNoticeLabels, 'updated'>
   toast.setAttribute('aria-live', 'polite')
   const badge = el('span', 'booqy-updated__badge')
   badge.setAttribute('aria-hidden', 'true')
-  const colors = ['#9e1d26', '#350001', '#c9a27e', '#e8c9a0']
+  const colors = ['#8ec5ff', '#3b2418', '#c9a27e', '#e8c9a0']
   for (let i = 0; i < 8; i++) {
     const spark = el('span', 'booqy-updated__spark')
     spark.style.setProperty('--a', `${i * 45 + 22}deg`)

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
+import { useGuardedNavigate } from './LeaveGuard'
 import { Icon } from './Icon'
 import { MORE_SHEET_ID, MoreSheet } from './MoreSheet'
 import type { QuickAction } from './MoreSheet'
@@ -15,7 +16,8 @@ import { helpChatEnabled, openHelpChat } from '../features/help/chatState'
 import './bottomNav.css'
 
 /** Hur länge arket glider ned innan det tas bort (som i CSS:en). */
-const CLOSE_MS = 220
+// Arket går ut på 140 ms (bottomNav.css); lite marginal så att sista bildrutan hinner ritas.
+const CLOSE_MS = 180
 
 /**
  * Telefonens meny längst ner, där tummen är (ersätter menyknappen uppe till
@@ -40,7 +42,7 @@ export function BottomNav({
   onLogout: () => void
 }) {
   const { pathname } = useLocation()
-  const navigate = useNavigate()
+  const navigate = useGuardedNavigate()
   const guide = useGuide()
   const moreRef = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
@@ -87,7 +89,7 @@ export function BottomNav({
 
   const quick: QuickAction[] = [
     ...(helpChatEnabled()
-      ? [{ id: 'ask', label: 'Fråga Booqy', icon: 'help' as const, run: () => after(openHelpChat) }]
+      ? [{ id: 'ask', label: 'Fråga Booqy', icon: 'help' as const, run: () => after(() => openHelpChat()) }]
       : []),
     { id: 'search', label: 'Sök', icon: 'search', run: () => after(openPalette) },
     { id: 'guide', label: 'Guiden', icon: 'book', run: () => after(guide.start) },

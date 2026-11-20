@@ -59,6 +59,13 @@ export type HelpEntry = {
   /** Var på sidan svaret pekar (lyses upp med knappen). */
   highlight?: string[]
   live?: HelpLive
+  /**
+   * Steget i Kom igång som texten handlar om (overview.ts SetupStep id, eller
+   * "phone:<delsteg>"). setupHelp.ts och checklistan läser härifrån.
+   */
+  setup?: string
+  /** Förslag på frågor när assistenten öppnas från steget (första texten per steg). */
+  questions?: string[]
 }
 
 /**
@@ -105,6 +112,8 @@ export const ROUTE_PATTERNS = [
   '/statistik',
   '/bokningar',
   '/bestallningar',
+  '/bestallningar/bord/ny',
+  '/bestallningar/bord/:tabId/lagg-till',
   '/meny',
   '/cateringkalkyl',
   '/catering',

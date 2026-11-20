@@ -19,6 +19,7 @@ import { TitleInfo } from '../../shared/TitleInfo'
 import { Disclosure } from '../../shared/Disclosure'
 import { Select } from '../../shared/Select'
 import { Loading } from '../../shared/Loading'
+import { SaveBar } from '../../shared/SaveBar'
 import { PrinterTiles } from '../printers/PrinterTiles'
 import { CategoryRouting } from '../printers/CategoryRouting'
 import { drinkDefaults } from '../printers/kinds'
@@ -61,6 +62,7 @@ export function PrinterCard({ locationId, isOwner, canSetUp = isOwner }: {
   const [editing, setEditing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
 
   function apply(next: PrintOverview) {
     setData(next)
@@ -119,14 +121,16 @@ export function PrinterCard({ locationId, isOwner, canSetUp = isOwner }: {
       .catch(() => undefined)
   }, [locationId, isOwner, routingNow, categories])
 
-  async function run(action: () => Promise<void>) {
+  async function run(action: () => Promise<void>, settingsForm = false) {
     setBusy(true)
     setError(null)
     setNotice(null)
+    setFailed(false)
     try {
       await action()
     } catch (err) {
       setError(printErrorText(err))
+      if (settingsForm) setFailed(true)
       void reload()
     } finally {
       setBusy(false)
@@ -138,6 +142,7 @@ export function PrinterCard({ locationId, isOwner, canSetUp = isOwner }: {
     if (!locationId || !data) return
     if (autoPrint && !printerId) {
       setError('Välj vilken skrivare som ska skriva ut beställningarna.')
+      setFailed(true)
       return
     }
     void run(async () => {
@@ -149,7 +154,7 @@ export function PrinterCard({ locationId, isOwner, canSetUp = isOwner }: {
       })
       setData({ ...data, settings })
       setNotice(settings.autoPrint ? 'Sparat. Nya betalda beställningar skrivs ut.' : 'Sparat. Automatisk utskrift är avstängd.')
-    })
+    }, true)
   }
 
   function setAllergyTicket(on: boolean) {
@@ -170,6 +175,20 @@ export function PrinterCard({ locationId, isOwner, canSetUp = isOwner }: {
   const dirty = Boolean(saved) && (saved!.autoPrint !== autoPrint || (saved!.printerId ?? '') !== printerId
     || saved!.paperWidth !== paperWidth)
   const disabled = !isOwner || busy
+
+  function edited() {
+    setNotice(null)
+    setFailed(false)
+  }
+
+  function discard() {
+    if (!saved) return
+    setAutoPrint(saved.autoPrint)
+    setPrinterId(saved.printerId ?? '')
+    setPaperWidth(saved.paperWidth)
+    setError(null)
+    setFailed(false)
+  }
 
   return (
     <>
@@ -224,7 +243,7 @@ export function PrinterCard({ locationId, isOwner, canSetUp = isOwner }: {
                 <p className="toggle-row-label" id="print-auto-label">Skriv ut bongar automatiskt</p>
               </div>
               <button type="button" role="switch" aria-checked={autoPrint} aria-labelledby="print-auto-label"
-                className="switch" disabled={disabled} onClick={() => { setAutoPrint(!autoPrint); setNotice(null) }} />
+                className="switch" disabled={disabled} onClick={() => { setAutoPrint(!autoPrint); edited() }} />
             </div>
             {data.routing && (
               <div className="toggle-row">
@@ -239,7 +258,8 @@ export function PrinterCard({ locationId, isOwner, canSetUp = isOwner }: {
               <div className="form-field">
                 <label htmlFor="print-printer">Orderskrivare (omtryck och makulering)</label>
                 <Select id="print-printer" value={printerId} disabled={disabled}
-                  onChange={(e) => { setPrinterId(e.target.value); setNotice(null) }}>
+                  aria-invalid={(failed && autoPrint && !printerId) || undefined}
+                  onChange={(e) => { setPrinterId(e.target.value); edited() }}>
                   <option value="">Ingen</option>
                   {devices.map((d) => (
                     <option key={d.deviceId} value={d.deviceId}>{d.name}</option>
@@ -249,26 +269,26 @@ export function PrinterCard({ locationId, isOwner, canSetUp = isOwner }: {
               <div className="form-field">
                 <label htmlFor="print-width">Pappersbredd</label>
                 <Select id="print-width" value={paperWidth} disabled={disabled}
-                  onChange={(e) => { setPaperWidth(Number(e.target.value) as PaperWidth); setNotice(null) }}>
+                  onChange={(e) => { setPaperWidth(Number(e.target.value) as PaperWidth); edited() }}>
                   <option value={80}>80 mm (48 tecken per rad)</option>
                   <option value={58}>58 mm (32 tecken per rad)</option>
                 </Select>
               </div>
             </div>
+            <ErrorNote text={error} />
             {isOwner ? (
-              <span className="row-actions">
-                <button type="submit" className="btn primary square" disabled={disabled}>
-                  {busy ? 'Sparar…' : 'Spara skrivare'}
-                </button>
-                {dirty && !busy && (
-                  <span className="form-error" role="status">Ej sparat - klicka Spara skrivare.</span>
-                )}
-              </span>
+              <SaveBar
+                dirty={dirty}
+                busy={busy}
+                label="Spara skrivare"
+                notice={notice}
+                failed={failed}
+                disabled={disabled}
+                onDiscard={discard}
+              />
             ) : (
               <p className="cell-muted">Bara ägaren kan ändra.</p>
             )}
-            <ErrorNote text={error} />
-            {notice && <p className="save-notice" role="status">{notice}</p>}
           </form>
         </Disclosure>
       )}

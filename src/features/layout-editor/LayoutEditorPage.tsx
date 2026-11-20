@@ -42,6 +42,7 @@ import {
 } from './layoutApi'
 import type { PublishedLayoutSnapshot } from './layoutApi'
 import { activatePublished, labelFor } from './publishFlow'
+import { longDate } from './versionTimeline'
 import { RemovedTablesBookings } from './RemovedTablesBookings'
 import type { RemovedTableBooking } from './layoutApi'
 import {
@@ -71,6 +72,7 @@ import './layout-editor.css'
 import { Icon, type IconName } from '../../shared/Icon'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { BackButton } from '../../shared/BackButton'
 
 const TILT_DEG = 55
 const PERSPECTIVE = 1600
@@ -364,6 +366,8 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
   const [saving, setSaving] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
   const [layoutError, setLayoutError] = useState<string | null>(null)
+  // Inget fel, men något att göra: en annan version väntar redan på att ta över.
+  const [waitingNotice, setWaitingNotice] = useState<string | null>(null)
   // Publiceringens fel "bokningar på borttagna bord": listan hör till just den texten.
   const [removedBookings, setRemovedBookings] = useState<{ text: string; locationId: string; bookings: RemovedTableBooking[] } | null>(null)
   // Vilken plats vars sparade layout är inläst; tills dess ligger planen bakom glaset (LayoutPrep).
@@ -564,6 +568,29 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
     setGroundDraft(null)
     setStatusText('Osparade ändringar (utkast, ej publicerat)')
     setHistoryTick((t) => t + 1)
+  }
+
+  // Spara utkast följer ändringarna: avstängd när utkastet är som det sparade.
+  const draftDirty = useMemo(
+    () => !readOnly && savedFloors.current !== null && !sameData(floors, savedFloors.current),
+    // savedFloors byts alltid tillsammans med floors (inläsning, sparning)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [floors, readOnly],
+  )
+
+  /** Ångra ändringar: tillbaka till det sparade utkastet. */
+  function discardDraft() {
+    const saved = savedFloors.current
+    if (!saved || readOnly) return
+    setFloors(saved)
+    resetHistory(saved)
+    setCurrentFloorId((id) => (saved.some((f) => f.id === id) ? id : saved[0].id))
+    setSelection(null)
+    setWallDraft(null)
+    setOpeningDraft(null)
+    setGroundDraft(null)
+    setLayoutError(null)
+    setStatusText('Ändringarna är ångrade.')
   }
 
   const canUndo = !readOnly && history.current.past.length > 0
@@ -2001,6 +2028,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
     const loc = requireLocation()
     if (!loc) return false
     setLayoutError(null)
+    setWaitingNotice(null)
     setSaving(true)
     try {
       const result = await saveLayout(loc, floors, baseElements.current ?? undefined)
@@ -2048,10 +2076,9 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
    * fallet. Aktiveringen är serverns beslut, inte vårt: saknas en gällande
    * version blir det omedelbart, men finns redan en schemalägger API:t
    * bytet en bit fram i tiden istället (samma regel som att aktivera
-   * manuellt under Versioner - den går inte att kringgå härifrån). Hur
-   * långt fram är miljöberoende - bara 5 minuter i dev, annars 28 dagar
-   * (bekräftat av backend-teamet 2026-09-29) - därför visas alltid det
-   * riktiga datumet från `cutoverAt`, aldrig ett hårdkodat "fyra veckor".
+   * manuellt under Versioner - den går inte att kringgå härifrån): tidigast
+   * midnatt dagen efter bokningsfönstret (idag + 22), i dev som i prod.
+   * Därför visas alltid det riktiga datumet från `cutoverAt`.
    *
    * Ordningen save->publish är viktig: publish kopierar det som ligger i
    * utkastet på servern, så osparade ändringar skulle annars inte komma
@@ -2077,9 +2104,11 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       // Versionen finns nu; aktiveringen kan ändå misslyckas (behörighet,
       // ett annat versionsbyte redan inbokat). Då sägs det tydligt, och
       // etiketten visar alltid det versionslistan säger.
-      const outcome = await activatePublished(loc, snapshot.version, { formatMoment })
+      const outcome = await activatePublished(loc, snapshot.version, { formatMoment: (iso) => longDate(iso) })
       setVersionLabel(outcome.label)
+      setWaitingNotice(null)
       if (outcome.ok) setStatusText(outcome.text)
+      else if (outcome.waiting) setWaitingNotice(outcome.text)
       else {
         setLayoutError(outcome.text)
         setRemovedBookings(outcome.removed?.length ? { text: outcome.text, locationId: loc, bookings: outcome.removed } : null)
@@ -2151,7 +2180,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       <AdminTopbar
         title="Layout"
         actions={
-          <span className="row-actions">
+          <span className="row-actions layout-actions">
             {modeSwitch}
             <span className="cell-muted">{versionLabel}</span>
             <button
@@ -2172,10 +2201,15 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
             </button>
             {!readOnly && (
               <>
+                {draftDirty && (
+                  <button type="button" className="btn outline" disabled={saving || publishing} onClick={discardDraft}>
+                    Ångra ändringar
+                  </button>
+                )}
                 <button
                   type="button"
                   className="btn outline"
-                  disabled={saving || publishing}
+                  disabled={saving || publishing || !draftDirty}
                   onClick={saveDraft}
                 >
                   {saving && !publishing ? 'Sparar…' : 'Spara utkast'}
@@ -2214,26 +2248,44 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
         {liveError && (
           <ErrorNote text={liveError} />
         )}
+        {waitingNotice && (
+          <div className="layout-notice" role="status">
+            <p>{waitingNotice}</p>
+            <span className="layout-notice-actions">
+              <button type="button" className="btn outline square" onClick={() => setShowVersions(true)}>
+                Öppna Versioner
+              </button>
+              <button type="button" className="link-action" onClick={() => setWaitingNotice(null)}>
+                Okej
+              </button>
+            </span>
+          </div>
+        )}
         {readOnly && (
-          <p className="layout-viewmode-banner">
-            Publicerad version{liveVersionLabel ? ` (${liveVersionLabel})` : ''}, skrivskyddad.{' '}
-            <button type="button" className="link-action" onClick={showDraft}>
-              Tillbaka till utkastet
-            </button>
-          </p>
+          <div className="layout-notice layout-viewmode-banner" role="status">
+            <p>
+              <strong>Du tittar på {liveVersionLabel || 'versionen'} som gäller nu.</strong> Den kan inte
+              ändras här. Ändringar görs i utkastet och publiceras som en ny version.
+            </p>
+            <span className="layout-notice-actions">
+              <BackButton onClick={showDraft}>Tillbaka till utkastet</BackButton>
+            </span>
+          </div>
         )}
         <div className="editor-row">
-          <div className="admin-card editor-toolbar" data-tour="layout-tools">
+          <div className="editor-toolbar" role="toolbar" aria-label="Verktyg" data-tour="layout-tools">
             <ToolButton icon="tool-select" caption="Välj" title="Välj, flytta och ändra storlek" shortcut={keyForTool('select')} active={tool === 'select' && !handMode} onClick={() => chooseTool('select')} />
             <ToolButton icon="tool-hand" caption="Hand" title="Hand - dra för att panorera (eller håll inne mellanslag)" shortcut={keyForTool('hand')} active={handMode} onClick={() => (handMode ? chooseTool('select') : chooseTool('hand'))} />
+            <span className="tool-sep" aria-hidden="true" />
             <ToolButton icon="tool-floor" caption="Mark" title="Rita mark - väggar skapas runt om automatiskt" shortcut={keyForTool('ground')} active={tool === 'ground'} disabled={readOnly} onClick={() => chooseTool('ground')} />
             <ToolButton icon="tool-wall" caption="Vägg" title="Rita väggar - klicka per hörn (dubbelklick avslutar), eller dra för en enskild vägg" shortcut={keyForTool('wall')} active={tool === 'wall'} disabled={readOnly} onClick={() => chooseTool('wall')} />
             <ToolButton icon="tool-window" caption="Fönster" title="Fönster - placeras på en vägg" shortcut={keyForTool('window')} active={tool === 'window'} disabled={readOnly} onClick={() => chooseTool('window')} />
             <ToolButton icon="tool-entrance" caption="Entré" title="Entré - placeras på en vägg" shortcut={keyForTool('entrance')} active={tool === 'entrance'} disabled={readOnly} onClick={() => chooseTool('entrance')} />
             <ToolButton icon="tool-kitchen" caption="Kök" title="Kökets ingång - placeras på en vägg" shortcut={keyForTool('kitchen')} active={tool === 'kitchen'} disabled={readOnly} onClick={() => chooseTool('kitchen')} />
+            <ToolButton icon="trash" caption="Radera" title="Radera - klicka på ett element (eller välj och tryck Delete)" active={tool === 'erase'} disabled={readOnly} onClick={() => { setHandMode(false); setTool((t) => (t === 'erase' ? 'select' : 'erase')) }} />
+            <span className="tool-sep" aria-hidden="true" />
             <ToolButton icon="table-square" caption="Fyrkant" title="Fyrkantigt bord - klicka, eller dra ut det på planen" shortcut={keyForTool('add-square')} active={placing?.shape === 'square'} disabled={readOnly} onPointerDown={(e) => onTableToolPointerDown(e, 'square')} onClick={() => !suppressToolClick.current && chooseTool('add-square')} />
             <ToolButton icon="table-round" caption="Runt" title="Runt bord - klicka, eller dra ut det på planen" shortcut={keyForTool('add-round')} active={placing?.shape === 'round'} disabled={readOnly} onPointerDown={(e) => onTableToolPointerDown(e, 'round')} onClick={() => !suppressToolClick.current && chooseTool('add-round')} />
-            <ToolButton icon="trash" caption="Radera" title="Radera - klicka på ett element (eller välj och tryck Delete)" active={tool === 'erase'} disabled={readOnly} onClick={() => { setHandMode(false); setTool((t) => (t === 'erase' ? 'select' : 'erase')) }} />
           </div>
 
           <div
@@ -2447,6 +2499,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                         width: size.w,
                         height: size.h,
                         ['--th' as string]: `${TABLE_HEIGHT}px`,
+                        ['--tmin' as string]: `${Math.min(size.w, size.h)}px`,
                       }}
                       onPointerDown={(e) => onElementPointerDown(e, 'table', t.id, t.x, t.y)}
                     >
@@ -2483,7 +2536,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                         )}
                         <div className="table-top">
                           <span className="table-labels">
-                            <span className="table-label">{t.label}</span>
+                            <span className="table-label" title={t.label}>{t.label}</span>
                             {/* Platsantalet i samma stil som bordsnumret: T3 / P4. */}
                             <span className="table-seats">P{t.seats}</span>
                           </span>
@@ -2890,7 +2943,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
               ? 'Layouten ändrades nyss på en annan plats. Dina ändringar läggs ovanpå när du sparar.'
               : statusText)}
           </span>
-          <span>
+          <span className="editor-statusbar-floor">
             {floor.name}
             {editorName ? ` · Redigeras av ${editorName}` : ''}
           </span>
@@ -2938,19 +2991,6 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
       )}
     </>
   )
-}
-
-/** "2026-10-05T01:00:00Z" -> "5 oktober 2026, 03:00" i lokal tid. */
-function formatMoment(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return new Intl.DateTimeFormat('sv-SE', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(d)
 }
 
 /**
@@ -3200,10 +3240,12 @@ function ToolButton({
       onPointerDown={onPointerDown}
     >
       <Icon name={icon} size={20} />
-      <small>{caption}</small>
       {/* Namnet är bildtexten (det man ser), förklaringen står i title och
-          bokstaven i aria-keyshortcuts; själva bokstaven ritas med CSS. */}
-      {shortcut && <kbd className="tool-key" data-key={shortcut} aria-hidden="true" />}
+          bokstaven i aria-keyshortcuts; tangenten står bredvid namnet, inuti knappen. */}
+      <span className="tool-caption">
+        <small>{caption}</small>
+        {shortcut && <kbd className="tool-key" aria-hidden="true">{shortcut}</kbd>}
+      </span>
     </button>
   )
 }

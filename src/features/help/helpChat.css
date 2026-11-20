@@ -44,7 +44,7 @@
 .help-send:focus-visible,
 .help-input:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 1px var(--hairline-strong), 0 0 0 3px var(--focus);
+  box-shadow: inset 0 0 0 1px transparent, 0 0 0 3px var(--focus);
 }
 
 .help-panel {
@@ -111,7 +111,7 @@
 }
 
 .help-icon-btn:hover {
-  background: var(--hairline);
+  background: var(--wash);
   color: var(--ink);
 }
 
@@ -155,7 +155,7 @@
 }
 
 .help-chip:hover {
-  background: var(--hairline);
+  background: var(--wash);
 }
 
 .help-msg {
@@ -192,6 +192,18 @@
 .help-msg--fault {
   display: grid;
   gap: var(--space-3);
+}
+
+/* Knapparna börjar vid vänsterkanten som texten ovanför, även på telefon. */
+.help-msg--fault .error-note-actions {
+  justify-content: flex-start;
+}
+
+.help-msg--fault .error-note-actions .btn {
+  flex: 0 1 auto;
+  max-width: 100%;
+  white-space: normal;
+  text-align: start;
 }
 
 .help-answer {
@@ -334,23 +346,24 @@
   }
 }
 
-/* Det assistenten pekar på: en ring som tonar bort (spotlight.ts). */
+/* Det assistenten pekar på: ett mjukt sken som tonar bort (spotlight.ts).
+   Ingen ram: ringen är genomskinlig, bara den suddiga glöden syns. */
 .help-spotlight {
   position: relative;
   z-index: 5;
   border-radius: var(--radius-inner);
-  box-shadow: 0 0 0 3px var(--accent-ink), 0 0 0 10px var(--focus) !important;
+  box-shadow: 0 0 0 3px transparent, 0 0 22px 6px var(--focus) !important;
   animation: help-spot-pulse 1.3s var(--ease-out) 2;
   transition: box-shadow 420ms var(--ease-out);
 }
 
 .help-spotlight.help-spotlight--fade {
-  box-shadow: 0 0 0 3px transparent, 0 0 0 10px transparent !important;
+  box-shadow: 0 0 0 3px transparent, 0 0 22px 6px transparent !important;
 }
 
 @keyframes help-spot-pulse {
   50% {
-    box-shadow: 0 0 0 3px var(--accent-ink), 0 0 0 16px transparent;
+    box-shadow: 0 0 0 3px transparent, 0 0 30px 10px transparent;
   }
 }
 
@@ -359,4 +372,89 @@
     animation: none;
     transition: none;
   }
+}
+
+/* Steget man frågar om (från ? i Kom igång): en etikett under rubriken. */
+.help-context {
+  display: flex;
+  flex-shrink: 0;
+  padding: var(--space-3) var(--space-5) var(--space-2);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.help-context__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  min-height: 28px;
+  padding: 0 var(--space-1) 0 var(--space-3);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-pill);
+  font: var(--fw-medium, 500) var(--fs-sm) / 1.3 var(--font);
+  color: var(--ink);
+}
+
+.help-context__label {
+  min-width: 0;
+  padding: var(--space-1) 0;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.help-context__clear {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--muted);
+  cursor: default;
+}
+
+.help-context__clear:hover {
+  background: var(--wash);
+  color: var(--ink);
+}
+
+.help-context__clear:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.help-context-ask {
+  align-self: stretch;
+}
+
+/* Pekskärm (iPad, telefon): minst 44 px att trycka på. */
+@media (pointer: coarse) {
+  .help-icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .help-chip {
+    min-height: 44px;
+  }
+
+  .help-context__pill {
+    min-height: 44px;
+  }
+
+  .help-context__clear {
+    width: 40px;
+    height: 40px;
+  }
+
+  .help-msg--fault .error-note-actions .btn {
+    min-height: 44px;
+  }
+}
+
+/* Under introduktionsguiden: knappen döljs så den inte täcker det upplysta målet. */
+.help-launcher.help-launcher--guide {
+  display: none;
 }

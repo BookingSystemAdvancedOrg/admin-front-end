@@ -1,0 +1,335 @@
+/* Rörelse i admin: en uppsättning tider och kurvor (ux-motion). Personalen
+   använder admin hela dagen på iPad: det som används ofta svarar snabbt och
+   tyst (tryck, menyer, dialoger), det sällsynta får ett ögonblick (PeakSuccess).
+   Allt som kan ångras (menyer, dialoger, lådor, reglage) går med transition,
+   aldrig keyframes, så att en ändring mitt i rörelsen fortsätter därifrån.
+   Importeras i main.tsx efter appens övriga stilar. */
+
+:root {
+  --m-press: 100ms; /* tryck */
+  --m-fast: 140ms; /* menyer, bubblor, listor som fälls ut */
+  --m-base: 200ms; /* dialoger, de flesta övergångar */
+  --m-panel: 280ms; /* ark och stora paneler */
+  --m-exit: 120ms; /* det som stänger: snabbare än det öppnade */
+  --m-peak: 600ms; /* ett sällsynt ögonblick (PeakSuccess) */
+
+  --e-out: cubic-bezier(0.16, 1, 0.3, 1); /* in på skärmen */
+  --e-in: cubic-bezier(0.7, 0, 0.84, 0); /* ut från skärmen */
+  --e-move: cubic-bezier(0.65, 0, 0.35, 1); /* från en plats till en annan */
+  --e-spring: cubic-bezier(0.34, 1.4, 0.64, 1); /* liten översväng, dämpning ca 0,75 */
+
+  /* gamla namn följer de nya */
+  --ease: var(--e-out);
+  --spring: var(--e-spring);
+}
+
+/* --- Tryck (shared/press.ts) ------------------------------------------------
+   Klämningen syns när fingret går ned (inte när det lyfts) och släpper när
+   det lyfts. Ett system: .btn har ingen egen :active-skala längre.
+   Övergången (100 ms in, 140 ms ut) läggs inline till elementets egna i
+   press.ts, så att den inte förlorar mot knappens egen transition. */
+.is-pressed {
+  scale: 0.97;
+}
+.is-pressed-text {
+  opacity: 0.6;
+}
+
+/* En ring från trycket, bara på det som går att trycka på. Kort och tyst:
+   den syns hundratals gånger per pass. */
+.press-ripple {
+  position: fixed;
+  z-index: 200;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  border-radius: 50%;
+  border: 2px solid rgba(107, 74, 46, 0.5);
+  background: none;
+  pointer-events: none;
+  animation: press-ring 360ms var(--e-out) forwards;
+}
+.press-ripple::before,
+.press-ripple::after {
+  content: none;
+}
+:root[data-theme='dark'] .press-ripple {
+  border-color: rgba(213, 196, 174, 0.55);
+  background: none;
+}
+@keyframes press-ring {
+  from {
+    scale: 0.2;
+    opacity: 0.9;
+  }
+  to {
+    scale: 1;
+    opacity: 0;
+  }
+}
+
+/* --- Menyer och bubblor växer ur det man tryckte på -------------------------
+   transform-origin sätts från knappen (shared/motion/origin.ts). Stängs
+   direkt: de avmonteras, det snabbaste stängandet som finns. */
+.row-menu-list,
+.info-tooltip-panel {
+  transform-origin: top right;
+  transition:
+    opacity var(--m-fast) var(--e-out),
+    scale var(--m-fast) var(--e-out);
+}
+.info-tooltip-panel {
+  transform-origin: top left;
+}
+@starting-style {
+  .row-menu-list,
+  .info-tooltip-panel {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+
+/* --- Dialoger (ModalOverlay, alla 22 ställen) -------------------------------
+   Slöjan tonar in, panelen växer ur raden eller knappen som öppnade den.
+   Stängs direkt. */
+.modal-overlay {
+  transition: opacity var(--m-fast) var(--e-out);
+}
+.modal-overlay > * {
+  transition:
+    opacity var(--m-base) var(--e-out),
+    scale var(--m-base) var(--e-out),
+    translate var(--m-base) var(--e-out);
+}
+@starting-style {
+  .modal-overlay {
+    opacity: 0;
+  }
+  .modal-overlay > * {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+/* Telefonens ark (Bord) kommer underifrån i stället. */
+@media (max-width: 600px) {
+  @starting-style {
+    .board-overlay > * {
+      scale: 1;
+      translate: 0 32px;
+    }
+  }
+}
+
+/* Dialogerna från @booqy/brand (<Modal>, 12 ställen, bland annat rätternas
+   tillval i Ny bordsbeställning) hade ett fall på 640 ms från mitten. Samma
+   som ModalOverlay i stället: 200 ms ur det man tryckte på (origin.ts,
+   installDialogOrigin), slöjan på 140 ms, stängs direkt. */
+@media (prefers-reduced-motion: no-preference) {
+  .bq-modal[open] {
+    animation: none;
+    transition:
+      opacity var(--m-base) var(--e-out),
+      scale var(--m-base) var(--e-out);
+  }
+  .bq-modal[open]::backdrop {
+    transition: opacity var(--m-fast) var(--e-out);
+  }
+  @starting-style {
+    .bq-modal[open] {
+      opacity: 0;
+      scale: 0.96;
+    }
+    .bq-modal[open]::backdrop {
+      opacity: 0;
+    }
+  }
+}
+
+/* --- Rätt fält skakar vid fel (shake() i shared/motion/shake.ts) --------- */
+/* (Web Animations, ingen CSS behövs; här bara fokusringen som följer.) */
+
+/* --- Ett sällsynt ögonblick: PeakSuccess ----------------------------------- */
+.peak {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+}
+.peak-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--cta);
+  color: var(--on-cta);
+}
+.peak-mark svg {
+  width: 16px;
+  height: 16px;
+  overflow: visible;
+}
+.peak-mark path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 24;
+  stroke-dashoffset: 0;
+}
+.peak-text {
+  font-weight: 600;
+}
+.peak-sub {
+  display: block;
+  font: 500 12px/1.4 var(--mono);
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+/* Stor: ett kvitto som matas ut, för det som händer sällan (kampanj ute,
+   Kom igång klart). */
+.peak--big {
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 22px 18px;
+  min-width: 220px;
+  border-radius: var(--r-md);
+  background: var(--bq-snow, #fff);
+  color: #1a120e;
+  box-shadow: var(--elev-2, 0 10px 30px rgba(0, 0, 0, 0.18));
+  text-align: center;
+}
+.peak--big .peak-mark {
+  width: 48px;
+  height: 48px;
+}
+.peak--big .peak-mark svg {
+  width: 26px;
+  height: 26px;
+}
+.peak--big .peak-text {
+  font: 700 19px/1.25 var(--display);
+}
+.peak--big .peak-sub {
+  margin-top: 4px;
+  color: #6b4a2e;
+}
+.peak-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 290;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--scrim);
+  transition: opacity var(--m-exit) var(--e-in);
+}
+.peak-layer.is-leaving {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .peak-mark {
+    animation: peak-stamp 240ms var(--e-spring) 120ms both;
+  }
+  .peak-mark path {
+    animation: peak-draw 320ms var(--e-out) 200ms both;
+  }
+  .peak-text,
+  .peak-sub {
+    animation: peak-rise 240ms var(--e-out) 260ms both;
+  }
+  .peak--big {
+    animation: peak-feed 320ms var(--e-out) both;
+  }
+  .peak-layer {
+    animation: peak-fade var(--m-fast) var(--e-out);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .peak,
+  .peak-layer {
+    animation: peak-fade 150ms linear;
+  }
+}
+@keyframes peak-stamp {
+  from {
+    scale: 0.4;
+    opacity: 0;
+  }
+  70% {
+    scale: 1.15;
+    opacity: 1;
+  }
+  to {
+    scale: 1;
+  }
+}
+@keyframes peak-draw {
+  from {
+    stroke-dashoffset: 24;
+  }
+}
+@keyframes peak-rise {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+@keyframes peak-feed {
+  from {
+    opacity: 0;
+    translate: 0 -12px;
+    clip-path: inset(0 0 60% 0 round var(--r-md));
+  }
+  to {
+    clip-path: inset(0 0 0 0 round var(--r-md));
+  }
+}
+@keyframes peak-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* --- Nya rader som man själv skapat: en blinkning där de hamnade --------- */
+.m-landed {
+  animation: m-landed 600ms var(--e-out) 1;
+}
+@keyframes m-landed {
+  from {
+    background-color: color-mix(in srgb, var(--cta) 32%, transparent);
+  }
+}
+
+/* --- Minska rörelse: allt stannar, även fördröjningar och slingor -------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-delay: 0s !important;
+    transition-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+  .is-pressed {
+    scale: 1;
+  }
+  .press-ripple {
+    display: none;
+  }
+  @starting-style {
+    .row-menu-list,
+    .info-tooltip-panel,
+    .modal-overlay > * {
+      scale: 1;
+      translate: none;
+    }
+  }
+  .m-landed {
+    animation: none;
+  }
+}

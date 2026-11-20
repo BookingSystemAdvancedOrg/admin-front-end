@@ -18,7 +18,7 @@
   border-radius: var(--r-md);
   background: var(--glass-pop);
   color: var(--ink);
-  box-shadow: inset 0 0 0 1px var(--border), var(--shadow-lg);
+  box-shadow: inset 0 0 0 1px transparent, var(--shadow-lg);
   font: 500 12px/1.4 var(--mono);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
@@ -94,7 +94,7 @@
 }
 
 .chart-tip-swatch--border {
-  background: var(--border);
+  background: var(--neutral-fill);
 }
 
 /* Träffytan över varje punkt, och bandet bakom den som visas. */

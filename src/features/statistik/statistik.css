@@ -32,7 +32,7 @@
   border: 0;
   border-radius: var(--r-md);
   background: var(--glass-surface);
-  box-shadow: inset 0 0 0 1px var(--border);
+  box-shadow: inset 0 0 0 1px transparent;
   font: 600 13.5px/1 var(--font);
   color: var(--ink);
   cursor: default;
@@ -40,7 +40,8 @@
 }
 
 .sk-chip:hover {
-  box-shadow: inset 0 0 0 1px var(--ink);
+  background: var(--glass-fill);
+  box-shadow: inset 0 0 0 1px transparent;
 }
 
 .sk-chip[aria-pressed='true'] {
@@ -201,6 +202,16 @@
 
 .sk-swatch--muted {
   background: var(--muted);
+}
+
+/* Mörkt läge: --muted och --accent-ink är samma färg, så Ej markerade får en
+   dämpad ton som skiljer sig från Uteblev. */
+:root[data-theme='dark'] .sk-ring-seg--muted {
+  stroke: color-mix(in srgb, var(--muted) 42%, var(--surface));
+}
+
+:root[data-theme='dark'] .sk-swatch--muted {
+  background: color-mix(in srgb, var(--muted) 42%, var(--surface));
 }
 
 .sk-bar {
@@ -479,31 +490,32 @@
   color: var(--muted);
 }
 
-/* Diagrammen växer upp en gång; linjen ritas, punkterna kommer sist. */
+/* Diagrammen växer upp en gång; linjen ritas, punkterna kommer sist. Hela
+   kaskaden högst 7 steg (shared/motion/stagger.ts), allt klart inom 0,6 s. */
 @media (prefers-reduced-motion: no-preference) {
   .sk-bar--grow {
     transform-box: fill-box;
     transform-origin: bottom;
-    animation: sk-grow 640ms var(--ease) both;
-    animation-delay: calc(var(--i, 0) * 14ms);
+    animation: sk-grow 360ms var(--ease) both;
+    animation-delay: calc(var(--i, 0) * 30ms);
   }
 
   .sk-bar--row {
     transform-box: fill-box;
-    animation: sk-row 560ms var(--ease) both;
-    animation-delay: calc(var(--i, 0) * 50ms);
+    animation: sk-row 320ms var(--ease) both;
+    animation-delay: calc(var(--i, 0) * 40ms);
   }
 
   .sk-line--draw {
     stroke-dasharray: 1;
     stroke-dashoffset: 1;
-    animation: sk-draw 1000ms var(--ease) 160ms forwards;
+    animation: sk-draw 500ms var(--ease) 100ms forwards;
   }
 
   .sk-dot--in {
     opacity: 0;
-    animation: sk-in 300ms var(--ease) forwards;
-    animation-delay: calc(260ms + var(--i, 0) * 18ms);
+    animation: sk-in 200ms var(--ease) forwards;
+    animation-delay: calc(300ms + var(--i, 0) * 30ms);
   }
 }
 
@@ -607,7 +619,8 @@
   gap: 12px 16px;
   padding: 14px 16px;
   border-radius: var(--r-lg);
-  background: var(--glass-text-bg) var(--liquid-sheen);
+  /* tät: rubrikerna under ska inte synas igenom när raden följer med */
+  background: var(--surface) var(--liquid-sheen);
   box-shadow: var(--liquid-edge), var(--liquid-depth);
   -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(1.6);
   backdrop-filter: blur(var(--blur-pop)) saturate(1.6);
@@ -907,13 +920,13 @@
 }
 
 .sk-heat-cell--0 {
-  fill: color-mix(in srgb, var(--ink) 7%, var(--surface));
-  background: color-mix(in srgb, var(--ink) 7%, var(--glass-surface));
+  fill: color-mix(in srgb, var(--ink) 15%, var(--surface));
+  background: color-mix(in srgb, var(--ink) 15%, var(--glass-surface));
 }
 
 .sk-heat-cell--1 {
-  fill: color-mix(in srgb, var(--ink) 22%, var(--surface));
-  background: color-mix(in srgb, var(--ink) 22%, var(--glass-surface));
+  fill: color-mix(in srgb, var(--ink) 28%, var(--surface));
+  background: color-mix(in srgb, var(--ink) 28%, var(--glass-surface));
 }
 
 .sk-heat-cell--2 {
@@ -946,7 +959,7 @@
 }
 
 .sk-heat-legend .sk-swatch {
-  box-shadow: inset 0 0 0 1px var(--border);
+  box-shadow: inset 0 0 0 1px transparent;
 }
 
 .sk-heat-legend-label {
@@ -986,14 +999,16 @@
     border: 0;
     border-radius: var(--r-md);
     background: var(--glass-surface);
-    box-shadow: inset 0 0 0 1px var(--border);
+    box-shadow: inset 0 0 0 1px transparent;
     font: 600 13.5px/1 var(--font);
     color: var(--ink);
     cursor: default;
   }
 
   .sk-filter-toggle[aria-expanded='true'] {
-    box-shadow: inset 0 0 0 1.5px var(--ink);
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: inset 0 0 0 1.5px transparent;
   }
 
   .sk-filters {
@@ -1229,4 +1244,361 @@
 /* The chart figure is a grid: its scrollers must not widen it to their content. */
 .sk-chart > * {
   min-width: 0;
+}
+
+/* --- Passform på telefon och iPad (2026-11-19) -------------------------------- */
+
+/* Periodvalet radbryts i stället för att klippa "Förra månaden" mitt i ett
+   ord; pillen (glide.ts) följer med till rad två via --glide-y. */
+.sk-filterbar .sk-chips[data-glide='track'] {
+  flex-wrap: wrap !important;
+  width: auto;
+  overflow: visible;
+  border-radius: var(--r-lg) !important;
+}
+
+.sk-filterbar .sk-chips[data-glide='track']::before {
+  border-radius: calc(var(--r-lg) - 3px);
+}
+
+@media (max-width: 760px) {
+  /* chips on two or three rows: the bar no longer follows the scroll on a phone */
+  .sk-filterbar {
+    position: static;
+  }
+
+  .sk-chips {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .sk-chip {
+    flex: 1 0 auto;
+  }
+}
+
+/* Nyckeltalen: siffran står kvar i rutan även för stora belopp. */
+.sk-kpi {
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.sk-kpi-value {
+  font-size: clamp(18px, calc(100cqi / (var(--sk-len, 6) * 0.52)), 30px);
+}
+
+/* En smal ruta (telefon, iPad med sidomeny): trendchipet står på en egen rad
+   under rubriken, så att rubriken aldrig bryts mitt i ett ord. Samma regel
+   som telefonens nedan, men efter rutans bredd i stället för skärmens. */
+@container (max-width: 200px) {
+  .sk-kpi-head:has(.sk-kpi-delta) {
+    flex-wrap: wrap;
+  }
+
+  .sk-kpi-head:has(.sk-kpi-delta) .sk-kpi-label {
+    flex: 1 1 0;
+  }
+
+  .sk-kpi-head:has(.sk-kpi-delta)::after {
+    content: '';
+    flex-basis: 100%;
+    order: 1;
+  }
+
+  .sk-kpi-head .sk-kpi-delta {
+    order: 2;
+  }
+}
+
+/* Tabellerna (Mest sålda, Kanaler): rubrikerna har samma lilla typsnitt som
+   de andra kolumnerna och luft mot grannen, så de inte flyter ihop. */
+.sk-dishes th.num {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  /* breaks only at the soft hyphen in long headers (Beställ-ningar) */
+  white-space: normal;
+  vertical-align: bottom;
+}
+
+.sk-dishes th + .num,
+.sk-dishes td + .num {
+  padding-left: 24px;
+}
+
+/* a very long dish name breaks inside the word, so the figures beside it
+   keep their room instead of being pushed out of the card */
+.sk-dishes td:not(.num, .sk-rank) {
+  overflow-wrap: anywhere;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+}
+
+.sk-dishes .sk-rank {
+  white-space: nowrap;
+}
+
+/* Smal kolumn (iPad med sidomeny, telefon): tätare tabell så att alla
+   kolumner syns utan att rulla. */
+.sk-scroll {
+  container-type: inline-size;
+}
+
+@container (max-width: 430px) {
+  .sk-dishes td {
+    font-size: 13px;
+  }
+
+  .sk-dishes .num {
+    font-size: 12px;
+  }
+
+  .sk-dishes th,
+  .sk-dishes td {
+    padding-right: 8px;
+  }
+
+  .sk-dishes th + .num,
+  .sk-dishes td + .num {
+    padding-left: 8px;
+  }
+
+  .sk-dishes .num {
+    padding-right: 0;
+  }
+
+  .sk-dishes .sk-rank {
+    width: 20px;
+  }
+}
+
+/* Telefon och smala kort (även iPad stående): varje rad blir ett litet
+   kvitto, namnet överst och siffrorna med sina rubriker under, så att inget
+   behöver rullas i sidled och två siffror aldrig läses som en. */
+@container (max-width: 480px) {
+  .sk-dishes,
+  .sk-dishes tbody {
+    display: block;
+  }
+
+  /* the column headers stay for screen readers; each figure carries its own label */
+  .sk-dishes thead {
+    display: block;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .sk-dishes tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 12px;
+    padding: 10px 0;
+    border-top: 1.5px dashed var(--border);
+  }
+
+  .sk-dishes td {
+    padding: 0;
+    border-top: 0;
+  }
+
+  .sk-dishes .sk-rank {
+    width: 20px;
+    flex: none;
+  }
+
+  .sk-dishes .num {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    /* equal columns, so the figures line up from row to row; a big amount
+       may take more room */
+    flex: 1 0 0;
+    min-width: max-content;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  /* the name takes its own line; the numbers start under it, not under the rank */
+  .sk-dishes td:not(.num, .sk-rank) {
+    flex: 1 1 calc(100% - 32px);
+    min-width: 0;
+  }
+
+  .sk-dishes .sk-rank + td + .num {
+    margin-left: 32px;
+  }
+
+  .sk-dishes td:first-child:not(.sk-rank) {
+    flex-basis: 100%;
+  }
+
+  /* Kanaler: fyra siffror, två och två */
+  .sk-dishes td:first-child:not(.sk-rank) ~ .num {
+    flex-basis: calc(50% - 6px);
+  }
+
+  .sk-dishes th + .num,
+  .sk-dishes td + .num {
+    padding-left: 0;
+  }
+
+  .sk-dishes .num::before {
+    content: attr(data-label);
+    font: 600 10px/1.3 var(--mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+}
+
+/* Besök, bokningar, beställningar: etikett och siffra hålls ihop på raden. */
+.sk-facts--row > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+/* Kortrubriker med långa ord (namn, rätter) bryts inom kortet. */
+.sk-card-head .card-title,
+.sk-todo-title,
+.sk-todo-text,
+.sk-pairs li > span:first-child {
+  overflow-wrap: break-word;
+}
+
+/* a long dish name in a title breaks at a syllable with a hyphen, never one
+   letter alone; the running text keeps whole words */
+.sk-card-head .card-title,
+.sk-todo-title,
+.sk-pairs li > span:first-child {
+  -webkit-hyphens: auto;
+  hyphens: auto;
+  hyphenate-limit-chars: 12 5 5;
+}
+
+/* Pekskärm (iPad): kontrollerna här går att träffa med fingret, 44 px. */
+@media (pointer: coarse) {
+  .sk-filterbar .sk-chips > .sk-chip,
+  .sk-filter-toggle,
+  .sk-field .b-select,
+  .sk-field input,
+  .sk-filters .sk-export.btn {
+    min-height: 44px;
+  }
+
+  .sk-anchors {
+    gap: 0 4px;
+    margin-inline: -6px;
+  }
+
+  .sk-anchors a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-inline: 6px;
+  }
+
+  .sk-period summary {
+    min-height: 44px;
+  }
+
+  .sk-filterbar .sk-chips > .sk-chip {
+    min-width: 44px;
+  }
+
+  /* (i) och textlänkarna: samma 44 px yta som på telefon (tapTargets.css),
+     även på iPad. Den osynliga ramen ger ytan utan att flytta layouten. */
+  html .sk-page .info-tooltip .info-tooltip-trigger {
+    box-sizing: content-box;
+    width: 22px;
+    height: 22px;
+    margin: -11px;
+    border: 11px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .sk-page .card-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* keeps the disclosure triangle: taller by padding, not by display */
+  .sk-table summary {
+    box-sizing: border-box;
+    min-height: 44px;
+    padding-block: 13px;
+    margin-block: -8px;
+  }
+}
+
+/* "Visa som tabell" i ett smalt kort (telefon): fem kolumner ryms utan att
+   sista rubriken klipps (BELÄGGN, AVBOK); datum, tider och belopp hålls på
+   en rad.
+   Matrisen (24 timmar) rullar fortfarande i sidled. */
+.sk-table-scroll {
+  container-type: inline-size;
+}
+
+.sk-table td {
+  white-space: nowrap;
+}
+
+@container (max-width: 430px) {
+  /* whole words per line (GÄSTER / PER DAG), never split mid-word */
+  .sk-table table:not(.sk-table-matrix) th {
+    font-size: 10px;
+    letter-spacing: 0.02em;
+    padding-right: 8px;
+    overflow-wrap: break-word;
+    vertical-align: bottom;
+  }
+
+  .sk-table table:not(.sk-table-matrix) td {
+    padding-right: 8px;
+  }
+
+  .sk-table table:not(.sk-table-matrix) th:last-child,
+  .sk-table table:not(.sk-table-matrix) td:last-child {
+    padding-right: 0;
+  }
+}
+
+/* Att göra: texten får krympa i kortet, så att ett långt ord bryts i
+   stället för att trycka kortet utanför sidan (iPad liggande, tre kolumner). */
+.sk-todo-item > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Omsättningsdiagrammet: toppvärdet läses ovanpå staplar och linje, och en
+   lång period (år, kvartal) ritar förra perioden som en tunn linje. */
+.sk-value--halo {
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.sk-line--dense {
+  stroke-width: 1;
+  opacity: 0.75;
+}
+
+/* Filterraden som följer med: helt tät, så att inget syns igenom, och bara där
+   skärmen är stor nog (iPad har den stilla överst, som telefonen). */
+.sk-filterbar {
+  --glass-text-bg: var(--surface);
+}
+
+@media (max-width: 1024px), (max-height: 860px) {
+  .sk-filterbar {
+    position: static;
+  }
 }

@@ -1,7 +1,7 @@
 import { isApiConfigured } from './api'
 import { useLiveRefresh } from './live'
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { BrandMark, BrandWordmark } from './BrandMark'
 import { useAuth } from '../features/auth/useAuth'
 import { primaryGroupLabel } from '../features/installningar/usersApi'
@@ -37,6 +37,7 @@ import { ErrorNote } from './ErrorNote'
 import { booqyFaultText } from './errors'
 import { Select } from './Select'
 import { BottomNav } from './BottomNav'
+import { LeaveGuard, useGuardedNavigate } from './LeaveGuard'
 import { usePhoneNav } from './dock'
 
 /** Grupperna i sidomenyn som användaren har fällt ihop (sparas i webbläsaren). */
@@ -186,7 +187,10 @@ export function AdminLayout() {
         <span className="admin-mobilebar-brand">
           <BrandWordmark height={18} />
         </span>
-        <span className="admin-mobilebar-name">
+        <span
+          className="admin-mobilebar-name"
+          title={[tenant?.name, locations.length > 1 ? locationName : ''].filter(Boolean).join(' · ') || undefined}
+        >
           {tenant?.name ?? ''}
           {locations.length > 1 && locationName && <span className="admin-mobilebar-place"> · {locationName}</span>}
         </span>
@@ -300,7 +304,8 @@ export function AdminLayout() {
             <MyAvatarButton name={displayName} email={email} />
             <span className="admin-user-name">
               {/* Rollen enligt servern när restaurangen är laddad. */}
-              {displayName} · {primaryGroupLabel(tenant ? [tenant.role] : groups)}
+              {displayName}{' '}
+              <span className="admin-user-role">{primaryGroupLabel(tenant ? [tenant.role] : groups)}</span>
             </span>
           </div>
           <button
@@ -319,6 +324,7 @@ export function AdminLayout() {
 
       <div className="admin-right">
         <BusyBar />
+        <LeaveGuard />
         {status === 'error' && error ? (
           <div className="admin-main">
             <section className="admin-card table-card tenant-notice" role="alert">
@@ -363,7 +369,7 @@ export function AdminLayout() {
 
 /** ⌘K: sidorna man får se, några åtgärder och de senast besökta sidorna. */
 function ShellPalette({ onLogout }: { onLogout: () => void }) {
-  const navigate = useNavigate()
+  const navigate = useGuardedNavigate()
   const { tenant } = useTenant()
   const { start } = useGuide()
   const items = useCallback((): PaletteItem[] => {
@@ -380,7 +386,7 @@ function ShellPalette({ onLogout }: { onLogout: () => void }) {
       { id: 'a-look', group: 'Åtgärder', label: 'Utseende och ljud', hint: 'Inställningar', icon: 'gear', keywords: 'mörkt ljust tema klickljud', run: () => navigate('/installningar#utseende') },
       { id: 'a-guide', group: 'Åtgärder', label: 'Starta guiden', icon: 'help', keywords: 'hjälp introduktion', run: start },
       ...(helpChatEnabled()
-        ? [{ id: 'a-ask', group: 'Åtgärder' as const, label: 'Fråga hjälpassistenten', icon: 'help' as const, keywords: 'chatt fråga hur gör jag assistent', run: openHelpChat }]
+        ? [{ id: 'a-ask', group: 'Åtgärder' as const, label: 'Fråga hjälpassistenten', icon: 'help' as const, keywords: 'chatt fråga hur gör jag assistent', run: () => openHelpChat() }]
         : []),
       { id: 'a-logout', group: 'Åtgärder', label: 'Logga ut', icon: 'logout', run: onLogout },
     ]

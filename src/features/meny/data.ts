@@ -9,6 +9,7 @@
 
 import type { Allergen } from '../catering/cateringApi'
 import type { ImageFocus } from './imageFocus'
+import type { Course } from '../bestallningar/table-order/types'
 
 /** API:ts categoryId. */
 export type DishCategory = string
@@ -16,6 +17,14 @@ export type DishCategory = string
 export interface MenuCategoryEntry {
   categoryId: string
   name: string
+  /** Rätt på bordsbeställningar (Förrätt, Varmrätt ...); saknas = standard. */
+  course?: Course
+}
+
+/** Kategorins rätt när ägaren inte valt: standardkategorierna sin egen, dryck för drycker, annars Övrigt. */
+export function defaultCourse(categoryId: string, drinks = false): Course {
+  if (categoryId === 'starters' || categoryId === 'mains' || categoryId === 'desserts' || categoryId === 'drinks') return categoryId
+  return drinks ? 'drinks' : 'other'
 }
 
 export const DEFAULT_CATEGORIES: MenuCategoryEntry[] = [

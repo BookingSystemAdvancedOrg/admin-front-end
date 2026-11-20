@@ -9,6 +9,7 @@ import { booqyFaultText, errorText } from '../../shared/errors'
 import { useConfirm } from '../../shared/ConfirmDialog'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { CtaButton } from '../../shared/CtaButton'
+import './personal.css'
 import { StatTile } from '../../shared/motion/StatTile'
 import { SkelTableRows } from '../../shared/Skeleton'
 import { onPageAction, takePageAction } from '../../shared/nav'
@@ -268,8 +269,8 @@ export default function PersonalPage() {
           {(loadError ?? rowError) && (
             <ErrorNote text={loadError ?? rowError} onRetry={!loadError && rowRetry ? rowRetry : undefined} />
           )}
-          <div className="table-scroll" tabIndex={0}>
-            <table className="data-table" style={{ minWidth: 600 }}>
+          <div className="table-scroll personal-scroll" tabIndex={0}>
+            <table className="data-table personal-table">
               <thead>
                 <tr>
                   <th>Namn</th>

@@ -41,7 +41,7 @@
   width: 44px;
   height: 44px;
   border-radius: var(--r-md);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 1px transparent;
 }
 
 .auth-logo-badge svg {
@@ -51,6 +51,7 @@
 .auth-logo-text {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 4px;
 }
 
@@ -178,15 +179,15 @@
   padding: 0 20px;
   border: 0;
   border-radius: var(--r-md);
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--cta);
+  color: var(--on-cta);
   font: 500 17px/1.2 var(--auth-sans);
   cursor: default;
   transition: background 200ms var(--ease), transform 200ms var(--ease), opacity 200ms var(--ease);
 }
 
 .auth-submit:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--cta-hover);
 }
 
 .auth-submit:active:not(:disabled) {
@@ -259,5 +260,15 @@ a.auth-submit {
 
   .auth-card {
     padding: 28px 20px;
+  }
+}
+
+/* Pekskärm (iPad, telefon): länkarna under formuläret får 44 px att trycka på. */
+@media (pointer: coarse) {
+  .auth-card > .auth-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
   }
 }

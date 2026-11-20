@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { setOrigin } from './motion/origin'
 import type { HTMLAttributes, ReactNode } from 'react'
 
 /* Dialogens bakgrund renderas direkt i <body>. Sidans glas (backdrop-filter på
@@ -9,8 +10,14 @@ export default function ModalOverlay({ children, className, ...rest }: HTMLAttri
   // Öppnas den ovanpå en <dialog> (Modal i @booqy/brand) är resten av sidan inert;
   // då behöver den ett eget översta lager för att gå att klicka i.
   const [onTop] = useState(modalDialogOpen)
+  // Panelen växer ur raden eller knappen man tryckte på (motion.css); stängs direkt.
+  const box = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const panel = box.current?.firstElementChild
+    if (panel instanceof HTMLElement) setOrigin(panel)
+  }, [])
   const overlay = (
-    <div className={className ? `modal-overlay ${className}` : 'modal-overlay'} {...rest}>
+    <div ref={box} className={className ? `modal-overlay ${className}` : 'modal-overlay'} {...rest}>
       {children}
     </div>
   )

@@ -10,7 +10,6 @@ import type { StaffChannel } from '../bokningar/ChannelPicker'
 import {
   EMAIL_MAX,
   NAME_MAX,
-  addDays,
   NOTES_MAX,
   createManualReservation,
   dayNotice,
@@ -18,6 +17,7 @@ import {
   LOCATION_NOT_BOOKABLE,
   getAvailability,
   isStaleSlotError,
+  lastBookableDate,
   normalizePhone,
   todayIn,
   validEmail,
@@ -31,9 +31,6 @@ import type { Floor, TableElement } from './data'
 import '../bokningar/bokningar.css'
 import './floor-booking.css'
 import { ErrorNote } from '../../shared/ErrorNote'
-
-/** Längst fram personalen kan boka (servern: 21 dagar). */
-const HORIZON_DAYS = 20
 
 interface PublicLayout {
   floors: { floorId: string; name?: string; level: number }[]
@@ -253,7 +250,7 @@ export function FloorBooking({
     )[0]
     setFloorId(home.id)
     const d = focus.date
-    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= today && d <= addDays(today, HORIZON_DAYS)) setDate(d)
+    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= today && d <= lastBookableDate(today)) setDate(d)
     // Ett bord: det väljs (tider och formulär). Flera: alla markeras, inget väljs.
     setTableId(ids.length === 1 ? ids[0] : null)
     setStartTime('')
@@ -379,7 +376,7 @@ export function FloorBooking({
                     id="fb-date"
                     value={date}
                     min={today}
-                    max={addDays(today, HORIZON_DAYS)}
+                    max={lastBookableDate(today)}
                     disabled={walkIn}
                     onChange={(e) => {
                       if (!e.target.value) return
@@ -448,6 +445,13 @@ export function FloorBooking({
                   role="group"
                   aria-label={`Bord på ${floor.name}`}
                 >
+                  {/* Fullbokat: randigt, samma ränder som i teckenförklaringen. */}
+                  <defs>
+                    <pattern id="floor-map-full" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                      <rect className="floor-map-full-base" width="8" height="8" />
+                      <rect className="floor-map-full-stripe" width="4" height="8" />
+                    </pattern>
+                  </defs>
                   {floor.grounds.map((g) => (
                     <rect key={g.id} className="floor-map-ground" x={g.x} y={g.y} width={g.w} height={g.h} />
                   ))}
@@ -506,15 +510,27 @@ export function FloorBooking({
                           ) : (
                             <rect className="floor-map-top" x={-t.w / 2} y={-t.h / 2} width={t.w} height={t.h} rx={6} />
                           )}
-                          <g transform={`rotate(${-t.rotation})`}>
-                            {/* Trailing space: screen readers and axe join the two texts, "T1 4 pl" not "T14 pl". */}
-                            <text className="floor-map-label" y={-4}>
-                              {label(t)}{' '}
-                            </text>
-                            <text className="floor-map-seats" y={14}>
-                              {t.seats} pl
-                            </text>
-                          </g>
+                          {(() => {
+                            const fit = labelFit(label(t), t)
+                            return (
+                              <g transform={`rotate(${-t.rotation})`}>
+                                {fit.cut && <title>{label(t)}</title>}
+                                {/* Trailing space: screen readers and axe join the two texts, "T1 4 pl" not "T14 pl". */}
+                                <text className="floor-map-label" y={fit.y} style={fit.style}>
+                                  {fit.lines.length === 1
+                                    ? `${fit.lines[0]} `
+                                    : fit.lines.map((line, i) => (
+                                        <tspan key={i} x={0} dy={i === 0 ? 0 : fit.size * 1.1}>
+                                          {i === fit.lines.length - 1 ? `${line} ` : line}
+                                        </tspan>
+                                      ))}
+                                </text>
+                                <text className="floor-map-seats" y={fit.seatsY}>
+                                  {t.seats} pl
+                                </text>
+                              </g>
+                            )
+                          })()}
                         </g>
                       </g>
                     )
@@ -644,4 +660,74 @@ export function FloorBooking({
       </div>
     </>
   )
+}
+
+/**
+ * Bordsnumret ska rymmas på bordet och gå att läsa: ett långt namn får mindre
+ * text (ned till 13, inte mindre). Räcker inte det bryts det på två rader om
+ * bordet är högt nog, annars kortas det med "…"; hela namnet ligger då i en
+ * title. Bara utseende.
+ */
+function labelFit(text: string, t: { w: number; h: number; rotation: number }) {
+  const upright = t.rotation % 180 === 0
+  const room = (upright ? t.w : Math.min(t.w, t.h)) - 10
+  const tall = upright ? t.h : t.w
+  const perChar = 0.62
+  const max = 19
+  const min = 13
+  // Två rader får vara något mindre än en rad; de syns ändå tydligt.
+  const small = 10
+  const fits = (n: number, cap = max) => Math.min(cap, room / Math.max(1, n * perChar))
+  const one = fits(text.length)
+  if (one >= min) {
+    return {
+      size: one,
+      lines: [text],
+      cut: false,
+      y: -4,
+      seatsY: 14,
+      style: one < max ? { fontSize: `${one}px` } : undefined,
+    }
+  }
+  // Två rader och platsantalet under ska rymmas på höjden.
+  const twoCap = Math.min(max, (tall - 18) / 2.2)
+  if (twoCap < small) {
+    // Bara en rad: början och slutet syns, så numret i "Terrassen 12" finns kvar.
+    const per = Math.max(3, Math.floor(room / (perChar * min)))
+    const head = Math.ceil((per - 1) / 2)
+    const tail = per - 1 - head
+    const short = `${text.slice(0, head).trimEnd()}…${tail > 0 ? text.slice(-tail).trimStart() : ''}`
+    return { size: min, lines: [short], cut: true, y: -4, seatsY: 14, style: { fontSize: `${min}px` } }
+  }
+  // Bryt vid det mellanslag som ger jämnast rader.
+  let lines: string[] | null = null
+  for (let i = text.indexOf(' '); i > 0; i = text.indexOf(' ', i + 1)) {
+    const cand = [text.slice(0, i), text.slice(i + 1)]
+    if (!lines || Math.max(...cand.map((l) => l.length)) < Math.max(...lines.map((l) => l.length))) lines = cand
+  }
+  let cut = false
+  if (!lines || fits(Math.max(...lines.map((l) => l.length)), twoCap) < small) {
+    const per = Math.max(3, Math.floor(room / (perChar * small)))
+    if (text.length <= 2 * per - 1) {
+      // Mitt i ordet med bindestreck.
+      lines = [`${text.slice(0, per - 1)}-`, text.slice(per - 1)]
+    } else {
+      // För långt även på två rader: början och slutet, hela namnet i title.
+      const space = text.lastIndexOf(' ', per)
+      const first = space > per / 3 ? text.slice(0, space) : text.slice(0, per)
+      lines = [first, `…${text.slice(-(per - 1)).trimStart()}`]
+      cut = true
+    }
+  }
+  const size = Math.max(small, fits(Math.max(...lines.map((l) => l.length)), twoCap))
+  // Blocket (två rader, 2 enheter luft, platsantalet 12) centreras på bordet.
+  const top = -(2 * 1.1 * size + 2 + 12) / 2
+  return {
+    size,
+    lines,
+    cut,
+    y: top + 0.55 * size,
+    seatsY: top + 2.2 * size + 8,
+    style: { fontSize: `${size}px` },
+  }
 }

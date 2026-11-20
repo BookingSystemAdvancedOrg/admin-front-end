@@ -57,6 +57,14 @@ describe('SlotTablePicker', () => {
     expect(await screen.findByText('Restaurangen är stängd den dagen (Privat fest).')).toBeInTheDocument()
   })
 
+  it('lets staff pick today through today + 21, as the server allows', async () => {
+    getAvailability.mockResolvedValue({ slots: [], day: null })
+    picker('')
+    const field = await screen.findByLabelText('Datum')
+    expect(field).toHaveAttribute('data-min', TODAY)
+    expect(field).toHaveAttribute('data-max', '2026-11-02')
+  })
+
   it('tells staff they can still book on a day without online booking', async () => {
     getAvailability.mockResolvedValue({ slots: [], day: { kind: 'no_online' } })
     picker('')

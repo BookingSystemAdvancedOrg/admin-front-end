@@ -4,7 +4,6 @@ import { tokens } from '@booqy/brand'
 import { errorText, restaurantSign, restaurantSignStatus } from './cateringApi'
 import type { CateringRequest } from './cateringApi'
 import { ErrorNote } from '../../shared/ErrorNote'
-import { TitleInfo } from '../../shared/TitleInfo'
 
 /** BankID: status en gång i sekunden (QR-koden byts varje sekund). */
 export const SIGN_POLL_MS = 1_000
@@ -22,16 +21,16 @@ const HINT: Record<string, string> = {
   certificateErr: 'Ditt BankID är för gammalt eller spärrat. Använd ett annat BankID.',
   startFailed: 'BankID-appen hittades inte. Installera BankID-appen och försök igen.',
   checking: 'Kontrollerar signeringen',
-  rejected: 'Signeringen avbröts. Skicka offerten igen för att börja om.',
-  canceled: 'Den här versionen av offerten kan inte signeras längre. Skicka offerten igen.',
-  timedout: 'Tiden för att signera tog slut. Skicka offerten igen.',
+  rejected: 'Signeringen avbröts. Gör en ny version av offerten för att börja om.',
+  canceled: 'Den här versionen av offerten kan inte signeras längre. Gör en ny version av offerten.',
+  timedout: 'Tiden för att signera tog slut. Gör en ny version av offerten.',
 }
 
 const isMobile = () => /android|iphone|ipad|ipod/i.test(navigator.userAgent)
 
 /**
- * Restaurangen signerar varje skickad offertversion först (C2). Därefter
- * får kunden mejl och sms och kan signera. Signeringen sker med BankID här
+ * Steg 2: restaurangen signerar varje offertversion med BankID (C2), innan
+ * den kan skickas till kunden (steg 3, OfferSteps). Signeringen sker här
  * (QR-kod, eller appen på samma enhet) eller på signeringstjänstens egen
  * sida, beroende på vad servern svarar.
  */
@@ -118,11 +117,7 @@ export function RestaurantSigning({ request, onSigned, returned }: {
   }
 
   return (
-    <section className="admin-card table-card restaurant-signing" aria-label="Signera offerten">
-      <TitleInfo
-        title={`Signera offerten (v${request.currentOfferVersion})`}
-        info="Restaurangen signerar först. När ni har signerat skickas offerten till kunden via mejl och sms, och kunden signerar samma version."
-      />
+    <div className="restaurant-signing">
       {bankid ? (
         <div className="bankid-box" role="status" aria-live="polite">
           <p>
@@ -140,13 +135,11 @@ export function RestaurantSigning({ request, onSigned, returned }: {
           )}
         </div>
       ) : (
-        <span className="row-actions">
-          <button type="button" className="btn primary square" disabled={busy} onClick={() => void start()}>
-            {busy ? 'Startar…' : 'Signera med BankID'}
-          </button>
-        </span>
+        <button type="button" className="btn primary square" disabled={busy} onClick={() => void start()}>
+          {busy ? 'Startar…' : 'Signera med BankID'}
+        </button>
       )}
       <ErrorNote text={error} />
-    </section>
+    </div>
   )
 }

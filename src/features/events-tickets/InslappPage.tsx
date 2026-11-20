@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Bar, Button, Card, Field, Input, Printing } from '@booqy/brand'
 import { errorText } from '../../shared/errors'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { ERRORS, TICKET_LABEL, getGuestList, newId, sendCheckIns, type CheckIn, type Ticket } from './api'
 import { clearScan, loadScan, parseCode, saveScan, signature, type ScanState } from './scanStore'
+import { BackButton } from '../../shared/BackButton'
 
 interface Detector { detect: (source: HTMLVideoElement) => Promise<{ rawValue: string }[]> }
 type DetectorCtor = new (opts: { formats: string[] }) => Detector
@@ -205,7 +205,7 @@ export default function InslappPage({ locationId, eventId, occurrenceId }: { loc
 
   return (
     <>
-      <p className="evenemang-back"><Link to={`/evenemang/${encodeURIComponent(eventId)}`}>Tillbaka till evenemanget</Link></p>
+      <div className="back-row"><BackButton to={`/evenemang/${encodeURIComponent(eventId)}`}>Tillbaka till evenemanget</BackButton></div>
       {!online || (state?.queue.length ?? 0) > 0 ? (
         <Bar variant="banner" tone={online ? 'info' : 'warning'}>
           {online ? `${state?.queue.length} insläpp skickas…` : `Ingen anslutning. Insläppen sparas här och skickas när nätet är tillbaka (${state?.queue.length ?? 0} i kö).`}
@@ -241,7 +241,7 @@ export default function InslappPage({ locationId, eventId, occurrenceId }: { loc
             {list && rows.length === 0 ? <p className="admin-empty">Inga biljetter.</p> : null}
             {rows.length ? (
               <div className="table-scroll" tabIndex={0}>
-                <table className="data-table">
+                <table className="data-table evenemang-table">
                   <thead><tr><th scope="col">Namn</th><th scope="col">Biljett</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Åtgärd</span></th></tr></thead>
                   <tbody>
                     {rows.map((t) => {
@@ -250,8 +250,8 @@ export default function InslappPage({ locationId, eventId, occurrenceId }: { loc
                       return (
                         <tr key={t.ticketId}>
                           <td>{t.holderName || 'Namn saknas'}</td>
-                          <td>{t.typeName}</td>
-                          <td><span className="status-badge">{label}</span></td>
+                          <td data-label="Biljett">{t.typeName}</td>
+                          <td data-label="Status"><span className="status-badge">{label}</span></td>
                           <td>
                             {t.status === 'valid' && !localAt ? (
                               <Button size="sm" variant="secondary" onClick={() => { void admit(t.ticketId, null) }}>Släpp in</Button>

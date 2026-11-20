@@ -45,8 +45,11 @@
   --elev-2: 0 2px 6px -2px rgba(58, 36, 24, 0.1), 0 22px 44px -26px rgba(58, 36, 24, 0.45);
   --elev-3: 0 4px 12px -4px rgba(26, 18, 14, 0.18), 0 40px 80px -32px rgba(26, 18, 14, 0.55);
 
-  --hairline: rgba(58, 36, 24, 0.1);
-  --hairline-strong: rgba(58, 36, 24, 0.18);
+  --hairline: transparent;
+  --hairline-strong: transparent;
+  /* Svag ton för hovring och handtag (inte en kant). */
+  --wash: rgba(58, 36, 24, 0.1);
+  --wash-strong: rgba(58, 36, 24, 0.18);
   --glass-edge: var(--liquid-edge);
 
   /* Glaslagren: arbetsyta, sidopaneler, popup, dialog och palett. */
@@ -59,22 +62,22 @@
      ton, kant, oskärpa, den ljusa överkanten och en tätare ton bakom
      brödtext och tabeller (WCAG AA). */
   --glass-bg: var(--glass-main);
-  --glass-border: rgb(var(--bq-snow-rgb) / 0.42);
+  --glass-border: transparent;
   --glass-blur: var(--blur-main);
   --glass-highlight: rgb(var(--bq-snow-rgb) / 0.85);
   --glass-text-bg: rgb(var(--bq-snow-rgb) / 0.5);
   /* Flytande glas: tänd överkant, mjukt inre sken, glans uppifrån och djup
      under. Samma värden i console, kundsidan och booqy.se. */
-  --liquid-edge: inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.95), inset 0 0 0 1px rgb(var(--bq-snow-rgb) / 0.42), inset 0 -1px 0 rgb(58 36 24 / 0.1), inset 0 12px 28px -18px rgb(var(--bq-snow-rgb) / 0.7);
+  --liquid-edge: inset 0 1px 0 transparent, inset 0 0 0 1px transparent, inset 0 -1px 0 transparent, inset 0 12px 28px -18px rgb(var(--bq-snow-rgb) / 0.7);
   --liquid-sheen: linear-gradient(180deg, rgb(var(--bq-snow-rgb) / 0.46), rgb(var(--bq-snow-rgb) / 0.08) 38%, rgb(var(--bq-snow-rgb) / 0) 62%);
   --liquid-depth: 0 28px 64px -30px rgb(26 18 14 / 0.5), 0 2px 8px -3px rgb(26 18 14 / 0.14);
   /* Fält: en synlig glasbrunn med 1 px kant och fokusring (AA). */
   --field-bg: rgb(226 214 199 / 0.58);
   --field-bg-focus: rgb(var(--bq-snow-rgb) / 0.86);
-  --field-border: rgb(58 36 24 / 0.55);
-  --field-border-hover: rgb(58 36 24 / 0.78);
+  --field-border: transparent;
+  --field-border-hover: transparent;
   --field-ring: rgb(107 74 46 / 0.34);
-  --field-inset: inset 0 2px 4px rgb(26 18 14 / 0.14), inset 0 -1px 0 rgb(var(--bq-snow-rgb) / 0.55);
+  --field-inset: inset 0 2px 4px rgb(26 18 14 / 0.14), inset 0 -1px 0 transparent;
   --field-placeholder: #5f5751;
   --glass-saturate: 1.6;
   --blur-main: 18px;
@@ -101,13 +104,15 @@
   --dock-ink: var(--ink);
   --dock-ink-off: color-mix(in srgb, var(--ink) 66%, transparent);
   --dock-pill: rgb(26 18 14 / 0.08);
-  --dock-pill-edge: rgb(26 18 14 / 0.05);
+  --dock-pill-edge: transparent;
   --dock-disc: #1a120e;
   --dock-disc-ink: #f6efe6;
-  --dock-disc-shadow: 0 6px 18px rgba(53, 0, 1, 0.22), 0 1px 0 rgb(var(--bq-snow-rgb) / 0.18) inset;
+  --dock-disc-shadow: 0 6px 18px rgba(53, 0, 1, 0.22), 0 1px 0 transparent inset;
   --dock-shadow: 0 10px 30px rgba(26, 18, 14, 0.18);
   --dock-scrim: rgba(26, 18, 14, 0.32);
-  --dock-wine: #350001;
+  /* Öppen nota, räknare och markeringar: babyblått (förr vinrött/rosa). */
+  --dock-wine: var(--cta);
+  --on-dock-wine: var(--on-cta);
   /* Täckande: Safari lät sidans text lysa igenom även vid 95 %. */
   --dock-sheet: rgb(var(--bq-snow-rgb));
 }
@@ -116,36 +121,39 @@
   --elev-1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 20px -14px rgba(0, 0, 0, 0.6);
   --elev-2: 0 2px 6px -2px rgba(0, 0, 0, 0.4), 0 22px 44px -26px rgba(0, 0, 0, 0.7);
   --elev-3: 0 4px 12px -4px rgba(0, 0, 0, 0.5), 0 40px 80px -32px rgba(0, 0, 0, 0.8);
-  --hairline: rgba(213, 196, 174, 0.12);
-  --hairline-strong: rgba(213, 196, 174, 0.22);
+  --hairline: transparent;
+  --hairline-strong: transparent;
+  --wash: rgba(213, 196, 174, 0.12);
+  --wash-strong: rgba(213, 196, 174, 0.22);
   --glass-edge: var(--liquid-edge);
   --glass-main: rgba(26, 18, 14, 0.36);
   --glass-side: rgba(30, 21, 16, 0.46);
   --glass-pop: rgba(36, 25, 19, 0.86);
   --glass-modal: rgba(36, 25, 19, 0.9);
-  --glass-border: rgba(213, 196, 174, 0.14);
+  --glass-border: transparent;
   --glass-highlight: rgba(213, 196, 174, 0.22);
   --glass-text-bg: rgba(26, 18, 14, 0.58);
-  --liquid-edge: inset 0 1px 0 rgb(246 241 234 / 0.28), inset 0 0 0 1px rgb(213 196 174 / 0.16), inset 0 12px 28px -18px rgb(246 241 234 / 0.14);
+  --liquid-edge: inset 0 1px 0 transparent, inset 0 0 0 1px transparent, inset 0 12px 28px -18px rgb(246 241 234 / 0.14);
   --liquid-sheen: linear-gradient(180deg, rgb(246 241 234 / 0.12), rgb(246 241 234 / 0.02) 40%, rgb(246 241 234 / 0) 62%);
   --liquid-depth: 0 30px 70px -30px rgb(0 0 0 / 0.75), 0 2px 8px -3px rgb(0 0 0 / 0.4);
   --field-bg: rgba(10, 7, 5, 0.46);
   --field-bg-focus: rgba(26, 18, 14, 0.72);
-  --field-border: rgba(213, 196, 174, 0.5);
-  --field-border-hover: rgba(213, 196, 174, 0.74);
+  --field-border: transparent;
+  --field-border-hover: transparent;
   --field-ring: rgba(213, 196, 174, 0.3);
-  --field-inset: inset 0 2px 4px rgb(0 0 0 / 0.42), inset 0 -1px 0 rgb(246 241 234 / 0.07);
+  --field-inset: inset 0 2px 4px rgb(0 0 0 / 0.42), inset 0 -1px 0 transparent;
   --field-placeholder: #b3a79f;
   --dim: rgba(0, 0, 0, 0.55);
   --dock-ink-off: color-mix(in srgb, var(--ink) 68%, transparent);
   --dock-pill: rgb(246 241 234 / 0.14);
-  --dock-pill-edge: rgb(246 241 234 / 0.08);
+  --dock-pill-edge: transparent;
   --dock-disc: #f6efe6;
   --dock-disc-ink: #1a120e;
   --dock-disc-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
   --dock-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
   --dock-scrim: var(--dim);
-  --dock-wine: #ee8a90;
+  --dock-wine: var(--cta);
+  --on-dock-wine: var(--on-cta);
   --dock-sheet: rgb(36, 25, 19);
 }
 
@@ -392,7 +400,7 @@
   border: 0;
   border-radius: var(--radius-pill);
   background: var(--wall-tint);
-  box-shadow: inset 0 0 0 1px var(--hairline);
+  box-shadow: inset 0 0 0 1px transparent;
   font: var(--fw-regular) var(--fs-sm) / 1 var(--font);
   color: var(--muted);
   transition:
@@ -403,12 +411,13 @@
 
 .palette-trigger:hover {
   color: var(--ink);
-  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  background: var(--wall-tint-2);
+  box-shadow: inset 0 0 0 1px transparent;
 }
 
 .palette-trigger:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 1px var(--hairline-strong), 0 0 0 3px var(--focus);
+  box-shadow: inset 0 0 0 1px transparent, 0 0 0 3px var(--focus);
 }
 
 .palette-trigger-text {
@@ -429,7 +438,7 @@
   padding: 0 var(--space-2);
   border-radius: var(--space-2);
   background: var(--glass-surface);
-  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  box-shadow: inset 0 0 0 1px transparent;
   font: var(--fw-strong) 11px/1 var(--mono);
   color: var(--muted);
 }
@@ -499,7 +508,7 @@
 }
 
 .btn.primary {
-  box-shadow: var(--bq-shadow-pill, 0 10px 24px -14px rgba(26, 18, 14, 0.7));
+  box-shadow: 0 10px 24px -14px rgb(var(--cta-rgb) / 0.9), 0 2px 6px -3px rgba(59, 36, 24, 0.28);
 }
 
 /* Huvudknappen: texten byts mot en vinnarfras och planet flyger i slinga. */
@@ -524,7 +533,8 @@
 }
 
 .cta.is-flying:not(:disabled) .cta-plane-fly {
-  animation: cta-fly var(--dur-cta) var(--ease-std) infinite;
+  /* en flygtur per gång pekaren kommer in, inte i slinga (ux-motion 20) */
+  animation: cta-fly var(--dur-cta) var(--ease-std) 1;
 }
 
 @keyframes cta-fly {
@@ -696,7 +706,21 @@
   align-items: flex-start;
   padding: min(14vh, 120px) var(--space-4) var(--space-4);
   background: var(--dim);
-  animation: palette-fade var(--dur-base) var(--ease-out);
+  /* ⌘K öppnas många gånger om dagen: nästan direkt, ingen flärd (ux-motion 20). */
+  transition: opacity 100ms var(--e-out);
+}
+
+/* Hela sidan bakom paletten blir suddig, även på en lång rullad sida, så
+   listan inte tävlar med skarp text nedanför panelen. Eget lager (inte på
+   bakgrunden själv) så panelens glas fortfarande ser sidan. */
+.palette-backdrop::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  -webkit-backdrop-filter: blur(var(--blur-pop));
+  backdrop-filter: blur(var(--blur-pop));
+  pointer-events: none;
 }
 
 .palette {
@@ -710,19 +734,20 @@
   -webkit-backdrop-filter: blur(var(--blur-modal)) saturate(1.6);
   backdrop-filter: blur(var(--blur-modal)) saturate(1.6);
   overflow: hidden;
-  animation: palette-in var(--dur-slow) var(--ease-out);
+  transform-origin: 50% 0;
+  transition:
+    opacity 120ms var(--e-out),
+    scale 120ms var(--e-out);
 }
 
-@keyframes palette-fade {
-  from {
+@starting-style {
+  .palette-backdrop,
+  .palette {
     opacity: 0;
   }
-}
 
-@keyframes palette-in {
-  from {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.98);
+  .palette {
+    scale: 0.98;
   }
 }
 
@@ -1017,6 +1042,13 @@
   }
 }
 
+@media (prefers-reduced-transparency: reduce) {
+  .palette-backdrop::before {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .palette,
   .palette-backdrop {
@@ -1033,7 +1065,7 @@
   padding: 2px;
   border-radius: var(--radius-pill);
   background: var(--wall-tint);
-  box-shadow: inset 0 0 0 1px var(--hairline);
+  box-shadow: inset 0 0 0 1px transparent;
 }
 
 .topbar-tool {
@@ -1167,17 +1199,33 @@
     color: var(--muted);
   }
 
+  /* "…"-menyn: ingen rubrik "Åtgärder" ovanför och ingen egen rad, den
+     står vid radens högerkant */
+  .data-table:not(.keep-table) td:has(> .row-actions-box)::before {
+    display: none;
+  }
+
+  .data-table:not(.keep-table) td:has(> .row-actions-box) {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
   /* radens namn står överst på en egen rad, värdena under */
   .data-table:not(.keep-table) td.cell-strong:first-child {
     flex: 1 1 100%;
   }
 }
 
-/* Surfplattan: tabellen får krympa till kortets bredd (texten bryts) i
-   stället för att kräva 900 px och sidled-scroll. */
-@media (min-width: 601px) and (max-width: 1100px) {
+/* Surfplattan (även iPad liggande och iPad Pro 13): tabellen får krympa
+   till kortets bredd (rubriker och text bryts mellan orden) i stället för
+   att kräva 900 px och sidled-scroll. */
+@media (min-width: 601px) and (max-width: 1399px), (min-width: 601px) and (pointer: coarse) {
   .data-table:not(.keep-table) {
     min-width: 0 !important;
+  }
+
+  .data-table:not(.keep-table) th {
+    white-space: normal;
   }
 }
 
@@ -1201,11 +1249,11 @@
 /* Glasreglage: genomskinlig skena, ljus överkant och en upphöjd knopp. */
 .switch {
   background: var(--wall-tint-2);
-  box-shadow: inset 0 1px 2px rgba(26, 18, 14, 0.18), inset 0 0 0 1px var(--glass-border);
+  box-shadow: inset 0 1px 2px rgba(26, 18, 14, 0.18), inset 0 0 0 1px transparent;
 }
 
 .switch::after {
-  box-shadow: inset 0 -1px 0 rgba(26, 18, 14, 0.08), 0 2px 6px rgba(26, 18, 14, 0.28);
+  box-shadow: inset 0 -1px 0 transparent, 0 2px 6px rgba(26, 18, 14, 0.28);
 }
 
 /* --- Skrivbordsappen: skrivbordet syns igenom ------------------------------ */
@@ -1322,6 +1370,67 @@ html.is-desktop-glass .admin-main {
   cursor: not-allowed;
 }
 
+/* Fältskal: pillret (ikon + fält, t.ex. sök) är själva fältet. Fältet inuti
+   får ingen egen fyllning, kant, skugga eller fokusring, så det syns aldrig
+   ett fält i fältet. Fokusringen hamnar på pillret (:focus-within). */
+.field-shell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 1px solid var(--field-border);
+  border-radius: var(--r-pill);
+  background-color: var(--field-bg);
+  box-shadow: var(--field-inset);
+  color: var(--muted);
+  cursor: text;
+  transition: border-color 160ms var(--ease), background-color 160ms var(--ease), box-shadow 160ms var(--ease);
+}
+.field-shell:hover {
+  border-color: var(--field-border-hover);
+}
+.field-shell:focus-within {
+  border-color: var(--ink);
+  background-color: var(--field-bg-focus);
+  box-shadow: var(--field-inset), 0 0 0 3px var(--field-ring);
+}
+.field-shell > svg {
+  flex: none;
+}
+.field-shell input,
+.field-shell input:hover,
+.field-shell input:focus,
+.field-shell input:focus-visible {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 46px;
+  margin: 0;
+  padding: 0 0 0 2px;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
+  color: var(--ink);
+  font: inherit;
+  /* 16 px: iOS zoomar inte in i fältet */
+  font-size: 16px;
+  text-overflow: ellipsis;
+}
+.field-shell input::-webkit-search-decoration,
+.field-shell input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .field-shell {
+    background-color: var(--surface);
+  }
+}
+
 /* Flytande brytning, bara Chromium och Electron (glassFilter.ts sätter
    .glass-refract där). Safari behåller den vanliga -webkit-oskärpan. */
 .glass-refract .admin-main,
@@ -1381,7 +1490,9 @@ input[type='number']::-webkit-outer-spin-button {
 /* Menyns rullyta (AdminLayout): samma kolumn som panelen, rullar när den inte får plats. */
 .admin-sidebar-scroll {
   display: flex;
-  flex: 1 1 auto;
+  /* Krymper inte: när menyn rullar räknas panelens nedre luft med, så Logga ut
+     hamnar inte mot det rundade hörnet. */
+  flex: 1 0 auto;
   flex-direction: column;
   gap: inherit;
   min-block-size: 0;
@@ -1418,4 +1529,104 @@ html.drawer-lock body {
     bottom: calc(var(--dock-space) + 8px);
     transition: bottom 200ms var(--ease-out);
   }
+}
+
+/* --- Sidhuvudet: datumet på egen plats (AdminTopbar) ------------------------- */
+
+/* Dator: titel till vänster, datum och knappar ihop till höger. Blir titeln
+   för lång flyttar datum och knappar tillsammans till nästa rad. */
+.admin-topbar-side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2) var(--space-4);
+  order: 2;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.admin-topbar-titles {
+  order: 1;
+}
+
+.admin-topbar-date {
+  order: 2;
+}
+
+.admin-topbar-actions {
+  order: 3;
+}
+
+/* Surfplatta: titeln och knapparna på första raden när de får plats, annars
+   knapparna samlat under titeln från vänsterkanten; datumet på egen rad.
+   Knappraden bryts aldrig mitt i (Sök på en rad, Hjälp/ljud/tema på nästa). */
+@media (max-width: 1100px) {
+  .admin-topbar-side {
+    display: contents;
+  }
+
+  .admin-topbar-actions {
+    order: 2;
+    justify-content: flex-start;
+  }
+
+  .admin-topbar-date {
+    order: 3;
+    flex: 1 0 100%;
+  }
+}
+
+/* Telefon: datumet direkt under titeln, knapparna under det. */
+@media (max-width: 600px) {
+  .admin-topbar-date {
+    order: 2;
+  }
+
+  .admin-topbar-actions {
+    order: 3;
+  }
+}
+
+/* Fråga Booqy flyter längst ner till höger: arbetsytan slutar ovanför den, så
+   att knappen aldrig ligger över sidans sista rad (telefonen har den under Mer). */
+@media (min-width: 601px) and (min-height: 501px), (min-width: 601px) and (pointer: fine) {
+  .admin-shell:has(.help-launcher) .admin-right {
+    padding-bottom: 64px;
+  }
+}
+
+/* Långa namn och titlar (t.ex. "Personuppgiftsbiträdesavtalet"): radbryts med
+   avstavning inom rutan i stället för att gå utanför den eller ge sidled. */
+.admin-topbar-titles {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-topbar-titles h1,
+.admin-topbar-titles p,
+.admin-logo-name,
+.admin-user-name,
+.tenant-notice .card-title {
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+/* Rollen (Ägare, Personal) står på egen rad under namnet, utan
+   avskiljare, så ingen rad börjar eller slutar med en lös punkt. */
+.admin-user-role {
+  display: block;
+  white-space: nowrap;
+  font-size: 12px;
+  opacity: 0.78;
+}
+
+/* Fråga Booqy: förslagen syns som knappar (fyllning, inga kanter sedan
+   edges.css), inte som lös text. */
+html .help-chip {
+  background: var(--wash);
+}
+
+html .help-chip:hover {
+  background: var(--dock-pill, var(--wash));
 }

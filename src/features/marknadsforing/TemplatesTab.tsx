@@ -83,11 +83,12 @@ export function TemplatesTab() {
   if (editing) {
     return (
       <div className="mk-stack">
-        <ErrorNote text={error} />
         <TemplateEditor
           key={editing.mode === 'edit' ? editing.template.templateId : editing.title}
           title={editing.mode === 'edit' ? `Redigera ${editing.template.name}` : editing.title}
           initial={editing.mode === 'edit' ? editing.template : editing.initial}
+          isNew={editing.mode !== 'edit'}
+          error={error}
           saving={saving}
           onSave={(t) => void save(t)}
           onCancel={() => setEditing(null)}

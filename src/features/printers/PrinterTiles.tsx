@@ -311,8 +311,12 @@ export function PrinterTiles({
                 <form className="pset-rename" onSubmit={rename}>
                   <label className="sr-only" htmlFor={`rename-${printer.deviceId}`}>Namn</label>
                   <input id={`rename-${printer.deviceId}`} value={renaming.name} maxLength={40} autoFocus
+                    aria-invalid={(Boolean(error) && !renaming.name.trim()) || undefined}
                     onChange={(e) => setRenaming({ id: printer.deviceId, name: e.target.value })} />
-                  <button type="submit" className="btn primary square" disabled={busy}>Spara</button>
+                  {/* Spara först när namnet skiljer sig från det sparade. */}
+                  <button type="submit" className="btn primary square" disabled={busy || renaming.name.trim() === printer.name}>
+                    {error ? 'Spara igen' : 'Spara'}
+                  </button>
                   <button type="button" className="btn outline square" onClick={() => setRenaming(null)}>Avbryt</button>
                 </form>
               ) : (
@@ -327,7 +331,7 @@ export function PrinterTiles({
                   )}
                   {canSetUp && (
                     <button type="button" className="btn outline square" disabled={busy}
-                      onClick={() => setRenaming({ id: printer.deviceId, name: printer.name })}>
+                      onClick={() => { setError(null); setRenaming({ id: printer.deviceId, name: printer.name }) }}>
                       Byt namn
                     </button>
                   )}

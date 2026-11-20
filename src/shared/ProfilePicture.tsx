@@ -69,7 +69,7 @@ function ProfilePictureDialog({ name, email, onClose }: { name?: string | null; 
             <ErrorNote text={error} onRetry={removeFailed ? remove : () => input.current?.click()} />
             <div className="modal-actions">
               {mine.url && (
-                <button type="button" className="row-action danger" onClick={remove}>
+                <button type="button" className="btn danger-outline square" onClick={remove}>
                   Ta bort bild
                 </button>
               )}

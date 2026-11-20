@@ -19,6 +19,8 @@ import { ErrorNote } from '../../shared/ErrorNote'
 import { booqyFaultText } from '../../shared/errors'
 import { TitleInfo } from '../../shared/TitleInfo'
 import { InfoTooltip } from '../../shared/InfoTooltip'
+import { SaveBar } from '../../shared/SaveBar'
+import { useDirtyForm } from '../../shared/dirtyForm'
 
 /**
  * Bord vid onlinebokning för den valda platsen (backend shared/booking_rules.py).
@@ -53,6 +55,7 @@ export function TableRulesCard({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
     if (!locationId) return
@@ -86,14 +89,25 @@ export function TableRulesCard({
   const disabled = !isOwner || busy || !ready
 
   const computed = tables ? rulesToSave(tables, rows) : { rules: {}, error: null }
-  const dirty =
-    ready &&
-    (JSON.stringify(computed.rules) !== JSON.stringify(saved?.rules ?? {}) ||
-      JSON.stringify(combos) !== JSON.stringify(saved?.combos ?? []))
+  // Raderna och kombinationerna mot det sparade (utkastet "Ny kombination" räknas inte).
+  const dirty = useDirtyForm(
+    { rows, combos },
+    tables && saved ? { rows: rowsFor(tables, saved.rules), combos: saved.combos } : null,
+  )
 
   function setRow(id: string, patch: Partial<RowState>) {
     setRows((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }))
     setNotice(null)
+    setFailed(false)
+  }
+
+  function discard() {
+    if (!tables || !saved) return
+    setRows(rowsFor(tables, saved.rules))
+    setCombos(saved.combos)
+    setDraft({ tableIds: [], min: '', max: '' })
+    setError(null)
+    setFailed(false)
   }
 
   function toggleDraftTable(id: string) {
@@ -134,7 +148,12 @@ export function TableRulesCard({
     if (!locationId || !tables) return
     setError(null)
     setNotice(null)
-    if (computed.error) return setError(computed.error)
+    setFailed(false)
+    if (computed.error) {
+      setError(computed.error)
+      setFailed(true)
+      return
+    }
     setBusy(true)
     try {
       const updated = await updateLocation(locationId, {
@@ -146,6 +165,7 @@ export function TableRulesCard({
       setNotice('Sparat. Gäller bokningssidan direkt.')
     } catch (err) {
       setError(errorText(err, 'Bordsreglerna sparades inte.', { owner_only: 'Bara restaurangens ägare kan ändra bordsreglerna. Be ägaren göra det.', forbidden: 'Bara restaurangens ägare kan ändra bordsreglerna. Be ägaren göra det.' }))
+      setFailed(true)
     } finally {
       setBusy(false)
     }
@@ -187,13 +207,15 @@ export function TableRulesCard({
                       <td className="cell-strong">Bord {t.label}</td>
                       <td>{t.seats}</td>
                       <td>
-                        <input
-                          type="checkbox"
-                          aria-label={`Bord ${t.label} bokas online`}
-                          checked={row.online}
-                          disabled={disabled}
-                          onChange={(e) => setRow(t.tableId, { online: e.target.checked })}
-                        />
+                        <label className="rules-online">
+                          <input
+                            type="checkbox"
+                            aria-label={`Bord ${t.label} bokas online`}
+                            checked={row.online}
+                            disabled={disabled}
+                            onChange={(e) => setRow(t.tableId, { online: e.target.checked })}
+                          />
+                        </label>
                       </td>
                       <td>
                         <input
@@ -255,6 +277,7 @@ export function TableRulesCard({
                       onClick={() => {
                         setCombos((prev) => prev.filter((p) => p !== c))
                         setNotice(null)
+                        setFailed(false)
                       }}
                     >
                       Ta bort
@@ -311,21 +334,15 @@ export function TableRulesCard({
             <ErrorNote text={error} />
           )}
           {isOwner && (
-            <span className="row-actions">
-              <button type="submit" className="btn primary square" disabled={disabled}>
-                {busy ? 'Sparar…' : 'Spara bordsregler'}
-              </button>
-              {notice && !dirty && (
-                <span className="save-notice" role="status">
-                  {notice}
-                </span>
-              )}
-              {dirty && !busy && (
-                <span className="form-error" role="status">
-                  Ej sparat - klicka Spara bordsregler.
-                </span>
-              )}
-            </span>
+            <SaveBar
+              dirty={dirty}
+              busy={busy}
+              label="Spara bordsregler"
+              notice={notice}
+              failed={failed}
+              disabled={disabled}
+              onDiscard={discard}
+            />
           )}
           {!isOwner && <p className="cell-muted">Bara ägaren kan ändra.</p>}
         </form>

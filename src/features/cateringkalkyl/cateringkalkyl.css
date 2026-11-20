@@ -210,3 +210,182 @@
   grid-column: 1 / -1;
   margin: 0;
 }
+
+/* --- Passform: iPad och telefon ------------------------------------------- */
+
+/* Villkor under brytarna: samma luft som mellan övriga fält. */
+.cat-kalkyl .toggle-stack + .form-field {
+  margin-top: 12px;
+}
+
+.cat-kalkyl .toggle-row-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Namnen bryts mellan ord (och avstavas bara när ett ord inte får plats). */
+.cat-kalkyl .cm-name,
+.cat-kalkyl .cm-allergens,
+.cat-kalkyl .tier-table td.cell-strong {
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Rätter, paket och rabattnivåer: tabell när den får plats (900 px), annars
+   ett kort per rad, så inga kolumner gömmer sig bakom sidled-scroll på iPad
+   (på höjden och liggande). */
+.cat-kalkyl .table-scroll {
+  container-type: inline-size;
+}
+
+@container (max-width: 899px) {
+  .cm-table,
+  .tier-table {
+    display: block;
+    min-width: 0 !important;
+  }
+
+  .cm-table thead,
+  .tier-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .cm-table tbody,
+  .tier-table tbody {
+    display: block;
+  }
+
+  .cm-table tr,
+  .tier-table tr {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px 20px;
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .cm-table tbody tr:first-child,
+  .tier-table tbody tr:first-child {
+    border-top: 0;
+  }
+
+  .cm-table td,
+  .tier-table td {
+    display: block;
+    min-width: 0;
+    max-width: none;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  /* Rubriken ovanför värdet: liten, dämpad, samma för alla (också priset). */
+  .cat-kalkyl .data-table.cm-table td[data-label]::before,
+  .cat-kalkyl .data-table.tier-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font: 500 12px/1.3 var(--font);
+    font-variant-numeric: normal;
+    letter-spacing: normal;
+    color: var(--muted);
+  }
+
+  .cm-table td.cm-name,
+  .tier-table td.cell-strong {
+    flex: 1 1 100%;
+    font-size: 15px;
+  }
+
+  .cm-table td.cell-price,
+  .cm-table td.cm-min {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  .cm-table td.cm-allergens {
+    flex: 1 1 180px;
+    min-width: 0;
+    max-width: none;
+  }
+
+  /* Status, brytaren och åtgärderna på en egen rad längst ned: status och
+     brytare till vänster, Redigera/Radera till höger; märket och brytaren
+     säger själva vad de är, så ingen rubrik ovanför. */
+  .cat-kalkyl .data-table.cm-table td:is(.cm-status, .cm-switch, .cm-actions)::before,
+  .cat-kalkyl .data-table.tier-table td:is(.tier-status, .tier-switch, .tier-actions)::before {
+    content: none;
+  }
+
+  /* Radbrytning före raden: alltid sist på kortet, på samma sätt överallt. */
+  .cm-table tr::after,
+  .tier-table tr::after {
+    content: '';
+    order: 1;
+    flex: 1 1 100%;
+    height: 0;
+  }
+
+  .cm-table td:is(.cm-status, .cm-switch, .cm-actions),
+  .tier-table td:is(.tier-status, .tier-switch, .tier-actions) {
+    order: 2;
+    flex: none;
+    align-self: center;
+    margin-left: 0;
+  }
+
+  .cat-kalkyl .data-table.cm-table td.cm-actions,
+  .cat-kalkyl .data-table.tier-table td.tier-actions {
+    flex: 1 1 auto;
+    margin-left: auto;
+    text-align: right;
+  }
+}
+
+/* Fingrar på iPad: länkknapparna minst 44 px höga. */
+@media (pointer: coarse) {
+  .cat-kalkyl .link-action {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+/* Väljarna i smala fält: hela valet syns (radbryts), inte "Alla rätter i
+   beställnin…". */
+.cat-kalkyl .form-field .b-select-value {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  line-height: 1.3;
+}
+
+/* Cateringmenyns knappar: en tonad yta som syns på det ljusa kortet, och när de inte
+   ryms bredvid rubriken står de samlat på en egen rad under den, i stället
+   för två plus en högerställda. */
+.cm-card {
+  container: cm-card / inline-size;
+}
+
+.cm-head-actions .btn.outline {
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+
+@container cm-card (max-width: 760px) {
+  .cm-card > .card-head > div:first-child,
+  .cm-head-actions {
+    flex: 1 1 100%;
+  }
+
+  .cm-head-actions {
+    justify-content: flex-start;
+  }
+
+  .cm-head-actions .btn {
+    flex: 1 1 auto;
+  }
+}

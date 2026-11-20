@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 import { sameData, useLiveRefresh } from '../../shared/live'
 import { ChangedNote } from '../../shared/ChangedNote'
 import { useAuth } from '../auth/useAuth'
-import { CtaButton } from '../../shared/CtaButton'
+import { SaveBar } from '../../shared/SaveBar'
+import { useDirtyForm } from '../../shared/dirtyForm'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useLocationId } from '../../shared/location'
 import { DiscountTierModal } from './DiscountTierModal'
@@ -169,6 +170,20 @@ export default function CateringkalkylPage() {
     }
   }, { enabled: Boolean(locationId) && loaded && isApiConfigured() && !saving })
 
+  // Spara följer ändringarna mot det sparade.
+  const [failed, setFailed] = useState(false)
+  const savedNow = savedSettings.current
+  const dirty = useDirtyForm({ settings, orderRules }, loaded && savedNow ? { settings: savedNow, orderRules: rulesOf(savedNow) } : null)
+  function discard() {
+    const s = savedSettings.current
+    if (!s) return
+    setSettings(s)
+    setOrderRules(rulesOf(s))
+    setSaveError(null)
+    setFailed(false)
+    setWholeOnly(null)
+  }
+
   function takeTheirs() {
     if (!changedThere) return
     setSettings(changedThere)
@@ -218,15 +233,18 @@ export default function CateringkalkylPage() {
     if (problem) {
       setSaveError(problem)
       setSaveNotice(null)
+      setFailed(true)
       return
     }
     setSaving(true)
+    setFailed(false)
     setSaveError(null)
     setSaveNotice(null)
     try {
       const { originFound, ...stored } = await saveSettings(locationId, next)
       const saved = withBands({ ...DEFAULT_SETTINGS, ...stored })
       setSettings(saved)
+      setOrderRules(rulesOf(saved))
       savedSettings.current = saved
       setChangedThere(null)
       setSaveNotice(saved.enabled ? 'Sparat. Kalkylen visas på webbplatsen.' : 'Sparat. Kalkylen är dold för gäster.')
@@ -234,6 +252,7 @@ export default function CateringkalkylPage() {
         setSaveError('Startadressen för leveranser hittades inte på kartan. Kolla adressen. Tills dess sätter du leveranspriset för hand i varje offert.')
       }
     } catch (err) {
+      setFailed(true)
       setSaveError(errorText(err, 'Inställningarna sparades inte.'))
     } finally {
       setSaving(false)
@@ -294,13 +313,7 @@ export default function CateringkalkylPage() {
     <>
       <AdminTopbar
         title="Cateringkalkyl"
-        actions={
-          isOwner ? (
-            <CtaButton label={saving ? 'Sparar…' : 'Spara inställningar'} win="Klart!" disabled={!loaded || saving} onClick={() => void save()} />
-          ) : (
-            <span className="cell-muted">Bara ägaren kan ändra</span>
-          )
-        }
+        actions={isOwner ? undefined : <span className="cell-muted">Bara ägaren kan ändra</span>}
       />
 
       {!locationId && !resolving ? (
@@ -324,9 +337,8 @@ export default function CateringkalkylPage() {
           </SkelPage>
         </main>
       ) : (
-      <main className="admin-main">
+      <main className="admin-main cat-kalkyl">
         <ErrorNote text={saveError} />
-        {saveNotice && <p className="save-notice" role="status">{saveNotice}</p>}
         {changedThere && <ChangedNote onUse={takeTheirs} />}
         {/* Huvudreglaget först: syns catering på webbplatsen eller inte. */}
         <section className="admin-card table-card catering-visibility">
@@ -649,15 +661,19 @@ export default function CateringkalkylPage() {
               onChange={(e) => updateSettings({ terms: e.target.value })} />
           </div>
         </section>
+        {isOwner && (
+          <SaveBar dirty={dirty} busy={saving} label="Spara inställningar" onSave={() => void save()} onDiscard={discard}
+            notice={saveNotice} failed={failed} disabled={!loaded} />
+        )}
 
-        <section className="admin-card table-card">
+        <section className="admin-card table-card cat-tiers">
           <div className="card-head">
             <div>
               <TitleInfo title="Rabattnivåer" info="Räknas på antal gäster. När nivån nås rabatteras alla rätter." />
             </div>
             <button
               type="button"
-              className="btn primary"
+              className="btn outline"
               onClick={() => setTierModal({ mode: 'add' })}
             >
               + Ny rabattnivå
@@ -665,7 +681,7 @@ export default function CateringkalkylPage() {
           </div>
           <ErrorNote text={tierError} />
           <div className="table-scroll" tabIndex={0}>
-            <table className="data-table">
+            <table className="data-table tier-table">
               <thead>
                 <tr>
                   <th>Nivå</th>
@@ -683,19 +699,19 @@ export default function CateringkalkylPage() {
                     <td className="cell-strong">{t.name}</td>
                     <td data-label="Från">{t.fromPortions} gäster</td>
                     <td data-label={t.toPortions != null ? "Till" : undefined}>{t.toPortions != null ? `${t.toPortions} gäster` : 'och uppåt'}</td>
-                    <td>
+                    <td data-label="Rabatt">
                       {t.discountPercent > 0 ? (
                         <span className="cell-price">-{t.discountPercent} %</span>
                       ) : (
                         <span className="cell-muted">Ingen rabatt</span>
                       )}
                     </td>
-                    <td>
+                    <td className="tier-status">
                       <span className={`status-badge ${t.active ? 'reserved' : 'cancelled-free'}`}>
                         {t.active ? 'Aktiv' : 'Inaktiv'}
                       </span>
                     </td>
-                    <td>
+                    <td className="tier-switch">
                       <button
                         type="button"
                         role="switch"
@@ -705,7 +721,7 @@ export default function CateringkalkylPage() {
                         onClick={() => toggleTierActive(t.id)}
                       />
                     </td>
-                    <td className="right">
+                    <td className="right tier-actions">
                       <RowActions label="Åtgärder">
                         <button
                           type="button"

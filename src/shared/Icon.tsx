@@ -32,6 +32,7 @@ export type IconName =
   | 'arrow-up'
   | 'arrow-down'
   | 'arrow-right'
+  | 'arrow-left'
   | 'trend-up'
   | 'trend-down'
   | 'plus'
@@ -56,6 +57,7 @@ export type IconName =
   | 'help'
   | 'search'
   | 'send'
+  | 'lock'
   | 'chevron-down'
   | 'logout'
   | 'menu'
@@ -95,6 +97,8 @@ const DRAWN: Record<IconName, string> = {
   'arrow-up': '<path d="M12 19.5V5M6.5 10.5L12 5l5.5 5.5"/>',
   'arrow-down': '<path d="M12 4.5V19M6.5 13.5L12 19l5.5-5.5"/>',
   'arrow-right': '<path d="M4.5 12H19M13.5 6.5L19 12l-5.5 5.5"/>',
+  // Tillbaka-knappen. Noun-ersättare: icons/noun/arrow-left.svg.
+  'arrow-left': '<path d="M19.5 12H5M10.5 6.5L5 12l5.5 5.5"/>',
   'trend-up': '<path d="M3.5 17.5l6-6 4 4 7-7.5M15 8h5.5v5.5"/>',
   'trend-down': '<path d="M3.5 6.5l6 6 4-4 7 7.5M15 16h5.5v-5.5"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
@@ -122,6 +126,8 @@ const DRAWN: Record<IconName, string> = {
   help: '<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.5a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2-2.4 3.5M12 17h.01"/>',
   search: '<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>',
   send: '<path d="M20.5 3.5L3.5 10.8l6.6 2.6 2.6 6.6zM20.5 3.5l-10.4 9.9"/>',
+  // Låst steg (catering: Skicka innan signering). Noun-ersättare: icons/noun/lock.svg.
+  lock: '<rect x="5.5" y="10.5" width="13" height="10" rx="2"/><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3M12 14.5v2.5"/>',
   'chevron-down': '<path d="M6.5 9.5L12 15l5.5-5.5"/>',
   logout: '<path d="M14 4.5H6.5a1.5 1.5 0 0 0-1.5 1.5v12a1.5 1.5 0 0 0 1.5 1.5H14M10 12h10M16.5 8.5L20 12l-3.5 3.5"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',

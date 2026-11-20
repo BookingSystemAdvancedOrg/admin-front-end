@@ -2,6 +2,7 @@ import { useLiveRefresh } from '../../shared/live'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Bar, Button, Card, Field, toast } from '@booqy/brand'
+import { useUnsavedGuard } from '../../shared/unsaved'
 import { errorText } from '../../shared/errors'
 import { menuImageUrl } from '../meny/menuApi'
 import {
@@ -104,6 +105,9 @@ function Editor({ post, listing, onClose, onChanged, onDeleted }: {
   const [alcohol, setAlcohol] = useState(Boolean(post.alcoholConfirmed))
   const [busy, setBusy] = useState<string | null>(null)
   const editable = post.status === 'draft' || post.status === 'scheduled'
+  // Ändrad text eller kanaler sparas först när inlägget publiceras eller schemaläggs: fråga innan man lämnar sidan.
+  useUnsavedGuard(editable && (caption !== post.caption || [...channels].sort().join() !== Object.keys(post.channels).sort().join()
+    || alcohol !== Boolean(post.alcoholConfirmed)))
   const image = menuImageUrl(post.imageKey)
 
   async function run(name: string, fn: () => Promise<Post | void>, ok: string | undefined, failed: string) {

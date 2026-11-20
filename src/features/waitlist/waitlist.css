@@ -39,6 +39,17 @@
 }
 .queue-checks input {
   accent-color: var(--bq-accent);
+  width: 22px;
+  height: 22px;
+}
+.queue-checks label {
+  min-height: 44px;
+}
+/* Fälten syns som fält: samma svaga fyllnad som i dialogerna (utan kant
+   hade de kortets färg och lästes som vanlig text). */
+.queue-form .bq-input {
+  min-height: 44px;
+  background: var(--neutral-fill);
 }
 /* The save bar spans the whole form grid, under the fields. */
 .queue-actions {

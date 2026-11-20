@@ -47,6 +47,11 @@
   align-items: center;
   gap: var(--bq-space-2);
 }
+@media (pointer: coarse) {
+  .presentkort-check {
+    min-height: 44px;
+  }
+}
 .presentkort-check input {
   accent-color: var(--bq-accent);
 }
@@ -63,4 +68,83 @@
 /* The save bar spans the whole form grid, under the fields. */
 .presentkort-actions {
   grid-column: 1 / -1;
+}
+/* Sålda presentkort ryms i kortet på iPad: den delade .data-table har
+   min-width 900px (bredare än kortet), så den släpps här. Belopp och datum
+   hålls ihop, rubrikerna får brytas. */
+.data-table.presentkort-table {
+  min-width: 0;
+}
+.presentkort-table th {
+  white-space: normal;
+}
+.presentkort-amount,
+.presentkort-date,
+.presentkort-table .status-badge {
+  white-space: nowrap;
+}
+/* Smalt kort (iPad mini): raderna blir små kort med rubriken ovanför varje
+   värde, som i telefonen. */
+.table-scroll:has(> .presentkort-table) {
+  container-type: inline-size;
+}
+@container (max-width: 520px) {
+  .data-table.presentkort-table,
+  .presentkort-table tbody {
+    display: block;
+  }
+  .presentkort-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .presentkort-table tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 8px 16px;
+    padding: 14px 0;
+  }
+  .presentkort-table td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+  }
+  .presentkort-table td:first-child {
+    flex: 1 1 100%;
+  }
+  .presentkort-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+  }
+}
+/* Nyckeltalen: ett sjusiffrigt belopp med "kr" ryms i rutan på iPad mini. */
+.presentkort-tiles > * {
+  min-width: 0;
+  container-type: inline-size;
+}
+.presentkort-tiles .bq-stat__value {
+  font-size: clamp(18px, 14cqi, 32px);
+  min-width: 0;
+  white-space: nowrap;
+}
+/* iPad (pek): kortnumret som öppnar kortet minst 44 px högt. */
+@media (pointer: coarse) {
+  .presentkort-open {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+/* Statusen har varken fyllning eller kant, så den står kant i kant med sin
+   rubrik och i samma höjd som värdena bredvid. */
+.presentkort-table .status-badge[class] {
+  display: inline;
+  padding: 0;
 }

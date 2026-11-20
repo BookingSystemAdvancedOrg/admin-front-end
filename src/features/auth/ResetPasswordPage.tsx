@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AuthLayout } from './AuthLayout'
+import { BackButton } from '../../shared/BackButton'
 import { PasswordResetError, confirmPasswordReset } from './cognito'
 import { meetsAllRules, passwordProblem } from './passwordRules'
 import { PasswordRulesList } from './PasswordRulesList'
@@ -95,6 +96,7 @@ export default function ResetPasswordPage() {
 
   return (
     <AuthLayout>
+      <div className="back-row"><BackButton to="/logga-in" state={{ email: email.trim() }}>Tillbaka till inloggningen</BackButton></div>
       <div className="auth-heading">
         <h1>Välj ett nytt lösenord</h1>
         {link ? (
@@ -188,10 +190,6 @@ export default function ResetPasswordPage() {
           {busy ? 'Sparar…' : 'Spara nytt lösenord'}
         </button>
       </form>
-
-      <Link className="auth-link" to="/logga-in" state={{ email: email.trim() }}>
-        Tillbaka till inloggningen
-      </Link>
     </AuthLayout>
   )
 }

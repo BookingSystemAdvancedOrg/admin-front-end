@@ -8,6 +8,7 @@ import { AREAS } from '../../shared/access'
 import type { Area } from '../../shared/access'
 import { replaceTenant, updateTenant } from '../../shared/tenant'
 import type { Tenant } from '../../shared/tenant'
+import { SaveBar } from '../../shared/SaveBar'
 
 /**
  * Behörigheter (bara ägaren): områdena hela personalen får öppna. En
@@ -58,20 +59,21 @@ export function StaffAccessCard({ tenant }: { tenant: Tenant }) {
             disabled={busy}
             onChange={(area, on) => {
               setNotice(null)
+              setError(null)
               setDraft((d) => order.filter((a) => (a === area ? on : d.includes(a))))
             }}
           />
           {error && <ErrorNote text={error} />}
-          <span className="row-actions">
-            <button type="submit" className="btn primary square" disabled={busy || !dirty}>
-              {busy ? 'Sparar…' : 'Spara'}
-            </button>
-            {notice && (
-              <span className="save-notice" role="status">
-                {notice}
-              </span>
-            )}
-          </span>
+          <SaveBar
+            dirty={dirty}
+            busy={busy}
+            notice={notice}
+            failed={Boolean(error)}
+            onDiscard={() => {
+              setDraft(saved)
+              setError(null)
+            }}
+          />
         </form>
       )}
     </section>

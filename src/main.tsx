@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import '@booqy/brand/styles.css'
 import './index.css'
 import { installPress } from './shared/press'
+import { installDialogOrigin } from './shared/motion/origin'
 import { installTableLabels } from './shared/tableLabels'
 import { installGlide } from './shared/glide'
 import { installGlassFilter } from './shared/glassFilter'
@@ -20,6 +21,10 @@ import NewPasswordPage from './features/auth/NewPasswordPage.tsx'
 import ForgotPasswordPage from './features/auth/ForgotPasswordPage.tsx'
 import ResetPasswordPage from './features/auth/ResetPasswordPage.tsx'
 import CookiesPage from './features/cookies/CookiesPage.tsx'
+// Rörelsens tider och kurvor, tryck, menyer och dialoger (efter appens stilar).
+import './shared/motion/motion.css'
+// Sist: inga kanter någonstans (shared/edges.css vinner över allt ovan).
+import './shared/edges.css'
 
 // Top-level router. Only /logga-in, /nytt-losenord, the forgot-password
 // pages (/glomt-losenord, /aterstall-losenord - the emailed reset link) and
@@ -27,6 +32,7 @@ import CookiesPage from './features/cookies/CookiesPage.tsx'
 // and is gated by RequireAuth, which redirects signed-out visitors to
 // /logga-in.
 installPress()
+installDialogOrigin()
 installTableLabels()
 installGlide()
 installGlassFilter()

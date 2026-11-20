@@ -65,4 +65,54 @@ describe('KitchenDisplay', () => {
     await user.click(await screen.findByRole('tab', { name: /Bar/ }))
     expect(onStation).toHaveBeenCalledWith('bar')
   })
+
+  it('shows a table order ticket: round, waiter, SKICKA NU and what is waiting', async () => {
+    const TAB: StationTicket = {
+      sourceId: `${'b'.repeat(32)}r2`, stationId: 'kok', stationName: 'Kök', status: 'sent', allergy: false,
+      kind: 'tab', tabId: 'b'.repeat(32), round: 2, mode: 'table', tableId: 't5', tableLabel: '5', waiter: 'Anna', covers: 4,
+      placedAt: '2026-11-19T17:42:00Z', fire: 'mains', waiting: [{ course: 'desserts', quantity: 4 }],
+      entries: [{ name: 'Oxfilé', quantity: 4, course: 'mains' }],
+    }
+    listTickets.mockResolvedValue([KITCHEN, TAB])
+    render(<KitchenDisplay locationId="loc-1" station="kok" onStation={() => {}} />)
+    const ticket = await screen.findByRole('article', { name: 'Bong Bord 5, runda 2, skickad' })
+    expect(within(ticket).getByText('R2')).toBeInTheDocument()
+    expect(within(ticket).getByText('Anna · 4 gäster')).toBeInTheDocument()
+    expect(within(ticket).getByText('SKICKA NU: VARMRÄTT')).toBeInTheDocument()
+    expect(within(ticket).getByText('Väntar: Efterrätt 4')).toBeInTheDocument()
+  })
+
+  it('marks a void ticket MAKULERAD and filters by source', async () => {
+    const user = userEvent.setup()
+    const VOID: StationTicket = {
+      sourceId: `${'b'.repeat(32)}r3`, stationId: 'kok', stationName: 'Kök', status: 'sent', allergy: false,
+      kind: 'tab_void', tabId: 'b'.repeat(32), round: 3, mode: 'table', tableLabel: '5', voidReason: 'guest_changed',
+      entries: [{ name: 'Burrata', quantity: 1, course: 'starters' }],
+    }
+    listTickets.mockResolvedValue([KITCHEN, VOID])
+    const onSource = vi.fn()
+    const { rerender } = render(<KitchenDisplay locationId="loc-1" station="kok" onStation={() => {}} onSource={onSource} />)
+    const ticket = await screen.findByRole('article', { name: 'Bong Bord 5, runda 3, makulerad' })
+    expect(within(ticket).getByText('MAKULERAD: Gästen ändrade sig')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Bord' }))
+    expect(onSource).toHaveBeenCalledWith('bord')
+    rerender(<KitchenDisplay locationId="loc-1" station="kok" onStation={() => {}} source="bord" onSource={onSource} />)
+    expect(screen.queryByRole('article', { name: /Bong #12/ })).toBeNull()
+    expect(screen.getByRole('article', { name: /runda 3/ })).toBeInTheDocument()
+    rerender(<KitchenDisplay locationId="loc-1" station="kok" onStation={() => {}} source="avhamtning" onSource={onSource} />)
+    expect(screen.queryByRole('article', { name: /runda 3/ })).toBeNull()
+  })
+
+  it('shows a FLYTTAD slip as a small note, not a ticket', async () => {
+    const MOVE: StationTicket = {
+      sourceId: `${'b'.repeat(32)}r4`, stationId: 'kok', stationName: 'Kök', status: 'sent', allergy: false,
+      kind: 'tab_move', tabId: 'b'.repeat(32), round: 4, mode: 'table', tableLabel: '7', fromLabel: '5', toLabel: '7',
+      placedAt: new Date().toISOString(), entries: [],
+    }
+    listTickets.mockResolvedValue([MOVE])
+    render(<KitchenDisplay locationId="loc-1" station="kok" onStation={() => {}} />)
+    const slips = await screen.findByRole('list', { name: 'Flyttade bord' })
+    expect(slips).toHaveTextContent('FLYTTAD Bord 5 till Bord 7')
+    expect(screen.queryByRole('article')).toBeNull()
+  })
 })

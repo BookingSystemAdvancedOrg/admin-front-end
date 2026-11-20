@@ -2,7 +2,10 @@ import { useEffect, useRef } from 'react'
 import { easeOutExpo, formatStatValue, parseStatValue, reducedMotion } from './countUp'
 import { claimNumberReveal } from './MotionScope'
 
-const DURATION_MS = 1100
+/** Första uppräkningen när sidan visas: syns, men läses direkt (iPad hela dagen). */
+export const REVEAL_MS = 650
+/** När värdet ändras senare (ny period, en rätt till): kortare, från där det stod. */
+export const CHANGE_MS = 400
 
 /**
  * Ett tal som räknas upp när det visas: rusar iväg från noll och saktar in
@@ -64,12 +67,13 @@ export function Num({ children, className, delayMs = 0 }: { children: string | n
     // Färgen växer bara fram första gången; senare uppräkningar behåller den.
     const colour = first
     grown.current = true
+    const duration = first ? REVEAL_MS : CHANGE_MS
     const start = performance.now() + delayMs
     let raf = 0
     let finished = false
     let current = from
     const frame = (now: number) => {
-      const u = (now - start) / DURATION_MS
+      const u = (now - start) / duration
       const p = easeOutExpo(u)
       if (p >= 1) {
         el.textContent = text

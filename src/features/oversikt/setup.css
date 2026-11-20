@@ -1,13 +1,86 @@
-/* Översikt, Kom igång: delstegen under en rad (telefonassistentens fem steg). */
-.setup-step__label {
-  display: grid;
+/* Översikt, Kom igång: raden är en länk till steget, ? bredvid frågar Booqy om steget. */
+/* Raden: markören till vänster, namnet och statusen staplade i en kolumn
+   bredvid, så att båda börjar på samma linje. */
+.setup-step__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.setup-step__link {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+.setup-step__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 6px;
   min-width: 0;
 }
+.setup-card .setup-step__label {
+  display: block;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+/* Statusen som en liten etikett i appens vanliga typsnitt. */
+.setup-card .setup-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font: 600 12px/1.3 var(--sans);
+  letter-spacing: 0;
+  background: color-mix(in srgb, var(--neutral-fill) 70%, transparent);
+  color: var(--muted);
+}
+.setup-card .setup-status.is-done {
+  background: var(--tint-green);
+  color: var(--green);
+}
+.setup-card .setup-status.is-unknown {
+  background: var(--tint-orange);
+  color: var(--warning-ink);
+}
+.setup-ask {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: 0 -6px 0 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: default;
+  transition: background-color 140ms var(--ease), color 140ms var(--ease);
+}
+.setup-ask:hover {
+  background: var(--wash);
+  color: var(--ink);
+}
+.setup-ask:focus-visible,
+.setup-sub__ask:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+/* Delstegen under raden (telefonassistentens fem steg): tryck för att fråga om delsteget. */
 .setup-sub {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 6px;
+  gap: 6px;
+  margin: 10px 0 0 42px;
 }
 .setup-sub__item {
   display: inline-flex;
@@ -27,13 +100,110 @@
 .setup-sub__item.done svg {
   color: var(--green);
 }
+.setup-sub__ask {
+  min-height: 28px;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  cursor: default;
+  transition: border-color 140ms var(--ease), color 140ms var(--ease);
+}
+.setup-sub__ask:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.setup-sub__item .setup-sub__q,
+.setup-sub__item.done .setup-sub__q {
+  margin-left: 2px;
+  color: var(--muted);
+  opacity: 0.8;
+}
 
 /* Ett steg ägaren lagt åt sidan ("Inga skrivare än"): öppet men gult. */
 .setup-later {
   color: var(--warning-ink);
   font-weight: 600;
 }
+.setup-card .setup-status.setup-later {
+  background: var(--tint-orange);
+}
 .setup-check.later {
   border-color: var(--warning);
   background: var(--tint-orange);
+}
+
+/* "Hoppa över" / "Ångra" bredvid raden: en textknapp, 44 px att trycka på telefonen. */
+.setup-skip {
+  flex-shrink: 0;
+  min-height: 36px;
+  white-space: nowrap;
+  font-size: 13px;
+}
+@media (pointer: coarse) {
+  .setup-skip {
+    min-height: 44px;
+  }
+
+  /* iPad och telefon: 44 px att trycka på utan att knapparna ser större ut. */
+  .setup-ask {
+    width: 44px;
+    height: 44px;
+    margin: -4px -10px -4px -4px;
+  }
+
+  .setup-sub {
+    row-gap: 12px;
+  }
+
+  .setup-sub__ask {
+    position: relative;
+  }
+
+  .setup-sub__ask::after {
+    content: '';
+    position: absolute;
+    inset: -8px 0;
+  }
+}
+
+/* Markören: en mjuk fylld rund ruta (appen har inga kanter), grön med bock när klart. */
+.setup-card .setup-check {
+  width: 28px;
+  height: 28px;
+  background: color-mix(in srgb, var(--muted) 26%, transparent);
+  font-size: 12px;
+}
+.setup-card .setup-check.done {
+  background: var(--green);
+}
+.setup-card .setup-check.later {
+  background: color-mix(in srgb, var(--warning) 34%, transparent);
+}
+.setup-card .setup-step {
+  padding: 14px 0;
+}
+
+/* Delstegen som mjuka fyllda etiketter i samma stil som statusen. */
+.setup-card .setup-sub__item {
+  padding: 4px 10px;
+  background: color-mix(in srgb, var(--neutral-fill) 70%, transparent);
+}
+.setup-card .setup-sub__item.done {
+  background: var(--tint-green);
+}
+
+/* Kom igång klart: hela raden öppnar och stänger stegen, 44 px hög.
+   Kortets luft tas från raden, så kortet blir inte högre. */
+.setup-card.setup-card--done {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.setup-card--done .setup-done-summary {
+  min-height: 44px;
+  padding: 0;
+}
+
+.setup-card.setup-card--done[open] {
+  padding-bottom: 14px;
 }

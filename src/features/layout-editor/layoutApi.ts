@@ -1,5 +1,6 @@
 import { BOOQY_FAULT, errorText as commonError } from '../../shared/errors'
 import { apiFetch, ApiError } from '../../shared/api'
+import { BOOKING_HORIZON_DAYS } from '../bokningar/bookingsApi'
 import { WORKSPACE, tableSize } from './data'
 import type {
   Floor,
@@ -558,14 +559,27 @@ const REMOVED_TABLES_TEXT =
   'Det finns bokningar på bord som inte finns i den nya layouten. ' +
   'Flytta bokningarna till andra bord, eller lägg tillbaka borden. Aktivera sedan igen.'
 
-/** 409 bookings_on_removed_tables: texten plus bokningarna som måste flyttas först. */
+/** Stoppa eller flytta ett väntande byte: bokningarna står på den nya versionens egna bord. */
+const NEW_TABLES_TEXT = 'det finns bokningar på bord som bara finns i den nya versionen. Flytta dem till andra bord först.'
+export const CANCEL_NEW_TABLES_TEXT = `Bytet går inte att stoppa: ${NEW_TABLES_TEXT}`
+export const MOVE_NEW_TABLES_TEXT = `Datumet går inte att flytta: ${NEW_TABLES_TEXT}`
+
+/**
+ * 409 bookings_on_removed_tables: texten plus bokningarna som måste flyttas
+ * först. `tablesIn` säger vilken ritning bordens nummer finns i: 'current'
+ * när en aktivering tar bort bord ur den gällande, 'next' när ett väntande
+ * byte stoppas eller flyttas till ett senare datum och bokningarna står på
+ * bord som bara den väntande versionen har.
+ */
 export class BookingsOnRemovedTablesError extends ApiError {
   bookings: RemovedTableBooking[]
+  tablesIn: 'current' | 'next'
 
-  constructor(message: string, bookings: RemovedTableBooking[]) {
+  constructor(message: string, bookings: RemovedTableBooking[], tablesIn: 'current' | 'next' = 'current') {
     super(409, message, { code: 'bookings_on_removed_tables' })
     this.name = 'BookingsOnRemovedTablesError'
     this.bookings = bookings
+    this.tablesIn = tablesIn
   }
 }
 
@@ -584,25 +598,64 @@ function removedTableBookings(raw: unknown): RemovedTableBooking[] {
   })
 }
 
+/** Ett annat versionsbyte är redan inbokat (bara ett kan vänta åt gången). */
+export class PendingSwitchError extends ApiError {
+  constructor() {
+    super(
+      409,
+      'En annan version väntar redan på att ta över. Öppna Versioner och avbryt det bytet först.',
+      { code: 'pending_switch' },
+    )
+    this.name = 'PendingSwitchError'
+  }
+}
+
+/** Datumet ligger innanför bokningsfönstret (409 too_early). */
+export class TooEarlyError extends ApiError {
+  earliestCutoverAt: string
+
+  constructor(earliestCutoverAt: string) {
+    super(
+      409,
+      `Det datumet är för tidigt. Välj ${formatSwedishDate(earliestCutoverAt)} eller senare.`,
+      { code: 'too_early' },
+    )
+    this.name = 'TooEarlyError'
+    this.earliestCutoverAt = earliestCutoverAt
+  }
+}
+
+/** "2026-12-17..." -> "17 december 2026" (svensk tid). */
+export function formatSwedishDate(iso: string): string {
+  const d = new Date(iso.length === 10 ? `${iso}T12:00:00Z` : iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return new Intl.DateTimeFormat('sv-SE', {
+    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Stockholm',
+  }).format(d)
+}
+
 /**
- * POST .../layout/versions/{n}/activate - utan body.
+ * POST .../layout/versions/{n}/activate.
  *
  * Aktiveringen är omedelbar bara när platsen saknar gällande version. Finns
- * redan en, schemaläggs bytet i stället en bit fram i tiden och svaret blir
- * `pending` - hur långt fram är miljöberoende, INTE alltid "01:00 UTC fyra
- * veckor fram" (bekräftat av backend-teamet 2026-09-29: bara 5 minuter i
- * dev, annars 28 dagar). Lita på `cutoverAt` i svaret, anta aldrig ett
- * fast intervall. Att upprepa samma begäran är ofarligt, men att begära en
- * ANNAN version medan ett byte väntar ger 409.
+ * redan en, schemaläggs bytet tidigast vid lokal midnatt som inleder idag +
+ * 22 dagar (dagen efter bokningsfönstret), i dev som i prod, så ingen
+ * bokning hamnar på en ritning som ändrats under den. `effectiveDate`
+ * (ÅÅÅÅ-MM-DD) väljer ett senare datum, aldrig ett tidigare. Lita på
+ * `cutoverAt` i svaret. Att begära en ANNAN version medan ett byte väntar
+ * ger PendingSwitchError.
  */
 export async function activateLayoutVersion(
   locationId: string,
   version: number,
+  effectiveDate?: string,
 ): Promise<LayoutActivation> {
   try {
     return await apiFetch<LayoutActivation>(
       `/locations/${encodeURIComponent(locationId)}/layout/versions/${version}/activate`,
-      { method: 'POST' },
+      effectiveDate
+        ? { method: 'POST', body: JSON.stringify({ effectiveDate }) }
+        : { method: 'POST' },
     )
   } catch (err) {
     // 409 betyder här något annat än i resten av layout-API:t. Antingen
@@ -615,11 +668,17 @@ export async function activateLayoutVersion(
         removedTableBookings(err.details?.reservations),
       )
     }
+    if (err instanceof ApiError && err.status === 409 && err.code === 'too_early') {
+      const earliest = err.details?.earliestCutoverAt
+      throw new TooEarlyError(typeof earliest === 'string' ? earliest : '')
+    }
+    if (err instanceof ApiError && err.status === 409 && /activation is pending/.test(err.message)) {
+      throw new PendingSwitchError()
+    }
     if (err instanceof ApiError && err.status === 409) {
       throw new ApiError(
         409,
-        'Ett byte till en annan version väntar redan. Vänta tills det är klart, ' +
-          'eller aktivera den väntande versionen igen.',
+        'Versionerna ändrades samtidigt någon annanstans. Stäng Versioner, öppna igen och försök en gång till.',
         { code: err.code },
       )
     }
@@ -627,16 +686,35 @@ export async function activateLayoutVersion(
   }
 }
 
+/** Versionslistan plus tidigaste dag ett byte får ske (ur samma svar). */
+export interface LayoutVersionList {
+  items: PublishedLayoutSnapshot[]
+  /** Lokalt datum ÅÅÅÅ-MM-DD; saknas hos ett äldre API. */
+  earliestChangeDate: string | null
+  /** Hur många dagar fram gäster kan boka. */
+  bookingHorizonDays: number
+}
+
 /** GET .../layout/versions - nyast först enligt kontraktet. */
-export function listLayoutVersions(
+export function loadLayoutVersions(locationId: string): Promise<LayoutVersionList> {
+  return call(async () => {
+    const res = await apiFetch<{
+      items?: PublishedLayoutSnapshot[]
+      earliestChangeDate?: string
+      bookingHorizonDays?: number
+    }>(`/locations/${encodeURIComponent(locationId)}/layout/versions`)
+    return {
+      items: res.items ?? [],
+      earliestChangeDate: typeof res.earliestChangeDate === 'string' ? res.earliestChangeDate : null,
+      bookingHorizonDays: typeof res.bookingHorizonDays === 'number' ? res.bookingHorizonDays : BOOKING_HORIZON_DAYS,
+    }
+  })
+}
+
+export async function listLayoutVersions(
   locationId: string,
 ): Promise<PublishedLayoutSnapshot[]> {
-  return call(async () => {
-    const res = await apiFetch<{ items?: PublishedLayoutSnapshot[] }>(
-      `/locations/${encodeURIComponent(locationId)}/layout/versions`,
-    )
-    return res.items ?? []
-  })
+  return (await loadLayoutVersions(locationId)).items
 }
 
 /**
@@ -675,7 +753,8 @@ export async function archiveLayoutVersion(
  * inaktiv version igen (kan därefter arkiveras precis som vilken annan
  * inaktiv version som helst). Idempotent - ingen väntande aktivering alls
  * ger också 204. Ett byte som redan hunnit gå i mål (förfallet) ger 409 och
- * avbryts inte.
+ * avbryts inte. Finns redan bokningar på bord som bara den väntande versionen
+ * har, nekas stoppet (409 bookings_on_removed_tables, med bokningarna).
  */
 export async function cancelPendingLayoutActivation(
   locationId: string,
@@ -686,10 +765,58 @@ export async function cancelPendingLayoutActivation(
       { method: 'DELETE' },
     )
   } catch (err) {
+    if (err instanceof ApiError && err.status === 409 && err.code === 'bookings_on_removed_tables') {
+      throw new BookingsOnRemovedTablesError(
+        CANCEL_NEW_TABLES_TEXT,
+        removedTableBookings(err.details?.reservations),
+        'next',
+      )
+    }
     if (err instanceof ApiError && err.status === 409) {
       throw new ApiError(
         409,
         'Bytet hann redan genomföras eller ändrades samtidigt. Listan visar nu läget.',
+      )
+    }
+    throw toFriendlyLayoutError(err)
+  }
+}
+
+/**
+ * PUT .../layout/pending-activation - flyttar det väntande bytet till ett nytt
+ * datum. Ett senare datum nekas (409 bookings_on_removed_tables, med
+ * bokningarna) när bokningar före det står på bord som bara den väntande
+ * versionen har.
+ */
+export async function reschedulePendingLayoutActivation(
+  locationId: string,
+  effectiveDate: string,
+): Promise<LayoutActivation> {
+  try {
+    return await apiFetch<LayoutActivation>(
+      `/locations/${encodeURIComponent(locationId)}/layout/pending-activation`,
+      { method: 'PUT', body: JSON.stringify({ effectiveDate }) },
+    )
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 409 && err.code === 'too_early') {
+      const earliest = err.details?.earliestCutoverAt
+      throw new TooEarlyError(typeof earliest === 'string' ? earliest : '')
+    }
+    if (err instanceof ApiError && err.status === 409 && err.code === 'bookings_on_removed_tables') {
+      // Senare datum: borden finns bara i den väntande versionen. Tidigare
+      // datum: bokningar före det gamla datumet står på bord den nya tar bort.
+      const onNewTables = err.details?.missingFrom === 'current'
+      throw new BookingsOnRemovedTablesError(
+        onNewTables ? MOVE_NEW_TABLES_TEXT : REMOVED_TABLES_TEXT,
+        removedTableBookings(err.details?.reservations),
+        onNewTables ? 'next' : 'current',
+      )
+    }
+    if (err instanceof ApiError && (err.status === 409 || err.status === 404)) {
+      throw new ApiError(
+        409,
+        'Bytet hann redan ske eller ändrades samtidigt. Listan visar nu läget.',
+        { code: err.code },
       )
     }
     throw toFriendlyLayoutError(err)

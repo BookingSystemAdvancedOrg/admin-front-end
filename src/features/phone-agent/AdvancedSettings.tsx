@@ -1,5 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Button, Field, Input, toast } from '@booqy/brand'
+import { SaveBar } from '../../shared/SaveBar'
+import { stable, useDirtyForm } from '../../shared/dirtyForm'
 import { BrandSelect as Select } from '../../shared/Select'
 import { Disclosure } from '../../shared/Disclosure'
 import { InfoTooltip } from '../../shared/InfoTooltip'
@@ -18,36 +20,61 @@ import {
 
 type Errors = Record<string, string | undefined>
 
+/** Tiderna utan tomma dagar: en dag utan perioder är samma sak som ingen dag. */
+function filled(hours: LocationConfig['agentHours']): LocationConfig['agentHours'] {
+  return Object.fromEntries(Object.entries(hours ?? {}).filter(([, spans]) => (spans ?? []).length > 0))
+}
+
+/** Det som skickas för inspelningen (och jämförs med det sparade). */
+function recordingPayload(rec: Config['recording']): Config['recording'] {
+  return rec.enabled
+    ? { enabled: true, purpose: (rec.purpose ?? '').trim(), retentionDays: rec.retentionDays ?? 30 }
+    : { enabled: false }
+}
+
 /**
- * Ett avsnitt med egen Spara: felet hamnar på fältet servern pekar ut, annars
- * som en rad med Försök igen.
+ * Ett avsnitt med egen Spara (SaveBar): avstängd tills `value` skiljer sig
+ * från `saved`, "Ångra ändringar" går tillbaka. Felet hamnar på fältet
+ * servern pekar ut, annars som en rad med Försök igen.
  */
-function Group({ title, info, onSave, children, setFieldErrors }: {
+function Group({ title, info, value, saved, onDiscard, onSave, children, setFieldErrors }: {
   title: string
   info?: ReactNode
+  value: unknown
+  saved: unknown
+  onDiscard: () => void
   onSave: () => Promise<Errors | void>
   children: ReactNode
   setFieldErrors: (e: Errors) => void
 }) {
   const [busy, setBusy] = useState(false)
   const [banner, setBanner] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  // Värdena som inte gick att spara; ändras något är det inte längre "Spara igen".
+  const [failedFor, setFailedFor] = useState<string | null>(null)
+  const dirty = useDirtyForm(value, saved)
+  const now = stable(value)
   async function save(e?: FormEvent) {
     e?.preventDefault()
     setBanner(null)
+    setNotice(null)
+    setFailedFor(null)
     setBusy(true)
     try {
       const invalid = await withBusy(onSave)
       if (invalid && Object.values(invalid).some(Boolean)) {
         setFieldErrors(invalid)
+        setFailedFor(now)
         return
       }
       setFieldErrors({})
-      toast('Sparat.', { tone: 'success' })
+      setNotice('Sparat.')
     } catch (err) {
       const text = errorText(err, 'Inställningen sparades inte.', ERRORS)
       const field = err instanceof ApiError ? err.field : undefined
       if (field) setFieldErrors({ [field]: text })
       else setBanner(text)
+      setFailedFor(now)
     } finally {
       setBusy(false)
     }
@@ -60,9 +87,19 @@ function Group({ title, info, onSave, children, setFieldErrors }: {
       </div>
       {children}
       {banner ? <RetryBanner text={banner} onRetry={() => void save()} /> : null}
-      <div className="telefon-group__save">
-        <Button type="submit" busy={busy} busyLabel="Sparar…">Spara</Button>
-      </div>
+      <SaveBar
+        className="telefon-group__save"
+        dirty={dirty}
+        busy={busy}
+        notice={notice}
+        failed={failedFor === now}
+        onDiscard={() => {
+          onDiscard()
+          setFieldErrors({})
+          setBanner(null)
+          setFailedFor(null)
+        }}
+      />
     </form>
   )
 }
@@ -83,14 +120,16 @@ export default function AdvancedSettings({ locationId, config, loc, open, onOpen
   onConfig: (c: Config) => void
   onLoc: (l: LocationConfig) => void
 }) {
+  const savedMaxMin = String(Math.round(loc.maxCallSeconds / 60))
+  const savedMaxParty = loc.phoneMaxPartySize != null ? String(loc.phoneMaxPartySize) : ''
   const [tone, setTone] = useState(config.tone)
   const [greetSv, setGreetSv] = useState(loc.greetingExtraSv)
   const [greetEn, setGreetEn] = useState(loc.greetingExtraEn)
   const [hours, setHours] = useState(loc.agentHours)
   const [transfer, setTransfer] = useState(loc.transferTo ?? '')
-  const [maxMin, setMaxMin] = useState(String(Math.round(loc.maxCallSeconds / 60)))
+  const [maxMin, setMaxMin] = useState(savedMaxMin)
   const [offers, setOffers] = useState(loc.counterOffers)
-  const [maxParty, setMaxParty] = useState(loc.phoneMaxPartySize != null ? String(loc.phoneMaxPartySize) : '')
+  const [maxParty, setMaxParty] = useState(savedMaxParty)
   const [cap, setCap] = useState(String(config.minutesCapPerMonth))
   const [rec, setRec] = useState(config.recording)
   const [errors, setErrors] = useState<Record<string, Errors>>({})
@@ -134,7 +173,8 @@ export default function AdvancedSettings({ locationId, config, loc, open, onOpen
   return (
     <Disclosure title="Fler inställningar" className="telefon-more" defaultOpen={open} onToggle={onOpenChange}>
       <div className="telefon-groups">
-        <Group title="Ton" setFieldErrors={setErrs('tone')} onSave={() => saveCfg({ tone })}>
+        <Group title="Ton" setFieldErrors={setErrs('tone')} onSave={() => saveCfg({ tone })}
+          value={tone} saved={config.tone} onDiscard={() => setTone(config.tone)}>
           <Field label="Ton">
             <Select value={tone} onChange={(e) => setTone(e.target.value as Config['tone'])}>
               <option value="friendly">Vänlig</option>
@@ -145,6 +185,8 @@ export default function AdvancedSettings({ locationId, config, loc, open, onOpen
 
         <Group title="Hälsning" info="Det assistenten säger efter: Hej och välkommen till ... Du talar med ..., restaurangens AI-assistent. Den meningen går inte att ändra."
           setFieldErrors={setErrs('greet')}
+          value={[greetSv, greetEn]} saved={[loc.greetingExtraSv, loc.greetingExtraEn]}
+          onDiscard={() => { setGreetSv(loc.greetingExtraSv); setGreetEn(loc.greetingExtraEn) }}
           onSave={() => saveLoc({ greetingExtraSv: greetSv, greetingExtraEn: greetEn })}>
           <Field label="Svenska" error={errs('greet').greetingExtraSv}>
             <Input value={greetSv} maxLength={200} placeholder="Vad kan jag hjälpa dig med?" onChange={(e) => setGreetSv(e.target.value)} />
@@ -155,7 +197,9 @@ export default function AdvancedSettings({ locationId, config, loc, open, onOpen
         </Group>
 
         <Group title="Tider" info="Tomt betyder att assistenten inte svarar den dagen. Läget Alltid svarar dygnet runt."
-          setFieldErrors={setErrs('hours')} onSave={async () => {
+          setFieldErrors={setErrs('hours')}
+          value={filled(hours)} saved={filled(loc.agentHours)} onDiscard={() => setHours(loc.agentHours)}
+          onSave={async () => {
             if (Object.values(hours).some((spans) => (spans ?? []).some((x) => !x.from || !x.to || x.from >= x.to))) {
               return { agentHours: ERRORS.invalid_hours }
             }
@@ -192,6 +236,7 @@ export default function AdvancedSettings({ locationId, config, loc, open, onOpen
 
         <Group title="Koppla samtal till" info="Vill den som ringer prata med er kopplar assistenten hit. Svarar ingen inom 25 sekunder erbjuder den att ni ringer upp. Tomt: ingen koppling."
           setFieldErrors={setErrs('transfer')}
+          value={transfer} saved={loc.transferTo ?? ''} onDiscard={() => setTransfer(loc.transferTo ?? '')}
           onSave={async () => {
             if (transfer && restaurantPhone && toE164(transfer) === toE164(restaurantPhone)) {
               document.getElementById('pa-transfer')?.focus()
@@ -206,6 +251,8 @@ export default function AdvancedSettings({ locationId, config, loc, open, onOpen
 
         <Group title="Längsta samtal" info="2 till 15 minuter. Erbjudandena gäller när den tid gästen vill ha är full."
           setFieldErrors={setErrs('call')}
+          value={[maxMin, offers]} saved={[savedMaxMin, loc.counterOffers]}
+          onDiscard={() => { setMaxMin(savedMaxMin); setOffers(loc.counterOffers) }}
           onSave={async () => {
             const minutes = Number(maxMin)
             if (!Number.isInteger(minutes) || minutes < 2 || minutes > 15) {
@@ -229,6 +276,7 @@ export default function AdvancedSettings({ locationId, config, loc, open, onOpen
 
         <Group title="Stora sällskap" info="Största sällskap assistenten bokar själv. Större sällskap: assistenten ber restaurangen ringa upp. Tomt: samma gräns som online."
           setFieldErrors={setErrs('party')}
+          value={maxParty} saved={savedMaxParty} onDiscard={() => setMaxParty(savedMaxParty)}
           onSave={async () => {
             const n = maxParty.trim() === '' ? null : Number(maxParty)
             if (n !== null && (!Number.isInteger(n) || n < 1 || n > 50)) {
@@ -245,6 +293,7 @@ export default function AdvancedSettings({ locationId, config, loc, open, onOpen
 
         <Group title="Minuttak" info={includedMinutes !== null ? `Minuter per månad. Ingår i er plan: ${includedMinutes}.` : 'Minuter per månad.'}
           setFieldErrors={setErrs('cap')}
+          value={cap} saved={String(config.minutesCapPerMonth)} onDiscard={() => setCap(String(config.minutesCapPerMonth))}
           onSave={async () => {
             const n = Number(cap)
             if (!Number.isInteger(n) || n < 0) {
@@ -260,12 +309,13 @@ export default function AdvancedSettings({ locationId, config, loc, open, onOpen
 
         <Group title="Inspelning" info="Av som standard. När den är på hör den som ringer: Samtalet spelas in."
           setFieldErrors={setErrs('rec')}
+          value={recordingPayload(rec)} saved={recordingPayload(config.recording)} onDiscard={() => setRec(config.recording)}
           onSave={async () => {
             if (rec.enabled && (rec.purpose ?? '').trim().length < 5) {
               document.getElementById('pa-purpose')?.focus()
               return { 'recording.purpose': 'Skriv varför, minst 5 tecken.' }
             }
-            await saveCfg({ recording: rec.enabled ? { enabled: true, purpose: (rec.purpose ?? '').trim(), retentionDays: rec.retentionDays ?? 30 } : { enabled: false } })
+            await saveCfg({ recording: recordingPayload(rec) })
           }}>
           <label className="telefon-check">
             <input type="checkbox" checked={rec.enabled} onChange={(e) => setRec({ ...rec, enabled: e.target.checked })} />

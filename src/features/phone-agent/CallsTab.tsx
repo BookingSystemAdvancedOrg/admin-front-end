@@ -53,8 +53,8 @@ export default function CallsTab({ locationId, owner }: { locationId: string; ow
       ) : calls.length === 0 ? (
         <p className="admin-empty">Inga samtal senaste veckan.</p>
       ) : (
-        <div className="table-scroll" tabIndex={0}>
-          <table className="data-table">
+        <div className="table-scroll telefon-calls-wrap" tabIndex={0}>
+          <table className="data-table keep-table telefon-calls">
             <thead>
               <tr>
                 <th scope="col">När</th>{owner ? <th scope="col">Från</th> : null}<th scope="col">Utfall</th>
@@ -72,15 +72,15 @@ export default function CallsTab({ locationId, owner }: { locationId: string; ow
                   onClick={(e) => { if (shouldOpenRow(e.target, e.currentTarget)) navigate(`/telefon/samtal/${encodeURIComponent(c.callId)}`) }}
                   onKeyDown={(e) => { if (isRowOpenKey(e)) { e.preventDefault(); navigate(`/telefon/samtal/${encodeURIComponent(c.callId)}`) } }}
                 >
-                  <td>{when(c.startedAt)}</td>
-                  {owner ? <td className="telefon-mono">{c.from ?? '-'}</td> : null}
-                  <td>
+                  <td className="telefon-calls__when">{when(c.startedAt)}</td>
+                  {owner ? <td className="telefon-calls__from telefon-mono" data-label="Från">{c.from ?? '-'}</td> : null}
+                  <td className="telefon-calls__outcome" data-label="Utfall">
                     <span className="status-badge">{c.outcome ? OUTCOME_LABEL[c.outcome] : 'Pågår'}</span>
                     {c.counterOffer !== 'none' ? <span className="cell-muted"> {COUNTER_LABEL[c.counterOffer]}</span> : null}
                     {c.outcome === 'refused' && c.refusedReason ? <span className="cell-muted"> ({REFUSED_LABEL[c.refusedReason] ?? c.refusedReason})</span> : null}
                   </td>
-                  <td>{c.summary}</td>
-                  <td>{Math.max(0, Math.round(c.durationSec / 60))} min</td>
+                  <td className="telefon-calls__summary" data-label="Sammanfattning" lang="sv">{c.summary}</td>
+                  <td className="telefon-calls__len" data-label="Längd">{Math.max(0, Math.round(c.durationSec / 60))} min</td>
                 </tr>
               ))}
             </tbody>

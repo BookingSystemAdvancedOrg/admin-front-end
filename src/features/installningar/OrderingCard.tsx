@@ -8,6 +8,7 @@ import type { OrderingPolicy } from './locationApi'
 import '../bestallningar/bestallningar.css'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { TitleInfo } from '../../shared/TitleInfo'
+import { SaveBar } from '../../shared/SaveBar'
 
 /**
  * Matbeställning för den valda platsen: bara avhämtning. Gästen beställer och
@@ -66,6 +67,8 @@ export function OrderingCard({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+  const [invalid, setInvalid] = useState<'prep' | 'last' | null>(null)
 
   useEffect(() => {
     if (!locationId) return
@@ -100,6 +103,15 @@ export function OrderingCard({
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }))
     setNotice(null)
+    setFailed(false)
+    if (invalid === key) setInvalid(null)
+  }
+
+  function discard() {
+    setForm(toForm(saved ?? DEFAULTS))
+    setError(null)
+    setFailed(false)
+    setInvalid(null)
   }
 
   async function save(e: FormEvent) {
@@ -107,10 +119,20 @@ export function OrderingCard({
     if (!locationId) return
     setError(null)
     setNotice(null)
+    setFailed(false)
+    setInvalid(null)
     const prep = whole(form.prep, 5, 180)
     const last = whole(form.last, 0, 120)
-    if (prep === null) return setError('Tillagningstiden ska vara 5 till 180 minuter. Skriv till exempel 20.')
-    if (last === null) return setError('Sista beställning ska vara 0 till 120 minuter före stängning. Skriv till exempel 30.')
+    if (prep === null || last === null) {
+      setError(
+        prep === null
+          ? 'Tillagningstiden ska vara 5 till 180 minuter. Skriv till exempel 20.'
+          : 'Sista beställning ska vara 0 till 120 minuter före stängning. Skriv till exempel 30.',
+      )
+      setInvalid(prep === null ? 'prep' : 'last')
+      setFailed(true)
+      return
+    }
     const policy: OrderingPolicy = {
       enabled: form.enabled,
       pickup: true,
@@ -124,6 +146,7 @@ export function OrderingCard({
       setNotice(policy.enabled ? 'Sparat. Gästerna kan beställa.' : 'Sparat - beställning är avstängd.')
     } catch (err) {
       setError(errorText(err, 'Inställningarna för beställning sparades inte.', { owner_only: 'Bara restaurangens ägare kan ändra inställningen. Be ägaren göra det.', forbidden: 'Bara restaurangens ägare kan ändra inställningen. Be ägaren göra det.' }))
+      setFailed(true)
     } finally {
       setBusy(false)
     }
@@ -164,11 +187,13 @@ export function OrderingCard({
             <div className="form-field">
               <label htmlFor="ordering-prep">Tillagningstid som gästen ser (min)</label>
               <input id="ordering-prep" inputMode="numeric" value={form.prep} disabled={disabled}
+                aria-invalid={invalid === 'prep' || undefined}
                 onChange={(e) => set('prep', e.target.value)} />
             </div>
             <div className="form-field">
               <label htmlFor="ordering-last">Sista beställning (min före stängning)</label>
               <input id="ordering-last" inputMode="numeric" value={form.last} disabled={disabled}
+                aria-invalid={invalid === 'last' || undefined}
                 onChange={(e) => set('last', e.target.value)} />
             </div>
           </div>
@@ -176,21 +201,15 @@ export function OrderingCard({
             <ErrorNote text={error} />
           )}
           {isOwner && (
-            <span className="row-actions">
-              <button type="submit" className="btn primary square" disabled={disabled}>
-                {busy ? 'Sparar…' : 'Spara beställning'}
-              </button>
-              {notice && !dirty && (
-                <span className="save-notice" role="status">
-                  {notice}
-                </span>
-              )}
-              {dirty && !busy && (
-                <span className="form-error" role="status">
-                  Ej sparat - klicka Spara beställning.
-                </span>
-              )}
-            </span>
+            <SaveBar
+              dirty={dirty}
+              busy={busy}
+              label="Spara beställning"
+              notice={notice}
+              failed={failed}
+              disabled={disabled}
+              onDiscard={discard}
+            />
           )}
           {!isOwner && <p className="cell-muted">Bara ägaren kan ändra.</p>}
         </form>

@@ -47,6 +47,16 @@
   flex: 1;
   min-width: 0;
 }
+/* Långa namn (träd, grenar, rubriker) bryts i stället för att gå utanför. */
+.stree-label,
+.stree-branch .settings-tab-title,
+.stree-card-title,
+.stree-card-branch,
+.stree-result-label,
+.stree-title {
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
 .stree-icon {
   display: inline-grid;
   flex: none;
@@ -124,13 +134,13 @@
   padding: 0 16px;
   border-radius: var(--radius-pill, 999px);
   background: var(--field-bg, rgb(var(--bq-snow-rgb) / 0.6));
-  box-shadow: inset 0 0 0 1px var(--field-border, var(--border));
+  box-shadow: inset 0 0 0 1px transparent;
   color: var(--muted);
   transition: box-shadow 200ms var(--ease), background-color 200ms var(--ease);
 }
 .stree-search-box:focus-within {
   background: var(--field-bg-focus, var(--field-bg));
-  box-shadow: inset 0 0 0 1.5px var(--ink), 0 0 0 4px var(--field-ring, transparent);
+  box-shadow: inset 0 0 0 1.5px transparent, 0 0 0 4px var(--field-ring, transparent);
 }
 .stree-search-box input {
   flex: 1;
@@ -162,9 +172,10 @@
   gap: 2px;
   padding: 6px;
   border-radius: var(--radius-card, 18px);
-  background: var(--glass-pop, var(--glass-surface));
-  -webkit-backdrop-filter: var(--blur-pop, blur(18px));
-  backdrop-filter: var(--blur-pop, blur(18px));
+  /* Täckande yta: kortens text bakom listan får inte lysa igenom raderna. */
+  background: linear-gradient(var(--glass-pop, var(--glass-surface)), var(--glass-pop, var(--glass-surface))), var(--surface);
+  -webkit-backdrop-filter: blur(var(--blur-pop, 18px)) saturate(1.4);
+  backdrop-filter: blur(var(--blur-pop, 18px)) saturate(1.4);
   box-shadow: var(--elev-3, var(--shadow));
   animation: stree-pop 180ms var(--ease) both;
 }
@@ -214,8 +225,8 @@
   gap: 14px;
   min-width: 0;
   padding: 18px 20px 12px;
-  animation: stree-rise 420ms var(--ease) both;
-  animation-delay: calc(var(--i, 0) * 45ms);
+  animation: stree-rise 240ms var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
 }
 .stree-card-heading {
   margin: 0;
@@ -267,8 +278,8 @@
   padding: 0 12px;
   border: 0;
   border-radius: var(--radius-pill, 999px);
-  background: rgb(var(--bq-snow-rgb) / 0.6);
-  box-shadow: inset 0 0 0 1px var(--hairline, rgba(58, 36, 24, 0.12));
+  background: var(--wash, rgb(var(--bq-snow-rgb) / 0.6));
+  box-shadow: inset 0 0 0 1px transparent;
   font: 600 13px/1.2 var(--font);
   color: var(--ink);
   cursor: default;
@@ -287,8 +298,9 @@
   height: 7px;
   flex: none;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 1.5px var(--muted);
-  opacity: 0.7;
+  background: var(--muted);
+  box-shadow: inset 0 0 0 1.5px transparent;
+  opacity: 0.45;
 }
 .stree-apple.ok .stree-apple-dot {
   background: var(--success);
@@ -297,7 +309,7 @@
 }
 .stree-apple.warn {
   background: color-mix(in srgb, var(--warning) 16%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 45%, transparent);
+  box-shadow: inset 0 0 0 1px transparent;
   color: var(--warning-ink);
 }
 .stree-apple.warn .stree-apple-dot {
@@ -433,6 +445,11 @@
   gap: 28px;
   min-width: 0;
 }
+/* Två kort bredvid varandra bara när båda får minst 420 px: på datorn står
+   trädet till vänster, och två smala kort klippte väljare och kontonamn. */
+.settings-branch .settings-row {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+}
 .settings-branch:not([hidden]) {
   animation: stree-in 260ms var(--ease) both;
 }
@@ -464,7 +481,127 @@
   margin-left: auto;
 }
 
-/* Bladet man sökte: en ring som tonar bort. */
+/* Bord vid onlinebokning (TableRulesCard): fälten når 44 px för fingret på
+   surfplattan, och i telefonen står varje rubrik på samma höjd med värdet
+   mitt för fältet bredvid. */
+.settings-branch .rules-number {
+  min-height: 44px;
+  font-variant-numeric: tabular-nums;
+}
+.settings-branch .rules-table input[type='checkbox'] {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+}
+/* Tabellen ryms i kortet (348-720 px) i stället för globala 900 px bakom
+   en osynlig sidled-scroll: rubrikerna får brytas, bordets namn hålls ihop. */
+@media (min-width: 601px) {
+  .settings-branch .rules-table {
+    min-width: 0 !important;
+  }
+  .settings-branch .rules-table {
+    width: 100%;
+    table-layout: fixed;
+  }
+  .settings-branch .rules-table th {
+    padding-right: 14px;
+    white-space: normal;
+    vertical-align: bottom;
+    overflow-wrap: normal;
+    letter-spacing: 0.02em;
+  }
+  .settings-branch .rules-table td {
+    padding-right: 14px;
+  }
+  /* Bordets namn (restaurangens egen text) bryts på flera rader i stället för
+     att trycka ut Från/Till ur kortet; övriga kolumner har fast bredd. */
+  .settings-branch .rules-table td.cell-strong {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    hyphens: auto;
+  }
+  .settings-branch .rules-table :is(th, td):nth-child(2) {
+    width: 74px;
+  }
+  .settings-branch .rules-table :is(th, td):nth-child(3) {
+    width: 66px;
+    text-align: center;
+  }
+  .settings-branch .rules-table :is(th, td):nth-child(4) {
+    width: 66px;
+  }
+  .settings-branch .rules-table :is(th, td):nth-child(5) {
+    width: 52px;
+    padding-right: 0;
+  }
+  .settings-branch .rules-table .rules-number {
+    width: 100%;
+    max-width: 52px;
+  }
+}
+/* Online-rutan: hela cellen (44 px) är träffytan för fingret. */
+.settings-branch .rules-online {
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Kryssrutorna i Bokning (Bokningstid, Ny kombination, Kö) blir 22 px och
+   raden 44 px hög för fingret på surfplattan. */
+.settings-branch :is(.check-row, .table-chip, .queue-checks label) {
+  min-height: 44px;
+  align-items: center;
+}
+.settings-branch :is(.check-row, .table-chip, .queue-checks label) > input[type='checkbox'] {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+}
+
+/* Två fält i rad (Bokningstid, Kvittoskrivare): väljarna står på samma höjd
+   även när den ena rubriken har (i) eller bryts på två rader. */
+.settings-branch .form-grid {
+  align-items: end;
+}
+@media (max-width: 600px) {
+  .settings-branch .rules-table tr {
+    align-items: start;
+  }
+  .settings-branch .rules-table td[data-label] {
+    display: grid;
+    grid-template-rows: auto 44px;
+    align-items: center;
+  }
+}
+
+/* Öppettiderna (BusinessHoursEditor): tiderna och knapparna når 44 px för
+   fingret på surfplattan, texten läses utan att luta sig fram. */
+.settings-branch .hours-editor-row {
+  font-size: 15px;
+}
+.settings-branch .hours-editor-interval .time-input {
+  min-height: 44px;
+  padding: 8px 10px;
+  font: 400 15px var(--sans);
+  font-variant-numeric: tabular-nums;
+}
+.settings-branch .hours-editor-intervals .link-action {
+  min-width: 44px;
+  min-height: 44px;
+}
+.settings-branch .hours-editor-next {
+  order: 1; /* krysset står kvar direkt efter tiderna, "natt mot söndag" bryts efter */
+  font-size: 13px;
+}
+.settings-branch .hours-editor {
+  margin-bottom: 16px;
+}
+
+/* Bladet man sökte: en ton över raden som tonar bort (ingen ram). */
 .stree-leaf-flash {
   border-radius: 12px;
   animation: stree-flash 2400ms var(--ease) both;
@@ -505,11 +642,11 @@
 
 :root[data-theme='dark'] .stree-apple {
   background: rgb(var(--bq-snow-rgb) / 0.06);
-  box-shadow: inset 0 0 0 1px rgba(213, 196, 174, 0.16);
+  box-shadow: inset 0 0 0 1px transparent;
 }
 :root[data-theme='dark'] .stree-apple.warn {
   background: color-mix(in srgb, var(--warning) 20%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 50%, transparent);
+  box-shadow: inset 0 0 0 1px transparent;
 }
 :root[data-theme='dark'] .stree-search-box {
   background: var(--field-bg, rgb(var(--bq-snow-rgb) / 0.05));
@@ -583,10 +720,10 @@
 @keyframes stree-flash {
   0%,
   60% {
-    box-shadow: 0 0 0 3px var(--focus);
+    box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--focus) 45%, transparent);
   }
   100% {
-    box-shadow: 0 0 0 3px transparent;
+    box-shadow: inset 0 0 0 9999px transparent;
   }
 }
 
@@ -606,6 +743,28 @@
   }
   .stree-leaf-flash {
     animation: none;
-    box-shadow: 0 0 0 3px var(--focus);
+    box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--focus) 45%, transparent);
+  }
+}
+
+/* Fingret på surfplattan: statuschippen når 44 px. */
+@media (pointer: coarse) {
+  .stree-apple {
+    min-height: 44px;
+    padding: 0 14px;
+  }
+  .stree-apple::after {
+    inset: 0;
+  }
+}
+
+/* Restaurangprofil: två fält i rad bara när varje fält rymmer namn, adress
+   och e-post (minst 360 px); annars ett fält per rad. */
+.settings-profile-card {
+  container: stree-profile / inline-size;
+}
+@container stree-profile (max-width: 760px) {
+  .settings-profile-card .form-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

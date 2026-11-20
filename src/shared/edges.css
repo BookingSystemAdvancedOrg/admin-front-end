@@ -1,0 +1,103 @@
+/* Inga kanter (ägaren 2026-11-18): varje kant i appen är genomskinlig,
+   oavsett var den sitter. Det här lagret laddas sist (sista importen i
+   main.tsx) och vinner med !important, så nya regler och inline-stilar
+   kan inte ta tillbaka en kant av misstag.
+
+   - Kantbredder står kvar (bara färgen blir genomskinlig), så inget flyttar sig.
+   - Kant-tokens är genomskinliga i ljust och mörkt läge (index.css, ds.css,
+     brand.css, auth-brand.css); här sätts även märkespaketets (--bq-line ...).
+   - Tunna ringar och ljusa 1 px-överkanter i box-shadow är genomskinliga i
+     källfilerna; mjuka skuggor (djup) står kvar.
+   - Undantag, med skäl:
+     1. Fokusringen (outline och :focus-visible) är tillgänglighet, inte en
+        kant runt en ruta. Den rörs inte här.
+     2. Ikoner som ritas med kanter: bocken i .bq-check och pilarna
+        (.admin-nav-chevron, .props-tip-more, .sk-period-more). Utan dem
+        försvinner symbolen, inte en kant.
+   - Kontroller som bara syntes genom sin kant har fått en svag fyllnad
+     med befintliga tokens i stället (se respektive fil).
+   - Skyddas av src/edges.test.ts. */
+
+:root,
+:root[data-theme='light'],
+:root[data-theme='dark'] {
+  --border: transparent !important;
+  --hairline: transparent !important;
+  --hairline-strong: transparent !important;
+  --glass-border: transparent !important;
+  --field-border: transparent !important;
+  --field-border-hover: transparent !important;
+  --dock-pill-edge: transparent !important;
+  --paper-line: transparent !important;
+  --auth-border: transparent !important;
+  --bq-line: transparent !important;
+  --bq-line-strong: transparent !important;
+  --bq-shadow-rim: inset 0 1px 0 transparent, inset 0 0 0 1px transparent !important;
+  --rim: inset 0 1px 0 transparent, inset 0 0 0 1px transparent !important;
+}
+
+/* Tokens som sätts om på enskilda element (fält, kort, rutor). */
+*,
+*::before,
+*::after {
+  --tile-edge: transparent !important;
+  --field-border: transparent !important;
+  --field-border-hover: transparent !important;
+  --paper-line: transparent !important;
+  border-color: transparent !important;
+  column-rule-color: transparent !important;
+}
+
+hr {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: transparent !important;
+}
+
+/* Undantag 2: ikoner ritade med kanter. */
+.bq-check::after {
+  border-color: var(--on-accent) !important;
+}
+.admin-nav-chevron,
+.props-tip-more::after,
+.sk-period-more::after {
+  border-color: currentColor !important;
+}
+
+/* Märkespaketets mätare: spåret är en yta, inte en kant. */
+.bq-bar__track {
+  background: var(--neutral-fill);
+}
+.bq-bar--ring .bq-bar__track {
+  stroke: var(--neutral-fill);
+}
+
+/* SVG: kanterna runt rutor och bord på bordskartan. */
+.floor-map-ground,
+.floor-map-top {
+  stroke: transparent !important;
+}
+
+/* Märkespaketets ringar i färger som inte är kant-tokens (vendrat, oredigerat):
+   sekundärknappen vid hovring, det röda kortet och felfält. Djupet står kvar,
+   felet visas med en röd ton i fältet i stället för en ram. */
+.bq-btn--secondary:hover:not(:disabled) {
+  box-shadow: var(--bq-shadow-sm) !important;
+}
+.bq-card--danger {
+  box-shadow: var(--bq-shadow-md) !important;
+}
+.bq-field--error .bq-input,
+.bq-field--error .bq-select,
+.bq-input[aria-invalid='true'],
+.bq-select[aria-invalid='true'] {
+  box-shadow: none !important;
+  background: color-mix(in srgb, var(--bq-danger) 12%, var(--bq-surface)) !important;
+}
+
+/* Fält i märkespaketets dialoger (presentkort, kundkortet): fältet hade
+   samma färg som dialogen och utan kant syntes det inte alls. En svag
+   fyllnad visar var man skriver, i ljust och mörkt läge. */
+.bq-modal :is(.bq-input, .bq-select, textarea) {
+  background: var(--neutral-fill);
+}

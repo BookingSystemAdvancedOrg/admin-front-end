@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { sameData, useLiveRefresh } from '../../shared/live'
 import type { CSSProperties } from 'react'
 import { Num } from '../../shared/motion/Num'
@@ -8,25 +8,25 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { MonthCard } from './MonthCard'
 import { StatTile } from './StatTile'
 import { AdminTopbar } from '../../shared/AdminTopbar'
-import { currentLocation, stripeStage, useTenant } from '../../shared/tenant'
+import { currentLocation, useTenant } from '../../shared/tenant'
 import { canOpen } from '../../shared/access'
 import type { Area } from '../../shared/access'
 
 import { getLocation } from '../installningar/locationApi'
 import type { Location } from '../installningar/locationApi'
-import { listMenuItems } from '../meny/menuApi'
-import { listLayoutVersions } from '../layout-editor/layoutApi'
-import { listUsers } from '../installningar/usersApi'
 import {
   activeOrders,
   bookingsToday,
   clockIn,
-  hasAnyOpeningHours,
   revenueToday,
   revenueUntil,
-  setupSteps,
+  stepsFromServer,
   todoQueue,
 } from './overview'
+import type { SetupStep } from './overview'
+import { getSetup, skipSetupStep } from './setupApi'
+import type { SetupChecklist } from './setupApi'
+import { errorText } from '../../shared/errors'
 import { kronor, listOrders } from '../bestallningar/ordersApi'
 import type { Order } from '../bestallningar/ordersApi'
 import { listRequests } from '../catering/cateringApi'
@@ -51,10 +51,12 @@ import { Icon } from '../../shared/Icon'
 import type { IconName } from '../../shared/Icon'
 import { Disclosure } from '../../shared/Disclosure'
 import { SkelRows } from '../../shared/Skeleton'
-import { getLocation as getPhoneLocation, getOverview as getPhoneOverview } from '../phone-agent/api'
-import { progress as phoneProgress, type Progress } from '../phone-agent/setup'
-import { getConnection as getGoogleConnection, getLocationView as getGoogleView, googleDone } from '../google-business/api'
 import './setup.css'
+import './oversikt.css'
+import { useHelpChatEnabled } from '../help/chatState'
+import { SetupStepItem } from './SetupStepItem'
+import { setupProgress } from './setupProgress'
+import { PeakMoment, PeakSuccess } from '../../shared/motion/PeakSuccess'
 
 // Genvägskorten längst ned som länkar till de andra sidorna. Ägaren får
 // Statistik i stället för "Se alla bokningar" (dagens bokningar har redan
@@ -71,9 +73,8 @@ interface OverviewData {
   /** Platsen datan gäller - en annan plats betyder att ny data hämtas. */
   forLocation: string | null
   location: Location | null
-  activeMenuItems: number | null
-  hasLiveLayout: boolean | null
-  staffCount: number | null
+  /** Kom igång från servern (alla platser); null = inte ägare eller kunde inte hämtas. */
+  setup: SetupChecklist | null
   /** Dagens bokningar (alla statusar); null = kunde inte hämtas. */
   today: Reservation[] | null
   /** Dagens beställningar; null = saknas i planen eller kunde inte hämtas. */
@@ -84,25 +85,17 @@ interface OverviewData {
   catering: RequestSummary[] | null
   /** Köksskrivarens läge; null = ingen beställning i planen eller kunde inte hämtas. */
   print: PrintStatus | null
-  /** Telefonassistentens fem steg; null = ingår inte i planen eller kunde inte hämtas. */
-  phone: Progress | null
-  /** Google-profilen klar (kopplad eller överhoppad); null = ingår inte i planen eller kunde inte hämtas. */
-  google: boolean | null
 }
 
 const EMPTY: OverviewData = {
   forLocation: null,
   location: null,
-  activeMenuItems: null,
-  hasLiveLayout: null,
-  staffCount: null,
+  setup: null,
   today: null,
   orders: null,
   ordersLastWeek: null,
   catering: null,
   print: null,
-  phone: null,
-  google: null,
 }
 
 /** Ett anrop som misslyckas ger `null` (okänt) i stället för att fälla sidan. */
@@ -130,6 +123,8 @@ export default function OversiktPage() {
   const location = currentLocation(tenantState)
   const { labels } = useTables(locationId)
   const isOwner = tenant?.role === 'owner_user'
+  // Fråga Booqy om ett steg: bara när assistenten är på för restaurangen.
+  const askOn = useHelpChatEnabled()
   // Kommer man hit direkt efter att ha godkänt avtalet (AvtalPage) står en kvittens överst.
   const { state: navState, pathname: here } = useLocation()
   const navigate = useNavigate()
@@ -152,44 +147,29 @@ export default function OversiktPage() {
   const seeBookings = sample || canOpen(tenant, 'bokningar')
   const hasOrdering = sample || (Boolean(tenant?.entitlements.features.ordering) && canOpen(tenant, 'bestallningar'))
   const hasCatering = sample || (Boolean(tenant?.entitlements.features.catering) && canOpen(tenant, 'catering'))
-  // Telefonassistenten i planen: ägarens Kom igång får ett steg med fem delsteg.
-  const hasPhone = isOwner && Boolean(tenant?.entitlements.features.phoneAgent)
-  // Google-profilen i planen: ett valfritt steg som går att hoppa över.
-  const hasGoogle = isOwner && Boolean(tenant?.entitlements.features.googleBusiness)
   const tableLabels = sample ? (SAMPLE_TABLE_LABELS as Map<string, string>) : labels
 
   const fetchOverview = useCallback((locationId: string): Promise<OverviewData> =>
     Promise.all([
       orNull(getLocation(locationId)),
-      orNull(listMenuItems(locationId)),
-      isOwner ? orNull(listLayoutVersions(locationId)) : Promise.resolve(null),
-      isOwner ? orNull(listUsers()) : Promise.resolve(null),
+      // Kom igång: servern avgör (samma regel som Booqy Console), bara för ägaren.
+      isOwner ? orNull(getSetup()) : Promise.resolve(null),
       seeBookings ? orNull(listReservations(locationId, todayIn(timezoneSetting))) : Promise.resolve(null),
       hasOrdering ? orNull(listOrders(locationId)) : Promise.resolve(null),
       hasCatering ? orNull(listRequests(locationId)) : Promise.resolve(null),
       hasOrdering ? orNull(listOrders(locationId, addDays(todayIn(timezoneSetting), -7))) : Promise.resolve(null),
       hasOrdering ? orNull(getPrintStatus(locationId)) : Promise.resolve(null),
-      hasPhone
-        ? orNull(Promise.all([getPhoneOverview(), getPhoneLocation(locationId)]).then(([o, l]) => phoneProgress(o.config, l)))
-        : Promise.resolve(null),
-      hasGoogle
-        ? orNull(Promise.all([getGoogleConnection(), getGoogleView(locationId)]).then(([c, v]) => googleDone(c, v)))
-        : Promise.resolve(null),
-    ]).then(([loc, menu, versions, users, today, orders, catering, lastWeek, print, phone, google]) => ({
+    ]).then(([loc, setup, today, orders, catering, lastWeek, print]) => ({
         forLocation: locationId,
         location: loc,
-        activeMenuItems: menu ? menu.filter((m) => m.active).length : null,
-        hasLiveLayout: versions ? versions.some((v) => v.isCurrent) : null,
-        staffCount: users ? users.filter((u) => u.role === 'staff').length : null,
+        setup,
         today,
         orders: orders ? orders.orders : null,
         ordersLastWeek: lastWeek ? lastWeek.orders : null,
         catering,
         print,
-        phone,
-        google,
       })),
-  [isOwner, timezoneSetting, seeBookings, hasOrdering, hasCatering, hasPhone, hasGoogle])
+  [isOwner, timezoneSetting, seeBookings, hasOrdering, hasCatering])
 
   useEffect(() => {
     if (!locationId) return
@@ -224,57 +204,50 @@ export default function OversiktPage() {
     setFetched((prev) => (prev.forLocation === d.forLocation && !sameData(prev, d) ? d : prev))
   }, { enabled: Boolean(locationId) && !loading && !sample })
 
-  const stage = tenant ? stripeStage(tenant.stripe) : 'missing'
   const timezone = data.location?.timezone ?? location?.timezone ?? null
-  const steps = setupSteps({
-    isOwner,
-    hasOpeningHours: data.location ? hasAnyOpeningHours(data.location.businessHours) : null,
-    activeMenuItems: data.activeMenuItems,
-    hasLiveLayout: data.hasLiveLayout,
-    stripeStage: stage,
-    staffCount: data.staffCount,
-    dpaAccepted: tenant?.dpa ? tenant.dpa.upToDate : undefined,
-    google: hasGoogle ? data.google : undefined,
-    phone: hasPhone ? data.phone : undefined,
-    printers: tenant?.entitlements.features.ordering ? fetched.print : undefined,
-  })
+  // Kom igång: alltid restaurangens riktiga lista (även i exempelläget).
+  const setup = fetched.setup
+  const steps = isOwner ? stepsFromServer(setup, locationId) : []
   const remaining = steps.filter((s) => s.done === false).length
+  // "Hoppa över" / "Ångra": servern svarar med hela listan, som ersätter den vi har.
+  const [skipping, setSkipping] = useState<string | null>(null)
+  const [skipError, setSkipError] = useState<string | null>(null)
+  const skip = (step: SetupStep, skipped: boolean) => {
+    if (skipping) return
+    setSkipping(step.id)
+    setSkipError(null)
+    skipSetupStep(step.id, step.locationId, skipped)
+      .then((next) => setFetched((prev) => (prev.forLocation === locationIdRef.current ? { ...prev, setup: next } : prev)))
+      .catch((err) => setSkipError(errorText(err, skipped ? `${step.label} kunde inte hoppas över.` : 'Det gick inte att ångra.')))
+      .finally(() => setSkipping(null))
+  }
   // Kom igång (bara ägaren): direkt under nyckeltalen så länge något är kvar
   // (eller inte gick att kontrollera), längst ned som liten bekräftelse när
   // allt är klart. Nyckeltalen står alltid först: "hur går dagen, vad
   // behöver mig nu" ska synas utan att scrolla, även på telefonen.
-  const setupIncomplete = isOwner && !loading && steps.some((s) => s.done !== true)
-  const setupComplete = isOwner && !loading && steps.every((s) => s.done === true)
+  const setupFailed = isOwner && !loading && setup === null
+  const setupIncomplete = isOwner && !loading && (setupFailed || steps.some((s) => s.done !== true))
+  const setupComplete = isOwner && !loading && steps.length > 0 && steps.every((s) => s.done === true)
 
   const stepItem = (step: (typeof steps)[number]) => (
-    <Link key={step.id} to={step.to} className="activity-item setup-step">
-      <span className="activity-text">
-        <span className={`setup-check ${step.done ? 'done' : step.later ? 'later' : ''}`} aria-hidden="true">
-          {step.done ? <Icon name="check" size={14} /> : step.done === null ? '?' : ''}
-        </span>
-        <span className="setup-step__label">
-          {step.label}
-          {step.sub ? (
-            <span className="setup-sub" aria-label={`${step.sub.filter((x) => x.done).length} av ${step.sub.length} delsteg klara`}>
-              {step.sub.map((x) => (
-                <span key={x.label} className={`setup-sub__item${x.done ? ' done' : ''}`}>
-                  {x.done ? <Icon name="check" size={12} /> : null}
-                  {x.label}
-                </span>
-              ))}
-            </span>
-          ) : null}
-        </span>
-      </span>
-      <span className={`activity-time${step.later && !step.done ? ' setup-later' : ''}`}>
-        {step.done ? 'Klart' : step.done === null ? 'Kunde inte kontrolleras' : step.later ?? 'Att göra'}
-      </span>
-    </Link>
+    <SetupStepItem key={step.id} step={step} askOn={askOn} onSkip={skip} busy={skipping !== null} />
   )
   const setupList = steps.map(stepItem)
   // Medan något är kvar visas bara det som är kvar, så att dagens bokningar inte trycks ned.
-  const pendingList = steps.filter((s) => s.done !== true).map(stepItem)
-  const doneCount = steps.length - pendingList.length
+  // Överhoppade steg står kvar (med Ångra) tills allt är klart; bara klara steg göms.
+  const pendingList = steps.filter((s) => s.state !== 'done').map(stepItem)
+  const doneCount = steps.filter((s) => s.done === true).length
+  // Ett steg som blivit klart sedan förra besöket får en bock som ritas in;
+  // hela listan klar får ögonblicket (PeakSuccess / PeakMoment).
+  const progressSig = loading || !setup ? '' : steps.map((s) => `${s.id}:${s.state}`).join(',')
+  const progress = useMemo(
+    () => (progressSig ? setupProgress(`setup:${locationId ?? ''}`, steps) : { fresh: [], finished: false }),
+    // steps följer progressSig
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [progressSig, locationId],
+  )
+  const freshLabels = steps.filter((s) => progress.fresh.includes(s.id)).map((s) => s.label)
+  const [finishSeen, setFinishSeen] = useState(false)
 
   const todayActive = data.today
     ? data.today.filter((r) => ACTIVE_STATUSES.includes(r.status))
@@ -391,11 +364,21 @@ export default function OversiktPage() {
               <div>
                 <h2 className="card-title">Kom igång</h2>
               </div>
-              <span className="cell-muted">
-                {remaining === 0 ? 'Kunde inte kontrollera allt' : <><Num>{doneCount}</Num> av {steps.length} klara</>}
-              </span>
+              {!setupFailed && (
+                <span className="cell-muted">
+                  {remaining === 0 ? 'Kunde inte kontrollera allt' : <><Num>{doneCount}</Num> av {steps.length} klara</>}
+                </span>
+              )}
             </div>
-            {pendingList}
+            {freshLabels.length > 0 && (
+              <p className="setup-fresh">
+                <PeakSuccess text={freshLabels.length === 1 ? `${freshLabels[0]}: klart` : `${freshLabels.length} steg klara`} />
+              </p>
+            )}
+            {setupFailed
+              ? <ErrorNote text={booqyFaultText('Kom igång kunde inte visas.')} onRetry={retryOverview} />
+              : pendingList}
+            {skipError && <ErrorNote text={skipError} />}
           </section>
         )}
 
@@ -413,7 +396,7 @@ export default function OversiktPage() {
                   <li key={r.reservationId}>
                     <span className="cell-strong">{r.startTime}</span>
                     <span>
-                      {r.customerName || 'Gäst'} · <Num>{r.partySize}</Num> pers · {sample ? tableNames(r.tableIds, tableLabels) : <TableLinks ids={r.tableIds} labels={tableLabels} date={r.date} />}
+                      {r.customerName || 'Gäst'} · <span className="keep-line"><Num>{r.partySize}</Num> pers ·</span> {sample ? tableNames(r.tableIds, tableLabels) : <TableLinks ids={r.tableIds} labels={tableLabels} date={r.date} />}
                     </span>
                     <span className={`status-badge ${STATUS_CLASS[r.status]}`}>
                       {STATUS_LABEL[r.status]}
@@ -467,6 +450,9 @@ export default function OversiktPage() {
           </section>
         </Disclosure>
 
+        {setupComplete && progress.finished && !finishSeen && (
+          <PeakMoment text="Kom igång är klart" sub="Restaurangen är redo för gäster" onDone={() => setFinishSeen(true)} />
+        )}
         {setupComplete && (
           <details className="admin-card setup-card setup-card--done" data-tour="getting-started">
             <summary className="setup-done-summary">

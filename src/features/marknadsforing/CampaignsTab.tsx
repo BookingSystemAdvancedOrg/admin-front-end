@@ -3,6 +3,7 @@ import { useLiveRefresh } from '../../shared/live'
 import { RowActions } from '../../shared/RowActions'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Num } from '../../shared/motion/Num'
+import { PeakMoment } from '../../shared/motion/PeakSuccess'
 import type { FormEvent } from 'react'
 import { useTenant } from '../../shared/tenant'
 import {
@@ -95,11 +96,13 @@ export function CampaignForm({
   // Ändrat något i formuläret? Då frågar ett klick utanför eller Escape först.
   const snapshot = JSON.stringify([name, templateId, subject, type, days, loc, segment])
   const [initialSnapshot] = useState(snapshot)
+  // Spara följer ändringarna: avstängd tills något skiljer sig från det som öppnades.
+  const dirty = snapshot !== initialSnapshot
   const [confirmEl, ask] = useConfirm()
   const closeRef = useRef<() => void>(() => {})
   closeRef.current = () => {
     if (saving) return
-    if (snapshot === initialSnapshot) {
+    if (!dirty) {
       onClose()
       return
     }
@@ -112,6 +115,7 @@ export function CampaignForm({
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
+    if (!dirty) return
     if (!name.trim()) return setError('Ge kampanjen ett namn.')
     if (!templateId) return setError('Välj en mall.')
     setSaving(true)
@@ -195,9 +199,9 @@ export function CampaignForm({
         <p className="field-hint">Bara gäster som sagt ja till erbjudanden.</p>
 
         <ErrorNote text={error} />
-        <div className="modal-actions">
+        <div className="modal-actions modal-actions--pinned">
           <button type="button" className="btn outline square" onClick={onClose} disabled={saving}>Avbryt</button>
-          <button type="submit" className="btn primary square" disabled={saving}>{saving ? 'Sparar…' : 'Spara utkast'}</button>
+          <button type="submit" className="btn primary square" disabled={saving || !dirty}>{saving ? 'Sparar…' : error ? 'Spara igen' : 'Spara utkast'}</button>
         </div>
       </form>
     </ModalOverlay>
@@ -211,7 +215,7 @@ function toLocalInput(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone: (msg: string) => void; onClose: () => void }) {
+function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone: (msg: string, later: boolean) => void; onClose: () => void }) {
   const [when, setWhen] = useState<'now' | 'later'>('now')
   const [at, setAt] = useState(() => {
     const d = new Date(Date.now() + 24 * 3600 * 1000)
@@ -247,6 +251,7 @@ function SendDialog({ campaign, onDone, onClose }: { campaign: Campaign; onDone:
         when === 'later'
           ? `Kampanjen skickas ${formatDateTime(out.scheduledAt)} till ${out.audienceSize} mottagare.`
           : `Kampanjen skickas nu till ${out.audienceSize} mottagare. Det tar några minuter.`,
+        when === 'later',
       )
     } catch (err) {
       setError(errorText(err, 'Kampanjen skickades inte.'))
@@ -298,6 +303,8 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
   const [notice, setNotice] = useState<string | null>(null)
   const [form, setForm] = useState<{ campaign: Campaign | null } | null>(null)
   const [sending, setSending] = useState<Campaign | null>(null)
+  // En kampanj ute hos gästerna händer sällan: det får ett eget ögonblick (PeakMoment).
+  const [peak, setPeak] = useState<{ text: string; sub: string } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [confirmEl, ask] = useConfirm()
   // Det som misslyckades sist: Försök igen hämtar listan, eller gör om åtgärden (utan ny fråga).
@@ -446,7 +453,7 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
                             <button type="button" className="link-action" disabled={isBusy('test')} onClick={() => void act(c, 'test')}>
                               {isBusy('test') ? 'Skickar…' : 'Testa'}
                             </button>
-                            <button type="button" className="btn primary square mk-small" onClick={() => setSending(c)}>Skicka</button>
+                            <button type="button" className="btn outline square mk-small" onClick={() => setSending(c)}>Skicka</button>
                             <button type="button" className="link-action danger" disabled={isBusy('delete')} onClick={() => void act(c, 'delete')}>Ta bort</button>
                           </>
                         )}
@@ -486,11 +493,13 @@ export function CampaignsTab({ onOpen }: { onOpen: (tab: TabId) => void }) {
           }}
         />
       )}
+      {peak && <PeakMoment text={peak.text} sub={peak.sub} onDone={() => setPeak(null)} />}
       {sending && (
         <SendDialog
           campaign={sending}
           onClose={() => setSending(null)}
-          onDone={(msg) => {
+          onDone={(msg, later) => {
+            setPeak({ text: later ? 'Kampanjen är schemalagd' : 'Kampanjen är på väg', sub: sending.name })
             setSending(null)
             setNotice(msg)
             load()

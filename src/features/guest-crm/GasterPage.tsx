@@ -3,6 +3,8 @@ import { useLiveRefresh } from '../../shared/live'
 import { ConflictError, isConflict, mergeEdits } from '../../shared/merge'
 import { ChangedNote } from '../../shared/ChangedNote'
 import { Bar, Button, Card, Field, Input, Modal, toast } from '@booqy/brand'
+import { useDirtyForm } from '../../shared/dirtyForm'
+import { useUnsavedGuard } from '../../shared/unsaved'
 import { BrandSelect as Select } from '../../shared/Select'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { errorText } from '../../shared/errors'
@@ -214,7 +216,7 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
         ) : null}
         {guests && guests.length > 0 ? (
           <div className="table-scroll" tabIndex={0}>
-            <table className="data-table">
+            <table className="data-table gaster-table">
               <caption className="bq-sr-only">Kunder, senast här först</caption>
               <thead>
                 <tr><th scope="col">Namn</th><th scope="col">Senast här</th><th scope="col">Besök</th><th scope="col">Kund</th></tr>
@@ -227,9 +229,9 @@ function GuestList({ owner, locations }: { owner: boolean; locations: { location
                         {g.name || 'Namn saknas'}
                       </button>
                     </td>
-                    <td>{formatDay(g.lastSeenAt)}</td>
-                    <td>{g.visits}</td>
-                    <td><span className="status-badge">{g.returning ? 'Återkommande' : 'Ny'}</span></td>
+                    <td data-label="Senast här">{formatDay(g.lastSeenAt)}</td>
+                    <td data-label="Besök">{g.visits}</td>
+                    <td data-label="Kund"><span className="status-badge">{g.returning ? 'Återkommande' : 'Ny'}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -282,9 +284,12 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
   // Ändrat något sedan kunden hämtades eller sparades? Då frågar klick utanför,
   // Escape och Stäng först, så inget slängs i tysthet.
   const [confirmEl, ask] = useConfirm()
+  // Spara följer ändringarna: avstängd när formuläret är som det sparade.
+  const dirty = useDirtyForm(form, base)
+  useUnsavedGuard(dirty)
   const requestClose = () => {
     if (saving) return
-    if (JSON.stringify(form) === JSON.stringify(base)) {
+    if (!dirty) {
       onClose()
       return
     }
@@ -385,7 +390,10 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
       onClose={requestClose}
       closeLabel="Stäng"
       footer={owner && guest ? (
-        <Button busy={saving} busyLabel="Sparar…" onClick={save}>Spara</Button>
+        <>
+          {dirty ? <Button variant="secondary" disabled={saving} onClick={() => { setForm(base); setSaveError(null) }}>Ångra ändringar</Button> : null}
+          <Button busy={saving} busyLabel="Sparar…" disabled={!dirty} onClick={save}>{saveError ? 'Spara igen' : 'Spara'}</Button>
+        </>
       ) : undefined}
     >
       {error ? (
@@ -411,17 +419,17 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
           <h3 className="form-section-label">Historik</h3>
           {guest.history.length === 0 ? <p className="cell-muted">Ingen historik.</p> : (
             <div className="table-scroll" tabIndex={0}>
-              <table className="data-table">
+              <table className="data-table gaster-history">
                 <thead>
                   <tr><th scope="col">Datum</th><th scope="col">Vad</th><th scope="col">Restaurang</th>{guest.spendSek ? <th scope="col">Belopp</th> : null}</tr>
                 </thead>
                 <tbody>
                   {guest.history.map((h) => (
                     <tr key={`${h.kind}-${h.sourceId}`}>
-                      <td>{h.date ?? formatDay(h.at)}</td>
-                      <td>{KIND_LABEL[h.kind]}{h.partySize ? `, ${h.partySize} pers.` : ''}{h.sourceId.endsWith('.noshow') ? ' (uteblev)' : ''}</td>
-                      <td>{h.locationId ? locationName(h.locationId) : ''}</td>
-                      {guest.spendSek ? <td>{h.amountOre ? `${Math.round(h.amountOre / 100).toLocaleString('sv-SE')} kr` : ''}</td> : null}
+                      <td data-label="Datum">{h.date ?? formatDay(h.at)}</td>
+                      <td data-label="Vad">{KIND_LABEL[h.kind]}{h.partySize ? `, ${h.partySize} pers.` : ''}{h.sourceId.endsWith('.noshow') ? ' (uteblev)' : ''}</td>
+                      <td data-label="Restaurang">{h.locationId ? locationName(h.locationId) : ''}</td>
+                      {guest.spendSek ? <td data-label="Belopp" className="gaster-amount">{h.amountOre ? `${Math.round(h.amountOre / 100).toLocaleString('sv-SE')} kr` : ''}</td> : null}
                     </tr>
                   ))}
                 </tbody>
@@ -431,7 +439,7 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
           {owner ? (
             <div className="form-grid">
               <Field label="Anteckning" hint={textNote('note') ?? 'Skriv aldrig allergier eller hälsouppgifter här.'}>
-                <textarea className="bq-input" maxLength={300} value={form.note} onChange={(e) => set({ note: e.target.value })} />
+                <textarea className="bq-input gaster-note" rows={4} maxLength={300} value={form.note} onChange={(e) => set({ note: e.target.value })} />
               </Field>
               <Field label="Taggar" hint={textNote('tags') ?? 'Max 10, skilj med komma'}>
                 <Input value={form.tags} onChange={(e) => set({ tags: e.target.value })} />
@@ -439,10 +447,11 @@ function GuestDrawer({ guestId, owner, locationName, onClose }: {
               <Field label="Födelsedag" hint={textNote('birthday') ?? 'MM-DD'}>
                 <Input value={form.birthday} placeholder="03-14" inputMode="numeric" onChange={(e) => set({ birthday: e.target.value })} />
               </Field>
-              <label className="toggle-row">
-                <input type="checkbox" className="switch" checked={form.excluded} onChange={(e) => set({ excluded: e.target.checked })} />
-                <span className="toggle-row-label">Kunden vill inte ingå i utskick</span>
-              </label>
+              <div className="toggle-row toggle-row--field">
+                <span className="toggle-row-label" id="gaster-excluded-label">Kunden vill inte ingå i utskick</span>
+                <button type="button" role="switch" aria-checked={form.excluded} aria-labelledby="gaster-excluded-label"
+                  className="switch" onClick={() => set({ excluded: !form.excluded })} />
+              </div>
               {clash('excluded') !== undefined && (
                 <ChangedNote value={clash('excluded') ? 'ingår inte i utskick' : 'ingår i utskick'} onUse={() => set({ excluded: Boolean(clash('excluded')) })} />
               )}

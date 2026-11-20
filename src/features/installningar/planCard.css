@@ -79,6 +79,6 @@
   padding: 2px 8px;
   border-radius: 999px;
   font: 600 12px/1.6 var(--font);
-  color: #fff;
-  background: #350001;
+  color: var(--on-cta);
+  background: var(--cta);
 }

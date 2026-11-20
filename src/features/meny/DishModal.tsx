@@ -157,10 +157,12 @@ export function DishModal({
     imageFile ? [imageFile.name, imageFile.size] : null, imageFocus, fromInput, untilInput, scheduleOn, station, parts,
   ])
   const [initialSnapshot] = useState(snapshot)
+  // Spara följer ändringarna: avstängd tills något skiljer sig från det dialogen öppnades med.
+  const dirty = snapshot !== initialSnapshot
   const [confirmEl, ask] = useConfirm()
   const closeRef = useRef<() => void>(() => {})
   closeRef.current = () => {
-    if (snapshot === initialSnapshot) {
+    if (!dirty) {
       onCancel()
       return
     }
@@ -221,7 +223,7 @@ export function DishModal({
   const driftActive = drift.active !== undefined && drift.active !== active ? drift.active : undefined
 
   async function save() {
-    if (busy || !valid || availableFrom === undefined || availableUntil === undefined || !optionsResult.groups) return
+    if (busy || !dirty || !valid || availableFrom === undefined || availableUntil === undefined || !optionsResult.groups) return
     setError(null)
     setBusy(true)
     try {
@@ -259,7 +261,7 @@ export function DishModal({
     <ModalOverlay
       onPointerDown={(e) => e.target === e.currentTarget && closeRef.current()}
     >
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="modal meny-dish-modal" role="dialog" aria-modal="true" aria-label={title}>
         <h2>{title}</h2>
 
         <div className="form-field">
@@ -595,17 +597,17 @@ export function DishModal({
           </div>
         )}
 
-        <div className="modal-actions">
+        <div className="modal-actions modal-actions--pinned">
           <button type="button" className="btn outline square" onClick={onCancel}>
             Avbryt
           </button>
           <button
             type="button"
             className="btn primary square"
-            disabled={!valid || busy}
+            disabled={!dirty || !valid || busy}
             onClick={save}
           >
-            {busy ? 'Sparar…' : initial ? 'Spara ändringar' : 'Lägg till rätt'}
+            {busy ? 'Sparar…' : error ? 'Spara igen' : initial ? 'Spara ändringar' : 'Lägg till rätt'}
           </button>
         </div>
       </div>

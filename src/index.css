@@ -3,14 +3,16 @@
    (inloggningssidorna). */
 /* Designsystem: samma rum som booqy.se och Booqy Console. Ett varmt,
    ljust rum (en suddig bakgrundsbild) med arbetet på stora klara glasytor,
-   kvitton på vitt termopapper och mörka espressoknappar som piller. Sex
-   bruna toner: #1A120E #3A2418 #6B4A2E #A88462 #D5C4AE #4A4A46, plus vitt
-   och benvitt; rött och grönt bara för fel och klart. Fyra typsnitt med en
+   kvitton på vitt termopapper. Palett (ägaren 2026-11-20): benvitt
+   #F2E8DA som rum, brunt #3B2418 som bläck, babyblått #8EC5FF som
+   handlingsfärg (huvudknappar, märken, öppen nota, fokus) med brun text på.
+   Bruna toner: #3B2418 #6B4A2E #A88462 #D5C4AE; rött och grönt bara för fel
+   och klart, vinrött bara i logotypen. Fyra typsnitt med en
    roll var: Bricolage Grotesque för stora rubriker och siffror, en
    bokstilsserif (Athelas, Newsreader) för överrubriker, Plus Jakarta Sans
    för allt annat och Martian Mono för det skrivaren trycker (tider,
-   belopp, status). --accent är fyllnadsfärgen (knappar, valt läge) =
-   espresso; --accent-ink är text/länkar = mörk valnöt. Två lägen: ljust
+   belopp, status). --cta är handlingsfärgen (huvudknappar) = babyblått
+   med --on-cta brunt på; --accent är valt läge = brunt; --accent-ink är text/länkar = mörk valnöt. Två lägen: ljust
    (standard) och mörkt, valt under Inställningar och satt som
    <html data-theme> (shared/theme.ts). Mörkt läge är samma rum på kvällen:
    rökt glas och sotat papper. Glaslagret ligger sist i shared/brand.css.
@@ -60,28 +62,41 @@
 }
 
 :root {
-  --bg: #f6f1ea;
+  --bg: #f2e8da;
   --surface: var(--bq-snow);
-  --fill: #f6f1ea;
+  --fill: #f2e8da;
   /* Glasytor: allt som ligger på en panel (kort, tabeller, fält, brunnar). */
   --glass-surface: rgb(var(--bq-snow-rgb) / 0.58);
   --glass-fill: rgb(var(--bq-snow-rgb) / 0.42);
-  --glass-well: rgba(246, 241, 234, 0.36);
-  --border: #e3d6c4;
-  --ink: #1a120e;
-  --muted: #4a4a46;
-  --accent: #1a120e;
-  --accent-hover: #3a2418;
-  --accent-active: #3a2418;
+  --glass-well: rgba(242, 232, 218, 0.36);
+  /* Kanter: alla genomskinliga (ägaren 2026-11-18, se shared/edges.css). */
+  --border: transparent;
+  /* Neutral fyllnad för det som inte är en kant (staplar, prickar, handtag). */
+  --neutral-fill: #e3d6c4;
+  --ink: #3b2418;
+  --muted: #5b4638;
+  --accent: #3b2418;
+  --accent-hover: #4d3122;
+  --accent-active: #2c1a11;
   --on-accent: var(--bq-snow);
   --accent-ink: #6b4a2e;
-  --brand: #1a120e;
+  /* Handlingsfärgen: babyblått med brun text (7,8:1). Ljusare vid hover,
+     djupare vid tryck; --cta-soft är en ljus ton för valda rader och ytor,
+     --cta-ink är blått som text på ljust (5,6:1 mot benvitt). */
+  --cta: #8ec5ff;
+  --cta-rgb: 142 197 255;
+  --cta-hover: #a6d2ff;
+  --cta-active: #74b3f5;
+  --on-cta: #3b2418;
+  --cta-soft: rgb(142 197 255 / 0.26);
+  --cta-ink: #1f5c99;
+  --brand: #3b2418;
   --ox: rgb(var(--bq-snow-rgb) / 0.62);
-  --ox-deep: #f6f1ea;
-  --on-ox: #1a120e;
-  --on-ox-2: #4a4a46;
+  --ox-deep: #f2e8da;
+  --on-ox: #3b2418;
+  --on-ox-2: #5b4638;
   --on-ox-3: #6b4a2e;
-  --focus: rgba(168, 132, 98, 0.45);
+  --focus: rgba(63, 127, 196, 0.7);
   --danger: #9e1d26;
   --danger-ink: #9e1d26;
   --success: #2c6a3f;
@@ -96,19 +111,19 @@
   --tint-blue: rgba(239, 230, 218, 0.72);
   --tint-green: rgba(232, 239, 230, 0.74);
   --tint-orange: rgba(243, 234, 217, 0.74);
-  --tint-red: rgba(246, 230, 228, 0.76);
+  --tint-red: rgba(247, 228, 220, 0.76);
   --tint-purple: rgba(236, 230, 240, 0.74);
-  --scrim: rgba(26, 18, 14, 0.42);
+  --scrim: rgba(59, 36, 24, 0.42);
   --shadow: 0 1px 1px rgba(58, 36, 24, 0.05), 0 14px 30px -20px rgba(58, 36, 24, 0.4);
   --shadow-lg: 0 2px 8px -3px rgba(58, 36, 24, 0.12), 0 30px 70px -40px rgba(58, 36, 24, 0.5);
   /* Papperslappen som sticker ut ur väggen (vald sida i sidomenyn). */
-  --slip: #1a120e;
+  --slip: #3b2418;
   --on-slip: var(--bq-snow);
   /* Vätskan i nyckeltalsrutorna (rgb-tripel och täthet, se brand.css). */
   --liquid-tile: 255, 255, 255;
   --liquid-tile-alpha: 0.4;
-  --liquid-attention: 168, 132, 98;
-  --liquid-attention-alpha: 0.16;
+  --liquid-attention: 142, 197, 255;
+  --liquid-attention-alpha: 0.22;
   --font: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --display: 'Bricolage Grotesque', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
   --serif-face: Athelas, Newsreader, Georgia, serif;
@@ -144,26 +159,35 @@
 :root[data-theme='dark'] {
   --bg: #1a120e;
   --surface: #2a1d16;
-  --fill: #3a2418;
+  --fill: #3b2418;
   --glass-surface: rgba(42, 29, 22, 0.58);
   --glass-fill: rgba(58, 36, 24, 0.5);
   --glass-well: rgba(26, 18, 14, 0.4);
-  --border: #4a3326;
-  --ink: #f6f1ea;
+  --border: transparent;
+  --neutral-fill: #4a3326;
+  --ink: #f2e8da;
   --muted: #d5c4ae;
-  --accent: #f6f1ea;
+  --accent: #f2e8da;
   --accent-hover: var(--bq-snow);
   --accent-active: #d5c4ae;
   --on-accent: #1a120e;
   --accent-ink: #d5c4ae;
-  --focus: rgba(238, 138, 144, 0.4);
-  --danger: #ee8a90;
-  --danger-ink: #ee8a90;
+  /* Samma babyblå i mörkt läge: brun text på den, ljus blå som text på sot. */
+  --cta: #8ec5ff;
+  --cta-hover: #a6d2ff;
+  --cta-active: #74b3f5;
+  --on-cta: #3b2418;
+  --cta-soft: rgb(142 197 255 / 0.18);
+  --cta-ink: #8ec5ff;
+  --focus: rgba(142, 197, 255, 0.5);
+  /* Fel: en varm tegelröd i stället för den gamla rosa (7:1 mot sot). */
+  --danger: #f0806a;
+  --danger-ink: #f0806a;
   --success: #7cc695;
   --success-ink: #7cc695;
   /* Ljusare än success/danger: minst 5:1 även på vätskan i rutorna. */
   --trend-good: #a3dcb4;
-  --trend-bad: #f6b0b5;
+  --trend-bad: #f4a48f;
   --warning: #e0b35a;
   --warning-ink: #e0b35a;
   --purple: #c9b3e0;
@@ -171,24 +195,55 @@
   --tint-blue: rgba(58, 36, 24, 0.66);
   --tint-green: rgba(34, 58, 42, 0.7);
   --tint-orange: rgba(58, 42, 22, 0.7);
-  --tint-red: rgba(67, 35, 38, 0.72);
+  --tint-red: rgba(70, 36, 28, 0.72);
   --tint-purple: rgba(53, 42, 64, 0.7);
   --scrim: rgba(0, 0, 0, 0.62);
   --shadow: 0 1px 1px rgba(0, 0, 0, 0.3), 0 14px 30px -20px rgba(0, 0, 0, 0.6);
   --shadow-lg: 0 2px 8px -3px rgba(0, 0, 0, 0.4), 0 40px 80px -40px rgba(0, 0, 0, 0.7);
-  --slip: #f6f1ea;
+  --slip: #f2e8da;
   --ox: rgba(26, 18, 14, 0.72);
   --ox-deep: #1a120e;
-  --on-ox: #f6f1ea;
+  --on-ox: #f2e8da;
   --on-ox-2: #d5c4ae;
   --on-ox-3: #a88462;
   --on-slip: #1a120e;
   /* mörkt: en svag ljus hinna på espressokortet i stället för brun vätska */
   --liquid-tile: 213, 196, 174;
   --liquid-tile-alpha: 0.05;
-  --liquid-attention: 213, 196, 174;
-  --liquid-attention-alpha: 0.12;
+  --liquid-attention: 142, 197, 255;
+  --liquid-attention-alpha: 0.14;
   color-scheme: dark;
+}
+
+/* @booqy/brand-komponenterna (Button, Field, Bar, Card) läser --bq-*:
+   samma palett där, så märkets knappar och fält följer appen. */
+:root {
+  --bq-bg: #f2e8da;
+  --bq-surface-2: #f2e8da;
+  --bq-ink: #3b2418;
+  --bq-muted: #5b4638;
+  --bq-focus: var(--focus);
+  --bq-info-bg: #f2e8da;
+  --bq-info-ink: #3b2418;
+}
+:root[data-theme='dark'] {
+  --bq-bg: #1a120e;
+  --bq-surface-2: #3b2418;
+  --bq-ink: #f2e8da;
+  --bq-info-bg: #3b2418;
+  --bq-info-ink: #f2e8da;
+  --bq-danger: #f0806a;
+  --bq-danger-bg: #46241c;
+  --bq-danger-ink: #f4a48f;
+  --bq-chart-4: #f0806a;
+}
+
+.bq-btn--primary {
+  background: var(--cta);
+  color: var(--on-cta);
+}
+.bq-btn--primary:hover:not(:disabled) {
+  background: var(--cta-hover);
 }
 
 ::selection {
@@ -266,7 +321,7 @@ a {
   vertical-align: baseline;
   /* Pilen, inte handen: knappen själv reagerar när pekaren är över den. */
   cursor: default;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25);
+  box-shadow: inset 0 1px 0 transparent;
   transition: background-color 0.16s, border-color 0.16s, transform 0.09s, box-shadow 0.16s;
 }
 .table-chip-link svg {
@@ -276,7 +331,7 @@ a {
 .table-chip-link:hover {
   border-color: var(--accent-ink);
   background: var(--surface);
-  box-shadow: 0 2px 8px rgb(26 18 14 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.3);
+  box-shadow: 0 2px 8px rgb(26 18 14 / 0.12), inset 0 1px 0 transparent;
 }
 .table-chip-link:hover svg {
   opacity: 1;
@@ -301,16 +356,16 @@ a {
 :root {
   --glass: rgb(var(--bq-snow-rgb) / 0.62);
   --glass-hi: rgb(var(--bq-snow-rgb) / 0.74);
-  --rim: inset 0 1px 0 rgb(var(--bq-snow-rgb) / 0.9), inset 0 0 0 1px rgb(var(--bq-snow-rgb) / 0.55);
+  --rim: inset 0 1px 0 transparent, inset 0 0 0 1px transparent;
   --r-panel: 28px;
-  --backdrop-veil: rgba(246, 241, 234, 0);
+  --backdrop-veil: rgba(242, 232, 218, 0.56);
   --wall-tint: rgba(58, 36, 24, 0.08);
   --wall-tint-2: rgba(58, 36, 24, 0.14);
 }
 :root[data-theme='dark'] {
   --glass: rgba(26, 18, 14, 0.7);
   --glass-hi: rgba(26, 18, 14, 0.8);
-  --rim: inset 0 1px 0 rgba(213, 196, 174, 0.18), inset 0 0 0 1px rgba(213, 196, 174, 0.1);
+  --rim: inset 0 1px 0 transparent, inset 0 0 0 1px transparent;
   --backdrop-veil: rgba(26, 18, 14, 0.72);
   --wall-tint: rgba(213, 196, 174, 0.12);
   --wall-tint-2: rgba(213, 196, 174, 0.2);
@@ -319,21 +374,22 @@ a {
 /* Rummet bakom glaset: fotot, mjuka bruna och vinröda fläckar och kvällens
    slöja i mörkt läge. Fläckarna ligger stilla (ingen animation). */
 :root {
-  /* Färg för glaset att bryta: vin, brons, sand och valnöt. */
+  /* Färg för glaset att bryta: brunt, brons, sand och en stänk babyblått.
+     Inget vinrött eller rött här: genom glaset blev det rosa. */
   --backdrop-blobs:
-    radial-gradient(40% 48% at 6% 10%, rgba(53, 0, 1, 0.66), transparent 72%),
-    radial-gradient(36% 42% at 94% 90%, rgba(107, 74, 46, 0.66), transparent 72%),
-    radial-gradient(32% 36% at 84% 6%, rgba(168, 132, 98, 0.72), transparent 70%),
-    radial-gradient(30% 34% at 28% 96%, rgba(58, 36, 24, 0.55), transparent 70%),
-    radial-gradient(26% 30% at 66% 42%, rgba(158, 29, 38, 0.36), transparent 70%),
-    radial-gradient(28% 32% at 40% 60%, rgba(168, 132, 98, 0.42), transparent 70%);
+    radial-gradient(40% 48% at 6% 10%, rgba(59, 36, 24, 0.5), transparent 72%),
+    radial-gradient(36% 42% at 94% 90%, rgba(107, 74, 46, 0.6), transparent 72%),
+    radial-gradient(32% 36% at 84% 6%, rgba(168, 132, 98, 0.62), transparent 70%),
+    radial-gradient(30% 34% at 28% 96%, rgba(59, 36, 24, 0.5), transparent 70%),
+    radial-gradient(26% 30% at 66% 42%, rgba(142, 197, 255, 0.34), transparent 70%),
+    radial-gradient(28% 32% at 40% 60%, rgba(168, 132, 98, 0.4), transparent 70%);
 }
 :root[data-theme='dark'] {
   --backdrop-blobs:
-    radial-gradient(40% 48% at 6% 10%, rgba(158, 29, 38, 0.5), transparent 72%),
+    radial-gradient(40% 48% at 6% 10%, rgba(59, 36, 24, 0.7), transparent 72%),
     radial-gradient(36% 42% at 94% 90%, rgba(168, 132, 98, 0.4), transparent 72%),
     radial-gradient(32% 36% at 84% 6%, rgba(107, 74, 46, 0.6), transparent 70%),
-    radial-gradient(30% 34% at 28% 96%, rgba(53, 0, 1, 0.6), transparent 70%),
+    radial-gradient(30% 34% at 28% 96%, rgba(142, 197, 255, 0.14), transparent 70%),
     radial-gradient(24% 28% at 56% 46%, rgba(213, 196, 174, 0.16), transparent 70%);
 }
 
@@ -386,14 +442,14 @@ html.is-desktop-glass[data-desktop-glass='tint'] body::before {
     --tint-blue: #efe6da !important;
     --tint-green: #e8efe6 !important;
     --tint-orange: #f3ead9 !important;
-    --tint-red: #f6e6e4 !important;
+    --tint-red: #f7e4dc !important;
     --tint-purple: #ece6f0 !important;
   }
   :root[data-theme='dark'] {
     --tint-blue: #3a2418 !important;
     --tint-green: #223a2a !important;
     --tint-orange: #3a2a16 !important;
-    --tint-red: #432326 !important;
+    --tint-red: #46241c !important;
     --tint-purple: #352a40 !important;
   }
 }
@@ -405,7 +461,7 @@ html.is-desktop-glass[data-desktop-glass='tint'] body::before {
 html[data-glass-backdrop='colour'] body::before,
 html.is-desktop-glass[data-glass-backdrop='colour'] body::before {
   display: block;
-  --uc-base: color-mix(in srgb, var(--user-colour) 55%, #f6f1ea);
+  --uc-base: color-mix(in srgb, var(--user-colour) 55%, #f2e8da);
   --uc-hi: color-mix(in srgb, var(--uc-base) 65%, #fbfaf6);
   --uc-lo: color-mix(in srgb, var(--uc-base) 78%, #1a120e);
   background:
@@ -433,7 +489,7 @@ html[data-glass-backdrop='image'] body::before,
 html.is-desktop-glass[data-glass-backdrop='image'] body::before {
   display: block;
   background:
-    linear-gradient(rgb(246 241 234 / 0.28), rgb(246 241 234 / 0.28)),
+    linear-gradient(rgb(242 232 218 / 0.28), rgb(242 232 218 / 0.28)),
     var(--user-image) center / cover no-repeat,
     var(--bg);
 }
@@ -443,4 +499,10 @@ html.is-desktop-glass[data-glass-backdrop='image'][data-theme='dark'] body::befo
     linear-gradient(rgb(26 18 14 / 0.42), rgb(26 18 14 / 0.42)),
     var(--user-image) center / cover no-repeat,
     var(--bg);
+}
+
+/* Mörkt läge: en tom kryssruta var en mörk ruta på det mörka kortet och
+   syntes knappt. Tom ruta ritas ljus, ikryssad följer accentfärgen. */
+:root[data-theme='dark'] input[type='checkbox']:not(:checked) {
+  color-scheme: light;
 }

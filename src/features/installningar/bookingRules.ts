@@ -72,8 +72,6 @@ export const KIND_LABEL: Record<SpecialDayKind, string> = {
 }
 export const NOTE_MAX = 80
 export const DAYS_AHEAD = 730
-/** Bokningar finns bara inom bokningshorisonten (21 dagar). */
-export const BOOKING_HORIZON_DAYS = 21
 const TIME = /^(?:[01]\d|2[0-3]):[0-5]\d$/
 
 export interface Draft {

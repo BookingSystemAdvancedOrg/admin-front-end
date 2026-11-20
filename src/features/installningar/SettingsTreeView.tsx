@@ -1,10 +1,12 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, FocusEvent, KeyboardEvent, RefObject } from 'react'
+import type { FocusEvent, KeyboardEvent, RefObject } from 'react'
 import { Icon } from '../../shared/Icon'
+import { staggerStyle } from '../../shared/motion/stagger'
 import { BRANCH_LABEL, fold, searchLeaves, treeOf } from './settingsTree'
 import type { BranchId, Leaf, Tree, TreeId } from './settingsTree'
 import type { Apple } from './settingsApples'
 import './settingsTree.css'
+import { BackButton } from '../../shared/BackButton'
 
 /**
  * Inställningarnas fält, träd och grenar (settingsTree.ts). Datorn (från
@@ -281,7 +283,7 @@ export function SettingsField({
       <LeafSearch visible={visible} onLeaf={onLeaf} />
       <div className="stree-grid">
         {trees.map((tree, i) => (
-          <section key={tree.id} className="admin-card stree-card" style={{ '--i': i } as CSSProperties} aria-labelledby={`stree-${tree.id}`}>
+          <section key={tree.id} className="admin-card stree-card" style={staggerStyle(i)} aria-labelledby={`stree-${tree.id}`}>
             <h2 className="stree-card-heading" id={`stree-${tree.id}`}>
               <button type="button" className="stree-card-head" data-stree-from={tree.id} onClick={() => onTree(tree.id)}>
                 <span className="stree-icon" aria-hidden="true"><Icon name={tree.icon} size={20} /></span>
@@ -330,9 +332,7 @@ export function SettingsTreePage({
   return (
     <div className="stree-view">
       <div className="stree-head">
-        <button type="button" className="settings-back" onClick={onField}>
-          <Icon name="chevron-left" size={16} /> Inställningar
-        </button>
+        <BackButton className="settings-back" onClick={onField}>Inställningar</BackButton>
         <nav className="stree-crumbs" aria-label="Du är här">
           <ol>
             <li><button type="button" onClick={onField}>Inställningar</button></li>
@@ -373,9 +373,7 @@ export function BranchHead({ branch, onField, onTree }: { branch: BranchId; onFi
   const tree = treeOf(branch)
   return (
     <div className="stree-head">
-      <button type="button" className="settings-back" onClick={() => onTree(tree.id)}>
-        <Icon name="chevron-left" size={16} /> {tree.label}
-      </button>
+      <BackButton className="settings-back" onClick={() => onTree(tree.id)}>{tree.label}</BackButton>
       <nav className="stree-crumbs" aria-label="Du är här">
         <ol>
           <li><button type="button" onClick={onField}>Inställningar</button></li>

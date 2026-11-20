@@ -1,20 +1,35 @@
 /* Live Layout Editor - CSS-3D-scen (Figma: admin-live-layout-editor-page) */
 
-/* "Se live" - skrivskyddat läge, en neutral notis snarare än ett fel. */
-.layout-viewmode-banner {
-  padding: 12px 16px;
+/* Notiser ovanför ritytan: inget fel, men något att veta eller göra.
+   ("Se live" och "en annan version väntar redan"). */
+.layout-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 20px;
+  padding: 14px 16px 14px 18px;
   background: var(--tint-orange);
-  border: 0;
-  color: var(--warning-ink);
+  color: var(--ink);
   border-radius: var(--r-md);
-  font-size: 13px;
+  font: 400 14px/1.5 var(--font);
 }
 
-.layout-viewmode-banner .link-action {
-  color: inherit;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.layout-notice p {
+  flex: 1 1 320px;
+  margin: 0;
+  max-width: 75ch;
+  text-wrap: balance;
+}
+
+.layout-notice strong {
+  font-weight: 700;
+}
+
+.layout-notice-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* Nollställer <fieldset>:s standardutseende (kant, padding, min-width) så
@@ -35,78 +50,119 @@
 }
 
 .editor-row {
+  position: relative;
   display: flex;
   gap: 24px;
   align-items: stretch;
 }
 
-/* --- Verktygsrad -------------------------------------------------------- */
+/* --- Verktygspaletten --------------------------------------------------- */
 
+/*
+ * En glaspalett som svävar över ritytans vänsterkant (under våningsflikarna)
+ * i stället för en egen kolumn: två kolumner, grupperade (flytta, rita, bord),
+ * och varje knapp har ikon, namn och tangent inuti sig.
+ */
 .editor-toolbar {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border-radius: var(--r-md);
-  align-self: flex-start;
+  position: absolute;
+  z-index: 6;
+  top: 116px;
+  left: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, 74px);
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 20px;
+  background: var(--glass-surface);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+  box-shadow: 0 1px 1px rgba(26, 18, 14, 0.06), 0 18px 34px -18px rgba(26, 18, 14, 0.45);
+}
+
+.tool-sep {
+  grid-column: 1 / -1;
+  height: 0;
+  margin: 2px 6px;
+  border-top: 1px dashed var(--border);
 }
 
 .tool-btn {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  width: 56px;
-  height: 52px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--border);
-  background: var(--glass-surface);
+  gap: 6px;
+  width: 74px;
+  height: 58px;
+  padding: 6px 4px 7px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--ink);
-  font: 600 15px/1 var(--sans);
   cursor: default;
-  transition: border-color 120ms ease, background 120ms ease;
+  transition: background 160ms var(--ease), border-color 160ms var(--ease), transform 160ms var(--ease);
 }
 
-.tool-btn small {
-  font: 500 9px/1 var(--sans);
+.tool-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.tool-caption small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* 1.25, inte 1: med overflow: hidden klipptes j/g av (Välj, Vägg). */
+  font: 600 11px/1.25 var(--font);
+  padding-bottom: 1px;
   color: var(--muted);
 }
 
-/* Verktygets bokstav i hörnet, som i Figma - lär ut kortkommandot. */
-.tool-btn {
-  position: relative;
-}
-
+/* Tangenten som lär ut kortkommandot: en liten tangent bredvid namnet. */
 .tool-key {
-  position: absolute;
-  top: 3px;
-  right: 4px;
-  font: 600 8px/1 var(--mono, ui-monospace, monospace);
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font: 600 8.5px/1 var(--mono);
   color: var(--muted);
-}
-
-.tool-key::before {
-  content: attr(data-key);
-}
-
-.tool-btn.active .tool-key {
-  color: inherit;
-  opacity: 0.85;
 }
 
 .tool-btn:hover:not(:disabled) {
-  border-color: var(--green);
+  background: var(--glass-fill);
+  border-color: var(--border);
+}
+
+.tool-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.tool-btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
 }
 
 .tool-btn.active {
-  background: var(--green);
-  border-color: var(--green);
+  background: var(--accent);
+  border-color: var(--accent);
   color: var(--on-accent);
+  box-shadow: 0 6px 14px -8px rgba(26, 18, 14, 0.6);
 }
 
-.tool-btn.active small {
-  color: color-mix(in srgb, var(--on-accent) 75%, transparent);
+.tool-btn.active small,
+.tool-btn.active .tool-key {
+  color: color-mix(in srgb, var(--on-accent) 80%, transparent);
 }
 
 .tool-btn:disabled {
@@ -224,10 +280,14 @@
   right: 16px;
   z-index: 6;
   width: min(560px, calc(100% - 32px));
-  max-height: calc(100% - 96px);
   overflow: auto;
   padding: 16px 18px;
-  background: var(--glass-pop);
+  /* Ogenomskinlig: bord och tomtext bakom listan syntes mellan raderna.
+     Höjden ryms i fönstret, och sista raderna kan skrollas fram ovanför
+     Fråga Booqy-knappen längst ner till höger. */
+  max-height: min(calc(100% - 96px), calc(100dvh - 120px));
+  padding-bottom: 64px;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   box-shadow: 0 12px 32px -12px rgba(26, 18, 14, 0.35);
@@ -269,21 +329,29 @@
 
 .shortcut-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 12px;
+  gap: 2px 12px;
   padding: 4px 0;
   border-top: 1px dashed var(--border);
   font: 400 12px/1.35 var(--sans);
 }
 
 .shortcut-row dt {
-  flex-shrink: 0;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
+/* Minst 7em innan texten bryts: annars blev den ett ord per rad bredvid
+   en lång tangent (Cmd/Ctrl medan du drar). Då hamnar den under i stället. */
 .shortcut-row dd {
+  flex: 1 1 7em;
+  min-width: 0;
   margin: 0;
   color: var(--muted);
   text-align: right;
+  /* Inget ensamt ord ("här") på en egen rad. */
+  text-wrap: balance;
 }
 
 .shortcut-row kbd {
@@ -338,7 +406,7 @@
   /* --pan-x/--pan-y: panorering i skärmpixlar (scroll, hand, mellanslag). */
   transform: translate(calc(-50% + var(--pan-x, 0px)), calc(-50% + var(--pan-y, 0px)))
     scale(var(--zoom, 1)) rotateX(var(--tilt, 0deg)) rotateZ(var(--spin, 0deg));
-  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 400ms var(--e-out);
 }
 
 /* Under fri dragrotation (handverktyget) stängs övergången av - annars
@@ -352,7 +420,7 @@
   position: relative;
   border: 1px dashed rgba(0, 0, 0, 0.18);
   transform-style: preserve-3d;
-  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 400ms var(--e-out);
 }
 
 /*
@@ -393,7 +461,7 @@
   position: absolute;
   background: #ececf0;
   border: 2px solid #dcdce0;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 0 0 1px transparent;
   background-image:
     linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
@@ -404,9 +472,9 @@
   transform: translateZ(-1px);
 }
 
+/* Valt: tonat i stället för en kant. */
 .ground.selected {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
+  filter: brightness(0.9);
 }
 
 .ground.draft {
@@ -529,7 +597,7 @@
 
 .seg.lowered .seg-cap {
   background: #6e6e73;
-  box-shadow: inset 0 0 0 1px rgb(var(--bq-snow-rgb) / 0.12);
+  box-shadow: inset 0 0 0 1px transparent;
 }
 
 /* Fönster - glasband som sitter i väggen (väggen bakom är kvar) */
@@ -538,7 +606,7 @@
     rgba(214, 235, 243, 0.9),
     rgba(150, 196, 214, 0.75)
   );
-  box-shadow: inset 0 0 0 2px rgb(var(--bq-snow-rgb) / 0.6);
+  box-shadow: inset 0 0 0 2px transparent;
 }
 
 .seg.window .seg-cap.glass-cap {
@@ -558,12 +626,7 @@
 
 .seg.selected .seg-face,
 .seg.selected .seg-cap {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
-}
-
-.seg.selected .seg-shadow {
-  outline: 2px solid var(--accent);
+  filter: brightness(1.25) saturate(1.2);
 }
 
 /* Ritförhandsvisning */
@@ -619,7 +682,7 @@
   top: 50%;
   transform-style: preserve-3d;
   transform: translateZ(calc(var(--tagz, var(--wh, 90px)) + 6px));
-  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 400ms var(--e-out);
   pointer-events: none;
 }
 
@@ -627,7 +690,7 @@
   display: inline-block;
   transform: translate(-50%, -50%)
     rotateZ(calc(-1 * var(--spin, 0deg))) rotateX(calc(-1 * var(--tilt, 0deg)));
-  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 400ms var(--e-out);
   font: 700 10px/1 var(--sans);
   letter-spacing: 0.08em;
   color: var(--muted);
@@ -675,7 +738,7 @@
   inset: 0;
   border-radius: 3px;
   background: #d9cdb8;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14);
+  box-shadow: inset 0 0 0 1px transparent;
   transform: translateZ(10px);
 }
 
@@ -687,7 +750,7 @@
   height: 22px;
   border-radius: var(--r-md) var(--r-md) 0 0;
   background: #b9ab95;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14);
+  box-shadow: inset 0 0 0 1px transparent;
   transform-origin: top center;
   transform: rotateX(90deg);
 }
@@ -718,17 +781,37 @@
 }
 
 /* Resize-handtag: dra en sida (bredd) eller ände (djup) för att ändra
-   bordets mått fritt - samma accentprick som väggarnas handtag. */
+   bordets mått fritt. Träffytan är 22 px men genomskinlig; det som syns är
+   en smal list längs kanten, så att bordsnumret och platsbrickan inte döljs
+   av handtagen när bordet är litet eller ritytan utzoomad. */
 .table-handle {
   position: absolute;
   width: 22px;
   height: 22px;
-  border-radius: 3px;
+  transform: translateZ(calc(var(--th, 22px) + 4px));
+  z-index: 2;
+}
+
+.table-handle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 8px;
+  margin: -4px 0 0 -11px;
+  border-radius: 4px;
   background: var(--accent);
   border: 2px solid var(--bq-snow);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-  transform: translateZ(calc(var(--th, 22px) + 4px));
-  z-index: 2;
+  box-sizing: border-box;
+}
+
+.table-handle.e::after,
+.table-handle.w::after {
+  width: 8px;
+  height: 22px;
+  margin: -11px 0 0 -4px;
 }
 
 .table-handle.e {
@@ -819,7 +902,7 @@
   border: 1px solid #ddd5c6;
   transform: translateZ(var(--th));
   transform-style: preserve-3d;
-  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.03);
+  box-shadow: inset 0 0 0 2px transparent;
 }
 
 /*
@@ -834,10 +917,16 @@
   flex-direction: column;
   align-items: center;
   gap: 1px;
+  max-width: 100%;
   transform-origin: bottom center;
-  transform: translateZ(1px) rotateZ(calc(-1 * var(--spin, 0deg)))
-    rotateX(calc(-1 * var(--tilt, 0deg)));
-  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+  /* Skylten står mitt på bordet i både 2D och 3D. Origo är underkanten,
+     så vridningen mot vyn (rotateZ) görs kring skyltens mitt: flytta upp
+     halva höjden, vrid, flytta tillbaka. Sedan flyttas foten mot kameran så
+     att skyltens mitt, när den rest sig (rotateX), syns mitt på bordet:
+     halva höjden delat med cos(lutningen). */
+  transform: translateZ(1px) translateY(-50%) rotateZ(calc(-1 * var(--spin, 0deg)))
+    translateY(calc(50% / cos(var(--tilt, 0deg)))) rotateX(calc(-1 * var(--tilt, 0deg)));
+  transition: transform 400ms var(--e-out);
 }
 
 .table-el.round .table-top,
@@ -850,19 +939,37 @@
   inset: 0;
   background: transparent;
   border: 0;
-  box-shadow: 0 0 0 1px #d3c9b8;
+  box-shadow: 0 0 0 1px transparent;
   transform: translateZ(calc(var(--th) / 2));
 }
 
 /* Bordsskivan är ljus i båda lägena (.table-top), så texten på den har fasta
    färger: med temats bläck blev den ljus på ljust i mörkt läge. */
 .table-label {
-  font: 700 11px/1.1 var(--sans);
+  /* Ett långt bordsnamn bryts på högst två rader inom bordet (hela namnet i
+     title), i stället för att växa upp över bordsskivan. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  max-width: 100%;
+  /* Skalas ritytan ned (passa in på surfplattan, 62-79 %) blev siffrorna
+     6-7 px. Texten växer i motsvarande grad så den aldrig blir mindre än
+     11 px på skärmen (högst 20 px i planens mått), men aldrig mer än att
+     numret och platsbrickan ryms på bordet (--tmin = bordets kortaste sida). */
+  font: 700 min(clamp(12px, calc(11px / var(--zoom, 1)), 20px), max(10px, calc((var(--tmin, 60px) - 14px) / 2.3)))/1.15 var(--sans);
   color: var(--bq-espresso);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .table-seats {
-  font: 700 10px/1.1 var(--sans);
+  flex: none;
+  white-space: nowrap;
+  font: 700 min(clamp(10.5px, calc(10px / var(--zoom, 1)), 18px), max(9px, calc((var(--tmin, 60px) - 14px) / 2.55)))/1.2 var(--sans);
+  font-variant-numeric: tabular-nums;
   color: var(--bq-snow);
   background: var(--bq-espresso);
   border-radius: var(--r-md);
@@ -872,24 +979,26 @@
 .table-el.selected .table-top {
   background: var(--green);
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent);
+  box-shadow: 0 0 0 2px transparent;
 }
 
 .table-el.selected .table-label {
   color: var(--on-accent);
 }
 
-/* Bord som står ovanpå ett annat: röd kant (även när det är valt), och
-   publiceringen stoppas tills de flyttats isär. */
+/* Bord som står ovanpå ett annat: röd bordsskiva (även när det är valt), och
+   publiceringen stoppas tills de flyttats isär. Färgen visar det, ingen kant. */
 .table-el.overlap .table-top,
 .table-el.overlap.selected .table-top {
-  border-color: var(--danger);
-  box-shadow: 0 0 0 3px var(--danger);
+  background: color-mix(in srgb, var(--danger) 35%, var(--bq-snow));
+  box-shadow: 0 0 0 3px transparent;
 }
 
+/* Platsbrickan i motsatt färg mot den valda skivan: i mörkt läge är skivan
+   ljus, och ljus bricka med brons text syntes knappt. */
 .table-el.selected .table-seats {
-  color: var(--bq-bronze);
-  background: var(--bq-snow);
+  color: var(--accent);
+  background: var(--on-accent);
 }
 
 .floor-entry-label {
@@ -919,6 +1028,8 @@
 .props-title {
   font: 600 20px/1.2 var(--serif);
   color: var(--ink);
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .props-label {
@@ -1063,11 +1174,16 @@
 
 /* --- Statusrad ---------------------------------------------------------- */
 
+/* Två delar som bryts på var sin rad när ett långt våningsnamn inte ryms
+   bredvid statusen. Marginalen under gör att raden kan skrollas fram ovanför
+   Fråga Booqy-knappen (raden är sist på sidan). */
 .editor-statusbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: 8px 16px;
   width: 100%;
+  margin-bottom: 64px;
   padding: 14px 20px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
@@ -1077,8 +1193,14 @@
 }
 
 .editor-statusbar .grow {
-  flex: 1 1 0;
-  min-width: 1px;
+  flex: 1 1 260px;
+  min-width: min(260px, 100%);
+}
+
+.editor-statusbar-floor {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 1280px) {
@@ -1091,100 +1213,240 @@
   }
 }
 
-/* --- Publicerade versioner (LayoutVersionsModal) ------------------------- */
+/* --- Versioner (LayoutVersionsModal) ------------------------------------ */
 
 /*
- * En radlista i stället för en <table> - modalen är bara 480px bred och den
- * gamla .data-table (min-width: 900px, byggd för de stora sidtabellerna)
- * tvingade fram sidscroll för en lista med bara fyra korta fält. En
- * flex-rad wrap:ar istället naturligt på egen bredd.
+ * En tidslinje som ett kvitto: en tunn räls till vänster med en prick per
+ * version, datum och status i mono som stämplar. Den som gäller nu har en
+ * fylld prick, nästa en ring, de som inte är inplanerade en tom prick.
  */
-.versions-list {
-  display: flex;
-  flex-direction: column;
+.versions-modal {
+  width: 560px;
 }
 
-.version-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
-  padding: 12px 0;
-  border-top: 1px solid var(--border);
-}
-
-.version-row:first-child {
-  border-top: 0;
-}
-
-.version-row-main {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  min-width: 0;
-}
-
-.version-row-right {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-}
-
-/* .cell-strong/.cell-muted är annars scopade till .data-table i admin.css -
-   här är det ingen tabell, så basstilen och modifierarna sätts om lokalt. */
-.version-row-main,
-.version-row-right {
-  font: 400 14px/1.3 var(--sans);
+.versions-summary {
+  margin: 0;
+  font: 400 15px/1.5 var(--font);
   color: var(--ink);
+  text-wrap: balance;
 }
 
-.version-row .cell-strong {
-  font-weight: 600;
+.versions-summary strong {
+  font-weight: 700;
 }
 
-.version-row .cell-muted {
-  font-size: 13px;
+.versions-saved h3 {
+  margin: 4px 0 4px;
+  font: 600 11px/1.2 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
-/*
- * En schemalagd (väntande) version fick tidigare en fylld badge precis som
- * "Gäller nu" - lätt att läsa som "två aktiva" i förbifarten. Streckad
- * kontur i stället för fyllnad gör skillnaden entydig på håll, inte bara
- * i texten.
- */
-.status-badge.pending-version {
-  background: transparent;
-  border: 1px dashed var(--warning-ink);
+.version-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.vt-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 0 12px;
+  padding: 12px 0 14px;
+}
+
+.vt-row + .vt-row {
+  border-top: 1px dashed var(--border);
+}
+
+/* Rälsen: går genom alla prickar i en lista. */
+.vt-row::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--neutral-fill);
+}
+
+.vt-row:first-child::before {
+  top: 20px;
+}
+
+.vt-row:last-child::before {
+  bottom: calc(100% - 20px);
+}
+
+.vt-row:only-child::before {
+  display: none;
+}
+
+.vt-dot {
+  position: relative;
+  z-index: 1;
+  width: 12px;
+  height: 12px;
+  margin: 4px 0 0 4px;
+  border-radius: 50%;
+  border: 2px solid var(--muted);
+  background: var(--neutral-fill);
+}
+
+.vt-current .vt-dot {
+  background: var(--ink);
+  border-color: var(--ink);
+  box-shadow: 0 0 8px 2px color-mix(in srgb, var(--ink) 20%, transparent);
+}
+
+.vt-next .vt-dot {
+  background: var(--warning-ink);
+  border-width: 3px;
+}
+
+.vt-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vt-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.vt-name {
+  font: 700 16px/1.3 var(--font);
+  color: var(--ink);
+}
+
+.vt-unscheduled .vt-name {
+  font-weight: 600;
+}
+
+.vt-stamp {
+  display: inline-flex;
+  padding: 3px 8px 2px;
+  border: 1.5px solid currentColor;
+  border-radius: 4px;
+  font: 700 10.5px/1.2 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.vt-stamp-now {
+  color: var(--success-ink);
+}
+
+.vt-stamp-next {
+  color: var(--warning-ink);
+  border-style: dashed;
+}
+
+.vt-meta {
+  margin: 0;
+  font: 400 13px/1.45 var(--font);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.vt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 2px 0 0 -10px;
+}
+
+.vt-actions .link-action.strong {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* Datumvalet: ett utskrivet fält under raden. */
+.vt-plan {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-md);
+  background: var(--glass-well);
+}
+
+.vt-plan-label {
+  font: 600 13px/1.3 var(--font);
+  color: var(--ink);
+}
+
+.vt-plan-why,
+.vt-plan-replaces {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font: 400 13px/1.4 var(--font);
+  color: var(--muted);
+}
+
+.vt-plan-replaces {
   color: var(--warning-ink);
 }
 
-.pending-version-notice {
-  padding: 12px 16px;
-  background: var(--tint-orange);
-  border: 0;
-  color: var(--warning-ink);
-  border-radius: var(--r-md);
-  font-size: 13px;
+.vt-plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Surfplatta och smal laptop: ritytan är för smal för en svävande palett,
+   så den blir en rad ovanför ritytan (skrollbar i sidled vid behov). */
+@media (max-width: 1100px) {
+  /* Raden bryts i stället för att skrolla i sidled: alla verktyg syns på en
+     surfplatta, inget ligger halvt utanför kanten. */
+  .editor-toolbar {
+    position: static;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    padding: 6px;
+  }
+
+  .tool-btn {
+    flex-shrink: 0;
+  }
+
+  .tool-sep {
+    align-self: stretch;
+    height: auto;
+    margin: 6px 2px;
+    border-top: 0;
+    border-left: 1px dashed var(--border);
+  }
+
+  .editor-row {
+    flex-wrap: wrap;
+  }
+
+  .floor-scene {
+    flex: 1 1 100%;
+  }
 }
 
 @media (max-width: 760px) {
   /* Verktygsfältet blir en horisontell, skrollbar rad ovanför canvasen
      istället för en smal kolumn bredvid den - annars klämmer den ihjäl
      3D-scenen på en telefonbredd. */
-  .editor-toolbar {
-    flex-direction: row;
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: 10px;
-  }
-
-  .tool-btn {
-    flex-shrink: 0;
-  }
+  /* Verktygsraden: se 1100 px ovan. */
 
   .floor-scene {
     /* .floor-scene har `flex: 1 1 0` - flex-basis vinner över width i en
@@ -1354,13 +1616,14 @@
   -webkit-backdrop-filter: blur(14px) saturate(1.3);
   backdrop-filter: blur(14px) saturate(1.3);
   opacity: 1;
-  transition: opacity 520ms var(--ease), visibility 0s linear 0s;
+  transition: opacity 240ms var(--ease), visibility 0s linear 0s;
 }
 .layout-prep.is-done {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 520ms var(--ease), visibility 0s linear 520ms;
+  /* går undan fortare än den kom (ux-motion 18) */
+  transition: opacity 160ms var(--e-in), visibility 0s linear 160ms;
 }
 .layout-prep-card {
   display: grid;
@@ -1370,7 +1633,7 @@
   border-radius: var(--r-lg);
   background: var(--glass-hi, color-mix(in srgb, var(--glass-surface) 70%, transparent));
   box-shadow: var(--rim, none), var(--shadow, 0 20px 40px -24px rgba(26, 18, 14, 0.4));
-  transition: translate 520ms var(--ease), scale 520ms var(--ease);
+  transition: translate 160ms var(--e-in), scale 160ms var(--e-in);
 }
 .layout-prep.is-done .layout-prep-card {
   translate: 0 -6px;
@@ -1451,6 +1714,101 @@
   }
 }
 
+/* Surfplatta på höjden (ritytan runt 470 px): kontrollerna är bredare än
+   ytan och sköts annars ut över vänsterkanten (ångra syntes inte). De bryts
+   på två rader inom ytan, och våningsflikarna lägger sig under båda. */
+/* Våningsflikarna göms medan listan är öppen, i alla bredder: ett långt
+   våningsnamn sköts annars in under listan och klipptes. */
+.floor-scene:has(.shortcut-sheet) .floor-tabs {
+  visibility: hidden;
+}
+
+@container (max-width: 600px) {
+
+  .shortcut-sheet {
+    top: 98px;
+    max-height: min(calc(100% - 110px), calc(100dvh - 120px));
+  }
+
+  .scene-controls {
+    left: 12px;
+    right: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .floor-tabs {
+    top: 104px;
+  }
+}
+
+/* Pekskärm (iPad): varje knapp på ritytan är minst 44 px hög att träffa. */
+@media (pointer: coarse) {
+  .scene-controls .view-toggle button,
+  .floor-tabs button {
+    min-height: 44px;
+  }
+
+  .floor-tabs button.add {
+    min-width: 44px;
+  }
+
+  .layout-mode-switch button,
+  .layout-actions .btn {
+    min-height: 44px;
+  }
+
+  /* Egenskapspanelen och versionslistan: samma 44 px på surfplattan. */
+  .step-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .shape-toggle button,
+  .zone-chip,
+  .floor-pill,
+  .props-panel .btn,
+  .vt-actions .link-action,
+  .versions-modal .modal-actions .btn {
+    min-height: 44px;
+  }
+
+  .vt-actions .link-action {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .props-tip summary {
+    padding: 11px 0;
+  }
+
+  .view-toggle button.view-icon,
+  .view-toggle button {
+    min-width: 44px;
+  }
+}
+
+@container (max-width: 860px) {
+  @media (pointer: coarse) {
+    .floor-tabs {
+      top: 76px;
+    }
+  }
+}
+
+@container (max-width: 600px) {
+  @media (pointer: coarse) {
+    .floor-tabs {
+      top: 128px;
+    }
+
+    .shortcut-sheet {
+      top: 122px;
+      max-height: min(calc(100% - 134px), calc(100dvh - 120px));
+    }
+  }
+}
+
 /* Tipset i sidopanelen: en rad, resten bakom "Mer" */
 .props-tip {
   font-size: 13px;
@@ -1505,8 +1863,10 @@
   margin: 8px 0 0;
 }
 
-/* Bokningar på bord som en ny version tar bort (409 bookings_on_removed_tables) */
+/* Bokningar att flytta först (409 bookings_on_removed_tables) */
 .removed-bookings {
+  /* I en modal som scrollar: krymper annars till noll (en scrollyta har ingen minsta höjd). */
+  flex-shrink: 0;
   list-style: none;
   margin: 8px 0 12px;
   padding: 0;
@@ -1530,7 +1890,7 @@
 .removed-bookings li + li { border-top: 1px solid var(--border); }
 .removed-bookings-day,
 .removed-bookings-table { color: var(--muted); }
-.removed-bookings-guest { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.removed-bookings-guest { min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 600px) {
   .removed-bookings li { grid-template-columns: 5.5em 3.5em minmax(0, 1fr); }
   .removed-bookings-table { grid-column: 3; }

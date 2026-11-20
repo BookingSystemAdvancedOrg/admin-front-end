@@ -34,6 +34,7 @@ import { Icon } from '../../shared/Icon'
 import { SkelCard, SkelPage, SkelTableRows, SkelTiles } from '../../shared/Skeleton'
 import { NoLocation } from '../../shared/NoLocation'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { PeakSuccess } from '../../shared/motion/PeakSuccess'
 
 /**
  * Bokningar för vald plats och dag (GET /locations/{id}/reservations).
@@ -54,6 +55,23 @@ export default function BokningarPage() {
   const { labels } = useTables(locationId === MOCK_LOCATION_ID ? null : locationId)
 
   const [date, setDate] = useState(today)
+  // Bokningen man just sparade: bocken ritas in en gång och raden blinkar där den hamnade.
+  const [landed, setLanded] = useState<Reservation | null>(null)
+  // Raden går bort vid nästa tryck eller tangent, inte på en timer: då flyttar
+  // sig listan bara när personalen själv gör något (ingen layoutförskjutning).
+  useEffect(() => {
+    if (!landed) return
+    const clear = () => setLanded(null)
+    const id = window.setTimeout(() => {
+      document.addEventListener('pointerdown', clear, { once: true })
+      document.addEventListener('keydown', clear, { once: true })
+    }, 600)
+    return () => {
+      window.clearTimeout(id)
+      document.removeEventListener('pointerdown', clear)
+      document.removeEventListener('keydown', clear)
+    }
+  }, [landed])
   // Listan hör alltid ihop med den plats/dag den hämtades för - en annan
   // dags bokningar visas aldrig under fel rubrik, inte ens en stund.
   const [loaded, setLoaded] = useState<{ key: string; items: Reservation[]; error: string | null } | null>(
@@ -213,6 +231,15 @@ export default function BokningarPage() {
               {error && (
                 <ErrorNote text={error} />
               )}
+              {landed && (
+                <p className="bk-landed">
+                  <PeakSuccess
+                    key={landed.reservationId}
+                    text="Bokningen är sparad"
+                    sub={`${dayLabel(landed.date)} ${landed.startTime} · ${landed.partySize} pers`}
+                  />
+                </p>
+              )}
 
               <div className="table-scroll" tabIndex={0} data-tour="booking-list">
                 <table className="data-table bookings-table">
@@ -237,7 +264,7 @@ export default function BokningarPage() {
                     {visible.map((r) => (
                       <tr
                         key={r.reservationId}
-                        className={`booking-row${isCancelled(r.status) ? ' muted' : ''}`}
+                        className={`booking-row${isCancelled(r.status) ? ' muted' : ''}${landed?.reservationId === r.reservationId ? ' m-landed' : ''}`}
                         tabIndex={0}
                         onClick={() => setOpenId(r.reservationId)}
                         onKeyDown={(e) => {
@@ -247,8 +274,9 @@ export default function BokningarPage() {
                           }
                         }}
                       >
-                        <td className="cell-strong">{r.startTime}</td>
-                        <td>
+                        <td className="cell-strong bk-time">{r.startTime}</td>
+                        <td className="bk-guest">
+                          <span className="guest-line">
                           <span className="cell-strong">{r.customerName || 'Gäst'}</span>
                           {locationId && (
                             <Slot
@@ -259,15 +287,16 @@ export default function BokningarPage() {
                           {locationId && (
                             <Slot id="bokningar.reservation.call" props={{ locationId, reservationId: r.reservationId }} />
                           )}
-                          {r.notes && <span className="note-dot" title={r.notes}> <Icon name="note" size={14} /></span>}
+                          {r.notes && <span className="note-dot" title={r.notes}><Icon name="note" size={14} /></span>}
+                          </span>
                           {r.customerPhone && <div className="cell-muted">{r.customerPhone}</div>}
                           {r.source && r.source !== 'online' && (
                             <div className="cell-muted">{SOURCE_LABEL[r.source]}</div>
                           )}
                         </td>
-                        <td data-label="Pers"><Num>{r.partySize}</Num></td>
-                        <td>{locationId === MOCK_LOCATION_ID ? tableNames(r.tableIds, labels) : <TableLinks ids={r.tableIds} labels={labels} date={r.date} />}</td>
-                        <td>
+                        <td className="bk-pers" data-label="Pers"><Num>{r.partySize}</Num></td>
+                        <td className="bk-tables">{locationId === MOCK_LOCATION_ID ? tableNames(r.tableIds, labels) : <TableLinks ids={r.tableIds} labels={labels} date={r.date} />}</td>
+                        <td className="bk-status">
                           <span className={`status-badge ${STATUS_CLASS[r.status]}`}>
                             {STATUS_LABEL[r.status]}
                           </span>
@@ -310,6 +339,7 @@ export default function BokningarPage() {
           today={today}
           onCreated={(created) => {
             setCreating(false)
+            setLanded(created)
             if (created.date === date) replace(created)
             else setDate(created.date)
           }}

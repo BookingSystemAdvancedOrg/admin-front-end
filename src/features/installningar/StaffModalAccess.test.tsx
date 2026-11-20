@@ -48,6 +48,8 @@ describe('StaffModal permissions', () => {
   it('sends no permission change when nothing was ticked', async () => {
     const user = userEvent.setup()
     const onSave = open()
+    // Save follows changes: only the name changes here.
+    await user.type(screen.getByLabelText('Namn'), 'x')
     await user.click(screen.getByRole('button', { name: 'Spara ändringar' }))
     expect(onSave.mock.calls[0][0].access).toBeUndefined()
   })

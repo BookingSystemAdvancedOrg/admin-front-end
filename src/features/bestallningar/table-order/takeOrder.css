@@ -852,12 +852,9 @@
     background-color var(--dur-base, 220ms) var(--ease-out);
 }
 
-/* Chosen: a calm accent wash and a thin accent line, no heavy outline. */
+/* Chosen: the tile keeps its own glass, lifted a step; the stepper shows the count. */
 .to-tile.has-count {
-  background: color-mix(in srgb, var(--cta) 16%, var(--glass-text-bg)) var(--liquid-sheen);
   box-shadow: var(--liquid-edge), var(--elev-2);
-  outline: 1.5px solid color-mix(in srgb, var(--cta) 85%, transparent);
-  outline-offset: -1.5px;
 }
 
 .to-tile-main {
@@ -1020,7 +1017,7 @@
 @keyframes to-tstep-nudge {
   35% {
     transform: scale(1.04);
-    box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--cta) 55%, transparent), var(--elev-1);
+    box-shadow: var(--elev-2);
   }
 }
 

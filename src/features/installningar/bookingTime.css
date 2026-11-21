@@ -92,7 +92,7 @@
   color: var(--on-accent);
 }
 
-.bt-day:focus-within {
+.bt-day:has(input:focus-visible) {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }

@@ -4,6 +4,8 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import '@booqy/brand/styles.css'
 import './index.css'
 import { installPress } from './shared/press'
+import { installOrderAlertAudio } from './shared/orderAlert/alertSound'
+import { installOrderAlertKeys } from './shared/orderAlert/store'
 import { installDialogOrigin } from './shared/motion/origin'
 import { installTableLabels } from './shared/tableLabels'
 import { installGlide } from './shared/glide'
@@ -32,6 +34,10 @@ import './shared/edges.css'
 // and is gated by RequireAuth, which redirects signed-out visitors to
 // /logga-in.
 installPress()
+// Larmet för nya beställningar: varje tryck (även Logga in) håller dess ljud vaket.
+installOrderAlertAudio()
+// Escape stänger rutan Ny beställning före alla dialoger under den (installeras först).
+installOrderAlertKeys()
 installDialogOrigin()
 installTableLabels()
 installGlide()

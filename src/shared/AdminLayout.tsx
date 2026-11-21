@@ -39,6 +39,7 @@ import { Select } from './Select'
 import { BottomNav } from './BottomNav'
 import { LeaveGuard, useGuardedNavigate } from './LeaveGuard'
 import { usePhoneNav } from './dock'
+import { OrderAlert } from './orderAlert/OrderAlert'
 
 /** Grupperna i sidomenyn som användaren har fällt ihop (sparas i webbläsaren). */
 function storedClosedGroups(): string[] {
@@ -321,6 +322,8 @@ export function AdminLayout() {
         </div>
       </aside>
       {confirmLogout && <LogoutConfirm onConfirm={logout} onCancel={cancelLogout} />}
+      {/* Ny onlinebeställning: ljud och rutan, på varje sida (shared/orderAlert). */}
+      <OrderAlert />
 
       <div className="admin-right">
         <BusyBar />

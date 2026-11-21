@@ -720,7 +720,7 @@
 @keyframes stree-flash {
   0%,
   60% {
-    box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--focus) 45%, transparent);
+    box-shadow: inset 0 0 0 9999px var(--wash-strong);
   }
   100% {
     box-shadow: inset 0 0 0 9999px transparent;
@@ -743,7 +743,7 @@
   }
   .stree-leaf-flash {
     animation: none;
-    box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--focus) 45%, transparent);
+    box-shadow: inset 0 0 0 9999px var(--wash-strong);
   }
 }
 

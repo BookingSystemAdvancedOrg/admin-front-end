@@ -76,28 +76,14 @@
   transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
 }
 
-/* A wine strip on top: an open table is the restaurant's colour on the map too. */
-.tab-card::before {
-  content: '';
-  display: block;
-  height: 5px;
-  background: var(--dock-wine);
-}
-
-.tab-card.long::before {
-  background: var(--warning);
-}
-
+/* No strip on top: the card is its own glass. A table open long shows on its
+   time chip (amber), a new table gets a warm wash, the chosen one a brown tint. */
 .tab-card.fresh {
-  box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--focus) 35%, transparent), var(--shadow);
+  box-shadow: inset 0 0 0 9999px var(--wash-strong), var(--shadow);
 }
 
 .tab-card.selected {
   background: color-mix(in srgb, var(--accent) 16%, var(--glass-surface));
-}
-
-.tab-card.selected::before {
-  height: 8px;
 }
 
 .tab-card-open {

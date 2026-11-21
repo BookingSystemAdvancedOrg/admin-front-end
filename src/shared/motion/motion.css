@@ -301,7 +301,7 @@
 }
 @keyframes m-landed {
   from {
-    background-color: color-mix(in srgb, var(--cta) 32%, transparent);
+    background-color: var(--wash-strong);
   }
 }
 

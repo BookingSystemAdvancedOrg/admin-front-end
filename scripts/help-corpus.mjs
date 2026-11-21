@@ -41,6 +41,8 @@ const EXTRA_PAGES = {
 // resten är ägarens. Grenar som kräver en funktion i planen.
 const SETTINGS_STAFF = ['utseende', 'skrivbordsappen']
 const SETTINGS_FEATURE = { bestallning: 'ordering', skrivare: 'ordering', google: 'googleBusiness' }
+// Enskilda rader som bara syns med en funktion eller ett område (data-help-id -> villkor).
+const ANCHOR_ACCESS = { 'utseende:bestallningsljud': { feature: 'ordering', area: 'bestallningar' } }
 // Inte delar av den inloggade appen (eller assistenten själv).
 const SKIP_DIRS = ['features/auth', 'features/help', 'test']
 // Områden personalen hade innan behörigheterna (src/shared/access.ts
@@ -309,6 +311,7 @@ export function buildCorpus() {
         text: desc ?? '',
         highlight: [anchor ? `help:${anchor}` : `text:${it.text}`],
         ...access(route, hash),
+        ...(anchor && ANCHOR_ACCESS[anchor] ? ANCHOR_ACCESS[anchor] : {}),
       })
     }
   }

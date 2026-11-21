@@ -58,6 +58,7 @@ export type IconName =
   | 'search'
   | 'send'
   | 'lock'
+  | 'sound'
   | 'chevron-down'
   | 'logout'
   | 'menu'
@@ -128,6 +129,8 @@ const DRAWN: Record<IconName, string> = {
   send: '<path d="M20.5 3.5L3.5 10.8l6.6 2.6 2.6 6.6zM20.5 3.5l-10.4 9.9"/>',
   // Låst steg (catering: Skicka innan signering). Noun-ersättare: icons/noun/lock.svg.
   lock: '<rect x="5.5" y="10.5" width="13" height="10" rx="2"/><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3M12 14.5v2.5"/>',
+  // Slå på ljudet (rutan Ny beställning). Noun-ersättare: icons/noun/sound.svg.
+  sound: '<path d="M11 5 6 9H3v6h3l5 4zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>',
   'chevron-down': '<path d="M6.5 9.5L12 15l5.5-5.5"/>',
   logout: '<path d="M14 4.5H6.5a1.5 1.5 0 0 0-1.5 1.5v12a1.5 1.5 0 0 0 1.5 1.5H14M10 12h10M16.5 8.5L20 12l-3.5 3.5"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',

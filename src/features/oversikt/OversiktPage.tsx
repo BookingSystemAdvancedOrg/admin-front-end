@@ -28,6 +28,7 @@ import { getSetup, skipSetupStep } from './setupApi'
 import type { SetupChecklist } from './setupApi'
 import { errorText } from '../../shared/errors'
 import { kronor, listOrders } from '../bestallningar/ordersApi'
+import { feedOrders } from '../../shared/orderAlert/store'
 import type { Order } from '../bestallningar/ordersApi'
 import { listRequests } from '../catering/cateringApi'
 import type { RequestSummary } from '../catering/cateringApi'
@@ -159,7 +160,10 @@ export default function OversiktPage() {
       hasCatering ? orNull(listRequests(locationId)) : Promise.resolve(null),
       hasOrdering ? orNull(listOrders(locationId, addDays(todayIn(timezoneSetting), -7))) : Promise.resolve(null),
       hasOrdering ? orNull(getPrintStatus(locationId)) : Promise.resolve(null),
-    ]).then(([loc, setup, today, orders, catering, lastWeek, print]) => ({
+    ]).then(([loc, setup, today, orders, catering, lastWeek, print]) => {
+      // Samma lista som beställningslarmet: det som syns här larmar också (shared/orderAlert).
+      if (orders) feedOrders(locationId, orders.orders, 'other')
+      return {
         forLocation: locationId,
         location: loc,
         setup,
@@ -168,7 +172,8 @@ export default function OversiktPage() {
         ordersLastWeek: lastWeek ? lastWeek.orders : null,
         catering,
         print,
-      })),
+      }
+    }),
   [isOwner, timezoneSetting, seeBookings, hasOrdering, hasCatering])
 
   useEffect(() => {

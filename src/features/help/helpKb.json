@@ -1004,6 +1004,46 @@
       ]
     },
     {
+      "id": "bestallning-larm",
+      "route": "/installningar",
+      "title": "Ljud och ruta vid ny beställning",
+      "audience": "all",
+      "feature": "ordering",
+      "keywords": [
+        "ny beställning",
+        "larm",
+        "ljud",
+        "pling",
+        "notis",
+        "ruta",
+        "popup",
+        "hörs inte",
+        "inget ljud",
+        "ipad",
+        "surfplatta",
+        "onlinebeställning"
+      ],
+      "answer": "När en gäst beställer online spelar Admin ett högt ljud och visar rutan Ny beställning, på vilken sida du än är. Kommer fler innan någon trycker OK läggs de överst i samma ruta, med ljud igen. Tryck på en rad för att öppna beställningen under Beställningar.",
+      "steps": [
+        "Tryck OK när ni har sett beställningarna. Nästa beställning öppnar en ny ruta.",
+        "Står det Tryck för att slå på ljudet i rutan: tryck där. iPad och telefon spelar ljud först efter ett tryck i appen.",
+        "Står iPaden eller telefonen på ljudlöst hörs inget ljud, men rutan visas ändå.",
+        "Ljudet slås på eller av för varje enhet under Inställningar, Den här enheten, Utseende och ljud, Ljud vid ny beställning. Testa spelar det."
+      ],
+      "actions": [
+        {
+          "id": "bestallning-larm-open",
+          "label": "Öppna Utseende och ljud",
+          "to": "/installningar",
+          "hash": "utseende"
+        }
+      ],
+      "highlight": [
+        "help:utseende:bestallningsljud"
+      ],
+      "area": "bestallningar"
+    },
+    {
       "id": "bestallning-pausa",
       "route": "/bestallningar",
       "title": "Pausa nya beställningar",

@@ -41,6 +41,10 @@ export const APP_HINT_KEY = 'booqy-app-hint'
 export const GLASS_BACKDROP_KEY = 'booqy-glass-backdrop'
 export const SOUND_KEY = 'booqy-sound'
 export const SOUND_VOLUME_KEY = 'booqy-sound-volume'
+/** Ljudet för nya onlinebeställningar på den här enheten (shared/orderAlert). */
+export const ORDER_SOUND_KEY = 'booqy-order-sound'
+/** Beställningslarmets sedda id:n och öppna ruta, för en omladdning i samma flik. */
+export const ORDER_ALERT_KEY = 'booqy-order-alert'
 export const NAV_CLOSED_KEY = 'booqy-nav-closed'
 export const SAMPLE_DATA_KEY = 'booqy-sample-data'
 export const STATISTIK_OPEN_KEY_PREFIX = 'booqy-statistik-open:'
@@ -132,6 +136,22 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     setBy: 'Booqy',
     purpose: 'Hur högt klickljudet är, 0-100 (Inställningar, Den här enheten, Utseende och ljud). Sparas bara när du ändrar den. Inga personuppgifter.',
     lifetime: 'Tills du rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: ORDER_SOUND_KEY,
+    kind: 'localStorage',
+    setBy: 'Booqy',
+    purpose: 'Om den här enheten spelar larmljudet när en ny beställning kommer in (Inställningar, Den här enheten, Utseende och ljud). Sparas bara när du ändrar det. Inga personuppgifter.',
+    lifetime: 'Tills du rensar webbläsaren',
+    category: 'nödvändig',
+  },
+  {
+    name: ORDER_ALERT_KEY,
+    kind: 'sessionStorage',
+    setBy: 'Booqy (rutan Ny beställning)',
+    purpose: 'Vilka beställningar den här fliken redan har larmat om och vilka som står i rutan, så att en omladdning inte larmar om dem igen. Bara beställningarnas id, inga namn eller belopp.',
+    lifetime: 'Tills fliken stängs, används högst 10 minuter efter en omladdning',
     category: 'nödvändig',
   },
   {

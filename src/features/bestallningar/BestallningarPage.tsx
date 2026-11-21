@@ -1,4 +1,6 @@
 import { useLiveRefresh } from '../../shared/live'
+import { feedOrders, onOrderFocus, takeOrderFocus } from '../../shared/orderAlert/store'
+import { reducedMotion } from '../../shared/motion/countUp'
 import { errorText } from '../../shared/errors'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StatTile } from '../../shared/motion/StatTile'
@@ -105,6 +107,11 @@ export default function BestallningarPage() {
   const [serveTo, setServeTo] = useState<Order | null>(null)
   /** Skärmläsarens besked om nya beställningar ("Ny beställning #12, Bord 7"). */
   const [announce, setAnnounce] = useState('')
+  /** Beställningen som rutan Ny beställning öppnade: visas och markeras när den finns på tavlan. */
+  const [focusId, setFocusId] = useState<string | null>(null)
+  const [flashId, setFlashId] = useState<string | null>(null)
+  /** Fanns beställningen inte i listan hämtas den om en gång innan markeringen ges upp. */
+  const focusRetried = useRef(false)
   /** ?vy=kok: köksskärmen (en stations bongar) i stället för tavlan; ?station= vilken. */
   const [params, setParams] = useState(() => new URLSearchParams(window.location.search))
   /** Bordens nummer i den gällande ritningen, samma som i Layout. */
@@ -130,6 +137,8 @@ export default function BestallningarPage() {
     if (!locationId) return
     try {
       const list = await listOrders(locationId)
+      // Larmet (ljud och rutan Ny beställning) matas med samma lista; skalet hämtar inget medan sidan gör det.
+      feedOrders(locationId, list.orders)
       const ids = new Set(list.orders.map((o) => o.orderId))
       if (seen.current) {
         const added = list.orders.filter((o) => !seen.current!.has(o.orderId))
@@ -157,6 +166,44 @@ export default function BestallningarPage() {
   }, [locationId, refresh])
   // Levande: var tionde sekund medan fliken syns, direkt vid fokus och efter egna ändringar.
   useLiveRefresh(refresh, { enabled: Boolean(locationId), everyMs: POLL_MS })
+
+  // Rutan Ny beställning: en rad öppnar tavlan (alla bord, ingen annan vy) med beställningen markerad.
+  useEffect(() => {
+    const waiting = takeOrderFocus()
+    if (waiting) setFocusId(waiting)
+    return onOrderFocus((id) => setFocusId(id))
+  }, [])
+  useEffect(() => {
+    if (!focusId) return
+    if (kds || bord) {
+      view({ vy: null })
+      return
+    }
+    if (place !== ALL) {
+      setPlace(ALL)
+      return
+    }
+    if (orders === null) return
+    const el = document.getElementById(`order-${focusId}`)
+    if (!el && !focusRetried.current) {
+      focusRetried.current = true
+      void refresh()
+      return
+    }
+    focusRetried.current = false
+    setFocusId(null)
+    if (!el) return
+    el.scrollIntoView?.({ block: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' })
+    el.focus({ preventScroll: true })
+    setFlashId(focusId)
+    // view() är en vanlig funktion i komponenten; effekten följer bara det som avgör var kortet står.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId, orders, kds, bord, place])
+  useEffect(() => {
+    if (!flashId) return
+    const t = window.setTimeout(() => setFlashId(null), 2400)
+    return () => window.clearTimeout(t)
+  }, [flashId])
 
   // Förra veckans dag hämtas en gång per dag, inte var tionde sekund.
   useEffect(() => {
@@ -318,7 +365,9 @@ export default function BestallningarPage() {
     return (
       <article
         key={order.orderId}
-        className={`order-card${fresh.has(order.orderId) ? ' fresh' : ''}`}
+        id={`order-${order.orderId}`}
+        tabIndex={-1}
+        className={`order-card${fresh.has(order.orderId) ? ' fresh' : ''}${flashId === order.orderId ? ' is-focus' : ''}`}
         aria-label={`Beställning ${order.number ?? ''}, ${where(order, labels)}`}
       >
         <header className="order-card-head">

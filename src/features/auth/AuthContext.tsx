@@ -25,6 +25,7 @@ import {
 } from './mockAuth'
 import { resetTenantStore } from '../../shared/tenant'
 import { resetMotion } from '../../shared/motion/MotionScope'
+import { forgetOrderAlerts } from '../../shared/orderAlert/store'
 
 // Mock-inloggningen (bara i npm run dev) har ingen riktig Cognito-session, så
 // den ges ägarrollen (den högsta en restauranganvändare kan ha) för att kunna
@@ -150,6 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Nästa inloggning (kanske en annan restaurang) börjar från noll.
     resetTenantStore()
     resetMotion()
+    forgetOrderAlerts()
     pendingChallenge.current = null
     setHasPendingNewPassword(false)
     setEmail(null)

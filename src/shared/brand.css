@@ -953,6 +953,16 @@ html.is-busy * {
   font: 600 14px/1 var(--font);
   transition: background-color 180ms var(--ease), color 180ms var(--ease), translate 180ms var(--ease);
 }
+/* Ljud vid ny beställning: på/av och Testa bredvid varandra. */
+.order-sound-setting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.order-sound-setting .order-sound-test {
+  min-height: 44px;
+}
 .appearance-toggle:hover {
   translate: 0 -2px;
 }

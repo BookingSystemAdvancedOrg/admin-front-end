@@ -13,7 +13,9 @@ import {
   STATUS_CLASS,
   STATUS_LABEL,
   availableActions,
+  cardDeadline,
   changeStatus,
+  clockLabel,
   dayLabel,
   errorMessage,
   formatKr,
@@ -21,6 +23,7 @@ import {
   normalizePhone,
   getReservation,
   paymentAction,
+  resendGuaranteeLink,
   timestampLabel,
   updateReservation,
   validEmail,
@@ -41,6 +44,9 @@ import { useUnsavedGuard } from '../../shared/unsaved'
 
 type Panel = null | 'no_show' | 'cancel' | 'edit' | 'extend'
 
+/** Felrutans början när kortlänken inte gick att skicka igen (bokningen är orörd). */
+const RESEND_FAILED = 'Länken skickades inte igen.'
+
 const HISTORY_ACTION: Record<string, string> = {
   created: 'Bokad',
   edited: 'Ändrad',
@@ -52,6 +58,9 @@ const HISTORY_ACTION: Record<string, string> = {
   refund: 'Återbetalning',
   extended: 'Sluttid ändrad',
   shortened: 'Sluttid ändrad',
+  link_resent: 'Kortlänk skickad igen',
+  link_failed: 'Sms med kortlänk gick inte iväg, bordet släpptes',
+  guarantee_waived: 'Kortgaranti hoppades över',
 }
 
 function who(by: string | undefined): string {
@@ -94,6 +103,7 @@ function historyText(h: HistoryEntry): string {
     if (h.override) parts.push('utanför regeln')
   }
   if (h.action === 'edited' && Array.isArray(h.fields)) parts.push(editedFieldsText(h.fields))
+  if (h.action === 'created' && h.cardSkipped) parts.push('utan kort (för nära starttiden)')
   if (typeof h.reason === 'string' && h.reason) parts.push(`"${h.reason}"`)
   return parts.filter(Boolean).join(' · ')
 }
@@ -126,6 +136,18 @@ export function ReservationModal({
 
   const noShowFee = r.cardOnFile ? (r.guarantee?.noShowFee ?? 0) : 0
   const canNotify = Boolean(r.customerEmail || r.customerPhone)
+  // En bokning som väntar på kort har aldrig bekräftats: gästen får inget om avbokningen.
+  const cancelNotify = canNotify && r.status !== 'pending'
+  const link = r.guaranteeLink
+  // Kortlänken syns bara när den faktiskt gick iväg: inte efter ett sms som
+  // inte gick (bokningen släpptes) och inte på en bokning som inte väntar längre.
+  const linkSent = Boolean(
+    link?.textedAt &&
+      (r.status === 'pending' || r.status === 'reserved') &&
+      !r.history?.some((h) => h.action === 'link_failed'),
+  )
+  // Försök igen efter ett fel när länken skulle skickas igen skickar igen.
+  const [retryResend, setRetryResend] = useState(false)
 
   function open(next: Panel) {
     setPanel(next)
@@ -133,19 +155,28 @@ export function ReservationModal({
     setReason('')
   }
 
-  async function run(action: () => Promise<Reservation>) {
+  async function run(action: () => Promise<Reservation>, failed?: string) {
     setBusy(true)
     setError(null)
+    setRetryResend(false)
     try {
       const updated = await action()
       onChanged(updated)
       setPanel(null)
     } catch (err) {
-      setError(errorMessage(err))
+      setError(errorMessage(err, failed))
+      setRetryResend(failed === RESEND_FAILED)
+      // 409 när länken skulle skickas igen (inte längre väntande, taket, tiden
+      // eller någon annan hann före): texten lovar att det senaste syns.
+      if (failed === RESEND_FAILED && err instanceof ApiError && err.status === 409) {
+        await getReservation(r.locationId, r.reservationId).then(onChanged, () => {})
+      }
     } finally {
       setBusy(false)
     }
   }
+
+  const resend = () => run(() => resendGuaranteeLink(r.locationId, r.reservationId), RESEND_FAILED)
 
   const status = (s: 'arrived' | 'reserved' | 'no_show' | 'cancelled', opts = {}) =>
     run(() => changeStatus(r.locationId, r.reservationId, s, opts))
@@ -211,7 +242,16 @@ export function ReservationModal({
               {r.status === 'pending' && r.pendingExpiresAt && (
                 <>
                   <dt>Hålls till</dt>
-                  <dd>{timestampLabel(r.pendingExpiresAt, r.timezone)}</dd>
+                  <dd>{timestampLabel(cardDeadline(r), r.timezone)}</dd>
+                </>
+              )}
+              {linkSent && link?.textedAt && (
+                <>
+                  <dt>Kortlänk</dt>
+                  <dd>
+                    Skickad {clockLabel(link.textedAt, r.timezone)}
+                    {(link.sends ?? 1) > 1 ? ` · ${link.sends} sms` : ''}
+                  </dd>
                 </>
               )}
               {p?.amount ? (
@@ -234,6 +274,16 @@ export function ReservationModal({
 
             {panel === null && (
               <div className="booking-actions">
+                {actions.resend && (
+                  <button
+                    type="button"
+                    className="btn primary square"
+                    disabled={busy}
+                    onClick={() => void resend()}
+                  >
+                    {busy ? 'Skickar…' : 'Skicka länken igen'}
+                  </button>
+                )}
                 {actions.arrive && (
                   <button type="button" className="btn primary square" disabled={busy} onClick={() => status('arrived')}>
                     {r.status === 'no_show' ? 'Gästen kom ändå' : 'Anlänt'}
@@ -322,7 +372,7 @@ export function ReservationModal({
               <div className="booking-panel">
                 <p className="form-section-label">Avboka bokningen</p>
                 <p className="cell-muted">Borden släpps. Gästen debiteras inte.</p>
-                {canNotify && (
+                {cancelNotify && (
                   <label className="check-row">
                     <input type="checkbox" checked={notifyGuest} onChange={(e) => setNotifyGuest(e.target.checked)} />
                     Meddela gästen
@@ -336,7 +386,7 @@ export function ReservationModal({
                   onCancel={() => setPanel(null)}
                   onConfirm={() =>
                     status('cancelled', {
-                      notifyGuest: canNotify && notifyGuest,
+                      notifyGuest: cancelNotify && notifyGuest,
                       ...(reason.trim() ? { reason: reason.trim() } : {}),
                     })
                   }
@@ -364,7 +414,7 @@ export function ReservationModal({
             )}
 
             {error && (
-              <ErrorNote text={error} />
+              <ErrorNote text={error} onRetry={retryResend && actions.resend ? () => void resend() : undefined} />
             )}
 
             {r.history && r.history.length > 0 && (

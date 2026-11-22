@@ -760,8 +760,9 @@
         "Öppna Bokningar.",
         "Tryck Ny bokning och välj Telefon eller Drop-in.",
         "Fyll i Antal personer, Datum, Tid och välj Bord.",
-        "Fyll i Namn och, om du vill, telefon, e-post och en anteckning.",
-        "Tryck Boka."
+        "Fyll i Namn och telefon. E-post och anteckning är valfria.",
+        "Tryck Boka.",
+        "Kräver bordet kortgaranti får gästen en kortlänk i sms. Bokningen visar Väntar på kort tills kortet är sparat, sedan går bekräftelsen ut."
       ],
       "actions": [
         {
@@ -2725,7 +2726,7 @@
       "answer": "Kortgaranti och avgifter för sen avbokning och no-show ställer ägaren in under Inställningar, Gäster, Avbokning och kortgaranti. Stripe måste vara klart först.",
       "steps": [
         "Öppna Inställningar, välj Gäster och sedan Avbokning och kortgaranti.",
-        "Slå på Kortgaranti vid onlinebokning och välj från hur många personer.",
+        "Slå på Kortgaranti vid bokning och välj från hur många personer.",
         "Ange när en avbokning räknas som sen och avgifterna per person.",
         "Tryck Spara policy."
       ],

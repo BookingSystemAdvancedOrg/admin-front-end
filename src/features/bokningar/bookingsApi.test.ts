@@ -6,6 +6,10 @@ import {
   addDays,
   availableActions,
   changeStatus,
+  cardDeadline,
+  clockLabel,
+  createErrorMessage,
+  createManualReservation,
   dayLabel,
   errorMessage,
   LOCATION_NOT_BOOKABLE,
@@ -13,11 +17,18 @@ import {
   feeSummary,
   formatKr,
   getAvailability,
+  isSmsLimitText,
   isStaleSlotError,
   lastBookableDate,
   listReservations,
+  mockReservations,
+  noCardOffer,
   normalizePhone,
   paymentAction,
+  phoneFieldError,
+  resendGuaranteeLink,
+  smsLimitText,
+  staffPhone,
   todayIn,
   validEmail,
 } from './bookingsApi'
@@ -84,6 +95,29 @@ describe('bookingsApi', () => {
     })
   })
 
+  it('a booking waiting for the card can be cancelled and its link sent again', () => {
+    const pending = booking({ status: 'pending', guaranteeLink: { by: 'booqy', sends: 1, canResend: true } })
+    expect(availableActions(pending, false)).toMatchObject({
+      arrive: false, noShow: false, cancel: true, edit: false, resend: true,
+    })
+    expect(availableActions(booking({ status: 'pending' }), false).resend).toBe(false)
+    expect(availableActions(booking({ status: 'pending', guaranteeLink: { canResend: false } }), false).resend).toBe(false)
+    expect(availableActions(booking({ guaranteeLink: { canResend: true } }), false).resend).toBe(false)
+  })
+
+  it('shows clock times in the booking time zone', () => {
+    expect(clockLabel('2026-10-12T16:32:00Z', 'Europe/Stockholm')).toBe('18:32')
+    expect(clockLabel('2026-10-12T16:32:00Z', 'Europe/London')).toBe('17:32')
+    expect(clockLabel(undefined)).toBe('')
+    expect(clockLabel('nonsense')).toBe('')
+  })
+
+  it('the example data has a phone booking waiting for the card', () => {
+    const pending = mockReservations('2026-10-12').find((r) => r.status === 'pending')
+    expect(pending).toMatchObject({ source: 'phone', customerPhone: '+46701112233', guaranteeLink: { by: 'booqy', canResend: true } })
+    expect(Date.parse(pending!.pendingExpiresAt!)).toBeGreaterThan(Date.now())
+  })
+
   it('summarises fees', () => {
     expect(feeSummary(booking())).toBeNull()
     expect(feeSummary(booking({ payment: { status: 'succeeded', amount: 20000 } }))).toBe('200 kr')
@@ -142,6 +176,43 @@ describe('bookingsApi', () => {
     expect(apiFetch).toHaveBeenLastCalledWith('/locations/loc-1/reservations/r1/payment', {
       method: 'POST', body: JSON.stringify({ action: 'refund', amount: 1500, reason: 'Sjuk', notifyGuest: false }),
     })
+
+    apiFetch.mockResolvedValueOnce(booking({ status: 'pending' }))
+    await resendGuaranteeLink('loc-1', 'r 1')
+    expect(apiFetch).toHaveBeenLastCalledWith('/locations/loc-1/reservations/r%201/guarantee-link', { method: 'POST' })
+  })
+
+  const MANUAL = {
+    date: '2026-10-12', startTime: '19:00', tableIds: ['3'], partySize: 2, name: 'Anna',
+    phone: '+46701234567', source: 'phone' as const, guarantee: 'sms' as const,
+  }
+
+  it('an older server without the card link sms books once more without guarantee', async () => {
+    apiFetch
+      .mockRejectedValueOnce(new ApiError(400, 'guarantee must be link', { fromServer: true }))
+      .mockResolvedValueOnce(booking())
+    await createManualReservation('loc-1', MANUAL)
+    expect(apiFetch).toHaveBeenCalledTimes(2)
+    expect(JSON.parse(apiFetch.mock.calls[0][1]!.body as string)).toMatchObject({ guarantee: 'sms' })
+    expect(JSON.parse(apiFetch.mock.calls[1][1]!.body as string)).not.toHaveProperty('guarantee')
+  })
+
+  it('an older server also books Boka utan kort once more without guarantee', async () => {
+    apiFetch
+      .mockRejectedValueOnce(new ApiError(400, 'guarantee must be link', { fromServer: true }))
+      .mockResolvedValueOnce(booking())
+    await createManualReservation('loc-1', { ...MANUAL, guarantee: 'waived' })
+    expect(apiFetch).toHaveBeenCalledTimes(2)
+    expect(JSON.parse(apiFetch.mock.calls[0][1]!.body as string)).toMatchObject({ guarantee: 'waived' })
+    expect(JSON.parse(apiFetch.mock.calls[1][1]!.body as string)).not.toHaveProperty('guarantee')
+  })
+
+  it('other refusals of a new booking are not retried', async () => {
+    apiFetch.mockRejectedValueOnce(new ApiError(400, 'guarantee sms needs a mobile number', { fromServer: true }))
+    await expect(createManualReservation('loc-1', MANUAL)).rejects.toThrow('guarantee sms needs a mobile number')
+    apiFetch.mockRejectedValueOnce(new ApiError(400, 'guarantee must be link', { fromServer: true }))
+    await expect(createManualReservation('loc-1', { ...MANUAL, guarantee: undefined })).rejects.toThrow('guarantee must be link')
+    expect(apiFetch).toHaveBeenCalledTimes(2)
   })
 })
 
@@ -153,11 +224,13 @@ describe('guest fields (same rules as the server)', () => {
     ['0046701234567', '+46701234567'],
     ['+46701234567', '+46701234567'],
     ['+358 40 123 4567', '+358401234567'],
+    ['08-123 45 67', '+4681234567'],
+    ['+46 070 123 45 67', '+46701234567'],
   ])('normalizes %s', (raw, expected) => {
     expect(normalizePhone(raw)).toBe(expected)
   })
 
-  it.each(['', '123', 'abc', '+0123456789', '07012345678901234'])('rejects %s', (raw) => {
+  it.each(['', '123', 'abc', '+0123456789', '07012345678901234', '070123456', '07012345678', '08123', '+4612345678901'])('rejects %s', (raw) => {
     expect(normalizePhone(raw)).toBeNull()
   })
 
@@ -178,6 +251,91 @@ describe('guest fields (same rules as the server)', () => {
       'En drop-in kan inte flyttas till en annan dag. Gör en ny bokning i stället.',
     )
     expect(errorMessage(new ApiError(400, 'something new', { fromServer: true }))).not.toMatch(/something new/)
+  })
+
+  it('the phone is required for Telefon and optional for Drop-in', () => {
+    expect(staffPhone('phone', '', false)).toEqual({ phone: null, error: null, ok: false })
+    expect(staffPhone('phone', ' ', true)).toEqual({ phone: null, error: 'Skriv gästens telefonnummer.', ok: false })
+    expect(staffPhone('walk_in', '', true)).toEqual({ phone: null, error: null, ok: true })
+    expect(staffPhone('phone', '070-123 45 67', true)).toEqual({ phone: '+46701234567', error: null, ok: true })
+    for (const channel of ['phone', 'walk_in'] as const) {
+      expect(staffPhone(channel, '0701', false)).toEqual({
+        phone: null, error: 'Numret ser fel ut. Skriv det så här: 070 123 45 67.', ok: false,
+      })
+    }
+  })
+
+  it('puts the server answers about the phone at the phone field', () => {
+    const bad = (m: string) => new ApiError(400, m, { fromServer: true })
+    expect(phoneFieldError(bad('phone is required for a phone booking'))).toBe('Skriv gästens telefonnummer.')
+    expect(phoneFieldError(bad("guarantee sms needs the guest's phone number"))).toBe('Skriv gästens telefonnummer.')
+    expect(phoneFieldError(bad('phone must be a valid phone number, e.g. +46701234567'))).toBe('Numret ser fel ut. Skriv det så här: 070 123 45 67.')
+    expect(phoneFieldError(bad('guarantee sms needs a mobile number'))).toBe('Kortlänken skickas med sms. Skriv ett mobilnummer, till exempel 070 123 45 67.')
+    expect(phoneFieldError(bad("guarantee sms needs the guest's own mobile number"))).toBe('Skriv gästens eget mobilnummer.')
+    expect(phoneFieldError(new ApiError(429, 'sms_limit', { fromServer: true }))).toBe('Taket för kortlänkar är nått. Boka utan kort.')
+    expect(phoneFieldError(new ApiError(502, 'sms_failed', { fromServer: true }))).toBeNull()
+    expect(phoneFieldError(new ApiError(409, 'table_taken'))).toBeNull()
+    expect(phoneFieldError(new Error('x'))).toBeNull()
+  })
+
+  it('offers Boka utan kort only when the sms is what fails', () => {
+    expect(noCardOffer(new ApiError(400, 'guarantee sms needs a mobile number', { fromServer: true }))).toBe(true)
+    expect(noCardOffer(new ApiError(502, 'sms_failed', { fromServer: true }))).toBe(true)
+    expect(noCardOffer(new ApiError(503, 'sms_unavailable', { fromServer: true }))).toBe(true)
+    expect(noCardOffer(new ApiError(429, 'sms_limit', { fromServer: true }))).toBe(true)
+    expect(noCardOffer(new ApiError(400, "guarantee sms needs the guest's own mobile number", { fromServer: true }))).toBe(false)
+    expect(noCardOffer(new ApiError(400, 'phone is required for a phone booking', { fromServer: true }))).toBe(false)
+    expect(noCardOffer(new ApiError(409, 'table_taken'))).toBe(false)
+  })
+
+  it('a failed card link sms is Booqys fault, never the number', () => {
+    const failed = createErrorMessage(new ApiError(502, 'sms_failed', { fromServer: true }))
+    expect(failed).toMatch(/^Sms:et med kortlänken kunde inte skickas, så inget bokades\. Felet ligger hos Booqy/)
+    expect(failed).not.toMatch(/Kolla numret/)
+    expect(createErrorMessage(new ApiError(503, 'sms_unavailable', { fromServer: true }))).toMatch(/^Sms kunde inte skickas, så inget bokades\. Felet ligger hos Booqy/)
+    expect(errorMessage(new ApiError(502, 'sms_failed', { fromServer: true }))).toMatch(/^Sms:et med kortlänken kunde inte skickas\. Felet ligger hos Booqy/)
+    expect(createErrorMessage(new ApiError(409, 'table_taken'))).toBe('Någon hann boka bordet. Välj ett annat bord eller en annan tid.')
+  })
+
+  it('the sms limit promises only the wait the server names', () => {
+    const limited = (retryAfter?: number) => new ApiError(429, 'sms_limit', { fromServer: true, retryAfter })
+    expect(smsLimitText(limited())).toBe('Taket för kortlänkar är nått. Boka utan kort.')
+    expect(smsLimitText(limited(600))).toBe('Många kortlänkar har skickats på kort tid. Boka utan kort, eller försök igen om 10 min.')
+    expect(smsLimitText(limited(3600))).toMatch(/försök igen om 60 min\.$/)
+    expect(smsLimitText(limited(5 * 3600))).toBe('Taket för kortlänkar i dag är nått. Boka utan kort.')
+    for (const t of [limited(), limited(600), limited(5 * 3600)].map(smsLimitText)) expect(isSmsLimitText(t)).toBe(true)
+    expect(isSmsLimitText('Skriv gästens eget mobilnummer.')).toBe(false)
+    expect(errorMessage(limited())).toBe('Taket för kortlänkar är nått, så länken skickades inte igen.')
+    expect(errorMessage(limited(120))).toBe('Många kortlänkar har skickats på kort tid. Försök igen om 2 min.')
+    expect(errorMessage(limited(20 * 3600))).toBe('Taket för kortlänkar i dag är nått, så länken skickades inte igen.')
+    expect(errorMessage(limited())).not.toMatch(/en stund/)
+  })
+
+  it('sms unavailable on a resend is Booqys fault, not an unsaved booking', () => {
+    const text = errorMessage(new ApiError(503, 'sms_unavailable', { fromServer: true }), 'Länken skickades inte igen.')
+    expect(text).toMatch(/^Sms kan inte skickas just nu\. Felet ligger hos Booqy/)
+    expect(text).not.toMatch(/Bokningen sparades inte/)
+  })
+
+  it('a card link holds until the time the guest was told, 2 minutes before the hold ends', () => {
+    const at = '2026-10-12T16:32:00Z'
+    expect(cardDeadline({ pendingExpiresAt: at, guaranteeLink: { by: 'booqy' } })).toBe('2026-10-12T16:30:00.000Z')
+    expect(cardDeadline({ pendingExpiresAt: at })).toBe(at)
+    expect(cardDeadline({ guaranteeLink: { by: 'booqy' } })).toBeUndefined()
+  })
+
+  it('explains the resend refusals', () => {
+    expect(errorMessage(new ApiError(409, 'resend_limit', { fromServer: true }))).toBe(
+      'Länken är redan skickad 3 gånger. Kolla numret med gästen, eller avboka och gör en ny bokning.',
+    )
+    expect(errorMessage(new ApiError(409, 'link_closed', { fromServer: true }))).toMatch(/^Tiden för kortet går snart ut/)
+    expect(errorMessage(new ApiError(409, 'not_pending', { fromServer: true }))).toMatch(/^Bokningen väntar inte på kort längre/)
+    expect(errorMessage(new ApiError(409, 'not_textable', { fromServer: true }))).toMatch(/^Numret tar inte emot sms/)
+  })
+
+  it('maps the new phone rules ahead of the online contact rule', () => {
+    expect(errorMessage(new ApiError(400, 'phone is required for a phone booking', { fromServer: true }))).toBe('Skriv gästens telefonnummer.')
+    expect(errorMessage(new ApiError(400, 'phone is required', { fromServer: true }))).toMatch(/^En onlinebokning behöver/)
   })
 
   it('knows which errors mean the chosen time or table went away', () => {

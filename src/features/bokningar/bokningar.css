@@ -512,3 +512,41 @@
   margin: 4px 0 10px;
   color: var(--success-ink, var(--ink));
 }
+
+/* Kryssrutan med sitt (i) bredvid (i:et får inte ligga i <label>). */
+.check-row-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.check-row-info > .check-row {
+  min-width: 0;
+}
+
+/* Ny bokning med Boka utan kort: tre knappar. I telefonen får Boka utan
+   kort en egen rad överst, Avbryt och Boka delar raden under. */
+.modal-actions.has-no-card {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  .modal-actions.has-no-card .no-card-btn {
+    order: -1;
+    flex: 1 0 100%;
+  }
+
+  .modal-actions.has-no-card .btn:not(.no-card-btn) {
+    flex: 1 1 0;
+  }
+}
+
+/* Bordskartans formulär är smalt på alla skärmar: samma två rader. */
+.floor-booking-panel .modal-actions.has-no-card .no-card-btn {
+  order: -1;
+  flex: 1 0 100%;
+}
+
+.floor-booking-panel .modal-actions.has-no-card .btn:not(.no-card-btn) {
+  flex: 1 1 0;
+}

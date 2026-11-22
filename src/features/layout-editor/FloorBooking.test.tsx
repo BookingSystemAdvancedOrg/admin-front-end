@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -127,7 +127,8 @@ describe('FloorBooking', () => {
     expect(up).toHaveAttribute('aria-pressed', 'true')
     expect(up.getAttribute('class')).toContain('is-focus')
     expect(screen.getByRole('tab', { name: 'Övervåning' })).toHaveAttribute('aria-selected', 'true')
-    expect(getAvailability).toHaveBeenLastCalledWith('loc-1', '2026-11-15', { walkIn: false })
+    // the day's times are fetched in the effect after the commit that marks the table, so wait for it
+    await waitFor(() => expect(getAvailability).toHaveBeenLastCalledWith('loc-1', '2026-11-15', { walkIn: false }))
     expect(screen.getByRole('heading', { name: 'Bord 2' })).toBeInTheDocument()
   })
 
@@ -162,7 +163,7 @@ describe('FloorBooking', () => {
     const field = await screen.findByLabelText('Datum')
     expect(field).toHaveAttribute('data-max', '2026-12-04')
     expect(await screen.findByRole('heading', { name: 'Bord 1' })).toBeInTheDocument()
-    expect(getAvailability).toHaveBeenLastCalledWith('loc-1', '2026-12-04', { walkIn: false })
+    await waitFor(() => expect(getAvailability).toHaveBeenLastCalledWith('loc-1', '2026-12-04', { walkIn: false }))
   })
 
   it('a link to a day past the booking window stays on today', async () => {

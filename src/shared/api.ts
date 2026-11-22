@@ -44,11 +44,13 @@ export class ApiError extends Error {
   requestId?: string
   /** Svarets hela JSON-kropp, för fel som bär mer än en text (t.ex. en lista bokningar). */
   details?: Record<string, unknown>
+  /** Sekunder tills ett tak (429) släpper, när svaret säger det (Retry-After eller retryAfter i kroppen). */
+  retryAfter?: number
 
   constructor(
     status: number,
     message: string,
-    opts: { code?: string; field?: string; fromServer?: boolean; requestId?: string; details?: Record<string, unknown> } = {},
+    opts: { code?: string; field?: string; fromServer?: boolean; requestId?: string; details?: Record<string, unknown>; retryAfter?: number } = {},
   ) {
     super(message)
     this.name = 'ApiError'
@@ -58,6 +60,7 @@ export class ApiError extends Error {
     this.fromServer = opts.fromServer ?? false
     if (opts.requestId) this.requestId = opts.requestId
     if (opts.details) this.details = opts.details
+    if (opts.retryAfter !== undefined) this.retryAfter = opts.retryAfter
   }
 }
 
@@ -92,10 +95,18 @@ function requestIdOf(res: Response, body?: { requestId?: unknown }): string | un
   return raw && REQUEST_ID.test(raw) ? raw : undefined
 }
 
+/** Retry-After i sekunder (kroppens retryAfter om huvudet inte syns i webbläsaren), annars undefined. */
+function retryAfterOf(res: Response, body?: { retryAfter?: unknown }): number | undefined {
+  const raw = res.headers?.get?.('Retry-After') ?? body?.retryAfter
+  if (raw == null || raw === '') return undefined
+  const seconds = Number(raw)
+  return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined
+}
+
 async function toApiError(res: Response): Promise<ApiError> {
   const text = await res.text().catch(() => '')
   try {
-    const body = JSON.parse(text) as { error?: string; message?: string; code?: string; field?: string; requestId?: unknown }
+    const body = JSON.parse(text) as { error?: string; message?: string; code?: string; field?: string; requestId?: unknown; retryAfter?: unknown }
     const message = body.error ?? body.message ?? text
     const code = typeof body.code === 'string' && CODE.test(body.code) ? body.code
       : typeof body.error === 'string' && CODE.test(body.error) ? body.error
@@ -103,7 +114,7 @@ async function toApiError(res: Response): Promise<ApiError> {
         : res.status === 404 && body.error === undefined ? 'route_not_found'
           : statusCode(res.status)
     const details = body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : undefined
-    return new ApiError(res.status, message, { code, field: body.field, fromServer: true, requestId: requestIdOf(res, body), details })
+    return new ApiError(res.status, message, { code, field: body.field, fromServer: true, requestId: requestIdOf(res, body), details, retryAfter: retryAfterOf(res, body) })
   } catch {
     // CloudFront/API Gateway kan svara med HTML eller tom text (502/504).
     return new ApiError(res.status, text || res.statusText, { code: res.status === 404 ? 'route_not_found' : statusCode(res.status), fromServer: true, requestId: requestIdOf(res) })

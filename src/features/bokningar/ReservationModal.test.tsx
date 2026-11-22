@@ -16,6 +16,7 @@ const getReservation = vi.fn()
 const updateReservation = vi.fn()
 const getAvailability = vi.fn()
 const createManualReservation = vi.fn()
+const resendGuaranteeLink = vi.fn()
 vi.mock('./bookingsApi', async (orig) => ({
   ...(await orig<typeof import('./bookingsApi')>()),
   changeStatus: (...a: unknown[]) => changeStatus(...a),
@@ -24,6 +25,7 @@ vi.mock('./bookingsApi', async (orig) => ({
   updateReservation: (...a: unknown[]) => updateReservation(...a),
   getAvailability: (...a: unknown[]) => getAvailability(...a),
   createManualReservation: (...a: unknown[]) => createManualReservation(...a),
+  resendGuaranteeLink: (...a: unknown[]) => resendGuaranteeLink(...a),
 }))
 
 const TODAY = '2026-10-12'
@@ -52,7 +54,7 @@ function booking(over: Partial<Reservation> = {}): Reservation {
 }
 
 beforeEach(() => {
-  for (const fn of [changeStatus, paymentAction, getReservation, updateReservation, getAvailability, createManualReservation]) {
+  for (const fn of [changeStatus, paymentAction, getReservation, updateReservation, getAvailability, createManualReservation, resendGuaranteeLink]) {
     fn.mockReset()
   }
   getAvailability.mockResolvedValue(avail([]))
@@ -190,31 +192,228 @@ describe('ReservationModal', () => {
   })
 })
 
+const phoneField = () => screen.getByRole('textbox', { name: 'Telefon' })
+
+/** Ny bokning med tid 19:00, bord 2 och namnet Anna ifyllt. */
+async function fillNewBooking(user: ReturnType<typeof userEvent.setup>) {
+  getAvailability.mockResolvedValue(avail([
+    { startTime: '19:00', endTime: '21:00', layoutVersion: 1, tables: [{ tableId: '2', seats: 2 }] },
+  ]))
+  const onCreated = vi.fn()
+  render(<NewReservationModal locationId="loc-1" initialDate="2026-10-12" today={TODAY} onCreated={onCreated} onCancel={() => {}} />)
+  await chooseOption(await screen.findByLabelText('Tid'), '19:00')
+  await user.click(screen.getByLabelText(/Bord 2/))
+  await user.type(screen.getByLabelText('Namn'), 'Anna')
+  return onCreated
+}
+
+const PHONE_BOOKING = {
+  date: '2026-10-12',
+  startTime: '19:00',
+  tableIds: ['2'],
+  partySize: 2,
+  name: 'Anna',
+  phone: '+46701234567',
+  source: 'phone',
+  notifyGuest: true,
+  guarantee: 'sms',
+}
+
 describe('NewReservationModal', () => {
-  it('books a phone reservation', async () => {
+  it('books a phone reservation with the card link by sms', async () => {
+    const user = userEvent.setup()
+    createManualReservation.mockResolvedValue(booking({ reservationId: 'new' }))
+    const onCreated = await fillNewBooking(user)
+    await user.type(phoneField(), '+46701234567')
+    await user.click(screen.getByRole('button', { name: 'Boka' }))
+    expect(createManualReservation).toHaveBeenCalledWith('loc-1', PHONE_BOOKING)
+    expect(onCreated).toHaveBeenCalled()
+  })
+
+  it('a phone booking needs the phone: Boka stays off and the field says why after leaving it', async () => {
+    const user = userEvent.setup()
+    await fillNewBooking(user)
+    expect(screen.getByRole('button', { name: 'Boka' })).toBeDisabled()
+    expect(screen.queryByText('Skriv gästens telefonnummer.')).toBeNull()
+    await user.click(phoneField())
+    await user.tab()
+    expect(screen.getByText('Skriv gästens telefonnummer.')).toBeInTheDocument()
+    await user.type(phoneField(), '070')
+    expect(screen.getByText('Numret ser fel ut. Skriv det så här: 070 123 45 67.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Boka' })).toBeDisabled()
+  })
+
+  it('a drop-in books without a phone and without a card link', async () => {
     const user = userEvent.setup()
     getAvailability.mockResolvedValue(avail([
       { startTime: '19:00', endTime: '21:00', layoutVersion: 1, tables: [{ tableId: '2', seats: 2 }] },
     ]))
     createManualReservation.mockResolvedValue(booking({ reservationId: 'new' }))
-    const onCreated = vi.fn()
-    render(<NewReservationModal locationId="loc-1" initialDate="2026-10-12" today={TODAY} onCreated={onCreated} onCancel={() => {}} />)
+    render(<NewReservationModal locationId="loc-1" initialDate="2026-10-12" today={TODAY} onCreated={() => {}} onCancel={() => {}} />)
+    await user.click(screen.getByRole('radio', { name: 'Drop-in' }))
     await chooseOption(await screen.findByLabelText('Tid'), '19:00')
     await user.click(screen.getByLabelText(/Bord 2/))
     await user.type(screen.getByLabelText('Namn'), 'Anna')
-    await user.type(screen.getByLabelText('Telefon (valfritt)'), '+46701234567')
+    expect(screen.getByLabelText('Telefon (valfritt)')).toHaveValue('')
     await user.click(screen.getByRole('button', { name: 'Boka' }))
     expect(createManualReservation).toHaveBeenCalledWith('loc-1', {
-      date: '2026-10-12',
+      date: TODAY,
       startTime: '19:00',
       tableIds: ['2'],
       partySize: 2,
       name: 'Anna',
-      phone: '+46701234567',
-      source: 'phone',
-      notifyGuest: true,
+      source: 'walk_in',
+      notifyGuest: false,
     })
+  })
+
+  it('a landline shows at the phone field and Boka utan kort books without the card', async () => {
+    const user = userEvent.setup()
+    createManualReservation
+      .mockRejectedValueOnce(new ApiError(400, 'guarantee sms needs a mobile number', { fromServer: true }))
+      .mockResolvedValueOnce(booking({ reservationId: 'new' }))
+    const onCreated = await fillNewBooking(user)
+    await user.type(phoneField(), '+46701234567')
+    await user.click(screen.getByRole('button', { name: 'Boka' }))
+    expect(await screen.findByText('Kortlänken skickas med sms. Skriv ett mobilnummer, till exempel 070 123 45 67.')).toBeInTheDocument()
+    expect(phoneField()).toHaveFocus()
+    expect(phoneField()).toHaveAttribute('aria-invalid', 'true')
+    await user.click(screen.getByRole('button', { name: 'Boka utan kort' }))
+    expect(createManualReservation).toHaveBeenLastCalledWith('loc-1', { ...PHONE_BOOKING, guarantee: 'waived' })
     expect(onCreated).toHaveBeenCalled()
+  })
+
+  it('editing the phone clears the field error and the no-card offer', async () => {
+    const user = userEvent.setup()
+    createManualReservation.mockRejectedValueOnce(new ApiError(400, 'guarantee sms needs a mobile number', { fromServer: true }))
+    await fillNewBooking(user)
+    await user.type(phoneField(), '+46701234567')
+    await user.click(screen.getByRole('button', { name: 'Boka' }))
+    await screen.findByRole('button', { name: 'Boka utan kort' })
+    await user.type(phoneField(), '{Backspace}8')
+    expect(screen.queryByRole('button', { name: 'Boka utan kort' })).toBeNull()
+    expect(screen.queryByText(/Kortlänken skickas med sms/)).toBeNull()
+  })
+
+  it("the guest's own mobile is asked for at the field, without the no-card offer", async () => {
+    const user = userEvent.setup()
+    createManualReservation.mockRejectedValueOnce(new ApiError(400, "guarantee sms needs the guest's own mobile number", { fromServer: true }))
+    await fillNewBooking(user)
+    await user.type(phoneField(), '+46701234567')
+    await user.click(screen.getByRole('button', { name: 'Boka' }))
+    expect(await screen.findByText('Skriv gästens eget mobilnummer.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Boka utan kort' })).toBeNull()
+  })
+
+  it('a failed sms keeps the form, is Booqys fault and offers Boka utan kort', async () => {
+    const user = userEvent.setup()
+    createManualReservation.mockRejectedValueOnce(new ApiError(502, 'sms_failed', { fromServer: true }))
+    await fillNewBooking(user)
+    await user.type(phoneField(), '+46701234567')
+    await user.click(screen.getByRole('button', { name: 'Boka' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Sms:et med kortlänken kunde inte skickas, så inget bokades.')
+    expect(alert).toHaveTextContent('Felet ligger hos Booqy')
+    expect(alert).not.toHaveTextContent('Kolla numret')
+    expect(screen.getByRole('button', { name: 'Rapportera till Booqy' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Boka utan kort' })).toBeInTheDocument()
+    expect(phoneField()).toHaveValue('+46701234567')
+    expect(screen.getByLabelText('Namn')).toHaveValue('Anna')
+  })
+
+  it('sms unavailable and the sms limit offer Boka utan kort', async () => {
+    const user = userEvent.setup()
+    createManualReservation
+      .mockRejectedValueOnce(new ApiError(503, 'sms_unavailable', { fromServer: true }))
+      .mockRejectedValueOnce(new ApiError(429, 'sms_limit', { fromServer: true }))
+    await fillNewBooking(user)
+    await user.type(phoneField(), '+46701234567')
+    await user.click(screen.getByRole('button', { name: 'Boka' }))
+    expect(await screen.findByText(/^Sms kunde inte skickas, så inget bokades\. Felet ligger hos Booqy/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Boka utan kort' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Boka' }))
+    expect(await screen.findByText('Taket för kortlänkar är nått. Boka utan kort.')).toBeInTheDocument()
+    expect(phoneField()).not.toHaveAttribute('aria-invalid')
+    expect(screen.getByRole('button', { name: 'Boka utan kort' })).toBeInTheDocument()
+  })
+
+  it('Försök igen after a failed sms sends the card link again', async () => {
+    const user = userEvent.setup()
+    createManualReservation
+      .mockRejectedValueOnce(new ApiError(502, 'sms_failed', { fromServer: true }))
+      .mockResolvedValueOnce(booking({ reservationId: 'new' }))
+    const onCreated = await fillNewBooking(user)
+    await user.type(phoneField(), '+46701234567')
+    await user.click(screen.getByRole('button', { name: 'Boka' }))
+    await user.click(await screen.findByRole('button', { name: 'Försök igen' }))
+    expect(createManualReservation).toHaveBeenLastCalledWith('loc-1', PHONE_BOOKING)
+    expect(onCreated).toHaveBeenCalled()
+  })
+
+  it('a failed Boka utan kort keeps the choice: the offer stays and Försök igen books without the card', async () => {
+    const user = userEvent.setup()
+    createManualReservation
+      .mockRejectedValueOnce(new ApiError(502, 'sms_failed', { fromServer: true }))
+      .mockRejectedValueOnce(new ApiError(503, 'reservation service unavailable', { fromServer: true }))
+      .mockResolvedValueOnce(booking({ reservationId: 'new' }))
+    const onCreated = await fillNewBooking(user)
+    await user.type(phoneField(), '+46701234567')
+    await user.click(screen.getByRole('button', { name: 'Boka' }))
+    await user.click(await screen.findByRole('button', { name: 'Boka utan kort' }))
+    expect(createManualReservation).toHaveBeenLastCalledWith('loc-1', { ...PHONE_BOOKING, guarantee: 'waived' })
+    expect(await screen.findByRole('button', { name: 'Försök igen' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Boka utan kort' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Försök igen' }))
+    expect(createManualReservation).toHaveBeenCalledTimes(3)
+    expect(createManualReservation).toHaveBeenLastCalledWith('loc-1', { ...PHONE_BOOKING, guarantee: 'waived' })
+    expect(onCreated).toHaveBeenCalled()
+  })
+
+  it('a new party size drops the no-card offer and the old answer', async () => {
+    const user = userEvent.setup()
+    createManualReservation.mockRejectedValueOnce(new ApiError(502, 'sms_failed', { fromServer: true }))
+    await fillNewBooking(user)
+    await user.type(phoneField(), '+46701234567')
+    await user.click(screen.getByRole('button', { name: 'Boka' }))
+    await screen.findByRole('button', { name: 'Boka utan kort' })
+    await user.type(screen.getByLabelText('Antal personer'), '{Backspace}3')
+    expect(screen.queryByRole('button', { name: 'Boka utan kort' })).toBeNull()
+    expect(screen.queryByText(/Sms:et med kortlänken/)).toBeNull()
+  })
+
+  it('a drop-in never offers Boka utan kort', async () => {
+    const user = userEvent.setup()
+    getAvailability.mockResolvedValue(avail([
+      { startTime: '19:00', endTime: '21:00', layoutVersion: 1, tables: [{ tableId: '2', seats: 2 }] },
+    ]))
+    createManualReservation.mockRejectedValueOnce(new ApiError(503, 'sms_unavailable', { fromServer: true }))
+    render(<NewReservationModal locationId="loc-1" initialDate="2026-10-12" today={TODAY} onCreated={() => {}} onCancel={() => {}} />)
+    await user.click(screen.getByRole('radio', { name: 'Drop-in' }))
+    await chooseOption(await screen.findByLabelText('Tid'), '19:00')
+    await user.click(screen.getByLabelText(/Bord 2/))
+    await user.type(screen.getByLabelText('Namn'), 'Anna')
+    await user.click(screen.getByRole('button', { name: 'Boka' }))
+    await screen.findByRole('alert')
+    expect(screen.queryByRole('button', { name: 'Boka utan kort' })).toBeNull()
+  })
+
+  it('the server asking for the phone shows at the field', async () => {
+    const user = userEvent.setup()
+    createManualReservation.mockRejectedValueOnce(new ApiError(400, 'phone is required for a phone booking', { fromServer: true }))
+    await fillNewBooking(user)
+    await user.type(phoneField(), '+46701234567')
+    await user.click(screen.getByRole('button', { name: 'Boka' }))
+    expect(await screen.findByText('Skriv gästens telefonnummer.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Boka utan kort' })).toBeNull()
+  })
+
+  it('the confirmation checkbox explains that a card link booking always gets one', async () => {
+    const user = userEvent.setup()
+    await fillNewBooking(user)
+    await user.type(phoneField(), '+46701234567')
+    expect(screen.getByLabelText('Skicka bekräftelse till gästen')).toBeChecked()
+    await user.click(screen.getByRole('button', { name: 'Förklaring: Bekräftelse' }))
+    expect(screen.getByText('En bokning med kortlänk får alltid sin bekräftelse när kortet är sparat.')).toBeInTheDocument()
   })
 
   it('keeps Boka disabled until a table and name are chosen', async () => {
@@ -324,6 +523,7 @@ describe('time rules in the forms', () => {
     await chooseOption(await screen.findByLabelText('Tid'), '14:00')
     await user.click(screen.getByLabelText(/Bord 2/))
     await user.type(screen.getByLabelText('Namn'), 'Anna')
+    await user.type(screen.getByRole('textbox', { name: 'Telefon' }), '0701234567')
     const calls = getAvailability.mock.calls.length
     await user.click(screen.getByRole('button', { name: 'Boka' }))
     expect(await screen.findByText('Den tiden går inte att boka längre. Välj en annan tid i listan.')).toBeInTheDocument()
@@ -558,5 +758,132 @@ describe('ReservationModal history', () => {
       />,
     )
     expect(screen.queryByText(/processing_error/)).toBeNull()
+  })
+})
+
+describe('ReservationModal: waiting for the card', () => {
+  const pending = (link: Partial<NonNullable<Reservation['guaranteeLink']>> = {}) =>
+    booking({
+      status: 'pending',
+      source: 'phone',
+      timezone: 'Europe/Stockholm',
+      pendingExpiresAt: '2026-10-12T16:32:00Z',
+      guarantee: { noShowFee: 20000 },
+      guaranteeLink: { by: 'booqy', sends: 1, textedAt: '2026-10-12T16:00:00Z', canResend: true, ...link },
+    })
+
+  it('shows when the card link was texted and how many times', () => {
+    const { unmount } = render(<ReservationModal today={TODAY} reservation={pending()} isOwner onChanged={() => {}} onClose={() => {}} />)
+    expect(screen.getByText('Kortlänk')).toBeInTheDocument()
+    expect(screen.getByText('Skickad 18:00')).toBeInTheDocument()
+    unmount()
+    render(<ReservationModal today={TODAY} reservation={pending({ sends: 2 })} isOwner onChanged={() => {}} onClose={() => {}} />)
+    expect(screen.getByText('Skickad 18:00 · 2 sms')).toBeInTheDocument()
+  })
+
+  it('the card link row only shows for a link that went out', () => {
+    const { unmount } = render(
+      <ReservationModal today={TODAY} reservation={{ ...pending(), status: 'expired' }} isOwner onChanged={() => {}} onClose={() => {}} />,
+    )
+    expect(screen.queryByText('Kortlänk')).toBeNull()
+    unmount()
+    const failed = pending()
+    failed.history = [{ at: '2026-10-12T16:00:00Z', by: 'staff-sub', action: 'link_failed' }]
+    render(<ReservationModal today={TODAY} reservation={failed} isOwner onChanged={() => {}} onClose={() => {}} />)
+    expect(screen.queryByText('Kortlänk')).toBeNull()
+  })
+
+  it('holds until the time the guest was told (the sms says 30 minutes)', () => {
+    render(<ReservationModal today={TODAY} reservation={pending()} isOwner onChanged={() => {}} onClose={() => {}} />)
+    expect(screen.getByText('Hålls till').nextElementSibling).toHaveTextContent('18:30')
+  })
+
+  it('a failed resend says the link was not sent (the booking is untouched) and Försök igen sends again', async () => {
+    const user = userEvent.setup()
+    resendGuaranteeLink
+      .mockRejectedValueOnce(new ApiError(503, 'sms_unavailable', { fromServer: true }))
+      .mockResolvedValueOnce(pending({ sends: 2 }))
+    const onChanged = vi.fn()
+    render(<ReservationModal today={TODAY} reservation={pending()} isOwner onChanged={onChanged} onClose={() => {}} />)
+    await user.click(screen.getByRole('button', { name: 'Skicka länken igen' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Sms kan inte skickas just nu. Felet ligger hos Booqy')
+    expect(alert).not.toHaveTextContent('Bokningen sparades inte')
+    await user.click(screen.getByRole('button', { name: 'Försök igen' }))
+    expect(resendGuaranteeLink).toHaveBeenCalledTimes(2)
+    expect(onChanged).toHaveBeenCalled()
+  })
+
+  it('an unknown resend failure names the link, not the booking', async () => {
+    const user = userEvent.setup()
+    resendGuaranteeLink.mockRejectedValueOnce(new ApiError(500, 'something_new', { fromServer: true }))
+    render(<ReservationModal today={TODAY} reservation={pending()} isOwner onChanged={() => {}} onClose={() => {}} />)
+    await user.click(screen.getByRole('button', { name: 'Skicka länken igen' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/^Länken skickades inte igen\. Felet ligger hos Booqy/)
+  })
+
+  it('Skicka länken igen sends the link again', async () => {
+    const user = userEvent.setup()
+    const onChanged = vi.fn()
+    resendGuaranteeLink.mockResolvedValue(pending({ sends: 2 }))
+    render(<ReservationModal today={TODAY} reservation={pending()} isOwner onChanged={onChanged} onClose={() => {}} />)
+    await user.click(screen.getByRole('button', { name: 'Skicka länken igen' }))
+    expect(resendGuaranteeLink).toHaveBeenCalledWith('loc-1', 'r1')
+    expect(onChanged).toHaveBeenCalledWith(expect.objectContaining({ guaranteeLink: expect.objectContaining({ sends: 2 }) }))
+  })
+
+  it('hides Skicka länken igen when the link cannot be sent again', () => {
+    render(<ReservationModal today={TODAY} reservation={pending({ canResend: false })} isOwner onChanged={() => {}} onClose={() => {}} />)
+    expect(screen.queryByRole('button', { name: 'Skicka länken igen' })).toBeNull()
+  })
+
+  it('explains the resend limit and shows the latest booking', async () => {
+    const user = userEvent.setup()
+    const onChanged = vi.fn()
+    const latest = pending({ sends: 3, canResend: false })
+    resendGuaranteeLink.mockRejectedValue(new ApiError(409, 'resend_limit', { fromServer: true }))
+    getReservation.mockResolvedValue(latest)
+    render(<ReservationModal today={TODAY} reservation={pending()} isOwner onChanged={onChanged} onClose={() => {}} />)
+    await user.click(screen.getByRole('button', { name: 'Skicka länken igen' }))
+    expect(await screen.findByText('Länken är redan skickad 3 gånger. Kolla numret med gästen, eller avboka och gör en ny bokning.')).toBeInTheDocument()
+    expect(getReservation).toHaveBeenCalledWith('loc-1', 'r1')
+    expect(onChanged).toHaveBeenCalledWith(latest)
+  })
+
+  it('a failed resend that is not a conflict does not reload the booking', async () => {
+    const user = userEvent.setup()
+    resendGuaranteeLink.mockRejectedValue(new ApiError(502, 'sms_failed', { fromServer: true }))
+    render(<ReservationModal today={TODAY} reservation={pending()} isOwner onChanged={() => {}} onClose={() => {}} />)
+    await user.click(screen.getByRole('button', { name: 'Skicka länken igen' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Sms:et med kortlänken kunde inte skickas. Felet ligger hos Booqy')
+    expect(getReservation).not.toHaveBeenCalled()
+  })
+
+  it('a pending booking can be cancelled without telling the guest', async () => {
+    const user = userEvent.setup()
+    changeStatus.mockResolvedValue(booking({ status: 'cancelled_by_restaurant' }))
+    render(<ReservationModal today={TODAY} reservation={pending()} isOwner onChanged={() => {}} onClose={() => {}} />)
+    await user.click(screen.getByRole('button', { name: 'Avboka' }))
+    expect(screen.getByText('Borden släpps. Gästen debiteras inte.')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Meddela gästen')).toBeNull()
+    await user.click(screen.getAllByRole('button', { name: 'Avboka' }).at(-1)!)
+    expect(changeStatus).toHaveBeenCalledWith('loc-1', 'r1', 'cancelled', { notifyGuest: false })
+  })
+
+  it('names the card link events in the history', async () => {
+    const user = userEvent.setup()
+    const r = pending({})
+    r.history = [
+      { at: '2026-10-12T16:00:00Z', by: 'staff-sub', action: 'created', cardSkipped: 'too_soon' },
+      { at: '2026-10-12T16:01:00Z', by: 'staff-sub', action: 'link_resent' },
+      { at: '2026-10-12T16:02:00Z', by: 'staff-sub', action: 'link_failed' },
+      { at: '2026-10-12T16:03:00Z', by: 'staff-sub', action: 'guarantee_waived' },
+    ]
+    render(<ReservationModal today={TODAY} reservation={r} isOwner onChanged={() => {}} onClose={() => {}} />)
+    await user.click(screen.getByText('Historik'))
+    expect(screen.getByText(/Bokad · utan kort \(för nära starttiden\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Kortlänk skickad igen/)).toBeInTheDocument()
+    expect(screen.getByText(/Sms med kortlänk gick inte iväg, bordet släpptes/)).toBeInTheDocument()
+    expect(screen.getByText(/Kortgaranti hoppades över/)).toBeInTheDocument()
   })
 })

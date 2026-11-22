@@ -191,4 +191,53 @@ describe('BokningarPage', () => {
     await act(async () => first.resolve([]))
     expect(screen.getByText('Cecilia')).toBeInTheDocument()
   })
+
+  it('a booking waiting for the card shows until when it is held, in the list and after creating it', async () => {
+    const user = userEvent.setup()
+    const today = todayIn('Europe/Stockholm')
+    const pending = booking({
+      reservationId: 'r7',
+      date: today,
+      customerName: 'Nora',
+      partySize: 6,
+      startTime: '20:00',
+      status: 'pending',
+      timezone: 'Europe/Stockholm',
+      pendingExpiresAt: '2026-10-12T16:32:00Z',
+      guaranteeLink: { by: 'booqy', sends: 1, textedAt: '2026-10-12T16:00:00Z', canResend: true },
+    })
+    // Utan kortlänk (kortsteget på sajten): hela hållningen.
+    const online = booking({
+      reservationId: 'r9',
+      date: today,
+      customerName: 'Olle',
+      startTime: '21:00',
+      status: 'pending',
+      timezone: 'Europe/Stockholm',
+      pendingExpiresAt: '2026-10-12T16:47:00Z',
+    })
+    listReservations.mockResolvedValue([pending, online])
+    created.mockReturnValue(pending)
+    render(<BokningarPage />)
+    expect(await screen.findByText('Nora')).toBeInTheDocument()
+    expect(screen.getAllByText('Väntar på kort')).toHaveLength(2)
+    // Gästen fick 30 minuter i sms:et; bokningen hålls 2 minuter till.
+    expect(screen.getByText('hålls till 18:30')).toBeInTheDocument()
+    expect(screen.getByText('hålls till 18:47')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Ny bokning' }))
+    await user.click(screen.getByRole('button', { name: 'Skapa (test)' }))
+    const status = await screen.findByText('Kortlänk skickad')
+    expect(status.closest('.peak')).toHaveTextContent(/20:00 · 6 pers · hålls till 18:30$/)
+  })
+
+  it('a booking that skipped the card for the start time says so', async () => {
+    const user = userEvent.setup()
+    listReservations.mockResolvedValue([])
+    created.mockReturnValue(booking({ reservationId: 'r8', guaranteeSkipped: 'too_soon' }))
+    render(<BokningarPage />)
+    await user.click(screen.getByRole('button', { name: 'Ny bokning' }))
+    await user.click(screen.getByRole('button', { name: 'Skapa (test)' }))
+    expect(await screen.findByText('Bokad utan kort (för nära starttiden)')).toBeInTheDocument()
+  })
 })

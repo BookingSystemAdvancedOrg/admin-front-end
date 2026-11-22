@@ -3,7 +3,7 @@ import { watch } from '../lib/watch'
 import { ready } from '../lib/ui'
 import { pick, waitForOptions } from '../lib/select'
 import { Api, stockholmDate } from '../lib/api'
-import { RUN } from '../lib/data'
+import { PHONE, RUN } from '../lib/data'
 
 test.describe('Chaos', () => {
   test('rapid random clicks across the menu do not crash the app', async ({ page }, info) => {
@@ -33,6 +33,7 @@ test.describe('Chaos', () => {
     await dlg.locator('.table-chip').first().click()
     const name = `E2E Dubbelklick ${RUN}${Math.random().toString(36).slice(2, 5)}`
     await dlg.getByLabel('Namn').fill(name)
+    await dlg.getByRole('textbox', { name: 'Telefon', exact: true }).fill(PHONE)
     await dlg.getByRole('button', { name: 'Boka' }).dblclick()
     await expect(dlg).toBeHidden({ timeout: 20000 })
     const list = await (await api.get(`/reservations?date=${date}`)).json()

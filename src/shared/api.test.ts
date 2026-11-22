@@ -88,6 +88,19 @@ describe('apiFetch fel', () => {
     await expect(apiFetch('/x')).rejects.toMatchObject({ code: 'not_found', status: 404 })
   })
 
+  it('ett tak (429) bär väntetiden från Retry-After eller kroppen, annars ingen', async () => {
+    const { apiFetch } = await loadApi()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(429, { error: 'sms_limit' }, { 'Retry-After': '5400' })))
+    await expect(apiFetch('/x', { method: 'POST' })).rejects.toMatchObject({ code: 'sms_limit', retryAfter: 5400 })
+    // Huvudet syns inte i webbläsaren utan CORS expose: kroppens retryAfter räcker.
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(json(429, { error: 'sms_limit', retryAfter: 600 }))))
+    await expect(apiFetch('/x', { method: 'POST' })).rejects.toMatchObject({ code: 'sms_limit', retryAfter: 600 })
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(json(429, { error: 'sms_limit' }))))
+    const err = await apiFetch('/x', { method: 'POST' }).catch((e: unknown) => e)
+    expect(err).toMatchObject({ code: 'sms_limit' })
+    expect((err as { retryAfter?: number }).retryAfter).toBeUndefined()
+  })
+
   it('ingen anslutning blir ett NetworkError med svensk text', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
     const { apiFetch } = await loadApi()

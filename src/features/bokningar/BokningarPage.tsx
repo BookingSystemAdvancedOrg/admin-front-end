@@ -16,6 +16,8 @@ import {
   STATUS_CLASS,
   STATUS_LABEL,
   addDays,
+  cardDeadline,
+  clockLabel,
   dayLabel,
   errorMessage,
   LOCATION_NOT_BOOKABLE,
@@ -35,6 +37,13 @@ import { SkelCard, SkelPage, SkelTableRows, SkelTiles } from '../../shared/Skele
 import { NoLocation } from '../../shared/NoLocation'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { PeakSuccess } from '../../shared/motion/PeakSuccess'
+
+/** Rubriken efter en ny bokning: väntar den på kort har kortlänken gått iväg. */
+function landedText(r: Reservation): string {
+  if (r.status === 'pending') return 'Kortlänk skickad'
+  if (r.guaranteeSkipped === 'too_soon') return 'Bokad utan kort (för nära starttiden)'
+  return 'Bokningen är sparad'
+}
 
 /**
  * Bokningar för vald plats och dag (GET /locations/{id}/reservations).
@@ -235,8 +244,12 @@ export default function BokningarPage() {
                 <p className="bk-landed">
                   <PeakSuccess
                     key={landed.reservationId}
-                    text="Bokningen är sparad"
-                    sub={`${dayLabel(landed.date)} ${landed.startTime} · ${landed.partySize} pers`}
+                    text={landedText(landed)}
+                    sub={`${dayLabel(landed.date)} ${landed.startTime} · ${landed.partySize} pers${
+                      landed.status === 'pending' && landed.pendingExpiresAt
+                        ? ` · hålls till ${clockLabel(cardDeadline(landed), landed.timezone ?? location?.timezone)}`
+                        : ''
+                    }`}
                   />
                 </p>
               )}
@@ -302,6 +315,9 @@ export default function BokningarPage() {
                           </span>
                           {r.cardOnFile && r.status === 'reserved' && (
                             <span className="cell-muted" title="Kort sparat (kortgaranti)"> <Icon name="card" size={15} /></span>
+                          )}
+                          {r.status === 'pending' && r.pendingExpiresAt && (
+                            <div className="cell-muted">hålls till {clockLabel(cardDeadline(r), r.timezone ?? location?.timezone)}</div>
                           )}
                           {feeSummary(r) && <div className="cell-muted">{feeSummary(r)}</div>}
                         </td>

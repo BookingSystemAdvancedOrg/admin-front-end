@@ -31,7 +31,7 @@ test.describe('Admin: Bokningar', () => {
     await pick(time, { index: 4 })
     await dlg.locator('.table-chip').first().click()
     await dlg.getByLabel('Namn').fill('E2E Åsa Öberg')
-    await dlg.getByLabel('Telefon (valfritt)').fill(PHONE)
+    await dlg.getByRole('textbox', { name: 'Telefon', exact: true }).fill(PHONE)
     await dlg.getByLabel('E-post (valfritt)').fill(mail('guest1'))
     await dlg.getByLabel('Anteckning (valfritt)').fill('E2E nötallergi')
     await page.screenshot({ path: info.outputPath('form.png') })
@@ -64,7 +64,7 @@ test.describe('Admin: Bokningar', () => {
     const api = await Api.attach(page)
     const s = (await slots(api, TOMORROW)).find((x) => tablesOf(x).length > 0)!
     const t = tablesOf(s)[0]
-    const body = { date: TOMORROW, startTime: s.startTime, tableIds: [t.tableId], partySize: 2, name: 'E2E Dubbel A', source: 'phone', notifyGuest: false }
+    const body = { date: TOMORROW, startTime: s.startTime, tableIds: [t.tableId], partySize: 2, name: 'E2E Dubbel A', source: 'phone', phone: PHONE, notifyGuest: false }
     const a = await api.post('/reservations/manual', body)
     expect(a.status(), await a.text()).toBeLessThan(300)
     const b = await api.post('/reservations/manual', { ...body, name: 'E2E Dubbel B' })
@@ -76,11 +76,11 @@ test.describe('Admin: Bokningar', () => {
     const all = await slots(api, TOMORROW)
     const s = all.find((x) => tablesOf(x).length > 0 && x.startTime >= '18:00')!
     const t = tablesOf(s)[0]
-    const a = await api.post('/reservations/manual', { date: TOMORROW, startTime: s.startTime, tableIds: [t.tableId], partySize: 2, name: 'E2E Overlap A', source: 'phone', notifyGuest: false })
+    const a = await api.post('/reservations/manual', { date: TOMORROW, startTime: s.startTime, tableIds: [t.tableId], partySize: 2, name: 'E2E Overlap A', source: 'phone', phone: PHONE, notifyGuest: false })
     expect(a.status(), await a.text()).toBeLessThan(300)
     const [h, m] = s.startTime.split(':').map(Number)
     const later = `${String(h + (m === 30 ? 1 : 0)).padStart(2, '0')}:${m === 30 ? '00' : '30'}`
-    const b = await api.post('/reservations/manual', { date: TOMORROW, startTime: later, tableIds: [t.tableId], partySize: 2, name: 'E2E Overlap B', source: 'phone', notifyGuest: false })
+    const b = await api.post('/reservations/manual', { date: TOMORROW, startTime: later, tableIds: [t.tableId], partySize: 2, name: 'E2E Overlap B', source: 'phone', phone: PHONE, notifyGuest: false })
     expect(b.status(), `overlap 30 min later must fail: ${await b.text()}`).toBeGreaterThanOrEqual(400)
   })
 
@@ -90,7 +90,7 @@ test.describe('Admin: Bokningar', () => {
     const s = all.find((x) => tablesOf(x).length > 0 && x.startTime >= '12:00')!
     const t = tablesOf(s)[0]
     const res = await Promise.all(
-      [1, 2, 3, 4, 5].map((i) => api.post('/reservations/manual', { date: stockholmDate(2), startTime: s.startTime, tableIds: [t.tableId], partySize: 2, name: `E2E Race ${i}`, source: 'phone', notifyGuest: false })),
+      [1, 2, 3, 4, 5].map((i) => api.post('/reservations/manual', { date: stockholmDate(2), startTime: s.startTime, tableIds: [t.tableId], partySize: 2, name: `E2E Race ${i}`, source: 'phone', phone: PHONE, notifyGuest: false })),
     )
     const ok = res.filter((r) => r.status() < 300).length
     expect(ok, `statuses ${res.map((r) => r.status()).join(',')}`).toBe(1)
@@ -101,13 +101,13 @@ test.describe('Admin: Bokningar', () => {
     const all = await slots(api, stockholmDate(3))
     const s = all.find((x) => tablesOf(x).length > 0)!
     const small = [...tablesOf(s)].sort((a, b) => a.seats - b.seats)[0]
-    const r = await api.post('/reservations/manual', { date: stockholmDate(3), startTime: s.startTime, tableIds: [small.tableId], partySize: small.seats + 6, name: 'E2E För stort sällskap', source: 'phone', notifyGuest: false })
+    const r = await api.post('/reservations/manual', { date: stockholmDate(3), startTime: s.startTime, tableIds: [small.tableId], partySize: small.seats + 6, name: 'E2E För stort sällskap', source: 'phone', phone: PHONE, notifyGuest: false })
     expect(r.status(), `party ${small.seats + 6} on ${small.seats}-seat table: ${await r.text()}`).toBeGreaterThanOrEqual(400)
   })
 
   test('booking in the past is refused (API)', async ({ page }) => {
     const api = await Api.attach(page)
-    const r = await api.post('/reservations/manual', { date: stockholmDate(-1), startTime: '18:00', tableIds: [], partySize: 2, name: 'E2E Igår', source: 'phone', notifyGuest: false })
+    const r = await api.post('/reservations/manual', { date: stockholmDate(-1), startTime: '18:00', tableIds: [], partySize: 2, name: 'E2E Igår', source: 'phone', phone: PHONE, notifyGuest: false })
     expect(r.status(), await r.text()).toBeGreaterThanOrEqual(400)
   })
 
@@ -115,7 +115,7 @@ test.describe('Admin: Bokningar', () => {
     const api = await Api.attach(page)
     const all = await slots(api, TOMORROW)
     const t = tablesOf(all.find((x) => tablesOf(x).length > 0)!)[0]
-    const r = await api.post('/reservations/manual', { date: TOMORROW, startTime: '23:45', tableIds: [t.tableId], partySize: 2, name: 'E2E Efter stängning', source: 'phone', notifyGuest: false })
+    const r = await api.post('/reservations/manual', { date: TOMORROW, startTime: '23:45', tableIds: [t.tableId], partySize: 2, name: 'E2E Efter stängning', source: 'phone', phone: PHONE, notifyGuest: false })
     expect(r.status(), await r.text()).toBeGreaterThanOrEqual(400)
   })
 
@@ -137,7 +137,7 @@ test.describe('Admin: Bokningar', () => {
     const all = await slots(api, stockholmDate(4))
     const s = all.find((x) => tablesOf(x).length > 1)!
     const [t1, t2] = tablesOf(s)
-    const r = await api.post('/reservations/manual', { date: stockholmDate(4), startTime: s.startTime, tableIds: [t1.tableId], partySize: 2, name: 'E2E Flytta mig', source: 'phone', notifyGuest: false })
+    const r = await api.post('/reservations/manual', { date: stockholmDate(4), startTime: s.startTime, tableIds: [t1.tableId], partySize: 2, name: 'E2E Flytta mig', source: 'phone', phone: PHONE, notifyGuest: false })
     expect(r.status(), await r.text()).toBeLessThan(300)
     const id = (await r.json()).reservationId ?? (await r.json()).id
     const mv = await api.patch(`/reservations/${id}`, { tableIds: [t2.tableId] })

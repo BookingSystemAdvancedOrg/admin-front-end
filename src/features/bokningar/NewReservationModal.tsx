@@ -8,15 +8,17 @@ import {
   EMAIL_MAX,
   NAME_MAX,
   NOTES_MAX,
+  createErrorMessage,
   createManualReservation,
-  errorMessage,
-  LOCATION_NOT_BOOKABLE,
   isStaleSlotError,
   lastBookableDate,
-  normalizePhone,
+  noCardOffer,
+  phoneFieldError,
+  staffPhone,
   validEmail,
 } from './bookingsApi'
 import type { Reservation } from './bookingsApi'
+import { NotifyGuestCheck, StaffPhoneField } from './StaffBookingFields'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { useUnsavedGuard } from '../../shared/unsaved'
@@ -34,6 +36,10 @@ function clampDate(date: string, today: string): string {
  * tider som gästerna (hel- och halvtimmar); en telefonbokning måste börja
  * minst 30 minuter fram, en drop-in bokas idag och får ta en pågående tid
  * eller en som börjar inom 30 minuter - gästen står ju redan där.
+ *
+ * En telefonbokning kräver gästens nummer och skickas med guarantee 'sms':
+ * kräver bordet kortgaranti väntar bokningen på kort och Booqy skickar
+ * kortlänken. Går sms:et inte kan personalen trycka Boka utan kort.
  */
 export function NewReservationModal({
   locationId,
@@ -59,6 +65,12 @@ export function NewReservationModal({
   const [refreshKey, setRefreshKey] = useState(0)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [phoneTouched, setPhoneTouched] = useState(false)
+  // Serverns svar om numret (visas vid fältet) och om Boka utan kort erbjuds.
+  const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [noCard, setNoCard] = useState(false)
+  // Senaste försöket var Boka utan kort: Försök igen gör samma sak igen.
+  const [lastWaive, setLastWaive] = useState(false)
   const [email, setEmail] = useState('')
   const [notes, setNotes] = useState('')
   const [notify, setNotify] = useState(true)
@@ -67,29 +79,44 @@ export function NewReservationModal({
 
   const size = Number(partySize)
   const sizeOk = /^\d+$/.test(partySize) && size >= 1 && size <= 50
-  const normalizedPhone = phone.trim() ? normalizePhone(phone) : null
-  const phoneOk = !phone.trim() || normalizedPhone !== null
+  const staff = staffPhone(source, phone, phoneTouched)
   const emailOk = !email.trim() || validEmail(email)
   const valid =
-    sizeOk && name.trim() && slot.startTime && slot.tableIds.length > 0 && phoneOk && emailOk
+    sizeOk && name.trim() && slot.startTime && slot.tableIds.length > 0 && staff.ok && emailOk
   const canNotify = Boolean(phone.trim() || email.trim())
   // Ifyllt men inte bokat: adminen frågar innan man lämnar sidan. Boka kräver ett giltigt formulär.
   useUnsavedGuard(Boolean(name.trim() || phone.trim() || email.trim() || notes.trim() || slot.startTime))
+
+  /** Svaret på förra försöket gäller inte längre (annan tid, bord, storlek eller kanal). */
+  function clearAttempt() {
+    setError(null)
+    setPhoneError(null)
+    setNoCard(false)
+    setLastWaive(false)
+  }
 
   function chooseSource(value: StaffChannel) {
     if (value === source) return
     setSource(value)
     setNotify(value === 'phone')
-    setError(null)
+    clearAttempt()
     // Tiderna skiljer sig (drop-in: idag, även pågående tider) - välj om.
     setSlot((s) => ({ date: value === 'walk_in' ? today : s.date, startTime: '', tableIds: [] }))
   }
 
-  async function submit(e: FormEvent) {
-    e.preventDefault()
+  function editPhone(value: string) {
+    setPhone(value)
+    setPhoneError(null)
+    setNoCard(false)
+    setLastWaive(false)
+  }
+
+  async function book(waive = false) {
     if (!valid || busy) return
     setBusy(true)
     setError(null)
+    setPhoneError(null)
+    setLastWaive(waive)
     try {
       const created = await createManualReservation(locationId, {
         date: slot.date,
@@ -97,15 +124,26 @@ export function NewReservationModal({
         tableIds: slot.tableIds,
         partySize: size,
         name: name.trim(),
-        ...(normalizedPhone ? { phone: normalizedPhone } : {}),
+        ...(staff.phone ? { phone: staff.phone } : {}),
         ...(email.trim() ? { email: email.trim() } : {}),
         ...(notes.trim() ? { notes: notes.trim() } : {}),
         source,
         notifyGuest: canNotify && notify,
+        ...(source === 'phone' ? { guarantee: waive ? ('waived' as const) : ('sms' as const) } : {}),
       })
       onCreated(created)
     } catch (err) {
-      setError(errorMessage(err, undefined, LOCATION_NOT_BOOKABLE))
+      const atPhone = phoneFieldError(err)
+      // Gick Boka utan kort inte står valet kvar (Försök igen bokar också utan kort).
+      setNoCard(source === 'phone' && (waive || noCardOffer(err)))
+      if (atPhone) {
+        setPhoneError(atPhone)
+        document.getElementById('nb-phone')?.focus()
+      } else {
+        setError(createErrorMessage(err))
+        // Felrutan står sist i formuläret: visa den (i telefonen ligger den annars under knapparna).
+        requestAnimationFrame(() => document.getElementById('nb-error')?.scrollIntoView?.({ block: 'center', behavior: 'smooth' }))
+      }
       if (isStaleSlotError(err)) {
         // Tiden eller bordet gick inte längre: hämta om listan och välj om.
         setSlot((s) => ({ ...s, startTime: '', tableIds: [] }))
@@ -113,6 +151,11 @@ export function NewReservationModal({
       }
       setBusy(false)
     }
+  }
+
+  function submit(e: FormEvent) {
+    e.preventDefault()
+    void book()
   }
 
   return (
@@ -128,7 +171,10 @@ export function NewReservationModal({
               id="nb-size"
               inputMode="numeric"
               value={partySize}
-              onChange={(e) => setPartySize(e.target.value)}
+              onChange={(e) => {
+                setPartySize(e.target.value)
+                clearAttempt()
+              }}
             />
           </div>
 
@@ -143,7 +189,7 @@ export function NewReservationModal({
             refreshKey={refreshKey}
             onChange={(next) => {
               setSlot(next)
-              setError(null)
+              clearAttempt()
             }}
           />
 
@@ -157,19 +203,14 @@ export function NewReservationModal({
             />
           </div>
           <div className="form-grid">
-            <div className="form-field">
-              <label htmlFor="nb-phone">Telefon (valfritt)</label>
-              <input
-                id="nb-phone"
-                inputMode="tel"
-                placeholder="070-123 45 67"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                aria-invalid={!phoneOk || undefined}
-                aria-describedby={phoneOk ? undefined : 'nb-phone-error'}
-              />
-              {!phoneOk && <p id="nb-phone-error" className="field-hint error">Numret ser fel ut. Skriv det så här: 070 123 45 67.</p>}
-            </div>
+            <StaffPhoneField
+              id="nb-phone"
+              label={source === 'phone' ? <label htmlFor="nb-phone">Telefon</label> : <label htmlFor="nb-phone">Telefon (valfritt)</label>}
+              value={phone}
+              error={phoneError ?? staff.error}
+              onChange={editPhone}
+              onBlur={() => setPhoneTouched(true)}
+            />
             <div className="form-field">
               <label htmlFor="nb-email">E-post (valfritt)</label>
               <input
@@ -194,20 +235,20 @@ export function NewReservationModal({
               onChange={(e) => setNotes(e.target.value)}
             />
           </div>
-          {canNotify && (
-            <label className="check-row">
-              <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
-              Skicka bekräftelse till gästen
-            </label>
-          )}
+          {canNotify && <NotifyGuestCheck channel={source} checked={notify} onChange={setNotify} />}
 
           {error && (
-            <ErrorNote text={error} />
+            <ErrorNote id="nb-error" text={error} onRetry={valid ? () => void book(lastWaive) : undefined} />
           )}
-          <div className="modal-actions modal-actions--pinned">
+          <div className={`modal-actions modal-actions--pinned${noCard ? ' has-no-card' : ''}`}>
             <button type="button" className="btn outline square" onClick={onCancel}>
               Avbryt
             </button>
+            {noCard && (
+              <button type="button" className="btn outline square no-card-btn" disabled={!valid || busy} onClick={() => void book(true)}>
+                Boka utan kort
+              </button>
+            )}
             <button type="submit" className="btn primary square" disabled={!valid || busy}>
               {busy ? 'Bokar…' : 'Boka'}
             </button>

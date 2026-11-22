@@ -1,5 +1,6 @@
-import { errorText } from '../../shared/errors'
+import { BOOQY_FAULT, errorText } from '../../shared/errors'
 import { apiFetch, ApiError, isApiConfigured } from '../../shared/api'
+import { normalizePhone as normalizeE164 } from '../../shared/phone'
 
 /**
  * Klient mot bokningsrutterna (backend functions/mark-arrived,
@@ -49,6 +50,21 @@ export interface HistoryEntry {
   [key: string]: unknown
 }
 
+/** Kortlänken i sms (personalens telefonbokning eller AI-agenten). Länken
+ * själv skickas aldrig till admin. */
+export interface GuaranteeLinkView {
+  /** booqy: Booqy skickade sms:et; caller: AI-agenten skickade det. */
+  by?: 'booqy' | 'caller'
+  /** Antal sms med länken hittills (högst 3). */
+  sends?: number
+  textedAt?: string
+  canResend?: boolean
+  minutes?: number
+  expiresAt?: string
+  page?: 'stripe' | 'site'
+  sms?: 'sent'
+}
+
 export interface Reservation {
   reservationId: string
   locationId: string
@@ -78,6 +94,9 @@ export interface Reservation {
   bookingRule?: BookingRule
   /** Minuter personalen förlängt utöver regelns längd (0 när den inte förlängts eller kortats). */
   extendedMinutes?: number
+  guaranteeLink?: GuaranteeLinkView
+  /** Bara i svaret på en ny bokning: kortgarantin hoppades över (för nära starttiden). */
+  guaranteeSkipped?: 'too_soon'
 }
 
 export interface BookingRule {
@@ -110,6 +129,8 @@ export interface ManualReservationInput {
   language?: 'sv' | 'en'
   source: 'phone' | 'walk_in' | 'staff'
   notifyGuest?: boolean
+  /** Telefon: sms skickar kortlänken när bordet kräver kort; waived bokar utan kort. */
+  guarantee?: 'sms' | 'waived'
 }
 
 export interface ReservationEdit {
@@ -216,7 +237,8 @@ export function availableActions(r: Reservation, isOwner: boolean) {
     arrive: r.status === 'reserved' || r.status === 'no_show',
     undoArrive: r.status === 'arrived',
     noShow: r.status === 'reserved',
-    cancel: r.status === 'reserved',
+    cancel: r.status === 'reserved' || r.status === 'pending',
+    resend: r.status === 'pending' && Boolean(r.guaranteeLink?.canResend),
     edit: r.status === 'reserved' || r.status === 'arrived',
     extend: r.status === 'reserved' || r.status === 'arrived',
     retryCharge:
@@ -247,24 +269,112 @@ export function lastBookableDate(today: string): string {
 export const NAME_MAX = 100
 export const EMAIL_MAX = 254
 export const NOTES_MAX = 500
-const E164 = /^\+[1-9]\d{7,14}$/
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
 /**
  * Telefonnummer i E.164 som servern sparar det (070-123 45 67 ->
  * +46701234567, 0046… -> +46…), eller null om det inte går att tolka.
+ * Samma längdregler för svenska nummer som servern (shared/phone.ts).
  */
 export function normalizePhone(raw: string): string | null {
-  let digits = raw.trim().replace(/[\s\-.]/g, '')
-  digits = digits.replace(/^(\+\d{1,3})\(0\)/, '$1').replace(/[()]/g, '')
-  if (digits.startsWith('00')) digits = `+${digits.slice(2)}`
-  else if (digits.startsWith('0')) digits = `+46${digits.slice(1)}`
-  return E164.test(digits) ? digits : null
+  return normalizeE164(raw)
 }
 
 export function validEmail(raw: string): boolean {
   const email = raw.trim()
   return email.length <= EMAIL_MAX && EMAIL.test(email)
+}
+
+// --- phone in staff bookings ---------------------------------------------------
+
+export const PHONE_REQUIRED = 'Skriv gästens telefonnummer.'
+export const PHONE_INVALID = 'Numret ser fel ut. Skriv det så här: 070 123 45 67.'
+export const PHONE_MOBILE = 'Kortlänken skickas med sms. Skriv ett mobilnummer, till exempel 070 123 45 67.'
+export const PHONE_OWN = 'Skriv gästens eget mobilnummer.'
+/** Taket för kortlänkar (429 sms_limit): per plats och dygn, och per inloggning och timme. */
+export const SMS_LIMIT = 'Taket för kortlänkar är nått. Boka utan kort.'
+export const SMS_LIMIT_DAY = 'Taket för kortlänkar i dag är nått. Boka utan kort.'
+const HOUR_S = 3600
+
+/** Hela minuter till taket släpper, om svaret säger det (Retry-After). */
+function limitMinutes(err: ApiError): number | null {
+  return err.retryAfter === undefined ? null : Math.max(1, Math.ceil(err.retryAfter / 60))
+}
+
+/**
+ * Texten för taket vid en ny bokning. Utan väntetid i svaret (huvudet syns
+ * inte alltid i webbläsaren) lovar texten ingen tid: dygnstaket släpper först
+ * vid midnatt (UTC).
+ */
+export function smsLimitText(err: ApiError): string {
+  const minutes = limitMinutes(err)
+  if (minutes === null) return SMS_LIMIT
+  if ((err.retryAfter ?? 0) > HOUR_S) return SMS_LIMIT_DAY
+  return `Många kortlänkar har skickats på kort tid. Boka utan kort, eller försök igen om ${minutes} min.`
+}
+
+/** Taket när länken skickas igen (inget Boka utan kort där). */
+function smsLimitResendText(err: ApiError): string {
+  const minutes = limitMinutes(err)
+  if (minutes === null) return 'Taket för kortlänkar är nått, så länken skickades inte igen.'
+  if ((err.retryAfter ?? 0) > HOUR_S) return 'Taket för kortlänkar i dag är nått, så länken skickades inte igen.'
+  return `Många kortlänkar har skickats på kort tid. Försök igen om ${minutes} min.`
+}
+
+/** Är texten taket för kortlänkar (inte ett fel i numret)? */
+export function isSmsLimitText(text: string | null | undefined): boolean {
+  return Boolean(text && (text.startsWith('Taket för kortlänkar') || text.startsWith('Många kortlänkar')))
+}
+export const SMS_FAILED_CREATE = 'Sms:et med kortlänken kunde inte skickas, så inget bokades.'
+export const SMS_UNAVAILABLE_CREATE = 'Sms kunde inte skickas, så inget bokades.'
+
+/**
+ * Telefonfältet i personalens bokning (Bokningar och bordskartan, samma
+ * regel): Telefon kräver ett nummer, Drop-in gör det inte. Felet för ett
+ * tomt fält visas först när man lämnat fältet (`touched`).
+ */
+export function staffPhone(
+  channel: 'phone' | 'walk_in',
+  raw: string,
+  touched: boolean,
+): { phone: string | null; error: string | null; ok: boolean } {
+  if (!raw.trim()) {
+    if (channel === 'phone') return { phone: null, error: touched ? PHONE_REQUIRED : null, ok: false }
+    return { phone: null, error: null, ok: true }
+  }
+  const phone = normalizePhone(raw)
+  return phone ? { phone, error: null, ok: true } : { phone: null, error: PHONE_INVALID, ok: false }
+}
+
+/** Serverns svar som gäller telefonfältet, som text under fältet, annars null. */
+export function phoneFieldError(err: unknown): string | null {
+  if (!(err instanceof ApiError)) return null
+  if (err.code === 'sms_limit') return smsLimitText(err)
+  if (err.status !== 400) return null
+  const m = err.message
+  if (/^phone is required for a phone booking/.test(m) || /^guarantee \w+ needs the guest's phone number/.test(m)) return PHONE_REQUIRED
+  if (/^phone must be a valid/.test(m)) return PHONE_INVALID
+  if (/^guarantee sms needs the guest's own mobile number/.test(m)) return PHONE_OWN
+  if (/^guarantee sms needs a mobile number/.test(m)) return PHONE_MOBILE
+  return null
+}
+
+/** Fel där personalen kan välja Boka utan kort (sms:et med kortlänken går inte). */
+export function noCardOffer(err: unknown): boolean {
+  if (!(err instanceof ApiError)) return false
+  return (
+    err.code === 'sms_failed' ||
+    err.code === 'sms_unavailable' ||
+    err.code === 'sms_limit' ||
+    (err.status === 400 && /^guarantee sms needs a mobile number/.test(err.message))
+  )
+}
+
+/** Felet från en ny bokning, för felrutan (sms-felen är Booqys, se errors.ts). */
+export function createErrorMessage(err: unknown): string {
+  if (err instanceof ApiError && err.code === 'sms_failed') return errorText(err, SMS_FAILED_CREATE)
+  if (err instanceof ApiError && err.code === 'sms_unavailable') return errorText(err, SMS_UNAVAILABLE_CREATE)
+  return errorMessage(err, undefined, LOCATION_NOT_BOOKABLE)
 }
 
 // --- errors -------------------------------------------------------------------
@@ -295,6 +405,12 @@ const ERROR_TEXT: Record<string, string> = {
   extension_too_long: 'Det är längre än bokningen får förlängas.',
   window_not_extendable: 'Förlängningen går in i en tid som inte får förlängas, till exempel en buffé.',
   after_closing: 'Bokningen kan inte sluta efter stängningstid. Välj en tidigare sluttid.',
+  resend_limit: 'Länken är redan skickad 3 gånger. Kolla numret med gästen, eller avboka och gör en ny bokning.',
+  link_closed: 'Tiden för kortet går snart ut. Avboka och gör en ny bokning om gästen behöver mer tid.',
+  not_pending: 'Bokningen väntar inte på kort längre. Nu syns det senaste.',
+  not_textable: 'Numret tar inte emot sms. Avboka och gör en ny bokning med ett mobilnummer.',
+  sms_failed: `Sms:et med kortlänken kunde inte skickas. ${BOOQY_FAULT}`,
+  sms_unavailable: `Sms kan inte skickas just nu. ${BOOQY_FAULT}`,
 }
 
 /** Stripes felkod för en avgift som inte gick igenom, som kort etikett.
@@ -335,6 +451,10 @@ const VALIDATION_TEXT: [RegExp, string][] = [
   [/^date must not be in the past/, 'Datumet har redan varit. Välj idag eller en senare dag.'],
   [/^date must not be more than \d+ days ahead/, `Det går bara att boka ${BOOKING_HORIZON_DAYS} dagar fram. Välj ett tidigare datum.`],
   [/^phone must be a valid/, 'Telefonnumret ser fel ut. Skriv det så här: 070 123 45 67.'],
+  [/^phone is required for a phone booking/, PHONE_REQUIRED],
+  [/^guarantee \w+ needs the guest's phone number/, PHONE_REQUIRED],
+  [/^guarantee sms needs the guest's own mobile number/, PHONE_OWN],
+  [/^guarantee sms needs a mobile number/, PHONE_MOBILE],
   [/^(email|phone) is required/, 'En onlinebokning behöver både e-post och telefon. Fyll i båda.'],
   [/^email must be a valid/, 'E-postadressen ser fel ut. Skriv den så här: namn@exempel.se.'],
   [/^name is required/, 'Gästens namn saknas. Skriv till exempel Anna Svensson.'],
@@ -363,6 +483,7 @@ export function errorMessage(
   notFound: string = RESERVATION_NOT_FOUND,
 ): string {
   if (err instanceof ApiError) {
+    if (err.code === 'sms_limit') return errorText(err, action, { sms_limit: smsLimitResendText(err) })
     // Via errorText så felrutan vet vem som gör något (Stripe nere: Försök igen).
     if (ERROR_TEXT[err.message]) return errorText(err, action, { [err.code]: ERROR_TEXT[err.message] })
     if (err.status === 402) return 'Betalningen gick inte igenom. Be gästen använda ett annat kort, eller lös avgiften direkt med gästen.'
@@ -391,11 +512,14 @@ export function isStaleSlotError(err: unknown): boolean {
 
 const base = (locationId: string) => `/locations/${encodeURIComponent(locationId)}`
 
+const MINUTE = 60_000
+
 /** Plats-id för exempeldatan när admin körs utan API. */
 export const MOCK_LOCATION_ID = 'mock'
 
 /** Utan API: en kväll med några bokningar i olika lägen (samma lista varje dag). */
 export function mockReservations(date: string): Reservation[] {
+  const now = Date.now()
   const r = (
     id: string,
     startTime: string,
@@ -427,6 +551,14 @@ export function mockReservations(date: string): Reservation[] {
     r('3', '18:00', '20:00', 6, ['9', '10'], 'reserved', { customerName: 'Sara Ek', source: 'phone' }),
     r('4', '19:00', '21:00', 2, ['4'], 'reserved', { customerName: 'Erik Holm', source: 'walk_in' }),
     r('5', '19:30', '21:30', 3, ['5'], 'cancelled_no_charge', { customerName: 'Lina Berg' }),
+    r('6', '20:00', '22:00', 6, ['8'], 'pending', {
+      customerName: 'Nora Lund',
+      source: 'phone',
+      customerPhone: '+46701112233',
+      pendingExpiresAt: new Date(now + 25 * MINUTE).toISOString(),
+      guarantee: { noShowFee: 120000 },
+      guaranteeLink: { by: 'booqy', sends: 1, textedAt: new Date(now - 5 * MINUTE).toISOString(), canResend: true },
+    }),
   ]
 }
 
@@ -442,13 +574,31 @@ export function getReservation(locationId: string, id: string): Promise<Reservat
   return apiFetch<Reservation>(`${base(locationId)}/reservations/${encodeURIComponent(id)}`)
 }
 
-export function createManualReservation(
+export async function createManualReservation(
   locationId: string,
   input: ManualReservationInput,
 ): Promise<Reservation> {
-  return apiFetch<Reservation>(`${base(locationId)}/reservations/manual`, {
+  const post = (body: ManualReservationInput) =>
+    apiFetch<Reservation>(`${base(locationId)}/reservations/manual`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    })
+  try {
+    return await post(input)
+  } catch (err) {
+    // Utrullning: en äldre server känner bara 'link' och nekar 'sms'/'waived'.
+    // Då bokas det utan kort, som förut. Kan tas bort när application-releasen är ute.
+    if (input.guarantee && err instanceof ApiError && err.status === 400 && err.message === 'guarantee must be link') {
+      return post({ ...input, guarantee: undefined })
+    }
+    throw err
+  }
+}
+
+/** Skicka kortlänken igen till bokningens nummer (samma länk, högst 3 sms totalt). */
+export function resendGuaranteeLink(locationId: string, id: string): Promise<Reservation> {
+  return apiFetch<Reservation>(`${base(locationId)}/reservations/${encodeURIComponent(id)}/guarantee-link`, {
     method: 'POST',
-    body: JSON.stringify(input),
   })
 }
 
@@ -557,6 +707,32 @@ export function dayLabel(date: string): string {
     timeZone: 'UTC',
   }).format(new Date(Date.UTC(y, m - 1, d)))
   return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+/**
+ * Tiden gästen fick för kortet. En kortlänk i sms lovar 30 minuter, men
+ * bokningen hålls 2 minuter till (Stripe-sidan stänger efter 31): personalen
+ * ska läsa upp gästens tid, inte hållningens.
+ */
+export const LINK_HOLD_MARGIN_MS = 2 * MINUTE
+
+export function cardDeadline(r: Pick<Reservation, 'pendingExpiresAt' | 'guaranteeLink'>): string | undefined {
+  if (!r.pendingExpiresAt) return undefined
+  if (!r.guaranteeLink) return r.pendingExpiresAt
+  const t = new Date(r.pendingExpiresAt).getTime()
+  return Number.isNaN(t) ? r.pendingExpiresAt : new Date(t - LINK_HOLD_MARGIN_MS).toISOString()
+}
+
+/** "18:04" i bokningens tidszon. */
+export function clockLabel(iso: string | undefined, timezone?: string | null): string {
+  if (!iso) return ''
+  const dt = new Date(iso)
+  if (Number.isNaN(dt.getTime())) return ''
+  return new Intl.DateTimeFormat('sv-SE', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: timezone || 'Europe/Stockholm',
+  }).format(dt)
 }
 
 /** "12 okt 18:04" för historik/tidsstämplar. */

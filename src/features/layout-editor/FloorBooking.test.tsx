@@ -105,11 +105,145 @@ describe('FloorBooking', () => {
     await user.click(await screen.findByRole('button', { name: /Bord 2, 2 pl/ }))
     await user.click(screen.getByRole('radio', { name: '18:00' }))
     await user.type(screen.getByLabelText('Namn'), 'Bo')
+    await user.type(screen.getByRole('textbox', { name: 'Telefon' }), '070-123 45 67')
     const calls = getAvailability.mock.calls.length
     await user.click(screen.getByRole('button', { name: 'Boka bordet' }))
-    expect(createManualReservation.mock.calls[0][1]).toMatchObject({ source: 'phone', tableIds: ['t-b'] })
+    expect(createManualReservation.mock.calls[0][1]).toMatchObject({ source: 'phone', tableIds: ['t-b'], phone: '+46701234567', guarantee: 'sms' })
     expect(await screen.findByRole('alert')).toBeInTheDocument()
     expect(getAvailability.mock.calls.length).toBeGreaterThan(calls)
+  })
+
+  it('a phone booking needs the phone and says when the card link went out', async () => {
+    const user = userEvent.setup()
+    createManualReservation.mockResolvedValue({
+      customerName: 'Bo', startTime: '18:00', status: 'pending', pendingExpiresAt: '2026-11-13T16:32:00Z', timezone: 'Europe/Stockholm',
+      guaranteeLink: { by: 'booqy', sends: 1, sms: 'sent' },
+    })
+    renderIt()
+    await user.click(await screen.findByRole('button', { name: /Bord 2, 2 pl/ }))
+    await user.click(screen.getByRole('radio', { name: '18:00' }))
+    await user.type(screen.getByLabelText('Namn'), 'Bo')
+    expect(screen.getByRole('button', { name: 'Boka bordet' })).toBeDisabled()
+    await user.click(screen.getByRole('textbox', { name: 'Telefon' }))
+    await user.tab()
+    expect(screen.getByText('Skriv gästens telefonnummer.')).toBeInTheDocument()
+    await user.type(screen.getByRole('textbox', { name: 'Telefon' }), '0701234567')
+    await user.click(screen.getByRole('button', { name: 'Boka bordet' }))
+    // Gästens 30 minuter (bokningen hålls 2 minuter till).
+    expect(await screen.findByText('Kortlänk skickad: Bo, bord 2 kl 18:00. Hålls till 17:30.')).toBeInTheDocument()
+  })
+
+  /** Bord 2 kl 18:00, namnet Bo och ett mobilnummer, på Telefon. */
+  async function fillPhoneBooking(user: ReturnType<typeof userEvent.setup>) {
+    renderIt()
+    await user.click(await screen.findByRole('button', { name: /Bord 2, 2 pl/ }))
+    await user.click(screen.getByRole('radio', { name: '18:00' }))
+    await user.type(screen.getByLabelText('Namn'), 'Bo')
+    await user.type(screen.getByRole('textbox', { name: 'Telefon' }), '0701234567')
+  }
+
+  it('a failed sms is Booqys fault, offers Boka utan kort and Försök igen sends the link again', async () => {
+    const user = userEvent.setup()
+    createManualReservation
+      .mockRejectedValueOnce(new ApiError(502, 'sms_failed', { fromServer: true }))
+      .mockResolvedValueOnce({ customerName: 'Bo', startTime: '18:00', status: 'reserved' })
+    await fillPhoneBooking(user)
+    await user.click(screen.getByRole('button', { name: 'Boka bordet' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Sms:et med kortlänken kunde inte skickas, så inget bokades.')
+    expect(alert).not.toHaveTextContent('Kolla numret')
+    expect(screen.getByRole('button', { name: 'Rapportera till Booqy' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Boka utan kort' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Försök igen' }))
+    expect(createManualReservation.mock.calls[1][1]).toMatchObject({ guarantee: 'sms' })
+  })
+
+  it('a failed Boka utan kort keeps the choice and Försök igen books without the card', async () => {
+    const user = userEvent.setup()
+    createManualReservation
+      .mockRejectedValueOnce(new ApiError(503, 'sms_unavailable', { fromServer: true }))
+      .mockRejectedValueOnce(new ApiError(503, 'reservation service unavailable', { fromServer: true }))
+      .mockResolvedValueOnce({ customerName: 'Bo', startTime: '18:00', status: 'reserved' })
+    await fillPhoneBooking(user)
+    await user.click(screen.getByRole('button', { name: 'Boka bordet' }))
+    await user.click(await screen.findByRole('button', { name: 'Boka utan kort' }))
+    await screen.findByRole('button', { name: 'Försök igen' })
+    expect(screen.getByRole('button', { name: 'Boka utan kort' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Försök igen' }))
+    expect(createManualReservation.mock.calls.map((c) => c[1].guarantee)).toEqual(['sms', 'waived', 'waived'])
+    expect(await screen.findByText('Bokat: Bo, bord 2 kl 18:00.')).toBeInTheDocument()
+  })
+
+  it('another table, another time or Avbryt drops the no-card offer', async () => {
+    const user = userEvent.setup()
+    createManualReservation.mockRejectedValue(new ApiError(502, 'sms_failed', { fromServer: true }))
+    await fillPhoneBooking(user)
+    await user.click(screen.getByRole('button', { name: 'Boka bordet' }))
+    await screen.findByRole('button', { name: 'Boka utan kort' })
+    await user.click(screen.getByRole('button', { name: /Bord 1, 4 pl/ }))
+    expect(screen.queryByRole('button', { name: 'Boka utan kort' })).toBeNull()
+
+    await user.click(screen.getByRole('radio', { name: '18:00' }))
+    await user.click(screen.getByRole('button', { name: 'Boka bordet' }))
+    await screen.findByRole('button', { name: 'Boka utan kort' })
+    await user.click(screen.getByRole('radio', { name: '18:30' }))
+    expect(screen.queryByRole('button', { name: 'Boka utan kort' })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Boka bordet' }))
+    await screen.findByRole('button', { name: 'Boka utan kort' })
+    await user.click(screen.getByRole('button', { name: 'Avbryt' }))
+    await user.click(screen.getByRole('button', { name: /Bord 1, 4 pl/ }))
+    expect(screen.queryByRole('button', { name: 'Boka utan kort' })).toBeNull()
+  })
+
+  it('the sms limit shows at the phone field with Boka utan kort, the number not marked wrong', async () => {
+    const user = userEvent.setup()
+    createManualReservation.mockRejectedValueOnce(new ApiError(429, 'sms_limit', { fromServer: true }))
+    await fillPhoneBooking(user)
+    await user.click(screen.getByRole('button', { name: 'Boka bordet' }))
+    expect(await screen.findByText('Taket för kortlänkar är nått. Boka utan kort.')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Telefon' })).not.toHaveAttribute('aria-invalid')
+    expect(screen.getByRole('button', { name: 'Boka utan kort' })).toBeInTheDocument()
+  })
+
+  it('a booking too close to the start is booked without the card and says so', async () => {
+    const user = userEvent.setup()
+    createManualReservation.mockResolvedValueOnce({ customerName: 'Bo', startTime: '18:00', status: 'reserved', guaranteeSkipped: 'too_soon' })
+    await fillPhoneBooking(user)
+    await user.click(screen.getByRole('button', { name: 'Boka bordet' }))
+    expect(await screen.findByText('Bokad utan kort (för nära starttiden): Bo, bord 2 kl 18:00.')).toBeInTheDocument()
+  })
+
+  it('a drop-in never offers Boka utan kort', async () => {
+    const user = userEvent.setup()
+    createManualReservation.mockRejectedValueOnce(new ApiError(503, 'sms_unavailable', { fromServer: true }))
+    renderIt()
+    await user.click(await screen.findByRole('radio', { name: 'Drop-in' }))
+    await user.click(await screen.findByRole('button', { name: /Bord 2, 2 pl/ }))
+    await user.click(screen.getByRole('radio', { name: '18:00' }))
+    await user.type(screen.getByLabelText('Namn'), 'Bo')
+    await user.click(screen.getByRole('button', { name: 'Boka bordet' }))
+    await screen.findByRole('alert')
+    expect(createManualReservation.mock.calls[0][1]).not.toHaveProperty('guarantee')
+    expect(screen.queryByRole('button', { name: 'Boka utan kort' })).toBeNull()
+  })
+
+  it('a landline shows at the phone field and Boka utan kort books without the card', async () => {
+    const user = userEvent.setup()
+    createManualReservation
+      .mockRejectedValueOnce(new ApiError(400, 'guarantee sms needs a mobile number', { fromServer: true }))
+      .mockResolvedValueOnce({ customerName: 'Bo', startTime: '18:00', status: 'reserved' })
+    renderIt()
+    await user.click(await screen.findByRole('button', { name: /Bord 2, 2 pl/ }))
+    await user.click(screen.getByRole('radio', { name: '18:00' }))
+    await user.type(screen.getByLabelText('Namn'), 'Bo')
+    await user.type(screen.getByRole('textbox', { name: 'Telefon' }), '08-123 45 67')
+    await user.click(screen.getByRole('button', { name: 'Boka bordet' }))
+    expect(await screen.findByText(/Kortlänken skickas med sms/)).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Telefon' })).toHaveFocus()
+    await user.click(screen.getByRole('button', { name: 'Boka utan kort' }))
+    expect(createManualReservation.mock.calls[1][1]).toMatchObject({ phone: '+4681234567', guarantee: 'waived' })
+    expect(await screen.findByText('Bokat: Bo, bord 2 kl 18:00.')).toBeInTheDocument()
   })
 
   it('opens on the linked table: its floor, its day, selected and highlighted', async () => {

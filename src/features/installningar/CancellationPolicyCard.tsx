@@ -12,7 +12,8 @@ import { SaveBar } from '../../shared/SaveBar'
 /**
  * Avbokningspolicy / kortgaranti för den valda platsen.
  *
- * När den är på sparar gästen sitt kort vid onlinebokning (inget dras då).
+ * När den är på sparar gästen sitt kort vid onlinebokning, eller via en
+ * kortlänk i sms vid en telefonbokning (inget dras då).
  * Uteblir gästen kan personalen debitera no-show-avgiften; avbokar gästen
  * senare än gränsen dras avgiften för sen avbokning. Beloppen gäller per
  * person och låses på bokningen när gästen bokar - ändringar här påverkar
@@ -173,7 +174,7 @@ export function CancellationPolicyCard({
     <section id="avbokningspolicy" className="admin-card table-card">
       <TitleInfo
         title="Avbokningspolicy"
-        info="Med kortgaranti sparar gästen sitt kort när hen bokar online (3-D Secure), inget dras då. Uteblir gästen eller avbokar för sent kan avgiften debiteras. Beloppen låses på bokningen."
+        info="Med kortgaranti sparar gästen sitt kort när hen bokar online, eller via en kortlänk i sms när ni bokar ett telefonsamtal. Inget dras då. Uteblir gästen eller avbokar för sent kan avgiften debiteras. Beloppen låses på bokningen."
       />
       {live.there !== null && <ChangedNote onUse={live.takeThere} />}
       <div style={{ height: 8 }} />
@@ -190,7 +191,7 @@ export function CancellationPolicyCard({
           <div className="toggle-row">
             <div>
               <p className="toggle-row-label" id="guarantee-enabled-label">
-                Kortgaranti vid onlinebokning
+                Kortgaranti vid bokning
               </p>
             </div>
             <button

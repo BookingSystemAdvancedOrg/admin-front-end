@@ -11,6 +11,9 @@ import {
   EMAIL_MAX,
   NAME_MAX,
   NOTES_MAX,
+  cardDeadline,
+  clockLabel,
+  createErrorMessage,
   createManualReservation,
   dayNotice,
   errorMessage,
@@ -18,11 +21,14 @@ import {
   getAvailability,
   isStaleSlotError,
   lastBookableDate,
-  normalizePhone,
+  noCardOffer,
+  phoneFieldError,
+  staffPhone,
   todayIn,
   validEmail,
 } from '../bokningar/bookingsApi'
 import type { AvailabilitySlot, DayStatus } from '../bokningar/bookingsApi'
+import { NotifyGuestCheck, StaffPhoneField } from '../bokningar/StaffBookingFields'
 import { SLOT_REFRESH_MS } from '../bokningar/SlotTablePicker'
 import { DateInput } from '../../shared/DateInput'
 import { toFloors } from './layoutApi'
@@ -136,6 +142,11 @@ export function FloorBooking({
   const [startTime, setStartTime] = useState('')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [phoneTouched, setPhoneTouched] = useState(false)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [noCard, setNoCard] = useState(false)
+  // Senaste försöket var Boka utan kort: Försök igen gör samma sak igen.
+  const [lastWaive, setLastWaive] = useState(false)
   const [email, setEmail] = useState('')
   const [notes, setNotes] = useState('')
   const [notify, setNotify] = useState(true)
@@ -265,14 +276,13 @@ export function FloorBooking({
   }, [flashIds])
   const size = Number(partySize)
   const sizeOk = /^\d+$/.test(partySize) && size >= 1 && size <= 50
-  const normalizedPhone = phone.trim() ? normalizePhone(phone) : null
-  const phoneOk = !phone.trim() || normalizedPhone !== null
+  const staff = staffPhone(channel, phone, phoneTouched)
   const emailOk = !email.trim() || validEmail(email)
   const canNotify = Boolean(phone.trim() || email.trim())
   // En vald tid som inte längre är ledig (någon hann före) gäller inte.
   const timeGone = Boolean(table && startTime && !slotsLoading && !(freeTimes.get(table.id) ?? []).includes(startTime))
   const chosenTime = timeGone ? '' : startTime
-  const valid = Boolean(table && chosenTime && sizeOk && name.trim() && phoneOk && emailOk)
+  const valid = Boolean(table && chosenTime && sizeOk && name.trim() && staff.ok && emailOk)
   const times = table ? (freeTimes.get(table.id) ?? []) : []
 
   function chooseChannel(next: StaffChannel) {
@@ -280,15 +290,30 @@ export function FloorBooking({
     setChannel(next)
     setNotify(next === 'phone')
     setStartTime('')
-    setError(null)
+    clearAttempt()
     if (next === 'walk_in') setDate(today)
+  }
+
+  /** Svaret på förra försöket gäller inte längre (annat bord, tid, datum, storlek eller kanal). */
+  function clearAttempt() {
+    setError(null)
+    setPhoneError(null)
+    setNoCard(false)
+    setLastWaive(false)
+  }
+
+  function editPhone(value: string) {
+    setPhone(value)
+    setPhoneError(null)
+    setNoCard(false)
+    setLastWaive(false)
   }
 
   function pickTable(id: string) {
     setTableId(id)
     setLinkedIds([])
     setStartTime('')
-    setError(null)
+    clearAttempt()
     setDone(null)
     // I telefonen ligger formuläret under kartan.
     requestAnimationFrame(() => {
@@ -311,11 +336,12 @@ export function FloorBooking({
     return { state, stateText, pick }
   }
 
-  async function submit(e: FormEvent) {
-    e.preventDefault()
+  async function book(waive = false) {
     if (!valid || busy || !table || !locationId) return
     setBusy(true)
     setError(null)
+    setPhoneError(null)
+    setLastWaive(waive)
     try {
       const created = await createManualReservation(locationId, {
         date,
@@ -323,22 +349,43 @@ export function FloorBooking({
         tableIds: [table.id],
         partySize: size,
         name: name.trim(),
-        ...(normalizedPhone ? { phone: normalizedPhone } : {}),
+        ...(staff.phone ? { phone: staff.phone } : {}),
         ...(email.trim() ? { email: email.trim() } : {}),
         ...(notes.trim() ? { notes: notes.trim() } : {}),
         source: channel,
         notifyGuest: canNotify && notify,
+        ...(channel === 'phone' ? { guarantee: waive ? ('waived' as const) : ('sms' as const) } : {}),
       })
-      setDone(`Bokat: ${created.customerName ?? name.trim()}, bord ${label(table)} kl ${created.startTime ?? chosenTime}.`)
+      const who = `${created.customerName ?? name.trim()}, bord ${label(table)} kl ${created.startTime ?? chosenTime}`
+      setDone(
+        created.status === 'pending'
+          ? `Kortlänk skickad: ${who}. Hålls till ${clockLabel(cardDeadline(created), created.timezone ?? location?.timezone)}.`
+          : created.guaranteeSkipped === 'too_soon'
+            ? `Bokad utan kort (för nära starttiden): ${who}.`
+            : `Bokat: ${who}.`,
+      )
       setTableId(null)
       setStartTime('')
       setName('')
       setPhone('')
+      setPhoneTouched(false)
+      setNoCard(false)
+      setLastWaive(false)
       setEmail('')
       setNotes('')
       setTick((n) => n + 1)
     } catch (err) {
-      setError(errorMessage(err, undefined, LOCATION_NOT_BOOKABLE))
+      const atPhone = phoneFieldError(err)
+      // Gick Boka utan kort inte står valet kvar (Försök igen bokar också utan kort).
+      setNoCard(channel === 'phone' && (waive || noCardOffer(err)))
+      if (atPhone) {
+        setPhoneError(atPhone)
+        document.getElementById('fb-phone')?.focus()
+      } else {
+        setError(createErrorMessage(err))
+        // Felrutan står sist i formuläret: visa den (i telefonen ligger den annars under knapparna).
+        requestAnimationFrame(() => document.getElementById('fb-error')?.scrollIntoView?.({ block: 'center', behavior: 'smooth' }))
+      }
       if (isStaleSlotError(err)) {
         setStartTime('')
         setTick((n) => n + 1)
@@ -346,6 +393,11 @@ export function FloorBooking({
     } finally {
       setBusy(false)
     }
+  }
+
+  function submit(e: FormEvent) {
+    e.preventDefault()
+    void book()
   }
 
   const view = floor ? bounds(floor) : null
@@ -382,6 +434,7 @@ export function FloorBooking({
                       if (!e.target.value) return
                       setDate(e.target.value)
                       setStartTime('')
+                      clearAttempt()
                       setDone(null)
                     }}
                   />
@@ -392,7 +445,10 @@ export function FloorBooking({
                     id="fb-size"
                     inputMode="numeric"
                     value={partySize}
-                    onChange={(e) => setPartySize(e.target.value)}
+                    onChange={(e) => {
+                      setPartySize(e.target.value)
+                      clearAttempt()
+                    }}
                     aria-invalid={!sizeOk || undefined}
                   />
                 </div>
@@ -581,7 +637,7 @@ export function FloorBooking({
                               className={`table-chip time-chip${chosenTime === time ? ' selected' : ''}`}
                               onClick={() => {
                                 setStartTime(time)
-                                setError(null)
+                                clearAttempt()
                               }}
                             >
                               {time}
@@ -595,23 +651,14 @@ export function FloorBooking({
                       <input id="fb-name" maxLength={NAME_MAX} value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
                     </div>
                     <div className="form-grid">
-                      <div className="form-field">
-                        <label htmlFor="fb-phone">Telefon (valfritt)</label>
-                        <input
-                          id="fb-phone"
-                          inputMode="tel"
-                          placeholder="070-123 45 67"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          aria-invalid={!phoneOk || undefined}
-                          aria-describedby={phoneOk ? undefined : 'fb-phone-error'}
-                        />
-                        {!phoneOk && (
-                          <p id="fb-phone-error" className="field-hint error">
-                            Skriv ett giltigt nummer, t.ex. 070-123 45 67.
-                          </p>
-                        )}
-                      </div>
+                      <StaffPhoneField
+                        id="fb-phone"
+                        label={channel === 'phone' ? <label htmlFor="fb-phone">Telefon</label> : <label htmlFor="fb-phone">Telefon (valfritt)</label>}
+                        value={phone}
+                        error={phoneError ?? staff.error}
+                        onChange={editPhone}
+                        onBlur={() => setPhoneTouched(true)}
+                      />
                       <div className="form-field">
                         <label htmlFor="fb-email">E-post (valfritt)</label>
                         <input
@@ -634,19 +681,26 @@ export function FloorBooking({
                       <label htmlFor="fb-notes">Anteckning (valfritt)</label>
                       <textarea id="fb-notes" rows={2} maxLength={NOTES_MAX} value={notes} onChange={(e) => setNotes(e.target.value)} />
                     </div>
-                    {canNotify && (
-                      <label className="check-row">
-                        <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
-                        Skicka bekräftelse till gästen
-                      </label>
-                    )}
+                    {canNotify && <NotifyGuestCheck channel={channel} checked={notify} onChange={setNotify} />}
                     {error && (
-                      <ErrorNote text={error} />
+                      <ErrorNote id="fb-error" text={error} onRetry={valid ? () => void book(lastWaive) : undefined} />
                     )}
-                    <div className="modal-actions">
-                      <button type="button" className="btn outline square" onClick={() => setTableId(null)}>
+                    <div className={`modal-actions${noCard ? ' has-no-card' : ''}`}>
+                      <button
+                        type="button"
+                        className="btn outline square"
+                        onClick={() => {
+                          setTableId(null)
+                          clearAttempt()
+                        }}
+                      >
                         Avbryt
                       </button>
+                      {noCard && (
+                        <button type="button" className="btn outline square no-card-btn" disabled={!valid || busy} onClick={() => void book(true)}>
+                          Boka utan kort
+                        </button>
+                      )}
                       <button type="submit" className="btn primary square" disabled={!valid || busy}>
                         {busy ? 'Bokar…' : 'Boka bordet'}
                       </button>

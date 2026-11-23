@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import { AdminTopbar } from '../../shared/AdminTopbar'
-import { ApiError, apiFetch, isApiConfigured } from '../../shared/api'
+import { isApiConfigured } from '../../shared/api'
 import { Loading } from '../../shared/Loading'
 import { currentLocation, useTenant } from '../../shared/tenant'
-import { tablesFromLayout } from '../../shared/tables'
 import { ChannelPicker } from '../bokningar/ChannelPicker'
 import type { StaffChannel } from '../bokningar/ChannelPicker'
 import {
@@ -31,74 +30,14 @@ import type { AvailabilitySlot, DayStatus } from '../bokningar/bookingsApi'
 import { NotifyGuestCheck, StaffPhoneField } from '../bokningar/StaffBookingFields'
 import { SLOT_REFRESH_MS } from '../bokningar/SlotTablePicker'
 import { DateInput } from '../../shared/DateInput'
-import { toFloors } from './layoutApi'
-import type { LayoutElement } from './layoutApi'
-import type { Floor, TableElement } from './data'
+import { loadActiveLayout } from './activeLayout'
+import type { ActivePlan } from './activeLayout'
+import type { TableElement } from './data'
+import { FloorMap, FloorTabs } from './FloorMap'
+import type { TableView } from './FloorMap'
 import '../bokningar/bokningar.css'
 import './floor-booking.css'
 import { ErrorNote } from '../../shared/ErrorNote'
-
-interface PublicLayout {
-  floors: { floorId: string; name?: string; level: number }[]
-  elements: (Omit<LayoutElement, 'updatedBy' | 'updatedAt'> & { label?: string })[]
-}
-
-/** Den gällande planen (samma som gästerna bokar mot); null = ingen publicerad. */
-async function loadActiveLayout(locationId: string): Promise<{ floors: Floor[]; labels: Map<string, string> } | null> {
-  let layout: PublicLayout
-  try {
-    layout = await apiFetch<PublicLayout>(`/locations/${encodeURIComponent(locationId)}/layout/active`)
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) return null
-    throw err
-  }
-  // Ingen aktiv layout än: servern svarar 200 med en tom plan.
-  if (layout.floors.length === 0 && layout.elements.length === 0) return null
-  const stamp = { updatedBy: '', updatedAt: '' }
-  const elements: LayoutElement[] = [
-    ...layout.floors.map((f) => ({
-      elementId: f.floorId,
-      type: 'floor' as const,
-      name: f.name,
-      level: f.level,
-      x: 0,
-      y: 0,
-      z: 0,
-      width: 0,
-      height: 0,
-      depth: 0,
-      rotationY: 0,
-      ...stamp,
-    })),
-    ...layout.elements.map((e) => ({ ...e, ...stamp })),
-  ]
-  const labels = new Map(tablesFromLayout(layout).map((t) => [t.tableId, t.label]))
-  return { floors: toFloors(elements), labels }
-}
-
-/** Vy-rutan runt allt som är ritat på våningen, med lite luft. */
-function bounds(floor: Floor): { x: number; y: number; w: number; h: number } {
-  const xs: number[] = []
-  const ys: number[] = []
-  for (const g of floor.grounds) {
-    xs.push(g.x, g.x + g.w)
-    ys.push(g.y, g.y + g.h)
-  }
-  for (const w of floor.walls) {
-    xs.push(w.x, w.dir === 'h' ? w.x + w.length : w.x)
-    ys.push(w.y, w.dir === 'v' ? w.y + w.length : w.y)
-  }
-  for (const t of floor.tables) {
-    const r = Math.max(t.w, t.h) * 0.7 + 12
-    xs.push(t.x - r, t.x + r)
-    ys.push(t.y - r, t.y + r)
-  }
-  if (xs.length === 0) return { x: -200, y: -150, w: 400, h: 300 }
-  const pad = 30
-  const x = Math.min(...xs) - pad
-  const y = Math.min(...ys) - pad
-  return { x, y, w: Math.max(...xs) + pad - x, h: Math.max(...ys) + pad - y }
-}
 
 /**
  * Boka direkt från bordskartan: personalen trycker på ett ledigt bord, ser
@@ -122,9 +61,7 @@ export function FloorBooking({
   const { locationId } = tenantState
   const location = currentLocation(tenantState)
   const today = todayIn(location?.timezone)
-  const [plan, setPlan] = useState<{ floors: Floor[]; labels: Map<string, string> } | null>(null)
-  // Bordet vars träffyta pekaren står på: ytorna ligger under borden, så bordets :hover räcker inte.
-  const [hoverId, setHoverId] = useState<string | null>(null)
+  const [plan, setPlan] = useState<ActivePlan | null>(null)
   // Vilken plats planen hämtades för, och hur det gick.
   const [planFor, setPlanFor] = useState<string | null>(null)
   const [planError, setPlanError] = useState<string | null>(null)
@@ -324,16 +261,24 @@ export function FloorBooking({
   }
 
   /** Ett bords läge i kartan (ledigt, för litet, fullbokat) och vad ett tryck gör. */
-  function tableState(t: { id: string; seats: number }) {
+  function tableView(t: TableElement): TableView {
     const free = (freeTimes.get(t.id) ?? []).length
     const fits = !sizeOk || t.seats >= size
     const state = slotsLoading ? 'loading' : free === 0 ? 'full' : fits ? 'free' : 'small'
     const stateText =
       state === 'loading' ? 'hämtar tider' : state === 'full' ? 'fullbokat' : state === 'small' ? `${free} lediga tider, för litet` : `${free} lediga tider`
-    const pick = () => {
-      if (state !== 'full' && state !== 'loading') pickTable(t.id)
+    const off = state === 'full' || state === 'loading'
+    return {
+      state,
+      selected: t.id === tableId,
+      extra: `${flashIds.includes(t.id) ? ' is-focus' : ''}${linkedIds.includes(t.id) ? ' is-linked' : ''}`,
+      focusable: !off,
+      disabled: off,
+      name: `Bord ${label(t)}, ${t.seats} pl, ${stateText}`,
+      onPick: () => {
+        if (!off) pickTable(t.id)
+      },
     }
-    return { state, stateText, pick }
   }
 
   async function book(waive = false) {
@@ -400,8 +345,6 @@ export function FloorBooking({
     void book()
   }
 
-  const view = floor ? bounds(floor) : null
-
   return (
     <>
       <AdminTopbar title="Layout" actions={actions} />
@@ -417,7 +360,7 @@ export function FloorBooking({
             <p className="cell-muted">Publicera en layout först.</p>
           </section>
         )}
-        {planState === 'ready' && plan && floor && view && (
+        {planState === 'ready' && plan && floor && (
           <>
             <section className="admin-card floor-booking-controls" aria-label="Bokningens uppgifter">
               <ChannelPicker value={channel} onChange={chooseChannel} />
@@ -473,20 +416,7 @@ export function FloorBooking({
             <div className="floor-booking-grid">
               <section className="admin-card floor-map-card" aria-label="Bordskarta" ref={mapRef}>
                 {plan.floors.length > 1 && (
-                  <div className="floor-tabs" role="tablist" aria-label="Våning">
-                    {plan.floors.map((f) => (
-                      <button
-                        key={f.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={f.id === floor.id}
-                        className={`${f.id === floor.id ? 'active' : ''}${f.tables.some((t) => linkedIds.includes(t.id)) ? ' has-linked' : ''}`}
-                        onClick={() => setFloorId(f.id)}
-                      >
-                        {f.name}
-                      </button>
-                    ))}
-                  </div>
+                  <FloorTabs floors={plan.floors} activeId={floor.id} onPick={setFloorId} markIds={linkedIds} />
                 )}
                 <div className="floor-map-legend" aria-hidden="true">
                   <span className="legend-free">Ledigt</span>
@@ -494,104 +424,7 @@ export function FloorBooking({
                   <span className="legend-full">Fullbokat</span>
                   {slotsLoading && <Loading variant="inline" label="Hämtar tider" />}
                 </div>
-                <svg
-                  className="floor-map"
-                  viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
-                  preserveAspectRatio="xMidYMid meet"
-                  role="group"
-                  aria-label={`Bord på ${floor.name}`}
-                >
-                  {/* Fullbokat: randigt, samma ränder som i teckenförklaringen. */}
-                  <defs>
-                    <pattern id="floor-map-full" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                      <rect className="floor-map-full-base" width="8" height="8" />
-                      <rect className="floor-map-full-stripe" width="4" height="8" />
-                    </pattern>
-                  </defs>
-                  {floor.grounds.map((g) => (
-                    <rect key={g.id} className="floor-map-ground" x={g.x} y={g.y} width={g.w} height={g.h} />
-                  ))}
-                  {floor.walls.map((w) => (
-                    <line
-                      key={w.id}
-                      className="floor-map-wall"
-                      x1={w.x}
-                      y1={w.y}
-                      x2={w.dir === 'h' ? w.x + w.length : w.x}
-                      y2={w.dir === 'v' ? w.y + w.length : w.y}
-                    />
-                  ))}
-                  {/* Träffytorna runt borden ligger under alla bord: en grannes
-                      träffyta täcker aldrig ett bord (man träffar det man trycker på). */}
-                  {floor.tables.map((t) => {
-                    const { state, pick } = tableState(t)
-                    return (
-                      <circle
-                        key={`hit-${t.id}`}
-                        className={`floor-map-hit is-${state}`}
-                        data-table={t.id}
-                        cx={t.x}
-                        cy={t.y}
-                        r={Math.max(t.w, t.h) / 2 + 18}
-                        aria-hidden="true"
-                        onClick={pick}
-                        onPointerEnter={() => setHoverId(t.id)}
-                        onPointerLeave={() => setHoverId((h) => (h === t.id ? null : h))}
-                      />
-                    )
-                  })}
-                  {floor.tables.map((t) => {
-                    const { state, stateText, pick } = tableState(t)
-                    return (
-                      <g
-                        key={t.id}
-                        className={`floor-map-table is-${state}${t.id === tableId ? ' is-selected' : ''}${t.id === hoverId ? ' is-hover' : ''}${flashIds.includes(t.id) ? ' is-focus' : ''}${linkedIds.includes(t.id) ? ' is-linked' : ''}`}
-                        transform={`translate(${t.x} ${t.y}) rotate(${t.rotation})`}
-                        role="button"
-                        tabIndex={state === 'full' || state === 'loading' ? -1 : 0}
-                        aria-disabled={state === 'full' || state === 'loading' || undefined}
-                        aria-pressed={t.id === tableId}
-                        aria-label={`Bord ${label(t)}, ${t.seats} pl, ${stateText}`}
-                        onClick={pick}
-                        onKeyDown={(e: ReactKeyboardEvent) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            pick()
-                          }
-                        }}
-                      >
-                        <g className="floor-map-body">
-                          {t.shape === 'round' ? (
-                            <circle className="floor-map-top" r={Math.max(t.w, t.h) / 2} />
-                          ) : (
-                            <rect className="floor-map-top" x={-t.w / 2} y={-t.h / 2} width={t.w} height={t.h} rx={6} />
-                          )}
-                          {(() => {
-                            const fit = labelFit(label(t), t)
-                            return (
-                              <g transform={`rotate(${-t.rotation})`}>
-                                {fit.cut && <title>{label(t)}</title>}
-                                {/* Trailing space: screen readers and axe join the two texts, "T1 4 pl" not "T14 pl". */}
-                                <text className="floor-map-label" y={fit.y} style={fit.style}>
-                                  {fit.lines.length === 1
-                                    ? `${fit.lines[0]} `
-                                    : fit.lines.map((line, i) => (
-                                        <tspan key={i} x={0} dy={i === 0 ? 0 : fit.size * 1.1}>
-                                          {i === fit.lines.length - 1 ? `${line} ` : line}
-                                        </tspan>
-                                      ))}
-                                </text>
-                                <text className="floor-map-seats" y={fit.seatsY}>
-                                  {t.seats} pl
-                                </text>
-                              </g>
-                            )
-                          })()}
-                        </g>
-                      </g>
-                    )
-                  })}
-                </svg>
+                <FloorMap floor={floor} label={label} view={tableView} />
               </section>
 
               <section className="admin-card floor-booking-panel" ref={panelRef} aria-live="polite">
@@ -714,74 +547,4 @@ export function FloorBooking({
       </div>
     </>
   )
-}
-
-/**
- * Bordsnumret ska rymmas på bordet och gå att läsa: ett långt namn får mindre
- * text (ned till 13, inte mindre). Räcker inte det bryts det på två rader om
- * bordet är högt nog, annars kortas det med "…"; hela namnet ligger då i en
- * title. Bara utseende.
- */
-function labelFit(text: string, t: { w: number; h: number; rotation: number }) {
-  const upright = t.rotation % 180 === 0
-  const room = (upright ? t.w : Math.min(t.w, t.h)) - 10
-  const tall = upright ? t.h : t.w
-  const perChar = 0.62
-  const max = 19
-  const min = 13
-  // Två rader får vara något mindre än en rad; de syns ändå tydligt.
-  const small = 10
-  const fits = (n: number, cap = max) => Math.min(cap, room / Math.max(1, n * perChar))
-  const one = fits(text.length)
-  if (one >= min) {
-    return {
-      size: one,
-      lines: [text],
-      cut: false,
-      y: -4,
-      seatsY: 14,
-      style: one < max ? { fontSize: `${one}px` } : undefined,
-    }
-  }
-  // Två rader och platsantalet under ska rymmas på höjden.
-  const twoCap = Math.min(max, (tall - 18) / 2.2)
-  if (twoCap < small) {
-    // Bara en rad: början och slutet syns, så numret i "Terrassen 12" finns kvar.
-    const per = Math.max(3, Math.floor(room / (perChar * min)))
-    const head = Math.ceil((per - 1) / 2)
-    const tail = per - 1 - head
-    const short = `${text.slice(0, head).trimEnd()}…${tail > 0 ? text.slice(-tail).trimStart() : ''}`
-    return { size: min, lines: [short], cut: true, y: -4, seatsY: 14, style: { fontSize: `${min}px` } }
-  }
-  // Bryt vid det mellanslag som ger jämnast rader.
-  let lines: string[] | null = null
-  for (let i = text.indexOf(' '); i > 0; i = text.indexOf(' ', i + 1)) {
-    const cand = [text.slice(0, i), text.slice(i + 1)]
-    if (!lines || Math.max(...cand.map((l) => l.length)) < Math.max(...lines.map((l) => l.length))) lines = cand
-  }
-  let cut = false
-  if (!lines || fits(Math.max(...lines.map((l) => l.length)), twoCap) < small) {
-    const per = Math.max(3, Math.floor(room / (perChar * small)))
-    if (text.length <= 2 * per - 1) {
-      // Mitt i ordet med bindestreck.
-      lines = [`${text.slice(0, per - 1)}-`, text.slice(per - 1)]
-    } else {
-      // För långt även på två rader: början och slutet, hela namnet i title.
-      const space = text.lastIndexOf(' ', per)
-      const first = space > per / 3 ? text.slice(0, space) : text.slice(0, per)
-      lines = [first, `…${text.slice(-(per - 1)).trimStart()}`]
-      cut = true
-    }
-  }
-  const size = Math.max(small, fits(Math.max(...lines.map((l) => l.length)), twoCap))
-  // Blocket (två rader, 2 enheter luft, platsantalet 12) centreras på bordet.
-  const top = -(2 * 1.1 * size + 2 + 12) / 2
-  return {
-    size,
-    lines,
-    cut,
-    y: top + 0.55 * size,
-    seatsY: top + 2.2 * size + 8,
-    style: { fontSize: `${size}px` },
-  }
 }

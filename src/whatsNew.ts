@@ -114,6 +114,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
   { n: 104, text: 'Bordskort och rätter' },
   { n: 105, text: 'Larm vid ny beställning' },
   { n: 106, text: 'Kortlänk vid telefonbokning' },
+  { n: 107, text: 'Bordskarta i bokningen' },
 ]
 
 declare const __WHATS_NEW_N__: number | undefined

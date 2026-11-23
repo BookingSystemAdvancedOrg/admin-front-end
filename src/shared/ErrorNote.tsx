@@ -19,6 +19,8 @@ type ReportState = { for: string; state: 'sending' | 'sent' | 'duplicate' | 'fai
  *   supportReport.ts för vad som skickas).
  * - Text som inte kom från errorText (en sidas egen regel, "Fyll i namn.")
  *   visas som förut, utan knappar.
+ * - `alwaysRetry`: Försök igen (`onRetry`) också när felet är användarens,
+ *   t.ex. inget nät, för något som annars inte hämtas om av sig självt.
  */
 export function ErrorNote({
   text,
@@ -26,6 +28,7 @@ export function ErrorNote({
   onRetry,
   info: given,
   id,
+  alwaysRetry = false,
 }: {
   text: string | null | undefined
   className?: string
@@ -33,10 +36,26 @@ export function ErrorNote({
   /** Vem som gör något, när sidan vet det själv (annars slås texten upp). */
   info?: ErrorInfo
   id?: string
+  alwaysRetry?: boolean
 }) {
   if (!text) return null
   const info = given ?? errorInfo(text)
   if (!hasActions(info)) {
+    if (alwaysRetry && onRetry) {
+      return (
+        <div id={id} className={`${className} error-note`} role="alert">
+          <p className="error-note-text">{text}</p>
+          <div className="error-note-body">
+            <div className="error-note-actions">
+              <button type="button" className="btn outline square" onClick={() => onRetry()}>
+                <Icon name="rotate" size={16} />
+                Försök igen
+              </button>
+            </div>
+          </div>
+        </div>
+      )
+    }
     return <p id={id} className={className} role="alert">{text}</p>
   }
   return (

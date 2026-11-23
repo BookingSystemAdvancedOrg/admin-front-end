@@ -1,0 +1,166 @@
+/* Bordskartan i bokningsformuläret (SlotTablePicker): ett eller flera bord
+   väljs på planen i 2D. Formulär med kartan får en bredare dialog; en
+   bokning som går att flytta är lika bred redan innan Ändra, så att
+   dialogen inte hoppar i sidled. */
+.booking-modal:has(.slot-picker),
+.booking-modal.has-map {
+  width: 720px;
+}
+
+/* Den klistrade knappraden täcker inte bordet som har fokus: skrollrutan
+   lämnar plats för raden när fokus flyttas med tabb. */
+.modal:has(.slot-picker):has(.modal-actions--pinned) {
+  scroll-padding-bottom: 104px;
+}
+
+/* Kön (Placera, Erbjud): märkespaketets dialog. Knapparna ligger kvar
+   längst ner, och kartan är lägre så att valda bord, platserna och knappen
+   syns utan att skrolla. */
+.bq-modal:has(.slot-picker) {
+  scroll-padding-bottom: 88px;
+}
+
+.bq-modal:has(.slot-picker) .bq-modal__foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin: 0 calc(-1 * var(--bq-space-6, 24px)) calc(-1 * var(--bq-space-6, 24px));
+  padding: 12px var(--bq-space-6, 24px) var(--bq-space-6, 24px);
+  background: var(--bq-surface, var(--surface));
+  box-shadow: 0 -10px 18px -14px rgba(26, 18, 14, 0.35);
+}
+
+.bq-modal .slot-map .floor-map {
+  max-height: clamp(160px, calc(90svh - 436px), 360px);
+}
+
+.slot-map {
+  min-width: 0;
+}
+
+/* Valda bord som inte finns i kartan, med en knapp för att ta bort dem. */
+.slot-map-offmap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.slot-map .floor-map {
+  max-height: min(52vh, 480px);
+}
+
+/* Ledigt i kartan (formulärkontroller): fyllnaden har minst 3:1 mot golvet
+   och texten på bordet minst 4,5:1, i ljust och mörkt läge. */
+.slot-map.floor-map-scope {
+  --floor-free: color-mix(in srgb, var(--success) 67%, var(--surface));
+}
+
+:root[data-theme='dark'] .slot-map.floor-map-scope {
+  --floor-free: color-mix(in srgb, var(--success) 50%, var(--surface));
+}
+
+/* Kanterna är genomskinliga (edges.css): fokus syns som ett sken runt bordet. */
+.slot-map .floor-map-table:focus-visible .floor-map-top {
+  filter: drop-shadow(0 0 2px var(--accent-ink)) drop-shadow(0 0 6px var(--accent-ink));
+}
+
+/* Med mus: ett ledigt bord under pekaren får ett svagare sken. */
+@media (hover: hover) {
+  .slot-map .floor-map-table.is-free:not(:focus-visible):hover .floor-map-top,
+  .slot-map .floor-map-table.is-free.is-hover:not(:focus-visible) .floor-map-top {
+    filter: drop-shadow(0 0 4px var(--accent-ink));
+  }
+}
+
+/* Våningsflikarna och teckenförklaringen på en rad när de ryms. */
+.slot-map-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  min-width: 0;
+}
+
+.slot-map-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.slot-map-tabs button {
+  padding: 8px 14px;
+  border-radius: var(--r-md);
+  /* Syns som knapp både på glaset och i köns dialog (samma färg som glaset). */
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  font: 600 13px/1.2 var(--sans);
+  color: var(--muted);
+  cursor: default;
+}
+
+.slot-map-tabs button.active {
+  background: var(--green);
+  color: var(--on-accent);
+}
+
+/* En våning med valda bord får en prick i fliken. */
+.slot-map-tabs button.has-selected::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--accent-ink);
+  vertical-align: middle;
+}
+
+.slot-map-tabs button.active.has-selected::after {
+  background: var(--on-accent);
+}
+
+.slot-map-chosen {
+  margin: 0;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+@media (pointer: coarse) {
+  .slot-map-tabs button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 600px) {
+  .slot-map .floor-map {
+    max-height: 46vh;
+  }
+
+  /* Telefon: flikarna på en rad som skrollar i sidled, så kartan får plats. */
+  .slot-map-tabs {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+
+  .slot-map-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .slot-map-tabs button {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  .bq-modal:has(.slot-picker) .bq-modal__foot {
+    padding-top: 8px;
+    padding-bottom: 16px;
+  }
+}

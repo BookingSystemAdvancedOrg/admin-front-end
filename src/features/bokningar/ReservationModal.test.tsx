@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,6 +9,7 @@ import { SlotTablePicker, SLOT_REFRESH_MS } from './SlotTablePicker'
 import type { Reservation } from './bookingsApi'
 import { formatDate } from '../../shared/DateInput'
 import { chooseOption } from '../../test/select'
+import { testPlan } from '../../test/layout'
 
 const changeStatus = vi.fn()
 const paymentAction = vi.fn()
@@ -27,6 +28,14 @@ vi.mock('./bookingsApi', async (orig) => ({
   createManualReservation: (...a: unknown[]) => createManualReservation(...a),
   resendGuaranteeLink: (...a: unknown[]) => resendGuaranteeLink(...a),
 }))
+
+// Bordskartan: bord 2-5 med samma nummer som id:t.
+const loadActiveLayout = vi.fn()
+vi.mock('../layout-editor/activeLayout', async (orig) => ({
+  ...(await orig<typeof import('../layout-editor/activeLayout')>()),
+  loadActiveLayout: (...a: unknown[]) => loadActiveLayout(...a),
+}))
+const PLAN = testPlan(['2', '3', '4', '5'].map((id) => ({ id, label: id, seats: id === '2' ? 2 : 4 })))
 
 const TODAY = '2026-10-12'
 
@@ -58,6 +67,8 @@ beforeEach(() => {
     fn.mockReset()
   }
   getAvailability.mockResolvedValue(avail([]))
+  loadActiveLayout.mockReset()
+  loadActiveLayout.mockResolvedValue(PLAN)
 })
 
 describe('ReservationModal', () => {
@@ -220,6 +231,27 @@ const PHONE_BOOKING = {
 }
 
 describe('NewReservationModal', () => {
+  it('picks one or several tables on the 2D map, no checkbox list', async () => {
+    const user = userEvent.setup()
+    getAvailability.mockResolvedValue(avail([
+      { startTime: '19:00', endTime: '21:00', layoutVersion: 1, tables: [{ tableId: '2', seats: 2 }, { tableId: '4', seats: 4 }] },
+    ]))
+    createManualReservation.mockResolvedValue(booking({ reservationId: 'new' }))
+    render(<NewReservationModal locationId="loc-1" initialDate="2026-10-12" today={TODAY} onCreated={() => {}} onCancel={() => {}} />)
+    await chooseOption(await screen.findByLabelText('Tid'), '19:00')
+    const map = screen.getByRole('group', { name: 'Bordskarta' })
+    expect(within(map).getByRole('button', { name: 'Bord 3, 4 pl, upptaget' })).toHaveAttribute('aria-disabled', 'true')
+    await user.click(within(map).getByRole('button', { name: 'Bord 2, 2 pl, ledigt' }))
+    await user.click(within(map).getByRole('button', { name: 'Bord 4, 4 pl, ledigt' }))
+    expect(within(map).getByText('Bord 2, 4')).toBeInTheDocument()
+    expect(within(map).getByText('Valda bord har 6 platser.')).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: /Bord/ })).toBeNull()
+    await user.type(screen.getByLabelText('Namn'), 'Anna')
+    await user.type(phoneField(), '+46701234567')
+    await user.click(screen.getByRole('button', { name: 'Boka' }))
+    expect(createManualReservation).toHaveBeenCalledWith('loc-1', { ...PHONE_BOOKING, tableIds: ['2', '4'] })
+  })
+
   it('books a phone reservation with the card link by sms', async () => {
     const user = userEvent.setup()
     createManualReservation.mockResolvedValue(booking({ reservationId: 'new' }))

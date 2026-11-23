@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
-import { ApiError } from './api'
+import { ApiError, NetworkError } from './api'
 import { ErrorNote } from './ErrorNote'
 import { errorText } from './errors'
 
@@ -29,6 +29,18 @@ describe('ErrorNote', () => {
     render(<ErrorNote text="Fyll i namn." />)
     expect(screen.getByRole('alert').tagName).toBe('P')
     expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  it('alwaysRetry: Försök igen också utan nät, ingen rapportknapp', () => {
+    const text = errorText(new NetworkError(), 'Kunde inte hämta.')
+    const retry = vi.fn()
+    const { rerender } = render(<ErrorNote text={text} onRetry={retry} />)
+    expect(screen.queryByRole('button')).toBeNull()
+    rerender(<ErrorNote text={text} onRetry={retry} alwaysRetry />)
+    expect(screen.getByRole('alert')).toHaveTextContent('Vi når inte Booqy just nu')
+    fireEvent.click(screen.getByRole('button', { name: /Försök igen/ }))
+    expect(retry).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('button', { name: /Rapportera/ })).toBeNull()
   })
 
   it('ingenting utan text', () => {

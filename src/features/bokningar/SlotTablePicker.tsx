@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link, useInRouterContext } from 'react-router-dom'
 import { dayNotice, errorMessage, getAvailability, lastBookableDate, LOCATION_NOT_BOOKABLE } from './bookingsApi'
 import type { AvailabilitySlot, DayStatus } from './bookingsApi'
-import { useTables } from '../../shared/tables'
+import { tableNames } from '../../shared/tables'
 import { DateInput } from '../../shared/DateInput'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { Icon } from '../../shared/Icon'
+import { Loading } from '../../shared/Loading'
 import { Select } from '../../shared/Select'
+import { loadActiveLayout, loadVersionPlans } from '../layout-editor/activeLayout'
+import type { ActivePlan, VersionPlans } from '../layout-editor/activeLayout'
+import type { TableElement } from '../layout-editor/data'
+import { FloorMap, FloorTabs } from '../layout-editor/FloorMap'
+import type { TableView } from '../layout-editor/FloorMap'
+import './slot-map.css'
 
 /** Hur ofta listan med lediga tider hämtas om medan formuläret är öppet. */
 export const SLOT_REFRESH_MS = 60_000
@@ -29,9 +38,17 @@ export interface SlotValue {
  * valda tiden (eller ett valt bord) tas valet bort med en förklaring, så att
  * ingen skickar en tid som inte går längre.
  *
- * Personalen får använda alla lediga bord med tillräckligt många platser
- * (gästernas regler för bord online gäller inte här). En avvikande dag
- * (stängt, andra tider, ingen onlinebokning) förklaras ovanför tiderna.
+ * Borden väljs på platsens publicerade bordskarta (2D, samma numrering som
+ * gästsajten och Layout): tryck på ett eller flera lediga bord. Personalen
+ * får kombinera alla lediga bord (gästernas regler för bord online gäller
+ * inte här). Kartan hämtas en gång per plats, inte för varje tid; gick det
+ * inte hämtas den igen med Försök igen, varje minut och när nätet är tillbaka.
+ * Efter ett inbokat versionsbyte gäller den nya versionens bord: finns ett
+ * bord i tiden som inte står i dagens karta hämtas versionerna (en gång) och
+ * tidens version ritas. Ett ledigt bord som ändå saknas i kartan visas inte;
+ * ett valt bord som saknas (bokningens eget) står under kartan och går att
+ * ta bort. En avvikande dag (stängt, andra tider, ingen onlinebokning)
+ * förklaras ovanför tiderna.
  */
 export function SlotTablePicker({
   locationId,
@@ -60,7 +77,14 @@ export function SlotTablePicker({
 }) {
   const [slots, setSlots] = useState<AvailabilitySlot[] | null>(null)
   const [day, setDay] = useState<DayStatus | null>(null)
-  const { labels } = useTables(locationId)
+  // Bordskartan för en plats: planen eller felet. Ett nytt försök visar felet
+  // tills svaret kommer (utom när personalen själv trycker Försök igen).
+  const [planRes, setPlanRes] = useState<{ loc: string; plan: ActivePlan | null; error: string | null } | null>(null)
+  const [planTry, setPlanTry] = useState(0)
+  const [retrying, setRetrying] = useState(false)
+  const [versions, setVersions] = useState<{ loc: string; plans: VersionPlans } | null>(null)
+  const versionsAsked = useRef<string | null>(null)
+  const [floorId, setFloorId] = useState<string | null>(null)
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [slotNotice, setSlotNotice] = useState<string | null>(null)
@@ -69,15 +93,47 @@ export function SlotTablePicker({
 
   // Den senaste valda tiden/borden - läses när en ny lista kommer, utan att
   // varje val startar en ny hämtning.
-  const latest = useRef({ date, startTime, tableIds, keep, onChange })
+  const planFailed = planRes?.loc === locationId && planRes.error !== null
+  const latest = useRef({ date, startTime, tableIds, keep, onChange, planFailed })
   useEffect(() => {
-    latest.current = { date, startTime, tableIds, keep, onChange }
+    latest.current = { date, startTime, tableIds, keep, onChange, planFailed }
   })
 
   useEffect(() => {
-    const timer = window.setInterval(() => setTick((n) => n + 1), SLOT_REFRESH_MS)
-    return () => window.clearInterval(timer)
+    const timer = window.setInterval(() => {
+      setTick((n) => n + 1)
+      // Kartan som inte gick att hämta försöks igen med tiderna.
+      if (latest.current.planFailed) setPlanTry((n) => n + 1)
+    }, SLOT_REFRESH_MS)
+    const online = () => {
+      if (latest.current.planFailed) setPlanTry((n) => n + 1)
+    }
+    window.addEventListener('online', online)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('online', online)
+    }
   }, [])
+
+  // Bordskartan: en gång per plats (och vid ett nytt försök), inte för varje tid.
+  useEffect(() => {
+    let live = true
+    loadActiveLayout(locationId).then(
+      (p) => {
+        if (!live) return
+        setPlanRes({ loc: locationId, plan: p, error: null })
+        setRetrying(false)
+      },
+      (err) => {
+        if (!live) return
+        setPlanRes({ loc: locationId, plan: null, error: errorMessage(err, 'Bordskartan kunde inte visas.', LOCATION_NOT_BOOKABLE) })
+        setRetrying(false)
+      },
+    )
+    return () => {
+      live = false
+    }
+  }, [locationId, planTry])
 
   useEffect(() => {
     let cancelled = false
@@ -126,21 +182,61 @@ export function SlotTablePicker({
   times.sort()
 
   const slot = loading ? undefined : (slots ?? []).find((s) => s.startTime === startTime)
+  const ownIds = ownSlot && ownSlot.startTime === startTime ? ownSlot.tableIds : []
+  const res = planRes?.loc === locationId ? planRes : null
+  const active = res?.plan ?? null
+  const hasTables = (p: ActivePlan | null): p is ActivePlan => Boolean(p && p.floors.some((f) => f.tables.length > 0))
+  const planState: 'loading' | 'error' | 'none' | 'ready' =
+    !res || retrying ? 'loading' : res.error ? 'error' : hasTables(active) ? 'ready' : 'none'
+
+  // Tidens bord som inte står i dagens karta: efter ett inbokat versionsbyte
+  // gäller den nya versionens bord. Då hämtas versionerna, en gång per plats.
+  const activeIds = new Set((active?.floors ?? []).flatMap((f) => f.tables.map((t) => t.id)))
+  const wanted = [...(slot?.tables ?? []).map((t) => t.tableId), ...ownIds]
+  const needVersions = planState === 'ready' && wanted.some((id) => !activeIds.has(id))
+  useEffect(() => {
+    if (!needVersions || versionsAsked.current === locationId) return
+    versionsAsked.current = locationId
+    const loc = locationId
+    loadVersionPlans(loc).then(
+      (plans) => setVersions({ loc, plans }),
+      // Utan versionerna ritas dagens karta; borden som saknas visas inte.
+      () => setVersions({ loc, plans: { current: null, plans: new Map() } }),
+    )
+  }, [needVersions, locationId])
+  const vp = versions?.loc === locationId ? versions.plans : null
+  let plan: ActivePlan | null = active
+  let newVersion = false
+  if (vp && planState === 'ready') {
+    const v = slot?.layoutVersion
+    const byVersion = v !== undefined && v !== vp.current ? vp.plans.get(v) : undefined
+    // Den egna tiden utan lediga bord kan sakna version: välj den som har bokningens bord.
+    const byOwn =
+      !slot && ownIds.some((id) => !activeIds.has(id))
+        ? [...vp.plans].find(([n, p]) => n !== vp.current && ownIds.every((id) => p.labels.has(id)))?.[1]
+        : undefined
+    const other = byVersion ?? byOwn
+    if (hasTables(other ?? null)) {
+      plan = other!
+      newVersion = true
+    }
+  }
+  const mapTables = planState === 'ready' && plan ? plan.floors.flatMap((f) => f.tables) : []
+  const mapIds = new Set(mapTables.map((t) => t.id))
+  const layoutSeats = new Map(mapTables.map((t) => [t.id, t.seats]))
   const tables = [...(slot?.tables ?? [])]
   if (ownSlot && ownSlot.startTime === startTime) {
     for (const id of ownSlot.tableIds) {
-      if (!tables.some((t) => t.tableId === id)) tables.push({ tableId: id, seats: 0 })
+      // Bokningens egna bord är inte lediga i listan; platserna står i kartan.
+      if (!tables.some((t) => t.tableId === id)) tables.push({ tableId: id, seats: layoutSeats.get(id) ?? 0 })
     }
   }
-  // "Bord 3" som gästerna ser det (inte API:ts långa id), i nummerordning.
-  const tableLabel = (id: string) => (labels ? (labels.get(id) ?? '?') : id)
-  tables.sort((a, b) => tableLabel(a.tableId).localeCompare(tableLabel(b.tableId), 'sv', { numeric: true }))
+  const freeIds = new Set(tables.map((t) => t.tableId))
   const notice = loading ? null : dayNotice(day)
   const chosen = tables.filter((t) => tableIds.includes(t.tableId))
-  // Bokningens egna bord visas inte som lediga, så deras platser per bord är
-  // okända här - bara summan för alla egna bord (keep.seats). Väljs en del
-  // av dem avgör servern, och ingen siffra visas.
-  const ownIds = ownSlot && ownSlot.startTime === startTime ? ownSlot.tableIds : []
+  // Ett eget bord som inte finns i kartan har okända platser (0) här - då
+  // gäller summan för alla egna bord (keep.seats). Väljs bara en del av dem
+  // avgör servern, och ingen siffra visas.
   const ownChosen = chosen.filter((t) => ownIds.includes(t.tableId) && t.seats === 0)
   const otherSeats = chosen
     .filter((t) => !ownChosen.includes(t))
@@ -151,6 +247,24 @@ export function SlotTablePicker({
     (ownChosen.length === 0 || (allOwnChosen && typeof ownSlot?.seats === 'number'))
   const seats = otherSeats + (ownChosen.length > 0 ? (ownSlot?.seats ?? 0) : 0)
 
+  // Våningen som visas: den personalen valt, annars först den med ett valt
+  // bord. Den hålls sedan kvar, också när borden på den väljs bort.
+  const floors = planState === 'ready' && plan ? plan.floors : []
+  const floor =
+    floors.find((f) => f.id === floorId) ??
+    floors.find((f) => f.tables.some((t) => tableIds.includes(t.id))) ??
+    floors.find((f) => f.tables.length > 0) ??
+    null
+  if (floor && floor.id !== floorId) setFloorId(floor.id)
+  const label = (t: TableElement) => plan?.labels.get(t.id) ?? t.label
+  // Valda bord som inte står i kartan (bokningens eget bord i en annan version).
+  const offMap = planState === 'ready' || planState === 'none' ? tableIds.filter((id) => !mapIds.has(id)) : []
+
+  function retryPlan() {
+    setRetrying(true)
+    setPlanTry((n) => n + 1)
+  }
+
   function pick(next: SlotValue) {
     setSlotNotice(null)
     onChange(next)
@@ -159,6 +273,23 @@ export function SlotTablePicker({
   function toggle(id: string) {
     const next = tableIds.includes(id) ? tableIds.filter((t) => t !== id) : [...tableIds, id]
     pick({ date, startTime, tableIds: next })
+  }
+
+  /** Ledigt (går att välja), valt, eller upptaget den tiden (randigt, går inte att välja). */
+  function tableView(t: TableElement): TableView {
+    const selected = tableIds.includes(t.id)
+    // Ett valt bord som hunnit bokas går ändå att välja bort.
+    const open = freeIds.has(t.id) || selected
+    return {
+      state: open ? 'free' : 'full',
+      selected,
+      focusable: true,
+      disabled: !open,
+      name: `Bord ${label(t)}, ${t.seats} pl, ${selected ? 'valt' : open ? 'ledigt' : 'upptaget'}`,
+      onPick: () => {
+        if (open) toggle(t.id)
+      },
+    }
   }
 
   return (
@@ -214,27 +345,52 @@ export function SlotTablePicker({
         <ErrorNote text={error} />
       )}
       {startTime && !loading && (
-        <fieldset className="table-picker">
-          <legend className="form-section-label">Bord</legend>
-          {tables.length === 0 && <p className="cell-muted">Inga lediga bord den tiden.</p>}
-          <div className="table-chips">
-            {tables.map((t) => (
-              <label
-                key={t.tableId}
-                className={`table-chip${tableIds.includes(t.tableId) ? ' selected' : ''}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={tableIds.includes(t.tableId)}
-                  onChange={() => toggle(t.tableId)}
-                />
-                <span>
-                  Bord {tableLabel(t.tableId)}
-                  {t.seats > 0 && <span className="cell-muted"> · {t.seats} pl</span>}
-                </span>
-              </label>
-            ))}
-          </div>
+        <div className="table-picker slot-map floor-map-scope" role="group" aria-label="Bordskarta">
+          <p className="form-section-label">Bord</p>
+          {planState === 'loading' && <Loading label="Hämtar bordskartan" />}
+          {/* Också utan nät går kartan att hämta igen (inget annat hämtar den). */}
+          {planState === 'error' && <ErrorNote text={res?.error} onRetry={retryPlan} alwaysRetry />}
+          {planState === 'none' && <NoLayoutNote />}
+          {planState === 'ready' && floor && (
+            <>
+              {newVersion && <p className="field-hint">Ny bordskarta från den här dagen.</p>}
+              {!mapTables.some((t) => freeIds.has(t.id)) && <p className="cell-muted">Inga lediga bord den tiden.</p>}
+              <div className="slot-map-bar">
+                {floors.length > 1 && (
+                  <FloorTabs
+                    floors={floors}
+                    activeId={floor.id}
+                    onPick={setFloorId}
+                    className="slot-map-tabs"
+                    markIds={tableIds}
+                    markClass="has-selected"
+                    markText="valda bord"
+                  />
+                )}
+                <div className="floor-map-legend" aria-hidden="true">
+                  <span className="legend-free">Ledigt</span>
+                  <span className="legend-selected">Valt</span>
+                  <span className="legend-full">Upptaget</span>
+                </div>
+              </div>
+              <FloorMap floor={floor} label={label} view={tableView} hitPad={30} minHitPx={44} minSeatPx={9} />
+              <p className="slot-map-chosen" aria-live="polite">
+                {tableIds.length > 0 ? tableNames(tableIds, plan?.labels ?? null) : 'Inget bord valt'}
+              </p>
+            </>
+          )}
+          {offMap.length > 0 && (
+            <ul className="slot-map-offmap" aria-label="Bord utanför kartan">
+              {offMap.map((id) => (
+                <li key={id}>
+                  <button type="button" className="btn outline square" aria-label="Ta bort borttaget bord" onClick={() => toggle(id)}>
+                    Borttaget bord
+                    <Icon name="close" size={16} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           {seatsKnown && (
             <p className={seats < partySize ? 'form-error' : 'cell-muted'}>
               {seats < partySize
@@ -242,8 +398,19 @@ export function SlotTablePicker({
                 : `Valda bord har ${seats} platser.`}
             </p>
           )}
-        </fieldset>
+        </div>
       )}
     </div>
+  )
+}
+
+/** Ingen publicerad bordskarta: inga bord att boka förrän en layout publiceras. */
+function NoLayoutNote() {
+  const inRouter = useInRouterContext()
+  return (
+    <p className="cell-muted" role="note">
+      Ingen bordskarta än. Publicera en layout under{' '}
+      {inRouter ? <Link to="/layout">Layout</Link> : <a href="/layout">Layout</a>}.
+    </p>
   )
 }

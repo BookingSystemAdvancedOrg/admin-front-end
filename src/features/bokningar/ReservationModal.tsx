@@ -185,7 +185,13 @@ export function ReservationModal({
 
   return (
     <ModalOverlay onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal booking-modal" role="dialog" aria-modal="true" aria-label="Bokning">
+      {/* En bokning som går att flytta har bordskartan under Ändra: samma bredd från början. */}
+      <div
+        className={`modal booking-modal${actions.edit && r.status !== 'arrived' ? ' has-map' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Bokning"
+      >
         <div className="booking-modal-head">
           <div>
             <h2>{r.customerName || 'Gäst'}</h2>

@@ -2,10 +2,14 @@
  * Hur gästen betalade (API:ts `paidWith`, application shared/payment_methods.py):
  * beställningar, privat catering och kortgarantin på en bokning. Allt går via
  * Stripe på restaurangens eget konto; brand och last4 finns bara för kort och
- * plånböcker (Apple Pay, Google Pay).
+ * plånböcker (Apple Pay, Google Pay). Gästen erbjuds bara kort, Swish och
+ * Klarna; PayPal, Link, Amazon Pay, Revolut Pay och MobilePay finns kvar så
+ * att äldre betalningar heter rätt i stället för "Stripe".
  */
 
-export type PaidWithMethod = 'card' | 'apple_pay' | 'google_pay' | 'swish' | 'klarna' | 'paypal' | 'link' | 'other'
+export type PaidWithMethod =
+  | 'card' | 'apple_pay' | 'google_pay' | 'swish' | 'klarna'
+  | 'paypal' | 'link' | 'amazon_pay' | 'revolut_pay' | 'mobilepay' | 'other'
 
 export interface PaidWith {
   method: PaidWithMethod
@@ -32,6 +36,9 @@ const METHOD_LABEL: Record<PaidWithMethod, string> = {
   klarna: 'Klarna',
   paypal: 'PayPal',
   link: 'Link',
+  amazon_pay: 'Amazon Pay',
+  revolut_pay: 'Revolut Pay',
+  mobilepay: 'MobilePay',
   other: 'Stripe',
 }
 
@@ -48,7 +55,7 @@ const BRAND_LABEL: Record<string, string> = {
 
 /** "Swish", "Apple Pay"; ett okänt betalsätt heter "Stripe". */
 export function methodLabel(method: string | null | undefined): string {
-  return (method && METHOD_LABEL[method as PaidWithMethod]) || METHOD_LABEL.other
+  return method && Object.hasOwn(METHOD_LABEL, method) ? METHOD_LABEL[method as PaidWithMethod] : METHOD_LABEL.other
 }
 
 /** Bara fyra siffror räknas som kortets slut. */

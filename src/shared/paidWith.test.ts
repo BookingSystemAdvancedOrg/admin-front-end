@@ -21,8 +21,12 @@ describe('paidWithLabel', () => {
     expect(paidWithLabel({ method: 'klarna' })).toBe('Klarna')
     expect(paidWithLabel({ method: 'paypal' })).toBe('PayPal')
     expect(paidWithLabel({ method: 'link' })).toBe('Link')
+    expect(paidWithLabel({ method: 'amazon_pay' })).toBe('Amazon Pay')
+    expect(paidWithLabel({ method: 'revolut_pay' })).toBe('Revolut Pay')
+    expect(paidWithLabel({ method: 'mobilepay' })).toBe('MobilePay')
     expect(paidWithLabel({ method: 'other' })).toBe('Stripe')
     expect(methodLabel('something_new')).toBe('Stripe')
+    expect(methodLabel('constructor')).toBe('Stripe')
   })
 
   it('is null without a payment', () => {

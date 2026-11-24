@@ -1,3 +1,4 @@
+import { MemoryRouter } from 'react-router-dom'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -101,6 +102,23 @@ describe('KitchenDisplay', () => {
     expect(screen.getByRole('article', { name: /runda 3/ })).toBeInTheDocument()
     rerender(<KitchenDisplay locationId="loc-1" station="kok" onStation={() => {}} source="avhamtning" onSource={onSource} />)
     expect(screen.queryByRole('article', { name: /runda 3/ })).toBeNull()
+  })
+
+  it('prints the same table number as the card shows', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'print').mockImplementation(() => {})
+    // Bongen sparades som bord 4; dagens ritning numrerar bordet 5.
+    listTickets.mockResolvedValue([{ ...KITCHEN, tableId: 't9', tableLabel: '4' }])
+    const { container } = render(
+      <MemoryRouter>
+        <KitchenDisplay locationId="loc-1" station="kok" onStation={() => {}} labels={new Map([['t9', '5']])} />
+      </MemoryRouter>,
+    )
+    await screen.findByRole('article', { name: 'Bong #12, Bord 5, skickad' })
+    await user.click(screen.getByRole('button', { name: 'Skriv ut här' }))
+    const paper = container.querySelector('.kds-paper')!
+    expect(paper).toHaveTextContent('#12 Bord 5')
+    expect(paper).not.toHaveTextContent('Bord 4')
   })
 
   it('shows a FLYTTAD slip as a small note, not a ticket', async () => {

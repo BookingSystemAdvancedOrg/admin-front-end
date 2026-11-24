@@ -4,6 +4,7 @@ import { COURSE_LABEL, COURSE_ORDER } from '../table-order/courses'
 import { Icon } from '../../../shared/Icon'
 import { InfoTooltip } from '../../../shared/InfoTooltip'
 import { Num } from '../../../shared/motion/Num'
+import { tableTitle } from '../../../shared/tables'
 import { clock, kronor } from '../ordersApi'
 import { TICKET_TEXT } from '../printApi'
 import { elapsed, fireLabel, heldByCourse, itemTicket, PAY_TIP, tabTitle, VOID_REASONS } from './tabState'
@@ -152,7 +153,7 @@ export function TabDetail({
               <li key={r.round}>
                 <span className="tab-round-head">
                   <b>Runda {r.round}</b> · {ROUND_KIND[r.kind]}
-                  {r.kind === 'move' && r.fromLabel && r.toLabel ? ` ${r.fromLabel} till ${r.toLabel}` : ''}
+                  {r.kind === 'move' && r.fromLabel && r.toLabel ? ` från ${tableTitle(r.fromLabel)} till ${tableTitle(r.toLabel)}` : ''}
                   {r.kind === 'fire' && r.courses.length ? ` ${r.courses.map((c) => COURSE_LABEL[c].toLowerCase()).join(', ')}` : ''}
                   <span className="cell-muted"> · {clock(r.at)} · {r.byName}</span>
                 </span>

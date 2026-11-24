@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Icon } from './Icon'
-import { orderTable, removedSuffix, tableNames, tableTitle } from './tables'
+import { orderTable, removedSuffix, tableNames, tablesText, tableTitle } from './tables'
 
 /** Adressen till bordskartan med bokningens bord markerade (Layout, "Boka bord"). */
 export function tableHref(tableIds: string | string[], date?: string): string {
@@ -11,9 +11,9 @@ export function tableHref(tableIds: string | string[], date?: string): string {
 }
 
 /** "3", "3 + 4", "3, 4 + 7": bordens nummer så som gästerna ser dem. */
-function joined(labels: string[]): string {
+function joined(labels: string[], last = ' + '): string {
   if (labels.length <= 1) return labels.join('')
-  return `${labels.slice(0, -1).join(', ')} + ${labels[labels.length - 1]}`
+  return `${labels.slice(0, -1).join(', ')}${last}${labels[labels.length - 1]}`
 }
 
 /**
@@ -44,8 +44,10 @@ export function TableLinks({
       </>
     )
   }
-  const text = `Bord ${joined(known.map((id) => labels.get(id)!))}`
-  const spoken = known.length === 1 ? `Bord ${labels.get(known[0])}` : `Bord ${joined(known.map((id) => labels.get(id)!)).replace(' + ', ' och ')}`
+  // Ordet Bord en gång före numren; ett eget namn ("Bar") står som det heter.
+  const names = known.map((id) => labels.get(id)!)
+  const text = tablesText(names, (p) => joined(p))
+  const spoken = tablesText(names, (p) => joined(p, ' och '))
   return (
     <Link
       className="table-chip-link"

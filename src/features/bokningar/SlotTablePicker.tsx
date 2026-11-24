@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useInRouterContext } from 'react-router-dom'
 import { dayNotice, errorMessage, getAvailability, lastBookableDate, LOCATION_NOT_BOOKABLE } from './bookingsApi'
 import type { AvailabilitySlot, DayStatus } from './bookingsApi'
-import { tableNames } from '../../shared/tables'
+import { tableNames, tableTitle } from '../../shared/tables'
 import { DateInput } from '../../shared/DateInput'
 import { ErrorNote } from '../../shared/ErrorNote'
 import { Icon } from '../../shared/Icon'
@@ -285,7 +285,7 @@ export function SlotTablePicker({
       selected,
       focusable: true,
       disabled: !open,
-      name: `Bord ${label(t)}, ${t.seats} pl, ${selected ? 'valt' : open ? 'ledigt' : 'upptaget'}`,
+      name: `${tableTitle(label(t))}, ${t.seats} pl, ${selected ? 'valt' : open ? 'ledigt' : 'upptaget'}`,
       onPick: () => {
         if (open) toggle(t.id)
       },

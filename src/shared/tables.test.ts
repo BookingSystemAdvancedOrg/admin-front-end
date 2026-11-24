@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as api from './api'
 import { ApiError } from './api'
-import { clearTablesCache, loadTables, orderTable, tableNames, tableTitle, tablesFromLayout } from './tables'
+import { bookingLabels, clearTablesCache, loadTables, orderTable, stampedLabels, tableNames, tablesText, tableTitle, tablesFromLayout } from './tables'
 
 vi.mock('./api', async (orig) => ({
   ...(await orig<typeof import('./api')>()),
@@ -53,6 +53,42 @@ describe('tables', () => {
     expect(tableNames([], labels)).toBe('-')
     expect(tableNames(['raw'], null)).toBe('Ett bord')
     expect(tableNames(['a', 'b'], null)).toBe('2 bord')
+  })
+
+  it("shows a table's own name without the word Bord", () => {
+    expect(tableTitle('Bar')).toBe('Bar')
+    expect(tableTitle('3')).toBe('Bord 3')
+    expect(tableNames(['b'], new Map([['b', 'Bar']]))).toBe('Bar')
+    expect(tableNames(['a', 'b'], new Map([['a', '3'], ['b', 'Bar']]))).toBe('Bord 3, Bar')
+    expect(tablesText(['3', '4'], (p) => p.join(' + '))).toBe('Bord 3 + 4')
+    expect(tablesText(['1', '?'], (p) => p.join(' + '))).toBe('Bord 1 + ?')
+  })
+
+  it("names a booking's tables by its stamped labels before today's layout", () => {
+    const active = new Map([['t-a', '5']])
+    // Bokningen gäller version 2, där bordet är nummer 6 (som mejlet säger).
+    const b = { tableIds: ['t-a'], tableLabels: ['6'], layoutVersion: 2 }
+    expect(bookingLabels(b, active)?.get('t-a')).toBe('6')
+    // Stämpeln räcker även när ritningen inte gick att hämta.
+    expect(bookingLabels(b, null)?.get('t-a')).toBe('6')
+    // Ett bord som bara finns i bokningens version.
+    expect(bookingLabels({ tableIds: ['t-new'], tableLabels: ['7'] }, active)?.get('t-new')).toBe('7')
+  })
+
+  it('an older booking without labels uses its version, then the active layout', () => {
+    const active = new Map([['t-a', '5']])
+    const versions = new Map([[2, new Map([['t-b', '8']])]])
+    expect(bookingLabels({ tableIds: ['t-a'] }, active)?.get('t-a')).toBe('5')
+    expect(bookingLabels({ tableIds: ['t-b'], layoutVersion: 2 }, active, versions)?.get('t-b')).toBe('8')
+    expect(bookingLabels({ tableIds: ['t-b'], layoutVersion: 2 }, active)?.has('t-b')).toBe(false)
+    expect(bookingLabels({ tableIds: ['t-a'] }, null)).toBeNull()
+  })
+
+  it('ignores a label stamp that does not line up with the tables', () => {
+    expect(stampedLabels({ tableIds: ['a', 'b'], tableLabels: ['1'] })).toBeNull()
+    expect(stampedLabels({ tableIds: ['a'], tableLabels: [' '] })).toBeNull()
+    expect(stampedLabels({ tableIds: ['a'] })).toBeNull()
+    expect(stampedLabels({ tableIds: ['a', 'b'], tableLabels: ['3', ' Bar '] })).toEqual(['3', 'Bar'])
   })
 
   it('an order at a table removed from the layout shows its stored label, or Borttaget bord', () => {

@@ -122,6 +122,18 @@ describe('TableRulesCard', () => {
     expect(screen.getByText(/finns inte i planritningen/)).toBeInTheDocument()
   })
 
+  it('names a removed table ? and never shows its id', async () => {
+    getLocation.mockResolvedValue({
+      locationId: 'loc-1',
+      tableRules: {},
+      tableCombinations: [{ tableIds: ['id-a', 'gone-8ed5290e'], minParty: 3, maxParty: 4 }],
+    })
+    const { container } = render(<TableRulesCard locationId="loc-1" isOwner />)
+    expect(await screen.findByText('Bord 1 + ?')).toBeInTheDocument()
+    expect(screen.getByText(/finns inte i planritningen/)).toBeInTheDocument()
+    expect(container.textContent).not.toContain('gone-8ed5290e')
+  })
+
   it('asks for a published floor plan first', async () => {
     tables = []
     getLocation.mockResolvedValue({ locationId: 'loc-1' })

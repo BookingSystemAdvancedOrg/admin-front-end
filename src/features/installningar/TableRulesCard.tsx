@@ -1,7 +1,7 @@
 import { errorText } from '../../shared/errors'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { useTables } from '../../shared/tables'
+import { tablesText, tableTitle, useTables } from '../../shared/tables'
 import { getLocation, updateLocation } from './locationApi'
 import type { TableCombination, TableRule } from './locationApi'
 import {
@@ -82,7 +82,7 @@ export function TableRulesCard({
     setRows(rowsFor(tables, saved.rules))
   }
 
-  const name = (id: string) => (labels ? (labels.get(id) ?? '?') : id)
+  const name = (id: string) => labels?.get(id) ?? '?'
   const seatsOf = (ids: string[]) =>
     ids.reduce((sum, id) => sum + (tables?.find((t) => t.tableId === id)?.seats ?? 0), 0)
   const ready = Boolean(tables && saved)
@@ -204,13 +204,13 @@ export function TableRulesCard({
                   const row = rows[t.tableId] ?? { online: true, min: '', max: '' }
                   return (
                     <tr key={t.tableId}>
-                      <td className="cell-strong">Bord {t.label}</td>
+                      <td className="cell-strong">{tableTitle(t.label)}</td>
                       <td>{t.seats}</td>
                       <td>
                         <label className="rules-online">
                           <input
                             type="checkbox"
-                            aria-label={`Bord ${t.label} bokas online`}
+                            aria-label={`${tableTitle(t.label)} bokas online`}
                             checked={row.online}
                             disabled={disabled}
                             onChange={(e) => setRow(t.tableId, { online: e.target.checked })}
@@ -221,7 +221,7 @@ export function TableRulesCard({
                         <input
                           className="rules-number"
                           inputMode="numeric"
-                          aria-label={`Bord ${t.label} från antal personer`}
+                          aria-label={`${tableTitle(t.label)} från antal personer`}
                           value={row.min}
                           disabled={disabled || !row.online}
                           onChange={(e) => setRow(t.tableId, { min: e.target.value })}
@@ -231,7 +231,7 @@ export function TableRulesCard({
                         <input
                           className="rules-number"
                           inputMode="numeric"
-                          aria-label={`Bord ${t.label} till antal personer`}
+                          aria-label={`${tableTitle(t.label)} till antal personer`}
                           value={row.max}
                           disabled={disabled || !row.online}
                           onChange={(e) => setRow(t.tableId, { max: e.target.value })}
@@ -258,7 +258,7 @@ export function TableRulesCard({
                 return (
                   <li key={c.tableIds.join()}>
                     <span>
-                      <span className="cell-strong">Bord {c.tableIds.map(name).join(' + ')}</span>
+                      <span className="cell-strong">{tablesText(c.tableIds.map(name), (p) => p.join(' + '))}</span>
                       <span className="cell-muted">
                         {' '}
                         · {seatsOf(c.tableIds)} pl · {c.minParty}-{c.maxParty} pers
@@ -300,7 +300,7 @@ export function TableRulesCard({
                     checked={draft.tableIds.includes(t.tableId)}
                     onChange={() => toggleDraftTable(t.tableId)}
                   />
-                  Bord {t.label}
+                  {tableTitle(t.label)}
                   <span className="cell-muted"> · {t.seats} pl</span>
                 </label>
               ))}

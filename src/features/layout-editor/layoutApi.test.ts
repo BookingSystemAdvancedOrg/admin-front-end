@@ -318,6 +318,28 @@ describe('floors: API -> editor', () => {
     expect(floors[1].walls.map((w) => w.id)).toEqual(['w-up'])
   })
 
+  it('numbers tables across all floors by level, as the guest site and Bokningar do', () => {
+    const floors = toFloors([
+      upperFloor,
+      element({ elementId: 't-up', type: 'table', floorId: 'f-upper', seats: 2 }),
+      groundFloor,
+      element({ elementId: 't-g1', type: 'table', floorId: 'f-ground', seats: 2 }),
+      element({ elementId: 't-g2', type: 'table', floorId: 'f-ground', seats: 4 }),
+    ])
+    expect(floors[0].tables.map((t) => t.label)).toEqual(['T1', 'T2'])
+    // Första bordet på våning 2 är bord 3, inte bord 1.
+    expect(floors[1].tables.map((t) => t.label)).toEqual(['T3'])
+  })
+
+  it("keeps a table's own label and still counts it", () => {
+    const floors = toFloors([
+      groundFloor,
+      element({ elementId: 't-1', type: 'table', floorId: 'f-ground', seats: 2, label: ' Bar ' }),
+      element({ elementId: 't-2', type: 'table', floorId: 'f-ground', seats: 2 }),
+    ])
+    expect(floors[0].tables.map((t) => t.label)).toEqual(['Bar', 'T2'])
+  })
+
   it('parks elements with no or an unknown floor on the first floor', () => {
     const floors = toFloors([
       groundFloor,

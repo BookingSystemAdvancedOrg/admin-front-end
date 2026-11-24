@@ -76,6 +76,10 @@ export interface Reservation {
   endsAt?: string
   timezone?: string
   tableIds: string[]
+  /** Bordens namn när bokningen gjordes eller flyttades, i samma ordning som tableIds (saknas på äldre bokningar). */
+  tableLabels?: string[]
+  /** Planritningsversionen som gäller bokningens tid. */
+  layoutVersion?: number
   seats?: number
   partySize: number
   customerName?: string

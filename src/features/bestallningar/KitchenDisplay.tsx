@@ -158,9 +158,12 @@ export function KitchenDisplay({ locationId, station, onStation, labels = null, 
   })
   const count = (id?: string) => (tickets ?? []).filter((t) => t.stationId === id && t.kind !== 'tab_move' && fromSource(t) && (t.status === 'sent' || t.status === 'preparing')).length
 
+  // Bongens bord-id (beställningens när bongen saknar eget): kortet och utskriften får samma bord.
+  const tableIdOf = (t: StationTicket) => t.tableId ?? (t.orderId ? tableIds?.get(t.orderId) : undefined)
+
   function card(t: StationTicket) {
     const isBusy = busy === key(t)
-    const tableId = t.tableId ?? (t.orderId ? tableIds?.get(t.orderId) : undefined)
+    const tableId = tableIdOf(t)
     const tab = isTabTicket(t)
     const voided = t.kind === 'tab_void'
     return (
@@ -286,7 +289,9 @@ export function KitchenDisplay({ locationId, station, onStation, labels = null, 
         <div className="kds-paper" aria-hidden="true">
           <p>{printing.stationName.toUpperCase()}</p>
           <p className="kds-paper-big">
-            {isTabTicket(printing) ? where(printing).toUpperCase() : `#${printing.number ?? '-'} ${where(printing)}`}
+            {isTabTicket(printing)
+              ? where(printing, labels, tableIdOf(printing)).toUpperCase()
+              : `#${printing.number ?? '-'} ${where(printing, labels, tableIdOf(printing))}`}
           </p>
           {printing.kind === 'tab_void' && <p className="kds-paper-big">MAKULERAD</p>}
           {printing.fire && <p className="kds-paper-big">SKICKA NU: {tabCourseText(printing.fire).toUpperCase()}</p>}

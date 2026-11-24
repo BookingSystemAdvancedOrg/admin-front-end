@@ -290,7 +290,7 @@ describe('SlotTablePicker', () => {
     await screen.findByRole('button', { name: /^Bord 1, 2 pl, ledigt$/ })
     loadActiveLayout.mockResolvedValue(testPlan([{ id: 'a-uuid', seats: 2, label: 'Bar' }]))
     rerender(<Host locationId="loc-2" />)
-    expect(await screen.findByRole('button', { name: /^Bord Bar, 2 pl, ledigt$/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^Bar, 2 pl, ledigt$/ })).toBeInTheDocument()
     expect(loadActiveLayout).toHaveBeenCalledTimes(2)
     expect(loadActiveLayout).toHaveBeenLastCalledWith('loc-2')
   })

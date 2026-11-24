@@ -34,7 +34,8 @@ import { listRequests } from '../catering/cateringApi'
 import type { RequestSummary } from '../catering/cateringApi'
 import { getPrintStatus } from '../bestallningar/printApi'
 import type { PrintStatus } from '../bestallningar/printApi'
-import { tableNames, useTables } from '../../shared/tables'
+import { tableNames } from '../../shared/tables'
+import { useBookingLabels } from '../../shared/bookingTables'
 import { TableLinks } from '../../shared/TableLinks'
 import {
   ACTIVE_STATUSES,
@@ -122,7 +123,6 @@ export default function OversiktPage() {
   const tenantState = useTenant()
   const { tenant, locationId } = tenantState
   const location = currentLocation(tenantState)
-  const { labels } = useTables(locationId)
   const isOwner = tenant?.role === 'owner_user'
   // Fråga Booqy om ett steg: bara när assistenten är på för restaurangen.
   const askOn = useHelpChatEnabled()
@@ -148,7 +148,7 @@ export default function OversiktPage() {
   const seeBookings = sample || canOpen(tenant, 'bokningar')
   const hasOrdering = sample || (Boolean(tenant?.entitlements.features.ordering) && canOpen(tenant, 'bestallningar'))
   const hasCatering = sample || (Boolean(tenant?.entitlements.features.catering) && canOpen(tenant, 'catering'))
-  const tableLabels = sample ? (SAMPLE_TABLE_LABELS as Map<string, string>) : labels
+  const { labelsFor } = useBookingLabels(sample ? null : locationId, data.today ?? [])
 
   const fetchOverview = useCallback((locationId: string): Promise<OverviewData> =>
     Promise.all([
@@ -401,7 +401,7 @@ export default function OversiktPage() {
                   <li key={r.reservationId}>
                     <span className="cell-strong">{r.startTime}</span>
                     <span>
-                      {r.customerName || 'Gäst'} · <span className="keep-line"><Num>{r.partySize}</Num> pers ·</span> {sample ? tableNames(r.tableIds, tableLabels) : <TableLinks ids={r.tableIds} labels={tableLabels} date={r.date} />}
+                      {r.customerName || 'Gäst'} · <span className="keep-line"><Num>{r.partySize}</Num> pers ·</span> {sample ? tableNames(r.tableIds, SAMPLE_TABLE_LABELS as Map<string, string>) : <TableLinks ids={r.tableIds} labels={labelsFor(r)} date={r.date} />}
                     </span>
                     <span className={`status-badge ${STATUS_CLASS[r.status]}`}>
                       {STATUS_LABEL[r.status]}

@@ -2,6 +2,7 @@ import type { LayoutElement } from './layoutApi'
 import { describeError, errorText, rememberError } from '../../shared/errors'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { sameData, useLiveRefresh } from '../../shared/live'
+import { tableTitle } from '../../shared/tables'
 import { LayoutPrep } from './LayoutPrep'
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { FloorBooking } from './FloorBooking'
@@ -2668,7 +2669,7 @@ function LayoutEditor({ modeSwitch, active = true }: { modeSwitch?: ReactNode; a
                 {selected.length > 1
                   ? `${selected.length} element valda`
                   : selectedTable
-                  ? `Bord ${selectedTable.label.replace('T', '')}`
+                  ? tableTitle(selectedTable.label.replace(/^T(?=\d)/, ''))
                   : selectedWall
                     ? 'Vägg'
                     : selectedOpening

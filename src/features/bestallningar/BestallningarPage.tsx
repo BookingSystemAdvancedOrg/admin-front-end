@@ -35,6 +35,7 @@ import { booqyFaultText } from '../../shared/errors'
 import { Select } from '../../shared/Select'
 import { NoLocation } from '../../shared/NoLocation'
 import { RefundDialog } from '../../shared/RefundDialog'
+import { orderPaidParts, refundFailedText } from '../../shared/paidWith'
 import { hasFeature, useTenant } from '../../shared/tenant'
 import { useInRouterContext, useNavigate } from 'react-router-dom'
 import { CtaButton } from '../../shared/CtaButton'
@@ -410,12 +411,14 @@ export default function BestallningarPage() {
         <p className="order-meta cell-muted">
           {order.customerName}
           {order.customerPhone ? <> · <span className="order-meta-phone">{order.customerPhone}</span></> : ''} · <Num>{kronor(order.totalAmount)}</Num>
+          <PaidWith order={order} />
           {refundLabel(order) ? <span className="order-refunded"> · {refundLabel(order)}</span> : null}
           {order.discount ? ` (rabatt ${order.discount.percent} %, kod ${order.discount.code})` : ''}
           {order.mode === 'pickup' && order.status !== 'ready' && order.readyEstimate
             ? ` · lovad ca ${clock(order.readyEstimate)}`
             : ''}
         </p>
+        <RefundFailedNote order={order} />
         <div className="order-actions">
           {order.status === 'confirmed' && (
             <button type="button" className="btn primary square" disabled={isBusy}
@@ -600,7 +603,8 @@ export default function BestallningarPage() {
               </div>
             )}
             {done.length > 0 && (
-              <details className="admin-card orders-done">
+              // En återbetalning som inte kom fram syns direkt: listan står då öppen.
+              <details className="admin-card orders-done" open={done.some((o) => o.refundFailed?.length) || undefined}>
                 <summary>
                   Avslutade idag ({done.length})
                 </summary>
@@ -608,8 +612,11 @@ export default function BestallningarPage() {
                   {done.map((o) => (
                     <li key={o.orderId}>
                       <span>
-                        #{o.number} · {tableChip(o, 'orders-done-place')} · {o.customerName} · <Num>{kronor(o.totalAmount)}</Num> ·{' '}
-                        {o.status === 'cancelled' ? 'Avbruten, återbetald' : `Klar ${clock(o.completedAt)}`}
+                        #{o.number} · {tableChip(o, 'orders-done-place')} · {o.customerName} · <Num>{kronor(o.totalAmount)}</Num>
+                        <PaidWith order={o} /> ·{' '}
+                        {o.status === 'cancelled'
+                          ? (o.refundFailed?.length ? 'Avbruten' : 'Avbruten, återbetald')
+                          : `Klar ${clock(o.completedAt)}`}
                         {refundLabel(o) ? <span className="order-refunded"> · {refundLabel(o)}</span> : null}
                       </span>
                       {canRefund(o) && (
@@ -618,6 +625,7 @@ export default function BestallningarPage() {
                           Återbetala
                         </button>
                       )}
+                      <RefundFailedNote order={o} className="orders-done-warning" />
                     </li>
                   ))}
                 </ul>
@@ -642,6 +650,30 @@ export default function BestallningarPage() {
       )}
     </>
   )
+}
+
+/** " · Visa ****4242" efter beloppet (presentkortet först); inget utan uppgift. */
+function PaidWith({ order }: { order: Order }) {
+  const parts = orderPaidParts(order)
+  if (!parts.length) return null
+  return (
+    <span className="order-paid-with">
+      {' · '}
+      {parts.map((part, i) => (
+        <span key={part}>
+          {i > 0 ? ' + ' : ''}
+          <span className="order-nowrap">{part}</span>
+        </span>
+      ))}
+    </span>
+  )
+}
+
+/** En återbetalning som inte kom fram (Swish): restaurangen betalar tillbaka själv. */
+function RefundFailedNote({ order, className = '' }: { order: Order; className?: string }) {
+  const text = refundFailedText(order.refundFailed, kronor)
+  if (!text) return null
+  return <p className={`form-error order-refund-failed ${className}`.trim()}>{text}</p>
 }
 
 /** Toppfältets huvudknapp: personalen tar en beställning vid bordet. */

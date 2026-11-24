@@ -1,6 +1,7 @@
 import { errorText as commonError } from '../../shared/errors'
 import { ApiError, apiFetch, isApiConfigured } from '../../shared/api'
 import { withBusy } from '../../shared/motion/busy'
+import type { PaidWith, RefundFailure } from '../../shared/paidWith'
 
 /**
  * Matbeställningar (backend manage-order, docs/ORDERS.md i application).
@@ -73,6 +74,10 @@ export interface Order {
   refundable?: number
   /** Presentkortets del; den kommer bara tillbaka om beställningen avbryts. */
   giftCard?: { last4?: string; debitedOre?: number; refundedOre?: number }
+  /** Hur resten (utöver presentkortet) betalades: kort, Apple Pay, Swish ... */
+  paidWith?: PaidWith
+  /** Återbetalningar som inte kom fram (Swish): restaurangen betalar tillbaka själv. */
+  refundFailed?: RefundFailure[]
 }
 
 export interface OrderingState {
@@ -97,7 +102,7 @@ function base(locationId: string): string {
   return `/locations/${encodeURIComponent(locationId)}/orders`
 }
 
-/** Utan API: en avhämtning med burgarmeny, dryck och allergi (köks- och barbong). */
+/** Utan API: en avhämtning med burgarmeny, dryck och allergi (köks- och barbong), en Swish-återbetalning som inte kom fram och en avslutad med presentkort. */
 export function mockOrders(): OrderList {
   const now = Date.now()
   const at = (min: number) => new Date(now - min * 60_000).toISOString()
@@ -110,7 +115,7 @@ export function mockOrders(): OrderList {
       {
         orderId: 'mockorder00000000000000000000001', locationId: 'mock', number: 12, status: 'confirmed',
         paymentStatus: 'paid', mode: 'pickup', totalAmount: 46000, refundable: 46000,
-        customerName: 'Åsa Öberg', customerPhone: '070-987 65 43', confirmedAt: at(3),
+        paidWith: { method: 'card', brand: 'visa', last4: '4242' }, customerName: 'Åsa Öberg', customerPhone: '070-987 65 43', confirmedAt: at(3),
         readyEstimate: new Date(now + 17 * 60_000).toISOString(),
         lines: [
           line('burgarmeny', 'Burgarmeny', 159, 1, { note: 'ingen lök', allergy: 'jordnötsallergi' }),
@@ -122,9 +127,17 @@ export function mockOrders(): OrderList {
       {
         orderId: 'mockorder00000000000000000000002', locationId: 'mock', number: 11, status: 'preparing',
         paymentStatus: 'partly_refunded', mode: 'pickup', totalAmount: 28500, customerName: 'Johan Lind',
-        refund: { amount: 5000 }, refundable: 23500,
+        refund: { amount: 5000 }, refundable: 23500, paidWith: { method: 'swish' },
+        refundFailed: [{ amount: 5000, at: at(6), refundId: 're_mock_1', method: 'swish' }],
         customerPhone: '070-123 45 67', confirmedAt: at(14), readyEstimate: new Date(now + 6 * 60_000).toISOString(),
         lines: [line('pizza', 'Pizza Margherita', 125, 2), line('cola', 'Coca-Cola', 35, 1)],
+      },
+      {
+        orderId: 'mockorder00000000000000000000003', locationId: 'mock', number: 10, status: 'completed',
+        paymentStatus: 'paid', mode: 'pickup', totalAmount: 31000, refundable: 21000, customerName: 'Maria Sund',
+        giftCard: { last4: '1234', debitedOre: 10000 }, paidWith: { method: 'apple_pay', brand: 'mastercard', last4: '4444' },
+        customerPhone: '070-555 12 34', confirmedAt: at(55), completedAt: at(30),
+        lines: [line('pasta', 'Pasta Carbonara', 155, 2)],
       },
     ],
   }
@@ -170,10 +183,16 @@ export function refundOrder(
 }
 
 /** "Delvis återbetald 50 kr" / "Återbetald 285,50 kr", eller null. */
+/**
+ * "Återbetald 250 kr" / "Delvis återbetald 50 kr": bara det som nådde
+ * gästen. En återbetalning som kom tillbaka (refundFailed, Swish nekade)
+ * räknas inte; den har en egen varning på kortet.
+ */
 export function refundLabel(order: Order): string | null {
-  const amount = order.refund?.amount ?? 0
+  const failed = (order.refundFailed ?? []).reduce((sum, f) => sum + (f && f.amount > 0 ? f.amount : 0), 0)
+  const amount = Math.max((order.refund?.amount ?? 0) - failed, 0)
   if (amount <= 0 || order.status === 'cancelled') return null
-  return `${order.paymentStatus === 'refunded' ? 'Återbetald' : 'Delvis återbetald'} ${kronor(amount)}`
+  return `${order.paymentStatus === 'refunded' && failed === 0 ? 'Återbetald' : 'Delvis återbetald'} ${kronor(amount)}`
 }
 
 export function pauseOrdering(locationId: string, minutes: number): Promise<{ ordering: OrderingState }> {

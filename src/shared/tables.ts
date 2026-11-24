@@ -120,7 +120,21 @@ export function tableNames(ids: string[], labels: Map<string, string> | null): s
   const known = ids.filter((id) => labels.has(id)).map((id) => labels.get(id)!)
   const removed = ids.length - known.length
   if (known.length === 0) return removed === 1 ? REMOVED_TABLE : `${removed} borttagna bord`
-  return `Bord ${known.join(', ')}${removedSuffix(removed)}`
+  return `${tablesText(known)}${removedSuffix(removed)}`
+}
+
+/** Ett nummer ("3") eller ett okänt bord ("?") får ordet Bord framför sig; ett eget namn ("Bar") inte. */
+const numbered = (label: string) => /^\d/.test(label) || label === '?'
+
+/**
+ * Flera bord: ordet en gång, sedan numren och de egna namnen som de heter:
+ * "Bord 3, 4", "Bord 3, Bar", "Bar". `join` sätter ihop delarna (", " som
+ * standard; TableLinks skriver "3, 4 + 7").
+ */
+export function tablesText(labels: string[], join: (parts: string[]) => string = (p) => p.join(', ')): string {
+  const numbers = labels.filter(numbered)
+  const own = labels.filter((l) => !numbered(l))
+  return join(numbers.length > 0 ? [`Bord ${join(numbers)}`, ...own] : own)
 }
 
 /** ", borttaget bord" efter de bord som finns kvar ("" när inget är borta). */
@@ -131,7 +145,47 @@ export function removedSuffix(removed: number): string {
 
 /** "Bord 3"; ett bord med eget namn ("Bar") visas som det heter. */
 export function tableTitle(label: string): string {
-  return /^\d/.test(label) ? `Bord ${label}` : label
+  return numbered(label) ? `Bord ${label}` : label
+}
+
+/** Det en bokning behöver för att namnge sina bord. */
+export interface BookedTables {
+  tableIds: string[]
+  /** Namnen som stämplades när borden sattes, i samma ordning som tableIds. */
+  tableLabels?: string[]
+  /** Planritningsversionen som gäller bokningens tid. */
+  layoutVersion?: number
+}
+
+/** Bokningens stämplade bordsnamn, eller null när de saknas eller inte stämmer med tableIds. */
+export function stampedLabels(b: BookedTables): string[] | null {
+  const l = b.tableLabels
+  if (!Array.isArray(l) || l.length !== b.tableIds.length) return null
+  const out = l.map((x) => (typeof x === 'string' ? x.trim() : ''))
+  return out.every(Boolean) ? out : null
+}
+
+/**
+ * Bokningens bordsnamn i den planritningsversion som gäller bokningens tid,
+ * samma namn som mejlet till restaurangen och gästens bokningssida visar.
+ * I första hand namnen som stämplades på bokningen (de kommer från bokningens
+ * version, även när en annan version gäller idag), sedan bokningens version
+ * när den är hämtad, sist den gällande ritningen. null = inget känt än.
+ */
+export function bookingLabels(
+  b: BookedTables,
+  active: Map<string, string> | null,
+  versions: Map<number, Map<string, string>> | null = null,
+): Map<string, string> | null {
+  const stamped = stampedLabels(b)
+  const byVersion = b.layoutVersion !== undefined ? versions?.get(b.layoutVersion) : undefined
+  if (!stamped && !byVersion && !active) return null
+  const out = new Map<string, string>()
+  b.tableIds.forEach((id, i) => {
+    const label = stamped?.[i] ?? byVersion?.get(id) ?? active?.get(id)
+    if (label) out.set(id, label)
+  })
+  return out
 }
 
 /**

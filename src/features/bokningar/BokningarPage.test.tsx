@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BokningarPage from './BokningarPage'
 import { todayIn } from './bookingsApi'
 import type { Reservation } from './bookingsApi'
+import { clearVersionLabelsCache } from '../../shared/bookingTables'
 
 const listReservations = vi.fn()
 const changeStatus = vi.fn()
@@ -32,6 +33,17 @@ vi.mock('./NewReservationModal', () => ({
       Skapa (test)
     </button>
   ),
+}))
+// Dagens ritning (GET /layout/active); null = inte hämtad, som när den inte går att nå.
+let activeLabels: Map<string, string> | null = null
+vi.mock('../../shared/tables', async (orig) => ({
+  ...(await orig<typeof import('../../shared/tables')>()),
+  useTables: () => ({ tables: null, labels: activeLabels, error: false }),
+}))
+const loadVersionPlans = vi.fn()
+vi.mock('../layout-editor/activeLayout', async (orig) => ({
+  ...(await orig<typeof import('../layout-editor/activeLayout')>()),
+  loadVersionPlans: (...a: unknown[]) => loadVersionPlans(...a),
 }))
 const location = { locationId: 'loc-1', name: 'Roma', timezone: 'Europe/Stockholm' }
 let tenantLocationId: string | null = 'loc-1'
@@ -66,6 +78,9 @@ function deferred<T>() {
 
 beforeEach(() => {
   tenantLocationId = 'loc-1'
+  activeLabels = null
+  loadVersionPlans.mockReset()
+  clearVersionLabelsCache()
   listReservations.mockReset()
   changeStatus.mockReset()
 })
@@ -75,6 +90,27 @@ afterEach(() => {
 })
 
 describe('BokningarPage', () => {
+  it("names a booking's tables in its own layout version, like the email", async () => {
+    // Dagens ritning numrerar bordet 5; bokningen gäller version 2 där det är 6.
+    activeLabels = new Map([['8ed5290e-t', '5']])
+    listReservations.mockResolvedValue([booking({ tableIds: ['8ed5290e-t'], tableLabels: ['6'], layoutVersion: 2 })])
+    const { container } = render(<MemoryRouter><BokningarPage /></MemoryRouter>)
+    expect(await screen.findByRole('link', { name: 'Bord 6, visa i bordskartan' })).toBeInTheDocument()
+    expect(screen.queryByText('Bord 5')).toBeNull()
+    expect(container.textContent).not.toContain('8ed5290e')
+    expect(loadVersionPlans).not.toHaveBeenCalled()
+  })
+
+  it("looks up an older booking's table in its version before calling it removed", async () => {
+    activeLabels = new Map([['t-a', '1']])
+    loadVersionPlans.mockResolvedValue({ current: 1, plans: new Map([[2, { floors: [], labels: new Map([['t-new', '8']]) }]]) })
+    listReservations.mockResolvedValue([booking({ tableIds: ['t-new'], layoutVersion: 2 })])
+    render(<MemoryRouter><BokningarPage /></MemoryRouter>)
+    expect(await screen.findByRole('link', { name: 'Bord 8, visa i bordskartan' })).toBeInTheDocument()
+    expect(screen.queryByText('Borttaget bord')).toBeNull()
+    expect(loadVersionPlans).toHaveBeenCalledWith('loc-1')
+  })
+
   it('shows the shared no-location card when the restaurant has no location', () => {
     tenantLocationId = null
     render(

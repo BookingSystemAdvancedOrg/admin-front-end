@@ -312,7 +312,7 @@ function groundFromApi(el: LayoutElement): GroundRect {
 function tableFromApi(el: LayoutElement, index: number): TableElement {
   return {
     id: el.elementId,
-    // Etiketten finns inte i API:t - numrera om efter listans ordning.
+    // Numreras om över alla våningar i toFloors (numberTables).
     label: `T${index + 1}`,
     shape: el.shape === 'round' ? 'round' : 'square',
     seats: el.seats ?? 2,
@@ -373,17 +373,20 @@ export function toFloors(elements: LayoutElement[]): Floor[] {
     )
 
   if (floorElements.length === 0) {
-    return [
-      {
-        id: LEGACY_FLOOR_ID,
-        name: 'Våning 1',
-        ...toFloorElements(elements),
-      },
-    ]
+    return numberTables(
+      [
+        {
+          id: LEGACY_FLOOR_ID,
+          name: 'Våning 1',
+          ...toFloorElements(elements),
+        },
+      ],
+      elements,
+    )
   }
 
   const known = new Set(floorElements.map((f) => f.elementId))
-  return floorElements.map((f, i) => {
+  const floors = floorElements.map((f, i) => {
     const own = elements.filter(
       (e) =>
         e.type !== 'floor' &&
@@ -396,6 +399,28 @@ export function toFloors(elements: LayoutElement[]): Floor[] {
       ...toFloorElements(own),
     }
   })
+  return numberTables(floors, elements)
+}
+
+/**
+ * Bordens nummer som gästsajten, Bokningar och bongarna säger dem
+ * (shared/tables.ts tablesFromLayout): över alla våningar i nivåordning,
+ * borden i ritningens ordning; ett bord med egen etikett ("Bar") heter så.
+ */
+function numberTables(floors: Floor[], elements: LayoutElement[]): Floor[] {
+  const own = new Map(
+    elements
+      .filter((e) => e.type === 'table' && e.label?.trim())
+      .map((e) => [e.elementId, e.label!.trim()]),
+  )
+  let n = 0
+  return floors.map((f) => ({
+    ...f,
+    tables: f.tables.map((t) => {
+      n += 1
+      return { ...t, label: own.get(t.id) ?? `T${n}` }
+    }),
+  }))
 }
 
 /* --- HTTP ---------------------------------------------------------------- */

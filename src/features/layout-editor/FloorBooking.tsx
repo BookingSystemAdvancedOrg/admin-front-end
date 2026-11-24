@@ -4,6 +4,7 @@ import { AdminTopbar } from '../../shared/AdminTopbar'
 import { isApiConfigured } from '../../shared/api'
 import { Loading } from '../../shared/Loading'
 import { currentLocation, useTenant } from '../../shared/tenant'
+import { tablesText, tableTitle } from '../../shared/tables'
 import { ChannelPicker } from '../bokningar/ChannelPicker'
 import type { StaffChannel } from '../bokningar/ChannelPicker'
 import {
@@ -274,7 +275,7 @@ export function FloorBooking({
       extra: `${flashIds.includes(t.id) ? ' is-focus' : ''}${linkedIds.includes(t.id) ? ' is-linked' : ''}`,
       focusable: !off,
       disabled: off,
-      name: `Bord ${label(t)}, ${t.seats} pl, ${stateText}`,
+      name: `${tableTitle(label(t))}, ${t.seats} pl, ${stateText}`,
       onPick: () => {
         if (!off) pickTable(t.id)
       },
@@ -431,7 +432,7 @@ export function FloorBooking({
                 {!table ? (
                   linked.length > 1 ? (
                     <div className="floor-booking-hint">
-                      <h2 className="card-title">Bord {linked.map((t) => label(t)).join(' + ')}</h2>
+                      <h2 className="card-title">{tablesText(linked.map((t) => label(t)), (p) => p.join(' + '))}</h2>
                       <p className="cell-muted">Bokningens bord. Tryck på ett ledigt bord för att boka.</p>
                     </div>
                   ) : (
@@ -440,7 +441,7 @@ export function FloorBooking({
                 ) : (
                   <form className="booking-form" onSubmit={submit}>
                     <div className="floor-booking-head">
-                      <h2 className="card-title">Bord {label(table)}</h2>
+                      <h2 className="card-title">{tableTitle(label(table))}</h2>
                       <p className="cell-muted">
                         {table.seats} platser{table.zone ? ` · ${table.zone}` : ''}
                       </p>

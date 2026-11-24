@@ -1,6 +1,7 @@
 import { BOOQY_FAULT, errorText } from '../../shared/errors'
 import { apiFetch, ApiError, isApiConfigured } from '../../shared/api'
 import { normalizePhone as normalizeE164 } from '../../shared/phone'
+import type { PaidWith } from '../../shared/paidWith'
 
 /**
  * Klient mot bokningsrutterna (backend functions/mark-arrived,
@@ -75,6 +76,10 @@ export interface Reservation {
   endsAt?: string
   timezone?: string
   tableIds: string[]
+  /** Bordens namn när bokningen gjordes eller flyttades, i samma ordning som tableIds (saknas på äldre bokningar). */
+  tableLabels?: string[]
+  /** Planritningsversionen som gäller bokningens tid. */
+  layoutVersion?: number
   seats?: number
   partySize: number
   customerName?: string
@@ -87,6 +92,8 @@ export interface Reservation {
   createdAt?: string
   history?: HistoryEntry[]
   cardOnFile?: boolean
+  /** Det sparade kortet för garantin (kort, Apple Pay, Google Pay). */
+  guaranteeCard?: PaidWith
   guarantee?: GuaranteeSnapshot
   payment?: ReservationPayment
   pendingExpiresAt?: string
@@ -547,6 +554,8 @@ export function mockReservations(date: string): Reservation[] {
       customerName: 'Johan Lind',
       notes: 'Barnstol, en glutenfri',
       cardOnFile: true,
+      guaranteeCard: { method: 'card', brand: 'visa', last4: '4242' },
+      guarantee: { noShowFee: 30000 },
     }),
     r('3', '18:00', '20:00', 6, ['9', '10'], 'reserved', { customerName: 'Sara Ek', source: 'phone' }),
     r('4', '19:00', '21:00', 2, ['4'], 'reserved', { customerName: 'Erik Holm', source: 'walk_in' }),

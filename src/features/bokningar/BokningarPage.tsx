@@ -28,7 +28,8 @@ import {
   todayIn,
 } from './bookingsApi'
 import type { Reservation } from './bookingsApi'
-import { tableNames, useTables } from '../../shared/tables'
+import { tableNames } from '../../shared/tables'
+import { useBookingLabels } from '../../shared/bookingTables'
 import { TableLinks } from '../../shared/TableLinks'
 import './bokningar.css'
 import { DateInput } from '../../shared/DateInput'
@@ -61,7 +62,6 @@ export default function BokningarPage() {
   const location = currentLocation(tenantState)
   const isOwner = tenant?.role === 'owner_user'
   const today = todayIn(location?.timezone)
-  const { labels } = useTables(locationId === MOCK_LOCATION_ID ? null : locationId)
 
   const [date, setDate] = useState(today)
   // Bokningen man just sparade: bocken ritas in en gång och raden blinkar där den hamnade.
@@ -99,6 +99,7 @@ export default function BokningarPage() {
   const key = locationId ? `${locationId}|${date}` : null
   const loading = key !== null && loaded?.key !== key
   const items = !loading && loaded ? loaded.items : []
+  const { labelsFor } = useBookingLabels(locationId === MOCK_LOCATION_ID ? null : locationId, items)
   const error = !loading && loaded ? loaded.error : null
 
   // Hämtar dagens lista. `quiet`: en levande omhämtning, som inte visar ett
@@ -308,7 +309,7 @@ export default function BokningarPage() {
                           )}
                         </td>
                         <td className="bk-pers" data-label="Pers"><Num>{r.partySize}</Num></td>
-                        <td className="bk-tables">{locationId === MOCK_LOCATION_ID ? tableNames(r.tableIds, labels) : <TableLinks ids={r.tableIds} labels={labels} date={r.date} />}</td>
+                        <td className="bk-tables">{locationId === MOCK_LOCATION_ID ? tableNames(r.tableIds, labelsFor(r)) : <TableLinks ids={r.tableIds} labels={labelsFor(r)} date={r.date} />}</td>
                         <td className="bk-status">
                           <span className={`status-badge ${STATUS_CLASS[r.status]}`}>
                             {STATUS_LABEL[r.status]}

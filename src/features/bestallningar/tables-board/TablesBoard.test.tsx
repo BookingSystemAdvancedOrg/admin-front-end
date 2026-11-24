@@ -189,6 +189,18 @@ describe('TablesBoard', () => {
     expect(await screen.findByText('Flyttad till Bord 7')).toBeInTheDocument()
   })
 
+  it('names both tables of a move round in the detail', async () => {
+    const user = userEvent.setup()
+    const base = tab()
+    api.listTabs.mockResolvedValue(response([tab({
+      rounds: [...base.rounds, { ...base.rounds[0], round: 2, kind: 'move', courses: [], itemIds: [], fromLabel: '3', toLabel: '7' }],
+    })]))
+    renderBoard()
+    await user.click(await screen.findByRole('button', { name: 'Visa Bord 3' }))
+    const detail = screen.getByRole('complementary', { name: 'Bord 3, detaljer' })
+    expect(within(detail).getByText(/Flyttad från Bord 3 till Bord 7/)).toBeInTheDocument()
+  })
+
   it('starts a new order from a free table on the map, and opens an occupied one', async () => {
     const user = userEvent.setup()
     renderBoard()

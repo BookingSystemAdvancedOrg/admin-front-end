@@ -30,13 +30,14 @@ import {
   paymentFailureLabel,
 } from './bookingsApi'
 import type { HistoryEntry, Reservation, ReservationEdit } from './bookingsApi'
-import { useTables } from '../../shared/tables'
+import { useBookingLabels } from '../../shared/bookingTables'
 import { TableLinks } from '../../shared/TableLinks'
 import { PhoneInput } from '../../shared/PhoneInput'
 import { ApiError } from '../../shared/api'
 import { minutesLabel } from '../installningar/bookingTime'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { paidWithLabel } from '../../shared/paidWith'
 import { Select } from '../../shared/Select'
 import { RefundDialog } from '../../shared/RefundDialog'
 import { BackButton } from '../../shared/BackButton'
@@ -125,7 +126,7 @@ export function ReservationModal({
 }) {
   const r = reservation
   const actions = availableActions(r, isOwner)
-  const { labels } = useTables(r.locationId)
+  const { labelsFor } = useBookingLabels(r.locationId, [r])
   const [panel, setPanel] = useState<Panel>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -196,7 +197,7 @@ export function ReservationModal({
           <div>
             <h2>{r.customerName || 'Gäst'}</h2>
             <p className="cell-muted">
-              {dayLabel(r.date)} · {r.startTime}-{r.endTime} · {r.partySize} pers · <TableLinks ids={r.tableIds} labels={labels} date={r.date} />
+              {dayLabel(r.date)} · {r.startTime}-{r.endTime} · {r.partySize} pers · <TableLinks ids={r.tableIds} labels={labelsFor(r)} date={r.date} />
             </p>
           </div>
           <span className={`status-badge ${STATUS_CLASS[r.status]}`}>{STATUS_LABEL[r.status]}</span>
@@ -237,7 +238,9 @@ export function ReservationModal({
                 <>
                   <dt>Kortgaranti</dt>
                   <dd>
-                    {r.cardOnFile ? 'Kort sparat' : r.status === 'pending' ? 'Väntar på kort' : 'Inget kort'}
+                    {r.cardOnFile
+                      ? (paidWithLabel(r.guaranteeCard) ?? 'Kort sparat')
+                      : r.status === 'pending' ? 'Väntar på kort' : 'Inget kort'}
                     {' · '}no-show {formatKr(r.guarantee.noShowFee)}
                     {r.guarantee.lateCancelFee
                       ? ` · sen avbokning ${formatKr(r.guarantee.lateCancelFee)} (inom ${r.guarantee.cancelCutoffHours} h)`

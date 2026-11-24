@@ -1,4 +1,4 @@
-import type { TableInfo } from '../../shared/tables'
+import { tableTitle, type TableInfo } from '../../shared/tables'
 import type { BusinessHoursInterval, SpecialDay, SpecialDayKind, TableRule } from './locationApi'
 
 /**
@@ -52,7 +52,7 @@ export function rulesToSave(
     if (!row) continue
     const min = whole(row.min)
     const max = whole(row.max)
-    const name = `Bord ${t.label}`
+    const name = tableTitle(t.label)
     if (min === null || max === null || min < 1 || max < 1 || min > MAX_PARTY || max > MAX_PARTY) {
       return { rules, error: `${name}: skriv antal personer från 1 till ${MAX_PARTY}.` }
     }

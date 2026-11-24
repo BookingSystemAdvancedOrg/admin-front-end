@@ -1,3 +1,4 @@
+import { MemoryRouter } from 'react-router-dom'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -27,6 +28,13 @@ vi.mock('./bookingsApi', async (orig) => ({
   getAvailability: (...a: unknown[]) => getAvailability(...a),
   createManualReservation: (...a: unknown[]) => createManualReservation(...a),
   resendGuaranteeLink: (...a: unknown[]) => resendGuaranteeLink(...a),
+}))
+
+// Dagens ritning för rubrikens bord (GET /layout/active); null = inte hämtad.
+let activeLabels: Map<string, string> | null = null
+vi.mock('../../shared/tables', async (orig) => ({
+  ...(await orig<typeof import('../../shared/tables')>()),
+  useTables: () => ({ tables: null, labels: activeLabels, error: false }),
 }))
 
 // Bordskartan: bord 2-5 med samma nummer som id:t.
@@ -69,9 +77,18 @@ beforeEach(() => {
   getAvailability.mockResolvedValue(avail([]))
   loadActiveLayout.mockReset()
   loadActiveLayout.mockResolvedValue(PLAN)
+  activeLabels = null
 })
 
 describe('ReservationModal', () => {
+  it("names the booking's table in its layout version, not today's number", () => {
+    activeLabels = new Map([['t-uuid', '5']])
+    render(<MemoryRouter><ReservationModal today={TODAY} reservation={booking({ tableIds: ['t-uuid'], tableLabels: ['6'], layoutVersion: 2 })}
+      isOwner onChanged={() => {}} onClose={() => {}} /></MemoryRouter>)
+    expect(screen.getByRole('link', { name: 'Bord 6, visa i bordskartan' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Bord 5/ })).toBeNull()
+  })
+
   it('marks a guest as arrived', async () => {
     const user = userEvent.setup()
     const onChanged = vi.fn()
@@ -99,6 +116,23 @@ describe('ReservationModal', () => {
     await user.click(screen.getByLabelText(/Debitera no-show-avgiften 500 kr/))
     await user.click(screen.getByRole('button', { name: 'Uteblev' }))
     expect(changeStatus).toHaveBeenLastCalledWith('loc-1', 'r1', 'no_show', { chargeFee: false })
+  })
+
+  it('names the saved guarantee card, or says Kort sparat without details', () => {
+    const fee = { noShowFee: 50000 }
+    const { unmount } = render(<ReservationModal today={TODAY} isOwner onChanged={() => {}} onClose={() => {}}
+      reservation={booking({ cardOnFile: true, guarantee: fee, guaranteeCard: { method: 'card', brand: 'visa', last4: '4242' } })} />)
+    expect(screen.getByText('Kortgaranti').nextElementSibling).toHaveTextContent(/^Visa \*{4}4242 · no-show 500 kr$/)
+    unmount()
+
+    const second = render(<ReservationModal today={TODAY} isOwner onChanged={() => {}} onClose={() => {}}
+      reservation={booking({ cardOnFile: true, guarantee: fee, guaranteeCard: { method: 'apple_pay' } })} />)
+    expect(screen.getByText('Kortgaranti').nextElementSibling).toHaveTextContent(/^Apple Pay · no-show/)
+    second.unmount()
+
+    render(<ReservationModal today={TODAY} isOwner onChanged={() => {}} onClose={() => {}}
+      reservation={booking({ cardOnFile: true, guarantee: fee })} />)
+    expect(screen.getByText('Kortgaranti').nextElementSibling).toHaveTextContent(/^Kort sparat · no-show/)
   })
 
   it('shows the server reason when a status change is refused', async () => {

@@ -183,10 +183,16 @@ export function refundOrder(
 }
 
 /** "Delvis återbetald 50 kr" / "Återbetald 285,50 kr", eller null. */
+/**
+ * "Återbetald 250 kr" / "Delvis återbetald 50 kr": bara det som nådde
+ * gästen. En återbetalning som kom tillbaka (refundFailed, Swish nekade)
+ * räknas inte; den har en egen varning på kortet.
+ */
 export function refundLabel(order: Order): string | null {
-  const amount = order.refund?.amount ?? 0
+  const failed = (order.refundFailed ?? []).reduce((sum, f) => sum + (f && f.amount > 0 ? f.amount : 0), 0)
+  const amount = Math.max((order.refund?.amount ?? 0) - failed, 0)
   if (amount <= 0 || order.status === 'cancelled') return null
-  return `${order.paymentStatus === 'refunded' ? 'Återbetald' : 'Delvis återbetald'} ${kronor(amount)}`
+  return `${order.paymentStatus === 'refunded' && failed === 0 ? 'Återbetald' : 'Delvis återbetald'} ${kronor(amount)}`
 }
 
 export function pauseOrdering(locationId: string, minutes: number): Promise<{ ordering: OrderingState }> {

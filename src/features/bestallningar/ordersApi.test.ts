@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from '../../shared/api'
-import { kronor, moveErrorText } from './ordersApi'
+import { kronor, moveErrorText, refundLabel } from './ordersApi'
+import type { Order } from './ordersApi'
 
 describe('ordersApi', () => {
   it('formats öre as kronor', () => {
@@ -24,5 +25,17 @@ describe('clock', () => {
     expect(clock('2026-11-16T16:40:00Z', 'Europe/London')).toBe('16:40')
     expect(clock('2026-11-16T16:40:00Z', 'Not/AZone')).toBe('17:40')
     expect(clock(undefined)).toBe('')
+  })
+})
+
+describe('refundLabel with a refund that came back', () => {
+  const base = { orderId: 'o1', locationId: 'l1', status: 'completed', totalAmount: 30000, mode: 'pickup', lines: [] } as unknown as Order
+
+  it('counts only what reached the guest', () => {
+    expect(refundLabel({ ...base, paymentStatus: 'refunded', refund: { amount: 30000 } } as Order)).toBe('Återbetald 300 kr')
+    expect(refundLabel({ ...base, paymentStatus: 'refunded', refund: { amount: 30000 },
+      refundFailed: [{ amount: 10000 }] } as Order)).toBe('Delvis återbetald 200 kr')
+    expect(refundLabel({ ...base, paymentStatus: 'refunded', refund: { amount: 30000 },
+      refundFailed: [{ amount: 30000 }] } as Order)).toBeNull()
   })
 })

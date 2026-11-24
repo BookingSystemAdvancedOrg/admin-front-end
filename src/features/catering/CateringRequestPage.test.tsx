@@ -314,6 +314,34 @@ describe('CateringRequestPage', () => {
     expect(markDelivered).toHaveBeenCalledWith('loc-1', 'req-1')
   })
 
+  it('shows how the customer paid and warns when a Swish refund did not arrive', async () => {
+    const offer = { version: 1, lines: request().request.lines, totals: TOTALS, validUntil: '2026-11-01' }
+    getRequest.mockResolvedValue(request({
+      status: 'confirmed', paid: true, offer, offers: [offer], currentOfferVersion: 1,
+      paidWith: { method: 'swish' }, refundedAmount: 50000,
+      refundFailed: [{ amount: 50000, at: '2026-10-14T09:00:00Z', refundId: 're_1', method: 'swish' }],
+      signature: { name: 'A', personalNumberMasked: 'x', signedAt: '2026-10-13T09:00:00Z', documentHash: 'h' },
+      history: [{ action: 'refund_failed', by: 'stripe', at: '2026-10-14T09:00:00Z' }],
+    }))
+    renderAt()
+    expect(await screen.findByText('Betald online · Swish')).toBeInTheDocument()
+    expect(screen.getByText('Återbetalningen på 500 kr kom inte fram (Swish). Pengarna är tillbaka på ert Stripe-saldo: '
+      + 'betala tillbaka till kunden på annat sätt.')).toBeInTheDocument()
+    expect(screen.getByText(/Återbetalningen kom inte fram$/)).toBeInTheDocument()
+  })
+
+  it('shows the card a company paid its invoice with', async () => {
+    const offer = { version: 1, lines: request().request.lines, totals: TOTALS, validUntil: '2026-11-01' }
+    getRequest.mockResolvedValue(request({
+      status: 'confirmed', customerType: 'company', companyName: 'AB', paid: true, offer, offers: [offer],
+      currentOfferVersion: 1, stripeInvoiceId: 'in_1', invoiceNumber: 'F-1', invoiceStatus: 'paid',
+      paidWith: { method: 'card', brand: 'mastercard', last4: '4444' },
+      signature: { name: 'A', signedAt: '2026-10-13T09:00:00Z', documentHash: 'h' },
+    }))
+    renderAt()
+    expect(await screen.findByText(/^Faktura F-1/)).toHaveTextContent('Faktura F-1 · betald · Mastercard ****4444')
+  })
+
   it('owner refunds part of a paid order without cancelling it', async () => {
     const user = userEvent.setup()
     const offer = { version: 1, lines: request().request.lines, totals: TOTALS, validUntil: '2026-11-01' }

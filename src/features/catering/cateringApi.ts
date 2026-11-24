@@ -1,6 +1,7 @@
 import { errorText as commonError } from '../../shared/errors'
 import { ApiError, apiFetch, isApiConfigured } from '../../shared/api'
 import { withBusy } from '../../shared/motion/busy'
+import type { PaidWith, RefundFailure } from '../../shared/paidWith'
 
 /**
  * Catering (backend: catering-settings, catering-discount-tiers,
@@ -289,6 +290,10 @@ export interface CateringRequest extends RequestSummary {
   refunds?: { amount: number; at?: string; reason?: string; manual?: boolean; external?: boolean }[]
   /** Vad ägaren fortfarande kan återbetala (öre). */
   refundable?: number
+  /** Hur kunden betalade online (kort, Apple Pay, Swish, Klarna ...). */
+  paidWith?: PaidWith
+  /** Återbetalningar som inte kom fram (Swish): restaurangen betalar tillbaka själv. */
+  refundFailed?: RefundFailure[]
   signature?: { name: string; personalNumberMasked?: string; signedAt: string; documentHash?: string; method?: string;
     role?: string; pdfSha256?: string }
   signing?: { offerVersion: number; pdfSha256?: string; restaurant?: SignerState; customer?: SignerState }

@@ -202,6 +202,48 @@ describe('BestallningarPage', () => {
     expect(screen.getByRole('dialog', { name: 'Återbetala #7, Bord 3' })).toBeInTheDocument()
   })
 
+  it('shows how each order was paid next to the amount, gift card first', async () => {
+    const user = userEvent.setup()
+    listOrders.mockResolvedValue(list([
+      order({ paymentStatus: 'paid', paidWith: { method: 'card', brand: 'visa', last4: '4242' } }),
+      order({ orderId: 'b'.repeat(32), number: 8, status: 'preparing', paidWith: { method: 'swish' } }),
+      order({ orderId: 'c'.repeat(32), number: 9, status: 'completed', completedAt: '2026-10-12T16:30:00Z',
+        giftCard: { last4: '1234', debitedOre: 10000 }, paidWith: { method: 'apple_pay' } }),
+    ]))
+    render(<BestallningarPage />)
+    const nya = await screen.findByRole('region', { name: 'Nya' })
+    expect(within(nya).getByText(/285,50 kr/).closest('p')).toHaveTextContent(/285,50 kr · Visa \*{4}4242/)
+    expect(within(screen.getByRole('region', { name: 'Tillagas' })).getByText('Swish')).toBeInTheDocument()
+    await user.click(screen.getByText('Avslutade idag (1)'))
+    expect(screen.getByText(/^#9 ·/)).toHaveTextContent('285,50 kr · Presentkort ****1234 + Apple Pay · Klar')
+  })
+
+  it('shows nothing extra for an order without payment details (older backend)', async () => {
+    listOrders.mockResolvedValue(list([order()]))
+    render(<BestallningarPage />)
+    const nya = await screen.findByRole('region', { name: 'Nya' })
+    expect(within(nya).getByText(/285,50 kr/).closest('p')).toHaveTextContent(/285,50 kr · lovad ca/)
+  })
+
+  it('warns when a Swish refund did not reach the guest, on the card and in the done list', async () => {
+    const failed = [{ amount: 25000, at: '2026-10-12T17:00:00Z', refundId: 're_1', method: 'swish' }]
+    listOrders.mockResolvedValue(list([
+      order({ status: 'preparing', paymentStatus: 'partly_refunded', refund: { amount: 25000 }, refundable: 3550,
+        paidWith: { method: 'swish' }, refundFailed: failed }),
+      order({ orderId: 'c'.repeat(32), number: 9, status: 'cancelled', paymentStatus: 'refunded',
+        paidWith: { method: 'swish' }, refundFailed: failed }),
+    ]))
+    render(<BestallningarPage />)
+    const text = 'Återbetalningen på 250 kr kom inte fram (Swish). Pengarna är tillbaka på ert Stripe-saldo: betala tillbaka till gästen på annat sätt.'
+    const tillagas = await screen.findByRole('region', { name: 'Tillagas' })
+    expect(within(tillagas).getByText(text)).toBeInTheDocument()
+    // Avslutade idag står öppen så varningen syns direkt, och säger inte "återbetald".
+    const done = screen.getByText('Avslutade idag (1)').closest('details')!
+    expect(done).toHaveAttribute('open')
+    expect(within(done).getByText(text)).toBeVisible()
+    expect(within(done).getByText(/^#9 ·/)).toHaveTextContent(/Swish · Avbruten$/)
+  })
+
   it('staff see no refund button', async () => {
     role = 'staff_user'
     listOrders.mockResolvedValue(list([order({ paymentStatus: 'paid', refundable: 28550 })]))

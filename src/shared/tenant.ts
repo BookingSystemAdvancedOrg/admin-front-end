@@ -40,7 +40,17 @@ export interface TenantStripeStatus {
   payoutsEnabled: boolean
   /** Restaurangen har skickat in sina uppgifter till Stripe. */
   detailsSubmitted: boolean
+  /**
+   * Betalsätten på restaurangens Stripe-konto (kontots capabilities).
+   * Apple Pay och Google Pay följer kort. Saknas hos äldre backend.
+   */
+  paymentMethods?: Partial<Record<StripePaymentMethod, StripeMethodStatus>>
 }
+
+/** Betalsätten restaurangen själv slår på i sitt Stripe-konto. */
+export type StripePaymentMethod = 'card' | 'swish' | 'klarna'
+
+export type StripeMethodStatus = 'active' | 'pending' | 'inactive' | 'unrequested'
 
 /** Gäst- och restaurangnotiser (bokningsbekräftelser, påminnelser m.m.). */
 export interface TenantNotifications {

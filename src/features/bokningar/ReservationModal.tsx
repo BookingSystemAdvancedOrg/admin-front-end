@@ -37,6 +37,7 @@ import { ApiError } from '../../shared/api'
 import { minutesLabel } from '../installningar/bookingTime'
 import ModalOverlay from '../../shared/ModalOverlay'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { paidWithLabel } from '../../shared/paidWith'
 import { Select } from '../../shared/Select'
 import { RefundDialog } from '../../shared/RefundDialog'
 import { BackButton } from '../../shared/BackButton'
@@ -237,7 +238,9 @@ export function ReservationModal({
                 <>
                   <dt>Kortgaranti</dt>
                   <dd>
-                    {r.cardOnFile ? 'Kort sparat' : r.status === 'pending' ? 'Väntar på kort' : 'Inget kort'}
+                    {r.cardOnFile
+                      ? (paidWithLabel(r.guaranteeCard) ?? 'Kort sparat')
+                      : r.status === 'pending' ? 'Väntar på kort' : 'Inget kort'}
                     {' · '}no-show {formatKr(r.guarantee.noShowFee)}
                     {r.guarantee.lateCancelFee
                       ? ` · sen avbokning ${formatKr(r.guarantee.lateCancelFee)} (inom ${r.guarantee.cancelCutoffHours} h)`

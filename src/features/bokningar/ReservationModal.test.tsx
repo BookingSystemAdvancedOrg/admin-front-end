@@ -101,6 +101,23 @@ describe('ReservationModal', () => {
     expect(changeStatus).toHaveBeenLastCalledWith('loc-1', 'r1', 'no_show', { chargeFee: false })
   })
 
+  it('names the saved guarantee card, or says Kort sparat without details', () => {
+    const fee = { noShowFee: 50000 }
+    const { unmount } = render(<ReservationModal today={TODAY} isOwner onChanged={() => {}} onClose={() => {}}
+      reservation={booking({ cardOnFile: true, guarantee: fee, guaranteeCard: { method: 'card', brand: 'visa', last4: '4242' } })} />)
+    expect(screen.getByText('Kortgaranti').nextElementSibling).toHaveTextContent(/^Visa \*{4}4242 · no-show 500 kr$/)
+    unmount()
+
+    const second = render(<ReservationModal today={TODAY} isOwner onChanged={() => {}} onClose={() => {}}
+      reservation={booking({ cardOnFile: true, guarantee: fee, guaranteeCard: { method: 'apple_pay' } })} />)
+    expect(screen.getByText('Kortgaranti').nextElementSibling).toHaveTextContent(/^Apple Pay · no-show/)
+    second.unmount()
+
+    render(<ReservationModal today={TODAY} isOwner onChanged={() => {}} onClose={() => {}}
+      reservation={booking({ cardOnFile: true, guarantee: fee })} />)
+    expect(screen.getByText('Kortgaranti').nextElementSibling).toHaveTextContent(/^Kort sparat · no-show/)
+  })
+
   it('shows the server reason when a status change is refused', async () => {
     const user = userEvent.setup()
     changeStatus.mockRejectedValue(new ApiError(409, 'grace_period_not_over'))

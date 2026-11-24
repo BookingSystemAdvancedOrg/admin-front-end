@@ -233,6 +233,15 @@
   font-weight: 500;
 }
 
+/* En återbetalning som inte kom fram: under raden i Avslutade idag. */
+.order-refund-failed {
+  margin: 0;
+}
+
+.orders-done-warning {
+  margin-top: 6px;
+}
+
 .orders-done-refund.btn.square {
   margin-left: 10px;
   padding: 4px 10px;

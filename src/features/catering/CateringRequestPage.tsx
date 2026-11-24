@@ -43,6 +43,7 @@ import { ErrorNote } from '../../shared/ErrorNote'
 import { Select } from '../../shared/Select'
 import { KronorInput } from './KronorInput'
 import { RefundDialog } from '../../shared/RefundDialog'
+import { paidWithLabel, refundFailedText } from '../../shared/paidWith'
 import { BackButton } from '../../shared/BackButton'
 import { useDirtyForm } from '../../shared/dirtyForm'
 import { useUnsavedGuard } from '../../shared/unsaved'
@@ -83,6 +84,7 @@ const ACTION_LABEL: Record<string, string> = {
   cancelled: 'Avbokad',
   expired: 'Gick ut',
   refunded: 'Återbetalning',
+  refund_failed: 'Återbetalningen kom inte fram',
 }
 
 /** Var en version står: varje version signeras av er och skickas för sig. */
@@ -289,6 +291,8 @@ export default function CateringRequestPage() {
     if (line) setOffer({ ...offer, lines: [...offer.lines, line] })
   }
   const nextVersion = (request.currentOfferVersion ?? 0) + 1
+  const paidWith = paidWithLabel(request.paidWith)
+  const refundFailed = refundFailedText(request.refundFailed, kronor, 'kunden')
   const step = offerStep(request)
   const setLine = (i: number, patch: Partial<OfferInput['lines'][number]>) =>
     setOffer({ ...offer, lines: offer.lines.map((l, n) => (n === i ? { ...l, ...patch } : l)) })
@@ -648,9 +652,10 @@ export default function CateringRequestPage() {
                   {request.customerType === 'company'
                     ? request.stripeInvoiceId
                       ? <>Faktura {request.invoiceNumber} · {request.invoiceStatus === 'paid' || request.paid ? 'betald' : request.invoiceStatus ?? 'skickad'}
+                          {request.paid && paidWith ? ` · ${paidWith}` : ''}
                           {request.invoiceUrl && <> · <a href={request.invoiceUrl} target="_blank" rel="noreferrer">Visa faktura</a></>}</>
                       : 'Fakturan skapas…'
-                    : request.paid ? 'Betald online' : 'Väntar på kundens betalning'}
+                    : request.paid ? `Betald online${paidWith ? ` · ${paidWith}` : ''}` : 'Väntar på kundens betalning'}
                 </dd>
               </div>
               {(request.refundedAmount ?? 0) > 0 && (
@@ -745,6 +750,7 @@ export default function CateringRequestPage() {
             {request.refundNote === 'refund_manually' && (
               <p className="form-error">Fakturan betalades via Bankgiro. Betala tillbaka till kunden för hand.</p>
             )}
+            {refundFailed && <p className="form-error">{refundFailed}</p>}
             {!editable && error && <ErrorNote text={error} />}
             {!editable && notice && <p className="save-notice" role="status">{notice}</p>}
           </section>

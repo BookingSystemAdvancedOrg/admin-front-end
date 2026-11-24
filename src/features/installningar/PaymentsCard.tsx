@@ -2,8 +2,11 @@ import { useEffect, useEffectEvent, useMemo, useState } from 'react'
 import { ApiError } from '../../shared/api'
 import { booqyFaultText, errorText } from '../../shared/errors'
 import { createStripeAccountLink, stripeStage } from '../../shared/tenant'
-import type { StripeStage as Stage, Tenant } from '../../shared/tenant'
+import type { StripeMethodStatus, StripePaymentMethod, StripeStage as Stage, Tenant, TenantStripeStatus } from '../../shared/tenant'
 import { ErrorNote } from '../../shared/ErrorNote'
+import { Icon } from '../../shared/Icon'
+import { TitleInfo } from '../../shared/TitleInfo'
+import './payments.css'
 
 /**
  * Betalningar: restaurangens Stripe-konto, från GET /tenant.
@@ -39,6 +42,71 @@ const STAGE_TEXT: Record<Stage, { title: string; text: string; ok: boolean }> = 
     text: '',
     ok: true,
   },
+}
+
+/** Där ägaren slår på betalsätt i sitt eget Stripe-konto. */
+export const STRIPE_PAYMENT_METHODS_URL = 'https://dashboard.stripe.com/settings/payment_methods'
+
+/** Raderna i Betalsätt; Apple Pay och Google Pay följer kortet. */
+const METHOD_ROWS: { label: string; capability: StripePaymentMethod }[] = [
+  { label: 'Kort', capability: 'card' },
+  { label: 'Apple Pay', capability: 'card' },
+  { label: 'Google Pay', capability: 'card' },
+  { label: 'Swish', capability: 'swish' },
+  { label: 'Klarna', capability: 'klarna' },
+]
+
+type MethodState = 'active' | 'pending' | 'off'
+
+const METHOD_STATE: Record<MethodState, { text: string; badge: string }> = {
+  active: { text: 'Aktiv', badge: 'reserved' },
+  pending: { text: 'Granskas', badge: 'waiting' },
+  off: { text: 'Inte aktiverad', badge: 'cancelled-free' },
+}
+
+function methodState(status: StripeMethodStatus | undefined): MethodState {
+  if (status === 'active') return 'active'
+  if (status === 'pending') return 'pending'
+  return 'off'
+}
+
+/** Betalsätten på kontot, när Stripe är klart och backend skickar dem. */
+function PaymentMethods({ methods, isOwner }: {
+  methods: NonNullable<TenantStripeStatus['paymentMethods']>
+  isOwner: boolean
+}) {
+  return (
+    <div className="pay-methods">
+      <TitleInfo
+        title="Betalsätt"
+        level={3}
+        className="pay-methods-title"
+        info="Ni slår på betalsätten i ert eget Stripe-konto. Apple Pay och Google Pay följer kort. Stripes avgift skiljer sig mellan betalsätten."
+      />
+      <ul className="pay-methods-list">
+        {METHOD_ROWS.map((row) => {
+          const state = methodState(methods[row.capability])
+          return (
+            <li key={row.label} className="pay-method">
+              <span className="pay-method-name">{row.label}</span>
+              <span className={`status-badge ${METHOD_STATE[state].badge}`}>{METHOD_STATE[state].text}</span>
+              {state === 'off' && isOwner && (
+                <a
+                  className="pay-method-activate"
+                  href={STRIPE_PAYMENT_METHODS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Aktivera i Stripe
+                  <Icon name="arrow-right" size={14} />
+                </a>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
 }
 
 export function PaymentsCard({
@@ -135,6 +203,9 @@ export function PaymentsCard({
           <p className="cell-muted">{payouts}</p>
         </div>
       </div>
+      {isReady && tenant.stripe.paymentMethods && (
+        <PaymentMethods methods={tenant.stripe.paymentMethods} isOwner={isOwner} />
+      )}
       {missing && <ErrorNote text={missing} onRetry={() => void onRefresh()} />}
       {error && (
         <ErrorNote text={error} />

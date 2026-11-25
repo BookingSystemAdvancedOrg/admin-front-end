@@ -101,6 +101,13 @@
   outline-offset: -2px;
 }
 
+/* Tiden får luft mot kanten på hovrad-markeringen. */
+@media (min-width: 601px) {
+  .bookings-table .booking-row > td:first-child {
+    padding-left: 20px;
+  }
+}
+
 .booking-row.muted td {
   opacity: 0.6;
 }

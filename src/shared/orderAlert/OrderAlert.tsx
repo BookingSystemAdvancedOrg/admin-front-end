@@ -3,6 +3,8 @@ import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent
 import { useLocation, useNavigate } from 'react-router-dom'
 import { clock, kronor } from '../../features/bestallningar/ordersApi'
 import type { Order } from '../../features/bestallningar/ordersApi'
+import { formatDate } from '../../features/catering/cateringApi'
+import type { RequestSummary } from '../../features/catering/cateringApi'
 import { canOpen } from '../access'
 import { Icon } from '../Icon'
 import ModalOverlay from '../ModalOverlay'
@@ -12,53 +14,67 @@ import { hasFeature, useTenant } from '../tenant'
 import { requestLeave } from '../unsaved'
 import { unlockOrderAudio } from './alertSound'
 import { orderSummary } from './queue'
-import { acknowledgeOrders, requestOrderFocus, setAlertEscape, setAlertScope, useOrderAlerts } from './store'
-import { useOrderWatch } from './watch'
+import { acknowledgeKind, acknowledgeOrders, requestOrderFocus, setAlertEscape, setAlertScope, setCateringScope, useOrderAlerts } from './store'
+import { useCateringWatch, useOrderWatch } from './watch'
 import './orderAlert.css'
 
 /** Ett tryck eller en tangent så här snart efter att rutan öppnats eller fått en ny rad räknas inte. */
 const OK_GUARD_MS = 600
 
 /**
- * Larmet för nya onlinebeställningar, i skalet (AdminLayout) så att det
+ * Larmet för nya onlinebeställningar och cateringförfrågningar, i skalet (AdminLayout) så att det
  * syns på varje sida. Ett högt ljud och rutan "Ny beställning"; fler som
  * kommer innan någon trycker OK läggs överst i samma ruta, med ljud igen.
  * OK (eller Escape) stänger och tömmer; nästa nya öppnar en ny ruta. En rad
- * öppnar Beställningar med den beställningen markerad (och stänger rutan:
- * alla nya står där under Nya).
+ * öppnar Beställningar med den beställningen markerad (och tömmer beställningarna i rutan:
+ * alla nya står där under Nya; förfrågningarna står kvar). En cateringförfrågan har samma ljud och
+ * ruta ("Ny cateringförfrågan") och öppnar förfrågan. Slagen larmar var för
+ * sig efter plan och behörighet (Beställningar, Catering).
  */
 export function OrderAlert({ guardMs = OK_GUARD_MS }: { guardMs?: number } = {}) {
   const { tenant, locationId, status } = useTenant()
-  const enabled =
-    status === 'ready' && Boolean(locationId) && hasFeature(tenant, 'ordering') && canOpen(tenant, 'bestallningar')
+  const ready = status === 'ready' && Boolean(locationId)
+  const ordersEnabled = ready && hasFeature(tenant, 'ordering') && canOpen(tenant, 'bestallningar')
+  const cateringEnabled = ready && hasFeature(tenant, 'catering') && canOpen(tenant, 'catering')
   useEffect(() => {
     // Medan restaurangen hämtas vet vi inget än: rör inte det fliken hade (en
     // omladdning ska få tillbaka en öppen ruta). Sedan: platsen, eller inget larm.
     if (status === 'idle' || status === 'loading') return
-    setAlertScope(enabled ? locationId : null)
-  }, [status, enabled, locationId])
-  useOrderWatch(locationId, enabled)
-  const { open, muted, rev, latest } = useOrderAlerts()
+    setAlertScope(ordersEnabled ? locationId : null)
+    setCateringScope(cateringEnabled ? locationId : null)
+  }, [status, ordersEnabled, cateringEnabled, locationId])
+  useOrderWatch(locationId, ordersEnabled)
+  useCateringWatch(locationId, cateringEnabled)
+  const { open, requests, muted, rev, latest } = useOrderAlerts()
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  if (!enabled || open.length === 0) return null
+  const shownOrders = ordersEnabled ? open : []
+  const shownRequests = cateringEnabled ? requests : []
+  if (shownOrders.length + shownRequests.length === 0) return null
   return (
     <OrderAlertDialog
-      orders={open}
+      orders={shownOrders}
+      requests={shownRequests}
       muted={muted}
       rev={rev}
       latest={latest}
       guardMs={guardMs}
       onOk={acknowledgeOrders}
       onOpen={(orderId) => {
-        // Rutan stängs först: frågar sidan om osparat (LeaveGuard) syns frågan, inte gömd under rutan.
-        acknowledgeOrders()
+        // Beställningarna stängs först (frågar sidan om osparat syns frågan, inte gömd under rutan); förfrågningarna står kvar.
+        acknowledgeKind('orders')
         const go = () => {
           requestOrderFocus(orderId)
           if (window.location.pathname !== '/bestallningar') navigate('/bestallningar')
         }
         if (pathname === '/bestallningar') go()
         else requestLeave(go)
+      }}
+      onOpenRequest={(requestId) => {
+        acknowledgeKind('catering')
+        const target = `/catering/${locationId}/${requestId}`
+        if (pathname === target) return
+        requestLeave(() => navigate(target))
       }}
     />
   )
@@ -74,21 +90,50 @@ function slipLabel(order: Order): string {
     .join(', ')
 }
 
+/** "Åsa Öberg, Berg & Co, tor 12 dec 17:00, 40 gäster, Leverans": samma ord som raden läses upp med. */
+function requestLabel(r: RequestSummary): string {
+  const who = r.customerType === 'company' && r.companyName ? `${r.companyName}, ${r.customerName}` : r.customerName
+  return [who, [formatDate(r.deliveryDate), r.deliveryTime].filter(Boolean).join(' '), r.guests ? `${r.guests} gäster` : '', fulfilmentLabel(r)]
+    .filter(Boolean)
+    .join(', ')
+}
+
+const fulfilmentLabel = (r: RequestSummary) => (r.fulfilment === 'pickup' ? 'Avhämtning' : 'Leverans')
+
+type Entry = { kind: 'order'; id: string; at: string; order: Order } | { kind: 'request'; id: string; at: string; request: RequestSummary }
+
+/** Båda slagen i en lista, det som kom senast överst (annars ligger en gammal beställning över en ny förfrågan). */
+function entries(orders: readonly Order[], requests: readonly RequestSummary[]): Entry[] {
+  const all: Entry[] = [
+    ...orders.map((order): Entry => ({ kind: 'order', id: order.orderId, at: order.confirmedAt ?? order.createdAt ?? '', order })),
+    ...requests.map((request): Entry => ({ kind: 'request', id: request.requestId, at: request.createdAt ?? '', request })),
+  ]
+  // Stabil: inom ett slag gäller redan ordningen från kön.
+  return all
+    .map((e, i) => ({ e, i }))
+    .sort((a, b) => (a.e.at === b.e.at ? a.i - b.i : a.e.at < b.e.at ? 1 : -1))
+    .map((x) => x.e)
+}
+
 export function OrderAlertDialog({
   orders,
+  requests = [],
   muted,
   rev,
   latest,
   onOk,
   onOpen,
+  onOpenRequest,
   guardMs = OK_GUARD_MS,
 }: {
   orders: readonly Order[]
+  requests?: readonly RequestSummary[]
   muted: boolean
   rev: number
   latest: readonly string[]
   onOk: () => void
   onOpen: (orderId: string) => void
+  onOpenRequest?: (requestId: string) => void
   guardMs?: number
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
@@ -159,15 +204,27 @@ export function OrderAlertDialog({
     if (!muted && box && !box.contains(document.activeElement)) okRef.current?.focus({ preventScroll: true })
   }, [muted])
 
-  const count = orders.length
+  const list = entries(orders, requests)
+  const count = list.length
+  const onlyRequests = orders.length === 0
+  const mixed = orders.length > 0 && requests.length > 0
   const appended = rev !== firstRev
   const fresh = new Set(appended ? latest : [])
+  const entryLabel = (e: Entry) => (e.kind === 'order' ? slipLabel(e.order) : requestLabel(e.request))
   const announce = appended
-    ? orders
-        .filter((o) => fresh.has(o.orderId))
-        .map((o) => `Ny beställning ${slipLabel(o)}`)
+    ? list
+        .filter((e) => fresh.has(e.id))
+        .map((e) => `${e.kind === 'order' ? 'Ny beställning' : 'Ny cateringförfrågan'} ${entryLabel(e)}`)
         .join('. ')
     : ''
+  const title = mixed
+    ? 'Nya ärenden'
+    : onlyRequests
+      ? count === 1 ? 'Ny cateringförfrågan' : 'Nya cateringförfrågningar'
+      : count === 1 ? 'Ny beställning' : 'Nya beställningar'
+  const listLabel = mixed
+    ? 'Beställningar och cateringförfrågningar, nyaste först'
+    : onlyRequests ? 'Cateringförfrågningar, nyaste först' : 'Beställningar, nyaste först'
 
   const trapTab = (e: ReactKeyboardEvent) => {
     if (e.key !== 'Tab' || !boxRef.current) return
@@ -205,10 +262,10 @@ export function OrderAlertDialog({
       >
         <header className="order-alert-head">
           <span key={rev} className="order-alert-badge" aria-hidden="true">
-            <Icon name="bag" size={22} />
+            <Icon name={onlyRequests ? 'tray' : 'bag'} size={22} />
           </span>
           <h2 id="order-alert-title" className="order-alert-title">
-            {count === 1 ? 'Ny beställning' : 'Nya beställningar'}{' '}
+            {title}{' '}
             {count > 1 && (
               <span className="order-alert-count">
                 <Num>{count}</Num>
@@ -217,7 +274,7 @@ export function OrderAlertDialog({
           </h2>
         </header>
         <p id="order-alert-desc" className="sr-only">
-          {count === 1 ? slipLabel(orders[0]) : `Senaste ${slipLabel(orders[0])}`}
+          {count === 1 ? entryLabel(list[0]) : `Senaste ${entryLabel(list[0])}`}
         </p>
         {muted && (
           <button
@@ -233,11 +290,15 @@ export function OrderAlertDialog({
             Tryck för att slå på ljudet
           </button>
         )}
-        <ol ref={listRef} className="order-alert-list" aria-label="Beställningar, nyaste först">
-          {orders.map((o) => (
-            <li key={o.orderId} className={fresh.has(o.orderId) ? 'order-alert-item is-new' : 'order-alert-item'}>
+        <ol ref={listRef} className="order-alert-list" aria-label={listLabel}>
+          {list.map((e) => (
+            <li key={`${e.kind}:${e.id}`} className={fresh.has(e.id) ? 'order-alert-item is-new' : 'order-alert-item'}>
               <div className="order-alert-cell">
-                <OrderSlip order={o} onOpen={onOpen} guarded={guarded} />
+                {e.kind === 'order' ? (
+                  <OrderSlip order={e.order} onOpen={onOpen} guarded={guarded} />
+                ) : (
+                  <RequestSlip request={e.request} onOpen={(id) => onOpenRequest?.(id)} guarded={guarded} />
+                )}
               </div>
             </li>
           ))}
@@ -293,6 +354,51 @@ function OrderSlip({
         {allergy && <span className="order-alert-allergy">Allergi</span>}
       </span>
       <span className="order-alert-what">{orderSummary(order)}</span>
+      <Icon name="chevron-right" size={20} className="order-alert-go" />
+    </button>
+  )
+}
+
+/** En cateringförfrågan i rutan: kund, när och var, antal gäster. */
+function RequestSlip({
+  request,
+  onOpen,
+  guarded,
+}: {
+  request: RequestSummary
+  onOpen: (requestId: string) => void
+  guarded: (e: { detail: number }) => boolean
+}) {
+  const time = clock(request.createdAt)
+  const who = request.customerType === 'company' && request.companyName ? request.companyName : request.customerName
+  return (
+    <button
+      type="button"
+      className="order-alert-slip"
+      aria-label={`Öppna cateringförfrågan ${requestLabel(request)}`}
+      onClick={(e) => {
+        if (guarded(e)) {
+          e.preventDefault()
+          return
+        }
+        onOpen(request.requestId)
+      }}
+    >
+      <span className="order-alert-top">
+        <span className="order-alert-number order-alert-kind">Catering</span>
+        {time && <span className="order-alert-time">{time}</span>}
+        {request.guests ? (
+          <span className="order-alert-total order-alert-guests">
+            <Num>{`${request.guests} gäster`}</Num>
+          </span>
+        ) : null}
+      </span>
+      <span className="order-alert-who">
+        <span className="order-alert-name">{who}</span>
+      </span>
+      <span className="order-alert-what">
+        {[formatDate(request.deliveryDate), request.deliveryTime].filter(Boolean).join(' ')}, {fulfilmentLabel(request)}
+      </span>
       <Icon name="chevron-right" size={20} className="order-alert-go" />
     </button>
   )

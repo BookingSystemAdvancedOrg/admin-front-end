@@ -1029,7 +1029,7 @@
         "Tryck OK när ni har sett beställningarna. Nästa beställning öppnar en ny ruta.",
         "Står det Tryck för att slå på ljudet i rutan: tryck där. iPad och telefon spelar ljud först efter ett tryck i appen.",
         "Står iPaden eller telefonen på ljudlöst hörs inget ljud, men rutan visas ändå.",
-        "Ljudet slås på eller av för varje enhet under Inställningar, Den här enheten, Utseende och ljud, Ljud vid ny beställning. Testa spelar det."
+        "Ljudet slås på eller av för varje enhet under Inställningar, Den här enheten, Utseende och ljud, Larmljud. Testa spelar det."
       ],
       "actions": [
         {
@@ -1043,6 +1043,45 @@
         "help:utseende:bestallningsljud"
       ],
       "area": "bestallningar"
+    },
+    {
+      "id": "catering-larm",
+      "route": "/installningar",
+      "title": "Ljud och ruta vid ny cateringförfrågan",
+      "audience": "all",
+      "feature": "catering",
+      "keywords": [
+        "ny cateringförfrågan",
+        "cateringförfrågan",
+        "förfrågan",
+        "catering",
+        "larm",
+        "ljud",
+        "pling",
+        "notis",
+        "ruta",
+        "popup",
+        "hörs inte",
+        "inget ljud"
+      ],
+      "answer": "När en gäst skickar en cateringförfrågan spelar Admin ett högt ljud och visar rutan Ny cateringförfrågan, på vilken sida du än är. Tryck på en rad för att öppna förfrågan under Catering. Är Admin öppet i flera flikar larmar bara en av dem.",
+      "steps": [
+        "Tryck OK när ni har sett förfrågningarna. Nästa förfrågan öppnar en ny ruta.",
+        "Står det Tryck för att slå på ljudet i rutan: tryck där. iPad och telefon spelar ljud först efter ett tryck i appen.",
+        "Ljudet slås på eller av för varje enhet under Inställningar, Den här enheten, Utseende och ljud, Larmljud. Testa spelar det."
+      ],
+      "actions": [
+        {
+          "id": "catering-larm-open",
+          "label": "Öppna Utseende och ljud",
+          "to": "/installningar",
+          "hash": "utseende"
+        }
+      ],
+      "highlight": [
+        "help:utseende:bestallningsljud"
+      ],
+      "area": "catering"
     },
     {
       "id": "bestallning-pausa",

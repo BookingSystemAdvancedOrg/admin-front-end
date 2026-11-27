@@ -45,6 +45,10 @@ export const SOUND_VOLUME_KEY = 'booqy-sound-volume'
 export const ORDER_SOUND_KEY = 'booqy-order-sound'
 /** Beställningslarmets sedda id:n och öppna ruta, för en omladdning i samma flik. */
 export const ORDER_ALERT_KEY = 'booqy-order-alert'
+/** Cateringlarmets sedda id:n och öppna ruta, för en omladdning i samma flik. */
+export const CATERING_ALERT_KEY = 'booqy-catering-alert'
+/** Cateringförfrågningar som en flik redan har larmat om, delat mellan flikarna (per plats). */
+export const CATERING_PINGED_KEY_PREFIX = 'booqy-catering-pinged:'
 export const NAV_CLOSED_KEY = 'booqy-nav-closed'
 export const SAMPLE_DATA_KEY = 'booqy-sample-data'
 export const STATISTIK_OPEN_KEY_PREFIX = 'booqy-statistik-open:'
@@ -142,7 +146,7 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     name: ORDER_SOUND_KEY,
     kind: 'localStorage',
     setBy: 'Booqy',
-    purpose: 'Om den här enheten spelar larmljudet när en ny beställning kommer in (Inställningar, Den här enheten, Utseende och ljud). Sparas bara när du ändrar det. Inga personuppgifter.',
+    purpose: 'Om den här enheten spelar larmljudet när en ny beställning eller cateringförfrågan kommer in (Inställningar, Den här enheten, Utseende och ljud). Sparas bara när du ändrar det. Inga personuppgifter.',
     lifetime: 'Tills du rensar webbläsaren',
     category: 'nödvändig',
   },
@@ -152,6 +156,22 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     setBy: 'Booqy (rutan Ny beställning)',
     purpose: 'Vilka beställningar den här fliken redan har larmat om och vilka som står i rutan, så att en omladdning inte larmar om dem igen. Bara beställningarnas id, inga namn eller belopp.',
     lifetime: 'Tills fliken stängs, används högst 10 minuter efter en omladdning',
+    category: 'nödvändig',
+  },
+  {
+    name: CATERING_ALERT_KEY,
+    kind: 'sessionStorage',
+    setBy: 'Booqy (rutan Ny cateringförfrågan)',
+    purpose: 'Vilka cateringförfrågningar den här fliken redan har larmat om och vilka som står i rutan, så att en omladdning inte larmar om dem igen. Bara förfrågningarnas id, inga namn eller belopp.',
+    lifetime: 'Tills fliken stängs, används högst 10 minuter efter en omladdning',
+    category: 'nödvändig',
+  },
+  {
+    name: `${CATERING_PINGED_KEY_PREFIX}{plats}`,
+    kind: 'localStorage',
+    setBy: 'Booqy (rutan Ny cateringförfrågan)',
+    purpose: 'Vilka cateringförfrågningar en flik redan har larmat om, så att inte flera öppna flikar larmar om samma förfrågan. Bara förfrågningarnas id och tid, inga namn eller belopp.',
+    lifetime: 'Poster äldre än 10 minuter rensas när nästa förfrågan kommer',
     category: 'nödvändig',
   },
   {

@@ -480,11 +480,47 @@ export function deleteCateringPackage(locationId: string, packageId: string): Pr
   return apiFetch(`${menu(locationId)}/packages/${packageId}`, { method: 'DELETE' })
 }
 
-export async function listRequests(locationId: string): Promise<RequestSummary[]> {
-  return (await apiFetch<{ requests: RequestSummary[] }>(`${loc(locationId)}/requests`)).requests
+/** Utan API: en gammal förfrågan, och en ny som kommer in en stund efter första hämtningen (visar larmet). */
+export const MOCK_REQUEST_ARRIVES_MS = 25_000
+let mockFirstListAt = 0
+const mockBase = (id: string, extra: Partial<RequestSummary>): RequestSummary => ({
+  requestId: id, status: 'requested', customerType: 'private', customerName: 'Maria Lind', deliveryDate: '2026-12-12',
+  deliveryTime: '17:00', fulfilment: 'delivery', createdAt: new Date().toISOString(), guests: 40, ...extra,
+})
+function mockRequests(): RequestSummary[] {
+  const now = Date.now()
+  if (!mockFirstListAt) mockFirstListAt = now
+  const old = mockBase('mock-req-1', {
+    status: 'offer_sent', customerType: 'company', customerName: 'Erik Berg', companyName: 'Berg & Co', guests: 25,
+    deliveryDate: '2026-12-05', createdAt: new Date(mockFirstListAt - 86_400_000).toISOString(), reviewedAt: new Date(mockFirstListAt - 80_000_000).toISOString(),
+    currentOfferVersion: 1,
+  } as Partial<RequestSummary>)
+  const arrived = now - mockFirstListAt >= MOCK_REQUEST_ARRIVES_MS
+  return arrived
+    ? [mockBase('mock-req-2', { createdAt: new Date(mockFirstListAt + MOCK_REQUEST_ARRIVES_MS).toISOString() }), old]
+    : [old]
+}
+
+/** `status`: bara de med de statusarna (kommaseparerat; servern filtrerar, så svaret blir mindre). */
+export async function listRequests(locationId: string, status?: string): Promise<RequestSummary[]> {
+  if (!isApiConfigured()) {
+    const all = mockRequests()
+    return status ? all.filter((r) => status.split(',').includes(r.status)) : all
+  }
+  const query = status ? `?status=${encodeURIComponent(status)}` : ''
+  return (await apiFetch<{ requests: RequestSummary[] }>(`${loc(locationId)}/requests${query}`)).requests
 }
 
 export function getRequest(locationId: string, requestId: string): Promise<CateringRequest> {
+  if (!isApiConfigured()) {
+    const r = mockRequests().find((x) => x.requestId === requestId)
+    if (!r) return Promise.reject(new ApiError(404, 'not_found'))
+    return Promise.resolve({
+      ...r, locationId, version: 1, customerEmail: 'maria@example.se', customerPhone: '070 000 00 00',
+      request: { lines: [], portions: r.guests ?? 0, equipmentReturn: 'cleaned', subtotal: 0, vat: 0, total: 0 },
+      offers: [], capacityLeft: null, history: [],
+    } as unknown as CateringRequest)
+  }
   return apiFetch(req(locationId, requestId))
 }
 

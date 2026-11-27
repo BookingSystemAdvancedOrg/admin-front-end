@@ -198,7 +198,8 @@ export function createStripeAccountLink(): Promise<{
 
 /**
  * Lokalt utan backend (`VITE_API_BASE_URL` osatt, mock-inloggning): en tydligt
- * påhittad restaurang utan platser, så skalet går att utveckla. Används
+ * påhittad restaurang med en påhittad plats och Beställningar och Catering på, så
+ * skalet och larmet (nya beställningar, nya cateringförfrågningar) går att utveckla. Används
  * ALDRIG när API:t är konfigurerat.
  */
 const LOCAL_DEMO_TENANT: Tenant = {
@@ -207,8 +208,8 @@ const LOCAL_DEMO_TENANT: Tenant = {
   slug: null,
   status: 'active',
   planId: null,
-  entitlements: { maxLocations: null, features: {} },
-  locationCount: 0,
+  entitlements: { maxLocations: null, features: { ordering: true, catering: true } },
+  locationCount: 1,
   stripe: {
     connected: false,
     chargesEnabled: false,
@@ -226,7 +227,7 @@ const LOCAL_DEMO_TENANT: Tenant = {
     collection: 'invoice', preference: 'card', daysUntilDue: 10, pastDue: false,
   },
   role: 'owner_user',
-  locations: [],
+  locations: [{ locationId: 'local-demo-1', name: 'Demo', address: null, timezone: 'Europe/Stockholm' }],
 }
 
 // --- Store ------------------------------------------------------------------

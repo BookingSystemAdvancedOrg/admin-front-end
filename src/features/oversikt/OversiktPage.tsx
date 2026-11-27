@@ -28,7 +28,7 @@ import { getSetup, skipSetupStep } from './setupApi'
 import type { SetupChecklist } from './setupApi'
 import { errorText } from '../../shared/errors'
 import { kronor, listOrders } from '../bestallningar/ordersApi'
-import { feedOrders } from '../../shared/orderAlert/store'
+import { feedCatering, feedOrders } from '../../shared/orderAlert/store'
 import type { Order } from '../bestallningar/ordersApi'
 import { listRequests } from '../catering/cateringApi'
 import type { RequestSummary } from '../catering/cateringApi'
@@ -163,6 +163,7 @@ export default function OversiktPage() {
     ]).then(([loc, setup, today, orders, catering, lastWeek, print]) => {
       // Samma lista som beställningslarmet: det som syns här larmar också (shared/orderAlert).
       if (orders) feedOrders(locationId, orders.orders, 'other')
+      if (catering) feedCatering(locationId, catering, 'other')
       return {
         forLocation: locationId,
         location: loc,

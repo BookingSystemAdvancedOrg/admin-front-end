@@ -538,3 +538,23 @@
     opacity: 1;
   }
 }
+
+/* Cateringförfrågan: ordet "Catering" i stället för ett nummer, antal gäster i stället för ett belopp. */
+.order-alert-top .order-alert-kind {
+  font-size: 17px;
+  letter-spacing: 0.02em;
+}
+
+.order-alert-top .order-alert-guests {
+  font-size: 15px;
+}
+
+@media (min-width: 700px) {
+  .order-alert-top .order-alert-kind {
+    font-size: 22px;
+  }
+
+  .order-alert-top .order-alert-guests {
+    font-size: 18px;
+  }
+}

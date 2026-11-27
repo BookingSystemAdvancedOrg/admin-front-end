@@ -1,60 +1,129 @@
 import { useSyncExternalStore } from 'react'
 import type { Order } from '../../features/bestallningar/ordersApi'
-import { ORDER_ALERT_KEY } from '../storageRegistry'
+import type { RequestSummary } from '../../features/catering/cateringApi'
+import { CATERING_ALERT_KEY, CATERING_PINGED_KEY_PREFIX, ORDER_ALERT_KEY } from '../storageRegistry'
 import { onOrderAudioUnlocked, playOrderAlert } from './alertSound'
 import type { ChimeResult } from './alertSound'
-import { EMPTY_ALERT, acknowledge, fromStored, observe, toStored } from './queue'
-import type { AlertState } from './queue'
+import { CATERING_KIND, EMPTY_ALERT, ORDER_KIND, acknowledge, fromStored, observeKind, toStored } from './queue'
+import type { AlertKind, AlertState } from './queue'
 
 /**
- * Beställningslarmets tillstånd för hela appen (utanför React). Flera
- * hämtningar matar samma lista, så att larmet och sidorna alltid är överens:
- * skalets egen (OrderAlert.tsx), Beställningar (var tionde sekund, då hämtar
- * skalet inget) och Översikten. Ett svar för en annan plats än den valda
- * (ett sent svar efter ett platsbyte) räknas inte.
+ * Larmets tillstånd för hela appen (utanför React): nya onlinebeställningar
+ * och nya cateringförfrågningar, två slag i samma ruta med samma ljud. Varje
+ * slag har egna sedda id:n, egen plats-facit och eget skal (behörighet och
+ * plan skiljer sig åt). Flera hämtningar matar samma lista, så att larmet och
+ * sidorna alltid är överens: skalets egen (OrderAlert.tsx), Beställningar och
+ * Catering (de hämtar själva, då hämtar skalet inget) och Översikten. Ett svar
+ * för en annan plats än den valda (ett sent svar efter ett platsbyte) räknas inte.
  */
 
 export interface AlertSnapshot {
-  /** Rutans beställningar, nyaste först. Tom = ingen ruta. */
+  /** Rutans beställningar, nyaste först. */
   open: readonly Order[]
+  /** Rutans cateringförfrågningar, nyaste först. Båda tomma = ingen ruta. */
+  requests: readonly RequestSummary[]
   /** Larmet kunde inte höras: webbläsaren väntar på ett tryck. */
   muted: boolean
-  /** Räknas upp för varje omgång nya beställningar. */
+  /** Räknas upp för varje omgång nya. */
   rev: number
   /** Id:n i den senaste omgången (rutan markerar och läser upp dem). */
   latest: readonly string[]
 }
 
-const EMPTY_SNAPSHOT: AlertSnapshot = { open: [], muted: false, rev: 0, latest: [] }
+const EMPTY_SNAPSHOT: AlertSnapshot = { open: [], requests: [], muted: false, rev: 0, latest: [] }
 
-let state: AlertState | null = null
+/** Ett slag larm: sitt tillstånd, sin sparning och sitt skal. */
+interface Track<T> {
+  name: 'orders' | 'catering'
+  kind: AlertKind<T>
+  storageKey: string
+  state: AlertState<T> | null
+  /** När tillståndet senast sparades i fliken; sparas om minst varje minut även utan ändring. */
+  savedAt: number
+  /**
+   * Platsen som larmar, satt av skalet (OrderAlert): null = inget larm (ingen
+   * plats, ingen behörighet, planen saknar det). Utan skal (en sida i ett test) räknas allt.
+   */
+  scope: string | null | undefined
+  /**
+   * Flera flikar: id:n som en annan flik redan har larmat om (de larmar inte
+   * igen här). Utan den larmar varje flik för sig.
+   */
+  claim?: (locationId: string, ids: readonly string[]) => Set<string>
+}
+
+/** Ett id som en annan flik larmade om för så här länge sedan larmar inte igen. */
+const CLAIM_TTL_MS = 10 * 60_000
+const CLAIM_MAX = 200
+
+/**
+ * Delad mellan flikarna (localStorage, per plats): vilka förfrågningar som
+ * redan har larmat. De som en annan flik hunnit före returneras (ingen
+ * ljud, ingen ruta här); resten läggs in som larmade. Utan lagring larmar
+ * varje flik för sig.
+ */
+function claimAcrossTabs(locationId: string, ids: readonly string[]): Set<string> {
+  const taken = new Set<string>()
+  const key = `${CATERING_PINGED_KEY_PREFIX}${locationId}`
+  const now = Date.now()
+  try {
+    let list: { id: string; at: number }[] = []
+    try {
+      const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? '[]')
+      if (Array.isArray(parsed)) {
+        list = parsed.filter(
+          (e): e is { id: string; at: number } =>
+            Boolean(e) && typeof e.id === 'string' && typeof e.at === 'number' && now - e.at < CLAIM_TTL_MS && e.at - now < 60_000,
+        )
+      }
+    } catch {
+      list = []
+    }
+    const known = new Set(list.map((e) => e.id))
+    for (const id of ids) {
+      if (known.has(id)) taken.add(id)
+      else list.push({ id, at: now })
+    }
+    localStorage.setItem(key, JSON.stringify(list.slice(-CLAIM_MAX)))
+  } catch {
+    /* ingen lagring: varje flik larmar för sig */
+  }
+  return taken
+}
+
+const orders: Track<Order> = {
+  name: 'orders', kind: ORDER_KIND, storageKey: ORDER_ALERT_KEY, state: null, savedAt: 0, scope: undefined,
+}
+const catering: Track<RequestSummary> = {
+  name: 'catering', kind: CATERING_KIND, storageKey: CATERING_ALERT_KEY, state: null, savedAt: 0, scope: undefined, claim: claimAcrossTabs,
+}
+
 let snapshot: AlertSnapshot = EMPTY_SNAPSHOT
 const listeners = new Set<() => void>()
-/** När en sida som hämtar minst lika ofta som skalet (Beställningar) senast matade listan. */
+/** När en sida som hämtar minst lika ofta som skalet (Beställningar, Catering) senast matade listan. */
 const fedAt = new Map<string, number>()
 let audioWatch: (() => void) | null = null
 /** Ett larm hördes inte (spärrat ljud): det spelas när ljudet går igen, om rutan står kvar. */
 let owed = false
-/** När tillståndet senast sparades i fliken; sparas om minst varje minut även utan ändring. */
-let savedAt = 0
 const SAVE_EVERY_MS = 60_000
-/**
- * Platsen som larmar, satt av skalet (OrderAlert): null = inget larm (ingen
- * plats, ingen behörighet). Utan skal (en sida i ett test) räknas allt.
- */
-let scope: string | null | undefined = undefined
+/** Två slag som kommer i samma ögonblick ger ett ljud och en gemensam markering. */
+let chimeTick: Track<never>['name'] | null = null
 
-function current(): AlertState {
-  if (state === null) {
+function current<T>(t: Track<T>): AlertState<T> {
+  if (t.state === null) {
     let raw: string | null = null
     try {
-      raw = sessionStorage.getItem(ORDER_ALERT_KEY)
+      raw = sessionStorage.getItem(t.storageKey)
     } catch {
       /* ingen lagring */
     }
-    state = fromStored(raw, Date.now())
+    t.state = fromStored<T>(raw, Date.now())
   }
-  return state
+  return t.state
+}
+
+function openCount(): number {
+  return snapshot.open.length + snapshot.requests.length
 }
 
 /**
@@ -62,13 +131,13 @@ function current(): AlertState {
  * emot (inte när något senast ändrades), så att en omladdning efter en lugn
  * stund fortsätter där fliken var och larmar det som kom under tiden.
  */
-function persist(next: AlertState) {
+function persist<T>(t: Track<T>, next: AlertState<T>) {
   const now = Date.now()
-  savedAt = now
-  const raw = toStored(next, now)
+  t.savedAt = now
+  const raw = toStored(next, now, t.kind.id)
   try {
-    if (raw) sessionStorage.setItem(ORDER_ALERT_KEY, raw)
-    else sessionStorage.removeItem(ORDER_ALERT_KEY)
+    if (raw) sessionStorage.setItem(t.storageKey, raw)
+    else sessionStorage.removeItem(t.storageKey)
   } catch {
     /* privat läge utan lagring: en omladdning börjar om */
   }
@@ -91,46 +160,78 @@ function setMuted(muted: boolean) {
   if (snapshot.muted !== muted) publish({ muted })
 }
 
-function chime() {
+function chime(from: Track<never>['name'] = 'orders') {
+  // Det andra slaget i samma ögonblick (beställningar och förfrågningar i samma tick) delar ljudet.
+  if (chimeTick !== null && chimeTick !== from) return
+  chimeTick = from
+  queueMicrotask(() => {
+    chimeTick = null
+  })
   void playOrderAlert().then(heard)
 }
 
 function heard(result: ChimeResult) {
-  owed = result === 'locked' && snapshot.open.length > 0
+  owed = result === 'locked' && openCount() > 0
   setMuted(owed)
 }
 
 function audioBack() {
-  const replay = owed && snapshot.open.length > 0
+  const replay = owed && openCount() > 0
   owed = false
   setMuted(false)
-  if (replay) chime()
+  if (replay) chime('orders')
 }
 
-/** Vem som hämtade: `page` = en sida som hämtar minst var tionde sekund (Beställningar), då väntar skalet. */
+/** Vem som hämtade: `page` = en sida som hämtar minst lika ofta som skalet (Beställningar, Catering), då väntar skalet. */
 export type FeedSource = 'page' | 'other'
+
+function openOf(t: Track<unknown>): Partial<AlertSnapshot> {
+  return t === (orders as Track<unknown>)
+    ? { open: orders.state?.open ?? [] }
+    : { requests: catering.state?.open ?? [] }
+}
+
+function feed<T>(t: Track<T>, locationId: string, items: readonly T[], from: FeedSource): void {
+  if (!locationId || t.scope === null || (t.scope !== undefined && t.scope !== locationId)) return
+  if (from === 'page') fedAt.set(`${t.name}:${locationId}`, Date.now())
+  const before = current(t)
+  const observed = observeKind(t.kind, before, locationId, items)
+  let next = observed.state
+  let added = observed.added
+  const taken = t.claim && added.length ? t.claim(locationId, added.map(t.kind.id)) : null
+  if (taken?.size) {
+    // En annan flik har redan larmat: sedd här, men varken ljud eller ruta.
+    added = added.filter((i) => !taken.has(t.kind.id(i)))
+    next = { ...next, open: next.open.filter((i) => !taken.has(t.kind.id(i))) }
+  }
+  if (next === before) {
+    if (Date.now() - t.savedAt > SAVE_EVERY_MS) persist(t, before)
+    return
+  }
+  t.state = next
+  persist(t, next)
+  const open = openOf(t as Track<unknown>)
+  if (added.length) {
+    const ids = added.map(t.kind.id)
+    publish({ ...open, rev: snapshot.rev + 1, latest: chimeTick !== null ? [...ids, ...snapshot.latest] : ids })
+    chime(t.name)
+  } else {
+    publish({ ...open })
+    if (openCount() === 0) publish({ latest: [] })
+  }
+}
 
 /**
  * Dagens beställningar för platsen, från vilken hämtning som helst.
  * Larmar (ljud och ruta) för de som är nya för den här fliken.
  */
-export function feedOrders(locationId: string, orders: readonly Order[], from: FeedSource = 'page'): void {
-  if (!locationId || scope === null || (scope !== undefined && scope !== locationId)) return
-  if (from === 'page') fedAt.set(locationId, Date.now())
-  const before = current()
-  const { state: next, added } = observe(before, locationId, orders)
-  if (next === before) {
-    if (Date.now() - savedAt > SAVE_EVERY_MS) persist(before)
-    return
-  }
-  state = next
-  persist(next)
-  if (added.length) {
-    publish({ open: next.open, rev: snapshot.rev + 1, latest: added.map((o) => o.orderId) })
-    chime()
-  } else {
-    publish({ open: next.open, ...(next.open.length ? {} : { latest: [] }) })
-  }
+export function feedOrders(locationId: string, list: readonly Order[], from: FeedSource = 'page'): void {
+  feed(orders, locationId, list, from)
+}
+
+/** Cateringförfrågningarna för platsen, från vilken hämtning som helst. */
+export function feedCatering(locationId: string, list: readonly RequestSummary[], from: FeedSource = 'page'): void {
+  feed(catering, locationId, list, from)
 }
 
 /** Skalets hämtning i dedupe (shared/live): två väckningar samtidigt blir ett anrop. */
@@ -138,39 +239,86 @@ export function ordersKey(locationId: string): string {
   return `orders:${locationId}`
 }
 
+export function cateringKey(locationId: string): string {
+  return `catering-alert:${locationId}`
+}
+
+function setScope<T>(t: Track<T>, locationId: string | null): void {
+  if (t.scope === locationId) return
+  t.scope = locationId
+  const now = current(t)
+  if (now.locationId !== locationId && (now.open.length || now.restore.length)) {
+    t.state = acknowledge(now)
+    persist(t, t.state)
+    publish({ ...openOf(t as Track<unknown>) })
+    if (openCount() === 0) {
+      owed = false
+      setMuted(false)
+      publish({ latest: [] })
+    }
+  }
+}
+
 /**
- * Skalet, när restaurangen är hämtad: vilken plats som larmar (null = ingen).
- * Byts platsen, eller finns inget larm längre, stängs rutan.
+ * Skalet, när restaurangen är hämtad: vilken plats som larmar om
+ * beställningar (null = ingen). Byts platsen, eller finns inget larm längre,
+ * stängs beställningarna i rutan.
  */
 export function setAlertScope(locationId: string | null): void {
-  if (scope === locationId) return
-  scope = locationId
-  const now = current()
-  if (now.locationId !== locationId && (now.open.length || now.restore.length)) {
-    state = acknowledge(now)
-    persist(state)
-    owed = false
-    setMuted(false)
-    publish({ open: [], latest: [] })
-  }
+  setScope(orders, locationId)
 }
 
-/** När en sida senast matade listan för platsen (0 = aldrig). */
+/** Samma för cateringförfrågningar (plan och behörighet för Catering). */
+export function setCateringScope(locationId: string | null): void {
+  setScope(catering, locationId)
+}
+
+/** När en sida senast matade beställningarna för platsen (0 = aldrig). */
 export function pageFedAt(locationId: string): number {
-  return fedAt.get(locationId) ?? 0
+  return fedAt.get(`orders:${locationId}`) ?? 0
 }
 
-/** OK: rutan stängs och listan töms. */
-export function acknowledgeOrders(): void {
-  const before = current()
+/** När en sida senast matade cateringförfrågningarna för platsen (0 = aldrig). */
+export function pageFedCateringAt(locationId: string): number {
+  return fedAt.get(`catering:${locationId}`) ?? 0
+}
+
+function clearTrack(t: Track<unknown>): void {
+  const before = current(t)
   const next = acknowledge(before)
   if (next !== before) {
-    state = next
-    persist(next)
+    t.state = next
+    persist(t, next)
   }
+}
+
+/** OK: rutan stängs och listorna töms. */
+export function acknowledgeOrders(): void {
+  clearTrack(orders as Track<unknown>)
+  clearTrack(catering as Track<unknown>)
   owed = false
   setMuted(false)
-  publish({ open: [], latest: [] })
+  publish({ open: [], requests: [], latest: [] })
+}
+
+/**
+ * En rad öppnades: bara det slaget töms (sidan man hamnar på visar det
+ * slaget). Det andra slaget står kvar i rutan, annars tappas det utan att
+ * någon har sett det.
+ */
+export function acknowledgeKind(kind: 'orders' | 'catering'): void {
+  const t = (kind === 'orders' ? orders : catering) as Track<unknown>
+  clearTrack(t)
+  const rest = kind === 'orders' ? snapshot.requests : snapshot.open
+  if (rest.length === 0) {
+    acknowledgeOrders()
+    return
+  }
+  const gone = new Set((kind === 'orders' ? snapshot.open.map(orders.kind.id) : snapshot.requests.map(catering.kind.id)))
+  publish({
+    ...(kind === 'orders' ? { open: [] } : { requests: [] }),
+    latest: snapshot.latest.filter((id) => !gone.has(id)),
+  })
 }
 
 export function getAlertSnapshot(): AlertSnapshot {
@@ -193,19 +341,23 @@ export function useOrderAlerts(): AlertSnapshot {
  * så att det som kom in medan ingen var inloggad inte larmar som nytt.
  */
 export function forgetOrderAlerts(): void {
-  state = EMPTY_ALERT
-  scope = undefined
+  for (const t of [orders, catering] as Track<unknown>[]) {
+    // Läses om från fliken vid nästa behov (efter utloggning är den tom).
+    t.state = null
+    t.scope = undefined
+    t.savedAt = 0
+    try {
+      sessionStorage.removeItem(t.storageKey)
+    } catch {
+      /* ingen lagring */
+    }
+  }
   fedAt.clear()
   pendingFocus = null
   owed = false
-  savedAt = 0
+  chimeTick = null
   if (audioWatch) audioWatch()
   audioWatch = null
-  try {
-    sessionStorage.removeItem(ORDER_ALERT_KEY)
-  } catch {
-    /* ingen lagring */
-  }
   snapshot = EMPTY_SNAPSHOT
   for (const l of [...listeners]) l()
 }
@@ -276,7 +428,7 @@ export function onOrderFocus(run: (orderId: string) => void): () => void {
 /** Bara för tester. */
 export function resetOrderAlerts(next: AlertState = EMPTY_ALERT): void {
   forgetOrderAlerts()
-  state = next
+  orders.state = next
   snapshot = { ...EMPTY_SNAPSHOT, open: next.open }
   for (const l of [...listeners]) l()
 }

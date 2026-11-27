@@ -8,6 +8,7 @@ import { Icon } from '../../shared/Icon'
 import { AdminTopbar } from '../../shared/AdminTopbar'
 import { useLocationId } from '../../shared/location'
 import { useAuth } from '../auth/useAuth'
+import { feedCatering } from '../../shared/orderAlert/store'
 import { NEEDS_OWNER, formatDate, kronor, listRequests, statusClass, statusLabel } from './cateringApi'
 import type { CateringStatus, RequestSummary } from './cateringApi'
 import './catering.css'
@@ -59,7 +60,12 @@ export default function CateringPage() {
     if (!locationId) return
     let cancelled = false
     listRequests(locationId)
-      .then((r) => !cancelled && setRows(r))
+      .then((r) => {
+        if (cancelled) return
+        setRows(r)
+        // Samma lista som larmet (ljud och rutan Ny cateringförfrågan): skalet hämtar inget medan sidan gör det.
+        feedCatering(locationId, r)
+      })
       .catch(() => !cancelled && setError(true))
     return () => {
       cancelled = true
@@ -68,7 +74,9 @@ export default function CateringPage() {
   // Levande: nya förfrågningar och ändringar från kollegor syns av sig själva.
   useLiveRefresh(async () => {
     if (!locationId) return
-    setRows(await listRequests(locationId))
+    const r = await listRequests(locationId)
+    setRows(r)
+    feedCatering(locationId, r)
     setError(false)
   }, { enabled: Boolean(locationId) })
 

@@ -15,8 +15,10 @@ import { hasFeature, useTenant } from '../../shared/tenant'
  */
 export function AppearanceCard() {
   const { tenant } = useTenant()
-  // Larmet för nya beställningar finns bara där Beställningar finns (plan och behörighet).
-  const orderAlerts = hasFeature(tenant, 'ordering') && canOpen(tenant, 'bestallningar')
+  // Larmet finns bara där Beställningar eller Catering finns (plan och behörighet).
+  const orderAlerts =
+    (hasFeature(tenant, 'ordering') && canOpen(tenant, 'bestallningar')) ||
+    (hasFeature(tenant, 'catering') && canOpen(tenant, 'catering'))
   return (
     <section id="utseende" className="admin-card table-card">
       <TitleInfo title="Utseende och ljud" info="Gäller den här webbläsaren. Ljust läge och klickljud är på från början." />
@@ -54,9 +56,9 @@ export function AppearanceCard() {
           <div className="appearance-row" data-help="utseende:bestallningsljud">
             <div>
               <div className="title-info">
-                <p className="appearance-title">Ljud vid ny beställning</p>
-                <InfoTooltip label="Ljud vid ny beställning">
-                  Ett högt ljud och en ruta när en gäst beställer online, på varje sida. Gäller den här enheten, oavsett klickljudet och volymen. På iPad och telefon hörs det efter första trycket i appen.
+                <p className="appearance-title">Larmljud</p>
+                <InfoTooltip label="Larmljud">
+                  Ett högt ljud och en ruta när en gäst beställer online eller skickar en cateringförfrågan, på varje sida. Gäller den här enheten, oavsett klickljudet och volymen. På iPad och telefon hörs det efter första trycket i appen.
                 </InfoTooltip>
               </div>
             </div>

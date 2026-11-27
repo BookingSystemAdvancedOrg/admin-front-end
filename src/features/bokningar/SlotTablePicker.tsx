@@ -61,6 +61,7 @@ export function SlotTablePicker({
   walkIn = false,
   refreshKey = 0,
   onChange,
+  onSeats,
 }: {
   locationId: string
   date: string
@@ -74,6 +75,8 @@ export function SlotTablePicker({
   walkIn?: boolean
   refreshKey?: number
   onChange: (next: SlotValue) => void
+  /** Valda bords platser (null = okänt än), så formuläret kan stänga av Spara när de inte rymmer sällskapet. */
+  onSeats?: (seats: number | null) => void
 }) {
   const [slots, setSlots] = useState<AvailabilitySlot[] | null>(null)
   const [day, setDay] = useState<DayStatus | null>(null)
@@ -246,6 +249,14 @@ export function SlotTablePicker({
     chosen.length > 0 &&
     (ownChosen.length === 0 || (allOwnChosen && typeof ownSlot?.seats === 'number'))
   const seats = otherSeats + (ownChosen.length > 0 ? (ownSlot?.seats ?? 0) : 0)
+  const reportedSeats = seatsKnown ? seats : null
+  const onSeatsRef = useRef(onSeats)
+  useEffect(() => {
+    onSeatsRef.current = onSeats
+  })
+  useEffect(() => {
+    onSeatsRef.current?.(reportedSeats)
+  }, [reportedSeats])
 
   // Våningen som visas: den personalen valt, annars först den med ett valt
   // bord. Den hålls sedan kvar, också när borden på den väljs bort.
@@ -275,19 +286,32 @@ export function SlotTablePicker({
     pick({ date, startTime, tableIds: next })
   }
 
+  const roomyFree = partySize > 0 && mapTables.some((t) => freeIds.has(t.id) && t.seats >= partySize)
+  // Sällskapet är större än bordet och ett ledigt bord rymmer det: det lilla
+  // bordet väljs inte först (att slå ihop bord går när inget annat rymmer
+  // sällskapet, eller när ett bord redan är valt).
+  const isTooSmall = (t: TableElement) =>
+    (freeIds.has(t.id) || tableIds.includes(t.id)) &&
+    !tableIds.includes(t.id) &&
+    t.seats < partySize &&
+    tableIds.length === 0 &&
+    roomyFree
+  const anyTooSmall = mapTables.some(isTooSmall)
+
   /** Ledigt (går att välja), valt, eller upptaget den tiden (randigt, går inte att välja). */
   function tableView(t: TableElement): TableView {
     const selected = tableIds.includes(t.id)
     // Ett valt bord som hunnit bokas går ändå att välja bort.
     const open = freeIds.has(t.id) || selected
+    const tooSmall = isTooSmall(t)
     return {
       state: open ? 'free' : 'full',
       selected,
       focusable: true,
-      disabled: !open,
-      name: `${tableTitle(label(t))}, ${t.seats} pl, ${selected ? 'valt' : open ? 'ledigt' : 'upptaget'}`,
+      disabled: !open || tooSmall,
+      name: `${tableTitle(label(t))}, ${t.seats} pl, ${selected ? 'valt' : tooSmall ? 'för litet' : open ? 'ledigt' : 'upptaget'}`,
       onPick: () => {
-        if (open) toggle(t.id)
+        if (open && !tooSmall) toggle(t.id)
       },
     }
   }
@@ -391,6 +415,7 @@ export function SlotTablePicker({
               ))}
             </ul>
           )}
+          {anyTooSmall && <p className="cell-muted">Ett ledigt bord rymmer sällskapet. Välj det först.</p>}
           {seatsKnown && (
             <p className={seats < partySize ? 'form-error' : 'cell-muted'}>
               {seats < partySize

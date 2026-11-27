@@ -16,6 +16,7 @@ import {
   RESERVATION_NOT_FOUND,
   feeSummary,
   formatKr,
+  mockPartyChange,
   getAvailability,
   isSmsLimitText,
   isStaleSlotError,
@@ -27,6 +28,7 @@ import {
   paymentAction,
   phoneFieldError,
   resendGuaranteeLink,
+  updateReservation,
   smsLimitText,
   staffPhone,
   todayIn,
@@ -345,5 +347,71 @@ describe('guest fields (same rules as the server)', () => {
     expect(isStaleSlotError(new ApiError(400, 'partySize must be between 1 and 50'))).toBe(false)
     expect(isStaleSlotError(new ApiError(409, 'not_movable'))).toBe(false)
     expect(isStaleSlotError(new Error('x'))).toBe(false)
+  })
+})
+
+describe('mockPartyChange', () => {
+  it('restamps a carded booking per person from the stored amounts, never the live policy', () => {
+    const withPerPerson = mockPartyChange(
+      { partySize: 2, status: 'reserved', cardOnFile: true, guarantee: { noShowFee: 50000, lateCancelFee: 20000, noShowFeePerPerson: 250, lateCancelFeePerPerson: 100 } },
+      4,
+    ).change
+    expect(withPerPerson).toMatchObject({ noShowFee: 100000, lateCancelFee: 40000, previousNoShowFee: 50000, cardOnFile: true, cardRequired: false })
+    // Without per person kronor: the stored total divided by the stored party (booking 2 of the mock data).
+    const fromTotal = mockPartyChange({ partySize: 4, status: 'reserved', cardOnFile: true, guarantee: { noShowFee: 30000 } }, 6).change
+    expect(fromTotal.noShowFee).toBe(45000)
+  })
+
+  it('asks for a card when a reserved booking grows past the threshold, and never sends a link', () => {
+    const base = { partySize: 2, status: 'reserved' as const, customerPhone: '+46701234567' }
+    const crossed = mockPartyChange(base, 4)
+    expect(crossed.change).toMatchObject({ cardRequired: true, cardLinkSent: false, cardWaived: false, noShowFee: 100000, notified: true })
+    expect(crossed.cardNeeded).toMatchObject({ partySize: 4, noShowFee: 100000 })
+    expect(mockPartyChange(base, 4, { waiveCard: true })).toMatchObject({ cardNeeded: null, change: { cardRequired: false, cardWaived: true, noShowFee: 0 } })
+    expect(mockPartyChange(base, 3).change).toMatchObject({ cardRequired: false, noShowFee: 0 })
+    expect(mockPartyChange(base, 4, { notifyGuest: false }).change.notified).toBe(false)
+  })
+
+  it('asks for no card for an arrived guest, a walk-in or a pending booking', () => {
+    for (const prev of [{ status: 'arrived' as const }, { status: 'reserved' as const, source: 'walk_in' as const }, { status: 'pending' as const }]) {
+      expect(mockPartyChange({ partySize: 2, ...prev }, 5)).toMatchObject({ cardNeeded: null, change: { cardRequired: false, notified: false } })
+    }
+  })
+
+  it('follows an existing cardNeeded: restamped, dropped under the threshold, cleared by waiveCard', () => {
+    const needy = {
+      partySize: 4, status: 'reserved' as const,
+      cardNeeded: { partySize: 4, noShowFee: 100000, lateCancelFee: 40000, since: 'x' },
+    }
+    expect(mockPartyChange(needy, 5).cardNeeded).toMatchObject({ noShowFee: 125000, since: 'x' })
+    expect(mockPartyChange(needy, 3).cardNeeded).toBeNull()
+    expect(mockPartyChange(needy, 5, { waiveCard: true })).toMatchObject({ cardNeeded: null, change: { cardWaived: true } })
+  })
+})
+
+describe('updateReservation without an API', () => {
+  it('applies the whole edit to the booking it is given and keeps its date', async () => {
+    const current = {
+      ...mockReservations('2026-10-12').find((m) => m.reservationId === 'mockres2')!,
+    }
+    vi.mocked(api.isApiConfigured).mockReturnValueOnce(false)
+    const next = await updateReservation('mock', current.reservationId, { partySize: 6, name: 'Nytt Namn', notes: 'Ny', tableIds: ['8'], notifyGuest: true }, current)
+    expect(next).toMatchObject({ date: '2026-10-12', partySize: 6, customerName: 'Nytt Namn', notes: 'Ny', tableIds: ['8'] })
+    expect(next.partyChange).toMatchObject({ from: 4, to: 6, previousNoShowFee: 30000, noShowFee: 45000, cardLinkSent: false })
+    expect(next.guarantee?.noShowFee).toBe(45000)
+  })
+
+  it('edits without a party size work too, and waiveCard clears cardNeeded', async () => {
+    const current = {
+      ...mockReservations('2026-10-12').find((m) => m.reservationId === 'mockres3')!,
+      cardNeeded: { partySize: 6, noShowFee: 150000, lateCancelFee: 60000 },
+    }
+    vi.mocked(api.isApiConfigured).mockReturnValue(false)
+    const named = await updateReservation('mock', current.reservationId, { name: 'Annat' }, current)
+    expect(named).toMatchObject({ customerName: 'Annat', date: '2026-10-12', partySize: 6 })
+    expect(named.partyChange).toBeUndefined()
+    const waived = await updateReservation('mock', current.reservationId, { waiveCard: true }, current)
+    expect(waived.cardNeeded).toBeUndefined()
+    vi.mocked(api.isApiConfigured).mockReturnValue(true)
   })
 })

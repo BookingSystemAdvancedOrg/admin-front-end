@@ -1,5 +1,7 @@
 import { BOOQY_FAULT, errorText } from '../../shared/errors'
 import { apiFetch, ApiError, isApiConfigured } from '../../shared/api'
+import { getLocation } from '../installningar/locationApi'
+import type { GuaranteePolicy } from '../installningar/locationApi'
 import { normalizePhone as normalizeE164 } from '../../shared/phone'
 import type { PaidWith } from '../../shared/paidWith'
 
@@ -38,6 +40,42 @@ export interface GuaranteeSnapshot {
   noShowFee?: number
   lateCancelFee?: number
   cancelCutoffHours?: number
+  /** Kr per person (policyn när kortet sparades); totalerna ovan är öre. */
+  noShowFeePerPerson?: number
+  lateCancelFeePerPerson?: number
+}
+
+/** Svaret på en ändrad sällskapsstorlek (bara i PATCH-svaret). Belopp i öre, som GuaranteeSnapshot. */
+export interface PartyChange {
+  from: number
+  to: number
+  noShowFee: number
+  lateCancelFee: number
+  previousNoShowFee: number
+  previousLateCancelFee: number
+  currency?: string
+  cardOnFile: boolean
+  /** Sällskapet passerade kortgränsen och bokningen saknar kort. */
+  cardRequired: boolean
+  /** Alltid false: ingen kortlänk skickas till en bokning som redan har sitt bord. */
+  cardLinkSent: boolean
+  /** Personalen hoppade över kortet. */
+  cardWaived: boolean
+  /** Gästen fick sms/e-post om ändringen. */
+  notified: boolean
+  cancelCutoffHours?: number
+}
+
+/** Bokningen växte förbi kortgränsen och saknar kort: beloppen (öre, hela sällskapet) som gäller när kort finns. */
+export interface CardNeeded {
+  since?: string
+  partySize: number
+  noShowFee: number
+  lateCancelFee: number
+  currency?: string
+  cutoffHours?: number
+  noShowFeePerPerson?: number
+  lateCancelFeePerPerson?: number
 }
 
 export interface HistoryEntry {
@@ -95,6 +133,8 @@ export interface Reservation {
   /** Det sparade kortet för garantin (kort, Apple Pay, Google Pay). */
   guaranteeCard?: PaidWith
   guarantee?: GuaranteeSnapshot
+  /** Kort saknas efter att sällskapet växt förbi kortgränsen (personalen). */
+  cardNeeded?: CardNeeded
   payment?: ReservationPayment
   pendingExpiresAt?: string
   /** Bokningstidsregeln bokningen fick (äldre bokningar: egen längd, ej förlängbar). */
@@ -104,6 +144,8 @@ export interface Reservation {
   guaranteeLink?: GuaranteeLinkView
   /** Bara i svaret på en ny bokning: kortgarantin hoppades över (för nära starttiden). */
   guaranteeSkipped?: 'too_soon'
+  /** Bara i svaret på en ändrad sällskapsstorlek. */
+  partyChange?: PartyChange
 }
 
 export interface BookingRule {
@@ -150,6 +192,8 @@ export interface ReservationEdit {
   phone?: string | null
   notes?: string | null
   notifyGuest?: boolean
+  /** Sällskapet passerar kortgränsen: hoppa över kortet (loggas). */
+  waiveCard?: boolean
   /** Förläng/korta (skickas ensamt). */
   endTime?: string
   /** Personalen förlänger utöver regeln (loggas). */
@@ -397,6 +441,10 @@ const ERROR_TEXT: Record<string, string> = {
   not_cancellable: 'Den här bokningen kan inte avbokas längre. Nu syns det senaste.',
   not_movable: 'Den här bokningen kan inte flyttas längre. Nu syns det senaste.',
   not_editable: 'Den här bokningen kan inte ändras längre. Nu syns det senaste.',
+  pending_card:
+    'Gästen har inte lagt till kortet än, så sällskapet kan inte ändras. Avboka och boka om, eller vänta tills kortet är sparat.',
+  charge_started:
+    'Avgiften för den här bokningen har redan börjat dras, så sällskapet kan inte ändras. Kolla Betalning på bokningen.',
   table_taken: 'Någon hann boka bordet. Välj ett annat bord eller en annan tid.',
   no_fee: 'Den här bokningen har ingen avgift att ta betalt för.',
   not_chargeable: 'Det går inte att ta betalt för den här bokningen. Lös avgiften direkt med gästen.',
@@ -611,11 +659,124 @@ export function resendGuaranteeLink(locationId: string, id: string): Promise<Res
   })
 }
 
-export function updateReservation(
+/** Utan API: exempelpolicyn (kort från 4 personer, 250 kr / 100 kr per person, 24 h). */
+export const MOCK_GUARANTEE_POLICY: GuaranteePolicy = {
+  enabled: true,
+  minPartySize: 4,
+  noShowFeePerPerson: 250,
+  lateCancelFeePerPerson: 100,
+  cancelCutoffHours: 24,
+}
+
+/** Platsens kortpolicy (för förhandsvisningen av avgiften), eller null. */
+export async function loadGuaranteePolicy(locationId: string): Promise<GuaranteePolicy | null> {
+  if (!isApiConfigured()) return MOCK_GUARANTEE_POLICY
+  const loc = await getLocation(locationId)
+  return loc.guarantee ?? null
+}
+
+/** Utan API: samma regler som servern (kort sparat: samma belopp per person gånger nya sällskapet; utan kort: policyn). */
+export function mockPartyChange(
+  prev: Pick<Reservation, 'partySize' | 'guarantee' | 'cardOnFile' | 'cardNeeded' | 'status' | 'source'> &
+    Partial<Pick<Reservation, 'customerEmail' | 'customerPhone'>>,
+  to: number,
+  options: { waiveCard?: boolean; notifyGuest?: boolean; policy?: GuaranteePolicy } = {},
+): { change: PartyChange; cardNeeded: CardNeeded | null } {
+  const policy = options.policy ?? MOCK_GUARANTEE_POLICY
+  const g = prev.guarantee
+  const cardOnFile = Boolean(prev.cardOnFile && g)
+  const perPerson = (total: number | undefined, kr: number | undefined) =>
+    kr !== undefined ? kr * 100 : Math.round((total ?? 0) / Math.max(prev.partySize, 1))
+  const needs = (n: number) => policy.enabled && n >= policy.minPartySize
+  let cardNeeded: CardNeeded | null = null
+  let waived = false
+  if (!cardOnFile && prev.status === 'reserved' && prev.source !== 'walk_in') {
+    if (prev.cardNeeded && options.waiveCard) waived = true
+    else if (prev.cardNeeded) cardNeeded = needs(to) ? mockCardNeeded(policy, to, prev.cardNeeded.since) : null
+    else if (needs(to) && to > prev.partySize && !needs(prev.partySize)) {
+      if (options.waiveCard) waived = true
+      else cardNeeded = mockCardNeeded(policy, to)
+    }
+  }
+  const noShow = cardOnFile ? perPerson(g?.noShowFee, g?.noShowFeePerPerson) * to : (cardNeeded?.noShowFee ?? 0)
+  const lateCancel = cardOnFile ? perPerson(g?.lateCancelFee, g?.lateCancelFeePerPerson) * to : (cardNeeded?.lateCancelFee ?? 0)
+  const cutoff = cardOnFile ? g?.cancelCutoffHours : cardNeeded?.cutoffHours
+  const contact = Boolean(prev.customerEmail || prev.customerPhone)
+  return {
+    cardNeeded,
+    change: {
+      from: prev.partySize,
+      to,
+      noShowFee: noShow,
+      lateCancelFee: lateCancel,
+      previousNoShowFee: g?.noShowFee ?? 0,
+      previousLateCancelFee: g?.lateCancelFee ?? 0,
+      currency: g?.currency ?? cardNeeded?.currency ?? 'sek',
+      ...(cutoff !== undefined ? { cancelCutoffHours: cutoff } : {}),
+      cardOnFile,
+      cardRequired: cardNeeded !== null,
+      cardLinkSent: false,
+      cardWaived: waived,
+      notified: prev.status === 'reserved' && options.notifyGuest !== false && contact,
+    },
+  }
+}
+
+function mockCardNeeded(policy: GuaranteePolicy, party: number, since?: string): CardNeeded {
+  return {
+    since: since ?? new Date().toISOString(),
+    partySize: party,
+    noShowFee: policy.noShowFeePerPerson * 100 * party,
+    lateCancelFee: policy.lateCancelFeePerPerson * 100 * party,
+    currency: 'sek',
+    cutoffHours: policy.cancelCutoffHours,
+    noShowFeePerPerson: policy.noShowFeePerPerson,
+    lateCancelFeePerPerson: policy.lateCancelFeePerPerson,
+  }
+}
+
+/** Utan API: gästuppgifterna ur en ändring, på bokningen. */
+function applyMockEdit(cur: Reservation, edit: ReservationEdit): Reservation {
+  const next: Reservation = { ...cur }
+  if (edit.date !== undefined) next.date = edit.date
+  if (edit.startTime !== undefined) next.startTime = edit.startTime
+  if (edit.endTime !== undefined) next.endTime = edit.endTime
+  if (edit.tableIds !== undefined) next.tableIds = edit.tableIds
+  if (edit.name !== undefined) next.customerName = edit.name
+  if (edit.email !== undefined) next.customerEmail = edit.email ?? undefined
+  if (edit.phone !== undefined) next.customerPhone = edit.phone ?? undefined
+  if (edit.notes !== undefined) next.notes = edit.notes ?? undefined
+  return next
+}
+
+/**
+ * `current` = bokningen som den ser ut nu; behövs bara utan API, där ändringen
+ * görs på den (hela ändringen, inte bara sällskapet).
+ */
+export async function updateReservation(
   locationId: string,
   id: string,
   edit: ReservationEdit,
+  current?: Reservation,
 ): Promise<Reservation> {
+  if (!isApiConfigured() && current) {
+    let next = applyMockEdit(current, edit)
+    if (edit.partySize !== undefined && edit.partySize !== current.partySize) {
+      const { change, cardNeeded } = mockPartyChange(current, edit.partySize, {
+        waiveCard: edit.waiveCard,
+        notifyGuest: edit.notifyGuest,
+      })
+      next = { ...next, partySize: edit.partySize, partyChange: change }
+      if (current.cardOnFile && current.guarantee) {
+        next.guarantee = { ...current.guarantee, noShowFee: change.noShowFee, lateCancelFee: change.lateCancelFee }
+      }
+      if (cardNeeded) next.cardNeeded = cardNeeded
+      else delete next.cardNeeded
+    } else if (edit.waiveCard) {
+      delete next.cardNeeded
+    }
+    return next
+  }
   return apiFetch<Reservation>(`${base(locationId)}/reservations/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify(edit),

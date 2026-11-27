@@ -36,7 +36,10 @@ export function OfferStepList({ step }: { step: OfferStep }) {
  * signerat den aktuella versionen (servern nekar också, 409
  * restaurant_signature_required). Varje ny version börjar om på steg 2.
  */
-export function OfferSteps({ request, canAct, returned, onSigned, onSend, sending, sendError }: {
+/** The steps card's id: Nästa: signera brings it into view. */
+export const OFFER_STEPS_ID = 'offertens-steg'
+
+export function OfferSteps({ request, canAct, returned, onSigned, onSend, sending, sendError, landed = false, signNow = false, onSignStarted }: {
   request: CateringRequest
   /** Ägaren: signerar och skickar. Personal ser bara stegen. */
   canAct: boolean
@@ -47,11 +50,17 @@ export function OfferSteps({ request, canAct, returned, onSigned, onSend, sendin
   sending: boolean
   /** Senaste Skicka misslyckades: vad som hände och vem som gör något. */
   sendError?: string | null
+  /** Just after Nästa: signera: the card is scrolled to and glows once. */
+  landed?: boolean
+  /** Just after Nästa: signera: start the BankID signing without a second press. */
+  signNow?: boolean
+  onSignStarted?: () => void
 }) {
   const step = offerStep(request)
   const version = request.currentOfferVersion
   return (
-    <section className="admin-card table-card offer-steps-card" aria-label="Offertens steg">
+    <section id={OFFER_STEPS_ID} className={`admin-card table-card offer-steps-card${landed ? ' is-landed' : ''}`}
+      aria-label="Offertens steg" tabIndex={-1}>
       <div className="card-head">
         <TitleInfo
           title={step === 1 ? 'Offert' : `Offert v${version}`}
@@ -61,7 +70,7 @@ export function OfferSteps({ request, canAct, returned, onSigned, onSend, sendin
       <OfferStepList step={step} />
       {canAct && step < 4 && (
         <div className="offer-steps-actions">
-          {step === 2 && <RestaurantSigning request={request} onSigned={onSigned} returned={returned} />}
+          {step === 2 && <RestaurantSigning request={request} onSigned={onSigned} returned={returned} autoStart={signNow} onAutoStarted={onSignStarted} />}
           {step === 3 ? (
             <button type="button" className="btn primary square" disabled={sending} onClick={onSend}>
               <Icon name="send" size={16} />

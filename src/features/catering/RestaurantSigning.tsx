@@ -34,11 +34,15 @@ const isMobile = () => /android|iphone|ipad|ipod/i.test(navigator.userAgent)
  * (QR-kod, eller appen på samma enhet) eller på signeringstjänstens egen
  * sida, beroende på vad servern svarar.
  */
-export function RestaurantSigning({ request, onSigned, returned }: {
+export function RestaurantSigning({ request, onSigned, returned, autoStart = false, onAutoStarted }: {
   request: CateringRequest
   onSigned: (r?: CateringRequest) => void
   /** Tillbaka från signeringstjänstens sida (?signering=klar). */
   returned: boolean
+  /** Nästa: signera was just pressed: start BankID at once, no second press. */
+  autoStart?: boolean
+  /** Called when the auto start fired, so the page turns autoStart off (one shot, survives remounts). */
+  onAutoStarted?: () => void
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -47,6 +51,15 @@ export function RestaurantSigning({ request, onSigned, returned }: {
   const asked = useRef(false)
 
   useEffect(() => () => window.clearTimeout(timer.current), [])
+
+  // Nästa: signera goes straight into the signing (once per mount).
+  const autoStarted = useRef(false)
+  useEffect(() => {
+    if (!autoStart || returned || autoStarted.current) return
+    autoStarted.current = true
+    onAutoStarted?.()
+    void start()
+  }, [autoStart, returned]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tillbaka från tjänstens sida: fråga hur det gick, några gånger om
   // tjänsten inte hunnit registrera signaturen.

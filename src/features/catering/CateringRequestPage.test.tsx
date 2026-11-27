@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -502,6 +502,28 @@ describe('Offer steps: 1 granska, 2 signera, 3 skicka', () => {
     expect(stepOf('Signera med BankID')).toHaveAttribute('aria-current', 'step')
     expect(screen.getByRole('button', { name: 'Skicka till kunden' })).toBeDisabled()
     expect(screen.getByText(/ej signerad av er/)).toBeInTheDocument()
+  })
+
+  it('Nästa: signera jumps straight to the signing step and starts BankID at once', async () => {
+    const user = userEvent.setup()
+    const scrolled = vi.fn()
+    Element.prototype.scrollIntoView = scrolled
+    const sentV1 = offered(1, { restaurantSignedAt: SIGNER.signedAt, sentToCustomerAt: '2026-10-12T12:05:00Z',
+      signing: { offerVersion: 1, restaurant: SIGNER } })
+    const v2 = offered(2)
+    getRequest.mockResolvedValueOnce(sentV1).mockResolvedValue(v2)
+    createOfferVersion.mockResolvedValue(v2)
+    restaurantSign.mockReset()
+    restaurantSign.mockResolvedValue({ kind: 'bankid', qrData: 'bankid.a.0.b', autoStartToken: 'ast' })
+    renderAt()
+    await user.click(await screen.findByRole('button', { name: 'Nästa: signera' }))
+    const card = await screen.findByRole('region', { name: 'Offertens steg' })
+    await waitFor(() => expect(restaurantSign).toHaveBeenCalledTimes(1))
+    expect(scrolled).toHaveBeenCalledWith({ behavior: 'auto', block: 'start' })
+    expect(scrolled.mock.contexts[0]).toBe(card)
+    expect(card).toHaveClass('is-landed')
+    expect(await within(card).findByRole('status')).toBeInTheDocument()
+    expect(within(card).queryByRole('button', { name: 'Signera med BankID' })).not.toBeInTheDocument()
   })
 })
 

@@ -32,7 +32,7 @@ import {
 import type { CateringDish, CateringPackage, CateringRequest, EquipmentReturn, OfferInput } from './cateringApi'
 import { MAX_ITEM_PRICE_KR } from '../meny/menuApi'
 import './catering.css'
-import { OfferStepList, OfferSteps } from './OfferSteps'
+import { OFFER_STEPS_ID, OfferStepList, OfferSteps } from './OfferSteps'
 import { InfoTooltip } from '../../shared/InfoTooltip'
 import { Icon } from '../../shared/Icon'
 import { DateInput } from '../../shared/DateInput'
@@ -231,13 +231,15 @@ export default function CateringRequestPage() {
     }
   }
 
-  async function run(action: () => Promise<CateringRequest | unknown>, done: string) {
+  async function run(action: () => Promise<CateringRequest | unknown>, done: string, onOk?: () => void) {
     setBusy(true)
     setError(null)
     setNotice(null)
     let onField = false
+    let ok = false
     try {
       await action()
+      ok = true
       setNotice(done)
       setConfirm(null)
       setReason('')
@@ -248,8 +250,25 @@ export default function CateringRequestPage() {
     } finally {
       if (!onField) await load()
       setBusy(false)
+      if (ok) onOk?.()
     }
   }
+
+  // Nästa: signera: the signing step sits above the editor, so jump straight
+  // to it and let it glow once; for the owner the BankID signing starts at once
+  // (OfferSteps autoStart), otherwise focus lands on the step's button.
+  const [landSigning, setLandSigning] = useState(false)
+  const [signNow, setSignNow] = useState(false)
+  useEffect(() => {
+    if (!landSigning) return
+    const card = document.getElementById(OFFER_STEPS_ID)
+    if (!card) return
+    card.scrollIntoView?.({ behavior: 'auto', block: 'start' })
+    const target = card.querySelector<HTMLElement>('.offer-steps-actions button.primary:not(:disabled)') ?? card
+    target.focus({ preventScroll: true })
+    const off = window.setTimeout(() => setLandSigning(false), 2400)
+    return () => window.clearTimeout(off)
+  }, [landSigning, request?.currentOfferVersion])
 
   if (loadError) {
     return (
@@ -407,7 +426,8 @@ export default function CateringRequestPage() {
 
         {step > 1 && EDITABLE.includes(request.status) && (
           <OfferSteps request={request} canAct={isOwner} returned={returnedFromSigning} onSigned={signed}
-            sending={busy} sendError={sendError}
+            sending={busy} sendError={sendError} landed={landSigning}
+            signNow={signNow} onSignStarted={() => setSignNow(false)}
             onSend={() => void sendToCustomer(request.currentOfferVersion ?? 0)} />
         )}
 
@@ -570,7 +590,7 @@ export default function CateringRequestPage() {
               )}
               <button type="button" className="btn primary square" disabled={busy || !offerValid}
                 onClick={() => void run(() => createOfferVersion(locationId, requestId, offer),
-                  `v${nextVersion} är klar. Signera den med BankID.`)}>
+                  `v${nextVersion} är klar. Signera den med BankID.`, () => { setLandSigning(true); setSignNow(isOwner) })}>
                 {busy ? 'Sparar…' : 'Nästa: signera'}
               </button>
               <button type="button" className="btn outline square" disabled={busy || !offerValid || !offerDirty}

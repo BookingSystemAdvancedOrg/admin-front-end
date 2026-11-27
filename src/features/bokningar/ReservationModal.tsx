@@ -1,6 +1,6 @@
 import { ChangedNote } from '../../shared/ChangedNote'
 import { serverChanges } from '../../shared/merge'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { SlotTablePicker } from './SlotTablePicker'
 import type { SlotValue } from './SlotTablePicker'
@@ -20,6 +20,7 @@ import {
   errorMessage,
   formatKr,
   isStaleSlotError,
+  loadGuaranteePolicy,
   normalizePhone,
   getReservation,
   paymentAction,
@@ -29,7 +30,8 @@ import {
   validEmail,
   paymentFailureLabel,
 } from './bookingsApi'
-import type { HistoryEntry, Reservation, ReservationEdit } from './bookingsApi'
+import type { HistoryEntry, PartyChange, Reservation, ReservationEdit } from './bookingsApi'
+import type { GuaranteePolicy } from '../installningar/locationApi'
 import { useBookingLabels } from '../../shared/bookingTables'
 import { TableLinks } from '../../shared/TableLinks'
 import { PhoneInput } from '../../shared/PhoneInput'
@@ -43,7 +45,7 @@ import { RefundDialog } from '../../shared/RefundDialog'
 import { BackButton } from '../../shared/BackButton'
 import { useUnsavedGuard } from '../../shared/unsaved'
 
-type Panel = null | 'no_show' | 'cancel' | 'edit' | 'extend'
+type Panel = null | 'no_show' | 'cancel' | 'edit' | 'extend' | 'party'
 
 /** Felrutans början när kortlänken inte gick att skicka igen (bokningen är orörd). */
 const RESEND_FAILED = 'Länken skickades inte igen.'
@@ -134,6 +136,8 @@ export function ReservationModal({
   const [notifyGuest, setNotifyGuest] = useState(true)
   const [reason, setReason] = useState('')
   const [refunding, setRefunding] = useState(false)
+  // Säg till gästen: resultatet av en ändrad sällskapsstorlek (servern är facit).
+  const [partyResult, setPartyResult] = useState<PartyChange | null>(null)
 
   const noShowFee = r.cardOnFile ? (r.guarantee?.noShowFee ?? 0) : 0
   const canNotify = Boolean(r.customerEmail || r.customerPhone)
@@ -209,9 +213,22 @@ export function ReservationModal({
             today={today}
             onSaved={(u) => {
               onChanged(u)
-              setPanel(null)
+              if (u.partyChange) {
+                setPartyResult(u.partyChange)
+                setPanel('party')
+              } else {
+                setPanel(null)
+              }
             }}
             onCancel={() => setPanel(null)}
+          />
+        ) : panel === 'party' && partyResult ? (
+          <PartyResult
+            result={partyResult}
+            onDone={() => {
+              setPanel(null)
+              setPartyResult(null)
+            }}
           />
         ) : (
           <>
@@ -245,6 +262,23 @@ export function ReservationModal({
                     {r.guarantee.lateCancelFee
                       ? ` · sen avbokning ${formatKr(r.guarantee.lateCancelFee)} (inom ${r.guarantee.cancelCutoffHours} h)`
                       : ''}
+                  </dd>
+                </>
+              )}
+              {r.cardNeeded && (
+                <>
+                  <dt>Kort</dt>
+                  <dd>
+                    Saknas, avgift {formatKr(r.cardNeeded.noShowFee)}
+                    {' '}
+                    <button
+                      type="button"
+                      className="link-btn"
+                      disabled={busy}
+                      onClick={() => run(() => updateReservation(r.locationId, r.reservationId, { waiveCard: true }, r))}
+                    >
+                      Hoppa över kort
+                    </button>
                   </dd>
                 </>
               )}
@@ -511,7 +545,7 @@ function ExtendPanel({
         await updateReservation(r.locationId, r.reservationId, {
           endTime: toClock(end),
           ...(needsOverride ? { overrideRule: true } : {}),
-        }),
+        }, r),
       )
     } catch (err) {
       setError(errorMessage(err))
@@ -627,6 +661,8 @@ function EditForm({
   const [slot, setSlot] = useState<SlotValue>({ date: r.date, startTime: r.startTime, tableIds: r.tableIds })
   const [refreshKey, setRefreshKey] = useState(0)
   const [notify, setNotify] = useState(true)
+  const [waiveCard, setWaiveCard] = useState(false)
+  const [policy, setPolicy] = useState<GuaranteePolicy | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -640,6 +676,37 @@ function EditForm({
   const arrived = r.status === 'arrived'
   // En anländ gäst sitter redan: fler gäster än borden rymmer kräver bordsbyte.
   const overSeats = arrived && typeof r.seats === 'number' && size > r.seats
+  const partyChanged = sizeOk && size !== r.partySize
+  const hasCard = Boolean(r.cardOnFile)
+  // Servern ber bara om kort för en reserverad bokning som inte är en walk-in.
+  const cardRelevant = r.status === 'reserved' && r.source !== 'walk_in'
+  const needed = r.cardNeeded
+  // Kortpolicyn behövs bara för att förhandsvisa när sällskapet ändras utan kort.
+  const needPolicy = partyChanged && !hasCard && cardRelevant
+  useEffect(() => {
+    if (!needPolicy || policy) return
+    let live = true
+    loadGuaranteePolicy(r.locationId).then(
+      (p) => live && setPolicy(p),
+      () => {},
+    )
+    return () => {
+      live = false
+    }
+  }, [needPolicy, policy, r.locationId])
+  const canContact = Boolean(r.customerEmail || r.customerPhone)
+  const requiredNow = Boolean(policy?.enabled && size >= policy.minPartySize)
+  const crossesCard = Boolean(
+    needPolicy && !needed && requiredNow && policy && size > r.partySize && r.partySize < policy.minPartySize,
+  )
+  // Kort saknas redan och behövs fortfarande: ett belopp som följer sällskapet, eller kan hoppas över.
+  const stillNeeded = Boolean(needPolicy && needed && requiredNow)
+  const feeNote = partyChanged ? feePreview(r, size, hasCard, crossesCard ? policy : null, stillNeeded) : null
+  // Gästen får besked om en ny storlek bara för en reserverad bokning.
+  const partyNotifies = partyChanged && r.status === 'reserved'
+  // Valda bords platser (från kartan): stängs Spara av när de inte rymmer sällskapet.
+  const [pickedSeats, setPickedSeats] = useState<number | null>(null)
+  const seatsShort = !arrived && sizeOk && pickedSeats !== null && pickedSeats < size
   const moved = slot.date !== r.date || slot.startTime !== r.startTime
   const tablesChanged = [...slot.tableIds].sort().join() !== [...r.tableIds].sort().join()
 
@@ -656,6 +723,10 @@ function EditForm({
       if (moved || tablesChanged) edit.tableIds = slot.tableIds
       if (moved) edit.notifyGuest = notify
     }
+    if (partyChanged) {
+      if (partyNotifies && !moved) edit.notifyGuest = notify
+      if ((crossesCard || stillNeeded) && waiveCard) edit.waiveCard = true
+    }
     return edit
   }
 
@@ -666,6 +737,7 @@ function EditForm({
   const valid =
     sizeOk &&
     !overSeats &&
+    !seatsShort &&
     name.trim() &&
     phoneOk &&
     emailOk &&
@@ -677,7 +749,7 @@ function EditForm({
     setBusy(true)
     setError(null)
     try {
-      onSaved(await updateReservation(r.locationId, r.reservationId, edit))
+      onSaved(await updateReservation(r.locationId, r.reservationId, edit, r))
     } catch (err) {
       setError(errorMessage(err))
       if (isStaleSlotError(err)) {
@@ -754,6 +826,22 @@ function EditForm({
             Borden har bara {r.seats} platser. Ångra Anlänt först, sedan kan du byta till större bord.
           </p>
         )}
+        {feeNote && (
+          <p className="field-hint" role="status">
+            {feeNote}
+          </p>
+        )}
+        {(crossesCard || stillNeeded) && (
+          <>
+            <p className="field-hint" role="status">
+              Kort krävs, men ingen länk skickas. Ta kortet på annat sätt eller hoppa över.
+            </p>
+            <label className="check-row">
+              <input type="checkbox" checked={waiveCard} onChange={(e) => setWaiveCard(e.target.checked)} />
+              Hoppa över kort
+            </label>
+          </>
+        )}
         {drift.partySize !== undefined && drift.partySize !== size && (
           <ChangedNote value={`${drift.partySize} personer`} onUse={() => setPartySize(String(drift.partySize))} />
         )}
@@ -773,6 +861,7 @@ function EditForm({
             setSlot(next)
             setError(null)
           }}
+          onSeats={setPickedSeats}
         />
       )}
       <div className="form-field">
@@ -782,10 +871,10 @@ function EditForm({
           <ChangedNote value={drift.notes ?? ''} onUse={() => setNotes(drift.notes ?? '')} />
         )}
       </div>
-      {moved && (r.customerEmail || r.customerPhone) && (
+      {(moved || partyNotifies) && canContact && (
         <label className="check-row">
           <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
-          Meddela gästen om den nya tiden
+          {moved ? 'Meddela gästen om den nya tiden' : 'Meddela gästen om ändringen'}
         </label>
       )}
       {error && (
@@ -798,5 +887,80 @@ function EditForm({
         </button>
       </div>
     </form>
+  )
+}
+
+/** Förhandsvisning av avgiften när sällskapet ändras. Bara en gissning av vad servern räknar: facit är svaret efter Spara. */
+function feePreview(
+  r: Reservation,
+  size: number,
+  hasCard: boolean,
+  crossing: GuaranteePolicy | null,
+  needed: boolean,
+): string | null {
+  if (hasCard && r.guarantee) {
+    const g = r.guarantee
+    const now = g.noShowFee ?? 0
+    const per = g.noShowFeePerPerson !== undefined ? g.noShowFeePerPerson * 100 : now / r.partySize
+    if (!now && !per) return null
+    return `Avgift vid uteblivet besök: från ${formatKr(now)} till ${formatKr(Math.round(per * size))}`
+  }
+  if (needed && r.cardNeeded) {
+    const c = r.cardNeeded
+    const per = c.noShowFeePerPerson !== undefined ? c.noShowFeePerPerson * 100 : c.noShowFee / Math.max(c.partySize, 1)
+    return `Avgift när kort finns: från ${formatKr(c.noShowFee)} till ${formatKr(Math.round(per * size))}`
+  }
+  if (crossing) return `Avgift när kort finns: ${formatKr(crossing.noShowFeePerPerson * 100 * size)}`
+  return null
+}
+
+/** Säg till gästen: vad den nya storleken betyder för gästen. Servern är facit. */
+function PartyResult({ result: c, onDone }: { result: PartyChange; onDone: () => void }) {
+  const hasFee = c.noShowFee > 0 || c.lateCancelFee > 0
+  const card = c.cardOnFile
+    ? 'Kort finns på bokningen'
+    : c.cardRequired
+      ? 'Kort saknas, ingen länk skickades'
+      : c.cardWaived
+        ? 'Kort hoppades över'
+        : null
+  const feeLabel = c.cardOnFile ? '' : ' (när kort finns)'
+
+  return (
+    <div className="booking-form" role="region" aria-label="Säg till gästen">
+      <h3>Säg till gästen</h3>
+      <dl className="booking-details">
+        <dt>Sällskap</dt>
+        <dd>{c.to} personer</dd>
+        {hasFee && (
+          <>
+            <dt>{`Om gästen uteblir${feeLabel}`}</dt>
+            <dd>{formatKr(c.noShowFee)}</dd>
+          </>
+        )}
+        {c.lateCancelFee > 0 && (
+          <>
+            <dt>{`Sen avbokning${feeLabel}`}</dt>
+            <dd>
+              {formatKr(c.lateCancelFee)}
+              {c.cancelCutoffHours ? ` (inom ${c.cancelCutoffHours} h)` : ''}
+            </dd>
+          </>
+        )}
+        {card && (
+          <>
+            <dt>Kort</dt>
+            <dd>{card}</dd>
+          </>
+        )}
+        <dt>Gästen</dt>
+        <dd>{c.notified ? 'Har fått besked' : 'Fick inget besked, säg till'}</dd>
+      </dl>
+      <div className="modal-actions modal-actions--pinned">
+        <button type="button" className="btn primary square" onClick={onDone}>
+          Klart
+        </button>
+      </div>
+    </div>
   )
 }

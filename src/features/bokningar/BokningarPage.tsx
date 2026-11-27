@@ -317,6 +317,7 @@ export default function BokningarPage() {
                           {r.cardOnFile && r.status === 'reserved' && (
                             <span className="cell-muted" title="Kort sparat (kortgaranti)"> <Icon name="card" size={15} /></span>
                           )}
+                          {r.cardNeeded && r.status === 'reserved' && <div className="cell-muted">Kort saknas</div>}
                           {r.status === 'pending' && r.pendingExpiresAt && (
                             <div className="cell-muted">hålls till {clockLabel(cardDeadline(r), r.timezone ?? location?.timezone)}</div>
                           )}

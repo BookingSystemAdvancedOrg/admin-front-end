@@ -19,6 +19,7 @@ const updateReservation = vi.fn()
 const getAvailability = vi.fn()
 const createManualReservation = vi.fn()
 const resendGuaranteeLink = vi.fn()
+const loadGuaranteePolicy = vi.fn()
 vi.mock('./bookingsApi', async (orig) => ({
   ...(await orig<typeof import('./bookingsApi')>()),
   changeStatus: (...a: unknown[]) => changeStatus(...a),
@@ -28,6 +29,7 @@ vi.mock('./bookingsApi', async (orig) => ({
   getAvailability: (...a: unknown[]) => getAvailability(...a),
   createManualReservation: (...a: unknown[]) => createManualReservation(...a),
   resendGuaranteeLink: (...a: unknown[]) => resendGuaranteeLink(...a),
+  loadGuaranteePolicy: (...a: unknown[]) => loadGuaranteePolicy(...a),
 }))
 
 // Dagens ritning för rubrikens bord (GET /layout/active); null = inte hämtad.
@@ -71,9 +73,10 @@ function booking(over: Partial<Reservation> = {}): Reservation {
 }
 
 beforeEach(() => {
-  for (const fn of [changeStatus, paymentAction, getReservation, updateReservation, getAvailability, createManualReservation, resendGuaranteeLink]) {
+  for (const fn of [changeStatus, paymentAction, getReservation, updateReservation, getAvailability, createManualReservation, resendGuaranteeLink, loadGuaranteePolicy]) {
     fn.mockReset()
   }
+  loadGuaranteePolicy.mockResolvedValue({ enabled: true, minPartySize: 4, noShowFeePerPerson: 250, lateCancelFeePerPerson: 100, cancelCutoffHours: 24 })
   getAvailability.mockResolvedValue(avail([]))
   loadActiveLayout.mockReset()
   loadActiveLayout.mockResolvedValue(PLAN)
@@ -232,7 +235,7 @@ describe('ReservationModal', () => {
       startTime: '17:00',
       tableIds: ['5'],
       notifyGuest: true,
-    })
+    }, expect.anything())
     expect(onChanged).toHaveBeenCalled()
   })
 })
@@ -526,7 +529,7 @@ describe('time rules in the forms', () => {
     await user.click(screen.getByRole('button', { name: 'Ändra' }))
     await user.type(screen.getByLabelText(/Telefon/), '070-123 45 67')
     await user.click(screen.getByRole('button', { name: 'Spara' }))
-    expect(updateReservation).toHaveBeenCalledWith('loc-1', 'r1', { phone: '+46701234567' })
+    expect(updateReservation).toHaveBeenCalledWith('loc-1', 'r1', { phone: '+46701234567' }, expect.anything())
   })
 
   it('editing a drop-in uses the drop-in times; editing others the normal times', async () => {
@@ -713,7 +716,7 @@ describe('ReservationModal extend', () => {
     await user.click(screen.getByRole('button', { name: 'Förläng' }))
     expect(screen.getByLabelText('Ny sluttid')).toHaveValue(String(20 * 60))
     await user.click(screen.getByRole('button', { name: 'Förläng' }))
-    expect(updateReservation).toHaveBeenCalledWith('loc-1', 'r1', { endTime: '20:00' })
+    expect(updateReservation).toHaveBeenCalledWith('loc-1', 'r1', { endTime: '20:00' }, expect.anything())
   })
 
   it('needs an explicit override beyond the rule', async () => {
@@ -727,7 +730,7 @@ describe('ReservationModal extend', () => {
     expect(updateReservation).not.toHaveBeenCalled()
     await user.click(screen.getByLabelText(/Förläng ändå/))
     await user.click(screen.getByRole('button', { name: 'Förläng' }))
-    expect(updateReservation).toHaveBeenCalledWith('loc-1', 'r1', { endTime: '20:30', overrideRule: true })
+    expect(updateReservation).toHaveBeenCalledWith('loc-1', 'r1', { endTime: '20:30', overrideRule: true }, expect.anything())
   })
 
   it('offers the override when the server says a window blocks it', async () => {
@@ -747,7 +750,7 @@ describe('ReservationModal extend', () => {
     await user.click(screen.getByRole('button', { name: 'Förläng' }))
     await chooseOption(screen.getByLabelText('Ny sluttid'), String(19 * 60))
     await user.click(screen.getByRole('button', { name: 'Korta bokningen' }))
-    expect(updateReservation).toHaveBeenCalledWith('loc-1', 'r1', { endTime: '19:00' })
+    expect(updateReservation).toHaveBeenCalledWith('loc-1', 'r1', { endTime: '19:00' }, expect.anything())
   })
 })
 
@@ -951,5 +954,149 @@ describe('ReservationModal: waiting for the card', () => {
     expect(screen.getByText(/Kortlänk skickad igen/)).toBeInTheDocument()
     expect(screen.getByText(/Sms med kortlänk gick inte iväg, bordet släpptes/)).toBeInTheDocument()
     expect(screen.getByText(/Kortgaranti hoppades över/)).toBeInTheDocument()
+  })
+
+  describe('party change', () => {
+    const carded = () =>
+      booking({
+        partySize: 2,
+        cardOnFile: true,
+        guarantee: { noShowFee: 50000, lateCancelFee: 20000, noShowFeePerPerson: 250, lateCancelFeePerPerson: 100, cancelCutoffHours: 24 },
+      })
+    const change = (over = {}) => ({
+      from: 2, to: 4, noShowFee: 100000, lateCancelFee: 40000, previousNoShowFee: 50000, previousLateCancelFee: 20000,
+      currency: 'sek', cancelCutoffHours: 24, cardOnFile: true, cardRequired: false, cardLinkSent: false, cardWaived: false, notified: true, ...over,
+    })
+    async function setSize(user: ReturnType<typeof userEvent.setup>, n: string) {
+      await user.click(screen.getByRole('button', { name: 'Ändra' }))
+      await user.clear(screen.getByLabelText('Antal personer'))
+      await user.type(screen.getByLabelText('Antal personer'), n)
+    }
+
+    it('previews the fee from the stored per person amount, and shows the server numbers after saving', async () => {
+      const user = userEvent.setup()
+      const onChanged = vi.fn()
+      updateReservation.mockResolvedValue({ ...carded(), partySize: 4, partyChange: change() })
+      render(<ReservationModal today={TODAY} reservation={carded()} isOwner onChanged={onChanged} onClose={() => {}} />)
+      await setSize(user, '4')
+      expect(screen.getByText('Avgift vid uteblivet besök: från 500 kr till 1 000 kr')).toBeInTheDocument()
+      expect(screen.getByLabelText('Meddela gästen om ändringen')).toBeChecked()
+      await user.click(screen.getByRole('button', { name: 'Spara' }))
+      expect(updateReservation).toHaveBeenCalledWith('loc-1', 'r1', { partySize: 4, notifyGuest: true }, expect.anything())
+      const result = await screen.findByRole('region', { name: 'Säg till gästen' })
+      expect(within(result).getByText('4 personer')).toBeInTheDocument()
+      expect(within(result).getByText('1 000 kr')).toBeInTheDocument()
+      expect(within(result).getByText('400 kr (inom 24 h)')).toBeInTheDocument()
+      expect(within(result).getByText('Kort finns på bokningen')).toBeInTheDocument()
+      expect(onChanged).toHaveBeenCalled()
+      await user.click(within(result).getByRole('button', { name: 'Klart' }))
+      expect(screen.queryByRole('region', { name: 'Säg till gästen' })).toBeNull()
+    })
+
+    it('offers to skip the card when the party crosses the threshold, says no link is sent, and sends waiveCard', async () => {
+      const user = userEvent.setup()
+      updateReservation.mockResolvedValue({
+        ...booking(), partySize: 4, partyChange: change({ cardOnFile: false, cardWaived: true, noShowFee: 0, lateCancelFee: 0 }),
+      })
+      render(<ReservationModal today={TODAY} reservation={booking()} isOwner onChanged={() => {}} onClose={() => {}} />)
+      await setSize(user, '4')
+      expect(await screen.findByText(/Kort krävs, men ingen länk skickas/)).toBeInTheDocument()
+      expect(screen.queryByText(/länk skickas till gästen/)).toBeNull()
+      expect(screen.getByText('Avgift när kort finns: 1 000 kr')).toBeInTheDocument()
+      await user.click(screen.getByLabelText('Hoppa över kort'))
+      await user.click(screen.getByRole('button', { name: 'Spara' }))
+      expect(updateReservation).toHaveBeenCalledWith('loc-1', 'r1', { partySize: 4, notifyGuest: true, waiveCard: true }, expect.anything())
+      expect(await screen.findByText('Kort hoppades över')).toBeInTheDocument()
+    })
+
+    it('does not mention a card below the threshold', async () => {
+      const user = userEvent.setup()
+      render(<ReservationModal today={TODAY} reservation={booking()} isOwner onChanged={() => {}} onClose={() => {}} />)
+      await setSize(user, '3')
+      expect(screen.queryByText(/Kort krävs/)).toBeNull()
+      expect(screen.queryByLabelText('Hoppa över kort')).toBeNull()
+    })
+
+    it('says the card is missing and that no link was sent (never a failed send), with no resend button', async () => {
+      const user = userEvent.setup()
+      updateReservation.mockResolvedValue({
+        ...booking(), partySize: 4,
+        partyChange: change({ cardOnFile: false, cardRequired: true, cardLinkSent: false, notified: false }),
+      })
+      render(<ReservationModal today={TODAY} reservation={booking()} isOwner onChanged={() => {}} onClose={() => {}} />)
+      await setSize(user, '4')
+      await user.click(screen.getByRole('button', { name: 'Spara' }))
+      const result = await screen.findByRole('region', { name: 'Säg till gästen' })
+      expect(within(result).getByText('Kort saknas, ingen länk skickades')).toBeInTheDocument()
+      expect(within(result).getByText('Om gästen uteblir (när kort finns)')).toBeInTheDocument()
+      expect(within(result).getByText('Fick inget besked, säg till')).toBeInTheDocument()
+      expect(screen.queryByText(/gick inte att skicka/)).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Skicka länken igen' })).toBeNull()
+      expect(resendGuaranteeLink).not.toHaveBeenCalled()
+    })
+
+    it('shows that the guest was told, from the server answer', async () => {
+      const user = userEvent.setup()
+      updateReservation.mockResolvedValue({ ...carded(), partySize: 4, partyChange: change() })
+      render(<ReservationModal today={TODAY} reservation={carded()} isOwner onChanged={() => {}} onClose={() => {}} />)
+      await setSize(user, '4')
+      await user.click(screen.getByRole('button', { name: 'Spara' }))
+      expect(await screen.findByText('Har fått besked')).toBeInTheDocument()
+    })
+
+    it('asks for no card and offers no notice for an arrived guest or a walk-in', async () => {
+      const user = userEvent.setup()
+      const { unmount } = render(
+        <ReservationModal today={TODAY} reservation={booking({ status: 'arrived', seats: 4 })} isOwner onChanged={() => {}} onClose={() => {}} />,
+      )
+      await setSize(user, '4')
+      expect(screen.queryByText(/Kort krävs/)).toBeNull()
+      expect(screen.queryByLabelText('Hoppa över kort')).toBeNull()
+      expect(screen.queryByLabelText('Meddela gästen om ändringen')).toBeNull()
+      unmount()
+      render(<ReservationModal today={TODAY} reservation={booking({ source: 'walk_in' })} isOwner onChanged={() => {}} onClose={() => {}} />)
+      await setSize(user, '4')
+      expect(screen.queryByText(/Kort krävs/)).toBeNull()
+      expect(screen.queryByLabelText('Hoppa över kort')).toBeNull()
+    })
+
+    it('shows the missing card on the booking, previews from the stored amount and can skip it', async () => {
+      const user = userEvent.setup()
+      const needy = booking({
+        partySize: 4,
+        cardNeeded: { partySize: 4, noShowFee: 100000, lateCancelFee: 40000, noShowFeePerPerson: 250, lateCancelFeePerPerson: 100 },
+      })
+      updateReservation.mockResolvedValue({ ...needy, cardNeeded: undefined })
+      const onChanged = vi.fn()
+      const { unmount } = render(<ReservationModal today={TODAY} reservation={needy} isOwner onChanged={onChanged} onClose={() => {}} />)
+      expect(screen.getByText(/Saknas, avgift 1 000 kr/)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Hoppa över kort' }))
+      expect(updateReservation).toHaveBeenCalledWith('loc-1', 'r1', { waiveCard: true }, expect.anything())
+      unmount()
+      render(<ReservationModal today={TODAY} reservation={needy} isOwner onChanged={() => {}} onClose={() => {}} />)
+      await setSize(user, '6')
+      expect(await screen.findByText('Avgift när kort finns: från 1 000 kr till 1 500 kr')).toBeInTheDocument()
+    })
+
+    it('turns Spara off while the chosen tables do not seat the new party', async () => {
+      const user = userEvent.setup()
+      getAvailability.mockResolvedValue(avail([{ startTime: '19:00', endTime: '21:00', tables: [{ tableId: '2', seats: 2 }, { tableId: '4', seats: 4 }] }]))
+      render(<ReservationModal today={TODAY} reservation={booking({ tableIds: ['2'], seats: 2 })} isOwner onChanged={() => {}} onClose={() => {}} />)
+      await setSize(user, '3')
+      expect(await screen.findByText('Valda bord har 2 platser - sällskapet är 3.')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Spara' })).toBeDisabled()
+      await user.clear(screen.getByLabelText('Antal personer'))
+      await user.type(screen.getByLabelText('Antal personer'), '2')
+      expect(screen.queryByText(/Valda bord har 2 platser - sällskapet/)).toBeNull()
+    })
+
+    it('explains charge_started in Swedish', async () => {
+      const user = userEvent.setup()
+      updateReservation.mockRejectedValue(new ApiError(409, 'charge_started', { fromServer: true }))
+      render(<ReservationModal today={TODAY} reservation={carded()} isOwner onChanged={() => {}} onClose={() => {}} />)
+      await setSize(user, '4')
+      await user.click(screen.getByRole('button', { name: 'Spara' }))
+      expect(await screen.findByText(/Avgiften för den här bokningen har redan börjat dras/)).toBeInTheDocument()
+    })
   })
 })

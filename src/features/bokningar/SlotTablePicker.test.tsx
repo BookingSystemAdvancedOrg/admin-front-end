@@ -477,4 +477,30 @@ describe('dayNotice', () => {
       'Avvikande öppettider den dagen: 11:00-14:00, 17:00-22:00.',
     )
   })
+
+  it('shows a table too small for the party as not selectable while a roomy table is free', async () => {
+    getAvailability.mockResolvedValue({ slots: [slot('18:00', [['b-uuid', 4], ['a-uuid', 2]])], day: null })
+    const { rerender } = render(
+      <SlotTablePicker locationId="loc-1" date={TODAY} startTime="18:00" tableIds={[]} partySize={4} today={TODAY} onChange={() => {}} />,
+    )
+    await screen.findByRole('group', { name: 'Bordskarta' })
+    expect(table(/^Bord 1, 2 pl, för litet$/)).toHaveAttribute('aria-disabled', 'true')
+    expect(table(/^Bord 2, 4 pl, ledigt$/)).not.toHaveAttribute('aria-disabled')
+    // Ett större sällskap än något enskilt bord: borden får slås ihop.
+    rerender(<SlotTablePicker locationId="loc-1" date={TODAY} startTime="18:00" tableIds={[]} partySize={6} today={TODAY} onChange={() => {}} />)
+    expect(table(/^Bord 1, 2 pl, ledigt$/)).not.toHaveAttribute('aria-disabled')
+  })
+
+  it('keeps every other table pickable when the booking already has tables, and explains the rule when it applies', async () => {
+    getAvailability.mockResolvedValue({ slots: [slot('18:00', [['b-uuid', 4], ['a-uuid', 2]])], day: null })
+    const { rerender } = render(
+      <SlotTablePicker locationId="loc-1" date={TODAY} startTime="18:00" tableIds={[]} partySize={4} today={TODAY} onChange={() => {}} />,
+    )
+    await screen.findByRole('group', { name: 'Bordskarta' })
+    expect(screen.getByText('Ett ledigt bord rymmer sällskapet. Välj det först.')).toBeInTheDocument()
+    // Redigering: bokningens eget bord är förvalt, då går de andra att välja (och slå ihop).
+    rerender(<SlotTablePicker locationId="loc-1" date={TODAY} startTime="18:00" tableIds={['a-uuid']} partySize={6} today={TODAY} onChange={() => {}} />)
+    expect(table(/^Bord 2, 4 pl, ledigt$/)).not.toHaveAttribute('aria-disabled')
+    expect(screen.queryByText('Ett ledigt bord rymmer sällskapet. Välj det först.')).toBeNull()
+  })
 })

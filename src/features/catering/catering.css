@@ -691,3 +691,18 @@
 .catering-request .form-grid + .form-field {
   margin-top: 20px;
 }
+
+/* Nästa: signera: the page jumps to the steps card and it glows once (a
+   wash, no ring: the app has no edges), so the eye lands on Signera med BankID. */
+.offer-steps-card:focus { outline: none; }
+.offer-steps-card.is-landed { background-color: var(--wash-strong); }
+@media (prefers-reduced-motion: no-preference) {
+  .offer-steps-card.is-landed {
+    background-color: transparent;
+    animation: offer-steps-landed 2400ms var(--e-out, ease-out) 1;
+  }
+}
+@keyframes offer-steps-landed {
+  0%, 35% { background-color: var(--wash-strong); }
+  100% { background-color: transparent; }
+}

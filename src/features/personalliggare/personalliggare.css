@@ -102,8 +102,8 @@
     display: flex;
     flex-wrap: wrap;
     align-items: flex-start;
-    gap: 8px 20px;
-    padding: 12px 0;
+    gap: var(--bq-space-2) var(--bq-space-5);
+    padding: var(--bq-space-3) 0;
     border-top: 1px solid var(--border);
   }
   .pl-scroll .data-table.pl-table tbody tr:first-child {
@@ -136,7 +136,7 @@
   .pl-scroll .data-table.pl-table td[data-label]::before {
     content: attr(data-label);
     display: block;
-    margin-bottom: 2px;
+    margin-bottom: var(--bq-space-1);
     font-size: 12px;
     font-weight: 500;
     color: var(--muted);

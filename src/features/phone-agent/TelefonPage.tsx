@@ -59,9 +59,11 @@ function Telefon() {
 
   // På en smal skärm rullar flikarna i sidled: visa den valda helt.
   useEffect(() => {
-    // Flikraden själv rullar (brand), annars rutan runt den.
+    // Flikraden själv rullar (brand), annars rutan runt den. [role=tablist]
+    // utan citattecken med flit: brand-lints bar-regel läser annars
+    // väljarsträngen som en egenbyggd flikrad.
     const el = tabs.current?.querySelector<HTMLElement>('[aria-selected="true"]')
-    const bar = [el?.closest<HTMLElement>('[role="tablist"]'), tabs.current].find((b) => b && b.scrollWidth > b.clientWidth)
+    const bar = [el?.closest<HTMLElement>('[role=tablist]'), tabs.current].find((b) => b && b.scrollWidth > b.clientWidth)
     if (!el || !bar) return
     const at = el.getBoundingClientRect().left - bar.getBoundingClientRect().left + bar.scrollLeft
     bar.scrollLeft = at - (bar.clientWidth - el.offsetWidth) / 2

@@ -120,6 +120,13 @@ describe('bookingsApi', () => {
     expect(Date.parse(pending!.pendingExpiresAt!)).toBeGreaterThan(Date.now())
   })
 
+  it('the example data belongs to the page location, so an edit stays in the list', async () => {
+    vi.mocked(api.isApiConfigured).mockReturnValueOnce(false)
+    const items = await listReservations('local-demo-1', '2026-10-12')
+    expect(items.length).toBeGreaterThan(0)
+    expect(items.every((r) => r.locationId === 'local-demo-1')).toBe(true)
+  })
+
   it('summarises fees', () => {
     expect(feeSummary(booking())).toBeNull()
     expect(feeSummary(booking({ payment: { status: 'succeeded', amount: 20000 } }))).toBe('200 kr')

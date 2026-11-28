@@ -4,7 +4,8 @@ import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { AdminTopbar } from './AdminTopbar'
 
-vi.mock('./location', () => ({ useLocationSummary: () => null }))
+const summary = vi.hoisted(() => ({ value: null as { name: string; address: string } | null }))
+vi.mock('./location', () => ({ useLocationSummary: () => summary.value }))
 
 describe('AdminTopbar tools', () => {
   it('has Hjälp, the click sound and the theme toggle next to each other on every page', async () => {
@@ -30,5 +31,25 @@ describe('AdminTopbar tools', () => {
     const after = document.documentElement.dataset.theme
     expect(after).not.toBe(before)
     expect(localStorage.getItem('booqy-theme')).toBe(after)
+  })
+
+  it('shows the location without a dangling separator when the address is missing', () => {
+    summary.value = { name: 'Demo', address: '' }
+    const { unmount } = render(
+      <MemoryRouter>
+        <AdminTopbar title="Bokningar" />
+      </MemoryRouter>,
+    )
+    expect(screen.getByText('Demo', { selector: 'p' }).textContent).toBe('Demo')
+    unmount()
+
+    summary.value = { name: 'Demo', address: 'Storgatan 1' }
+    render(
+      <MemoryRouter>
+        <AdminTopbar title="Bokningar" />
+      </MemoryRouter>,
+    )
+    expect(screen.getByText('Demo · Storgatan 1')).toBeInTheDocument()
+    summary.value = null
   })
 })

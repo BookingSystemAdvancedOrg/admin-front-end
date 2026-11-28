@@ -572,8 +572,12 @@ const MINUTE = 60_000
 /** Plats-id för exempeldatan när admin körs utan API. */
 export const MOCK_LOCATION_ID = 'mock'
 
-/** Utan API: en kväll med några bokningar i olika lägen (samma lista varje dag). */
-export function mockReservations(date: string): Reservation[] {
+/**
+ * Utan API: en kväll med några bokningar i olika lägen (samma lista varje dag).
+ * `locationId` = sidans plats, annars ser varje ändring ut som en flytt till en
+ * annan plats och bokningen försvinner ur listan.
+ */
+export function mockReservations(date: string, locationId: string = MOCK_LOCATION_ID): Reservation[] {
   const now = Date.now()
   const r = (
     id: string,
@@ -585,7 +589,7 @@ export function mockReservations(date: string): Reservation[] {
     extra: Partial<Reservation> = {},
   ): Reservation => ({
     reservationId: `mockres${id}`,
-    locationId: MOCK_LOCATION_ID,
+    locationId,
     date,
     startTime,
     endTime,
@@ -620,7 +624,7 @@ export function mockReservations(date: string): Reservation[] {
 }
 
 export async function listReservations(locationId: string, date: string): Promise<Reservation[]> {
-  if (!isApiConfigured()) return mockReservations(date)
+  if (!isApiConfigured()) return mockReservations(date, locationId)
   const res = await apiFetch<{ items?: Reservation[] }>(
     `${base(locationId)}/reservations?date=${encodeURIComponent(date)}`,
   )

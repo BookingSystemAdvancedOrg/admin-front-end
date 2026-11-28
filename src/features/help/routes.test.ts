@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { FEATURE_KEYS } from '../../shared/contracts'
 import { buildCorpus, helpSlug, settingsSections } from '../../../scripts/help-corpus.mjs'
 import { KB, PAGE_ACTIONS, ROUTE_PATTERNS } from './kb'
@@ -31,7 +31,15 @@ function sources(dir: string): string[] {
   })
 }
 
-describe('help knowledge base', () => {
+// Hela src/ och korpusen läses en gång i beforeAll; testerna jämför bara.
+describe('help knowledge base', { timeout: 15_000 }, () => {
+  let code = ''
+  let corpus: ReturnType<typeof buildCorpus>
+  beforeAll(() => {
+    code = sources(SRC).join('\n')
+    corpus = buildCorpus()
+  }, 15_000)
+
   it('lists exactly the routes in App.tsx', () => {
     expect([...ROUTE_PATTERNS].sort()).toEqual(appRoutes().sort())
   })
@@ -43,7 +51,6 @@ describe('help knowledge base', () => {
   })
 
   it('only points at routes, forms and features that exist', () => {
-    const code = sources(SRC).join('\n')
     for (const key of PAGE_ACTIONS) expect(code, `ingen sida tar emot ${key}`).toContain(`onPageAction('${key}'`)
     for (const e of KB.entries) {
       if (e.route !== null) expect(ROUTE_PATTERNS, e.id).toContain(e.route)
@@ -83,14 +90,13 @@ describe('help knowledge base', () => {
   })
 
   it('only highlights data-help ids that exist in the code', () => {
-    const code = sources(SRC).join('\n')
     const literal = new Set([...code.matchAll(/data-help="([^"]+)"/g)].map((m) => m[1]))
     const computed = new Set([...code.matchAll(/<(?:Tile|StatTile)\b[^>]*?label="([^"]+)"/g)].map((m) => `kpi:${helpSlug(m[1])}`))
     for (const m of code.matchAll(/<Card\b[^>]*?label="([^"]+)"/g)) computed.add(`card:${helpSlug(m[1])}`)
     const navTo = [...readFileSync(join(SRC, 'shared/nav.ts'), 'utf8').matchAll(/to: '([^']+)'/g)].map((m) => `nav:${m[1]}`)
     const tabs = [...code.matchAll(/data-help="settings:(\w+):/g)].map((m) => `settings-tab:${m[1]}`)
     const known = new Set([...literal, ...computed, ...navTo, ...tabs])
-    const used = buildCorpus().docs.flatMap((d) => [...(d.highlight ?? []), ...(d.actions ?? []).flatMap((a) => a.highlight ?? [])])
+    const used = corpus.docs.flatMap((d) => [...(d.highlight ?? []), ...(d.actions ?? []).flatMap((a) => a.highlight ?? [])])
     const missing = [...new Set(used.filter((h) => h.startsWith('help:')).map((h) => h.slice(5)))].filter((id) => !known.has(id))
     expect(missing, `data-help som inte finns: ${missing.join(', ')}`).toEqual([])
   })
@@ -101,7 +107,7 @@ describe('help knowledge base', () => {
     const paths = new Set(Object.entries(tabLabel).map(([tab, label]) => `${groupOf[tab]}, ${label}`))
     const groups = new Set(Object.values(groupOf))
     const tabNames = Object.values(tabLabel).sort((a, b) => b.length - a.length)
-    const texts = buildCorpus().docs.flatMap((d) => [d.answer ?? '', d.where ?? '', d.text ?? '', ...(d.steps ?? [])])
+    const texts = corpus.docs.flatMap((d) => [d.answer ?? '', d.where ?? '', d.text ?? '', ...(d.steps ?? [])])
     for (const text of texts) {
       for (const m of text.matchAll(/Inställningar, (?!välj |så )([^.:]+?)(?=[.:]|$| om | så )/g)) {
         const rest = m[1].replace(/,$/, '')

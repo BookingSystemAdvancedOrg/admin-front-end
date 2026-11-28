@@ -213,8 +213,8 @@
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
-    gap: 8px 16px;
-    padding: 14px 0;
+    gap: var(--bq-space-2) var(--bq-space-4);
+    padding: var(--bq-space-3) 0;
   }
   .evenemang-table td {
     display: block;
@@ -231,7 +231,7 @@
   .evenemang-table td[data-label]::before {
     content: attr(data-label);
     display: block;
-    margin-bottom: 2px;
+    margin-bottom: var(--bq-space-1);
     font-size: 12px;
     font-weight: 500;
     color: var(--muted);
@@ -264,7 +264,10 @@
 }
 .evenemang-code > .bq-btn,
 .evenemang-scan > .bq-btn {
-  margin-top: calc(var(--bq-text-sm) * 1.3 + 6px);
+  /* Knappen står i linje med fältet bredvid: etikettens radhöjd plus
+     .bq-field-glappet (6px i @booqy/brand, ingen token finns). */
+  --evenemang-field-gap: 6px;
+  margin-top: calc(var(--bq-text-sm) * 1.3 + var(--evenemang-field-gap));
 }
 .evenemang-scan {
   align-items: start;

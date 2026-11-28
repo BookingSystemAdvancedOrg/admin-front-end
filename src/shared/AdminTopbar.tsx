@@ -31,9 +31,8 @@ export function AdminTopbar({
   // den riktiga platsen från API:t, och ingenting alls innan någon plats
   // skapats - hellre tomt än fel restaurang.
   const location = useLocationSummary()
-  const text =
-    subtitle ??
-    (location ? `${location.name} · ${location.address}` : '')
+  // Bara delarna som finns: en plats utan adress får inget hängande " ·".
+  const text = subtitle ?? (location ? [location.name, location.address].filter(Boolean).join(' · ') : '')
 
   return (
     <header className="admin-topbar">

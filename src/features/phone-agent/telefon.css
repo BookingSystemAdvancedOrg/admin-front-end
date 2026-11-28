@@ -673,7 +673,7 @@
 .telefon-turn__chip {
   display: inline-flex;
   align-items: center;
-  padding: 1px var(--bq-space-2);
+  padding: 0 var(--bq-space-2);
   border-radius: var(--bq-radius-pill);
   border: var(--bq-bar-hairline) solid var(--bq-line-strong);
   background: var(--bq-surface-2);
@@ -747,7 +747,7 @@
   .telefon-calls td[data-label]::before {
     content: attr(data-label);
     display: block;
-    margin-bottom: 2px;
+    margin-bottom: var(--bq-space-1);
     color: var(--bq-muted);
     font-family: var(--bq-font-sans, inherit);
     font-size: var(--bq-text-xs);
@@ -793,8 +793,11 @@
     box-sizing: content-box;
     width: 22px;
     height: 22px;
-    margin: -11px;
-    border: 11px solid transparent;
+    /* 22px ikon + 2 x 11px osynlig kant = 44px träffyta. Kanten och den
+       negativa marginalen tar ut varandra, så layouten står still. */
+    --telefon-hit: 11px;
+    margin: calc(-1 * var(--telefon-hit));
+    border: var(--telefon-hit) solid transparent;
     background-clip: padding-box;
   }
 }

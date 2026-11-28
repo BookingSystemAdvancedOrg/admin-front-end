@@ -59,6 +59,9 @@ for (const pg of PAGES) {
           let shot: string | undefined
           if (info.project.name === 'chromium' && VISUAL.includes(vp.name)) {
             const mask = [page.locator('time, [data-dynamic], .num, [class*=Num]')]
+            // focusIssues tabbed through the page: drop the focus so the
+            // baseline does not depend on the tab order.
+            await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
             try {
               await expect(page).toHaveScreenshot(`${pg.name}-${vp.name}-${theme}.png`, { mask, fullPage: false })
             } catch (e) {

@@ -344,7 +344,7 @@ export default function CateringRequestPage() {
             </div>
             <dl className="catering-facts">
               <div><dt>Namn</dt><dd>{request.customerName}</dd></div>
-              {request.companyName && <div><dt>Företag</dt><dd>{request.companyName} ({request.orgNumber})</dd></div>}
+              {request.companyName && <div><dt>Företag</dt><dd>{request.companyName}{request.orgNumber ? ` (${request.orgNumber})` : ''}</dd></div>}
               {request.invoiceReference && <div><dt>Referens</dt><dd>{request.invoiceReference}</dd></div>}
               {request.signatory && (
                 <div>
